@@ -1,0 +1,287 @@
+package main
+
+import (
+	"errors"
+	"log"
+	"net/url"
+	"passport/api"
+	"passport/db"
+	"passport/email"
+	"passport/log_helpers"
+	"passport/seed"
+	"time"
+
+	"passport"
+
+	"github.com/getsentry/sentry-go"
+	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/microcosm-cc/bluemonday"
+	"github.com/ninja-software/terror/v2"
+
+	"github.com/rs/zerolog"
+
+	"context"
+	"fmt"
+	"os"
+
+	"github.com/oklog/run"
+	"github.com/urfave/cli/v2"
+)
+
+// Version build Version
+const Version = "v0.1.0"
+
+// passed in using
+//   ```sh
+//   go build -ldflags "-X main.SentryVersion=" main.go
+//   ```
+var SentryVersion string
+
+const envPrefix = "PASSPORT"
+
+func main() {
+	app := &cli.App{
+		Compiled: time.Now(),
+		Usage:    "Run the passport server or database administration commands",
+		Authors: []*cli.Author{
+			{
+				Name:  "Ninja Software",
+				Email: "hello@ninjasoftware.com.au",
+			},
+		},
+		Flags: []cli.Flag{},
+		Commands: []*cli.Command{
+			{
+				Name:    "serve",
+				Aliases: []string{"s"},
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "database_user", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
+					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{"PASSPORT_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
+					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{"PASSPORT_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
+					&cli.StringFlag{Name: "database_port", Value: "5432", EnvVars: []string{"PASSPORT_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
+					&cli.StringFlag{Name: "database_name", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
+					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{"PASSPORT_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+
+					&cli.StringFlag{Name: "environment", Value: "development", DefaultText: "development", EnvVars: []string{"PASSPORT_ENVIRONMENT", "ENVIRONMENT"}, Usage: "This program environment (development, testing, training, staging, production), it sets the log levels"},
+					&cli.StringFlag{Name: "sentry_dsn_backend", Value: "", EnvVars: []string{"PASSPORT_SENTRY_DSN_BACKEND", "SENTRY_DSN_BACKEND"}, Usage: "Sends error to remote server. If set, it will send error."},
+					&cli.StringFlag{Name: "sentry_server_name", Value: "dev-pc", EnvVars: []string{"PASSPORT_SENTRY_SERVER_NAME", "SENTRY_SERVER_NAME"}, Usage: "The machine name that this program is running on."},
+					&cli.Float64Flag{Name: "sentry_sample_rate", Value: 1, EnvVars: []string{"PASSPORT_SENTRY_SAMPLE_RATE", "SENTRY_SAMPLE_RATE"}, Usage: "The percentage of trace sample to collect (0.0-1)"},
+
+					&cli.StringFlag{Name: "host_url_admin", Value: "http://localhost:5001", EnvVars: []string{"PASSPORT_HOST_URL_ADMIN_FRONTEND", "HOST_URL_ADMIN_FRONTEND"}, Usage: "The Admin Site URL used for CORS and links (eg: in the mailer)"},
+					&cli.StringFlag{Name: "host_url_public", Value: "http://localhost:5002", EnvVars: []string{"PASSPORT_HOST_URL_PUBLIC_FRONTEND", "HOST_URL_PUBLIC_FRONTEND"}, Usage: "The Public Site URL used for CORS and links (eg: in the mailer)"},
+					&cli.StringFlag{Name: "host_url_mobile", Value: "http://localhost:5003", EnvVars: []string{"PASSPORT_HOST_URL_MOBILE_FRONTEND", "HOST_URL_MOBILE_FRONTEND"}, Usage: "The Mobile Site (flutter web) URL used for CORS"},
+
+					&cli.StringFlag{Name: "api_addr", Value: ":8080", EnvVars: []string{"PASSPORT_API_ADDR", "API_ADDR"}, Usage: "host:port to run the API"},
+					&cli.StringFlag{Name: "rootpath", Value: "../web/build", EnvVars: []string{"PASSPORT_ROOTPATH", "ROOTPATH"}, Usage: "folder path of index.html"},
+					&cli.StringFlag{Name: "userauth_jwtsecret", Value: "872ab3df-d7c7-4eb6-a052-4146d0f4dd15", EnvVars: []string{"PASSPORT_USERAUTH_JWTSECRET", "USERAUTH_JWTSECRET"}, Usage: "JWT secret"},
+					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{"PASSPORT_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
+					&cli.StringFlag{Name: "google_client_id", Value: "", EnvVars: []string{"PASSPORT_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google Client ID for OAuth functionaility."},
+
+					&cli.StringFlag{Name: "mail_domain", Value: "njs.dev", EnvVars: []string{"PASSPORT_MAIL_DOMAIN", "MAIL_DOMAIN"}, Usage: "Domain used for MailGun"},
+					&cli.StringFlag{Name: "mail_apikey", Value: "", EnvVars: []string{"PASSPORT_MAIL_APIKEY", "MAIL_APIKEY"}, Usage: "MailGun API key"},
+					&cli.StringFlag{Name: "mail_sender", Value: "Ninja Software <noreply@njs.dev>", EnvVars: []string{"PASSPORT_MAIL_SENDER", "MAIL_SENDER"}, Usage: "Default address emails are sent from"},
+
+					&cli.IntFlag{Name: "userauth_tokenexpirydays", Value: 30, EnvVars: []string{"PASSPORT_USERAUTH_TOKENEXPIRYDAYS", "USERAUTH_TOKENEXPIRYDAYS"}, Usage: "How many days before the token expires"},
+					&cli.IntFlag{Name: "userauth_blacklistrefreshhours", Value: 1, EnvVars: []string{"PASSPORT_USERAUTH_BLACKLISTREFRESHHOURS", "USERAUTH_BLACKLISTREFRESHHOURS"}, Usage: "How often should the issued_tokens list be cleared of expired tokens in hours"},
+
+					&cli.BoolFlag{Name: "jwt_encrypt", Value: true, EnvVars: []string{"PASSPORT_JWT_ENCRYPT", "JWT_ENCRYPT"}, Usage: "set if to encrypt jwt tokens or not"},
+					&cli.StringFlag{Name: "jwt_encrypt_key", Value: "ITF1vauAxvJlF0PLNY9btOO9ZzbUmc6X", EnvVars: []string{"PASSPORT_JWT_KEY", "JWT_KEY"}, Usage: "supports key sizes of 16, 24 or 32 bytes"},
+					&cli.IntFlag{Name: "jwt_expiry_days", Value: 1, EnvVars: []string{"PASSPORT_JWT_EXPIRY_DAYS", "JWT_EXPIRY_DAYS"}, Usage: "expiry days for auth tokens"},
+					&cli.StringFlag{Name: "metamask_sign_message", Value: "", EnvVars: []string{"PASSPORT_METAMASK_SIGN_MESSAGE", "METAMASK_SIGN_MESSAGE"}, Usage: "message to show in metamask key sign flow, needs to match frontend"},
+				},
+
+				Usage: "run server",
+				Action: func(c *cli.Context) error {
+					ctx, cancel := context.WithCancel(c.Context)
+					environment := c.String("environment")
+					log := log_helpers.LoggerInitZero(environment)
+					log.Info().Msg("zerolog initialised")
+					log.Level(zerolog.DebugLevel)
+					g := &run.Group{}
+					// Listen for os.interrupt
+					g.Add(run.SignalHandler(ctx, os.Interrupt))
+					// start the server
+					g.Add(func() error { return ServeFunc(c, ctx, log) }, func(err error) { cancel() })
+
+					err := g.Run()
+					if errors.Is(err, run.SignalError{Signal: os.Interrupt}) {
+						err = terror.Warn(err)
+					}
+					log_helpers.TerrorEcho(sentry.CurrentHub(), err, log)
+					return nil
+				},
+			},
+			{
+				Name: "db",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "database_user", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
+					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{"PASSPORT_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
+					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{"PASSPORT_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
+					&cli.StringFlag{Name: "database_port", Value: "5432", EnvVars: []string{"PASSPORT_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
+					&cli.StringFlag{Name: "database_name", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
+					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{"PASSPORT_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+					&cli.BoolFlag{Name: "database_prod", Value: false, EnvVars: []string{"PASSPORT_DB_PROD", "DB_PROD"}, Usage: "seed the database (prod)"},
+					&cli.StringFlag{Name: "environment", Value: "development", DefaultText: "development", EnvVars: []string{"PASSPORT_ENVIRONMENT", "ENVIRONMENT"}, Usage: "This program environment (development, testing, training, staging, production), it sets the log levels"},
+
+					&cli.BoolFlag{Name: "seed", EnvVars: []string{"PASSPORT_DB_SEED", "DB_SEED"}, Usage: "seed the database"},
+				},
+				Usage: "seed the database",
+				Action: func(c *cli.Context) error {
+					databaseUser := c.String("database_user")
+					databasePass := c.String("database_pass")
+					databaseHost := c.String("database_host")
+					databasePort := c.String("database_port")
+					databaseName := c.String("database_name")
+					databaseAppName := c.String("database_application_name")
+					databaseProd := c.Bool("database_prod")
+
+					pgxconn, err := pgxconnect(
+						databaseUser,
+						databasePass,
+						databaseHost,
+						databasePort,
+						databaseName,
+						databaseAppName,
+						Version,
+					)
+					if err != nil {
+						return terror.Error(err)
+					}
+
+					seeder := seed.NewSeeder(pgxconn)
+					return seeder.Run(databaseProd)
+				},
+			},
+		},
+	}
+
+	err := app.Run(os.Args)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
+
+func pgxconnect(
+	DatabaseUser string,
+	DatabasePass string,
+	DatabaseHost string,
+	DatabasePort string,
+	DatabaseName string,
+	DatabaseApplicationName string,
+	APIVersion string,
+) (*pgxpool.Pool, error) {
+	params := url.Values{}
+	params.Add("sslmode", "disable")
+	if DatabaseApplicationName != "" {
+		params.Add("application_name", fmt.Sprintf("%s %s", DatabaseApplicationName, APIVersion))
+	}
+
+	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
+		DatabaseUser,
+		DatabasePass,
+		DatabaseHost,
+		DatabasePort,
+		DatabaseName,
+		params.Encode(),
+	)
+
+	poolConfig, err := pgxpool.ParseConfig(connString)
+	if err != nil {
+		return nil, terror.Panic(err, "could not initialise database")
+	}
+	poolConfig.ConnConfig.LogLevel = pgx.LogLevelTrace
+
+	ctx := context.Background()
+	conn, err := pgxpool.ConnectConfig(ctx, poolConfig)
+	if err != nil {
+		return nil, terror.Panic(err, "could not initialise database")
+	}
+
+	return conn, nil
+}
+
+func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) error {
+	environment := ctxCLI.String("environment")
+	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
+	sentryServerName := ctxCLI.String("sentry_server_name")
+	sentryTraceRate := ctxCLI.Float64("sentry_sample_rate")
+	err := log_helpers.SentryInit(sentryDSNBackend, sentryServerName, SentryVersion, environment, sentryTraceRate, log)
+	switch errors.Unwrap(err) {
+	case log_helpers.ErrSentryInitEnvironment:
+		return terror.Error(err, fmt.Sprintf("got environment %s", environment))
+	case log_helpers.ErrSentryInitDSN, log_helpers.ErrSentryInitVersion:
+		if terror.GetLevel(err) == terror.ErrLevelPanic {
+			// if the level is panic then in a prod environment
+			// so keep panicing
+			return terror.Panic(err)
+		}
+	default:
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
+
+	apiAddr := ctxCLI.String("api_addr")
+	//tokenExpiryDays := ctxCLI.Int("userauth_tokenexpirydays")
+	//jwtSecret := ctxCLI.String("userauth_jwtsecret")
+	databaseUser := ctxCLI.String("database_user")
+	databasePass := ctxCLI.String("database_pass")
+	databaseHost := ctxCLI.String("database_host")
+	databasePort := ctxCLI.String("database_port")
+	databaseName := ctxCLI.String("database_name")
+	databaseAppName := ctxCLI.String("database_application_name")
+
+	mailDomain := ctxCLI.String("mail_domain")
+	mailAPIKey := ctxCLI.String("mail_apikey")
+	mailSender := ctxCLI.String("mail_sender")
+
+	config := &passport.Config{
+		CookieSecure:        ctxCLI.Bool("cookie_secure"),
+		AdminHostURL:        ctxCLI.String("host_url_admin"),
+		PublicHostURL:       ctxCLI.String("host_url_public"),
+		MobileHostURL:       ctxCLI.String("host_url_mobile"),
+		EncryptTokens:       ctxCLI.Bool("jwt_encrypt"),
+		EncryptTokensKey:    ctxCLI.String("jwt_encrypt_key"),
+		TokenExpirationDays: ctxCLI.Int("jwt_expiry_days"),
+		MetaMaskSignMessage: ctxCLI.String("metamask_sign_message"),
+	}
+
+	pgxconn, err := pgxconnect(
+		databaseUser,
+		databasePass,
+		databaseHost,
+		databasePort,
+		databaseName,
+		databaseAppName,
+		Version,
+	)
+	if err != nil {
+		return terror.Panic(err)
+	}
+
+	count := 0
+	err = db.IsSchemaDirty(ctx, pgxconn, &count)
+	if err != nil {
+		return terror.Error(api.ErrCheckDBQuery)
+	}
+	if count > 0 {
+		return terror.Error(api.ErrCheckDBDirty)
+	}
+
+	// Mailer
+	mailer, err := email.NewMailer(mailDomain, mailAPIKey, mailSender, config, log)
+	if err != nil {
+		return terror.Panic(err, "Mailer init failed")
+	}
+
+	// HTML Sanitizer
+	HTMLSanitizePolicy := bluemonday.UGCPolicy()
+	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
+
+	// API Server
+	ctx, cancelOnPanic := context.WithCancel(ctx)
+	api := api.NewAPI(log, cancelOnPanic, pgxconn, ctxCLI.String("google_client_id"), mailer, apiAddr, HTMLSanitizePolicy, config)
+	return api.Run(ctx)
+}
