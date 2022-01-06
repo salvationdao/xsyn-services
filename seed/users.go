@@ -1,13 +1,13 @@
 package seed
 
 import (
-	"passport"
-	"passport/crypto"
-	"passport/db"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"passport"
+	"passport/crypto"
+	"passport/db"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -19,7 +19,7 @@ func (s *Seeder) Users(ctx context.Context, organisations []*passport.Organisati
 	// Seed Random Users (use constant ids for first 4 users)
 	randomUsers, err := s.RandomUsers(
 		ctx,
-		(len(organisations)*MaxMembersPerOrganisation)+MaxTestUsers,
+		MaxMembersPerOrganisation,
 		passport.UserRoleMemberID,
 		nil,
 		userSuperAdminID, userAdminID, userMemberID,
@@ -34,82 +34,48 @@ func (s *Seeder) Users(ctx context.Context, organisations []*passport.Organisati
 
 	passwordHash := crypto.HashPassword("NinjaDojo_!")
 
-	for i, org := range organisations {
-		if i == 0 {
-			fmt.Println(" - set superadmin user")
-			user := randomUsers[userIndex]
-			user.Email = "superadmin@example.com"
-			user.RoleID = passport.UserRoleSuperAdminID
-			err = db.UserUpdate(ctx, s.Conn, user)
-			if err != nil {
-				return terror.Error(err)
-			}
-			err = db.UserSetOrganisations(ctx, s.Conn, user.ID, org.ID)
-			if err != nil {
-				return terror.Error(err)
-			}
-			err = db.AuthSetPasswordHash(ctx, s.Conn, user.ID, passwordHash)
-			if err != nil {
-				return terror.Error(err)
-			}
-
-			userIndex++
-
-			fmt.Println(" - set admin user")
-			user = randomUsers[userIndex]
-			user.Email = "admin@example.com"
-			user.RoleID = passport.UserRoleAdminID
-			err = db.UserUpdate(ctx, s.Conn, user)
-			if err != nil {
-				return terror.Error(err)
-			}
-			err = db.UserSetOrganisations(ctx, s.Conn, user.ID, org.ID)
-			if err != nil {
-				return terror.Error(err)
-			}
-			err = db.AuthSetPasswordHash(ctx, s.Conn, user.ID, passwordHash)
-			if err != nil {
-				return terror.Error(err)
-			}
-			userIndex++
-
-			fmt.Println(" - set member user")
-			user = randomUsers[userIndex]
-			user.Email = "member@example.com"
-			user.RoleID = passport.UserRoleMemberID
-			err = db.UserUpdate(ctx, s.Conn, user)
-			if err != nil {
-				return terror.Error(err)
-			}
-			err = db.UserSetOrganisations(ctx, s.Conn, user.ID, org.ID)
-			if err != nil {
-				return terror.Error(err)
-			}
-			err = db.AuthSetPasswordHash(ctx, s.Conn, user.ID, passwordHash)
-			if err != nil {
-				return terror.Error(err)
-			}
-			userIndex++
-
-			fmt.Println(" - set random org users")
-
-			continue
-		}
-
-		for j := 0; j < MaxMembersPerOrganisation; j++ {
-			user := randomUsers[userIndex]
-			user.RoleID = passport.UserRoleMemberID
-			err = db.UserUpdate(ctx, s.Conn, user)
-			if err != nil {
-				return terror.Error(err)
-			}
-			err = db.UserSetOrganisations(ctx, s.Conn, user.ID, org.ID)
-			if err != nil {
-				return terror.Error(err)
-			}
-			userIndex++
-		}
+	fmt.Println(" - set superadmin user")
+	user := randomUsers[userIndex]
+	user.Email = "superadmin@example.com"
+	user.RoleID = passport.UserRoleSuperAdminID
+	err = db.UserUpdate(ctx, s.Conn, user)
+	if err != nil {
+		return terror.Error(err)
 	}
+	err = db.AuthSetPasswordHash(ctx, s.Conn, user.ID, passwordHash)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	userIndex++
+
+	fmt.Println(" - set admin user")
+	user = randomUsers[userIndex]
+	user.Email = "admin@example.com"
+	user.RoleID = passport.UserRoleAdminID
+	err = db.UserUpdate(ctx, s.Conn, user)
+	if err != nil {
+		return terror.Error(err)
+	}
+	err = db.AuthSetPasswordHash(ctx, s.Conn, user.ID, passwordHash)
+	if err != nil {
+		return terror.Error(err)
+	}
+	userIndex++
+
+	fmt.Println(" - set member user")
+	user = randomUsers[userIndex]
+	user.Email = "member@example.com"
+	user.RoleID = passport.UserRoleMemberID
+	err = db.UserUpdate(ctx, s.Conn, user)
+	if err != nil {
+		return terror.Error(err)
+	}
+	err = db.AuthSetPasswordHash(ctx, s.Conn, user.ID, passwordHash)
+	if err != nil {
+		return terror.Error(err)
+	}
+	userIndex++
 
 	return nil
 }
@@ -196,12 +162,12 @@ func (s *Seeder) RandomUsers(
 		}
 
 		// Set Organisation
-		if org != nil {
-			err = db.UserSetOrganisations(ctx, s.Conn, u.ID, org.ID)
-			if err != nil {
-				return nil, terror.Error(err)
-			}
-		}
+		//if org != nil {
+		//	err = db.UserSetOrganisations(ctx, s.Conn, u.ID, org.ID)
+		//	if err != nil {
+		//		return nil, terror.Error(err)
+		//	}
+		//}
 
 		users = append(users, u)
 	}

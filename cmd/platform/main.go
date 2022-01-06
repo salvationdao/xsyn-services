@@ -72,7 +72,7 @@ func main() {
 					&cli.StringFlag{Name: "host_url_public", Value: "http://localhost:5002", EnvVars: []string{"PASSPORT_HOST_URL_PUBLIC_FRONTEND", "HOST_URL_PUBLIC_FRONTEND"}, Usage: "The Public Site URL used for CORS and links (eg: in the mailer)"},
 					&cli.StringFlag{Name: "host_url_mobile", Value: "http://localhost:5003", EnvVars: []string{"PASSPORT_HOST_URL_MOBILE_FRONTEND", "HOST_URL_MOBILE_FRONTEND"}, Usage: "The Mobile Site (flutter web) URL used for CORS"},
 
-					&cli.StringFlag{Name: "api_addr", Value: ":8080", EnvVars: []string{"PASSPORT_API_ADDR", "API_ADDR"}, Usage: "host:port to run the API"},
+					&cli.StringFlag{Name: "api_addr", Value: ":8086", EnvVars: []string{"PASSPORT_API_ADDR", "API_ADDR"}, Usage: "host:port to run the API"},
 					&cli.StringFlag{Name: "rootpath", Value: "../web/build", EnvVars: []string{"PASSPORT_ROOTPATH", "ROOTPATH"}, Usage: "folder path of index.html"},
 					&cli.StringFlag{Name: "userauth_jwtsecret", Value: "872ab3df-d7c7-4eb6-a052-4146d0f4dd15", EnvVars: []string{"PASSPORT_USERAUTH_JWTSECRET", "USERAUTH_JWTSECRET"}, Usage: "JWT secret"},
 					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{"PASSPORT_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
