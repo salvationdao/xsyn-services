@@ -124,11 +124,11 @@ CREATE TABLE users
 (
     id                                  UUID        NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     username                            TEXT UNIQUE NOT NULL,
-    role_id                             UUID        NOT NULL REFERENCES roles (id),
+    role_id                             UUID REFERENCES roles (id),
     avatar_id                           UUID REFERENCES blobs (id),
     email                               TEXT UNIQUE                      DEFAULT '',
-    first_name                          TEXT        NOT NULL,
-    last_name                           TEXT        NOT NULL,
+    first_name                          TEXT                             DEFAULT '',
+    last_name                           TEXT                             DEFAULT '',
     verified                            BOOLEAN     NOT NULL             DEFAULT FALSE,
     old_password_required               BOOLEAN     NOT NULL             DEFAULT TRUE, -- set to false on password reset request, set back to true on password change
 

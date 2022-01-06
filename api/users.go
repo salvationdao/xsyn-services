@@ -1,26 +1,69 @@
 package api
 
 import (
-	"passport"
-	"passport/crypto"
-	"passport/db"
-	"passport/email"
-	"passport/helpers"
 	"context"
-	"time"
-
+	"errors"
+	"fmt"
 	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/hub/v2"
 	"github.com/ninja-software/hub/v2/ext/auth"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
+	"passport"
+	"passport/crypto"
+	"passport/db"
+	"passport/email"
+	"passport/helpers"
+	"time"
 )
 
 type UserGetter struct {
 	Log    *zerolog.Logger
 	Conn   *pgxpool.Pool
 	Mailer *email.Mailer
+}
+
+func (ug *UserGetter) UserCreator(firstName, lastName, username, email, number, publicAddress, password string, other ...interface{}) (auth.SecureUser, error) {
+	ctx := context.Background()
+	if username == "" {
+		return nil, terror.Error(fmt.Errorf("username cannot be empty"), "Username cannot be empty.")
+	}
+
+	user := &passport.User{
+		FirstName:     firstName,
+		LastName:      lastName,
+		Username:      username,
+		Email:         email,
+		PublicAddress: &publicAddress,
+		RoleID:        passport.UserRoleMemberID,
+	}
+
+	if password != "" && email != "" {
+		passwordHash := crypto.HashPassword(password)
+		err := db.AuthRegister(ctx, ug.Conn, user, passwordHash)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+
+		return &Secureuser{
+			User:   user,
+			Conn:   ug.Conn,
+			Mailer: ug.Mailer,
+		}, nil
+	}
+
+	err := db.UserCreate(ctx, ug.Conn, user)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return &Secureuser{
+		User:   user,
+		Conn:   ug.Conn,
+		Mailer: ug.Mailer,
+	}, nil
 }
 
 func (ug *UserGetter) PublicAddress(s string) (auth.SecureUser, error) {
@@ -77,7 +120,9 @@ func (ug *UserGetter) Email(email string) (auth.SecureUser, error) {
 	}
 	hash, err := db.HashByUserID(ctx, ug.Conn, user.ID)
 	if err != nil {
-		return nil, terror.Error(err)
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, terror.Error(err)
+		}
 	}
 	return &Secureuser{
 		User:         user,
@@ -110,6 +155,9 @@ func (user *Secureuser) SetHash(hash string) {
 }
 
 func (user Secureuser) CheckPassword(pw string) bool {
+	if user.passwordHash == "" {
+		return false
+	}
 	err := crypto.ComparePassword(user.passwordHash, pw)
 	if err != nil {
 		return false
@@ -165,7 +213,7 @@ func (user Secureuser) HasPermission(perm string) bool {
 }
 
 func (user Secureuser) UpdateAvatar(url string, fileName string) error {
-	panic("TODO: UpdateAvatar")
+	// TODO: update avatar
 	return nil
 }
 

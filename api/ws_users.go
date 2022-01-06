@@ -1,15 +1,15 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"passport"
 	"passport/crypto"
 	"passport/db"
 	"passport/helpers"
 	"passport/log_helpers"
-	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/ninja-software/hub/v2"
@@ -39,7 +39,7 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *UserC
 	api.SecureCommand(HubKeyUserUpdate, userHub.UpdateHandler)             // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserRemoveWallet, userHub.RemoveWalletHandler) // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserAddWallet, userHub.AddWalletHandler)       // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
-	api.SecureCommandWithPerm(HubKeyUserCreate, userHub.CreateHandler, passport.PermUserCreate)
+	api.SecureCommand(HubKeyUserCreate, userHub.CreateHandler)
 	api.SecureCommandWithPerm(HubKeyUserList, userHub.ListHandler, passport.PermUserList)
 	api.SecureCommandWithPerm(HubKeyUserArchive, userHub.ArchiveHandler, passport.PermUserArchive)
 	api.SecureCommandWithPerm(HubKeyUserUnarchive, userHub.UnarchiveHandler, passport.PermUserUnarchive)
@@ -58,7 +58,7 @@ type GetUserRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		ID       passport.UserID `json:"id"`
-		Username string             `json:"username"`
+		Username string          `json:"username"`
 	} `json:"payload"`
 }
 
@@ -114,15 +114,15 @@ type UpdateUserRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		ID                               passport.UserID          `json:"id"`
-		Username                         string                      `json:"username"`
-		FirstName                        string                      `json:"firstName"`
-		LastName                         string                      `json:"lastName"`
-		Email                            string                      `json:"email"`
+		Username                         string                   `json:"username"`
+		FirstName                        string                   `json:"firstName"`
+		LastName                         string                   `json:"lastName"`
+		Email                            string                   `json:"email"`
 		AvatarID                         *passport.BlobID         `json:"avatarID"`
-		CurrentPassword                  *string                     `json:"currentPassword"`
-		NewPassword                      *string                     `json:"newPassword"`
+		CurrentPassword                  *string                  `json:"currentPassword"`
+		NewPassword                      *string                  `json:"newPassword"`
 		OrganisationID                   *passport.OrganisationID `json:"organisationID"`
-		TwoFactorAuthenticationActivated bool                        `json:"twoFactorAuthenticationActivated"`
+		TwoFactorAuthenticationActivated bool                     `json:"twoFactorAuthenticationActivated"`
 	} `json:"payload"`
 }
 
@@ -303,11 +303,11 @@ const HubKeyUserCreate hub.HubCommandKey = "USER:CREATE"
 type CreateUserRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		FirstName      string                      `json:"firstName"`
-		LastName       string                      `json:"lastName"`
-		Email          string                      `json:"email"`
+		FirstName      string                   `json:"firstName"`
+		LastName       string                   `json:"lastName"`
+		Email          string                   `json:"email"`
 		AvatarID       *passport.BlobID         `json:"avatarID"`
-		NewPassword    *string                     `json:"newPassword"`
+		NewPassword    *string                  `json:"newPassword"`
 		RoleID         passport.RoleID          `json:"roleID"`
 		OrganisationID *passport.OrganisationID `json:"organisationID"`
 	} `json:"payload"`
@@ -435,7 +435,7 @@ type ListHandlerRequest struct {
 // // UserListResponse is the response from get user list
 type UserListResponse struct {
 	Records []*passport.User `json:"records"`
-	Total   int                 `json:"total"`
+	Total   int              `json:"total"`
 }
 
 // ListHandler lists users with pagination
@@ -570,7 +570,7 @@ type UserChangePasswordRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		ID          passport.UserID `json:"id"`
-		NewPassword string             `json:"newPassword"`
+		NewPassword string          `json:"newPassword"`
 	} `json:"payload"`
 }
 
@@ -738,7 +738,7 @@ type HubKeyUserOnlineStatusRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		ID       passport.UserID `json:"id"`
-		Username string             `json:"username"` // Optional username instead of id
+		Username string          `json:"username"` // Optional username instead of id
 	} `json:"payload"`
 }
 
@@ -789,7 +789,7 @@ type RemoveWalletRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		ID       passport.UserID `json:"id"`
-		Username string             `json:"username"`
+		Username string          `json:"username"`
 	} `json:"payload"`
 }
 
@@ -878,9 +878,9 @@ type AddWalletRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		ID            passport.UserID `json:"id"`
-		Username      string             `json:"username"`
-		PublicAddress string             `json:"publicAddress"`
-		Signature     string             `json:"signature"`
+		Username      string          `json:"username"`
+		PublicAddress string          `json:"publicAddress"`
+		Signature     string          `json:"signature"`
 	} `json:"payload"`
 }
 
@@ -982,7 +982,7 @@ type UpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		ID       passport.UserID `json:"id"`
-		Username string             `json:"username"`
+		Username string          `json:"username"`
 	} `json:"payload"`
 }
 
