@@ -1,16 +1,16 @@
 package email
 
 import (
-	"passport"
 	"context"
 	"io/ioutil"
 	"os"
+	"passport"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/aymerick/raymond"
-	"github.com/mailgun/mailgun-go/v3"
+	"github.com/mailgun/mailgun-go/v4"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 )

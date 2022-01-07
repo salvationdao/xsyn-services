@@ -13,7 +13,7 @@ import (
 	"passport"
 
 	"github.com/getsentry/sentry-go"
-	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/terror/v2"
