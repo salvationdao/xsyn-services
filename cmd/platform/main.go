@@ -68,14 +68,14 @@ func main() {
 					&cli.Float64Flag{Name: "sentry_sample_rate", Value: 1, EnvVars: []string{"PASSPORT_SENTRY_SAMPLE_RATE", "SENTRY_SAMPLE_RATE"}, Usage: "The percentage of trace sample to collect (0.0-1)"},
 
 					&cli.StringFlag{Name: "host_url_admin", Value: "http://localhost:5001", EnvVars: []string{"PASSPORT_HOST_URL_ADMIN_FRONTEND", "HOST_URL_ADMIN_FRONTEND"}, Usage: "The Admin Site URL used for CORS and links (eg: in the mailer)"},
-					&cli.StringFlag{Name: "host_url_public", Value: "http://localhost:5002", EnvVars: []string{"PASSPORT_HOST_URL_PUBLIC_FRONTEND", "HOST_URL_PUBLIC_FRONTEND"}, Usage: "The Public Site URL used for CORS and links (eg: in the mailer)"},
+					&cli.StringFlag{Name: "host_url_public", Value: "http://localhost:5003", EnvVars: []string{"PASSPORT_HOST_URL_PUBLIC_FRONTEND", "HOST_URL_PUBLIC_FRONTEND"}, Usage: "The Public Site URL used for CORS and links (eg: in the mailer)"},
 					&cli.StringFlag{Name: "host_url_mobile", Value: "http://localhost:5003", EnvVars: []string{"PASSPORT_HOST_URL_MOBILE_FRONTEND", "HOST_URL_MOBILE_FRONTEND"}, Usage: "The Mobile Site (flutter web) URL used for CORS"},
 
 					&cli.StringFlag{Name: "api_addr", Value: ":8086", EnvVars: []string{"PASSPORT_API_ADDR", "API_ADDR"}, Usage: "host:port to run the API"},
 					&cli.StringFlag{Name: "rootpath", Value: "../web/build", EnvVars: []string{"PASSPORT_ROOTPATH", "ROOTPATH"}, Usage: "folder path of index.html"},
 					&cli.StringFlag{Name: "userauth_jwtsecret", Value: "872ab3df-d7c7-4eb6-a052-4146d0f4dd15", EnvVars: []string{"PASSPORT_USERAUTH_JWTSECRET", "USERAUTH_JWTSECRET"}, Usage: "JWT secret"},
 					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{"PASSPORT_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
-					&cli.StringFlag{Name: "google_client_id", Value: "", EnvVars: []string{"PASSPORT_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google Client ID for OAuth functionaility."},
+					&cli.StringFlag{Name: "google_client_id", Value: "593683501366-gk7ab1nnskc1tft14bk8ebsja1bce24v.apps.googleusercontent.com", EnvVars: []string{"PASSPORT_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google Client ID for OAuth functionaility."},
 
 					&cli.StringFlag{Name: "mail_domain", Value: "njs.dev", EnvVars: []string{"PASSPORT_MAIL_DOMAIN", "MAIL_DOMAIN"}, Usage: "Domain used for MailGun"},
 					&cli.StringFlag{Name: "mail_apikey", Value: "", EnvVars: []string{"PASSPORT_MAIL_APIKEY", "MAIL_APIKEY"}, Usage: "MailGun API key"},

@@ -2,9 +2,11 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/volatiletech/null/v8"
 	"passport"
 	"passport/crypto"
 	"passport/db"
@@ -117,7 +119,7 @@ type UpdateUserRequest struct {
 		Username                         string                   `json:"username"`
 		FirstName                        string                   `json:"firstName"`
 		LastName                         string                   `json:"lastName"`
-		Email                            string                   `json:"email"`
+		Email                            sql.NullString           `json:"email"`
 		AvatarID                         *passport.BlobID         `json:"avatarID"`
 		CurrentPassword                  *string                  `json:"currentPassword"`
 		NewPassword                      *string                  `json:"newPassword"`
@@ -160,13 +162,13 @@ func (ctrlr *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client
 
 	// Update Values
 	confirmPassword := false
-	if req.Payload.Email != "" {
-		email := strings.TrimSpace(req.Payload.Email)
+	if req.Payload.Email.Valid {
+		email := strings.TrimSpace(req.Payload.Email.String)
 		email = strings.ToLower(email)
 
-		if user.Email != email {
+		if user.Email.String != email {
 			confirmPassword = true
-			user.Email = email
+			user.Email.String = email
 		}
 	}
 	if req.Payload.NewPassword != nil && *req.Payload.NewPassword != "" {
@@ -305,7 +307,7 @@ type CreateUserRequest struct {
 	Payload struct {
 		FirstName      string                   `json:"firstName"`
 		LastName       string                   `json:"lastName"`
-		Email          string                   `json:"email"`
+		Email          null.String              `json:"email"`
 		AvatarID       *passport.BlobID         `json:"avatarID"`
 		NewPassword    *string                  `json:"newPassword"`
 		RoleID         passport.RoleID          `json:"roleID"`
@@ -321,7 +323,7 @@ func (ctrlr *UserController) CreateHandler(ctx context.Context, hubc *hub.Client
 		return terror.Error(err, "Invalid request received")
 	}
 
-	email := strings.TrimSpace(req.Payload.Email)
+	email := strings.TrimSpace(req.Payload.Email.String)
 	email = strings.ToLower(email)
 
 	// Validation
@@ -924,7 +926,7 @@ func (ctrlr *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Cli
 	var oldUser = *user
 
 	// verify they signed it
-	err = ctrlr.API.Auth.VerifySignature(req.Payload.Signature, *user.Nonce, req.Payload.PublicAddress)
+	err = ctrlr.API.Auth.VerifySignature(req.Payload.Signature, user.Nonce.String, req.Payload.PublicAddress)
 	if err != nil {
 		return terror.Error(err)
 	}

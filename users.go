@@ -2,6 +2,7 @@ package passport
 
 import (
 	"github.com/gofrs/uuid"
+	"github.com/volatiletech/null/v8"
 	"time"
 )
 
@@ -10,7 +11,9 @@ type User struct {
 	ID                               UserID        `json:"id" db:"id"`
 	FirstName                        string        `json:"firstName" db:"first_name"`
 	LastName                         string        `json:"lastName" db:"last_name"`
-	Email                            string        `json:"email" db:"email"`
+	Email                            null.String   `json:"email" db:"email"`
+	FacebookID                       null.String   `json:"-" db:"facebook_id"`
+	GoogleID                         null.String   `json:"-" db:"google_id"`
 	Username                         string        `json:"username" db:"username"`
 	Verified                         bool          `json:"verified" db:"verified"`
 	OldPasswordRequired              bool          `json:"oldPasswordRequired" db:"old_password_required"`
@@ -24,8 +27,8 @@ type User struct {
 	TwoFactorAuthenticationIsSet     bool          `json:"twoFactorAuthenticationIsSet" db:"two_factor_authentication_is_set"`
 	HasRecoveryCode                  bool          `json:"hasRecoveryCode" db:"has_recovery_code"`
 	Pass2FA                          bool          `json:"pass2FA"`
-	Nonce                            *string       `json:"-" db:"nonce"`
-	PublicAddress                    *string       `json:"publicAddress,omitempty" db:"public_address"`
+	Nonce                            null.String   `json:"-" db:"nonce"`
+	PublicAddress                    null.String   `json:"publicAddress,omitempty" db:"public_address"`
 	CreatedAt                        time.Time     `json:"createdAt" db:"created_at"`
 	UpdatedAt                        time.Time     `json:"updatedAt" db:"updated_at"`
 	DeletedAt                        *time.Time    `json:"deletedAt" db:"deleted_at"`

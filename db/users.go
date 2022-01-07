@@ -83,6 +83,28 @@ func UserByPublicAddress(ctx context.Context, conn Conn, publicAddress string) (
 	return user, nil
 }
 
+// UserByGoogleID returns a user by google id
+func UserByGoogleID(ctx context.Context, conn Conn, googleID string) (*passport.User, error) {
+	user := &passport.User{}
+	q := UserGetQuery + ` WHERE users.google_id = $1`
+	err := pgxscan.Get(ctx, conn, user, q, googleID)
+	if err != nil {
+		return nil, terror.Error(err, "Issue getting user from google id.")
+	}
+	return user, nil
+}
+
+// UserByFacebookID returns a user by google id
+func UserByFacebookID(ctx context.Context, conn Conn, facebookID string) (*passport.User, error) {
+	user := &passport.User{}
+	q := UserGetQuery + ` WHERE users.facebook_id = $1`
+	err := pgxscan.Get(ctx, conn, user, q, facebookID)
+	if err != nil {
+		return nil, terror.Error(err, "Issue getting user from facebook id.")
+	}
+	return user, nil
+}
+
 // UserGet returns a user by given ID
 func UserGet(ctx context.Context, conn Conn, userID passport.UserID) (*passport.User, error) {
 	user := &passport.User{}
@@ -218,10 +240,10 @@ func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 	}
 
 	q := `--sql
-		INSERT INTO users (first_name, last_name, email, username, public_address, avatar_id, role_id, verified)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO users (first_name, last_name, email, username, public_address, avatar_id, role_id, verified, facebook_id, google_id)
+		VALUES ($1, $2, $3, $4, LOWER($5), $6, $7, $8, $9, $10)
 		RETURNING
-			id, role_id, first_name, last_name, email, username, avatar_id, created_at, updated_at, deleted_at`
+			id, role_id, first_name, last_name, email, username, avatar_id, created_at, updated_at, deleted_at, facebook_id, google_id`
 	err = pgxscan.Get(ctx,
 		conn,
 		user,
@@ -234,6 +256,8 @@ func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 		user.AvatarID,
 		user.RoleID,
 		user.Verified,
+		user.FacebookID,
+		user.GoogleID,
 	)
 	if err != nil {
 		return terror.Error(err)

@@ -25,18 +25,54 @@ type UserGetter struct {
 	Mailer *email.Mailer
 }
 
-func (ug *UserGetter) UserCreator(firstName, lastName, username, email, number, publicAddress, password string, other ...interface{}) (auth.SecureUser, error) {
+func (ug *UserGetter) FacebookID(s string) (auth.SecureUser, error) {
+	ctx := context.Background()
+	user, err := db.UserByFacebookID(ctx, ug.Conn, s)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return &Secureuser{
+		User:   user,
+		Conn:   ug.Conn,
+		Mailer: ug.Mailer,
+	}, nil
+}
+
+func (ug *UserGetter) GoogleID(s string) (auth.SecureUser, error) {
+	ctx := context.Background()
+	user, err := db.UserByGoogleID(ctx, ug.Conn, s)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return &Secureuser{
+		User:   user,
+		Conn:   ug.Conn,
+		Mailer: ug.Mailer,
+	}, nil
+}
+
+func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebookID, googleID, number, publicAddress, password string, other ...interface{}) (auth.SecureUser, error) {
 	ctx := context.Background()
 	if username == "" {
 		return nil, terror.Error(fmt.Errorf("username cannot be empty"), "Username cannot be empty.")
+	}
+	if facebookID == "" && googleID == "" && publicAddress == "" {
+		if email == "" {
+			return nil, terror.Error(fmt.Errorf("email empty"), "Email cannot be empty")
+		}
+		if password == "" {
+			return nil, terror.Error(fmt.Errorf("password empty"), "Password cannot be empty")
+		}
 	}
 
 	user := &passport.User{
 		FirstName:     firstName,
 		LastName:      lastName,
 		Username:      username,
-		Email:         email,
-		PublicAddress: &publicAddress,
+		FacebookID:    passport.NewString(facebookID),
+		GoogleID:      passport.NewString(googleID),
+		Email:         passport.NewString(email),
+		PublicAddress: passport.NewString(publicAddress),
 		RoleID:        passport.UserRoleMemberID,
 	}
 
@@ -168,7 +204,7 @@ func (user Secureuser) CheckPassword(pw string) bool {
 func (user Secureuser) SendVerificationEmail(token string, tokenID string, newAccount bool) error {
 	err := user.Mailer.SendVerificationEmail(&email.User{
 		IsAdmin:   user.IsAdmin(),
-		Email:     user.Email,
+		Email:     user.Email.String,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
 	}, token, newAccount)
@@ -179,9 +215,13 @@ func (user Secureuser) SendVerificationEmail(token string, tokenID string, newAc
 }
 
 func (user Secureuser) SendForgotPasswordEmail(token string, tokenID string) error {
+	if !user.Email.Valid {
+		return terror.Error(fmt.Errorf("user missing email"))
+	}
+
 	err := user.Mailer.SendForgotPasswordEmail(&email.User{
 		IsAdmin:   user.IsAdmin(),
-		Email:     user.Email,
+		Email:     user.Email.String,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
 	}, token)
@@ -231,7 +271,7 @@ func (userFields UserFields) ID() uuid.UUID {
 	return uuid.UUID(userFields.Secureuser.ID)
 }
 func (userFields UserFields) Email() string {
-	return userFields.Secureuser.Email
+	return userFields.Secureuser.Email.String
 }
 func (userFields UserFields) FirstName() string {
 	return userFields.Secureuser.FirstName
@@ -252,14 +292,14 @@ func (userFields UserFields) DeletedAt() *time.Time {
 	return userFields.Secureuser.DeletedAt
 }
 func (userFields UserFields) Nonce() string {
-	if userFields.Secureuser.Nonce != nil {
-		return *userFields.Secureuser.Nonce
+	if userFields.Secureuser.Nonce.Valid {
+		return userFields.Secureuser.Nonce.String
 	}
 	return ""
 }
 func (userFields UserFields) PublicAddress() string {
-	if userFields.Secureuser.PublicAddress != nil {
-		return *userFields.Secureuser.PublicAddress
+	if userFields.Secureuser.PublicAddress.Valid {
+		return userFields.Secureuser.PublicAddress.String
 	}
 	return ""
 }

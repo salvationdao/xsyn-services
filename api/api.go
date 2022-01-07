@@ -84,7 +84,8 @@ func NewAPI(
 
 	var err error
 	api.Auth, err = auth.New(api.Hub, &auth.Config{
-		CreateUserIfNotExist: true,
+		CreateUserIfNotExist:     true,
+		CreateAndGetOAuthUserVia: auth.IdTypeID,
 		Google: &auth.GoogleConfig{
 			ClientID: googleClientID,
 		},
