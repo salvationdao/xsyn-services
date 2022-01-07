@@ -25,12 +25,12 @@ func HashByUserID(ctx context.Context, conn Conn, userID passport.UserID) (strin
 
 // AuthRegister will create a new user and insert password hash
 func AuthRegister(ctx context.Context, conn Conn, user *passport.User, passwordHashedB64 string) error {
-	usernameOK, err := UsernameAvailable(ctx, conn, user.Username)
+	usernameOK, err := UsernameAvailable(ctx, conn, user.Username, nil)
 	if err != nil {
 		return terror.Error(err)
 	}
 	if !usernameOK {
-		return terror.Error(fmt.Errorf("username is taken"))
+		return terror.Error(fmt.Errorf("username is taken: %s", user.Username))
 	}
 
 	q := `--sql

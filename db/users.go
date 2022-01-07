@@ -209,13 +209,14 @@ func UserUpdate2FAIsSet(ctx context.Context, conn Conn, userID passport.UserID, 
 
 // UserCreate will create a new user
 func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
-	usernameOK, err := UsernameAvailable(ctx, conn, user.Username)
+	usernameOK, err := UsernameAvailable(ctx, conn, user.Username, nil)
 	if err != nil {
 		return terror.Error(err)
 	}
 	if !usernameOK {
-		return terror.Error(fmt.Errorf("username is taken"))
+		return terror.Error(fmt.Errorf("username is taken: %s", user.Username))
 	}
+
 	q := `--sql
 		INSERT INTO users (first_name, last_name, email, username, public_address, avatar_id, role_id, verified)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -242,12 +243,12 @@ func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 
 // UserUpdate will update a user
 func UserUpdate(ctx context.Context, conn Conn, user *passport.User) error {
-	usernameOK, err := UsernameAvailable(ctx, conn, user.Username)
+	usernameOK, err := UsernameAvailable(ctx, conn, user.Username, &user.ID)
 	if err != nil {
 		return terror.Error(err)
 	}
 	if !usernameOK {
-		return terror.Error(fmt.Errorf("username is taken"))
+		return terror.Error(fmt.Errorf("username is taken: %s", user.Username))
 	}
 
 	q := `--sql
@@ -654,11 +655,24 @@ func UserUpdateNonce(ctx context.Context, conn Conn, userID passport.UserID, new
 }
 
 // UsernameAvailable returns true if a username is free
-func UsernameAvailable(ctx context.Context, conn Conn, nameToCheck string) (bool, error) {
+func UsernameAvailable(ctx context.Context, conn Conn, nameToCheck string, userID *passport.UserID) (bool, error) {
 	if nameToCheck == "" {
 		return false, terror.Error(fmt.Errorf("username cannot be empty"), "Username cannot be empty.")
 	}
 	count := 0
+
+	if userID != nil && !userID.IsNil() {
+		q := `
+        		SELECT count(*) FROM users
+        		WHERE 	username = $1 and id != $2
+        	`
+		err := pgxscan.Get(ctx, conn, &count, q, nameToCheck, userID)
+		if err != nil {
+			return false, terror.Error(err)
+		}
+		return count == 0, nil
+	}
+
 	q := `
 		SELECT count(*) FROM users
 		WHERE 	username = $1

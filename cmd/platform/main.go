@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"log"
 	"net/url"
 	"passport/api"
 	"passport/db"
@@ -158,9 +157,8 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatal(err)
+		terror.Echo(err)
 	}
-
 }
 
 func pgxconnect(

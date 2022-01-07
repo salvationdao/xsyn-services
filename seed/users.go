@@ -145,6 +145,8 @@ func (s *Seeder) RandomUsers(
 			RoleID:    roleID,
 		}
 
+		u.Username = fmt.Sprintf("%s%s", u.FirstName, u.LastName)
+
 		if len(ids) > i {
 			u.ID = ids[i]
 		}
@@ -152,7 +154,7 @@ func (s *Seeder) RandomUsers(
 		// Insert
 		err = db.UserCreate(ctx, s.Conn, u)
 		if err != nil {
-			continue // possible duplicate username - just skip
+			return nil, terror.Error(err)
 		}
 
 		passwordHash := crypto.HashPassword(faker.Internet().Password(8, 20))
