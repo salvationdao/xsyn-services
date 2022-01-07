@@ -1053,6 +1053,8 @@ github.com/newrelic/go-agent v2.15.0+incompatible/go.mod h1:a8Fv1b/fYhFSReoTU6HD
 github.com/ngdinhtoan/glide-cleanup v0.2.0/go.mod h1:UQzsmiDOb8YV3nOsCxK/c9zPpCZVNoHScRE3EO9pVMM=
 github.com/ninja-software/go-check-passwd v0.0.0-20191023080747-0879e647a3ab h1:bvC84ZBXkVeVOK/eL6oXXfx/f/6j3LVZ5/U4fHii2ZM=
 github.com/ninja-software/go-check-passwd v0.0.0-20191023080747-0879e647a3ab/go.mod h1:mwse6v1g0o4Fv63/BRKJgFMWEjKxue4gW5vGHKwGMpg=
+github.com/ninja-software/hub/v2 v2.0.5 h1:NVpIb47oatOsKmrYTQbFf3xP9me0DsJe3/G5096hsx0=
+github.com/ninja-software/hub/v2 v2.0.5/go.mod h1:CjpHX1tCdERpJlByeQj/bBeQV/We/mS8duS+57o0q1s=
 github.com/ninja-software/terror/v2 v2.0.7 h1:gV2v0TybYXQvAD3SYh6YiyuMt8rig4FwRYL81kx65xo=
 github.com/ninja-software/terror/v2 v2.0.7/go.mod h1:pwAw9I1KYYaZr3DLE/Z3WKkSSy/Ccj3ObjOpUvm+0Yo=
 github.com/nishanths/predeclared v0.0.0-20200524104333-86fad755b4d3/go.mod h1:nt3d53pc1VYcphSCIaYAJtnPYnr3Zyn8fMq2wvPGPso=

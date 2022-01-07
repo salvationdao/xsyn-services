@@ -2,8 +2,6 @@ module passport
 
 go 1.17
 
-replace github.com/ninja-software/hub/v2 => /home/vinnie/Projects/NinjaSoftware/hub
-
 require (
 	github.com/aymerick/raymond v2.0.3-0.20180322193309-b565731e1464+incompatible
 	github.com/caddyserver/caddy/v2 v2.4.5
@@ -25,7 +23,7 @@ require (
 	github.com/makiuchi-d/arelo v1.9.1
 	github.com/microcosm-cc/bluemonday v1.0.15
 	github.com/ninja-software/go-check-passwd v0.0.0-20191023080747-0879e647a3ab
-	github.com/ninja-software/hub/v2 v2.0.4
+	github.com/ninja-software/hub/v2 v2.0.5
 	github.com/ninja-software/terror/v2 v2.0.7
 	github.com/oklog/run v1.1.0
 	github.com/prometheus/client_golang v1.11.0
