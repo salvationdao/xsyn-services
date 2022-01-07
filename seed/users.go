@@ -36,7 +36,7 @@ func (s *Seeder) Users(ctx context.Context, organisations []*passport.Organisati
 
 	fmt.Println(" - set superadmin user")
 	user := randomUsers[userIndex]
-	user.Email = "superadmin@example.com"
+	user.Email = passport.NewString("superadmin@example.com")
 	user.RoleID = passport.UserRoleSuperAdminID
 	err = db.UserUpdate(ctx, s.Conn, user)
 	if err != nil {
@@ -51,7 +51,7 @@ func (s *Seeder) Users(ctx context.Context, organisations []*passport.Organisati
 
 	fmt.Println(" - set admin user")
 	user = randomUsers[userIndex]
-	user.Email = "admin@example.com"
+	user.Email = passport.NewString("admin@example.com")
 	user.RoleID = passport.UserRoleAdminID
 	err = db.UserUpdate(ctx, s.Conn, user)
 	if err != nil {
@@ -65,7 +65,7 @@ func (s *Seeder) Users(ctx context.Context, organisations []*passport.Organisati
 
 	fmt.Println(" - set member user")
 	user = randomUsers[userIndex]
-	user.Email = "member@example.com"
+	user.Email = passport.NewString("member@example.com")
 	user.RoleID = passport.UserRoleMemberID
 	err = db.UserUpdate(ctx, s.Conn, user)
 	if err != nil {
@@ -139,11 +139,13 @@ func (s *Seeder) RandomUsers(
 		u := &passport.User{
 			FirstName: result.Name.First,
 			LastName:  result.Name.Last,
-			Email:     result.Email,
+			Email:     passport.NewString(result.Email),
 			Verified:  true,
 			AvatarID:  &avatar.ID,
 			RoleID:    roleID,
 		}
+
+		u.Username = fmt.Sprintf("%s%s", u.FirstName, u.LastName)
 
 		if len(ids) > i {
 			u.ID = ids[i]
@@ -152,7 +154,7 @@ func (s *Seeder) RandomUsers(
 		// Insert
 		err = db.UserCreate(ctx, s.Conn, u)
 		if err != nil {
-			continue // possible duplicate username - just skip
+			return nil, terror.Error(err)
 		}
 
 		passwordHash := crypto.HashPassword(faker.Internet().Password(8, 20))

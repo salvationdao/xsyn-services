@@ -84,11 +84,13 @@ func NewAPI(
 
 	var err error
 	api.Auth, err = auth.New(api.Hub, &auth.Config{
+		CreateUserIfNotExist:     true,
+		CreateAndGetOAuthUserVia: auth.IdTypeID,
 		Google: &auth.GoogleConfig{
 			ClientID: googleClientID,
 		},
 		CookieSecure: config.CookieSecure,
-		UserGetter: &UserGetter{
+		UserController: &UserGetter{
 			Log:    log_helpers.NamedLogger(log, "user getter"),
 			Conn:   conn,
 			Mailer: mailer,

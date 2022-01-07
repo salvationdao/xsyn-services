@@ -2,6 +2,7 @@ package passport
 
 import (
 	"database/sql/driver"
+	"github.com/volatiletech/null/v8"
 
 	"github.com/gofrs/uuid"
 )
@@ -481,4 +482,9 @@ func (id *ProductID) Scan(src interface{}) error {
 	*id = ProductID(uid)
 	// Retrun error
 	return err
+}
+
+// NewString returns a null.String with valid set to false if string == ""
+func NewString(s string) null.String {
+	return null.NewString(s, s != "")
 }

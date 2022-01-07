@@ -1,10 +1,11 @@
 package db
 
 import (
-	"passport"
 	"context"
+	"fmt"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
+	"passport"
 )
 
 // HashByUserID returns a user's password hash
@@ -24,9 +25,12 @@ func HashByUserID(ctx context.Context, conn Conn, userID passport.UserID) (strin
 
 // AuthRegister will create a new user and insert password hash
 func AuthRegister(ctx context.Context, conn Conn, user *passport.User, passwordHashedB64 string) error {
-	username, err := UserGenerateUsername(ctx, conn, user.FirstName, user.LastName, user.Username)
+	usernameOK, err := UsernameAvailable(ctx, conn, user.Username, nil)
 	if err != nil {
 		return terror.Error(err)
+	}
+	if !usernameOK {
+		return terror.Error(fmt.Errorf("username is taken: %s", user.Username))
 	}
 
 	q := `--sql
@@ -48,7 +52,7 @@ func AuthRegister(ctx context.Context, conn Conn, user *passport.User, passwordH
 		user.LastName,
 		user.Email,
 		user.RoleID,
-		username,
+		user.Username,
 	)
 	if err != nil {
 		return terror.Error(err)
