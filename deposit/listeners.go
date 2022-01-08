@@ -1,5 +1,7 @@
 package deposit
 
+import "math/big"
+
 type ERC20Transfer struct {
 	Chain         string
 	Confirmations int
@@ -7,7 +9,7 @@ type ERC20Transfer struct {
 	TXID          string
 	From          string
 	To            string
-	Value         int64
+	Value         *big.Int
 }
 
 type ERC20 interface {
