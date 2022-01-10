@@ -40,11 +40,11 @@ func NewSeeder(conn *pgxpool.Pool) *Seeder {
 func (s *Seeder) Run(isProd bool) error {
 	ctx := context.Background()
 
-	fmt.Println("Seeding roles")
-	err := s.Roles(ctx)
-	if err != nil {
-		return terror.Error(err, "seed roles failed")
-	}
+	//fmt.Println("Seeding roles")
+	//err := s.Roles(ctx)
+	//if err != nil {
+	//	return terror.Error(err, "seed roles failed")
+	//}
 
 	//fmt.Println("Seeding organisations")
 	//organisations, err := s.Organisations(ctx)
@@ -52,10 +52,19 @@ func (s *Seeder) Run(isProd bool) error {
 	//	return terror.Error(err, "seed organisations failed")
 	//}
 
-	fmt.Println("Seeding users")
-	err = s.Users(ctx, nil)
-	if err != nil {
-		return terror.Error(err, "seed users failed")
+	if !isProd {
+		fmt.Println("Seeding nsyn NFTs")
+		_, _, _, err := s.SeedNFTS(ctx)
+		if err != nil {
+			return terror.Error(err, "seed nfts failed")
+		}
+
+		fmt.Println("Seeding users")
+		err = s.Users(ctx, nil)
+		if err != nil {
+			return terror.Error(err, "seed users failed")
+		}
+
 	}
 
 	//fmt.Println("Seeding products")

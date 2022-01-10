@@ -113,7 +113,6 @@ CREATE TRIGGER updateRoleKeywords
     AFTER INSERT OR
         UPDATE
     ON roles
-    FOR EACH ROW
 EXECUTE PROCEDURE updateRoleKeywords();
 
 /**********
@@ -124,7 +123,8 @@ CREATE TABLE users
 (
     id                                  UUID        NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     username                            TEXT UNIQUE NOT NULL,
-    role_id                             UUID REFERENCES roles (id),
+    role_id                             UUID,
+--     role_id                             UUID REFERENCES roles (id), // TODO reenable roles or remove
     avatar_id                           UUID REFERENCES blobs (id),
     facebook_id                         TEXT UNIQUE,
     google_id                           TEXT UNIQUE,
@@ -138,7 +138,7 @@ CREATE TABLE users
     two_factor_authentication_secret    TEXT        NOT NULL             DEFAULT '',
     two_factor_authentication_is_set    BOOLEAN     NOT NULL             DEFAULT FALSE,
 
-    sups                                BIGINT,
+    sups                                BIGINT      NOT NULL             DEFAULT 0,
     public_address                      TEXT UNIQUE,
     private_address                     TEXT UNIQUE,
     nonce                               TEXT,
@@ -333,5 +333,83 @@ CREATE TRIGGER updateProductKeywords
     ON products
     FOR EACH ROW
 EXECUTE PROCEDURE updateProductKeywords();
+
+
+/********************************************
+*           Nsyn_nft_metadatas              *
+* This table is the nft metadata NOT assets *
+**********************************************/
+
+CREATE SEQUENCE IF NOT EXISTS token_id_seq;
+
+CREATE TABLE nsyn_nft_metadata
+(
+    token_id            NUMERIC(78, 0) PRIMARY KEY NOT NULL,
+    name                TEXT                       NOT NULL,
+    game                TEXT,
+    game_object         JSONB,
+    description         TEXT,
+    external_url        TEXT,
+    image               TEXT,
+    attributes          JSONB,
+    additional_metadata JSONB,
+    keywords            TSVECTOR, -- search
+    deleted_at          TIMESTAMPTZ,
+    updated_at          TIMESTAMPTZ                NOT NULL DEFAULT NOW(),
+    created_at          TIMESTAMPTZ                NOT NULL DEFAULT NOW()
+);
+
+-- for nsyn_nft_metadata text search
+CREATE INDEX idx_fts_nsyn_nft_metadata_vec ON nsyn_nft_metadata USING gin (keywords);
+
+CREATE
+    OR REPLACE FUNCTION updateNsyn_nft_metadataKeywords()
+    RETURNS TRIGGER
+AS
+$updateNsyn_nft_metadataKeywords$
+DECLARE
+    temp TSVECTOR;
+BEGIN
+    SELECT (
+                               SETWEIGHT(TO_TSVECTOR('english', NEW.external_url), 'A') ||
+                               SETWEIGHT(TO_TSVECTOR('english', NEW.name), 'A') ||
+                               SETWEIGHT(TO_TSVECTOR('english', NEW.game), 'A') ||
+                               SETWEIGHT(TO_TSVECTOR('english', NEW.image), 'A') ||
+                               SETWEIGHT(TO_TSVECTOR('english', NEW.description), 'A')
+               )
+    INTO temp;
+    IF
+        TG_OP = 'INSERT' OR temp != OLD.keywords THEN
+        UPDATE
+            nsyn_nft_metadata
+        SET keywords = temp
+        WHERE token_id = NEW.token_id;
+    END IF;
+    RETURN NULL;
+END;
+
+$updateNsyn_nft_metadataKeywords$
+    LANGUAGE plpgsql;
+
+CREATE TRIGGER updateNsyn_nft_metadataKeywords
+    AFTER INSERT OR
+        UPDATE
+    ON nsyn_nft_metadata
+    FOR EACH ROW
+EXECUTE PROCEDURE updateNsyn_nft_metadataKeywords();
+
+
+/**********************************************************
+*                             Assets                      *
+* This is the table of who owns what nsync nft off chain  *
+***********************************************************/
+
+CREATE TABLE nsyn_assets
+(
+    token_id          NUMERIC(78, 0) PRIMARY KEY REFERENCES nsyn_nft_metadata (token_id),
+    user_id           UUID REFERENCES users (id) NOT NULL,
+    frozen_at         TIMESTAMPTZ,
+    transferred_in_at TIMESTAMPTZ                NOT NULL DEFAULT NOW()
+);
 
 COMMIT;
