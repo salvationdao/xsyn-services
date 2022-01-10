@@ -1,10 +1,10 @@
 package api
 
 import (
-	"passport/db"
 	"net/http"
+	"passport/db"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 )
 
 // CheckController holds connection data for handlers

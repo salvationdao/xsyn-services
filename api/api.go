@@ -13,8 +13,8 @@ import (
 	"github.com/ninja-software/hub/v2/ext/messagebus"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
@@ -84,11 +84,13 @@ func NewAPI(
 
 	var err error
 	api.Auth, err = auth.New(api.Hub, &auth.Config{
+		CreateUserIfNotExist:     true,
+		CreateAndGetOAuthUserVia: auth.IdTypeID,
 		Google: &auth.GoogleConfig{
 			ClientID: googleClientID,
 		},
 		CookieSecure: config.CookieSecure,
-		UserGetter: &UserGetter{
+		UserController: &UserGetter{
 			Log:    log_helpers.NamedLogger(log, "user getter"),
 			Conn:   conn,
 			Mailer: mailer,

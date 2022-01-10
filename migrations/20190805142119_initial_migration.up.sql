@@ -3,19 +3,19 @@ BEGIN;
 -- Blobs
 CREATE TABLE blobs
 (
-    id              uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    file_name       text             NOT NULL,
-    mime_type       text             NOT NULL,
-    file_size_bytes bigint           NOT NULL,
+    id              UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    file_name       TEXT             NOT NULL,
+    mime_type       TEXT             NOT NULL,
+    file_size_bytes BIGINT           NOT NULL,
     extension       TEXT             NOT NULL,
-    file            bytea            NOT NULL,
-    views           integer          NOT NULL DEFAULT 0,
-    hash            text,
+    file            BYTEA            NOT NULL,
+    views           INTEGER          NOT NULL DEFAULT 0,
+    hash            TEXT,
     public          BOOLEAN          NOT NULL DEFAULT FALSE,
 
-    deleted_at      timestamptz,
-    updated_at      timestamptz      NOT NULL DEFAULT NOW(),
-    created_at      timestamptz      NOT NULL DEFAULT NOW()
+    deleted_at      TIMESTAMPTZ,
+    updated_at      TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+    created_at      TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
 
 
@@ -25,10 +25,10 @@ CREATE TABLE blobs
 
 CREATE TABLE organisations
 (
-    id         uuid        NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+    id         UUID        NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     slug       TEXT UNIQUE NOT NULL,
     name       TEXT        NOT NULL,
-    keywords   tsvector,
+    keywords   TSVECTOR,
 
     deleted_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ NOT NULL             DEFAULT NOW(),
@@ -39,28 +39,29 @@ CREATE TABLE organisations
 CREATE INDEX idx_fts_organisation_vec ON organisations USING gin (keywords);
 
 CREATE
-OR REPLACE FUNCTION updateOrganisationKeywords ()
+    OR REPLACE FUNCTION updateOrganisationKeywords()
     RETURNS TRIGGER
-    AS $updateOrganisationKeywords$
+AS
+$updateOrganisationKeywords$
 DECLARE
-temp tsvector;
+    temp TSVECTOR;
 BEGIN
-SELECT (
-           setweight(to_tsvector('english', COALESCE(NEW.name, '')), 'A')
-           )
-INTO temp;
-IF
-TG_OP = 'INSERT' OR temp != OLD.keywords THEN
-UPDATE
-    organisations
-SET keywords = temp
-WHERE id = NEW.id;
-END IF;
-RETURN NULL;
+    SELECT (
+               SETWEIGHT(TO_TSVECTOR('english', COALESCE(NEW.name, '')), 'A')
+               )
+    INTO temp;
+    IF
+        TG_OP = 'INSERT' OR temp != OLD.keywords THEN
+        UPDATE
+            organisations
+        SET keywords = temp
+        WHERE id = NEW.id;
+    END IF;
+    RETURN NULL;
 END;
 
 $updateOrganisationKeywords$
-LANGUAGE plpgsql;
+    LANGUAGE plpgsql;
 
 /**********
 *  Roles  *
@@ -70,10 +71,10 @@ CREATE TABLE roles
 (
     id          UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     name        TEXT UNIQUE NOT NULL,
-    permissions TEXT[] NOT NULL,
-    tier        integer     NOT NULL DEFAULT 3,     -- users can never edit another user with a tier <= to their own (SUPER_ADMIN = 1, ADMIN = 2)
+    permissions TEXT[]      NOT NULL,
+    tier        INTEGER     NOT NULL DEFAULT 3,     -- users can never edit another user with a tier <= to their own (SUPER_ADMIN = 1, ADMIN = 2)
     reserved    BOOLEAN     NOT NULL DEFAULT FALSE, -- users can never modify this row if set to true
-    keywords    tsvector,
+    keywords    TSVECTOR,
 
     deleted_at  TIMESTAMPTZ,
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -84,34 +85,35 @@ CREATE TABLE roles
 CREATE INDEX idx_fts_role_vec ON roles USING gin (keywords);
 
 CREATE
-OR REPLACE FUNCTION updateRoleKeywords ()
+    OR REPLACE FUNCTION updateRoleKeywords()
     RETURNS TRIGGER
-    AS $updateRoleKeywords$
+AS
+$updateRoleKeywords$
 DECLARE
-temp tsvector;
+    temp TSVECTOR;
 BEGIN
-SELECT (
-           setweight(to_tsvector('english', COALESCE(NEW.name, '')), 'A')
-           )
-INTO temp;
-IF
-TG_OP = 'INSERT' OR temp != OLD.keywords THEN
-UPDATE
-    roles
-SET keywords = temp
-WHERE id = NEW.id;
-END IF;
-RETURN NULL;
+    SELECT (
+               SETWEIGHT(TO_TSVECTOR('english', COALESCE(NEW.name, '')), 'A')
+               )
+    INTO temp;
+    IF
+        TG_OP = 'INSERT' OR temp != OLD.keywords THEN
+        UPDATE
+            roles
+        SET keywords = temp
+        WHERE id = NEW.id;
+    END IF;
+    RETURN NULL;
 END;
 
 $updateRoleKeywords$
-LANGUAGE plpgsql;
+    LANGUAGE plpgsql;
 
 CREATE TRIGGER updateRoleKeywords
     AFTER INSERT OR
-UPDATE ON roles
-    FOR EACH ROW
-    EXECUTE PROCEDURE updateRoleKeywords ();
+        UPDATE
+    ON roles
+EXECUTE PROCEDURE updateRoleKeywords();
 
 /**********
 *  Users  *
@@ -119,24 +121,29 @@ UPDATE ON roles
 
 CREATE TABLE users
 (
-    id                                  uuid        NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+    id                                  UUID        NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     username                            TEXT UNIQUE NOT NULL,
-    role_id                             UUID        NOT NULL REFERENCES roles (id),
-    avatar_id                           uuid REFERENCES blobs (id),
-    email                               TEXT UNIQUE NOT NULL,
-    first_name                          TEXT        NOT NULL,
-    last_name                           TEXT        NOT NULL,
+    role_id                             UUID,
+--     role_id                             UUID REFERENCES roles (id), // TODO reenable roles or remove
+    avatar_id                           UUID REFERENCES blobs (id),
+    facebook_id                         TEXT UNIQUE,
+    google_id                           TEXT UNIQUE,
+    email                               TEXT UNIQUE,
+    first_name                          TEXT                             DEFAULT '',
+    last_name                           TEXT                             DEFAULT '',
     verified                            BOOLEAN     NOT NULL             DEFAULT FALSE,
     old_password_required               BOOLEAN     NOT NULL             DEFAULT TRUE, -- set to false on password reset request, set back to true on password change
-    keywords                            tsvector,                                      -- search
 
     two_factor_authentication_activated BOOLEAN     NOT NULL             DEFAULT FALSE,
     two_factor_authentication_secret    TEXT        NOT NULL             DEFAULT '',
     two_factor_authentication_is_set    BOOLEAN     NOT NULL             DEFAULT FALSE,
 
+    sups                                BIGINT      NOT NULL             DEFAULT 0,
     public_address                      TEXT UNIQUE,
+    private_address                     TEXT UNIQUE,
     nonce                               TEXT,
 
+    keywords                            TSVECTOR,
     deleted_at                          TIMESTAMPTZ,
     updated_at                          TIMESTAMPTZ NOT NULL             DEFAULT NOW(),
     created_at                          TIMESTAMPTZ NOT NULL             DEFAULT NOW()
@@ -146,43 +153,45 @@ CREATE TABLE users
 CREATE INDEX idx_fts_user_vec ON users USING gin (keywords);
 
 CREATE
-OR REPLACE FUNCTION updateUserKeywords ()
+    OR REPLACE FUNCTION updateUserKeywords()
     RETURNS TRIGGER
-    AS $updateUserKeywords$
+AS
+$updateUserKeywords$
 DECLARE
-temp tsvector;
+    temp TSVECTOR;
 BEGIN
-SELECT (
-               setweight(to_tsvector('english', COALESCE(NEW.first_name, '')), 'A') ||
-               setweight(to_tsvector('english', COALESCE(NEW.last_name, '')), 'A') ||
-               setweight(to_tsvector('english', COALESCE(NEW.email, '')), 'A') ||
-               setweight(to_tsvector('english', COALESCE(NEW.username, '')), 'A')
-           )
-INTO temp;
-IF
-TG_OP = 'INSERT' OR temp != OLD.keywords THEN
-UPDATE
-    users
-SET keywords = temp
-WHERE id = NEW.id;
-END IF;
-RETURN NULL;
+    SELECT (
+                           SETWEIGHT(TO_TSVECTOR('english', NEW.first_name), 'A') ||
+                           SETWEIGHT(TO_TSVECTOR('english', NEW.last_name), 'A') ||
+                           SETWEIGHT(TO_TSVECTOR('english', COALESCE(NEW.email, '')), 'A') ||
+                           SETWEIGHT(TO_TSVECTOR('english', NEW.username), 'A')
+               )
+    INTO temp;
+    IF
+        TG_OP = 'INSERT' OR temp != OLD.keywords THEN
+        UPDATE
+            users
+        SET keywords = temp
+        WHERE id = NEW.id;
+    END IF;
+    RETURN NULL;
 END;
 
 $updateUserKeywords$
-LANGUAGE plpgsql;
+    LANGUAGE plpgsql;
 
 CREATE TRIGGER updateUserKeywords
     AFTER INSERT OR
-UPDATE ON users
+        UPDATE
+    ON users
     FOR EACH ROW
-    EXECUTE PROCEDURE updateUserKeywords ();
+EXECUTE PROCEDURE updateUserKeywords();
 
 CREATE TABLE user_recovery_codes
 (
     id            UUID        NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id       UUID        NOT NULL REFERENCES users (id),
-    recovery_code text        NOT NULL,
+    recovery_code TEXT        NOT NULL,
     used_at       TIMESTAMPTZ,
     updated_at    TIMESTAMPTZ NOT NULL             DEFAULT NOW(),
     created_at    TIMESTAMPTZ NOT NULL             DEFAULT NOW()
@@ -190,8 +199,8 @@ CREATE TABLE user_recovery_codes
 
 CREATE TABLE user_organisations
 (
-    user_id         uuid NOT NULL REFERENCES users (id),
-    organisation_id uuid NOT NULL REFERENCES organisations (id),
+    user_id         UUID NOT NULL REFERENCES users (id),
+    organisation_id UUID NOT NULL REFERENCES organisations (id),
     PRIMARY KEY (user_id, organisation_id)
 );
 
@@ -199,7 +208,7 @@ CREATE TABLE issue_tokens
 (
     id         UUID PRIMARY KEY NOT NULL,
     user_id    UUID             NOT NULL REFERENCES users (id),
-    created_at timestamptz      NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE password_hashes
@@ -220,53 +229,55 @@ CREATE TABLE password_hashes
 
 CREATE TABLE user_activities
 (
-    id          uuid PRIMARY KEY     DEFAULT gen_random_uuid(),
-    user_id     uuid        NOT NULL REFERENCES users (id),
-    action      text        NOT NULL,
-    object_id   text,                 -- uuid
-    object_slug text,                 -- slug/username used for links in user activity list
-    object_name text,                 -- user friendly name for user activity list
-    object_type text        NOT NULL, -- enum defined in user_activities.go
-    old_data    json,                 -- old data set
-    new_data    json,                 -- new data set
-    keywords    tsvector,
-    created_at  timestamptz NOT NULL DEFAULT NOW()
+    id          UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+    user_id     UUID        NOT NULL REFERENCES users (id),
+    action      TEXT        NOT NULL,
+    object_id   TEXT,                 -- uuid
+    object_slug TEXT,                 -- slug/username used for links in user activity list
+    object_name TEXT,                 -- user friendly name for user activity list
+    object_type TEXT        NOT NULL, -- enum defined in user_activities.go
+    old_data    JSON,                 -- old data set
+    new_data    JSON,                 -- new data set
+    keywords    TSVECTOR,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- for user activity text search
 CREATE INDEX idx_user_activities ON user_activities USING gin (keywords);
 
 CREATE
-OR REPLACE FUNCTION updateUserActivityKeywords ()
+    OR REPLACE FUNCTION updateUserActivityKeywords()
     RETURNS TRIGGER
-    AS $updateUserActivityKeywords$
+AS
+$updateUserActivityKeywords$
 DECLARE
-temp tsvector;
+    temp TSVECTOR;
 BEGIN
-SELECT (
-               setweight(to_tsvector('english', COALESCE(NEW.action, '')), 'A') ||
-               setweight(to_tsvector('english', COALESCE(NEW.object_name, '')), 'A') ||
-               setweight(to_tsvector('english', COALESCE(NEW.object_type, '')), 'A')
-           )
-INTO temp;
-IF
-TG_OP = 'INSERT' OR temp != OLD.keywords THEN
-UPDATE
-    user_activities
-SET keywords = temp
-WHERE id = NEW.id;
-END IF;
-RETURN NULL;
+    SELECT (
+                       SETWEIGHT(TO_TSVECTOR('english', NEW.action), 'A') ||
+                       SETWEIGHT(TO_TSVECTOR('english', COALESCE(NEW.object_name, '')), 'A') ||
+                       SETWEIGHT(TO_TSVECTOR('english', NEW.object_type), 'A')
+               )
+    INTO temp;
+    IF
+        TG_OP = 'INSERT' OR temp != OLD.keywords THEN
+        UPDATE
+            user_activities
+        SET keywords = temp
+        WHERE id = NEW.id;
+    END IF;
+    RETURN NULL;
 END;
 
 $updateUserActivityKeywords$
-LANGUAGE plpgsql;
+    LANGUAGE plpgsql;
 
 CREATE TRIGGER updateUserActivityKeywords
     AFTER INSERT OR
-UPDATE ON user_activities
+        UPDATE
+    ON user_activities
     FOR EACH ROW
-    EXECUTE PROCEDURE updateUserActivityKeywords ();
+EXECUTE PROCEDURE updateUserActivityKeywords();
 
 /*************
 *  Products  *
@@ -274,12 +285,12 @@ UPDATE ON user_activities
 
 CREATE TABLE products
 (
-    id          uuid        NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+    id          UUID        NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     slug        TEXT UNIQUE NOT NULL,
-    image_id    uuid REFERENCES blobs (id),
+    image_id    UUID REFERENCES blobs (id),
     name        TEXT        NOT NULL,
     description TEXT        NOT NULL,
-    keywords    tsvector, -- search
+    keywords    TSVECTOR, -- search
 
     deleted_at  TIMESTAMPTZ,
     updated_at  TIMESTAMPTZ NOT NULL             DEFAULT NOW(),
@@ -290,35 +301,115 @@ CREATE TABLE products
 CREATE INDEX idx_fts_product_vec ON products USING gin (keywords);
 
 CREATE
-OR REPLACE FUNCTION updateProductKeywords ()
+    OR REPLACE FUNCTION updateProductKeywords()
     RETURNS TRIGGER
-    AS $updateProductKeywords$
+AS
+$updateProductKeywords$
 DECLARE
-temp tsvector;
+    temp TSVECTOR;
 BEGIN
-SELECT (
-               setweight(to_tsvector('english', COALESCE(NEW.slug, '')), 'A') ||
-               setweight(to_tsvector('english', COALESCE(NEW.name, '')), 'A') ||
-               setweight(to_tsvector('english', COALESCE(NEW.description, '')), 'A')
-           )
-INTO temp;
-IF
-TG_OP = 'INSERT' OR temp != OLD.keywords THEN
-UPDATE
-    products
-SET keywords = temp
-WHERE id = NEW.id;
-END IF;
-RETURN NULL;
+    SELECT (
+                       SETWEIGHT(TO_TSVECTOR('english', NEW.slug), 'A') ||
+                       SETWEIGHT(TO_TSVECTOR('english', NEW.name), 'A') ||
+                       SETWEIGHT(TO_TSVECTOR('english', NEW.description), 'A')
+               )
+    INTO temp;
+    IF
+        TG_OP = 'INSERT' OR temp != OLD.keywords THEN
+        UPDATE
+            products
+        SET keywords = temp
+        WHERE id = NEW.id;
+    END IF;
+    RETURN NULL;
 END;
 
 $updateProductKeywords$
-LANGUAGE plpgsql;
+    LANGUAGE plpgsql;
 
 CREATE TRIGGER updateProductKeywords
     AFTER INSERT OR
-UPDATE ON products
+        UPDATE
+    ON products
     FOR EACH ROW
-    EXECUTE PROCEDURE updateProductKeywords ();
+EXECUTE PROCEDURE updateProductKeywords();
+
+
+/********************************************
+*           Nsyn_nft_metadatas              *
+* This table is the nft metadata NOT assets *
+**********************************************/
+
+CREATE SEQUENCE IF NOT EXISTS token_id_seq;
+
+CREATE TABLE nsyn_nft_metadata
+(
+    token_id            NUMERIC(78, 0) PRIMARY KEY NOT NULL,
+    name                TEXT                       NOT NULL,
+    game                TEXT,
+    game_object         JSONB,
+    description         TEXT,
+    external_url        TEXT,
+    image               TEXT,
+    attributes          JSONB,
+    additional_metadata JSONB,
+    keywords            TSVECTOR, -- search
+    deleted_at          TIMESTAMPTZ,
+    updated_at          TIMESTAMPTZ                NOT NULL DEFAULT NOW(),
+    created_at          TIMESTAMPTZ                NOT NULL DEFAULT NOW()
+);
+
+-- for nsyn_nft_metadata text search
+CREATE INDEX idx_fts_nsyn_nft_metadata_vec ON nsyn_nft_metadata USING gin (keywords);
+
+CREATE
+    OR REPLACE FUNCTION updateNsyn_nft_metadataKeywords()
+    RETURNS TRIGGER
+AS
+$updateNsyn_nft_metadataKeywords$
+DECLARE
+    temp TSVECTOR;
+BEGIN
+    SELECT (
+                               SETWEIGHT(TO_TSVECTOR('english', NEW.external_url), 'A') ||
+                               SETWEIGHT(TO_TSVECTOR('english', NEW.name), 'A') ||
+                               SETWEIGHT(TO_TSVECTOR('english', NEW.game), 'A') ||
+                               SETWEIGHT(TO_TSVECTOR('english', NEW.image), 'A') ||
+                               SETWEIGHT(TO_TSVECTOR('english', NEW.description), 'A')
+               )
+    INTO temp;
+    IF
+        TG_OP = 'INSERT' OR temp != OLD.keywords THEN
+        UPDATE
+            nsyn_nft_metadata
+        SET keywords = temp
+        WHERE token_id = NEW.token_id;
+    END IF;
+    RETURN NULL;
+END;
+
+$updateNsyn_nft_metadataKeywords$
+    LANGUAGE plpgsql;
+
+CREATE TRIGGER updateNsyn_nft_metadataKeywords
+    AFTER INSERT OR
+        UPDATE
+    ON nsyn_nft_metadata
+    FOR EACH ROW
+EXECUTE PROCEDURE updateNsyn_nft_metadataKeywords();
+
+
+/**********************************************************
+*                             Assets                      *
+* This is the table of who owns what nsync nft off chain  *
+***********************************************************/
+
+CREATE TABLE nsyn_assets
+(
+    token_id          NUMERIC(78, 0) PRIMARY KEY REFERENCES nsyn_nft_metadata (token_id),
+    user_id           UUID REFERENCES users (id) NOT NULL,
+    frozen_at         TIMESTAMPTZ,
+    transferred_in_at TIMESTAMPTZ                NOT NULL DEFAULT NOW()
+);
 
 COMMIT;

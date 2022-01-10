@@ -1,10 +1,10 @@
 package seed
 
 import (
-	"passport"
-	"passport/db"
 	"context"
 	"fmt"
+	"passport"
+	"passport/db"
 
 	"github.com/gofrs/uuid"
 	"github.com/gosimple/slug"
@@ -21,7 +21,7 @@ var (
 )
 
 // MaxMembersPerOrganisation is the default amount of member users per organisation (also includes non-organisation users)
-const MaxMembersPerOrganisation = 5
+const MaxMembersPerOrganisation = 40
 
 // MaxTestUsers is the default amount of user for the test organisation account (first organisation has X reserved test users)
 const MaxTestUsers = 3
@@ -40,29 +40,38 @@ func NewSeeder(conn *pgxpool.Pool) *Seeder {
 func (s *Seeder) Run(isProd bool) error {
 	ctx := context.Background()
 
-	fmt.Println("Seeding roles")
-	err := s.Roles(ctx)
-	if err != nil {
-		return terror.Error(err, "seed roles failed")
+	//fmt.Println("Seeding roles")
+	//err := s.Roles(ctx)
+	//if err != nil {
+	//	return terror.Error(err, "seed roles failed")
+	//}
+
+	//fmt.Println("Seeding organisations")
+	//organisations, err := s.Organisations(ctx)
+	//if err != nil {
+	//	return terror.Error(err, "seed organisations failed")
+	//}
+
+	if !isProd {
+		fmt.Println("Seeding nsyn NFTs")
+		_, _, _, err := s.SeedNFTS(ctx)
+		if err != nil {
+			return terror.Error(err, "seed nfts failed")
+		}
+
+		fmt.Println("Seeding users")
+		err = s.Users(ctx, nil)
+		if err != nil {
+			return terror.Error(err, "seed users failed")
+		}
+
 	}
 
-	fmt.Println("Seeding organisations")
-	organisations, err := s.Organisations(ctx)
-	if err != nil {
-		return terror.Error(err, "seed organisations failed")
-	}
-
-	fmt.Println("Seeding users")
-	err = s.Users(ctx, organisations)
-	if err != nil {
-		return terror.Error(err, "seed users failed")
-	}
-
-	fmt.Println("Seeding products")
-	err = s.Products(ctx)
-	if err != nil {
-		return terror.Error(err, "seed products failed")
-	}
+	//fmt.Println("Seeding products")
+	//err = s.Products(ctx)
+	//if err != nil {
+	//	return terror.Error(err, "seed products failed")
+	//}
 
 	fmt.Println("Seed complete")
 	return nil

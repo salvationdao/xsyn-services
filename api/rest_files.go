@@ -1,9 +1,6 @@
 package api
 
 import (
-	"passport"
-	"passport/db"
-	"passport/helpers"
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
@@ -12,8 +9,11 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"passport"
+	"passport/db"
+	"passport/helpers"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/h2non/filetype"
 	"github.com/jackc/pgx/v4"

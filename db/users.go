@@ -1,14 +1,13 @@
 package db
 
 import (
-	"passport"
 	"context"
 	"fmt"
+	"passport"
 	"strings"
 	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
-	"github.com/gosimple/slug"
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -80,6 +79,28 @@ func UserByPublicAddress(ctx context.Context, conn Conn, publicAddress string) (
 	err := pgxscan.Get(ctx, conn, user, q, publicAddress)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting user from Public Address.")
+	}
+	return user, nil
+}
+
+// UserByGoogleID returns a user by google id
+func UserByGoogleID(ctx context.Context, conn Conn, googleID string) (*passport.User, error) {
+	user := &passport.User{}
+	q := UserGetQuery + ` WHERE users.google_id = $1`
+	err := pgxscan.Get(ctx, conn, user, q, googleID)
+	if err != nil {
+		return nil, terror.Error(err, "Issue getting user from google id.")
+	}
+	return user, nil
+}
+
+// UserByFacebookID returns a user by google id
+func UserByFacebookID(ctx context.Context, conn Conn, facebookID string) (*passport.User, error) {
+	user := &passport.User{}
+	q := UserGetQuery + ` WHERE users.facebook_id = $1`
+	err := pgxscan.Get(ctx, conn, user, q, facebookID)
+	if err != nil {
+		return nil, terror.Error(err, "Issue getting user from facebook id.")
 	}
 	return user, nil
 }
@@ -210,15 +231,19 @@ func UserUpdate2FAIsSet(ctx context.Context, conn Conn, userID passport.UserID, 
 
 // UserCreate will create a new user
 func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
-	username, err := UserGenerateUsername(ctx, conn, user.FirstName, user.LastName, user.Username)
+	usernameOK, err := UsernameAvailable(ctx, conn, user.Username, nil)
 	if err != nil {
 		return terror.Error(err)
 	}
+	if !usernameOK {
+		return terror.Error(fmt.Errorf("username is taken: %s", user.Username))
+	}
+
 	q := `--sql
-		INSERT INTO users (first_name, last_name, email, username, avatar_id, role_id, verified)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO users (first_name, last_name, email, username, public_address, avatar_id, role_id, verified, facebook_id, google_id)
+		VALUES ($1, $2, $3, $4, LOWER($5), $6, $7, $8, $9, $10)
 		RETURNING
-			id, role_id, first_name, last_name, email, username, avatar_id, created_at, updated_at, deleted_at`
+			id, role_id, first_name, last_name, email, username, avatar_id, created_at, updated_at, deleted_at, facebook_id, google_id`
 	err = pgxscan.Get(ctx,
 		conn,
 		user,
@@ -226,10 +251,13 @@ func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 		user.FirstName,
 		user.LastName,
 		user.Email,
-		username,
+		user.Username,
+		user.PublicAddress,
 		user.AvatarID,
 		user.RoleID,
 		user.Verified,
+		user.FacebookID,
+		user.GoogleID,
 	)
 	if err != nil {
 		return terror.Error(err)
@@ -239,10 +267,14 @@ func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 
 // UserUpdate will update a user
 func UserUpdate(ctx context.Context, conn Conn, user *passport.User) error {
-	username, err := UserGenerateUsername(ctx, conn, user.FirstName, user.LastName, user.Username)
+	usernameOK, err := UsernameAvailable(ctx, conn, user.Username, &user.ID)
 	if err != nil {
 		return terror.Error(err)
 	}
+	if !usernameOK {
+		return terror.Error(fmt.Errorf("username is taken: %s", user.Username))
+	}
+
 	q := `--sql
 		UPDATE users
 		SET first_name = $2, last_name = $3, email = $4, username = $5, avatar_id = $6, role_id = $7, two_factor_authentication_activated = $8
@@ -253,13 +285,13 @@ func UserUpdate(ctx context.Context, conn Conn, user *passport.User) error {
 		user.FirstName,
 		user.LastName,
 		user.Email,
-		username,
+		user.Username,
 		user.AvatarID,
 		user.RoleID,
 		user.TwoFactorAuthenticationActivated,
 	)
 	if err != nil {
-		return terror.Error(err, "")
+		return terror.Error(err)
 	}
 	return nil
 }
@@ -466,42 +498,42 @@ func UserArchiveUpdate(ctx context.Context, conn Conn, id passport.UserID, archi
 	return nil
 }
 
-// UserGenerateUsername generates a user slug in the format "JohnSmith3".
-func UserGenerateUsername(ctx context.Context, conn Conn, firstName string, lastName string, oldUsername string) (string, error) {
-	seperator := "_" // use underscore to prevent loosing hyphened names ie John Brown-Smith
-	username := slug.Make(fmt.Sprintf("%s%s%s", firstName, seperator, lastName))
-
-	if username == oldUsername {
-		return oldUsername, nil
-	}
-
-	// check if slug exists
-	count := 0
-	countQ := `
-	SELECT
-		count(*)
-	FROM
-		users
-	WHERE
-		username ~ $1
-	`
-	// Match the
-	// %s[.]?[0-9]*$
-	// `%s`: the username
-	// `[.]?`: zero or one hyphen
-	// `[0-9]*`: zero or more digits
-	// `$`: on the end of the string
-	clause := fmt.Sprintf("%s[%s]?[0-9]*$", username, seperator)
-	err := pgxscan.Get(ctx, conn, &count, countQ, clause)
-	if err != nil {
-		return "", terror.Error(err)
-	}
-	if count == 0 {
-		return username, nil
-	}
-
-	return username + fmt.Sprintf("%s%d", seperator, count), nil
-}
+//// UserGenerateUsername generates a user slug in the format "JohnSmith3".
+//func UserGenerateUsername(ctx context.Context, conn Conn, firstName string, lastName string, oldUsername string) (string, error) {
+//	seperator := "_" // use underscore to prevent loosing hyphened names ie John Brown-Smith
+//	username := slug.Make(fmt.Sprintf("%s%s%s", firstName, seperator, lastName))
+//
+//	if username == oldUsername {
+//		return oldUsername, nil
+//	}
+//
+//	// check if slug exists
+//	count := 0
+//	countQ := `
+//	SELECT
+//		count(*)
+//	FROM
+//		users
+//	WHERE
+//		username ~ $1
+//	`
+//	// Match the
+//	// %s[.]?[0-9]*$
+//	// `%s`: the username
+//	// `[.]?`: zero or one hyphen
+//	// `[0-9]*`: zero or more digits
+//	// `$`: on the end of the string
+//	clause := fmt.Sprintf("%s[%s]?[0-9]*$", username, seperator)
+//	err := pgxscan.Get(ctx, conn, &count, countQ, clause)
+//	if err != nil {
+//		return "", terror.Error(err)
+//	}
+//	if count == 0 {
+//		return username, nil
+//	}
+//
+//	return username + fmt.Sprintf("%s%d", seperator, count), nil
+//}
 
 // UserExistsByEmail checks if a user is found through their email address
 func UserExistsByEmail(ctx context.Context, conn Conn, email string) (bool, error) {
@@ -644,4 +676,34 @@ func UserUpdateNonce(ctx context.Context, conn Conn, userID passport.UserID, new
 		return terror.Error(err)
 	}
 	return nil
+}
+
+// UsernameAvailable returns true if a username is free
+func UsernameAvailable(ctx context.Context, conn Conn, nameToCheck string, userID *passport.UserID) (bool, error) {
+	if nameToCheck == "" {
+		return false, terror.Error(fmt.Errorf("username cannot be empty"), "Username cannot be empty.")
+	}
+	count := 0
+
+	if userID != nil && !userID.IsNil() {
+		q := `
+        		SELECT count(*) FROM users
+        		WHERE 	username = $1 and id != $2
+        	`
+		err := pgxscan.Get(ctx, conn, &count, q, nameToCheck, userID)
+		if err != nil {
+			return false, terror.Error(err)
+		}
+		return count == 0, nil
+	}
+
+	q := `
+		SELECT count(*) FROM users
+		WHERE 	username = $1
+	`
+	err := pgxscan.Get(ctx, conn, &count, q, nameToCheck)
+	if err != nil {
+		return false, terror.Error(err)
+	}
+	return count == 0, nil
 }
