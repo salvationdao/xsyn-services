@@ -36,6 +36,10 @@ type API struct {
 	Tokens       *Tokens
 	*auth.Auth
 	*messagebus.MessageBus
+
+	// server clients
+	serverClients       chan func(serverClients ServerClientsList)
+	sendToServerClients chan *ServerClientMessage
 }
 
 // NewAPI registers routes
@@ -63,6 +67,9 @@ func NewAPI(
 		Addr:         addr,
 		Mailer:       mailer,
 		HTMLSanitize: HTMLSanitize,
+		// server clients
+		serverClients:       make(chan func(serverClients ServerClientsList)),
+		sendToServerClients: make(chan *ServerClientMessage),
 	}
 	msgBus, cleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
 	newHub := hub.New(&hub.Config{
@@ -117,6 +124,7 @@ func NewAPI(
 		r.Handle("/ws", api.Hub)
 	})
 
+	_ = NewServerClientController(log, conn, api)
 	_ = NewCheckController(log, conn, api)
 	_ = NewUserActivityController(log, conn, api)
 	_ = NewUserController(log, conn, api)
@@ -127,7 +135,18 @@ func NewAPI(
 	//api.Hub.Events.AddEventHandler(hub.EventOnline, api.ClientOnline)
 	api.Hub.Events.AddEventHandler(auth.EventLogin, api.ClientAuth)
 	api.Hub.Events.AddEventHandler(auth.EventLogout, api.ClientLogout)
-	//api.Hub.Events.AddEventHandler(hub.EventOffline, api.ClientOffline)
+	api.Hub.Events.AddEventHandler(hub.EventOffline, api.ClientOffline)
+
+	// listen for client server functions
+	go func() {
+		var serverClientsMap ServerClientsList = map[ServerClientName]map[*hub.Client]bool{}
+		for {
+			select {
+			case serverClientsFN := <-api.serverClients:
+				serverClientsFN(serverClientsMap)
+			}
+		}
+	}()
 
 	return api
 }

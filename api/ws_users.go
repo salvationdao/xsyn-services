@@ -2,17 +2,17 @@ package api
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/volatiletech/null/v8"
 	"passport"
 	"passport/crypto"
 	"passport/db"
 	"passport/helpers"
 	"passport/log_helpers"
 	"strings"
+
+	"github.com/volatiletech/null/v8"
 
 	"github.com/ninja-software/hub/v2"
 	"github.com/ninja-software/hub/v2/ext/messagebus"
@@ -37,7 +37,7 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *UserC
 		Log:  log_helpers.NamedLogger(log, "user_hub"),
 		API:  api,
 	}
-	api.SecureCommand(HubKeyUserGet, userHub.GetHandler)                   // Perm check inside handler (users can get themselves; need UserRead permission to get other users)
+	api.Command(HubKeyUserGet, userHub.GetHandler)                         // Perm check inside handler (users can get themselves; need UserRead permission to get other users)
 	api.SecureCommand(HubKeyUserUpdate, userHub.UpdateHandler)             // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserRemoveWallet, userHub.RemoveWalletHandler) // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserAddWallet, userHub.AddWalletHandler)       // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
@@ -84,10 +84,10 @@ func (ctrlr *UserController) GetHandler(ctx context.Context, hubc *hub.Client, p
 			return terror.Error(err, "Unable to load current user")
 		}
 
-		//// Permission check
-		if user.ID.String() != hubc.Identifier() && !hubc.HasPermission(passport.PermUserRead.String()) {
-			return terror.Error(terror.ErrUnauthorised, "You do not have permission to look at other users.")
-		}
+		////// Permission check
+		//if user.ID.String() != hubc.Identifier() && !hubc.HasPermission(passport.PermUserRead.String()) {
+		//	return terror.Error(terror.ErrUnauthorised, "You do not have permission to look at other users.")
+		//}
 
 		reply(user)
 		return nil
@@ -99,9 +99,9 @@ func (ctrlr *UserController) GetHandler(ctx context.Context, hubc *hub.Client, p
 	}
 
 	//// Permission check
-	if user.ID.String() != hubc.Identifier() && !hubc.HasPermission(passport.PermUserRead.String()) {
-		return terror.Error(terror.ErrUnauthorised, "You do not have permission to look at other users.")
-	}
+	//if user.ID.String() != hubc.Identifier() && !hubc.HasPermission(passport.PermUserRead.String()) {
+	//	return terror.Error(terror.ErrUnauthorised, "You do not have permission to look at other users.")
+	//}
 
 	reply(user)
 	return nil
@@ -119,7 +119,7 @@ type UpdateUserRequest struct {
 		Username                         string                   `json:"username"`
 		FirstName                        string                   `json:"firstName"`
 		LastName                         string                   `json:"lastName"`
-		Email                            sql.NullString           `json:"email"`
+		Email                            null.String              `json:"email"`
 		AvatarID                         *passport.BlobID         `json:"avatarID"`
 		CurrentPassword                  *string                  `json:"currentPassword"`
 		NewPassword                      *string                  `json:"newPassword"`
@@ -279,7 +279,6 @@ func (ctrlr *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client
 	}
 
 	reply(user)
-
 	ctrlr.API.RecordUserActivity(ctx,
 		hubc.Identifier(),
 		"Updated User",
@@ -295,6 +294,17 @@ func (ctrlr *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client
 	)
 
 	ctrlr.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+
+	// send user changes to connected clients
+	ctrlr.API.SendToAllServerClient(&ServerClientMessage{
+		Key: UserUpdated,
+		Payload: struct {
+			User *passport.User `json:"user"`
+		}{
+			User: user,
+		},
+	})
+
 	return nil
 }
 

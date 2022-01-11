@@ -1,10 +1,10 @@
 package api
 
 import (
-	"passport"
-	"passport/db"
 	"context"
 	"fmt"
+	"passport"
+	"passport/db"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/hub/v2"
@@ -17,11 +17,26 @@ func (api *API) ClientOnline(ctx context.Context, client *hub.Client, clients hu
 
 // ClientOffline gets trigger on connection offline
 func (api *API) ClientOffline(ctx context.Context, client *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
+	// if they are level 5, they are server client. So lets remove them
+	if client.Level == 5 {
+		api.ServerClientOffline(client)
+	}
 }
 
 func (api *API) ClientLogout(ctx context.Context, client *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
 	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, client.Identifier())), false)
 	api.MessageBus.Unsub("", client, "")
+	// broadcast user online status to server clients
+	api.SendToAllServerClient(&ServerClientMessage{
+		Key: UserOnlineStatus,
+		Payload: struct {
+			UserID string `json:"userID"`
+			Status bool   `json:"status"`
+		}{
+			UserID: client.Identifier(),
+			Status: true,
+		},
+	})
 }
 
 // ClientAuth gets triggered on auth and handles setting the clients permissions and levels
@@ -52,4 +67,16 @@ func (api *API) ClientAuth(ctx context.Context, client *hub.Client, clients hub.
 
 	// broadcast user online status
 	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, user.ID.String())), true)
+
+	// broadcast user online status to server clients
+	api.SendToAllServerClient(&ServerClientMessage{
+		Key: UserOnlineStatus,
+		Payload: struct {
+			UserID passport.UserID `json:"userID"`
+			Status bool            `json:"status"`
+		}{
+			UserID: user.ID,
+			Status: true,
+		},
+	})
 }
