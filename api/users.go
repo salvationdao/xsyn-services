@@ -4,6 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"passport"
+	"passport/crypto"
+	"passport/db"
+	"passport/email"
+	"passport/helpers"
+	"time"
+
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -11,12 +18,6 @@ import (
 	"github.com/ninja-software/hub/v2/ext/auth"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
-	"passport"
-	"passport/crypto"
-	"passport/db"
-	"passport/email"
-	"passport/helpers"
-	"time"
 )
 
 type UserGetter struct {
@@ -51,12 +52,25 @@ func (ug *UserGetter) GoogleID(s string) (auth.SecureUser, error) {
 	}, nil
 }
 
-func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebookID, googleID, number, publicAddress, password string, other ...interface{}) (auth.SecureUser, error) {
+func (ug *UserGetter) TwitchID(s string) (auth.SecureUser, error) {
+	ctx := context.Background()
+	user, err := db.UserByTwitchID(ctx, ug.Conn, s)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return &Secureuser{
+		User:   user,
+		Conn:   ug.Conn,
+		Mailer: ug.Mailer,
+	}, nil
+}
+
+func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebookID, googleID, twitchID, number, publicAddress, password string, other ...interface{}) (auth.SecureUser, error) {
 	ctx := context.Background()
 	if username == "" {
 		return nil, terror.Error(fmt.Errorf("username cannot be empty"), "Username cannot be empty.")
 	}
-	if facebookID == "" && googleID == "" && publicAddress == "" {
+	if facebookID == "" && googleID == "" && publicAddress == "" && twitchID == "" {
 		if email == "" {
 			return nil, terror.Error(fmt.Errorf("email empty"), "Email cannot be empty")
 		}
@@ -71,6 +85,7 @@ func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebook
 		Username:      username,
 		FacebookID:    passport.NewString(facebookID),
 		GoogleID:      passport.NewString(googleID),
+		TwitchID:      passport.NewString(twitchID),
 		Email:         passport.NewString(email),
 		PublicAddress: passport.NewString(publicAddress),
 		RoleID:        passport.UserRoleMemberID,

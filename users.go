@@ -1,9 +1,10 @@
 package passport
 
 import (
+	"time"
+
 	"github.com/gofrs/uuid"
 	"github.com/volatiletech/null/v8"
-	"time"
 )
 
 // User is a single user on the platform
@@ -14,6 +15,8 @@ type User struct {
 	Email                            null.String   `json:"email" db:"email"`
 	FacebookID                       null.String   `json:"-" db:"facebook_id"`
 	GoogleID                         null.String   `json:"-" db:"google_id"`
+	TwitchID                         null.String   `json:"-" db:"twitch_id"`
+	FactionID                        FactionID     `json:"factionID" db:"faction_id"`
 	Username                         string        `json:"username" db:"username"`
 	Verified                         bool          `json:"verified" db:"verified"`
 	OldPasswordRequired              bool          `json:"oldPasswordRequired" db:"old_password_required"`

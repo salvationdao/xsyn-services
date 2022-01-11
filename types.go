@@ -2,6 +2,7 @@ package passport
 
 import (
 	"database/sql/driver"
+
 	"github.com/volatiletech/null/v8"
 
 	"github.com/gofrs/uuid"
@@ -487,4 +488,57 @@ func (id *ProductID) Scan(src interface{}) error {
 // NewString returns a null.String with valid set to false if string == ""
 func NewString(s string) null.String {
 	return null.NewString(s, s != "")
+}
+
+// FactionID aliases uuid.UUID.
+// Doing this prevents situations where you use FactionID where it doesn't belong.
+type FactionID uuid.UUID
+
+// IsNil returns true for a nil uuid.
+func (id FactionID) IsNil() bool {
+	return id == FactionID{}
+}
+
+// String aliases UUID.String which returns a canonical RFC-4122 string representation of the UUID.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.String.
+func (id FactionID) String() string {
+	return uuid.UUID(id).String()
+}
+
+// MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaler interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.MarshalText.
+func (id FactionID) MarshalText() ([]byte, error) {
+	return uuid.UUID(id).MarshalText()
+}
+
+// UnmarshalText aliases UUID.UnmarshalText which implements the encoding.TextUnmarshaler interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.UnmarshalText.
+func (id *FactionID) UnmarshalText(text []byte) error {
+	// Convert to uuid.UUID
+	uid := uuid.UUID(*id)
+	// Unmarshal as uuid.UUID
+	err := uid.UnmarshalText(text)
+	// Convert back to original type
+	*id = FactionID(uid)
+	// Retrun error
+	return err
+}
+
+// Value aliases UUID.Value which implements the driver.Valuer interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Value.
+func (id FactionID) Value() (driver.Value, error) {
+	return uuid.UUID(id).Value()
+}
+
+// Scan implements the sql.Scanner interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Scan.
+func (id *FactionID) Scan(src interface{}) error {
+	// Convert to uuid.UUID
+	uid := uuid.UUID(*id)
+	// Unmarshal as uuid.UUID
+	err := uid.Scan(src)
+	// Convert back to original type
+	*id = FactionID(uid)
+	// Retrun error
+	return err
 }

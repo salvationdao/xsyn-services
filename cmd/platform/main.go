@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"errors"
 	"net/url"
 	"passport/api"
@@ -37,6 +38,8 @@ const Version = "v0.1.0"
 //   ```
 var SentryVersion string
 
+const envPrefix = "PASSPORT"
+
 func main() {
 	app := &cli.App{
 		Compiled: time.Now(),
@@ -53,32 +56,34 @@ func main() {
 				Name:    "serve",
 				Aliases: []string{"s"},
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "database_user", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
-					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{"PASSPORT_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
-					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{"PASSPORT_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
-					&cli.StringFlag{Name: "database_port", Value: "5432", EnvVars: []string{"PASSPORT_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
-					&cli.StringFlag{Name: "database_name", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
-					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{"PASSPORT_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+					&cli.StringFlag{Name: "database_user", Value: "passport", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
+					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
+					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
+					&cli.StringFlag{Name: "database_port", Value: "5432", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
+					&cli.StringFlag{Name: "database_name", Value: "passport", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
+					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
 
-					&cli.StringFlag{Name: "environment", Value: "development", DefaultText: "development", EnvVars: []string{"PASSPORT_ENVIRONMENT", "ENVIRONMENT"}, Usage: "This program environment (development, testing, training, staging, production), it sets the log levels"},
-					&cli.StringFlag{Name: "sentry_dsn_backend", Value: "", EnvVars: []string{"PASSPORT_SENTRY_DSN_BACKEND", "SENTRY_DSN_BACKEND"}, Usage: "Sends error to remote server. If set, it will send error."},
-					&cli.StringFlag{Name: "sentry_server_name", Value: "dev-pc", EnvVars: []string{"PASSPORT_SENTRY_SERVER_NAME", "SENTRY_SERVER_NAME"}, Usage: "The machine name that this program is running on."},
-					&cli.Float64Flag{Name: "sentry_sample_rate", Value: 1, EnvVars: []string{"PASSPORT_SENTRY_SAMPLE_RATE", "SENTRY_SAMPLE_RATE"}, Usage: "The percentage of trace sample to collect (0.0-1)"},
+					&cli.StringFlag{Name: "environment", Value: "development", DefaultText: "development", EnvVars: []string{envPrefix + "_ENVIRONMENT", "ENVIRONMENT"}, Usage: "This program environment (development, testing, training, staging, production), it sets the log levels"},
+					&cli.StringFlag{Name: "sentry_dsn_backend", Value: "", EnvVars: []string{envPrefix + "_SENTRY_DSN_BACKEND", "SENTRY_DSN_BACKEND"}, Usage: "Sends error to remote server. If set, it will send error."},
+					&cli.StringFlag{Name: "sentry_server_name", Value: "dev-pc", EnvVars: []string{envPrefix + "_SENTRY_SERVER_NAME", "SENTRY_SERVER_NAME"}, Usage: "The machine name that this program is running on."},
+					&cli.Float64Flag{Name: "sentry_sample_rate", Value: 1, EnvVars: []string{envPrefix + "_SENTRY_SAMPLE_RATE", "SENTRY_SAMPLE_RATE"}, Usage: "The percentage of trace sample to collect (0.0-1)"},
 
-					&cli.StringFlag{Name: "host_url_public", Value: "http://localhost:5003", EnvVars: []string{"PASSPORT_HOST_URL_PUBLIC_FRONTEND", "HOST_URL_PUBLIC_FRONTEND"}, Usage: "The Public Site URL used for CORS and links (eg: in the mailer)"},
+					&cli.StringFlag{Name: "host_url_public", Value: "http://localhost:5003", EnvVars: []string{envPrefix + "_HOST_URL_PUBLIC_FRONTEND", "HOST_URL_PUBLIC_FRONTEND"}, Usage: "The Public Site URL used for CORS and links (eg: in the mailer)"},
 
-					&cli.StringFlag{Name: "api_addr", Value: ":8086", EnvVars: []string{"PASSPORT_API_ADDR", "API_ADDR"}, Usage: "host:port to run the API"},
-					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{"PASSPORT_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
-					&cli.StringFlag{Name: "google_client_id", Value: "593683501366-gk7ab1nnskc1tft14bk8ebsja1bce24v.apps.googleusercontent.com", EnvVars: []string{"PASSPORT_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google Client ID for OAuth functionaility."},
+					&cli.StringFlag{Name: "api_addr", Value: ":8086", EnvVars: []string{envPrefix + "_API_ADDR", "API_ADDR"}, Usage: "host:port to run the API"},
+					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{envPrefix + "_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
+					&cli.StringFlag{Name: "google_client_id", Value: "593683501366-gk7ab1nnskc1tft14bk8ebsja1bce24v.apps.googleusercontent.com", EnvVars: []string{envPrefix + "_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google Client ID for OAuth functionaility."},
 
-					&cli.StringFlag{Name: "mail_domain", Value: "njs.dev", EnvVars: []string{"PASSPORT_MAIL_DOMAIN", "MAIL_DOMAIN"}, Usage: "Domain used for MailGun"},
-					&cli.StringFlag{Name: "mail_apikey", Value: "", EnvVars: []string{"PASSPORT_MAIL_APIKEY", "MAIL_APIKEY"}, Usage: "MailGun API key"},
-					&cli.StringFlag{Name: "mail_sender", Value: "Ninja Software <noreply@njs.dev>", EnvVars: []string{"PASSPORT_MAIL_SENDER", "MAIL_SENDER"}, Usage: "Default address emails are sent from"},
+					&cli.StringFlag{Name: "mail_domain", Value: "njs.dev", EnvVars: []string{envPrefix + "_MAIL_DOMAIN", "MAIL_DOMAIN"}, Usage: "Domain used for MailGun"},
+					&cli.StringFlag{Name: "mail_apikey", Value: "", EnvVars: []string{envPrefix + "_MAIL_APIKEY", "MAIL_APIKEY"}, Usage: "MailGun API key"},
+					&cli.StringFlag{Name: "mail_sender", Value: "Ninja Software <noreply@njs.dev>", EnvVars: []string{envPrefix + "_MAIL_SENDER", "MAIL_SENDER"}, Usage: "Default address emails are sent from"},
 
-					&cli.BoolFlag{Name: "jwt_encrypt", Value: true, EnvVars: []string{"PASSPORT_JWT_ENCRYPT", "JWT_ENCRYPT"}, Usage: "set if to encrypt jwt tokens or not"},
-					&cli.StringFlag{Name: "jwt_encrypt_key", Value: "ITF1vauAxvJlF0PLNY9btOO9ZzbUmc6X", EnvVars: []string{"PASSPORT_JWT_KEY", "JWT_KEY"}, Usage: "supports key sizes of 16, 24 or 32 bytes"},
-					&cli.IntFlag{Name: "jwt_expiry_days", Value: 1, EnvVars: []string{"PASSPORT_JWT_EXPIRY_DAYS", "JWT_EXPIRY_DAYS"}, Usage: "expiry days for auth tokens"},
-					&cli.StringFlag{Name: "metamask_sign_message", Value: "", EnvVars: []string{"PASSPORT_METAMASK_SIGN_MESSAGE", "METAMASK_SIGN_MESSAGE"}, Usage: "message to show in metamask key sign flow, needs to match frontend"},
+					&cli.BoolFlag{Name: "jwt_encrypt", Value: true, EnvVars: []string{envPrefix + "_JWT_ENCRYPT", "JWT_ENCRYPT"}, Usage: "set if to encrypt jwt tokens or not"},
+					&cli.StringFlag{Name: "jwt_encrypt_key", Value: "ITF1vauAxvJlF0PLNY9btOO9ZzbUmc6X", EnvVars: []string{envPrefix + "_JWT_KEY", "JWT_KEY"}, Usage: "supports key sizes of 16, 24 or 32 bytes"},
+					&cli.IntFlag{Name: "jwt_expiry_days", Value: 1, EnvVars: []string{envPrefix + "_JWT_EXPIRY_DAYS", "JWT_EXPIRY_DAYS"}, Usage: "expiry days for auth tokens"},
+					&cli.StringFlag{Name: "metamask_sign_message", Value: "", EnvVars: []string{envPrefix + "_METAMASK_SIGN_MESSAGE", "METAMASK_SIGN_MESSAGE"}, Usage: "message to show in metamask key sign flow, needs to match frontend"},
+
+					&cli.StringFlag{Name: "twitch_extension_secret", Value: "", EnvVars: []string{envPrefix + "_TWITCH_EXTENSION_SECRET", "_TWITCH_EXTENSION_SECRET"}, Usage: "Twitch Extension Secret for verifying tokens sent with requests"},
 				},
 
 				Usage: "run server",
@@ -257,6 +262,15 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		return terror.Error(api.ErrCheckDBDirty)
 	}
 
+	twitchExtensionSecret := ctxCLI.String("twitch_extension_secret")
+	if twitchExtensionSecret == "" {
+		return fmt.Errorf("missing twitch extension secret")
+	}
+	secret, err := base64.StdEncoding.DecodeString(twitchExtensionSecret)
+	if err != nil {
+		return terror.Error(err, "Failed to decode twitch extension secret")
+	}
+
 	// Mailer
 	mailer, err := email.NewMailer(mailDomain, mailAPIKey, mailSender, config, log)
 	if err != nil {
@@ -269,6 +283,6 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
-	api := api.NewAPI(log, cancelOnPanic, pgxconn, ctxCLI.String("google_client_id"), mailer, apiAddr, HTMLSanitizePolicy, config)
+	api := api.NewAPI(log, cancelOnPanic, pgxconn, ctxCLI.String("google_client_id"), mailer, apiAddr, secret, HTMLSanitizePolicy, config)
 	return api.Run(ctx)
 }
