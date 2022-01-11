@@ -336,13 +336,13 @@ EXECUTE PROCEDURE updateProductKeywords();
 
 
 /********************************************
-*           Nsyn_nft_metadatas              *
+*           xsyn_nft_metadatas              *
 * This table is the nft metadata NOT assets *
 **********************************************/
 
 CREATE SEQUENCE IF NOT EXISTS token_id_seq;
 
-CREATE TABLE nsyn_nft_metadata
+CREATE TABLE xsyn_nft_metadata
 (
     token_id            NUMERIC(78, 0) PRIMARY KEY NOT NULL,
     name                TEXT                       NOT NULL,
@@ -359,14 +359,14 @@ CREATE TABLE nsyn_nft_metadata
     created_at          TIMESTAMPTZ                NOT NULL DEFAULT NOW()
 );
 
--- for nsyn_nft_metadata text search
-CREATE INDEX idx_fts_nsyn_nft_metadata_vec ON nsyn_nft_metadata USING gin (keywords);
+-- for xsyn_nft_metadata text search
+CREATE INDEX idx_fts_xsyn_nft_metadata_vec ON xsyn_nft_metadata USING gin (keywords);
 
 CREATE
-    OR REPLACE FUNCTION updateNsyn_nft_metadataKeywords()
+    OR REPLACE FUNCTION updateXsyn_nft_metadataKeywords()
     RETURNS TRIGGER
 AS
-$updateNsyn_nft_metadataKeywords$
+$updateXsyn_nft_metadataKeywords$
 DECLARE
     temp TSVECTOR;
 BEGIN
@@ -381,32 +381,32 @@ BEGIN
     IF
         TG_OP = 'INSERT' OR temp != OLD.keywords THEN
         UPDATE
-            nsyn_nft_metadata
+            xsyn_nft_metadata
         SET keywords = temp
         WHERE token_id = NEW.token_id;
     END IF;
     RETURN NULL;
 END;
 
-$updateNsyn_nft_metadataKeywords$
+$updateXsyn_nft_metadataKeywords$
     LANGUAGE plpgsql;
 
-CREATE TRIGGER updateNsyn_nft_metadataKeywords
+CREATE TRIGGER updateXsyn_nft_metadataKeywords
     AFTER INSERT OR
         UPDATE
-    ON nsyn_nft_metadata
+    ON xsyn_nft_metadata
     FOR EACH ROW
-EXECUTE PROCEDURE updateNsyn_nft_metadataKeywords();
+EXECUTE PROCEDURE updateXsyn_nft_metadataKeywords();
 
 
 /**********************************************************
 *                             Assets                      *
-* This is the table of who owns what nsync nft off chain  *
+* This is the table of who owns what xsync nft off chain  *
 ***********************************************************/
 
-CREATE TABLE nsyn_assets
+CREATE TABLE xsyn_assets
 (
-    token_id          NUMERIC(78, 0) PRIMARY KEY REFERENCES nsyn_nft_metadata (token_id),
+    token_id          NUMERIC(78, 0) PRIMARY KEY REFERENCES xsyn_nft_metadata (token_id),
     user_id           UUID REFERENCES users (id) NOT NULL,
     frozen_at         TIMESTAMPTZ,
     transferred_in_at TIMESTAMPTZ                NOT NULL DEFAULT NOW()
