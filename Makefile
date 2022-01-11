@@ -76,9 +76,6 @@ db-migrate-up-one:
 	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/migrations up 1
 
 
-.PHONY: db-prepare
-db-prepare: db-drop db-migrate
-
 .PHONY: db-seed
 db-seed:
 	go run cmd/platform/main.go db --seed
@@ -95,10 +92,10 @@ go-mod-tidy:
 	go mod tidy
 
 .PHONY: init
-init: db-setup deps tools go-mod-tidy db-migrate db-seed
+init: db-setup deps tools go-mod-tidy db-reset
 
 .PHONY: init-docker
-init-docker: docker-start deps tools go-mod-tidy docker-setup db-migrate db-seed
+init-docker: docker-start deps tools go-mod-tidy docker-setup db-reset
 
 .PHONY: deps
 deps: go-mod-download
