@@ -37,10 +37,11 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *UserC
 		Log:  log_helpers.NamedLogger(log, "user_hub"),
 		API:  api,
 	}
-	api.Command(HubKeyUserGet, userHub.GetHandler)                         // Perm check inside handler (users can get themselves; need UserRead permission to get other users)
-	api.SecureCommand(HubKeyUserUpdate, userHub.UpdateHandler)             // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
-	api.SecureCommand(HubKeyUserRemoveWallet, userHub.RemoveWalletHandler) // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
-	api.SecureCommand(HubKeyUserAddWallet, userHub.AddWalletHandler)       // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
+	api.Command(HubKeyUserGet, userHub.GetHandler)                               // Perm check inside handler (users can get themselves; need UserRead permission to get other users)
+	api.SecureCommand(HubKeyUserUpdate, userHub.UpdateHandler)                   // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
+	api.SecureCommand(HubKeyUserFactionUpdate, userHub.UpdateUserFactionHandler) // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
+	api.SecureCommand(HubKeyUserRemoveWallet, userHub.RemoveWalletHandler)       // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
+	api.SecureCommand(HubKeyUserAddWallet, userHub.AddWalletHandler)             // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserCreate, userHub.CreateHandler)
 	api.SecureCommandWithPerm(HubKeyUserList, userHub.ListHandler, passport.PermUserList)
 	api.SecureCommandWithPerm(HubKeyUserArchive, userHub.ArchiveHandler, passport.PermUserArchive)
@@ -106,6 +107,58 @@ func (ctrlr *UserController) GetHandler(ctx context.Context, hubc *hub.Client, p
 	reply(user)
 	return nil
 
+}
+
+// UpdateUserFactionRequest requests update user faction
+type UpdateUserFactionRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		UserID    passport.UserID    `json:"userID"`
+		FactionID passport.FactionID `json:"factionID"`
+	} `json:"payload"`
+}
+
+// 	api.SecureCommand(HubKeyUserFactionUpdate, userHub.UpdateUserFactionHandler)
+const HubKeyUserFactionUpdate hub.HubCommandKey = "USER:FACTION:UPDATE"
+
+// GetHandler gets the details for a user
+func (ctrlr *UserController) UpdateUserFactionHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &UpdateUserFactionRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+	if req.Payload.UserID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput, "User ID is required")
+	}
+
+	if req.Payload.FactionID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput, "Faction ID is required")
+	}
+
+	user, err := db.UserGet(ctx, ctrlr.Conn, req.Payload.UserID)
+	if err != nil {
+		return terror.Error(err, "Unable to load current user")
+	}
+
+	user.FactionID = req.Payload.FactionID
+
+	err = db.UserFactionEnlist(ctx, ctrlr.Conn, user)
+	if err != nil {
+		return terror.Error(err, "Unable to update user faction")
+	}
+
+	// send user changes to connected clients
+	ctrlr.API.SendToAllServerClient(&ServerClientMessage{
+		Key: UserUpdated,
+		Payload: struct {
+			User *passport.User `json:"user"`
+		}{
+			User: user,
+		},
+	})
+
+	return nil
 }
 
 // HubKeyUserUpdate updates a user
@@ -781,7 +834,7 @@ func (ctrlr *UserController) OnlineStatusSubscribeHandler(ctx context.Context, h
 	// get current online status
 	online := false
 	ctrlr.API.Hub.Clients(func(clients hub.ClientsList) {
-		for cl, _ := range clients {
+		for cl := range clients {
 			if cl.Identifier() == userID.String() {
 				online = true
 				break

@@ -50,6 +50,7 @@ func NewAPI(
 	googleClientID string,
 	mailer *email.Mailer,
 	addr string,
+	twitchExtensionSecret []byte,
 	HTMLSanitize *bluemonday.Policy,
 	config *passport.Config,
 ) *API {
@@ -96,7 +97,8 @@ func NewAPI(
 		Google: &auth.GoogleConfig{
 			ClientID: googleClientID,
 		},
-		CookieSecure: config.CookieSecure,
+		TwitchExtensionSecret: twitchExtensionSecret,
+		CookieSecure:          config.CookieSecure,
 		UserController: &UserGetter{
 			Log:    log_helpers.NamedLogger(log, "user getter"),
 			Conn:   conn,
@@ -128,6 +130,8 @@ func NewAPI(
 	_ = NewCheckController(log, conn, api)
 	_ = NewUserActivityController(log, conn, api)
 	_ = NewUserController(log, conn, api)
+	_ = NewAuthController(log, conn, api)
+	_ = NewFactionController(log, conn, api)
 	_ = NewOrganisationController(log, conn, api)
 	_ = NewRoleController(log, conn, api)
 	_ = NewProductController(log, conn, api)
