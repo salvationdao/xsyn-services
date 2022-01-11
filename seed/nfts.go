@@ -7,7 +7,7 @@ import (
 	"passport/db"
 )
 
-func (s *Seeder) SeedNFTS(ctx context.Context) (warMachines, weapons, utility []*passport.NsynNftMetadata, error error) {
+func (s *Seeder) SeedNFTS(ctx context.Context) (warMachines, weapons, utility []*passport.XsynNftMetadata, error error) {
 	warMachines, err := s.SeedWarMachine(ctx)
 	if err != nil {
 		return nil, nil, nil, terror.Error(err)
@@ -24,8 +24,8 @@ func (s *Seeder) SeedNFTS(ctx context.Context) (warMachines, weapons, utility []
 	return
 }
 
-func (s *Seeder) SeedWarMachine(ctx context.Context) ([]*passport.NsynNftMetadata, error) {
-	newNFT := []*passport.NsynNftMetadata{
+func (s *Seeder) SeedWarMachine(ctx context.Context) ([]*passport.XsynNftMetadata, error) {
+	newNFT := []*passport.XsynNftMetadata{
 		{
 			Game:               "SUPREMACY",
 			GameObject:         nil,
@@ -241,7 +241,7 @@ func (s *Seeder) SeedWarMachine(ctx context.Context) ([]*passport.NsynNftMetadat
 	}
 
 	for _, nft := range newNFT {
-		returnedNFT, err := db.NsynNftMetadataInsert(ctx, s.Conn,
+		returnedNFT, err := db.XsynNftMetadataInsert(ctx, s.Conn,
 			nft.Name,
 			nft.Game,
 			nft.Description,
@@ -260,8 +260,8 @@ func (s *Seeder) SeedWarMachine(ctx context.Context) ([]*passport.NsynNftMetadat
 	return newNFT, nil
 }
 
-func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.NsynNftMetadata, error) {
-	newNFT := []*passport.NsynNftMetadata{
+func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, error) {
+	newNFT := []*passport.XsynNftMetadata{
 		// pulse rifles
 		{
 			Game:               "SUPREMACY",
@@ -661,7 +661,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.NsynNftMetadata, 
 	}
 
 	for _, nft := range newNFT {
-		returnedNFT, err := db.NsynNftMetadataInsert(ctx, s.Conn,
+		returnedNFT, err := db.XsynNftMetadataInsert(ctx, s.Conn,
 			nft.Name,
 			nft.Game,
 			nft.Description,
@@ -680,8 +680,8 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.NsynNftMetadata, 
 	return newNFT, nil
 }
 
-func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.NsynNftMetadata, error) {
-	newNFT := []*passport.NsynNftMetadata{
+func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, error) {
+	newNFT := []*passport.XsynNftMetadata{
 		// large shield
 		{
 			Game:               "SUPREMACY",
@@ -989,7 +989,7 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.NsynNftMetadata, 
 	}
 
 	for _, nft := range newNFT {
-		returnedNFT, err := db.NsynNftMetadataInsert(ctx, s.Conn,
+		returnedNFT, err := db.XsynNftMetadataInsert(ctx, s.Conn,
 			nft.Name,
 			nft.Game,
 			nft.Description,

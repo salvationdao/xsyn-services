@@ -53,7 +53,7 @@ func (s *Seeder) Run(isProd bool) error {
 	//}
 
 	if !isProd {
-		fmt.Println("Seeding nsyn NFTs")
+		fmt.Println("Seeding xsyn NFTs")
 		_, _, _, err := s.SeedNFTS(ctx)
 		if err != nil {
 			return terror.Error(err, "seed nfts failed")

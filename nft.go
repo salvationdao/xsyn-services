@@ -19,8 +19,8 @@ const (
 	Date            DisplayType = "date"
 )
 
-// NsynNftMetadata holds nsyn nft metadata, the nfts main game data it stored here to show on opensea
-type NsynNftMetadata struct {
+// XsynNftMetadata holds xsyn nft metadata, the nfts main game data it stored here to show on opensea
+type XsynNftMetadata struct {
 	TokenID            uint64                `json:"token_id" db:"token_id"`
 	Name               string                `json:"name" db:"name"`
 	Game               string                `json:"game" db:"game"`
