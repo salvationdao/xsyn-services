@@ -220,8 +220,7 @@ func (ctrlr *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client
 		email = strings.ToLower(email)
 
 		if user.Email.String != email {
-			confirmPassword = true
-			user.Email.String = email
+			user.Email = null.StringFrom(email)
 		}
 	}
 	if req.Payload.NewPassword != nil && *req.Payload.NewPassword != "" {
@@ -258,9 +257,7 @@ func (ctrlr *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client
 	if req.Payload.LastName != "" {
 		user.LastName = req.Payload.LastName
 	}
-	if req.Payload.AvatarID != nil {
-		user.AvatarID = req.Payload.AvatarID
-	}
+	user.AvatarID = req.Payload.AvatarID
 
 	// Start transaction
 	errMsg := "Unable to update user, please try again."

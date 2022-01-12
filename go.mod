@@ -2,8 +2,6 @@ module passport
 
 go 1.17
 
-replace github.com/ninja-software/hub/v2 => /home/darren/go/src/github.com/ninja-software/hub
-
 require (
 	github.com/aymerick/raymond v2.0.3-0.20180322193309-b565731e1464+incompatible
 	github.com/caddyserver/caddy/v2 v2.4.5
@@ -24,7 +22,7 @@ require (
 	github.com/makiuchi-d/arelo v1.9.1
 	github.com/microcosm-cc/bluemonday v1.0.17
 	github.com/ninja-software/go-check-passwd v0.0.0-20191023080747-0879e647a3ab
-	github.com/ninja-software/hub/v2 v2.0.5
+	github.com/ninja-software/hub/v2 v2.1.0
 	github.com/ninja-software/terror/v2 v2.0.7
 	github.com/oklog/run v1.1.0
 	github.com/prometheus/client_golang v1.11.0
@@ -48,10 +46,8 @@ require (
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
 	github.com/tklauser/go-sysconf v0.3.5 // indirect
 	github.com/tklauser/numcpus v0.2.2 // indirect
-	golang.org/x/mod v0.5.1 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/term v0.0.0-20210503060354-a79de5458b56 // indirect
-	golang.org/x/tools v0.1.8 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/api v0.61.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
