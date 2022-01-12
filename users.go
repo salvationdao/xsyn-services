@@ -13,9 +13,6 @@ type User struct {
 	FirstName                        string        `json:"firstName" db:"first_name"`
 	LastName                         string        `json:"lastName" db:"last_name"`
 	Email                            null.String   `json:"email" db:"email"`
-	FacebookID                       null.String   `json:"-" db:"facebook_id"`
-	GoogleID                         null.String   `json:"-" db:"google_id"`
-	TwitchID                         null.String   `json:"-" db:"twitch_id"`
 	FactionID                        FactionID     `json:"factionID" db:"faction_id"`
 	Username                         string        `json:"username" db:"username"`
 	Verified                         bool          `json:"verified" db:"verified"`
@@ -31,6 +28,9 @@ type User struct {
 	HasRecoveryCode                  bool          `json:"hasRecoveryCode" db:"has_recovery_code"`
 	Pass2FA                          bool          `json:"pass2FA"`
 	Nonce                            null.String   `json:"-" db:"nonce"`
+	FacebookID                       null.String   `json:"facebookID,omitempty" db:"facebook_id"`
+	GoogleID                         null.String   `json:"googleID,omitempty" db:"google_id"`
+	TwitchID                         null.String   `json:"twitchID,omitempty" db:"twitch_id"`
 	PublicAddress                    null.String   `json:"publicAddress,omitempty" db:"public_address"`
 	CreatedAt                        time.Time     `json:"createdAt" db:"created_at"`
 	UpdatedAt                        time.Time     `json:"updatedAt" db:"updated_at"`
