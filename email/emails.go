@@ -1,8 +1,8 @@
 package email
 
 import (
-	"passport"
 	"fmt"
+	"passport"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -43,9 +43,9 @@ func (m *Mailer) SendBasicEmail(to string, subject string, message string, attac
 
 // SendForgotPasswordEmail sends an email with the forgot_password template
 func (m *Mailer) SendForgotPasswordEmail(user *User, token string) error {
-	hostURL := m.PublicHostURL
+	hostURL := m.PassportWebHostURL
 	if user.IsAdmin {
-		hostURL = m.AdminHostURL
+		hostURL = m.PassportWebHostURL
 	}
 	err := m.SendEmail(
 		user.Email,
@@ -68,9 +68,9 @@ func (m *Mailer) SendForgotPasswordEmail(user *User, token string) error {
 
 // SendVerificationEmail sends an email with the confirm_email template
 func (m *Mailer) SendVerificationEmail(user *User, token string, newAccount bool) error {
-	hostURL := m.PublicHostURL
+	hostURL := m.PassportWebHostURL
 	if user.IsAdmin {
-		hostURL = m.AdminHostURL
+		hostURL = m.PassportWebHostURL
 	}
 	err := m.SendEmail(
 		user.Email,

@@ -8,6 +8,8 @@ import (
 	"passport/email"
 	"passport/log_helpers"
 
+	"nhooyr.io/websocket"
+
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/hub/v2"
 	"github.com/ninja-software/hub/v2/ext/messagebus"
@@ -80,6 +82,10 @@ func NewAPI(
 			Key:     "WELCOME",
 			Payload: nil,
 		},
+		AcceptOptions: &websocket.AcceptOptions{
+			InsecureSkipVerify: true, // TODO: set this depending on environment
+			OriginPatterns:     []string{config.PassportWebHostURL, config.GameserverHostURL},
+		},
 	})
 	api.MessageBus = msgBus
 	api.Hub = newHub
@@ -87,7 +93,7 @@ func NewAPI(
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
 	api.Routes.Use(cors.New(cors.Options{
-		AllowedOrigins: []string{config.AdminHostURL, config.PublicHostURL, config.MobileHostURL},
+		AllowedOrigins: []string{config.PassportWebHostURL, config.GameserverHostURL},
 	}).Handler)
 
 	var err error

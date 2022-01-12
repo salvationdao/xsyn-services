@@ -5,8 +5,7 @@ type Config struct {
 	EncryptTokens       bool
 	EncryptTokensKey    string
 	TokenExpirationDays int
-	AdminHostURL        string // The Admin Site URL used for CORS and links (eg: in the mailer)
-	PublicHostURL       string // The Public Site URL used for CORS and links (eg: in the mailer)
-	MobileHostURL       string // The Mobiel Site (flutter web) URL used for CORS
+	PassportWebHostURL  string
+	GameserverHostURL   string
 	MetaMaskSignMessage string // The message to see in the metamask signup flow, needs to match frontend
 }
