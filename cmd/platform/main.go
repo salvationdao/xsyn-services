@@ -68,7 +68,8 @@ func main() {
 					&cli.StringFlag{Name: "sentry_server_name", Value: "dev-pc", EnvVars: []string{envPrefix + "_SENTRY_SERVER_NAME", "SENTRY_SERVER_NAME"}, Usage: "The machine name that this program is running on."},
 					&cli.Float64Flag{Name: "sentry_sample_rate", Value: 1, EnvVars: []string{envPrefix + "_SENTRY_SAMPLE_RATE", "SENTRY_SAMPLE_RATE"}, Usage: "The percentage of trace sample to collect (0.0-1)"},
 
-					&cli.StringFlag{Name: "host_url_public", Value: "http://localhost:5003", EnvVars: []string{envPrefix + "_HOST_URL_PUBLIC_FRONTEND", "HOST_URL_PUBLIC_FRONTEND"}, Usage: "The Public Site URL used for CORS and links (eg: in the mailer)"},
+					&cli.StringFlag{Name: "passport_web_host_url", Value: "http://localhost:5003", EnvVars: []string{envPrefix + "_HOST_URL_FRONTEND"}, Usage: "The Public Site URL used for CORS and links (eg: in the mailer)"},
+					&cli.StringFlag{Name: "gameserver_web_host_url", Value: "http://localhost:8084", EnvVars: []string{"GAMESERVER_HOST_URL"}, Usage: "The host for the gameserver, to allow it to connect"},
 
 					&cli.StringFlag{Name: "api_addr", Value: ":8086", EnvVars: []string{envPrefix + "_API_ADDR", "API_ADDR"}, Usage: "host:port to run the API"},
 					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{envPrefix + "_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
@@ -231,9 +232,8 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	config := &passport.Config{
 		CookieSecure:        ctxCLI.Bool("cookie_secure"),
-		AdminHostURL:        ctxCLI.String("host_url_admin"),
-		PublicHostURL:       ctxCLI.String("host_url_public"),
-		MobileHostURL:       ctxCLI.String("host_url_mobile"),
+		PassportWebHostURL:  ctxCLI.String("passport_web_host_url"),
+		GameserverHostURL:   ctxCLI.String("gameserver_web_host_url"),
 		EncryptTokens:       ctxCLI.Bool("jwt_encrypt"),
 		EncryptTokensKey:    ctxCLI.String("jwt_encrypt_key"),
 		TokenExpirationDays: ctxCLI.Int("jwt_expiry_days"),
