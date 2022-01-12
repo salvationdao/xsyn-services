@@ -66,6 +66,14 @@ func (ac *AuthController) TwitchAuthHandler(ctx context.Context, hubc *hub.Clien
 		return terror.Error(err, "failed to query user")
 	}
 
+	if user.FactionID != nil && !user.FactionID.IsNil() {
+		faction, err := db.FactionGet(ctx, ac.Conn, *user.FactionID)
+		if err != nil {
+			return terror.Error(err)
+		}
+		user.Faction = faction
+	}
+
 	reply(user)
 
 	// send user changes to connected clients

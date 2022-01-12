@@ -37,8 +37,9 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *UserC
 		Log:  log_helpers.NamedLogger(log, "user_hub"),
 		API:  api,
 	}
-	api.Command(HubKeyUserGet, userHub.GetHandler)                               // Perm check inside handler (users can get themselves; need UserRead permission to get other users)
-	api.SecureCommand(HubKeyUserUpdate, userHub.UpdateHandler)                   // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
+	api.Command(HubKeyUserGet, userHub.GetHandler) // Perm check inside handler (users can get themselves; need UserRead permission to get other users)
+	api.SecureCommand(HubKeyUserUpdate, userHub.UpdateHandler)
+	api.SecureCommand(HubKeyUserSupsUpdate, userHub.UpdateSupsHandler)
 	api.SecureCommand(HubKeyUserFactionUpdate, userHub.UpdateUserFactionHandler) // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserRemoveWallet, userHub.RemoveWalletHandler)       // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserAddWallet, userHub.AddWalletHandler)             // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
@@ -141,12 +142,18 @@ func (ctrlr *UserController) UpdateUserFactionHandler(ctx context.Context, hubc 
 		return terror.Error(err, "Unable to load current user")
 	}
 
-	user.FactionID = req.Payload.FactionID
+	user.FactionID = &req.Payload.FactionID
 
 	err = db.UserFactionEnlist(ctx, ctrlr.Conn, user)
 	if err != nil {
 		return terror.Error(err, "Unable to update user faction")
 	}
+
+	faction, err := db.FactionGet(ctx, ctrlr.Conn, req.Payload.FactionID)
+	if err != nil {
+		return terror.Error(err)
+	}
+	user.Faction = faction
 
 	// send user changes to connected clients
 	ctrlr.API.SendToAllServerClient(&ServerClientMessage{
@@ -328,6 +335,14 @@ func (ctrlr *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client
 		return terror.Error(err, errMsg)
 	}
 
+	if user.FactionID != nil && !user.FactionID.IsNil() {
+		faction, err := db.FactionGet(ctx, ctrlr.Conn, *user.FactionID)
+		if err != nil {
+			return terror.Error(err)
+		}
+		user.Faction = faction
+	}
+
 	reply(user)
 	ctrlr.API.RecordUserActivity(ctx,
 		hubc.Identifier(),
@@ -356,6 +371,55 @@ func (ctrlr *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client
 	})
 
 	return nil
+}
+
+// UpdateUserSupsRequest requests an update for an existing user
+type UpdateUserSupsRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		UserID     passport.UserID `json:"userID"`
+		SupsChange int64           `json:"supsChange"`
+	} `json:"payload"`
+}
+
+// HubKeyUserSupsUpdate updates a user
+const HubKeyUserSupsUpdate hub.HubCommandKey = "USER:SUPS:UPDATE"
+
+// UpdateSupsHandler gets the details for a user
+func (ctrlr *UserController) UpdateSupsHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &UpdateUserSupsRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	if req.Payload.UserID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput, "user id is required")
+	}
+
+	// update sups
+	remainSups, err := db.UserUpdateSups(ctx, ctrlr.Conn, req.Payload.UserID, req.Payload.SupsChange)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	reply(true)
+
+	// broadcast remain sups back to gameserver
+	// send user changes to connected clients
+	ctrlr.API.SendToAllServerClient(&ServerClientMessage{
+		Key: UserSupsUpdated,
+		Payload: struct {
+			UserID passport.UserID `json:"userID"`
+			Sups   int64           `json:"sups"`
+		}{
+			UserID: req.Payload.UserID,
+			Sups:   remainSups,
+		},
+	})
+
+	return nil
+
 }
 
 // HubKeyUserCreate creates a user
