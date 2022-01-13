@@ -136,7 +136,9 @@ func NewAPI(
 	_ = NewCheckController(log, conn, api)
 	_ = NewUserActivityController(log, conn, api)
 	_ = NewUserController(log, conn, api)
-	_ = NewAuthController(log, conn, api)
+	_ = NewAuthController(log, conn, api, &auth.GoogleConfig{
+		ClientID: googleClientID,
+	})
 	_ = NewFactionController(log, conn, api)
 	_ = NewOrganisationController(log, conn, api)
 	_ = NewRoleController(log, conn, api)
