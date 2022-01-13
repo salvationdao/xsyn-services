@@ -62,6 +62,7 @@ const (
 	Authed           ServerClientMessageAction = "AUTHED"
 	UserOnlineStatus ServerClientMessageAction = "USER:ONLINE_STATUS"
 	UserUpdated      ServerClientMessageAction = "USER:UPDATED"
+	UserSupsUpdated  ServerClientMessageAction = "USER:SUPS:UPDATED"
 )
 
 type ServerClientMessage struct {
@@ -78,7 +79,7 @@ func (api *API) SendToServerClient(name ServerClientName, msg *ServerClientMessa
 			api.Log.Debug().Msgf("no server clients for %s", name)
 		}
 
-		for sc, _ := range gameClientMap {
+		for sc := range gameClientMap {
 			payload, err := json.Marshal(msg)
 			if err != nil {
 				api.Log.Err(err).Msgf("error sending message to server client for: %s", name)
@@ -92,7 +93,7 @@ func (api *API) SendToAllServerClient(msg *ServerClientMessage) {
 	api.Log.Debug().Msgf("sending message to all server clients")
 	api.serverClients <- func(servers ServerClientsList) {
 		for gameName, scm := range servers {
-			for sc, _ := range scm {
+			for sc := range scm {
 				payload, err := json.Marshal(msg)
 				if err != nil {
 					api.Log.Err(err).Msgf("error sending message to server client: %s", gameName)

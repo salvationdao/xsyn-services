@@ -57,7 +57,7 @@ func (ic UserColumn) IsValid() error {
 const UserGetQuery string = `--sql
 SELECT 
 	users.id, users.role_id, users.two_factor_authentication_activated, users.two_factor_authentication_is_set, users.first_name, users.last_name, users.email, users.username, users.avatar_id, users.verified,
-	users.created_at, users.updated_at, users.deleted_at, users.facebook_id, users.google_id, users.twitch_id, users.public_address, users.nonce,
+	users.created_at, users.updated_at, users.deleted_at, users.facebook_id, users.google_id, users.twitch_id, users.public_address, users.nonce, users.sups, users.faction_id,
 	(SELECT COUNT(id) FROM user_recovery_codes urc WHERE urc.user_id = users.id) > 0 as has_recovery_code,
 	row_to_json(role) as role,
 	row_to_json(organisation) as organisation
@@ -735,4 +735,34 @@ func UsernameAvailable(ctx context.Context, conn Conn, nameToCheck string, userI
 		return false, terror.Error(err)
 	}
 	return count == 0, nil
+}
+
+// UserUpdateSups updates a user's nonce, used for wallet auth
+func UserUpdateSups(ctx context.Context, conn Conn, userID passport.UserID, supsChange int64) (int64, error) {
+	remainSups := int64(0)
+
+	absNumber := supsChange
+	q := `
+		UPDATE users
+		SET	sups = sups + $2
+		WHERE id = $1
+	`
+
+	// if the change is negative
+	if supsChange < 0 {
+		absNumber = -supsChange
+		q = `
+			UPDATE users
+			SET	sups = sups - $2
+			WHERE id = $1 and sups >= $2
+		`
+	}
+
+	q += "RETURNING sups;"
+
+	err := pgxscan.Get(ctx, conn, &remainSups, q, userID, absNumber)
+	if err != nil {
+		return 0, terror.Error(err)
+	}
+	return remainSups, nil
 }

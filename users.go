@@ -13,7 +13,11 @@ type User struct {
 	FirstName                        string        `json:"firstName" db:"first_name"`
 	LastName                         string        `json:"lastName" db:"last_name"`
 	Email                            null.String   `json:"email" db:"email"`
-	FactionID                        FactionID     `json:"factionID" db:"faction_id"`
+	FacebookID                       null.String   `json:"-" db:"facebook_id"`
+	GoogleID                         null.String   `json:"-" db:"google_id"`
+	TwitchID                         null.String   `json:"-" db:"twitch_id"`
+	FactionID                        *FactionID    `json:"factionID" db:"faction_id"`
+	Faction                          *Faction      `json:"faction"`
 	Username                         string        `json:"username" db:"username"`
 	Verified                         bool          `json:"verified" db:"verified"`
 	OldPasswordRequired              bool          `json:"oldPasswordRequired" db:"old_password_required"`
@@ -21,6 +25,7 @@ type User struct {
 	Role                             Role          `json:"role" db:"role"`
 	Organisation                     *Organisation `json:"organisation" db:"organisation"`
 	AvatarID                         *BlobID       `json:"avatarID" db:"avatar_id"`
+	Sups                             int64         `json:"sups" db:"sups"`
 	Online                           bool          `json:"online"`
 	TwoFactorAuthenticationActivated bool          `json:"twoFactorAuthenticationActivated" db:"two_factor_authentication_activated"`
 	TwoFactorAuthenticationSecret    string        `json:"twoFactorAuthenticationSecret" db:"two_factor_authentication_secret"`
@@ -28,9 +33,6 @@ type User struct {
 	HasRecoveryCode                  bool          `json:"hasRecoveryCode" db:"has_recovery_code"`
 	Pass2FA                          bool          `json:"pass2FA"`
 	Nonce                            null.String   `json:"-" db:"nonce"`
-	FacebookID                       null.String   `json:"facebookID,omitempty" db:"facebook_id"`
-	GoogleID                         null.String   `json:"googleID,omitempty" db:"google_id"`
-	TwitchID                         null.String   `json:"twitchID,omitempty" db:"twitch_id"`
 	PublicAddress                    null.String   `json:"publicAddress,omitempty" db:"public_address"`
 	CreatedAt                        time.Time     `json:"createdAt" db:"created_at"`
 	UpdatedAt                        time.Time     `json:"updatedAt" db:"updated_at"`

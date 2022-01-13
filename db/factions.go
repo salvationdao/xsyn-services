@@ -27,6 +27,21 @@ func FactionCreate(ctx context.Context, conn Conn, faction *passport.Faction) er
 	return nil
 }
 
+func FactionGet(ctx context.Context, conn Conn, factionID passport.FactionID) (*passport.Faction, error) {
+	result := &passport.Faction{}
+
+	q := `
+		SELECT * FROM factions WHERE id = $1
+	`
+
+	err := pgxscan.Get(ctx, conn, result, q, factionID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return result, nil
+}
+
 func FactionAll(ctx context.Context, conn Conn) ([]*passport.Faction, error) {
 	result := []*passport.Faction{}
 

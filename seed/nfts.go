@@ -2,9 +2,10 @@ package seed
 
 import (
 	"context"
-	"github.com/ninja-software/terror/v2"
 	"passport"
 	"passport/db"
+
+	"github.com/ninja-software/terror/v2"
 )
 
 func (s *Seeder) SeedNFTS(ctx context.Context) (warMachines, weapons, utility []*passport.XsynNftMetadata, error error) {
@@ -35,6 +36,10 @@ func (s *Seeder) SeedWarMachine(ctx context.Context) ([]*passport.XsynNftMetadat
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Asset Type",
+					Value:     "War Machine",
+				},
 				{
 					TraitType: "War Machine Win Rank",
 					Value:     1,
