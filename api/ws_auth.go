@@ -8,12 +8,14 @@ import (
 	"net/url"
 	"passport"
 	"passport/db"
+	"passport/helpers"
 	"passport/log_helpers"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/hub/v2"
 	"github.com/ninja-software/hub/v2/ext/auth"
+	"github.com/ninja-software/hub/v2/ext/messagebus"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 	"google.golang.org/api/idtoken"
@@ -248,23 +250,39 @@ func (ac *AuthController) TwitchConnectHandler(ctx context.Context, hubc *hub.Cl
 		return terror.Error(err, "Failed to query user")
 	}
 
+	// Activity tracking
+	var oldUser passport.User = *user
+
 	// Update user's Twitch ID
 	err = db.UserAddTwitch(ctx, ac.Conn, user, resp.UserID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
+	// Get user
+	user, err = db.UserGet(ctx, ac.Conn, passport.UserID(userID))
+	if err != nil {
+		return terror.Error(err, "Failed to query user")
+	}
+
 	reply(user)
 
-	// send user changes to connected clients
-	ac.API.SendToAllServerClient(&ServerClientMessage{
-		Key: UserUpdated,
-		Payload: struct {
-			User *passport.User `json:"user"`
-		}{
-			User: user,
+	// Record user activity
+	ac.API.RecordUserActivity(ctx,
+		hubc.Identifier(),
+		"Added Twitch account to User",
+		passport.ObjectTypeUser,
+		helpers.StringPointer(user.ID.String()),
+		&user.Username,
+		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		&passport.UserActivityChangeData{
+			Name: db.TableNames.Users,
+			From: oldUser,
+			To:   user,
 		},
-	})
+	)
+
+	ac.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	return nil
 }
