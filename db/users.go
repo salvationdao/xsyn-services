@@ -374,6 +374,153 @@ func UserAddWallet(ctx context.Context, conn Conn, user *passport.User, publicAd
 	return nil
 }
 
+// UserRemoveFacebook will remove a users associated Facebook account
+func UserRemoveFacebook(ctx context.Context, conn Conn, user *passport.User) error {
+	q := `--sql
+		UPDATE users
+		SET facebook_id = null
+		WHERE id = $1`
+	_, err := conn.Exec(ctx,
+		q,
+		user.ID,
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
+// UserAddFacebook will associate a user with a Facebook account
+func UserAddFacebook(ctx context.Context, conn Conn, user *passport.User, facebookID string) error {
+	count := 0
+
+	q := `--sql
+		SELECT count(*)
+		FROM users
+		WHERE facebook_id = $1`
+
+	err := pgxscan.Get(ctx, conn, &count, q, facebookID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	if count != 0 {
+		return terror.Error(fmt.Errorf("facebook already assigned to a user"), "This user already has an associated Facebook account.")
+	}
+
+	q = `--sql
+		UPDATE users
+		SET facebook_id = $2
+		WHERE id = $1`
+	_, err = conn.Exec(ctx,
+		q,
+		user.ID,
+		facebookID,
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
+// UserRemoveGoogle will remove a users associated Google account
+func UserRemoveGoogle(ctx context.Context, conn Conn, user *passport.User) error {
+	q := `--sql
+		UPDATE users
+		SET google_id = null
+		WHERE id = $1`
+	_, err := conn.Exec(ctx,
+		q,
+		user.ID,
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
+// UserAddGoogle wil associate a user with a Google account
+func UserAddGoogle(ctx context.Context, conn Conn, user *passport.User, googleID string) error {
+	count := 0
+
+	q := `--sql
+		SELECT count(*)
+		FROM users
+		WHERE google_id = $1`
+
+	err := pgxscan.Get(ctx, conn, &count, q, googleID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	if count != 0 {
+		return terror.Error(fmt.Errorf("google already assigned to a user"), "This user already has an associated Google account.")
+	}
+
+	q = `--sql
+		UPDATE users
+		SET google_id = $2
+		WHERE id = $1`
+	_, err = conn.Exec(ctx,
+		q,
+		user.ID,
+		googleID,
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
+// UserRemoveTwitch will remove a users associated Twitch account
+func UserRemoveTwitch(ctx context.Context, conn Conn, user *passport.User) error {
+	q := `--sql
+		UPDATE users
+		SET google_id = null
+		WHERE id = $1`
+	_, err := conn.Exec(ctx,
+		q,
+		user.ID,
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
+// UserAddTwitch wil associate a user with a Twitch account
+func UserAddTwitch(ctx context.Context, conn Conn, user *passport.User, twitchID string) error {
+	count := 0
+
+	q := `--sql
+		SELECT count(*)
+		FROM users
+		WHERE twitch_id = $1`
+
+	err := pgxscan.Get(ctx, conn, &count, q, twitchID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	if count != 0 {
+		return terror.Error(fmt.Errorf("twitch already assigned to a user"), "This user already has an associated Twitch account.")
+	}
+
+	q = `--sql
+		UPDATE users
+		SET twitch_id = $2
+		WHERE id = $1`
+	_, err = conn.Exec(ctx,
+		q,
+		user.ID,
+		twitchID,
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
 // UserVerify will mark a user as verified
 func UserVerify(ctx context.Context, conn Conn, id passport.UserID) error {
 	q := `

@@ -20,9 +20,9 @@ type User struct {
 	FirstName                        string        `json:"firstName" db:"first_name"`
 	LastName                         string        `json:"lastName" db:"last_name"`
 	Email                            null.String   `json:"email" db:"email"`
-	FacebookID                       null.String   `json:"-" db:"facebook_id"`
-	GoogleID                         null.String   `json:"-" db:"google_id"`
-	TwitchID                         null.String   `json:"-" db:"twitch_id"`
+	FacebookID                       null.String   `json:"facebookID" db:"facebook_id"`
+	GoogleID                         null.String   `json:"googleID" db:"google_id"`
+	TwitchID                         null.String   `json:"twitchID" db:"twitch_id"`
 	FactionID                        *FactionID    `json:"factionID" db:"faction_id"`
 	Faction                          *Faction      `json:"faction"`
 	Username                         string        `json:"username" db:"username"`

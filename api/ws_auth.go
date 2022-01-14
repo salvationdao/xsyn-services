@@ -200,12 +200,7 @@ func (ac *AuthController) TwitchConnectHandler(ctx context.Context, hubc *hub.Cl
 	}
 
 	// Get Twitch access token from code
-	requestUri := fmt.Sprintf(`https://id.twitch.tv/oauth2/token
-    ?client_id=%s
-    &client_secret=%s
-    &code=%s
-    &grant_type=authorization_code
-    &redirect_uri=%s`,
+	requestUri := fmt.Sprintf("https://id.twitch.tv/oauth2/token?client_id=%s&client_secret=%s&code=%s&grant_type=authorization_code&redirect_uri=%s",
 		ac.TwitchClientID,
 		ac.TwitchClientSecret,
 		req.Payload.Code,
@@ -228,22 +223,25 @@ func (ac *AuthController) TwitchConnectHandler(ctx context.Context, hubc *hub.Cl
 		return terror.Error(err, "Failed to get Twitch access token")
 	}
 
-	// Get Twitch user using access token
-	reqUser, err := http.NewRequest("GET", "https://api.twitch.tv/kraken/user", nil)
-	reqUser.Header.Set("Accept", "application/vnd.twitchtv.v5+json")
-	reqUser.Header.Set("Client-ID", ac.TwitchClientID)
-	reqUser.Header.Set("Authorization", fmt.Sprintf("OAuth %s", respBody.AccessToken))
+	// Verify Twitch access token
+	bearer := "Bearer " + url.QueryEscape(respBody.AccessToken)
+	req2, _ := http.NewRequest("GET", "https://id.twitch.tv/oauth2/validate", nil)
+	req2.Header.Add("Authorization", bearer)
 	client := &http.Client{}
-	respUser, err := client.Do(reqUser)
+	r2, err := client.Do(req2)
 	if err != nil {
-		return terror.Error(err, "Failed to get Twitch user")
+		return terror.Error(err, "Failed to validate Twitch access token")
 	}
-	respUserBody := &struct {
-		ID string `json:"_id"`
+	defer r2.Body.Close()
+
+	resp := &struct {
+		ClientID string `json:"client_id"`
+		Login    string `json:"login"`
+		UserID   string `json:"user_id"`
 	}{}
-	err = json.NewDecoder(respUser.Body).Decode(respUserBody)
+	err = json.NewDecoder(r2.Body).Decode(resp)
 	if err != nil {
-		return terror.Error(err, "Failed to get Twitch user")
+		return terror.Error(err)
 	}
 
 	userID, err := uuid.FromString(hubc.Identifier())
@@ -254,17 +252,11 @@ func (ac *AuthController) TwitchConnectHandler(ctx context.Context, hubc *hub.Cl
 	// Get user
 	user, err := db.UserGet(ctx, ac.Conn, passport.UserID(userID))
 	if err != nil {
-		return terror.Error(err, "failed to query user")
+		return terror.Error(err, "Failed to query user")
 	}
 
-	// Update user's Facebook ID
-	user.TwitchID = null.StringFrom(respUserBody.ID)
-
-	// Update user
-	err = db.UserUpdate(ctx, ac.Conn, user)
-	if err != nil {
-		return terror.Error(err, "Failed to update user with Twitch ID")
-	}
+	// Update user's Twitch ID
+	db.UserAddTwitch(ctx, ac.Conn, user, resp.UserID)
 
 	reply(user)
 
