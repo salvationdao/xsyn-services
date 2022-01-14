@@ -53,6 +53,8 @@ func NewAPI(
 	mailer *email.Mailer,
 	addr string,
 	twitchExtensionSecret []byte,
+	twitchClientID string,
+	twitchClientSecret string,
 	HTMLSanitize *bluemonday.Policy,
 	config *passport.Config,
 ) *API {
@@ -138,7 +140,7 @@ func NewAPI(
 	_ = NewUserController(log, conn, api)
 	_ = NewAuthController(log, conn, api, &auth.GoogleConfig{
 		ClientID: googleClientID,
-	})
+	}, twitchClientID, twitchClientSecret)
 	_ = NewFactionController(log, conn, api)
 	_ = NewOrganisationController(log, conn, api)
 	_ = NewRoleController(log, conn, api)

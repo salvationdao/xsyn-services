@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"passport"
@@ -21,40 +22,44 @@ import (
 
 // AuthController holds handlers for roles
 type AuthController struct {
-	Conn   *pgxpool.Pool
-	Log    *zerolog.Logger
-	API    *API
-	Google *auth.GoogleConfig
+	Conn               *pgxpool.Pool
+	Log                *zerolog.Logger
+	API                *API
+	Google             *auth.GoogleConfig
+	TwitchClientID     string
+	TwitchClientSecret string
 }
 
 // NewAuthController creates the role hub
-func NewAuthController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, googleConfig *auth.GoogleConfig) *AuthController {
+func NewAuthController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, googleConfig *auth.GoogleConfig, twitchClientID string, twitchClientSecret string) *AuthController {
 	authHub := &AuthController{
-		Conn:   conn,
-		Log:    log_helpers.NamedLogger(log, "role_hub"),
-		API:    api,
-		Google: googleConfig,
+		Conn:               conn,
+		Log:                log_helpers.NamedLogger(log, "role_hub"),
+		API:                api,
+		Google:             googleConfig,
+		TwitchClientID:     twitchClientID,
+		TwitchClientSecret: twitchClientSecret,
 	}
 
-	api.Command(HubKeyTwitchAuth, authHub.TwitchAuthHandler)
-	api.Command(HubKeyAuthConnectFacebook, authHub.FacebookConnectHandler)
+	api.Command(HubKeyAuthTwitchEnlist, authHub.TwitchEnlistHandler)
+	api.Command(HubKeyAuthFacebookConnect, authHub.FacebookConnectHandler)
 
 	return authHub
 }
 
-// TwitchAuthRequest requests an update for an existing user
-type TwitchAuthRequest struct {
+// TwitchEnlistRequest requests an update for an existing user
+type TwitchEnlistRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		TwitchToken string `json:"twitchToken"`
 	} `json:"payload"`
 }
 
-// 	rootHub.SecureCommand(HubKeyTwitchAuth, UserController.GetHandler)
-const HubKeyTwitchAuth hub.HubCommandKey = "TWITCH:AUTH"
+// 	rootHub.SecureCommand(HubKeyAuthTwitchEnlist, UserController.GetHandler)
+const HubKeyAuthTwitchEnlist hub.HubCommandKey = "AUTH:TWITCH:ENLIST"
 
-func (ac *AuthController) TwitchAuthHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &TwitchAuthRequest{}
+func (ac *AuthController) TwitchEnlistHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &TwitchEnlistRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
@@ -64,7 +69,7 @@ func (ac *AuthController) TwitchAuthHandler(ctx context.Context, hubc *hub.Clien
 		return terror.Error(terror.ErrInvalidInput, "Twitch jwt is empty")
 	}
 
-	resp, err := ac.API.Auth.TwitchLogin(ctx, hubc, req.Payload.TwitchToken)
+	resp, err := ac.API.Auth.TwitchLogin(ctx, hubc, req.Payload.TwitchToken, "", false)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -105,7 +110,7 @@ type NewConnectionRequest struct {
 	} `json:"payload"`
 }
 
-const HubKeyAuthConnectFacebook hub.HubCommandKey = "AUTH:FACEBOOK:CONNECT"
+const HubKeyAuthFacebookConnect hub.HubCommandKey = "AUTH:FACEBOOK:CONNECT"
 
 func (ac *AuthController) FacebookConnectHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &NewConnectionRequest{}
@@ -168,7 +173,7 @@ func (ac *AuthController) FacebookConnectHandler(ctx context.Context, hubc *hub.
 	return nil
 }
 
-const HubKeyAuthConnectGoogle hub.HubCommandKey = "AUTH:GOOGLE:CONNECT"
+const HubKeyAuthGoogleConnect hub.HubCommandKey = "AUTH:GOOGLE:CONNECT"
 
 func (ac *AuthController) GoogleConnectHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &NewConnectionRequest{}
@@ -228,9 +233,105 @@ func (ac *AuthController) GoogleConnectHandler(ctx context.Context, hubc *hub.Cl
 	return nil
 }
 
+type TwitchConnectionRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Code        string `json:"code"`
+		RedirectURI string `json:"redirectURI"`
+	} `json:"payload"`
+}
+
 const HubKeyAuthConnectTwitch hub.HubCommandKey = "AUTH:TWITCH:CONNECT"
 
 func (ac *AuthController) TwitchConnectHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &TwitchConnectionRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	if req.Payload.Code == "" {
+		return terror.Error(terror.ErrInvalidInput, "Twitch code is empty")
+	}
+
+	// Get Twitch access token from code
+	requestUri := fmt.Sprintf(`https://id.twitch.tv/oauth2/token
+    ?client_id=%s
+    &client_secret=%s
+    &code=%s
+    &grant_type=authorization_code
+    &redirect_uri=%s`,
+		ac.TwitchClientID,
+		ac.TwitchClientSecret,
+		req.Payload.Code,
+		req.Payload.RedirectURI)
+	r, err := http.Post(requestUri, "application/json", nil)
+	if err != nil {
+		return terror.Error(err, "Failed to get Twitch access token")
+	}
+	defer r.Body.Close()
+
+	respBody := &struct {
+		AccessToken  string   `json:"access_token"`
+		RefreshToken string   `json:"refresh_token"`
+		ExpiresIn    int64    `json:"expires_in"`
+		Scope        []string `json:"scope"`
+		TokenType    string   `json:"token_type"`
+	}{}
+	err = json.NewDecoder(r.Body).Decode(respBody)
+	if err != nil {
+		return terror.Error(err, "Failed to get Twitch access token")
+	}
+
+	// Get Twitch user using access token
+	reqUser, err := http.NewRequest("GET", "https://api.twitch.tv/kraken/user", nil)
+	reqUser.Header.Set("Accept", "application/vnd.twitchtv.v5+json")
+	reqUser.Header.Set("Client-ID", ac.TwitchClientID)
+	reqUser.Header.Set("Authorization", fmt.Sprintf("OAuth %s", respBody.AccessToken))
+	client := &http.Client{}
+	respUser, err := client.Do(reqUser)
+	if err != nil {
+		return terror.Error(err, "Failed to get Twitch user")
+	}
+	respUserBody := &struct {
+		ID string `json:"_id"`
+	}{}
+	err = json.NewDecoder(respUser.Body).Decode(respUserBody)
+	if err != nil {
+		return terror.Error(err, "Failed to get Twitch user")
+	}
+
+	userID, err := uuid.FromString(hubc.Identifier())
+	if err != nil {
+		return terror.Error(err, "Could not convert user ID to UUID")
+	}
+
+	// Get user
+	user, err := db.UserGet(ctx, ac.Conn, passport.UserID(userID))
+	if err != nil {
+		return terror.Error(err, "failed to query user")
+	}
+
+	// Update user's Facebook ID
+	user.TwitchID = null.StringFrom(respUserBody.ID)
+
+	// Update user
+	err = db.UserUpdate(ctx, ac.Conn, user)
+	if err != nil {
+		return terror.Error(err, "Failed to update user with Twitch ID")
+	}
+
+	reply(user)
+
+	// send user changes to connected clients
+	ac.API.SendToAllServerClient(&ServerClientMessage{
+		Key: UserUpdated,
+		Payload: struct {
+			User *passport.User `json:"user"`
+		}{
+			User: user,
+		},
+	})
 
 	return nil
 }

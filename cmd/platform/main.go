@@ -84,7 +84,9 @@ func main() {
 					&cli.IntFlag{Name: "jwt_expiry_days", Value: 1, EnvVars: []string{envPrefix + "_JWT_EXPIRY_DAYS", "JWT_EXPIRY_DAYS"}, Usage: "expiry days for auth tokens"},
 					&cli.StringFlag{Name: "metamask_sign_message", Value: "", EnvVars: []string{envPrefix + "_METAMASK_SIGN_MESSAGE", "METAMASK_SIGN_MESSAGE"}, Usage: "message to show in metamask key sign flow, needs to match frontend"},
 
-					&cli.StringFlag{Name: "twitch_extension_secret", Value: "", EnvVars: []string{envPrefix + "_TWITCH_EXTENSION_SECRET", "_TWITCH_EXTENSION_SECRET"}, Usage: "Twitch Extension Secret for verifying tokens sent with requests"},
+					&cli.StringFlag{Name: "twitch_extension_secret", Value: "", EnvVars: []string{envPrefix + "_TWITCH_EXTENSION_SECRET", "TWITCH_EXTENSION_SECRET"}, Usage: "Twitch extension secret for verifying shadow account tokens sent with requests"},
+					&cli.StringFlag{Name: "twitch_client_id", Value: "", EnvVars: []string{envPrefix + "_TWITCH_CLIENT_ID", "TWITCH_CLIENT_ID"}, Usage: "Twitch client ID for verifying web account tokens sent with requests"},
+					&cli.StringFlag{Name: "twitch_client_secret", Value: "", EnvVars: []string{envPrefix + "_TWITCH_CLIENT_SECRET", "TWITCH_CLIENT_SECRET"}, Usage: "Twitch client secret for verifying web account tokens sent with requests"},
 				},
 
 				Usage: "run server",
@@ -263,13 +265,23 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		return terror.Error(api.ErrCheckDBDirty)
 	}
 
-	twitchExtensionSecret := ctxCLI.String("twitch_extension_secret")
-	if twitchExtensionSecret == "" {
-		return fmt.Errorf("missing twitch extension secret")
+	twitchExtensionSecretBase64 := ctxCLI.String("twitch_extension_secret")
+	if twitchExtensionSecretBase64 == "" {
+		return terror.Panic(nil, "Missing twitch extension secret")
 	}
-	secret, err := base64.StdEncoding.DecodeString(twitchExtensionSecret)
+	twitchExtensionSecret, err := base64.StdEncoding.DecodeString(twitchExtensionSecretBase64)
 	if err != nil {
-		return terror.Error(err, "Failed to decode twitch extension secret")
+		return terror.Panic(err, "Failed to decode twitch extension secret")
+	}
+
+	twitchClientID := ctxCLI.String("twitch_client_id")
+	if twitchClientID == "" {
+		return terror.Panic(nil, "Missing Twitch client ID")
+	}
+
+	twitchClientSecret := ctxCLI.String("twitch_client_secret")
+	if twitchClientSecret == "" {
+		return terror.Panic(nil, "Missing Twitch client secret")
 	}
 
 	// Mailer
@@ -284,6 +296,6 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
-	api := api.NewAPI(log, cancelOnPanic, pgxconn, ctxCLI.String("google_client_id"), mailer, apiAddr, secret, HTMLSanitizePolicy, config)
+	api := api.NewAPI(log, cancelOnPanic, pgxconn, ctxCLI.String("google_client_id"), mailer, apiAddr, twitchExtensionSecret, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config)
 	return api.Run(ctx)
 }
