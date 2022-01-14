@@ -32,6 +32,7 @@ require (
 	github.com/volatiletech/sqlboiler/v4 v4.8.0
 	go.uber.org/zap v1.20.0
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
+	google.golang.org/api v0.61.0
 	nhooyr.io/websocket v1.8.7
 	syreclabs.com/go/faker v1.2.3
 )
