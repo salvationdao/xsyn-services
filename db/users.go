@@ -476,7 +476,7 @@ func UserAddGoogle(ctx context.Context, conn Conn, user *passport.User, googleID
 func UserRemoveTwitch(ctx context.Context, conn Conn, user *passport.User) error {
 	q := `--sql
 		UPDATE users
-		SET google_id = null
+		SET twitch_id = null
 		WHERE id = $1`
 	_, err := conn.Exec(ctx,
 		q,
@@ -502,8 +502,6 @@ func UserAddTwitch(ctx context.Context, conn Conn, user *passport.User, twitchID
 		return terror.Error(err)
 	}
 
-	fmt.Println(twitchID)
-	fmt.Println(count)
 	if count != 0 {
 		return terror.Error(fmt.Errorf("twitch already assigned to a user"), "This Twitch account is already associated with a user.")
 	}

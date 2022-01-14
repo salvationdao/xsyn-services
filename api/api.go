@@ -140,10 +140,10 @@ func NewAPI(
 	_ = NewServerClientController(log, conn, api)
 	_ = NewCheckController(log, conn, api)
 	_ = NewUserActivityController(log, conn, api)
-	_ = NewUserController(log, conn, api)
-	_ = NewAuthController(log, conn, api, &auth.GoogleConfig{
+	_ = NewUserController(log, conn, api, &auth.GoogleConfig{
 		ClientID: googleClientID,
 	}, twitchClientID, twitchClientSecret)
+	_ = NewAuthController(log, conn, api)
 	_ = NewFactionController(log, conn, api)
 	_ = NewOrganisationController(log, conn, api)
 	_ = NewRoleController(log, conn, api)
