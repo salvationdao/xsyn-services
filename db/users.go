@@ -405,7 +405,7 @@ func UserAddFacebook(ctx context.Context, conn Conn, user *passport.User, facebo
 	}
 
 	if count != 0 {
-		return terror.Error(fmt.Errorf("facebook already assigned to a user"), "This user already has an associated Facebook account.")
+		return terror.Error(fmt.Errorf("facebook already assigned to a user"), "This Facebook account is already associated with a user.")
 	}
 
 	q = `--sql
@@ -454,7 +454,7 @@ func UserAddGoogle(ctx context.Context, conn Conn, user *passport.User, googleID
 	}
 
 	if count != 0 {
-		return terror.Error(fmt.Errorf("google already assigned to a user"), "This user already has an associated Google account.")
+		return terror.Error(fmt.Errorf("google already assigned to a user"), "This Google account is already associated with a user.")
 	}
 
 	q = `--sql
@@ -502,8 +502,10 @@ func UserAddTwitch(ctx context.Context, conn Conn, user *passport.User, twitchID
 		return terror.Error(err)
 	}
 
+	fmt.Println(twitchID)
+	fmt.Println(count)
 	if count != 0 {
-		return terror.Error(fmt.Errorf("twitch already assigned to a user"), "This user already has an associated Twitch account.")
+		return terror.Error(fmt.Errorf("twitch already assigned to a user"), "This Twitch account is already associated with a user.")
 	}
 
 	q = `--sql

@@ -16,7 +16,6 @@ import (
 	"github.com/ninja-software/hub/v2/ext/auth"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
-	"github.com/volatiletech/null/v8"
 	"google.golang.org/api/idtoken"
 )
 
@@ -94,13 +93,10 @@ func (ac *AuthController) FacebookConnectHandler(ctx context.Context, hubc *hub.
 		return terror.Error(err, "failed to query user")
 	}
 
-	// Update user's Facebook ID
-	user.FacebookID = null.StringFrom(resp.ID)
-
-	// Update user
-	err = db.UserUpdate(ctx, ac.Conn, user)
+	// Update user's Twitch ID
+	err = db.UserAddTwitch(ctx, ac.Conn, user, resp.ID)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err)
 	}
 
 	reply(user)
@@ -154,13 +150,10 @@ func (ac *AuthController) GoogleConnectHandler(ctx context.Context, hubc *hub.Cl
 		return terror.Error(err, "failed to query user")
 	}
 
-	// Update user's Google ID
-	user.GoogleID = null.StringFrom(googleID)
-
-	// Update user
-	err = db.UserUpdate(ctx, ac.Conn, user)
+	// Update user's Twitch ID
+	err = db.UserAddGoogle(ctx, ac.Conn, user, googleID)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err)
 	}
 
 	reply(user)
@@ -256,7 +249,10 @@ func (ac *AuthController) TwitchConnectHandler(ctx context.Context, hubc *hub.Cl
 	}
 
 	// Update user's Twitch ID
-	db.UserAddTwitch(ctx, ac.Conn, user, resp.UserID)
+	err = db.UserAddTwitch(ctx, ac.Conn, user, resp.UserID)
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	reply(user)
 
