@@ -300,7 +300,6 @@ CREATE SEQUENCE IF NOT EXISTS token_id_seq;
 
 CREATE TABLE xsyn_nft_metadata (
     token_id numeric(78, 0) PRIMARY KEY NOT NULL,
-    id uuid NOT NULL PRIMARY KEY DEFAULT gen_random_uuid (),
     name text NOT NULL,
     game text,
     game_object jsonb,
