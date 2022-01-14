@@ -7,6 +7,13 @@ import (
 	"github.com/volatiletech/null/v8"
 )
 
+const (
+	XsyncTreasureyUsername string = "Xsyn"
+	SupremacyGameUsername  string = "Supremacy"
+)
+
+const ServerClientLevel = 5
+
 // User is a single user on the platform
 type User struct {
 	ID                               UserID        `json:"id" db:"id"`
@@ -39,14 +46,9 @@ type User struct {
 	DeletedAt                        *time.Time    `json:"deletedAt" db:"deleted_at"`
 }
 
-// IsAdmin returns true if user is a admin role
+// IsAdmin is needed for the hub interface, no admins here!
 func (user *User) IsAdmin() bool {
-	return user.RoleID == UserRoleAdminID || user.RoleID == UserRoleSuperAdminID
-}
-
-// IsSuperAdmin returns true if user is a super admin role
-func (user *User) IsSuperAdmin() bool {
-	return user.RoleID == UserRoleSuperAdminID
+	return false
 }
 
 // IsMember returns true if user is a member

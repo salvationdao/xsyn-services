@@ -104,3 +104,13 @@ func (api *API) SendToAllServerClient(msg *ServerClientMessage) {
 		}
 	}
 }
+
+func (api *API) HandleServerClients() {
+	var serverClientsMap ServerClientsList = map[ServerClientName]map[*hub.Client]bool{}
+	for {
+		select {
+		case serverClientsFN := <-api.serverClients:
+			serverClientsFN(serverClientsMap)
+		}
+	}
+}

@@ -36,66 +36,9 @@ func NewAuthController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 		Google: googleConfig,
 	}
 
-	api.Command(HubKeyTwitchAuth, authHub.TwitchAuthHandler)
 	api.Command(HubKeyAuthConnectFacebook, authHub.FacebookConnectHandler)
 
 	return authHub
-}
-
-// TwitchAuthRequest requests an update for an existing user
-type TwitchAuthRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		TwitchToken string `json:"twitchToken"`
-	} `json:"payload"`
-}
-
-// 	rootHub.SecureCommand(HubKeyTwitchAuth, UserController.GetHandler)
-const HubKeyTwitchAuth hub.HubCommandKey = "TWITCH:AUTH"
-
-func (ac *AuthController) TwitchAuthHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &TwitchAuthRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received")
-	}
-
-	if req.Payload.TwitchToken == "" {
-		return terror.Error(terror.ErrInvalidInput, "Twitch jwt is empty")
-	}
-
-	resp, err := ac.API.Auth.TwitchLogin(ctx, hubc, req.Payload.TwitchToken)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	// Get user
-	user, err := db.UserGet(ctx, ac.Conn, passport.UserID(resp.User.Fields().ID()))
-	if err != nil {
-		return terror.Error(err, "failed to query user")
-	}
-
-	if user.FactionID != nil && !user.FactionID.IsNil() {
-		faction, err := db.FactionGet(ctx, ac.Conn, *user.FactionID)
-		if err != nil {
-			return terror.Error(err)
-		}
-		user.Faction = faction
-	}
-
-	reply(user)
-
-	// send user changes to connected clients
-	ac.API.SendToAllServerClient(&ServerClientMessage{
-		Key: UserUpdated,
-		Payload: struct {
-			User *passport.User `json:"user"`
-		}{
-			User: user,
-		},
-	})
-
-	return nil
 }
 
 type NewConnectionRequest struct {

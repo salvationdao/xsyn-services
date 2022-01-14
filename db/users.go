@@ -254,7 +254,7 @@ func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 		INSERT INTO users (first_name, last_name, email, username, public_address, avatar_id, role_id, verified, facebook_id, google_id, twitch_id)
 		VALUES ($1, $2, $3, $4, LOWER($5), $6, $7, $8, $9, $10, $11)
 		RETURNING
-			id, role_id, first_name, last_name, email, username, avatar_id, created_at, updated_at, deleted_at, facebook_id, google_id, twitch_id`
+			id, role_id, first_name, last_name, email, username, avatar_id, created_at, updated_at, deleted_at, facebook_id, google_id, twitch_id, sups`
 	err = pgxscan.Get(ctx,
 		conn,
 		user,

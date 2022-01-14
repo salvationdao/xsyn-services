@@ -42,6 +42,9 @@ type API struct {
 	// server clients
 	serverClients       chan func(serverClients ServerClientsList)
 	sendToServerClients chan *ServerClientMessage
+
+	// transaction channel
+	transaction chan *Transaction
 }
 
 // NewAPI registers routes
@@ -143,22 +146,18 @@ func NewAPI(
 	_ = NewOrganisationController(log, conn, api)
 	_ = NewRoleController(log, conn, api)
 	_ = NewProductController(log, conn, api)
+	_ = NewSupremacyController(log, conn, api)
 
 	//api.Hub.Events.AddEventHandler(hub.EventOnline, api.ClientOnline)
 	api.Hub.Events.AddEventHandler(auth.EventLogin, api.ClientAuth)
 	api.Hub.Events.AddEventHandler(auth.EventLogout, api.ClientLogout)
 	api.Hub.Events.AddEventHandler(hub.EventOffline, api.ClientOffline)
 
-	// listen for client server functions
-	go func() {
-		var serverClientsMap ServerClientsList = map[ServerClientName]map[*hub.Client]bool{}
-		for {
-			select {
-			case serverClientsFN := <-api.serverClients:
-				serverClientsFN(serverClientsMap)
-			}
-		}
-	}()
+	// Run the server client channel listener
+	go api.HandleServerClients()
+
+	// Run the transaction channel listener
+	go api.HandleTransactions()
 
 	return api
 }

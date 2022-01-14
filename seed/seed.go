@@ -40,11 +40,23 @@ func NewSeeder(conn *pgxpool.Pool) *Seeder {
 func (s *Seeder) Run(isProd bool) error {
 	ctx := context.Background()
 
-	//fmt.Println("Seeding roles")
-	//err := s.Roles(ctx)
-	//if err != nil {
-	//	return terror.Error(err, "seed roles failed")
-	//}
+	fmt.Println("Seeding roles")
+	err := s.Roles(ctx)
+	if err != nil {
+		return terror.Error(err, "seed roles failed")
+	}
+
+	fmt.Println("Seeding Treasury User")
+	_, err = s.XsynTreasuryUser(ctx)
+	if err != nil {
+		return terror.Error(err, "seed users failed")
+	}
+
+	fmt.Println("Seeding Supremacy User")
+	_, err = s.SupremacyUser(ctx)
+	if err != nil {
+		return terror.Error(err, "seed users failed")
+	}
 
 	//fmt.Println("Seeding organisations")
 	//organisations, err := s.Organisations(ctx)
@@ -67,11 +79,11 @@ func (s *Seeder) Run(isProd bool) error {
 
 	}
 
-	fmt.Println("Seeding factions")
-	err := s.factions(ctx)
-	if err != nil {
-		return terror.Error(err, "seed factions")
-	}
+	//fmt.Println("Seeding factions")
+	//err := s.factions(ctx)
+	//if err != nil {
+	//	return terror.Error(err, "seed factions")
+	//}
 
 	//fmt.Println("Seeding products")
 	//err = s.Products(ctx)
@@ -111,70 +123,46 @@ func (s *Seeder) factions(ctx context.Context) error {
 	return nil
 }
 
-// Roles for database spinup
+// Roles for database spin-up
 func (s *Seeder) Roles(ctx context.Context) error {
-	// Super Admin
-	allPerms := []string{}
+
+	var allPerms []string
 	for _, perm := range passport.AllPerm {
 		allPerms = append(allPerms, string(perm))
 	}
-	superAdminRole := &passport.Role{
-		ID:          passport.UserRoleSuperAdminID,
-		Name:        "Super Admin",
+	xsynTreasuryRole := &passport.Role{
+		ID:          passport.UserRoleXsynTreasury,
+		Name:        "Xsyn Treasury",
 		Permissions: allPerms,
 		Tier:        1,
 	}
-	err := db.RoleCreateReserved(ctx, s.Conn, superAdminRole)
+	err := db.RoleCreateReserved(ctx, s.Conn, xsynTreasuryRole)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	// Admin
-	adminRole := &passport.Role{
-		ID:   passport.UserRoleAdminID,
-		Name: "Admin",
-		Permissions: []string{
-			// Users
-			string(passport.PermUserList),
-			string(passport.PermUserCreate),
-			string(passport.PermUserRead),
-			string(passport.PermUserUpdate),
-			string(passport.PermUserArchive),
-			string(passport.PermUserUnarchive),
-			// Organisations
-			string(passport.PermOrganisationList),
-			string(passport.PermOrganisationCreate),
-			string(passport.PermOrganisationRead),
-			string(passport.PermOrganisationUpdate),
-			string(passport.PermOrganisationArchive),
-			string(passport.PermOrganisationUnarchive),
-			// Products
-			string(passport.PermProductList),
-			string(passport.PermProductCreate),
-			string(passport.PermProductRead),
-			string(passport.PermProductUpdate),
-			string(passport.PermProductArchive),
-			string(passport.PermProductUnarchive),
-			// Other
-			string(passport.PermAdminPortal),
-			string(passport.PermUserActivityList),
-		},
-		Tier: 2,
+	// Game Treasury Account
+	gameTreasuryRole := &passport.Role{
+		ID:          passport.UserRoleGameTreasury,
+		Name:        "Game Treasury",
+		Permissions: allPerms,
+		Tier:        1,
 	}
-	err = db.RoleCreateReserved(ctx, s.Conn, adminRole)
+	err = db.RoleCreateReserved(ctx, s.Conn, gameTreasuryRole)
 	if err != nil {
 		return terror.Error(err)
 	}
 
 	// Member
 	memberRole := &passport.Role{
-		ID:   passport.UserRoleMemberID,
-		Name: "Member",
+		ID:          passport.UserRoleMemberID,
+		Name:        "Member",
 		Permissions: []string{
-			string(passport.PermUserRead),
-			string(passport.PermOrganisationRead),
-			string(passport.PermProductList),
-			string(passport.PermProductRead),
+			// TODO: possible add perms?
+			//string(passport.PermUserRead),
+			//string(passport.PermOrganisationRead),
+			//string(passport.PermProductList),
+			//string(passport.PermProductRead),
 		},
 		Tier: 3,
 	}

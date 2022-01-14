@@ -8,8 +8,8 @@ import (
 
 var (
 	UserRoleMemberID     = RoleID(uuid.Must(uuid.FromString("cca82653-c071-4171-92da-05b0808542e7")))
-	UserRoleAdminID      = RoleID(uuid.Must(uuid.FromString("1fb981b2-7489-4061-a379-1430ec4f7a63")))
-	UserRoleSuperAdminID = RoleID(uuid.Must(uuid.FromString("85837f44-988c-4d1d-a292-e376b87015cd")))
+	UserRoleXsynTreasury = RoleID(uuid.Must(uuid.FromString("1fb981b2-7489-4061-a379-1430ec4f7a63")))
+	UserRoleGameTreasury = RoleID(uuid.Must(uuid.FromString("85837f44-988c-4d1d-a292-e376b87015cd")))
 )
 
 // Role is an object representing the database table.
