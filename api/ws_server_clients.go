@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"passport"
+	"passport/db"
 	"passport/log_helpers"
 
 	"github.com/ninja-software/terror/v2"
@@ -58,17 +60,23 @@ func (ch *ServerClientControllerWS) Handler(ctx context.Context, hubc *hub.Clien
 		return terror.Error(fmt.Errorf("missing client secret"))
 	}
 
-	// setting level, not sure if its needed but may be handy
-	hubc.SetLevel(5)
+	// TODO: get the client IDs name from a db table then get the relative game user and set details on the hub client
+	supremacyUser, err := db.UserIDFromUsername(ctx, ch.Conn, passport.SupremacyGameUsername)
+	if err != nil {
+		return terror.Error(err)
+	}
+	// setting level and identifier
+	hubc.SetLevel(passport.ServerClientLevel)
+	hubc.SetIdentifier(supremacyUser.String())
 
-	// TODO: get the client IDs name
+	// TODO: get the matching server name
 	serverName := SupremacyGameServer
 
 	// add this connection to our server client map
 	ch.API.ServerClientOnline(serverName, hubc)
 
 	reply(true)
-	ch.API.SendToAllServerClient(&ServerClientMessage{
+	ch.API.SendToServerClient(serverName, &ServerClientMessage{
 		Key:     Authed,
 		Payload: nil,
 	})

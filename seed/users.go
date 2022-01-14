@@ -21,9 +21,7 @@ func (s *Seeder) Users(ctx context.Context, organisations []*passport.Organisati
 		ctx,
 		MaxMembersPerOrganisation,
 		passport.UserRoleMemberID,
-		nil,
-		userSuperAdminID, userAdminID, userMemberID,
-	)
+		nil)
 	if err != nil {
 		return terror.Error(err, "generate random users")
 	}
@@ -34,37 +32,8 @@ func (s *Seeder) Users(ctx context.Context, organisations []*passport.Organisati
 
 	passwordHash := crypto.HashPassword("NinjaDojo_!")
 
-	fmt.Println(" - set superadmin user")
-	user := randomUsers[userIndex]
-	user.Email = passport.NewString("superadmin@example.com")
-	user.RoleID = passport.UserRoleSuperAdminID
-	err = db.UserUpdate(ctx, s.Conn, user)
-	if err != nil {
-		return terror.Error(err)
-	}
-	err = db.AuthSetPasswordHash(ctx, s.Conn, user.ID, passwordHash)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	userIndex++
-
-	fmt.Println(" - set admin user")
-	user = randomUsers[userIndex]
-	user.Email = passport.NewString("admin@example.com")
-	user.RoleID = passport.UserRoleAdminID
-	err = db.UserUpdate(ctx, s.Conn, user)
-	if err != nil {
-		return terror.Error(err)
-	}
-	err = db.AuthSetPasswordHash(ctx, s.Conn, user.ID, passwordHash)
-	if err != nil {
-		return terror.Error(err)
-	}
-	userIndex++
-
 	fmt.Println(" - set member user")
-	user = randomUsers[userIndex]
+	user := randomUsers[userIndex]
 	user.Email = passport.NewString("member@example.com")
 	user.RoleID = passport.UserRoleMemberID
 	err = db.UserUpdate(ctx, s.Conn, user)
@@ -175,4 +144,48 @@ func (s *Seeder) RandomUsers(
 	}
 
 	return users, nil
+}
+
+func (s *Seeder) SupremacyUser(ctx context.Context) (*passport.User, error) {
+	// Create user
+	u := &passport.User{
+		Username: passport.SupremacyGameUsername,
+		RoleID:   passport.UserRoleGameTreasury,
+		Verified: true,
+	}
+
+	// Insert
+	err := db.UserCreate(ctx, s.Conn, u)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return u, nil
+}
+
+func (s *Seeder) XsynTreasuryUser(ctx context.Context) (*passport.User, error) {
+	// Create user
+	u := &passport.User{
+		Username: passport.XsyncTreasureyUsername,
+		RoleID:   passport.UserRoleXsynTreasury,
+		Verified: true,
+	}
+
+	// Insert
+	err := db.UserCreate(ctx, s.Conn, u)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	q := `UPDATE users
+			set sups = 300000000000000000000000
+			where id = $1 `
+
+	// add the 30mil sups
+	_, err = s.Conn.Exec(ctx, q, u.ID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return u, nil
 }

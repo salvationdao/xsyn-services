@@ -1,9 +1,10 @@
 package api
 
 import (
-	"passport"
 	"context"
 	"encoding/json"
+	"passport"
+	"passport/db"
 
 	"github.com/ninja-software/hub/v2"
 	"github.com/ninja-software/hub/v2/ext/messagebus"
@@ -58,7 +59,7 @@ func (api *API) SubscribeCommandWithPermission(key hub.HubCommandKey, fn HubSubs
 
 	api.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 		if perm != "" && !wsc.HasPermission(string(perm)) {
-			return terror.ErrForbidden
+			return terror.Error(terror.ErrForbidden)
 		}
 
 		tx, bskey, err := fn(ctx, wsc, payload, reply)
@@ -96,4 +97,24 @@ func defaultSubscribeCommandFunc(ctx context.Context, client *hub.Client, payloa
 		return "", terror.Error(err, "Invalid request received")
 	}
 	return messagebus.BusKey(req.Key), nil
+}
+
+// SupremacyCommand is a check to make sure the client is authed a supremacy game server
+func (api *API) SupremacyCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) {
+	api.Hub.Handle(key, func(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+		if hubc.Level != passport.ServerClientLevel {
+			return terror.Error(terror.ErrForbidden)
+		}
+
+		supremacyUser, err := db.UserIDFromUsername(ctx, api.Conn, passport.SupremacyGameUsername)
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		if hubc.Identifier() != supremacyUser.String() {
+			return terror.Error(terror.ErrForbidden)
+		}
+
+		return fn(ctx, hubc, payload, reply)
+	})
 }

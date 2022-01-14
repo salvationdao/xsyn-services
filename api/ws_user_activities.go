@@ -1,11 +1,11 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
 	"passport"
 	"passport/db"
 	"passport/log_helpers"
-	"context"
-	"encoding/json"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/hub/v2"
@@ -55,7 +55,7 @@ type UserActivityListRequest struct {
 // UserActivityListResponse is the response from the userActivity update request
 type UserActivityListResponse struct {
 	Records []*passport.UserActivity `json:"records"`
-	Total   int                         `json:"total"`
+	Total   int                      `json:"total"`
 }
 
 // UserActivityListHandler lists userActivities with pagination
@@ -104,13 +104,13 @@ const HubKeyUserActivityCreate hub.HubCommandKey = "USER_ACTIVITY:CREATE"
 // UserActivityPayload used for create requests
 type UserActivityPayload struct {
 	UserID     passport.UserID     `json:"userID"`
-	Action     string                 `json:"action"`
-	ObjectID   *string                `json:"objectID"`
-	ObjectSlug *string                `json:"objectSlug"`
-	ObjectName *string                `json:"objectName"`
+	Action     string              `json:"action"`
+	ObjectID   *string             `json:"objectID"`
+	ObjectSlug *string             `json:"objectSlug"`
+	ObjectName *string             `json:"objectName"`
 	ObjectType passport.ObjectType `json:"objectType"`
-	OldData    null.JSON              `json:"old_data"`
-	NewData    null.JSON              `json:"new_data"`
+	OldData    null.JSON           `json:"old_data"`
+	NewData    null.JSON           `json:"new_data"`
 }
 
 // UserActivityCreateRequest requests a create userActivity
