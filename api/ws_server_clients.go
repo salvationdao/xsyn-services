@@ -32,6 +32,8 @@ func NewServerClientController(log *zerolog.Logger, conn *pgxpool.Pool, api *API
 
 	api.Command(HubKeyElevateAsServerClient, serverClientHub.Handler)
 
+	api.ServerClientCommand(HubKeyCheckTransactionList, serverClientHub.CheckTransactionsHandler)
+
 	return serverClientHub
 }
 
@@ -68,6 +70,7 @@ func (ch *ServerClientControllerWS) Handler(ctx context.Context, hubc *hub.Clien
 	// setting level and identifier
 	hubc.SetLevel(passport.ServerClientLevel)
 	hubc.SetIdentifier(supremacyUser.String())
+	hubc.LockClient = true // lock the client so it cannot be updated
 
 	// TODO: get the matching server name
 	serverName := SupremacyGameServer
@@ -79,6 +82,36 @@ func (ch *ServerClientControllerWS) Handler(ctx context.Context, hubc *hub.Clien
 	ch.API.SendToServerClient(serverName, &ServerClientMessage{
 		Key:     Authed,
 		Payload: nil,
+	})
+	return nil
+}
+
+const HubKeyCheckTransactionList = hub.HubCommandKey("TRANSACTION:CHECK_LIST")
+
+type CheckTransactionsRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		TransactionReferences []string `json:"transactionReferences"`
+	} `json:"payload"`
+}
+
+// CheckTransactionsHandler takes a list of transaction references and returns failed transaction references
+func (ch *ServerClientControllerWS) CheckTransactionsHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &CheckTransactionsRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	list, err := db.TransactionGetList(ctx, ch.Conn, req.Payload.TransactionReferences)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	reply(struct {
+		Transactions []*passport.Transaction `json:"transactions"`
+	}{
+		Transactions: list,
 	})
 	return nil
 }

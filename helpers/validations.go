@@ -12,7 +12,7 @@ import (
 // FirstDigitRegexp returns the first digit found in a string (used for checking duplicate slugs)
 var FirstDigitRegexp = regexp.MustCompile(`\d`)
 
-var emailRegexp = regexp.MustCompile("^.+?@.+?\\..+?$")
+var emailRegexp = regexp.MustCompile("^.+?@.+?...+?$")
 
 // IsEmpty checks if string given is empty
 func IsEmpty(text *null.String) bool {

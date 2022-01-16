@@ -3,10 +3,12 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"passport"
 	"passport/db"
 	"passport/log_helpers"
 
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/hub/v2"
 	"github.com/ninja-software/terror/v2"
@@ -142,7 +144,12 @@ func (hub *UserActivityController) UserActivityCreateHandler(ctx context.Context
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	defer tx.Rollback(ctx)
+	defer func(tx pgx.Tx, ctx context.Context) {
+		err := tx.Rollback(ctx)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			hub.Log.Err(err).Msg("error rolling back")
+		}
+	}(tx, ctx)
 
 	err = db.UserActivityCreate(
 		ctx,

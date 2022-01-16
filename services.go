@@ -24,14 +24,13 @@ func (s *APIService) Run(ctx context.Context, controller http.Handler) error {
 	}
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			s.Log.Info("Stopping API")
-			err := server.Shutdown(ctx)
-			if err != nil {
-				fmt.Println(err)
-			}
+		<-ctx.Done()
+		s.Log.Info("Stopping API")
+		err := server.Shutdown(ctx)
+		if err != nil {
+			fmt.Println(err)
 		}
+
 	}()
 
 	return server.ListenAndServe()

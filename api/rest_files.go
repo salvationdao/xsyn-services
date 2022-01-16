@@ -90,7 +90,10 @@ func (c *FilesController) FileGet(w http.ResponseWriter, r *http.Request) (int, 
 		w.Header().Add("Content-Type", blob.MimeType)
 	}
 	w.Header().Add("Content-Disposition", fmt.Sprintf("%s;filename=%s", disposition, blob.FileName))
-	w.Write(blob.File)
+	_, err = w.Write(blob.File)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
 
 	return http.StatusOK, nil
 }

@@ -90,15 +90,6 @@ func (api *API) SubscribeCommandWithPermission(key hub.HubCommandKey, fn HubSubs
 	})
 }
 
-func defaultSubscribeCommandFunc(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", terror.Error(err, "Invalid request received")
-	}
-	return messagebus.BusKey(req.Key), nil
-}
-
 // SupremacyCommand is a check to make sure the client is authed a supremacy game server
 func (api *API) SupremacyCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 	api.Hub.Handle(key, func(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
@@ -114,6 +105,27 @@ func (api *API) SupremacyCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 		if hubc.Identifier() != supremacyUser.String() {
 			return terror.Error(terror.ErrForbidden)
 		}
+
+		return fn(ctx, hubc, payload, reply)
+	})
+}
+
+// ServerClientCommand is a check to make sure the client is a server client
+func (api *API) ServerClientCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) {
+	api.Hub.Handle(key, func(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+		if hubc.Level != passport.ServerClientLevel {
+			return terror.Error(terror.ErrForbidden)
+		}
+
+		// TODO: add a check for server client more than hubc level
+		//supremacyUser, err := db.UserIDFromUsername(ctx, api.Conn, passport.SupremacyGameUsername)
+		//if err != nil {
+		//	return terror.Error(err)
+		//}
+		//
+		//if hubc.Identifier() != supremacyUser.String() {
+		//	return terror.Error(terror.ErrForbidden)
+		//}
 
 		return fn(ctx, hubc, payload, reply)
 	})

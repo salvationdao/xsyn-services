@@ -28,12 +28,11 @@ func (s *Seeder) Users(ctx context.Context, organisations []*passport.Organisati
 	if len(randomUsers) == 0 {
 		return terror.Error(terror.ErrWrongLength, "Random Users return wrong length")
 	}
-	userIndex := 0
 
 	passwordHash := crypto.HashPassword("NinjaDojo_!")
 
 	fmt.Println(" - set member user")
-	user := randomUsers[userIndex]
+	user := randomUsers[0]
 	user.Email = passport.NewString("member@example.com")
 	user.RoleID = passport.UserRoleMemberID
 	err = db.UserUpdate(ctx, s.Conn, user)
@@ -44,7 +43,6 @@ func (s *Seeder) Users(ctx context.Context, organisations []*passport.Organisati
 	if err != nil {
 		return terror.Error(err)
 	}
-	userIndex++
 
 	return nil
 }
@@ -160,6 +158,16 @@ func (s *Seeder) SupremacyUser(ctx context.Context) (*passport.User, error) {
 		return nil, terror.Error(err)
 	}
 
+	q := `UPDATE users
+			set sups = 100000000000000000000000
+			where id = $1 `
+
+	// add 10mil sups
+	_, err = s.Conn.Exec(ctx, q, u.ID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
 	return u, nil
 }
 
@@ -178,10 +186,10 @@ func (s *Seeder) XsynTreasuryUser(ctx context.Context) (*passport.User, error) {
 	}
 
 	q := `UPDATE users
-			set sups = 300000000000000000000000
+			set sups = 200000000000000000000000
 			where id = $1 `
 
-	// add the 30mil sups
+	// add the 20mil sups
 	_, err = s.Conn.Exec(ctx, q, u.ID)
 	if err != nil {
 		return nil, terror.Error(err)

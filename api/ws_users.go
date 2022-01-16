@@ -14,6 +14,8 @@ import (
 	"passport/log_helpers"
 	"strings"
 
+	"github.com/jackc/pgx/v4"
+
 	"github.com/volatiletech/null/v8"
 	"google.golang.org/api/idtoken"
 
@@ -288,12 +290,21 @@ func (ctrlr *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	defer tx.Rollback(ctx)
+
+	defer func(tx pgx.Tx, ctx context.Context) {
+		err := tx.Rollback(ctx)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			ctrlr.Log.Err(err).Msg("error rolling back")
+		}
+	}(tx, ctx)
 
 	if req.Payload.ID.String() == hubc.Identifier() && user.TwoFactorAuthenticationActivated != req.Payload.TwoFactorAuthenticationActivated {
 		// if turn off 2fa
 		if !req.Payload.TwoFactorAuthenticationActivated {
 			userUUID, err := uuid.FromString(hubc.Identifier())
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
 			userID := passport.UserID(userUUID)
 			// reset 2fa flag
 			err = db.UserUpdate2FAIsSet(ctx, tx, userID, false)
@@ -493,7 +504,12 @@ func (ctrlr *UserController) CreateHandler(ctx context.Context, hubc *hub.Client
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	defer tx.Rollback(ctx)
+	defer func(tx pgx.Tx, ctx context.Context) {
+		err := tx.Rollback(ctx)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			ctrlr.Log.Err(err).Msg("error rolling back")
+		}
+	}(tx, ctx)
 
 	// Create user
 	user := &passport.User{
@@ -761,7 +777,12 @@ func (ctrlr *UserController) ChangePasswordHandler(ctx context.Context, hubc *hu
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	defer tx.Rollback(ctx)
+	defer func(tx pgx.Tx, ctx context.Context) {
+		err := tx.Rollback(ctx)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			ctrlr.Log.Err(err).Msg("error rolling back")
+		}
+	}(tx, ctx)
 
 	err = db.AuthSetPasswordHash(ctx, tx, req.Payload.ID, crypto.HashPassword(req.Payload.NewPassword))
 	if err != nil {
@@ -1463,7 +1484,12 @@ func (ctrlr *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	defer tx.Rollback(ctx)
+	defer func(tx pgx.Tx, ctx context.Context) {
+		err := tx.Rollback(ctx)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			ctrlr.Log.Err(err).Msg("error rolling back")
+		}
+	}(tx, ctx)
 
 	// Update user
 	err = db.UserRemoveWallet(ctx, tx, user)
@@ -1567,7 +1593,12 @@ func (ctrlr *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Cli
 	if err != nil {
 		return terror.Error(err)
 	}
-	defer tx.Rollback(ctx)
+	defer func(tx pgx.Tx, ctx context.Context) {
+		err := tx.Rollback(ctx)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			ctrlr.Log.Err(err).Msg("error rolling back")
+		}
+	}(tx, ctx)
 
 	// Update user
 	err = db.UserAddWallet(ctx, tx, user, req.Payload.PublicAddress)

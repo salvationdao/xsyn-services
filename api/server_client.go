@@ -84,13 +84,18 @@ func (api *API) SendToServerClient(name ServerClientName, msg *ServerClientMessa
 			if err != nil {
 				api.Log.Err(err).Msgf("error sending message to server client for: %s", name)
 			}
-			go sc.Send(payload)
+
+			go func(client *hub.Client) {
+				err := client.Send(payload)
+				if err != nil {
+					api.Log.Err(err).Msgf("error sending")
+				}
+			}(sc)
 		}
 	}
 }
 
 func (api *API) SendToAllServerClient(msg *ServerClientMessage) {
-	api.Log.Debug().Msgf("sending message to all server clients")
 	api.serverClients <- func(servers ServerClientsList) {
 		for gameName, scm := range servers {
 			for sc := range scm {
@@ -98,7 +103,12 @@ func (api *API) SendToAllServerClient(msg *ServerClientMessage) {
 				if err != nil {
 					api.Log.Err(err).Msgf("error sending message to server client: %s", gameName)
 				}
-				go sc.Send(payload)
+				go func(client *hub.Client) {
+					err := client.Send(payload)
+					if err != nil {
+						api.Log.Err(err).Msgf("error sending")
+					}
+				}(sc)
 			}
 
 		}
@@ -108,9 +118,7 @@ func (api *API) SendToAllServerClient(msg *ServerClientMessage) {
 func (api *API) HandleServerClients() {
 	var serverClientsMap ServerClientsList = map[ServerClientName]map[*hub.Client]bool{}
 	for {
-		select {
-		case serverClientsFN := <-api.serverClients:
-			serverClientsFN(serverClientsMap)
-		}
+		serverClientsFN := <-api.serverClients
+		serverClientsFN(serverClientsMap)
 	}
 }

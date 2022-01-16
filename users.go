@@ -32,7 +32,7 @@ type User struct {
 	Role                             Role          `json:"role" db:"role"`
 	Organisation                     *Organisation `json:"organisation" db:"organisation"`
 	AvatarID                         *BlobID       `json:"avatarID" db:"avatar_id"`
-	Sups                             int64         `json:"sups" db:"sups"`
+	Sups                             BigInt        `json:"sups" db:"sups"`
 	Online                           bool          `json:"online"`
 	TwoFactorAuthenticationActivated bool          `json:"twoFactorAuthenticationActivated" db:"two_factor_authentication_activated"`
 	TwoFactorAuthenticationSecret    string        `json:"twoFactorAuthenticationSecret" db:"two_factor_authentication_secret"`
@@ -63,10 +63,7 @@ type IssueToken struct {
 }
 
 func (i IssueToken) Whitelisted() bool {
-	if !i.ID.IsNil() {
-		return true
-	}
-	return false
+	return !i.ID.IsNil()
 }
 
 func (i IssueToken) TokenID() uuid.UUID {

@@ -210,10 +210,8 @@ func (user Secureuser) CheckPassword(pw string) bool {
 		return false
 	}
 	err := crypto.ComparePassword(user.passwordHash, pw)
-	if err != nil {
-		return false
-	}
-	return true
+
+	return err == nil
 }
 
 func (user Secureuser) SendVerificationEmail(token string, tokenID string, newAccount bool) error {
@@ -294,6 +292,7 @@ func (userFields UserFields) FirstName() string {
 func (userFields UserFields) LastName() string {
 	return userFields.Secureuser.LastName
 }
+
 func (userFields UserFields) Verified() bool {
 	return userFields.Secureuser.Verified
 }

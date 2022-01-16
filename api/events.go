@@ -41,6 +41,10 @@ func (api *API) ClientLogout(ctx context.Context, client *hub.Client, clients hu
 
 // ClientAuth gets triggered on auth and handles setting the clients permissions and levels
 func (api *API) ClientAuth(ctx context.Context, client *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
+	if client.Level == passport.ServerClientLevel {
+		return
+	}
+
 	userUuidString := client.Identifier()
 	// client identifier gets set on auth so this shouldn't be empty
 	if userUuidString == "" {

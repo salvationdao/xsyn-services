@@ -78,6 +78,8 @@ func NewAPI(
 		// server clients
 		serverClients:       make(chan func(serverClients ServerClientsList)),
 		sendToServerClients: make(chan *ServerClientMessage),
+		// tx channel
+		transaction: make(chan *Transaction),
 	}
 	msgBus, cleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
 	newHub := hub.New(&hub.Config{
@@ -127,7 +129,7 @@ func NewAPI(
 		r.Group(func(r chi.Router) {
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
 			r.Use(sentryHandler.Handle)
-			r.Mount("/check", CheckRouter(conn))
+			r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn))
 			r.Mount("/files", FileRouter(conn, api))
 			r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", WithError(api.Auth.GetNonce))
@@ -174,13 +176,11 @@ func (api *API) Run(ctx context.Context) error {
 	}
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			api.Log.Info().Msg("Stopping API")
-			err := server.Shutdown(ctx)
-			if err != nil {
-				api.Log.Warn().Err(err).Msg("")
-			}
+		<-ctx.Done()
+		api.Log.Info().Msg("Stopping API")
+		err := server.Shutdown(ctx)
+		if err != nil {
+			api.Log.Warn().Err(err).Msg("")
 		}
 	}()
 

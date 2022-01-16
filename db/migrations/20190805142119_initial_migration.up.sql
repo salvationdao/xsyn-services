@@ -383,11 +383,11 @@ CREATE TABLE xsyn_transaction_log
     id                    UUID        NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     from_id               UUID        NOT NULL REFERENCES users (id),
     to_id                 UUID        NOT NULL REFERENCES users (id),
-    amount                NUMERIC(64),
-    success               BOOL                             DEFAULT FALSE,
+    amount                NUMERIC(64) NOT NULL,
+    status                TEXT CHECK (status IN ('pending', 'failed', 'success')) DEFAULT 'pending',
     transaction_reference TEXT,
     created_at            TIMESTAMPTZ NOT NULL             DEFAULT NOW()
 );
 
-COMMIT;
 
+COMMIT;

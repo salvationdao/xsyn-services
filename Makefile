@@ -24,7 +24,7 @@ build:
 .PHONY: tools
 tools: go-mod-tidy
 	@mkdir -p $(BIN)
-	go get -u golang.org/x/tools/cmd/goimports
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.43.0 go get -u golang.org/x/tools/cmd/goimports
 	go generate -tags tools ./tools/...
 	# cd $(BIN) && ./xcaddy build
 	# sudo setcap cap_net_bind_service=+ep ./bin/caddy
@@ -53,27 +53,27 @@ db-setup:
 
 .PHONY: db-version
 db-version:
-	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/migrations version
+	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations version
 
 .PHONY: db-drop
 db-drop:
-	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/migrations drop -f
+	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations drop -f
 
 .PHONY: db-migrate
 db-migrate:
-	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/migrations up
+	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations up
 
 .PHONY: db-migrate-down
 db-migrate-down:
-	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/migrations down
+	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations down
 
 .PHONY: db-migrate-down-one
 db-migrate-down-one:
-	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/migrations down 1
+	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations down 1
 
 .PHONY: db-migrate-up-one
 db-migrate-up-one:
-	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/migrations up 1
+	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations up 1
 
 
 .PHONY: db-seed
@@ -104,9 +104,10 @@ deps: go-mod-download
 serve:
 	${BIN}/air -c .air.toml
 
+# TODO: add linter with arelo
 .PHONY: serve-arelo
 serve-arelo:
-	${BIN}/arelo -p '**/*.go' -i '**/.*' -i '**/*_test.go' -i 'tools/*' -- go run cmd/platform/main.go serve
+	${BIN}/arelo -p '**/*.go' -i '**/.*' -i '**/*_test.go' -i 'tools/*'  -- go run cmd/platform/main.go serve
 
 .PHONY: lb
 lb:

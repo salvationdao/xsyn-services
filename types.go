@@ -2,10 +2,13 @@ package passport
 
 import (
 	"database/sql/driver"
+	"fmt"
+	"math/big"
 
-	"github.com/volatiletech/null/v8"
+	"github.com/jackc/pgtype"
 
 	"github.com/gofrs/uuid"
+	"github.com/volatiletech/null/v8"
 )
 
 // BlobID aliases uuid.UUID.
@@ -541,4 +544,73 @@ func (id *FactionID) Scan(src interface{}) error {
 	*id = FactionID(uid)
 	// Retrun error
 	return err
+}
+
+// BigInt aliases big.Int
+// We do this, so we can create .scan methods.
+type BigInt struct {
+	big.Int
+}
+
+func (b *BigInt) Value() (driver.Value, error) {
+	if b != nil {
+		return b.String(), nil
+	}
+	return nil, nil
+}
+
+// Scan implements the database/sql Scanner interface.
+func (b *BigInt) Scan(src interface{}) error {
+	if src == nil {
+		*b = BigInt{}
+		return nil
+	}
+
+	switch src := src.(type) {
+	case string:
+		return b.DecodeText(nil, []byte(src))
+	case []byte:
+		srcCopy := make([]byte, len(src))
+		copy(srcCopy, src)
+		return b.DecodeText(nil, srcCopy)
+	}
+
+	return fmt.Errorf("cannot scan %T", src)
+}
+
+func (b *BigInt) DecodeText(ci *pgtype.ConnInfo, src []byte) error {
+	if src == nil {
+		*b = BigInt{}
+		return nil
+	}
+	flt, _, err := big.ParseFloat(string(src), 10, 84, big.ToNearestEven)
+	if err != nil {
+		return fmt.Errorf("not a valid big floot: %s", src)
+	}
+	newI, _ := flt.Int(nil)
+	b.Int = *newI
+
+	return nil
+}
+
+// MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaler interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.MarshalText.
+func (b BigInt) MarshalText() ([]byte, error) {
+	return []byte(b.String()), nil
+}
+
+func (b *BigInt) UnmarshalJSON(text []byte) error {
+	if text == nil {
+		*b = BigInt{}
+		return nil
+	}
+
+	flt, _, err := big.ParseFloat(string(text), 10, 0, big.ToNearestEven)
+	if err != nil {
+		return fmt.Errorf("not a valid big floot: %s", text)
+	}
+	newI, _ := flt.Int(nil)
+	b.Int = *newI
+
+	return nil
 }

@@ -60,6 +60,7 @@ SELECT
 	users.created_at, users.updated_at, users.deleted_at, users.facebook_id, users.google_id, users.twitch_id, users.public_address, users.nonce, users.sups, users.faction_id,
 	(SELECT COUNT(id) FROM user_recovery_codes urc WHERE urc.user_id = users.id) > 0 as has_recovery_code,
 	row_to_json(role) as role,
+	row_to_json(faction) as faction,
 	row_to_json(organisation) as organisation
 ` + UserGetQueryFrom
 const UserGetQueryFrom string = `--sql
@@ -70,6 +71,10 @@ LEFT JOIN (
 	FROM user_organisations
 	INNER JOIN organisations o ON o.id = organisation_id
 ) organisation ON organisation.user_id = users.id
+LEFT JOIN (
+    SELECT id, label, colour
+    FROM factions
+) faction ON faction.id = users.faction_id
 `
 
 // UserByPublicAddress returns a user by given public wallet address

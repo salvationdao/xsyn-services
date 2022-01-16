@@ -13,13 +13,6 @@ import (
 	"syreclabs.com/go/faker"
 )
 
-// ID constants to keep cookies constant between re-seeds (so you don't have to keep logging back in)
-var (
-	userSuperAdminID = passport.UserID(uuid.Must(uuid.FromString("88a825b9-dae2-40dd-9848-73db7870c9d5")))
-	userAdminID      = passport.UserID(uuid.Must(uuid.FromString("639cb314-50c5-4a27-bd9f-f85bcd16fc3e")))
-	userMemberID     = passport.UserID(uuid.Must(uuid.FromString("ce4363e1-f522-45a3-93a1-216974304e75")))
-)
-
 // MaxMembersPerOrganisation is the default amount of member users per organisation (also includes non-organisation users)
 const MaxMembersPerOrganisation = 40
 
@@ -79,11 +72,11 @@ func (s *Seeder) Run(isProd bool) error {
 
 	}
 
-	//fmt.Println("Seeding factions")
-	//err := s.factions(ctx)
-	//if err != nil {
-	//	return terror.Error(err, "seed factions")
-	//}
+	fmt.Println("Seeding factions")
+	err = s.factions(ctx)
+	if err != nil {
+		return terror.Error(err, "seed factions")
+	}
 
 	//fmt.Println("Seeding products")
 	//err = s.Products(ctx)
