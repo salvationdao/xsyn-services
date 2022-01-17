@@ -14,6 +14,7 @@ import (
 	"passport/log_helpers"
 	"strings"
 
+	oidc "github.com/coreos/go-oidc"
 	"github.com/jackc/pgx/v4"
 
 	"github.com/volatiletech/null/v8"
@@ -1326,7 +1327,7 @@ const HubKeyUserAddTwitch hub.HubCommandKey = "USER:ADD_TWITCH"
 type AddTwitchRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		Code        string `json:"code"`
+		Token       string `json:"token"`
 		RedirectURI string `json:"redirectURI"`
 	} `json:"payload"`
 }
@@ -1338,53 +1339,36 @@ func (ctrlr *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Cli
 		return terror.Error(err, "Invalid request received")
 	}
 
-	if req.Payload.Code == "" {
-		return terror.Error(terror.ErrInvalidInput, "Twitch code is empty")
+	if req.Payload.Token == "" {
+		return terror.Error(terror.ErrInvalidInput, "Twitch JWT is empty")
 	}
 
-	// Get Twitch access token from code
-	requestUri := fmt.Sprintf("https://id.twitch.tv/oauth2/token?client_id=%s&client_secret=%s&code=%s&grant_type=authorization_code&redirect_uri=%s",
-		ctrlr.TwitchClientID,
-		ctrlr.TwitchClientSecret,
-		req.Payload.Code,
-		req.Payload.RedirectURI)
-	r, err := http.Post(requestUri, "application/json", nil)
-	if err != nil {
-		return terror.Error(err, "Failed to get Twitch access token")
-	}
-	defer r.Body.Close()
+	keySet := oidc.NewRemoteKeySet(ctx, "https://id.twitch.tv/oauth2/keys")
+	oidcVerifier := oidc.NewVerifier("https://id.twitch.tv/oauth2", keySet, &oidc.Config{
+		ClientID: ctrlr.TwitchClientID,
+	})
 
-	respBody := &struct {
-		AccessToken  string   `json:"access_token"`
-		RefreshToken string   `json:"refresh_token"`
-		ExpiresIn    int64    `json:"expires_in"`
-		Scope        []string `json:"scope"`
-		TokenType    string   `json:"token_type"`
-	}{}
-	err = json.NewDecoder(r.Body).Decode(respBody)
+	token, err := oidcVerifier.Verify(ctx, req.Payload.Token)
 	if err != nil {
-		return terror.Error(err, "Failed to get Twitch access token")
+		return terror.Error(err, "Failed to verify Twitch JWT")
 	}
 
-	// Verify Twitch access token
-	bearer := "Bearer " + url.QueryEscape(respBody.AccessToken)
-	req2, _ := http.NewRequest("GET", "https://id.twitch.tv/oauth2/validate", nil)
-	req2.Header.Add("Authorization", bearer)
-	client := &http.Client{}
-	r2, err := client.Do(req2)
-	if err != nil {
-		return terror.Error(err, "Failed to validate Twitch access token")
+	var claims struct {
+		Iss   string `json:"iss"`
+		Sub   string `json:"sub"`
+		Aud   string `json:"aud"`
+		Exp   int32  `json:"exp"`
+		Iat   int32  `json:"iat"`
+		Nonce string `json:"nonce"`
+		Email string `json:"email"`
 	}
-	defer r2.Body.Close()
+	if err := token.Claims(&claims); err != nil {
+		return terror.Error(err, "Failed to get claims from token")
+	}
 
-	resp := &struct {
-		ClientID string `json:"client_id"`
-		Login    string `json:"login"`
-		UserID   string `json:"user_id"`
-	}{}
-	err = json.NewDecoder(r2.Body).Decode(resp)
-	if err != nil {
-		return terror.Error(err)
+	twitchID := claims.Sub
+	if twitchID == "" {
+		return terror.Error(terror.ErrInvalidInput, "No Twitch account ID is provided")
 	}
 
 	userID, err := uuid.FromString(hubc.Identifier())
@@ -1402,7 +1386,7 @@ func (ctrlr *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Cli
 	var oldUser passport.User = *user
 
 	// Update user's Twitch ID
-	err = db.UserAddTwitch(ctx, ctrlr.Conn, user, resp.UserID)
+	err = db.UserAddTwitch(ctx, ctrlr.Conn, user, twitchID)
 	if err != nil {
 		return terror.Error(err)
 	}

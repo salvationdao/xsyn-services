@@ -2,6 +2,8 @@ module passport
 
 go 1.17
 
+replace github.com/ninja-software/hub/v2 => C:\Users\Felix\go\src\github.com\ninja-software\hub
+
 require (
 	github.com/aymerick/raymond v2.0.3-0.20180322193309-b565731e1464+incompatible
 	github.com/caddyserver/caddy/v2 v2.4.5
@@ -45,6 +47,7 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
 	github.com/containerd/continuity v0.0.0-20190827140505-75bee3e2ccb6 // indirect
+	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
 	github.com/deckarep/golang-set v0.0.0-20180603214616-504e848d77ea // indirect
 	github.com/docker/cli v20.10.11+incompatible // indirect
 	github.com/docker/docker v20.10.7+incompatible // indirect
@@ -62,6 +65,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/opencontainers/runc v1.0.2 // indirect
+	github.com/pquerna/cachecontrol v0.1.0 // indirect
 	github.com/rjeczalik/notify v0.9.1 // indirect
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
@@ -78,6 +82,7 @@ require (
 	google.golang.org/grpc v1.40.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
+	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
