@@ -59,10 +59,13 @@ type ServerClient struct {
 type ServerClientMessageAction string
 
 const (
-	Authed           ServerClientMessageAction = "AUTHED"
-	UserOnlineStatus ServerClientMessageAction = "USER:ONLINE_STATUS"
-	UserUpdated      ServerClientMessageAction = "USER:UPDATED"
-	UserSupsUpdated  ServerClientMessageAction = "USER:SUPS:UPDATED"
+	Authed                     ServerClientMessageAction = "AUTHED"
+	UserOnlineStatus           ServerClientMessageAction = "USER:ONLINE_STATUS"
+	UserUpdated                ServerClientMessageAction = "USER:UPDATED"
+	UserSupsUpdated            ServerClientMessageAction = "USER:SUPS:UPDATED"
+	AssetQueueJoin             ServerClientMessageAction = "ASSET:QUEUE:JOIN"
+	AssetQueueLeave            ServerClientMessageAction = "ASSET:QUEUE:LEAVE"
+	WarMachineQueuePositionGet ServerClientMessageAction = "WAR:MACHINE:QUEUE:POSITION:GET"
 )
 
 type ServerClientMessage struct {

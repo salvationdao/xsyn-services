@@ -918,3 +918,24 @@ func UserUpdateSups(ctx context.Context, conn Conn, userID passport.UserID, sups
 	}
 	return remainSups, nil
 }
+
+// UserIDsGetByFactionID return a list of user id from the given faction id
+func UserIDsGetByFactionID(ctx context.Context, conn Conn, factionID passport.FactionID) ([]passport.UserID, error) {
+	userIDs := []passport.UserID{}
+
+	q := `
+		SELECT
+			id
+		FROM
+			users
+		WHERE
+			faction_id = $1
+	`
+
+	err := pgxscan.Select(ctx, conn, &userIDs, q, factionID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return userIDs, nil
+}
