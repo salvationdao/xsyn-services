@@ -61,6 +61,7 @@ func NewAPI(
 	HTMLSanitize *bluemonday.Policy,
 	config *passport.Config,
 ) *API {
+	msgBus, cleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
 	api := &API{
 		Tokens: &Tokens{
 			Conn:                conn,
@@ -69,6 +70,19 @@ func NewAPI(
 			encryptToken:        config.EncryptTokens,
 			encryptTokenKey:     config.EncryptTokensKey,
 		},
+		MessageBus: msgBus,
+		Hub: hub.New(&hub.Config{
+			ClientOfflineFn: cleanUpFunc,
+			Log:             zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
+			WelcomeMsg: &hub.WelcomeMsg{
+				Key:     "WELCOME",
+				Payload: nil,
+			},
+			AcceptOptions: &websocket.AcceptOptions{
+				InsecureSkipVerify: true, // TODO: set this depending on environment
+				OriginPatterns:     []string{config.PassportWebHostURL, config.GameserverHostURL},
+			},
+		}),
 		Log:          log_helpers.NamedLogger(log, "api"),
 		Conn:         conn,
 		Routes:       chi.NewRouter(),
@@ -81,28 +95,12 @@ func NewAPI(
 		// tx channel
 		transaction: make(chan *Transaction),
 	}
-	msgBus, cleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
-	newHub := hub.New(&hub.Config{
-		ClientOfflineFn: cleanUpFunc,
-		Log:             zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
-		WelcomeMsg: &hub.WelcomeMsg{
-			Key:     "WELCOME",
-			Payload: nil,
-		},
-		AcceptOptions: &websocket.AcceptOptions{
-			InsecureSkipVerify: true, // TODO: set this depending on environment
-			OriginPatterns:     []string{config.PassportWebHostURL, config.GameserverHostURL},
-		},
-	})
-	api.MessageBus = msgBus
-	api.Hub = newHub
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
 	api.Routes.Use(cors.New(cors.Options{
 		AllowedOrigins: []string{config.PassportWebHostURL, config.GameserverHostURL},
 	}).Handler)
-
 	var err error
 	api.Auth, err = auth.New(api.Hub, &auth.Config{
 		CreateUserIfNotExist:     true,
@@ -139,6 +137,7 @@ func NewAPI(
 		r.Handle("/ws", api.Hub)
 	})
 
+	_ = NewAssetController(log, conn, api)
 	_ = NewServerClientController(log, conn, api)
 	_ = NewCheckController(log, conn, api)
 	_ = NewUserActivityController(log, conn, api)

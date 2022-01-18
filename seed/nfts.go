@@ -55,11 +55,6 @@ func (s *Seeder) SeedWarMachine(ctx context.Context) ([]*passport.XsynNftMetadat
 					DisplayType: passport.Number,
 				},
 				{
-					TraitType:   "Durability",
-					Value:       100,
-					DisplayType: passport.Number,
-				},
-				{
 					TraitType:   "Power Grid",
 					Value:       170,
 					DisplayType: passport.Number,
@@ -118,17 +113,16 @@ func (s *Seeder) SeedWarMachine(ctx context.Context) ([]*passport.XsynNftMetadat
 			Image:       "",
 			Attributes: []*passport.Attribute{
 				{
+					TraitType: "Asset Type",
+					Value:     "War Machine",
+				},
+				{
 					TraitType: "War Machine Win Rank",
 					Value:     3,
 				},
 				{
 					TraitType:   "Max Structure Hit Points",
 					Value:       300,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Durability",
-					Value:       67,
 					DisplayType: passport.Number,
 				},
 				{
@@ -187,17 +181,16 @@ func (s *Seeder) SeedWarMachine(ctx context.Context) ([]*passport.XsynNftMetadat
 			Image:       "",
 			Attributes: []*passport.Attribute{
 				{
+					TraitType: "Asset Type",
+					Value:     "War Machine",
+				},
+				{
 					TraitType: "War Machine Win Rank",
 					Value:     2,
 				},
 				{
 					TraitType:   "Max Structure Hit Points",
 					Value:       250,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Durability",
-					Value:       100,
 					DisplayType: passport.Number,
 				},
 				{
@@ -246,20 +239,10 @@ func (s *Seeder) SeedWarMachine(ctx context.Context) ([]*passport.XsynNftMetadat
 	}
 
 	for _, nft := range newNFT {
-		returnedNFT, err := db.XsynNftMetadataInsert(ctx, s.Conn,
-			nft.Name,
-			nft.Game,
-			nft.Description,
-			nft.ExternalUrl,
-			nft.Image,
-			nft.GameObject,
-			nft.Attributes,
-			nft.AdditionalMetadata,
-		)
+		err := db.XsynNftMetadataInsert(ctx, s.Conn, nft)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
-		nft.TokenID = returnedNFT.TokenID
 	}
 
 	return newNFT, nil
@@ -278,6 +261,10 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
 				{
+					TraitType: "Asset Type",
+					Value:     "Weapon",
+				},
+				{
 					TraitType: "Kills",
 					Value:     1,
 				},
@@ -294,11 +281,6 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 				{
 					TraitType: "Required Slot",
 					Value:     "Weapon Hardpoint",
-				},
-				{
-					TraitType:   "Durability",
-					Value:       100,
-					DisplayType: passport.Number,
 				},
 				{
 					TraitType:   "Required Power Grid",
@@ -322,6 +304,10 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
 				{
+					TraitType: "Asset Type",
+					Value:     "Weapon",
+				},
+				{
 					TraitType: "Kills",
 					Value:     0,
 				},
@@ -338,11 +324,6 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 				{
 					TraitType: "Required Slot",
 					Value:     "Weapon Hardpoint",
-				},
-				{
-					TraitType:   "Durability",
-					Value:       100,
-					DisplayType: passport.Number,
 				},
 				{
 					TraitType:   "Required Power Grid",
@@ -367,6 +348,10 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
 				{
+					TraitType: "Asset Type",
+					Value:     "Weapon",
+				},
+				{
 					TraitType: "Kills",
 					Value:     4,
 				},
@@ -395,11 +380,6 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 					Value:     "Weapon Hardpoint",
 				},
 				{
-					TraitType:   "Durability",
-					Value:       100,
-					DisplayType: passport.Number,
-				},
-				{
 					TraitType:   "Required Power Grid",
 					Value:       30,
 					DisplayType: passport.Number,
@@ -420,6 +400,10 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Asset Type",
+					Value:     "Weapon",
+				},
 				{
 					TraitType: "Kills",
 					Value:     4,
@@ -442,11 +426,6 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 				{
 					TraitType:   "Reload Time",
 					Value:       15,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Durability",
-					Value:       100,
 					DisplayType: passport.Number,
 				},
 				{
@@ -476,6 +455,10 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
 				{
+					TraitType: "Asset Type",
+					Value:     "Weapon",
+				},
+				{
 					TraitType: "Kills",
 					Value:     2,
 				},
@@ -492,11 +475,6 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 				{
 					TraitType: "Required Slot",
 					Value:     "Turret Hardpoint",
-				},
-				{
-					TraitType:   "Durability",
-					Value:       100,
-					DisplayType: passport.Number,
 				},
 				{
 					TraitType:   "Required Power Grid",
@@ -520,6 +498,10 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
 				{
+					TraitType: "Asset Type",
+					Value:     "Weapon",
+				},
+				{
 					TraitType: "Kills",
 					Value:     2,
 				},
@@ -536,11 +518,6 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 				{
 					TraitType: "Required Slot",
 					Value:     "Turret Hardpoint",
-				},
-				{
-					TraitType:   "Durability",
-					Value:       100,
-					DisplayType: passport.Number,
 				},
 				{
 					TraitType:   "Required Power Grid",
@@ -565,6 +542,10 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
 				{
+					TraitType: "Asset Type",
+					Value:     "Weapon",
+				},
+				{
 					TraitType: "Kills",
 					Value:     2,
 				},
@@ -591,11 +572,6 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 				{
 					TraitType: "Required Slot",
 					Value:     "Turret Hardpoint",
-				},
-				{
-					TraitType:   "Durability",
-					Value:       100,
-					DisplayType: passport.Number,
 				},
 				{
 					TraitType:   "Required Power Grid",
@@ -619,6 +595,10 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
 				{
+					TraitType: "Asset Type",
+					Value:     "Weapon",
+				},
+				{
 					TraitType: "Kills",
 					Value:     2,
 				},
@@ -647,11 +627,6 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 					Value:     "Turret Hardpoint",
 				},
 				{
-					TraitType:   "Durability",
-					Value:       100,
-					DisplayType: passport.Number,
-				},
-				{
 					TraitType:   "Required Power Grid",
 					Value:       50,
 					DisplayType: passport.Number,
@@ -666,20 +641,10 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 	}
 
 	for _, nft := range newNFT {
-		returnedNFT, err := db.XsynNftMetadataInsert(ctx, s.Conn,
-			nft.Name,
-			nft.Game,
-			nft.Description,
-			nft.ExternalUrl,
-			nft.Image,
-			nft.GameObject,
-			nft.Attributes,
-			nft.AdditionalMetadata,
-		)
+		err := db.XsynNftMetadataInsert(ctx, s.Conn, nft)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
-		nft.TokenID = returnedNFT.TokenID
 	}
 
 	return newNFT, nil
@@ -697,6 +662,10 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Asset Type",
+					Value:     "Utility",
+				},
 				{
 					TraitType:   "Shield Hit Points",
 					Value:       500,
@@ -737,6 +706,10 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Asset Type",
+					Value:     "Utility",
+				},
 				{
 					TraitType:   "Shield Hit Points",
 					Value:       500,
@@ -779,6 +752,10 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
 				{
+					TraitType: "Asset Type",
+					Value:     "Utility",
+				},
+				{
 					TraitType:   "Shield Hit Points",
 					Value:       300,
 					DisplayType: passport.Number,
@@ -818,6 +795,10 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Asset Type",
+					Value:     "Utility",
+				},
 				{
 					TraitType:   "Shield Hit Points",
 					Value:       300,
@@ -860,6 +841,10 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
 				{
+					TraitType: "Asset Type",
+					Value:     "Utility",
+				},
+				{
 					TraitType:   "Shield Hit Points",
 					Value:       150,
 					DisplayType: passport.Number,
@@ -899,6 +884,10 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Asset Type",
+					Value:     "Utility",
+				},
 				{
 					TraitType:   "Shield Hit Points",
 					Value:       150,
@@ -941,6 +930,10 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
 				{
+					TraitType: "Asset Type",
+					Value:     "Utility",
+				},
+				{
 					TraitType:   "Health Per Second",
 					Value:       1,
 					DisplayType: passport.Number,
@@ -971,6 +964,10 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
 				{
+					TraitType: "Asset Type",
+					Value:     "Utility",
+				},
+				{
 					TraitType:   "Health Per Second",
 					Value:       1,
 					DisplayType: passport.Number,
@@ -994,20 +991,10 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 	}
 
 	for _, nft := range newNFT {
-		returnedNFT, err := db.XsynNftMetadataInsert(ctx, s.Conn,
-			nft.Name,
-			nft.Game,
-			nft.Description,
-			nft.ExternalUrl,
-			nft.Image,
-			nft.GameObject,
-			nft.Attributes,
-			nft.AdditionalMetadata,
-		)
+		err := db.XsynNftMetadataInsert(ctx, s.Conn, nft)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
-		nft.TokenID = returnedNFT.TokenID
 	}
 
 	return newNFT, nil

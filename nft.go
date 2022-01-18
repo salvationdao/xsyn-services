@@ -28,12 +28,21 @@ type XsynNftMetadata struct {
 	Description        string                `json:"description" db:"description"`
 	ExternalUrl        string                `json:"external_url" db:"external_url"`
 	Image              string                `json:"image" db:"image"`
+	Durability         int                   `json:"durability" db:"durability"`
 	Attributes         []*Attribute          `json:"attributes" db:"attributes"`
 	AdditionalMetadata []*AdditionalMetadata `json:"additional_metadata" db:"additional_metadata"`
 	DeletedAt          *time.Time            `json:"deleted_at" db:"deleted_at"`
 	UpdatedAt          time.Time             `json:"updated_at" db:"updated_at"`
 	CreatedAt          time.Time             `json:"created_at" db:"created_at"`
 }
+
+type AssetType string
+
+const (
+	WarMachine AssetType = "War Machine"
+	Weapon     AssetType = "Weapon"
+	Utility    AssetType = "Utility"
+)
 
 // AdditionalMetadata holds metadata for a nfts non main game
 type AdditionalMetadata struct {
@@ -47,4 +56,23 @@ type AdditionalMetadata struct {
 	DeletedAt   *time.Time   `json:"deleted_at" db:"deleted_at"`
 	UpdatedAt   time.Time    `json:"updated_at" db:"updated_at"`
 	CreatedAt   time.Time    `json:"created_at" db:"created_at"`
+}
+
+type WarMachineNFT struct {
+	TokenID         uint64    `json:"tokenID"`
+	OwnedByID       UserID    `json:"ownedByID"`
+	Name            string    `json:"name"`
+	Description     string    `json:"description"`
+	ExternalUrl     string    `json:"externalUrl"`
+	Image           string    `json:"image"`
+	MaxHitPoint     int       `json:"maxHitPoint"`
+	RemainHitPoint  int       `json:"remainHitPoint"`
+	Speed           int       `json:"speed"`
+	Durability      int       `json:"durability"`
+	PowerGrid       int       `json:"powerGrid"`
+	CPU             int       `json:"cpu"`
+	WeaponHardpoint int       `json:"weaponHardpoint"`
+	TurretHardpoint int       `json:"turretHardpoint"`
+	UtilitySlots    int       `json:"utilitySlots"`
+	FactionID       FactionID `json:"factionID"`
 }

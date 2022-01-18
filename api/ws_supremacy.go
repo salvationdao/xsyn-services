@@ -3,16 +3,22 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
 	"passport"
 	"passport/db"
 	"passport/log_helpers"
 	"time"
 
+	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/hub/v2"
+	"github.com/ninja-software/hub/v2/ext/messagebus"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-software/tickle"
 	"github.com/rs/zerolog"
 )
 
@@ -39,8 +45,22 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 
 	supremacyHub.SupremacyUserID = *supID
 
+	// start nft repair ticker
+	tickle.New("NFT Repair Ticker", 60, func() (int, error) {
+		err := db.XsynNftMetadataDurabilityBulkIncrement(context.Background(), conn)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err)
+		}
+		return http.StatusOK, nil
+	}).Start()
+
 	api.SupremacyCommand(HubKeySupremacyTakeSups, supremacyHub.SupremacyTakeSupsHandler)
 	api.SupremacyCommand(HubKeySupremacyTickerTick, supremacyHub.SupremacyTickerTickHandler)
+
+	api.SupremacyCommand(HubKeySupremacyAssetFreeze, supremacyHub.SupremacyAssetFreezeHandler)
+	api.SupremacyCommand(HubKeySupremacyAssetLock, supremacyHub.SupremacyAssetLockHandler)
+	api.SupremacyCommand(HubKeySupremacyAssetRelease, supremacyHub.SupremacyAssetReleaseHandler)
+	api.SupremacyCommand(HubKeySupremacyWarMachineQueuePosition, supremacyHub.SupremacyWarMachineQueuePositionHandler)
 
 	return supremacyHub
 }
@@ -56,7 +76,7 @@ type SupremacyTakeSupsRequest struct {
 	} `json:"payload"`
 }
 
-func (ctrlr *SupremacyControllerWS) SupremacyTakeSupsHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (sc *SupremacyControllerWS) SupremacyTakeSupsHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &SupremacyTakeSupsRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -65,12 +85,12 @@ func (ctrlr *SupremacyControllerWS) SupremacyTakeSupsHandler(ctx context.Context
 
 	tx := &Transaction{
 		From:                 req.Payload.FromUserID,
-		To:                   ctrlr.SupremacyUserID,
+		To:                   sc.SupremacyUserID,
 		TransactionReference: req.Payload.TransactionReference,
 		Amount:               req.Payload.Amount,
 	}
 
-	ctrlr.API.transaction <- tx
+	sc.API.transaction <- tx
 
 	reply(struct {
 		IsSuccess bool `json:"isSuccess"`
@@ -90,7 +110,7 @@ type SupremacyTickerTickRequest struct {
 	} `json:"payload"`
 }
 
-func (ctrlr *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &SupremacyTickerTickRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -125,7 +145,7 @@ func (ctrlr *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Conte
 			usersSups = usersSups.Mul(onePointWorth, big.NewInt(int64(multiplier)))
 
 			transactions = append(transactions, &Transaction{
-				From:                 ctrlr.SupremacyUserID,
+				From:                 sc.SupremacyUserID,
 				To:                   *user,
 				Amount:               passport.BigInt{Int: *usersSups},
 				TransactionReference: reference,
@@ -137,7 +157,7 @@ func (ctrlr *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Conte
 
 	// send through transactions
 	for _, tx := range transactions {
-		ctrlr.API.transaction <- tx
+		sc.API.transaction <- tx
 	}
 
 	reply(struct {
@@ -145,5 +165,194 @@ func (ctrlr *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Conte
 	}{
 		IsSuccess: true,
 	})
+	return nil
+}
+
+type SupremacyAssetFreezeRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		AssetTokenID uint64 `json:"assetTokenID"`
+	} `json:"payload"`
+}
+
+// 	rootHub.SecureCommand(HubKeySupremacyAssetFreeze, AssetController.RegisterHandler)
+const HubKeySupremacyAssetFreeze hub.HubCommandKey = "SUPREMACY:ASSET:FREEZE"
+
+func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupremacyAssetFreezeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	err = db.XsynAssetFreeze(ctx, sc.Conn, req.Payload.AssetTokenID, userID)
+	if err != nil {
+		reply(false)
+		return terror.Error(err)
+	}
+
+	// TODO: In the future, charge user's sups for joining the queue
+
+	reply(true)
+	return nil
+}
+
+type SupremacyAssetLockRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		AssetTokenIDs []uint64 `json:"assetTokenIDs"`
+	} `json:"payload"`
+}
+
+// 	rootHub.SecureCommand(HubKeySupremacyAssetFreeze, AssetController.RegisterHandler)
+const HubKeySupremacyAssetLock hub.HubCommandKey = "SUPREMACY:ASSET:LOCK"
+
+func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupremacyAssetLockRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	err = db.XsynAssetBulkLock(ctx, sc.Conn, req.Payload.AssetTokenIDs, userID)
+	if err != nil {
+		reply(false)
+		return terror.Error(err)
+	}
+
+	reply(true)
+	return nil
+}
+
+type SupremacyAssetReleaseRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		ReleasedAssets []*passport.WarMachineNFT `json:"releasedAssets"`
+	} `json:"payload"`
+}
+
+// 	rootHub.SecureCommand(HubKeySupremacyAssetFreeze, AssetController.RegisterHandler)
+const HubKeySupremacyAssetRelease hub.HubCommandKey = "SUPREMACY:ASSET:RELEASE"
+
+func (sc *SupremacyControllerWS) SupremacyAssetReleaseHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupremacyAssetReleaseRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	tx, err := sc.Conn.Begin(ctx)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	defer func(tx pgx.Tx, ctx context.Context) {
+		err := tx.Rollback(ctx)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			sc.Log.Err(err).Msg("error rolling back")
+		}
+	}(tx, ctx)
+
+	err = db.XsynAssetBulkRelease(ctx, tx, req.Payload.ReleasedAssets, userID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	err = db.XsynNftMetadataDurabilityBulkUpdate(ctx, tx, req.Payload.ReleasedAssets)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+// 	rootHub.SecureCommand(HubKeySupremacyAssetFreeze, AssetController.RegisterHandler)
+const HubKeySupremacyWarMachineQueuePosition hub.HubCommandKey = "SUPREMACY:WAR:MACHINE:QUEUE:POSITION"
+
+type SupremacyWarMachineQueuePositionRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		UserWarMachineQueuePosition []*UserWarMachineQueuePosition `json:"userWarMachineQueuePosition"`
+	} `json:"payload"`
+}
+type UserWarMachineQueuePosition struct {
+	UserID                   passport.UserID            `json:"userID"`
+	WarMachineQueuePositions []*WarMachineQueuePosition `json:"warMachineQueuePositions"`
+}
+
+type WarMachineQueuePosition struct {
+	WarMachineNFT *passport.WarMachineNFT `json:"warMachineNFT"`
+	Position      int                     `json:"position"`
+}
+
+// SupremacyWarMachineQueuePositionHandler broadcast the updated battle queue position detail
+func (sc *SupremacyControllerWS) SupremacyWarMachineQueuePositionHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupremacyWarMachineQueuePositionRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// broadcast war machine position to all user client
+	for _, uwm := range req.Payload.UserWarMachineQueuePosition {
+		go sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueuePositionSubscribe, uwm.UserID)), uwm.WarMachineQueuePositions)
+	}
+
+	return nil
+}
+
+type SupremacyWarMachineQueuePositionClearRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		FactionID passport.FactionID `json:"factionID"`
+	} `json:"payload"`
+}
+
+// 	rootHub.SecureCommand(HubKeySupremacyWarMachineQueuePositionClear, AssetController.RegisterHandler)
+const HubKeySupremacyWarMachineQueuePositionClear hub.HubCommandKey = "SUPREMACY:WAR:MACHINE:QUEUE:POSITION:CLEAR"
+
+// SupremacyWarMachineQueuePositionClearHandler broadcast user to clear the war machine queue
+func (sc *SupremacyControllerWS) SupremacyWarMachineQueuePositionClearHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupremacyWarMachineQueuePositionClearRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// get faction users
+	userIDs, err := db.UserIDsGetByFactionID(ctx, sc.Conn, req.Payload.FactionID)
+	if err != nil {
+		return terror.Error(err, "Failed to get user id from faction")
+	}
+
+	if len(userIDs) == 0 {
+		return nil
+	}
+
+	// broadcast war machine position to all user client
+	for _, userID := range userIDs {
+		go sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueuePositionSubscribe, userID)), []*WarMachineQueuePosition{})
+	}
+
 	return nil
 }

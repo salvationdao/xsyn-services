@@ -32,6 +32,15 @@ func (ug *UserGetter) FacebookID(s string) (auth.SecureUser, error) {
 	if err != nil {
 		return nil, terror.Error(err)
 	}
+
+	if user.FactionID != nil && !user.FactionID.IsNil() {
+		faction, err := db.FactionGet(ctx, ug.Conn, *user.FactionID)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		user.Faction = faction
+	}
+
 	return &Secureuser{
 		User:   user,
 		Conn:   ug.Conn,
@@ -45,6 +54,15 @@ func (ug *UserGetter) GoogleID(s string) (auth.SecureUser, error) {
 	if err != nil {
 		return nil, terror.Error(err)
 	}
+
+	if user.FactionID != nil && !user.FactionID.IsNil() {
+		faction, err := db.FactionGet(ctx, ug.Conn, *user.FactionID)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		user.Faction = faction
+	}
+
 	return &Secureuser{
 		User:   user,
 		Conn:   ug.Conn,
@@ -58,6 +76,15 @@ func (ug *UserGetter) TwitchID(s string) (auth.SecureUser, error) {
 	if err != nil {
 		return nil, terror.Error(err)
 	}
+
+	if user.FactionID != nil && !user.FactionID.IsNil() {
+		faction, err := db.FactionGet(ctx, ug.Conn, *user.FactionID)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		user.Faction = faction
+	}
+
 	return &Secureuser{
 		User:   user,
 		Conn:   ug.Conn,
@@ -123,6 +150,15 @@ func (ug *UserGetter) PublicAddress(s string) (auth.SecureUser, error) {
 	if err != nil {
 		return nil, terror.Error(err)
 	}
+
+	if user.FactionID != nil && !user.FactionID.IsNil() {
+		faction, err := db.FactionGet(ctx, ug.Conn, *user.FactionID)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		user.Faction = faction
+	}
+
 	return &Secureuser{
 		User:   user,
 		Conn:   ug.Conn,
@@ -137,6 +173,15 @@ func (ug *UserGetter) ID(id uuid.UUID) (auth.SecureUser, error) {
 	if err != nil {
 		return nil, terror.Error(err)
 	}
+
+	if user.FactionID != nil && !user.FactionID.IsNil() {
+		faction, err := db.FactionGet(ctx, ug.Conn, *user.FactionID)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		user.Faction = faction
+	}
+
 	return &Secureuser{
 		User:   user,
 		Conn:   ug.Conn,
@@ -156,6 +201,15 @@ func (ug *UserGetter) Token(id uuid.UUID) (auth.SecureUser, error) {
 	if err != nil {
 		return nil, terror.Error(err)
 	}
+
+	if user.FactionID != nil && !user.FactionID.IsNil() {
+		faction, err := db.FactionGet(ctx, ug.Conn, *user.FactionID)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		user.Faction = faction
+	}
+
 	return &Secureuser{
 		User:   user,
 		Conn:   ug.Conn,
@@ -169,12 +223,22 @@ func (ug *UserGetter) Email(email string) (auth.SecureUser, error) {
 	if err != nil {
 		return nil, terror.Error(err)
 	}
+
 	hash, err := db.HashByUserID(ctx, ug.Conn, user.ID)
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return nil, terror.Error(err)
 		}
 	}
+
+	if user.FactionID != nil && !user.FactionID.IsNil() {
+		faction, err := db.FactionGet(ctx, ug.Conn, *user.FactionID)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		user.Faction = faction
+	}
+
 	return &Secureuser{
 		User:         user,
 		Conn:         ug.Conn,

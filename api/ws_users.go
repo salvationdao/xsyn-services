@@ -73,6 +73,9 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 	api.SubscribeCommand(HubKeyUserSubscribe, userHub.UpdatedSubscribeHandler)
 	api.SubscribeCommand(HubKeyUserOnlineStatus, userHub.OnlineStatusSubscribeHandler)
 
+	// listen on queuing war machine
+	api.SecureUserSubscribeCommand(HubKeyUserWarMachineQueuePositionSubscribe, userHub.WarMachineQueuePositionUpdatedSubscribeHandler)
+
 	return userHub
 }
 
@@ -1666,4 +1669,42 @@ func (ctrlr *UserController) UpdatedSubscribeHandler(ctx context.Context, client
 
 	reply(user)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), nil
+}
+
+const HubKeyUserWarMachineQueuePositionSubscribe hub.HubCommandKey = "USER:WAR:MACHINE:QUEUE:POSITION:SUBSCRIBE"
+
+// WarMachineQueuePositionUpdatedSubscribeHandler
+func (ctrlr *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+
+	userID := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrForbidden)
+	}
+
+	// get user
+	user, err := db.UserGet(ctx, ctrlr.Conn, userID)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueuePositionSubscribe, userID))
+
+	// TODO: run a request to gameserver to get the war machine list
+	ctrlr.API.SendToAllServerClient(&ServerClientMessage{
+		Key: WarMachineQueuePositionGet,
+		Payload: struct {
+			UserID    passport.UserID    `json:"userID"`
+			FactionID passport.FactionID `json:"factionID"`
+		}{
+			UserID:    userID,
+			FactionID: *user.FactionID,
+		},
+	})
+
+	return req.TransactionID, busKey, nil
 }
