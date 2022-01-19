@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/jackc/pgtype"
-
 	"github.com/gofrs/uuid"
+	"github.com/jackc/pgtype"
 	"github.com/volatiletech/null/v8"
 )
 
@@ -549,51 +548,49 @@ func (id *FactionID) Scan(src interface{}) error {
 // BigInt aliases big.Int
 // We do this, so we can create .scan methods.
 type BigInt struct {
-	big.Int
+	pgtype.Numeric ` db:"sups"`
+	big.Int        `json:"sups"`
+	calculated     bool
 }
 
 func (b *BigInt) Value() (driver.Value, error) {
 	if b != nil {
+		if !b.calculated {
+			b.calc()
+		}
 		return b.String(), nil
 	}
 	return nil, nil
 }
 
-// Scan implements the database/sql Scanner interface.
-func (b *BigInt) Scan(src interface{}) error {
-	if src == nil {
-		*b = BigInt{}
-		return nil
+// calc calculates the big.int from the pgtype.Numeric
+func (b *BigInt) calc() {
+	if b.Numeric.Exp == 0 {
+		b.Int = *b.Numeric.Int
+		b.calculated = true
+		return
 	}
 
-	switch src := src.(type) {
-	case string:
-		return b.DecodeText(nil, []byte(src))
-	case []byte:
-		srcCopy := make([]byte, len(src))
-		copy(srcCopy, src)
-		return b.DecodeText(nil, srcCopy)
+	theString := b.Numeric.Int.String()
+	for i := int32(0); i < b.Numeric.Exp; i++ {
+		theString = theString + "0"
 	}
 
-	return fmt.Errorf("cannot scan %T", src)
+	_, ok := b.Int.SetString(theString, 10)
+	if !ok {
+		return
+	}
+	b.calculated = true
 }
 
-func (b *BigInt) DecodeText(ci *pgtype.ConnInfo, src []byte) error {
-	if src == nil {
-		*b = BigInt{}
-		return nil
+func (b *BigInt) String() string {
+	if !b.calculated {
+		b.calc()
 	}
-	flt, _, err := big.ParseFloat(string(src), 10, 84, big.ToNearestEven)
-	if err != nil {
-		return fmt.Errorf("not a valid big floot: %s", src)
-	}
-	newI, _ := flt.Int(nil)
-	b.Int = *newI
-
-	return nil
+	return b.Int.String()
 }
 
-// MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaler interface.
+// MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaller interface.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.MarshalText.
 func (b BigInt) MarshalText() ([]byte, error) {
 	return []byte(b.String()), nil
@@ -602,15 +599,14 @@ func (b BigInt) MarshalText() ([]byte, error) {
 func (b *BigInt) UnmarshalJSON(text []byte) error {
 	if text == nil {
 		*b = BigInt{}
+		b.calculated = true
 		return nil
 	}
 
-	flt, _, err := big.ParseFloat(string(text), 10, 0, big.ToNearestEven)
-	if err != nil {
-		return fmt.Errorf("not a valid big floot: %s", text)
+	_, ok := b.Int.SetString(string(text), 10)
+	if !ok {
+		return fmt.Errorf("invalid number %s", string(text))
 	}
-	newI, _ := flt.Int(nil)
-	b.Int = *newI
-
+	b.calculated = true
 	return nil
 }

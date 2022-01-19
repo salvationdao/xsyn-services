@@ -1,9 +1,11 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/base64"
 	"errors"
 	"net/url"
+	"passport"
 	"passport/api"
 	"passport/db"
 	"passport/email"
@@ -11,7 +13,7 @@ import (
 	"passport/seed"
 	"time"
 
-	"passport"
+	_ "github.com/lib/pq" //postgres drivers for initialization
 
 	"github.com/getsentry/sentry-go"
 	"github.com/jackc/pgx/v4"
@@ -56,6 +58,9 @@ func main() {
 				Name:    "serve",
 				Aliases: []string{"s"},
 				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "database_tx_user", Value: "passport_tx", EnvVars: []string{"PASSPORT_DATABASE_TX_USER", "DATABASE_TX_USER"}, Usage: "The database transaction user"},
+					&cli.StringFlag{Name: "database_tx_pass", Value: "dev-tx", EnvVars: []string{"PASSPORT_DATABASE_TX_PASS", "DATABASE_TX_PASS"}, Usage: "The database transaction pass"},
+
 					&cli.StringFlag{Name: "database_user", Value: "passport", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
 					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
 					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
@@ -113,6 +118,9 @@ func main() {
 			{
 				Name: "db",
 				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "database_tx_user", Value: "passport_tx", EnvVars: []string{"PASSPORT_DATABASE_TX_USER", "DATABASE_TX_USER"}, Usage: "The database transaction user"},
+					&cli.StringFlag{Name: "database_tx_pass", Value: "dev-tx", EnvVars: []string{"PASSPORT_DATABASE_TX_PASS", "DATABASE_TX_PASS"}, Usage: "The database transaction pass"},
+
 					&cli.StringFlag{Name: "database_user", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
 					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{"PASSPORT_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
 					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{"PASSPORT_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
@@ -128,6 +136,8 @@ func main() {
 				Action: func(c *cli.Context) error {
 					databaseUser := c.String("database_user")
 					databasePass := c.String("database_pass")
+					databaseTxUser := c.String("database_tx_user")
+					databaseTxPass := c.String("database_tx_pass")
 					databaseHost := c.String("database_host")
 					databasePort := c.String("database_port")
 					databaseName := c.String("database_name")
@@ -147,7 +157,18 @@ func main() {
 						return terror.Error(err)
 					}
 
-					seeder := seed.NewSeeder(pgxconn)
+					txConn, err := txConnect(
+						databaseTxUser,
+						databaseTxPass,
+						databaseHost,
+						databasePort,
+						databaseName,
+					)
+					if err != nil {
+						return terror.Panic(err)
+					}
+
+					seeder := seed.NewSeeder(pgxconn, txConn)
 					return seeder.Run(databaseProd)
 				},
 			},
@@ -200,6 +221,35 @@ func pgxconnect(
 	return conn, nil
 }
 
+func txConnect(
+	databaseTxUser string,
+	databaseTxPass string,
+	databaseHost string,
+	databasePort string,
+	databaseName string,
+) (*sql.DB, error) {
+	params := url.Values{}
+	params.Add("sslmode", "disable")
+
+	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
+		databaseTxUser,
+		databaseTxPass,
+		databaseHost,
+		databasePort,
+		databaseName,
+		params.Encode(),
+	)
+
+	fmt.Println(connString)
+
+	conn, err := sql.Open("postgres", connString)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return conn, nil
+}
+
 func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) error {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
@@ -224,6 +274,8 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	apiAddr := ctxCLI.String("api_addr")
 	databaseUser := ctxCLI.String("database_user")
 	databasePass := ctxCLI.String("database_pass")
+	databaseTxUser := ctxCLI.String("database_tx_user")
+	databaseTxPass := ctxCLI.String("database_tx_pass")
 	databaseHost := ctxCLI.String("database_host")
 	databasePort := ctxCLI.String("database_port")
 	databaseName := ctxCLI.String("database_name")
@@ -256,6 +308,17 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		return terror.Panic(err)
 	}
 
+	txConn, err := txConnect(
+		databaseTxUser,
+		databaseTxPass,
+		databaseHost,
+		databasePort,
+		databaseName,
+	)
+	if err != nil {
+		return terror.Panic(err)
+	}
+
 	count := 0
 	err = db.IsSchemaDirty(ctx, pgxconn, &count)
 	if err != nil {
@@ -267,8 +330,9 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	twitchExtensionSecretBase64 := ctxCLI.String("twitch_extension_secret")
 	if twitchExtensionSecretBase64 == "" {
-		return terror.Panic(nil, "Missing twitch extension secret")
+		return terror.Panic(fmt.Errorf("missing twitch extension secret"))
 	}
+
 	twitchExtensionSecret, err := base64.StdEncoding.DecodeString(twitchExtensionSecretBase64)
 	if err != nil {
 		return terror.Panic(err, "Failed to decode twitch extension secret")
@@ -276,12 +340,12 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	twitchClientID := ctxCLI.String("twitch_client_id")
 	if twitchClientID == "" {
-		return terror.Panic(nil, "Missing Twitch client ID")
+		return terror.Panic(fmt.Errorf("no twitch client id"))
 	}
 
 	twitchClientSecret := ctxCLI.String("twitch_client_secret")
 	if twitchClientSecret == "" {
-		return terror.Panic(nil, "Missing Twitch client secret")
+		return terror.Panic(fmt.Errorf("no twitch client secret"))
 	}
 
 	// Mailer
@@ -296,6 +360,6 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
-	api := api.NewAPI(log, cancelOnPanic, pgxconn, ctxCLI.String("google_client_id"), mailer, apiAddr, twitchExtensionSecret, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config)
+	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, ctxCLI.String("google_client_id"), mailer, apiAddr, twitchExtensionSecret, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config)
 	return api.Run(ctx)
 }

@@ -26,11 +26,25 @@ func TransactionGetList(ctx context.Context, conn Conn, transactionList []string
 
 	q := fmt.Sprintf(`--sql
 		SELECT *
-		FROM xsyn_transaction_log
+		FROM transactions
 		WHERE transaction_reference IN (%s)`, whereCondition)
 	err := pgxscan.Select(ctx, conn, &transactions, q, args...)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 	return transactions, nil
+}
+
+// UserBalance gets a users balance from the materialized view
+func UserBalance(ctx context.Context, conn Conn, userID passport.UserID) (*passport.BigInt, error) {
+	var wrap struct {
+		Sups passport.BigInt `db:"sups"`
+	}
+	q := `SELECT sups FROM users WHERE id = $1`
+
+	err := pgxscan.Get(ctx, conn, &wrap, q, userID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return &wrap.Sups, nil
 }

@@ -57,7 +57,7 @@ func (ic UserColumn) IsValid() error {
 const UserGetQuery string = `--sql
 SELECT 
 	users.id, users.role_id, users.two_factor_authentication_activated, users.two_factor_authentication_is_set, users.first_name, users.last_name, users.email, users.username, users.avatar_id, users.verified,
-	users.created_at, users.updated_at, users.deleted_at, users.facebook_id, users.google_id, users.twitch_id, users.public_address, users.nonce, users.sups, users.faction_id,
+	users.created_at, sups, users.updated_at, users.deleted_at, users.facebook_id, users.google_id, users.twitch_id, users.public_address, users.nonce, users.faction_id,
 	(SELECT COUNT(id) FROM user_recovery_codes urc WHERE urc.user_id = users.id) > 0 as has_recovery_code,
 	row_to_json(role) as role,
 	row_to_json(faction) as faction,
@@ -259,7 +259,7 @@ func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 		INSERT INTO users (first_name, last_name, email, username, public_address, avatar_id, role_id, verified, facebook_id, google_id, twitch_id)
 		VALUES ($1, $2, $3, $4, LOWER($5), $6, $7, $8, $9, $10, $11)
 		RETURNING
-			id, role_id, first_name, last_name, email, username, avatar_id, created_at, updated_at, deleted_at, facebook_id, google_id, twitch_id, sups`
+			id, role_id, first_name, last_name, email, username, avatar_id, created_at, updated_at, deleted_at, facebook_id, google_id, twitch_id`
 	err = pgxscan.Get(ctx,
 		conn,
 		user,
@@ -889,34 +889,24 @@ func UsernameAvailable(ctx context.Context, conn Conn, nameToCheck string, userI
 	return count == 0, nil
 }
 
-// UserUpdateSups updates a user's nonce, used for wallet auth
-func UserUpdateSups(ctx context.Context, conn Conn, userID passport.UserID, supsChange int64) (int64, error) {
-	remainSups := int64(0)
+// InsertSystemUser this allows manually giving a user a ID
+func InsertSystemUser(ctx context.Context, conn Conn, user *passport.User) error {
 
-	absNumber := supsChange
-	q := `
-		UPDATE users
-		SET	sups = sups + $2
-		WHERE id = $1
-	`
+	q := `--sql
+			INSERT INTO users (id, username, role_id, verified)
+			VALUES ($1, $2, $3, $4)`
 
-	// if the change is negative
-	if supsChange < 0 {
-		absNumber = -supsChange
-		q = `
-			UPDATE users
-			SET	sups = sups - $2
-			WHERE id = $1 and sups >= $2
-		`
-	}
-
-	q += "RETURNING sups;"
-
-	err := pgxscan.Get(ctx, conn, &remainSups, q, userID, absNumber)
+	_, err := conn.Exec(ctx,
+		q,
+		user.ID,
+		user.Username,
+		user.RoleID,
+		user.Verified,
+	)
 	if err != nil {
-		return 0, terror.Error(err)
+		return terror.Error(err)
 	}
-	return remainSups, nil
+	return nil
 }
 
 // UserIDsGetByFactionID return a list of user id from the given faction id

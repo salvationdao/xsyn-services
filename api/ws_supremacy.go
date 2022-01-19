@@ -38,12 +38,7 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 		API:  api,
 	}
 
-	supID, err := db.UserIDFromUsername(context.Background(), conn, passport.SupremacyGameUsername)
-	if err != nil {
-		log.Panic().Err(err).Msgf("unable to find supremacy user")
-	}
-
-	supremacyHub.SupremacyUserID = *supID
+	supremacyHub.SupremacyUserID = passport.SupremacyGameUserID
 
 	// start nft repair ticker
 	tickle.New("NFT Repair Ticker", 60, func() (int, error) {
@@ -76,21 +71,21 @@ type SupremacyTakeSupsRequest struct {
 	} `json:"payload"`
 }
 
-func (sc *SupremacyControllerWS) SupremacyTakeSupsHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (ctrlr *SupremacyControllerWS) SupremacyTakeSupsHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &SupremacyTakeSupsRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
 	}
 
-	tx := &Transaction{
+	tx := &NewTransaction{
 		From:                 req.Payload.FromUserID,
-		To:                   sc.SupremacyUserID,
+		To:                   ctrlr.SupremacyUserID,
 		TransactionReference: req.Payload.TransactionReference,
-		Amount:               req.Payload.Amount,
+		Amount:               req.Payload.Amount.Int,
 	}
 
-	sc.API.transaction <- tx
+	ctrlr.API.transaction <- tx
 
 	reply(struct {
 		IsSuccess bool `json:"isSuccess"`
@@ -110,7 +105,7 @@ type SupremacyTickerTickRequest struct {
 	} `json:"payload"`
 }
 
-func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (ctrlr *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &SupremacyTickerTickRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -120,8 +115,12 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 	reference := fmt.Sprintf("supremacy|ticker|%s", time.Now())
 
 	// TODO: get token pool from somewhere
-	supPool := big.NewInt(10000000000000000) // just setting the pool at 1000
-	var transactions []*Transaction
+	supPool := big.NewInt(0) // just setting the pool at 1000
+	supPool, ok := supPool.SetString("1000000000000000000000", 10)
+	if !ok {
+		return terror.Error(fmt.Errorf("failed to convert 1000000000000000000000 to big int"))
+	}
+	var transactions []*NewTransaction
 	totalPoints := 0
 	//  to avoid working in floats, a 100% multiplier is 100 points, a 25% is 25 points
 	// This will give us what we need to divide the pool by and then times by to give the user the correct share of the pool
@@ -144,10 +143,10 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 			usersSups := big.NewInt(0)
 			usersSups = usersSups.Mul(onePointWorth, big.NewInt(int64(multiplier)))
 
-			transactions = append(transactions, &Transaction{
-				From:                 sc.SupremacyUserID,
+			transactions = append(transactions, &NewTransaction{
+				From:                 ctrlr.SupremacyUserID,
 				To:                   *user,
-				Amount:               passport.BigInt{Int: *usersSups},
+				Amount:               *usersSups,
 				TransactionReference: reference,
 			})
 
@@ -157,7 +156,7 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 
 	// send through transactions
 	for _, tx := range transactions {
-		sc.API.transaction <- tx
+		ctrlr.API.transaction <- tx
 	}
 
 	reply(struct {

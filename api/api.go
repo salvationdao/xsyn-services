@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"passport"
 	"passport/db"
@@ -42,9 +43,9 @@ type API struct {
 	// server clients
 	serverClients       chan func(serverClients ServerClientsList)
 	sendToServerClients chan *ServerClientMessage
-
-	// transaction channel
-	transaction chan *Transaction
+	//tx stuff
+	transaction chan *NewTransaction
+	TxConn      *sql.DB
 }
 
 // NewAPI registers routes
@@ -52,6 +53,7 @@ func NewAPI(
 	log *zerolog.Logger,
 	cancelOnPanic context.CancelFunc,
 	conn *pgxpool.Pool,
+	txConn *sql.DB,
 	googleClientID string,
 	mailer *email.Mailer,
 	addr string,
@@ -92,8 +94,10 @@ func NewAPI(
 		// server clients
 		serverClients:       make(chan func(serverClients ServerClientsList)),
 		sendToServerClients: make(chan *ServerClientMessage),
-		// tx channel
-		transaction: make(chan *Transaction),
+
+		// object to hold transaction stuff
+		TxConn:      txConn,
+		transaction: make(chan *NewTransaction),
 	}
 
 	api.Routes.Use(middleware.RequestID)

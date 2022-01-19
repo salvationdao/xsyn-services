@@ -8,8 +8,15 @@ import (
 )
 
 const (
-	XsyncTreasureyUsername string = "Xsyn"
-	SupremacyGameUsername  string = "Supremacy"
+	XsynTreasuryUsername  string = "Xsyn"
+	SupremacyGameUsername string = "Supremacy"
+	OnChainUsername       string = "OnChain"
+)
+
+var (
+	XsynTreasuryUserID  = UserID(uuid.Must(uuid.FromString("ebf30ca0-875b-4e84-9a78-0b3fa36a1f87")))
+	SupremacyGameUserID = UserID(uuid.Must(uuid.FromString("4fae8fdf-584f-46bb-9cb9-bb32ae20177e")))
+	OnChainUserID       = UserID(uuid.Must(uuid.FromString("2fa1a63e-a4fa-4618-921f-4b4d28132069")))
 )
 
 const ServerClientLevel = 5
@@ -32,18 +39,18 @@ type User struct {
 	Role                             Role          `json:"role" db:"role"`
 	Organisation                     *Organisation `json:"organisation" db:"organisation"`
 	AvatarID                         *BlobID       `json:"avatarID" db:"avatar_id"`
-	Sups                             BigInt        `json:"sups" db:"sups"`
-	Online                           bool          `json:"online"`
-	TwoFactorAuthenticationActivated bool          `json:"twoFactorAuthenticationActivated" db:"two_factor_authentication_activated"`
-	TwoFactorAuthenticationSecret    string        `json:"twoFactorAuthenticationSecret" db:"two_factor_authentication_secret"`
-	TwoFactorAuthenticationIsSet     bool          `json:"twoFactorAuthenticationIsSet" db:"two_factor_authentication_is_set"`
-	HasRecoveryCode                  bool          `json:"hasRecoveryCode" db:"has_recovery_code"`
-	Pass2FA                          bool          `json:"pass2FA"`
-	Nonce                            null.String   `json:"-" db:"nonce"`
-	PublicAddress                    null.String   `json:"publicAddress,omitempty" db:"public_address"`
-	CreatedAt                        time.Time     `json:"createdAt" db:"created_at"`
-	UpdatedAt                        time.Time     `json:"updatedAt" db:"updated_at"`
-	DeletedAt                        *time.Time    `json:"deletedAt" db:"deleted_at"`
+	Sups                             BigInt
+	Online                           bool        `json:"online"`
+	TwoFactorAuthenticationActivated bool        `json:"twoFactorAuthenticationActivated" db:"two_factor_authentication_activated"`
+	TwoFactorAuthenticationSecret    string      `json:"twoFactorAuthenticationSecret" db:"two_factor_authentication_secret"`
+	TwoFactorAuthenticationIsSet     bool        `json:"twoFactorAuthenticationIsSet" db:"two_factor_authentication_is_set"`
+	HasRecoveryCode                  bool        `json:"hasRecoveryCode" db:"has_recovery_code"`
+	Pass2FA                          bool        `json:"pass2FA"`
+	Nonce                            null.String `json:"-" db:"nonce"`
+	PublicAddress                    null.String `json:"publicAddress,omitempty" db:"public_address"`
+	CreatedAt                        time.Time   `json:"createdAt" db:"created_at"`
+	UpdatedAt                        time.Time   `json:"updatedAt" db:"updated_at"`
+	DeletedAt                        *time.Time  `json:"deletedAt" db:"deleted_at"`
 }
 
 // IsAdmin is needed for the hub interface, no admins here!

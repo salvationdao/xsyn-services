@@ -2,6 +2,7 @@ package seed
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"passport"
 	"passport/db"
@@ -13,19 +14,14 @@ import (
 	"syreclabs.com/go/faker"
 )
 
-// MaxMembersPerOrganisation is the default amount of member users per organisation (also includes non-organisation users)
-const MaxMembersPerOrganisation = 40
-
-// MaxTestUsers is the default amount of user for the test organisation account (first organisation has X reserved test users)
-const MaxTestUsers = 3
-
 type Seeder struct {
-	Conn *pgxpool.Pool
+	Conn   *pgxpool.Pool
+	TxConn *sql.DB
 }
 
 // NewSeeder returns a new Seeder
-func NewSeeder(conn *pgxpool.Pool) *Seeder {
-	s := &Seeder{conn}
+func NewSeeder(conn *pgxpool.Pool, txConn *sql.DB) *Seeder {
+	s := &Seeder{Conn: conn, TxConn: txConn}
 	return s
 }
 
@@ -37,6 +33,12 @@ func (s *Seeder) Run(isProd bool) error {
 	err := s.Roles(ctx)
 	if err != nil {
 		return terror.Error(err, "seed roles failed")
+	}
+
+	fmt.Println("Seeding Off world / On chain User")
+	_, err = s.ETHChainUser(ctx)
+	if err != nil {
+		return terror.Error(err, "seed users failed")
 	}
 
 	fmt.Println("Seeding Treasury User")
@@ -84,6 +86,7 @@ func (s *Seeder) Run(isProd bool) error {
 	//	return terror.Error(err, "seed products failed")
 	//}
 
+	//s.Conn.
 	fmt.Println("Seed complete")
 	return nil
 }
@@ -123,18 +126,31 @@ func (s *Seeder) Roles(ctx context.Context) error {
 	for _, perm := range passport.AllPerm {
 		allPerms = append(allPerms, string(perm))
 	}
+	// Off world/OnChain Account role
+	offWorldRole := &passport.Role{
+		ID:          passport.UserRoleOffChain,
+		Name:        "Off World Role",
+		Permissions: allPerms,
+		Tier:        1,
+	}
+	err := db.RoleCreateReserved(ctx, s.Conn, offWorldRole)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// Xsyn Treasury Account role
 	xsynTreasuryRole := &passport.Role{
 		ID:          passport.UserRoleXsynTreasury,
 		Name:        "Xsyn Treasury",
 		Permissions: allPerms,
 		Tier:        1,
 	}
-	err := db.RoleCreateReserved(ctx, s.Conn, xsynTreasuryRole)
+	err = db.RoleCreateReserved(ctx, s.Conn, xsynTreasuryRole)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	// Game Treasury Account
+	// Game Treasury Account role
 	gameTreasuryRole := &passport.Role{
 		ID:          passport.UserRoleGameTreasury,
 		Name:        "Game Treasury",

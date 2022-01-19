@@ -19,6 +19,7 @@ require (
 	github.com/jackc/pgconn v1.10.1
 	github.com/jackc/pgx/v4 v4.14.1
 	github.com/lestrrat-go/jwx v1.2.15
+	github.com/lib/pq v1.10.4
 	github.com/mailgun/mailgun-go/v4 v4.6.0
 	github.com/makiuchi-d/arelo v1.9.1
 	github.com/microcosm-cc/bluemonday v1.0.17
@@ -57,7 +58,6 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/lib/pq v1.10.2 // indirect
 	github.com/mitchellh/mapstructure v1.4.2 // indirect
 	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect

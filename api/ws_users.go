@@ -50,7 +50,6 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 	}
 	api.Command(HubKeyUserGet, userHub.GetHandler) // Perm check inside handler (users can get themselves; need UserRead permission to get other users)
 	api.SecureCommand(HubKeyUserUpdate, userHub.UpdateHandler)
-	api.SecureCommand(HubKeyUserSupsUpdate, userHub.UpdateSupsHandler)
 	api.SecureCommand(HubKeyUserFactionUpdate, userHub.UpdateUserFactionHandler) // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserRemoveFacebook, userHub.RemoveFacebookHandler)   // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserAddFacebook, userHub.AddFacebookHandler)         // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
@@ -409,46 +408,6 @@ type UpdateUserSupsRequest struct {
 		UserID     passport.UserID `json:"userID"`
 		SupsChange int64           `json:"supsChange"`
 	} `json:"payload"`
-}
-
-// HubKeyUserSupsUpdate updates a user
-const HubKeyUserSupsUpdate hub.HubCommandKey = "USER:SUPS:UPDATE"
-
-// UpdateSupsHandler gets the details for a user
-func (ctrlr *UserController) UpdateSupsHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &UpdateUserSupsRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received")
-	}
-
-	if req.Payload.UserID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "user id is required")
-	}
-
-	// update sups
-	remainSups, err := db.UserUpdateSups(ctx, ctrlr.Conn, req.Payload.UserID, req.Payload.SupsChange)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	reply(true)
-
-	// broadcast remain sups back to gameserver
-	// send user changes to connected clients
-	ctrlr.API.SendToAllServerClient(&ServerClientMessage{
-		Key: UserSupsUpdated,
-		Payload: struct {
-			UserID passport.UserID `json:"userID"`
-			Sups   int64           `json:"sups"`
-		}{
-			UserID: req.Payload.UserID,
-			Sups:   remainSups,
-		},
-	})
-
-	return nil
-
 }
 
 // HubKeyUserCreate creates a user

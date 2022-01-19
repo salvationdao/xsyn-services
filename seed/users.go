@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"passport"
+	"passport/api"
 	"passport/crypto"
 	"passport/db"
 
@@ -19,7 +21,7 @@ func (s *Seeder) Users(ctx context.Context, organisations []*passport.Organisati
 	// Seed Random Users (use constant ids for first 4 users)
 	randomUsers, err := s.RandomUsers(
 		ctx,
-		MaxMembersPerOrganisation,
+		10,
 		passport.UserRoleMemberID,
 		nil)
 	if err != nil {
@@ -144,26 +146,17 @@ func (s *Seeder) RandomUsers(
 	return users, nil
 }
 
-func (s *Seeder) SupremacyUser(ctx context.Context) (*passport.User, error) {
+func (s *Seeder) ETHChainUser(ctx context.Context) (*passport.User, error) {
 	// Create user
 	u := &passport.User{
-		Username: passport.SupremacyGameUsername,
-		RoleID:   passport.UserRoleGameTreasury,
+		ID:       passport.OnChainUserID,
+		Username: passport.OnChainUsername,
+		RoleID:   passport.UserRoleOffChain,
 		Verified: true,
 	}
 
 	// Insert
-	err := db.UserCreate(ctx, s.Conn, u)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	q := `UPDATE users
-			set sups = 100000000000000000000000
-			where id = $1 `
-
-	// add 10mil sups
-	_, err = s.Conn.Exec(ctx, q, u.ID)
+	err := db.InsertSystemUser(ctx, s.Conn, u)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -174,26 +167,72 @@ func (s *Seeder) SupremacyUser(ctx context.Context) (*passport.User, error) {
 func (s *Seeder) XsynTreasuryUser(ctx context.Context) (*passport.User, error) {
 	// Create user
 	u := &passport.User{
-		Username: passport.XsyncTreasureyUsername,
+		ID:       passport.XsynTreasuryUserID,
+		Username: passport.XsynTreasuryUsername,
 		RoleID:   passport.UserRoleXsynTreasury,
 		Verified: true,
 	}
 
 	// Insert
-	err := db.UserCreate(ctx, s.Conn, u)
+	err := db.InsertSystemUser(ctx, s.Conn, u)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
-	q := `UPDATE users
-			set sups = 200000000000000000000000
-			where id = $1 `
+	// add 30mil
+	amount, ok := big.NewInt(0).SetString("30000000000000000000000123", 0)
+	if !ok {
+		return nil, terror.Error(fmt.Errorf("invalid string for big int"))
 
-	// add the 20mil sups
-	_, err = s.Conn.Exec(ctx, q, u.ID)
+	}
+
+	// create treasury opening balance (30mil sups)
+	err = api.CreateTransactionEntry(s.TxConn,
+		*amount,
+		u.ID,
+		passport.OnChainUserID,
+		"",
+		"",
+	)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
+	return u, nil
+}
+
+func (s *Seeder) SupremacyUser(ctx context.Context) (*passport.User, error) {
+	// Create user
+	u := &passport.User{
+		ID:       passport.SupremacyGameUserID,
+		Username: passport.SupremacyGameUsername,
+		RoleID:   passport.UserRoleGameTreasury,
+		Verified: true,
+	}
+
+	// Insert
+	err := db.InsertSystemUser(ctx, s.Conn, u)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	// add 12mil
+	amount, ok := big.NewInt(0).SetString("1200000000000000432500000", 0)
+	if !ok {
+		return nil, terror.Error(fmt.Errorf("invalid string for big int"))
+
+	}
+
+	// create treasury opening balance (30mil sups)
+	err = api.CreateTransactionEntry(s.TxConn,
+		*amount,
+		u.ID,
+		passport.XsynTreasuryUserID,
+		"",
+		"",
+	)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
 	return u, nil
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"passport"
-	"passport/db"
 
 	"github.com/ninja-software/hub/v2"
 	"github.com/ninja-software/hub/v2/ext/messagebus"
@@ -155,12 +154,7 @@ func (api *API) SupremacyCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 			return terror.Error(terror.ErrForbidden)
 		}
 
-		supremacyUser, err := db.UserIDFromUsername(ctx, api.Conn, passport.SupremacyGameUsername)
-		if err != nil {
-			return terror.Error(err)
-		}
-
-		if hubc.Identifier() != supremacyUser.String() {
+		if hubc.Identifier() != passport.SupremacyGameUserID.String() {
 			return terror.Error(terror.ErrForbidden)
 		}
 
