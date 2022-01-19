@@ -1127,8 +1127,8 @@ github.com/newrelic/go-agent v2.15.0+incompatible/go.mod h1:a8Fv1b/fYhFSReoTU6HD
 github.com/ngdinhtoan/glide-cleanup v0.2.0/go.mod h1:UQzsmiDOb8YV3nOsCxK/c9zPpCZVNoHScRE3EO9pVMM=
 github.com/ninja-software/go-check-passwd v0.0.0-20191023080747-0879e647a3ab h1:bvC84ZBXkVeVOK/eL6oXXfx/f/6j3LVZ5/U4fHii2ZM=
 github.com/ninja-software/go-check-passwd v0.0.0-20191023080747-0879e647a3ab/go.mod h1:mwse6v1g0o4Fv63/BRKJgFMWEjKxue4gW5vGHKwGMpg=
-github.com/ninja-software/hub/v2 v2.1.2 h1:HH7Rck4ILGChtflVLAF2Q9rijGfZ1wZpWO30K7QHW40=
-github.com/ninja-software/hub/v2 v2.1.2/go.mod h1:e6MfViP4JlzgJYBrQ47X0pFjygMAmosm4fOon9/UBoE=
+github.com/ninja-software/hub/v2 v2.2.0 h1:bEKH7XPieooh3WDwbx9+IsGNZ9isjMtZwZB8kaBBVWg=
+github.com/ninja-software/hub/v2 v2.2.0/go.mod h1:enOjEkEkQoplA1ctKu/8bpsLh4fsAZ44Uz/CK3fZ5mE=
 github.com/ninja-software/terror/v2 v2.0.7 h1:gV2v0TybYXQvAD3SYh6YiyuMt8rig4FwRYL81kx65xo=
 github.com/ninja-software/terror/v2 v2.0.7/go.mod h1:pwAw9I1KYYaZr3DLE/Z3WKkSSy/Ccj3ObjOpUvm+0Yo=
 github.com/ninja-software/tickle v1.3.2 h1:x4w9dWg1U4VQ0QMrfrH5sevBnJVX7HiqZNx3QUb1do8=
@@ -2231,8 +2231,9 @@ gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce h1:+JknDZhAj8YMt7
 gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce/go.mod h1:5AcXVHNjg+BDxry382+8OKon8SEWiKktQR07RKPsv1c=
 gopkg.in/olebedev/go-duktape.v3 v3.0.0-20200619000410-60c24ae608a6/go.mod h1:uAJfkITjFhyEEuUfm7bsmCZRbW5WRq8s9EY8HZ6hCns=
 gopkg.in/resty.v1 v1.12.0/go.mod h1:mDo4pnntr5jdWRML875a/NmxYqAlA73dVijT2AXvQQo=
-gopkg.in/square/go-jose.v2 v2.5.1 h1:7odma5RETjNHWJnR32wx8t+Io4djHE1PqxCFx3iiZ2w=
 gopkg.in/square/go-jose.v2 v2.5.1/go.mod h1:M9dMgbHiYLoDGQrXy7OpJDJWiKiU//h+vD76mk0e1AI=
+gopkg.in/square/go-jose.v2 v2.6.0 h1:NGk74WTnPKBNUhNzQX7PYcTLUjoq7mzKk2OKbvwk2iI=
+gopkg.in/square/go-jose.v2 v2.6.0/go.mod h1:M9dMgbHiYLoDGQrXy7OpJDJWiKiU//h+vD76mk0e1AI=
 gopkg.in/src-d/go-billy.v4 v4.3.2/go.mod h1:nDjArDMp+XMs1aFAESLRjfGSgfvoYN0hDfzEk0GjC98=
 gopkg.in/src-d/go-git-fixtures.v3 v3.5.0/go.mod h1:dLBcvytrw/TYZsNTWCnkNF2DSIlzWYqTe3rJR56Ac7g=
 gopkg.in/src-d/go-git.v4 v4.13.1/go.mod h1:nx5NYcxdKxq5fpltdHnPa2Exj4Sx0EclMWZQbYDu2z8=

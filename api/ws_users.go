@@ -32,23 +32,21 @@ import (
 
 // UserController holds handlers for authentication
 type UserController struct {
-	Conn               *pgxpool.Pool
-	Log                *zerolog.Logger
-	API                *API
-	Google             *auth.GoogleConfig
-	TwitchClientID     string
-	TwitchClientSecret string
+	Conn   *pgxpool.Pool
+	Log    *zerolog.Logger
+	API    *API
+	Google *auth.GoogleConfig
+	Twitch *auth.TwitchConfig
 }
 
 // NewUserController creates the user hub
-func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, googleConfig *auth.GoogleConfig, twitchClientID string, twitchClientSecret string) *UserController {
+func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, googleConfig *auth.GoogleConfig, twitchConfig *auth.TwitchConfig) *UserController {
 	userHub := &UserController{
-		Conn:               conn,
-		Log:                log_helpers.NamedLogger(log, "user_hub"),
-		API:                api,
-		Google:             googleConfig,
-		TwitchClientID:     twitchClientID,
-		TwitchClientSecret: twitchClientSecret,
+		Conn:   conn,
+		Log:    log_helpers.NamedLogger(log, "user_hub"),
+		API:    api,
+		Google: googleConfig,
+		Twitch: twitchConfig,
 	}
 	api.Command(HubKeyUserGet, userHub.GetHandler) // Perm check inside handler (users can get themselves; need UserRead permission to get other users)
 	api.SecureCommand(HubKeyUserUpdate, userHub.UpdateHandler)
@@ -1348,7 +1346,7 @@ func (ctrlr *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Cli
 
 	keySet := oidc.NewRemoteKeySet(ctx, "https://id.twitch.tv/oauth2/keys")
 	oidcVerifier := oidc.NewVerifier("https://id.twitch.tv/oauth2", keySet, &oidc.Config{
-		ClientID: ctrlr.TwitchClientID,
+		ClientID: ctrlr.Twitch.ClientID,
 	})
 
 	token, err := oidcVerifier.Verify(ctx, req.Payload.Token)

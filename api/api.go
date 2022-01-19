@@ -108,8 +108,12 @@ func NewAPI(
 		Google: &auth.GoogleConfig{
 			ClientID: googleClientID,
 		},
-		TwitchExtensionSecret: twitchExtensionSecret,
-		CookieSecure:          config.CookieSecure,
+		Twitch: &auth.TwitchConfig{
+			ExtensionSecret: twitchExtensionSecret,
+			ClientID:        twitchClientID,
+			ClientSecret:    twitchClientSecret,
+		},
+		CookieSecure: config.CookieSecure,
 		UserController: &UserGetter{
 			Log:    log_helpers.NamedLogger(log, "user getter"),
 			Conn:   conn,
@@ -143,7 +147,11 @@ func NewAPI(
 	_ = NewUserActivityController(log, conn, api)
 	_ = NewUserController(log, conn, api, &auth.GoogleConfig{
 		ClientID: googleClientID,
-	}, twitchClientID, twitchClientSecret)
+	}, &auth.TwitchConfig{
+		ExtensionSecret: twitchExtensionSecret,
+		ClientID:        twitchClientID,
+		ClientSecret:    twitchClientSecret,
+	})
 	_ = NewAuthController(log, conn, api)
 	_ = NewFactionController(log, conn, api)
 	_ = NewOrganisationController(log, conn, api)

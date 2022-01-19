@@ -23,7 +23,7 @@ require (
 	github.com/makiuchi-d/arelo v1.9.1
 	github.com/microcosm-cc/bluemonday v1.0.17
 	github.com/ninja-software/go-check-passwd v0.0.0-20191023080747-0879e647a3ab
-	github.com/ninja-software/hub/v2 v2.1.2
+	github.com/ninja-software/hub/v2 v2.2.0
 	github.com/ninja-software/terror/v2 v2.0.7
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
@@ -80,7 +80,7 @@ require (
 	google.golang.org/grpc v1.40.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
-	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
+	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
