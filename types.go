@@ -571,15 +571,16 @@ func (b *BigInt) calc() {
 		return
 	}
 
-	theString := b.Numeric.Int.String()
-	for i := int32(0); i < b.Numeric.Exp; i++ {
-		theString = theString + "0"
-	}
+	final := big.Int{}
+	b.Int = *b.Numeric.Int
 
-	_, ok := b.Int.SetString(theString, 10)
-	if !ok {
-		return
-	}
+	final.Exp(
+		big.NewInt(10),
+		big.NewInt(int64(b.Numeric.Exp)),
+		&big.Int{},
+	)
+
+	b.Int.Mul(&b.Int, &final)
 	b.calculated = true
 }
 

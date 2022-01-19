@@ -61,9 +61,9 @@ $updateOrganisationKeywords$
  *************/
 CREATE TABLE factions
 (
-    id     UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    label  TEXT             NOT NULL,
-    colour TEXT             NOT NULL
+    id    UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    label TEXT             NOT NULL,
+    theme JSONB            NOT NULL DEFAULT '{}'
 );
 
 
