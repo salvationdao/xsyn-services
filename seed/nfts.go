@@ -28,7 +28,7 @@ func (s *Seeder) SeedNFTS(ctx context.Context) (warMachines, weapons, utility []
 func (s *Seeder) SeedWarMachine(ctx context.Context) ([]*passport.XsynNftMetadata, error) {
 	newNFT := []*passport.XsynNftMetadata{
 		{
-			Game:               "SUPREMACY",
+			Collection:         "SUPREMACY",
 			GameObject:         nil,
 			Name:               "Big War Machine",
 			Description:        "A big ass War Machine - links to attached nfts",
@@ -106,7 +106,7 @@ func (s *Seeder) SeedWarMachine(ctx context.Context) ([]*passport.XsynNftMetadat
 			},
 		},
 		{
-			Game:        "SUPREMACY",
+			Collection:  "SUPREMACY",
 			Name:        "Medium War Machine",
 			Description: "Average size War Machine - links to attached nfts",
 			ExternalUrl: "",
@@ -174,7 +174,7 @@ func (s *Seeder) SeedWarMachine(ctx context.Context) ([]*passport.XsynNftMetadat
 			},
 		},
 		{
-			Game:        "SUPREMACY",
+			Collection:  "SUPREMACY",
 			Name:        "Small War Machine",
 			Description: "A iddy biddy tiny War Machine - links to attached nfts",
 			ExternalUrl: "",
@@ -252,7 +252,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 	newNFT := []*passport.XsynNftMetadata{
 		// pulse rifles
 		{
-			Game:               "SUPREMACY",
+			Collection:         "SUPREMACY",
 			GameObject:         nil,
 			Name:               "Pulse Rifle",
 			Description:        "A rifle that shoots pulses",
@@ -295,7 +295,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			},
 		},
 		{
-			Game:               "SUPREMACY",
+			Collection:         "SUPREMACY",
 			GameObject:         nil,
 			Name:               "Pulse Rifle",
 			Description:        "A rifle that shoots pulses",
@@ -339,7 +339,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 		},
 		// auto cannons
 		{
-			Game:               "SUPREMACY",
+			Collection:         "SUPREMACY",
 			GameObject:         nil,
 			Name:               "Auto Cannon",
 			Description:        "A cannon that shoots projectiles",
@@ -392,7 +392,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			},
 		},
 		{
-			Game:               "SUPREMACY",
+			Collection:         "SUPREMACY",
 			GameObject:         nil,
 			Name:               "Auto Cannon",
 			Description:        "A cannon that shoots projectiles",
@@ -446,7 +446,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 		},
 		// rocket launchers
 		{
-			Game:               "SUPREMACY",
+			Collection:         "SUPREMACY",
 			GameObject:         nil,
 			Name:               "Rocket Launcher",
 			Description:        "A shoulder weapon that fires rockets",
@@ -489,7 +489,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			},
 		},
 		{
-			Game:               "SUPREMACY",
+			Collection:         "SUPREMACY",
 			GameObject:         nil,
 			Name:               "Rocket Launcher",
 			Description:        "A shoulder weapon that fires rockets",
@@ -533,7 +533,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 		},
 		// rapid rocket launchers
 		{
-			Game:               "SUPREMACY",
+			Collection:         "SUPREMACY",
 			GameObject:         nil,
 			Name:               "Rapid Rocket Launcher",
 			Description:        "A shoulder weapon that fires rockets quickly",
@@ -586,7 +586,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			},
 		},
 		{
-			Game:               "SUPREMACY",
+			Collection:         "SUPREMACY",
 			GameObject:         nil,
 			Name:               "Rapid Rocket Launcher",
 			Description:        "A shoulder weapon that fires rockets quickly",
@@ -654,7 +654,7 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 	newNFT := []*passport.XsynNftMetadata{
 		// large shield
 		{
-			Game:               "SUPREMACY",
+			Collection:         "SUPREMACY",
 			GameObject:         nil,
 			Name:               "Large Shield",
 			Description:        "A large shield",
@@ -698,7 +698,7 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			},
 		},
 		{
-			Game:               "SUPREMACY",
+			Collection:         "SUPREMACY",
 			GameObject:         nil,
 			Name:               "Large Shield",
 			Description:        "A large shield",
@@ -743,7 +743,7 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 		},
 		// med shield
 		{
-			Game:               "SUPREMACY",
+			Collection:         "SUPREMACY",
 			GameObject:         nil,
 			Name:               "Medium Shield",
 			Description:        "A Medium shield",
@@ -787,7 +787,7 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			},
 		},
 		{
-			Game:               "SUPREMACY",
+			Collection:         "SUPREMACY",
 			GameObject:         nil,
 			Name:               "Medium Shield",
 			Description:        "A Medium shield",
@@ -832,7 +832,7 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 		},
 		// small shields
 		{
-			Game:               "SUPREMACY",
+			Collection:         "SUPREMACY",
 			GameObject:         nil,
 			Name:               "Small Shield",
 			Description:        "A small shield",
@@ -876,7 +876,7 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			},
 		},
 		{
-			Game:               "SUPREMACY",
+			Collection:         "SUPREMACY",
 			GameObject:         nil,
 			Name:               "Small Shield",
 			Description:        "A small shield",
@@ -921,7 +921,7 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 		},
 		// healing drone
 		{
-			Game:               "SUPREMACY",
+			Collection:         "SUPREMACY",
 			GameObject:         nil,
 			Name:               "Medium Shield",
 			Description:        "A Medium shield",
@@ -955,7 +955,7 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			},
 		},
 		{
-			Game:               "SUPREMACY",
+			Collection:         "SUPREMACY",
 			GameObject:         nil,
 			Name:               "Medium Shield",
 			Description:        "A Medium shield",

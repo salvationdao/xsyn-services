@@ -11,13 +11,13 @@ import (
 
 // XsynNftMetadataInsert inserts a new nft metadata
 func XsynNftMetadataInsert(ctx context.Context, conn Conn, nft *passport.XsynNftMetadata) error {
-	q := `	INSERT INTO xsyn_nft_metadata (token_id, name,game, game_object,  description, external_url, image, attributes, additional_metadata)
+	q := `	INSERT INTO xsyn_nft_metadata (token_id, name, collection, game_object,  description, external_url, image, attributes, additional_metadata)
 			VALUES((SELECT nextval('token_id_seq')),$1, $2, $3, $4, $5, $6, $7, $8)
 			RETURNING token_id,  name, description, external_url, image, attributes`
 
 	err := pgxscan.Get(ctx, conn, nft, q,
 		nft.Name,
-		nft.Game,
+		nft.Collection,
 		nft.GameObject,
 		nft.Description,
 		nft.ExternalUrl,
@@ -54,7 +54,7 @@ func XsynNftMetadataAvailableGet(ctx context.Context, conn Conn, userID passport
 	nft := &passport.XsynNftMetadata{}
 	q := `
 		SELECT
-			xnm.token_id, xnm.game, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+			xnm.token_id, xnm.collection, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM 
 			xsyn_nft_metadata xnm
 		INNER JOIN
