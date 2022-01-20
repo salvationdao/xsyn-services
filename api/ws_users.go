@@ -48,6 +48,7 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 		Google: googleConfig,
 		Twitch: twitchConfig,
 	}
+
 	api.Command(HubKeyUserGet, userHub.GetHandler) // Perm check inside handler (users can get themselves; need UserRead permission to get other users)
 	api.SecureCommand(HubKeyUserUpdate, userHub.UpdateHandler)
 	api.SecureCommand(HubKeyUserFactionUpdate, userHub.UpdateUserFactionHandler) // Perm check inside handler (handler used to update self or for user w/ permission to update another user)

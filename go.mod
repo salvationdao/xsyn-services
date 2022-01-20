@@ -23,7 +23,7 @@ require (
 	github.com/mailgun/mailgun-go/v4 v4.6.0
 	github.com/microcosm-cc/bluemonday v1.0.17
 	github.com/ninja-software/go-check-passwd v0.0.0-20191023080747-0879e647a3ab
-	github.com/ninja-software/hub/v2 v2.2.0
+	github.com/ninja-software/hub/v2 v2.2.1
 	github.com/ninja-software/terror/v2 v2.0.7
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1

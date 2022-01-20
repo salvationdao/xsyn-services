@@ -1128,8 +1128,8 @@ github.com/newrelic/go-agent v2.15.0+incompatible/go.mod h1:a8Fv1b/fYhFSReoTU6HD
 github.com/ngdinhtoan/glide-cleanup v0.2.0/go.mod h1:UQzsmiDOb8YV3nOsCxK/c9zPpCZVNoHScRE3EO9pVMM=
 github.com/ninja-software/go-check-passwd v0.0.0-20191023080747-0879e647a3ab h1:bvC84ZBXkVeVOK/eL6oXXfx/f/6j3LVZ5/U4fHii2ZM=
 github.com/ninja-software/go-check-passwd v0.0.0-20191023080747-0879e647a3ab/go.mod h1:mwse6v1g0o4Fv63/BRKJgFMWEjKxue4gW5vGHKwGMpg=
-github.com/ninja-software/hub/v2 v2.2.0 h1:bEKH7XPieooh3WDwbx9+IsGNZ9isjMtZwZB8kaBBVWg=
-github.com/ninja-software/hub/v2 v2.2.0/go.mod h1:enOjEkEkQoplA1ctKu/8bpsLh4fsAZ44Uz/CK3fZ5mE=
+github.com/ninja-software/hub/v2 v2.2.1 h1:lRpJnLNYxrU8sG9tuyR/LK+S6TmoNyjr5mDwuvfXtK4=
+github.com/ninja-software/hub/v2 v2.2.1/go.mod h1:enOjEkEkQoplA1ctKu/8bpsLh4fsAZ44Uz/CK3fZ5mE=
 github.com/ninja-software/terror/v2 v2.0.7 h1:gV2v0TybYXQvAD3SYh6YiyuMt8rig4FwRYL81kx65xo=
 github.com/ninja-software/terror/v2 v2.0.7/go.mod h1:pwAw9I1KYYaZr3DLE/Z3WKkSSy/Ccj3ObjOpUvm+0Yo=
 github.com/ninja-software/tickle v1.3.2 h1:x4w9dWg1U4VQ0QMrfrH5sevBnJVX7HiqZNx3QUb1do8=
