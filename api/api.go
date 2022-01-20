@@ -162,6 +162,7 @@ func NewAPI(
 	_ = NewRoleController(log, conn, api)
 	_ = NewProductController(log, conn, api)
 	_ = NewSupremacyController(log, conn, api)
+	_ = NewGamebarController(log, conn, api)
 
 	//api.Hub.Events.AddEventHandler(hub.EventOnline, api.ClientOnline)
 	api.Hub.Events.AddEventHandler(auth.EventLogin, api.ClientAuth)

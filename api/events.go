@@ -72,6 +72,9 @@ func (api *API) ClientAuth(ctx context.Context, client *hub.Client, clients hub.
 	// broadcast user online status
 	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, user.ID.String())), true)
 
+	// broadcast user to gamebar
+	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyGamebarUserSubscribe, client.SessionID)), user)
+
 	// broadcast user online status to server clients
 	api.SendToAllServerClient(&ServerClientMessage{
 		Key: UserOnlineStatus,

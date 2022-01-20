@@ -323,6 +323,7 @@ CREATE TABLE xsyn_nft_metadata
     description         TEXT,
     external_url        TEXT,
     image               TEXT,
+    durability          INT                        NOT NULL DEFAULT 100,
     attributes          JSONB,
     additional_metadata JSONB,
     keywords            TSVECTOR, -- search
