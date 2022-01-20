@@ -31,6 +31,12 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 		API:  api,
 	}
 
+	// collections list
+	api.SecureCommand(HubKeyCollectionList, assetHub.CollectionListHandler)
+
+	// assets list
+	api.SecureCommand(HubKeyCollectionList, assetHub.ListHandler)
+
 	api.SecureCommand(HubKeyAssetRegister, assetHub.RegisterHandler)
 	api.SecureCommand(HubKeyAssetQueueJoin, assetHub.JoinQueueHandler)
 	api.SecureCommand(HubKeyAssetQueueLeave, assetHub.LeaveQueueHandler)
@@ -262,4 +268,67 @@ func parseWarMachineNFT(nft *passport.XsynNftMetadata, warMachineNFT *passport.W
 			warMachineNFT.UtilitySlots = int(att.Value.(float64))
 		}
 	}
+}
+
+// rootHub.SecureCommand(HubKeyAssetList, AssetController.GetHandler)
+const HubKeyAssetList hub.HubCommandKey = "ASSET:LIST"
+
+// AssetListHandlerRequest requests holds the filter for user list
+type AssetListHandlerRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		SortDir  db.SortByDir          `json:"sortDir"`
+		SortBy   db.UserColumn         `json:"sortBy"`
+		Filter   *db.ListFilterRequest `json:"filter"`
+		Archived bool                  `json:"archived"`
+		Search   string                `json:"search"`
+		PageSize int                   `json:"pageSize"`
+		Page     int                   `json:"page"`
+	} `json:"payload"`
+}
+
+// ListHandler list assets with pagination
+func (ctrlr *AssetController) ListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Something went wrong, please try again."
+
+	req := &ListHandlerRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	offset := 0
+	if req.Payload.Page > 0 {
+		offset = req.Payload.Page * req.Payload.PageSize
+	}
+
+	users := []*passport.User{}
+	total, err := db.UserList(
+		ctx, ctrlr.Conn, &users,
+		req.Payload.Search,
+		req.Payload.Archived,
+		req.Payload.Filter,
+		offset,
+		req.Payload.PageSize,
+		req.Payload.SortBy,
+		req.Payload.SortDir,
+	)
+
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	resp := &UserListResponse{
+		Total:   total,
+		Records: users,
+	}
+
+	reply(resp)
+
+	return nil
+}
+
+// CollectionListHandler list collections with pagination
+func (ctrlr *AssetController) CollectionListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	return nil
 }
