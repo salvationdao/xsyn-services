@@ -33,12 +33,6 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 		API:  api,
 	}
 
-	// collections list
-	// api.SecureCommand(HubKeyCollectionList, assetHub.CollectionListHandler)
-
-	// assets list
-	// api.SecureCommand(HubKeyAssetList, assetHub.ListHandler)
-
 	api.SecureUserSubscribeCommand(HubKeyUserAssetsSubscribe, assetHub.UserAssetsUpdatedSubscribeHandler)
 
 	api.SecureCommand(HubKeyAssetRegister, assetHub.RegisterHandler)
