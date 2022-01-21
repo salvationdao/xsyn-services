@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"passport"
 	"passport/db"
 	"passport/log_helpers"
@@ -32,10 +33,10 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 	}
 
 	// collections list
-	api.SecureCommand(HubKeyCollectionList, assetHub.CollectionListHandler)
+	// api.SecureCommand(HubKeyCollectionList, assetHub.CollectionListHandler)
 
 	// assets list
-	api.SecureCommand(HubKeyCollectionList, assetHub.ListHandler)
+	api.SecureCommand(HubKeyAssetList, assetHub.ListHandler)
 
 	api.SecureCommand(HubKeyAssetRegister, assetHub.RegisterHandler)
 	api.SecureCommand(HubKeyAssetQueueJoin, assetHub.JoinQueueHandler)
@@ -278,7 +279,7 @@ type AssetListHandlerRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		SortDir  db.SortByDir          `json:"sortDir"`
-		SortBy   db.UserColumn         `json:"sortBy"`
+		SortBy   db.AssetColumn        `json:"sortBy"`
 		Filter   *db.ListFilterRequest `json:"filter"`
 		Archived bool                  `json:"archived"`
 		Search   string                `json:"search"`
@@ -287,24 +288,29 @@ type AssetListHandlerRequest struct {
 	} `json:"payload"`
 }
 
+// AssetListResponse is the response from get asset list
+type AssetListResponse struct {
+	Records []*passport.Asset `json:"records"`
+	Total   int               `json:"total"`
+}
+
 // ListHandler list assets with pagination
 func (ctrlr *AssetController) ListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	errMsg := "Something went wrong, please try again."
-
-	req := &ListHandlerRequest{}
+	req := &AssetListHandlerRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-
 	offset := 0
 	if req.Payload.Page > 0 {
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	users := []*passport.User{}
-	total, err := db.UserList(
-		ctx, ctrlr.Conn, &users,
+	fmt.Println("this is req", req.Payload.Filter)
+	assets := []*passport.Asset{}
+	total, err := db.AssetList(
+		ctx, ctrlr.Conn, &assets,
 		req.Payload.Search,
 		req.Payload.Archived,
 		req.Payload.Filter,
@@ -313,14 +319,13 @@ func (ctrlr *AssetController) ListHandler(ctx context.Context, hubc *hub.Client,
 		req.Payload.SortBy,
 		req.Payload.SortDir,
 	)
-
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
-	resp := &UserListResponse{
+	resp := &AssetListResponse{
 		Total:   total,
-		Records: users,
+		Records: assets,
 	}
 
 	reply(resp)

@@ -45,28 +45,24 @@ func (ic AssetColumn) IsValid() error {
 	return terror.Error(fmt.Errorf("invalid asset column type"))
 }
 
-const AssetGetQuery string = `--sql
-SELECT 
-	users.id, users.role_id, users.two_factor_authentication_activated, users.two_factor_authentication_is_set, users.first_name, users.last_name, users.email, users.username, users.avatar_id, users.verified,
-	users.created_at, sups, users.updated_at, users.deleted_at, users.facebook_id, users.google_id, users.twitch_id, users.public_address, users.nonce, users.faction_id,
-	(SELECT COUNT(id) FROM user_recovery_codes urc WHERE urc.user_id = users.id) > 0 as has_recovery_code,
-	row_to_json(role) as role,
-	row_to_json(faction) as faction,
-	row_to_json(organisation) as organisation
-` + UserGetQueryFrom
-
-const AssetGetQueryFrom string = `--sql
-FROM users
-LEFT JOIN (SELECT id, name, permissions, tier FROM roles) role ON role.id = users.role_id
-LEFT JOIN (
-	SELECT id, user_id, organisation_id, slug, name
-	FROM user_organisations
-	INNER JOIN organisations o ON o.id = organisation_id
-) organisation ON organisation.user_id = users.id
-LEFT JOIN (
-    SELECT id, label, theme
-    FROM factions
-) faction ON faction.id = users.faction_id
+const AssetGetQuery string = `
+select 
+xnm.token_id,
+xnm.name,
+xnm.collection,
+xnm.description,
+xnm.external_url,
+xnm.image,
+xnm.attributes,
+xnm.deleted_at ,
+xnm.updated_at,
+xnm.created_at
+-- row_to_json(u) as user
+` + AessetGetQueryFrom
+const AessetGetQueryFrom = `
+from xsyn_assets xa
+inner join xsyn_nft_metadata xnm on xnm.token_id = xa.token_id
+-- inner join users u on xa.user_id = u.id 
 `
 
 // AssetList gets a list of patients depending on the filters
@@ -106,6 +102,13 @@ func AssetList(
 		}
 	}
 
+	fmt.Println("==============")
+	fmt.Println("==============")
+	fmt.Println("this is filter", filter)
+
+	fmt.Println("this is filter string", filterConditionsString)
+	fmt.Println("==============")
+
 	archiveCondition := "IS NULL"
 	if archived {
 		archiveCondition = "IS NOT NULL"
@@ -122,17 +125,19 @@ func AssetList(
 
 	// Get Total Found
 	countQ := fmt.Sprintf(`--sql
-		SELECT COUNT(DISTINCT assets.id)
+		SELECT COUNT(DISTINCT xa.token_id)
 		%s
-		WHERE assets.deleted_at %s
+		WHERE xnm.deleted_at %s
 			%s
 			%s
 		`,
-		UserGetQueryFrom,
+		AessetGetQueryFrom,
 		archiveCondition,
 		filterConditionsString,
 		searchCondition,
 	)
+
+	fmt.Println("qqqqqq", countQ)
 
 	var totalRows int
 	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
@@ -142,6 +147,8 @@ func AssetList(
 	if totalRows == 0 {
 		return 0, nil
 	}
+
+	fmt.Println("error >>>>>>>>>>1")
 
 	// Order and Limit
 	orderBy := " ORDER BY created_at desc"
@@ -159,8 +166,8 @@ func AssetList(
 
 	// Get Paginated Result
 	q := fmt.Sprintf(
-		UserGetQuery+`--sql
-		WHERE assets.deleted_at %s
+		AssetGetQuery+`--sql
+		WHERE xnm.deleted_at %s
 			%s
 			%s
 		%s

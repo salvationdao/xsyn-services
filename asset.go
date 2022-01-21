@@ -6,8 +6,7 @@ import (
 
 // Asset is a single xsyn_asset on the platform
 type Asset struct {
-	ID          UserID     `json:"id" db:"id"`
-	TokenID     TokenID    `json:"token_id" db:"token_id"`
+	TokenID     int        `json:"token_id" db:"token_id"`
 	Name        string     `json:"name" db:"name"`
 	Collection  string     `json:"collection" db:"collection"`
 	Description string     `json:"description" db:"description"`
