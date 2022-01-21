@@ -15,6 +15,7 @@ type AssetColumn string
 const (
 	AssetColumnID          AssetColumn = "id"
 	AssetColumnTokenID     AssetColumn = "token_id"
+	AssetColumnUserID      AssetColumn = "user_id"
 	AssetColumnName        AssetColumn = "name"
 	AssetColumnCollection  AssetColumn = "collection"
 	AssetColumnDescription AssetColumn = "description"
@@ -31,6 +32,7 @@ func (ic AssetColumn) IsValid() error {
 	switch ic {
 	case AssetColumnID,
 		AssetColumnTokenID,
+		AssetColumnUserID,
 		AssetColumnName,
 		AssetColumnCollection,
 		AssetColumnDescription,
@@ -46,7 +48,7 @@ func (ic AssetColumn) IsValid() error {
 }
 
 const AssetGetQuery string = `
-select 
+SELECT 
 xnm.token_id,
 xnm.name,
 xnm.collection,
@@ -54,18 +56,16 @@ xnm.description,
 xnm.external_url,
 xnm.image,
 xnm.attributes,
-xnm.deleted_at ,
+xnm.deleted_at,
 xnm.updated_at,
 xnm.created_at
--- row_to_json(u) as user
 ` + AessetGetQueryFrom
 const AessetGetQueryFrom = `
-from xsyn_assets xa
-inner join xsyn_nft_metadata xnm on xnm.token_id = xa.token_id
--- inner join users u on xa.user_id = u.id 
+FROM xsyn_assets xa
+INNER JOIN xsyn_nft_metadata xnm ON xnm.token_id = xa.token_id
 `
 
-// AssetList gets a list of patients depending on the filters
+// AssetList gets a list of assets depending on the filters
 func AssetList(
 	ctx context.Context,
 	conn Conn,
@@ -102,13 +102,6 @@ func AssetList(
 		}
 	}
 
-	fmt.Println("==============")
-	fmt.Println("==============")
-	fmt.Println("this is filter", filter)
-
-	fmt.Println("this is filter string", filterConditionsString)
-	fmt.Println("==============")
-
 	archiveCondition := "IS NULL"
 	if archived {
 		archiveCondition = "IS NOT NULL"
@@ -137,8 +130,6 @@ func AssetList(
 		searchCondition,
 	)
 
-	fmt.Println("qqqqqq", countQ)
-
 	var totalRows int
 	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
 	if err != nil {
@@ -147,8 +138,6 @@ func AssetList(
 	if totalRows == 0 {
 		return 0, nil
 	}
-
-	fmt.Println("error >>>>>>>>>>1")
 
 	// Order and Limit
 	orderBy := " ORDER BY created_at desc"

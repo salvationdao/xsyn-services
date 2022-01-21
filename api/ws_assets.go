@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/hub/v2"
+	"github.com/ninja-software/hub/v2/ext/messagebus"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 )
@@ -36,7 +37,9 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 	// api.SecureCommand(HubKeyCollectionList, assetHub.CollectionListHandler)
 
 	// assets list
-	api.SecureCommand(HubKeyAssetList, assetHub.ListHandler)
+	// api.SecureCommand(HubKeyAssetList, assetHub.ListHandler)
+
+	api.SecureUserSubscribeCommand(HubKeyUserAssetsSubscribe, assetHub.UserAssetsUpdatedSubscribeHandler)
 
 	api.SecureCommand(HubKeyAssetRegister, assetHub.RegisterHandler)
 	api.SecureCommand(HubKeyAssetQueueJoin, assetHub.JoinQueueHandler)
@@ -278,6 +281,7 @@ const HubKeyAssetList hub.HubCommandKey = "ASSET:LIST"
 type AssetListHandlerRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
+		UserID   passport.UserID       `json:"user_id"`
 		SortDir  db.SortByDir          `json:"sortDir"`
 		SortBy   db.AssetColumn        `json:"sortBy"`
 		Filter   *db.ListFilterRequest `json:"filter"`
@@ -302,6 +306,7 @@ func (ctrlr *AssetController) ListHandler(ctx context.Context, hubc *hub.Client,
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
+
 	offset := 0
 	if req.Payload.Page > 0 {
 		offset = req.Payload.Page * req.Payload.PageSize
@@ -331,6 +336,51 @@ func (ctrlr *AssetController) ListHandler(ctx context.Context, hubc *hub.Client,
 	reply(resp)
 
 	return nil
+}
+
+const HubKeyUserAssetsSubscribe hub.HubCommandKey = "USER_ASSET:SUBSCRIBE"
+
+func (ctrlr *AssetController) UserAssetsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	// errMsg := "Something went wrong, please try again."
+	fmt.Println("!!!!!!!!!!!!!!!!")
+	fmt.Println("!!!!!!!!!!!!!!!!")
+
+	req := &AssetListHandlerRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err)
+	}
+
+	offset := 0
+	if req.Payload.Page > 0 {
+		offset = req.Payload.Page * req.Payload.PageSize
+	}
+
+	fmt.Println("this is req", req.Payload.Filter)
+	assets := []*passport.Asset{}
+	total, err := db.AssetList(
+		ctx, ctrlr.Conn, &assets,
+		req.Payload.Search,
+		req.Payload.Archived,
+		req.Payload.Filter,
+		offset,
+		req.Payload.PageSize,
+		req.Payload.SortBy,
+		req.Payload.SortDir,
+	)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err)
+	}
+
+	resp := &AssetListResponse{
+		Total:   total,
+		Records: assets,
+	}
+
+	reply(resp)
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserAssetsSubscribe, req.Payload.UserID.String())), nil
+
 }
 
 // CollectionListHandler list collections with pagination
