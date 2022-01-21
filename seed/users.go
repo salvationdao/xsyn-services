@@ -200,7 +200,7 @@ func (s *Seeder) XsynTreasuryUser(ctx context.Context) (*passport.User, error) {
 	}
 
 	// create treasury opening balance (30mil sups)
-	err = api.CreateTransactionEntry(s.TxConn,
+	_, err = api.CreateTransactionEntry(s.TxConn,
 		*amount,
 		u.ID,
 		passport.OnChainUserID,
@@ -237,7 +237,7 @@ func (s *Seeder) SupremacyUser(ctx context.Context) (*passport.User, error) {
 	}
 
 	// create treasury opening balance (30mil sups)
-	err = api.CreateTransactionEntry(s.TxConn,
+	_, err = api.CreateTransactionEntry(s.TxConn,
 		*amount,
 		u.ID,
 		passport.XsynTreasuryUserID,

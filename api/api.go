@@ -40,12 +40,17 @@ type API struct {
 	*auth.Auth
 	*messagebus.MessageBus
 
+	// online user cache
+	users chan func(userCacheList UserCacheMap)
+
 	// server clients
 	serverClients       chan func(serverClients ServerClientsList)
 	sendToServerClients chan *ServerClientMessage
 	//tx stuff
-	transaction chan *NewTransaction
-	TxConn      *sql.DB
+	transaction      chan *NewTransaction
+	heldTransactions chan func(heldTxList map[TransactionReference]*NewTransaction)
+
+	TxConn *sql.DB
 }
 
 // NewAPI registers routes
@@ -95,9 +100,13 @@ func NewAPI(
 		serverClients:       make(chan func(serverClients ServerClientsList)),
 		sendToServerClients: make(chan *ServerClientMessage),
 
+		// user cache map
+		users: make(chan func(userList UserCacheMap)),
+
 		// object to hold transaction stuff
-		TxConn:      txConn,
-		transaction: make(chan *NewTransaction),
+		TxConn:           txConn,
+		transaction:      make(chan *NewTransaction),
+		heldTransactions: make(chan func(heldTxList map[TransactionReference]*NewTransaction)),
 	}
 
 	api.Routes.Use(middleware.RequestID)
@@ -156,7 +165,7 @@ func NewAPI(
 		ClientID:        twitchClientID,
 		ClientSecret:    twitchClientSecret,
 	})
-	_ = NewAuthController(log, conn, api)
+
 	_ = NewFactionController(log, conn, api)
 	_ = NewOrganisationController(log, conn, api)
 	_ = NewRoleController(log, conn, api)
@@ -172,8 +181,15 @@ func NewAPI(
 	// Run the server client channel listener
 	go api.HandleServerClients()
 
-	// Run the transaction channel listener
+	// Run the transaction channel listeners
 	go api.HandleTransactions()
+	go api.HandleHeldTransactions()
+
+	// Run the listener for the db user update event
+	go api.DBListenForUserUpdateEvent()
+
+	// Run the listener for the user cache
+	go api.HandleUserCache()
 
 	return api
 }

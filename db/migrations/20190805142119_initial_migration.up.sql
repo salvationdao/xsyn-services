@@ -475,4 +475,37 @@ REVOKE ALL ON transactions FROM passport;
 GRANT SELECT ON transactions TO passport;
 
 
+/***********************************************************
+ *                User listen trigger                      *
+ ***********************************************************/
+--
+CREATE OR REPLACE FUNCTION user_update_event() RETURNS TRIGGER AS
+$noifyevent$
+DECLARE
+    data JSON;
+BEGIN
+    -- Convert the old or new row to JSON, based on the kind of action.
+    -- Action = DELETE?             -> OLD row
+    -- Action = INSERT or UPDATE?   -> NEW row
+    IF (TG_OP = 'DELETE') THEN
+        data = ROW_TO_JSON(OLD);
+    ELSE
+        data = ROW_TO_JSON(NEW);
+    END IF;
+
+    -- Execute pg_notify(channel, notification)
+    PERFORM pg_notify('user_update_event', data::TEXT);
+
+    -- Result is ignored since this is an AFTER trigger
+    RETURN NULL;
+END
+$noifyevent$ LANGUAGE plpgsql;
+
+CREATE TRIGGER user_notify_event
+    AFTER INSERT OR UPDATE OR DELETE
+    ON users
+    FOR EACH ROW
+EXECUTE PROCEDURE user_update_event();
+
+
 COMMIT;
