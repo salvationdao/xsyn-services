@@ -2,7 +2,6 @@ module passport
 
 go 1.17
 
-replace github.com/ninja-software/hub/v2 => /home/darren/go/src/github.com/ninja-software/hub
 
 require (
 	github.com/aymerick/raymond v2.0.3-0.20180322193309-b565731e1464+incompatible
