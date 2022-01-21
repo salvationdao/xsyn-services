@@ -12,14 +12,14 @@ import (
 func FactionCreate(ctx context.Context, conn Conn, faction *passport.Faction) error {
 	q := `
 		INSERT INTO 
-			factions (id, label, theme)
+			factions (id, label, theme, image_url)
 		VALUES
-			($1, $2, $3)
+			($1, $2, $3, $4)
 		RETURNING 
 			id, label
 	`
 
-	err := pgxscan.Get(ctx, conn, faction, q, faction.ID, faction.Label, faction.Theme)
+	err := pgxscan.Get(ctx, conn, faction, q, faction.ID, faction.Label, faction.Theme, faction.ImageUrl)
 	if err != nil {
 		return terror.Error(err)
 	}

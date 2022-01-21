@@ -2,8 +2,11 @@ package seed
 
 import (
 	"context"
+	"crypto/md5"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
+	"os"
 	"passport"
 	"passport/db"
 
@@ -123,12 +126,70 @@ var Factions = []*passport.Faction{
 
 func (s *Seeder) factions(ctx context.Context) error {
 	for _, faction := range Factions {
-		err := db.FactionCreate(ctx, s.Conn, faction)
+		var err error
+		blob := &passport.Blob{}
+
+		switch faction.Label {
+		case "Red Mountain Offworld Mining Corporation":
+			blob, err = s.factionLogo(ctx, "red_mountain_logo")
+			if err != nil {
+				return terror.Error(err)
+			}
+		case "Boston Cybernetics":
+			blob, err = s.factionLogo(ctx, "boston_cybernetics_logo")
+			if err != nil {
+				return terror.Error(err)
+			}
+		case "Zaibatsu Heavy Industries":
+			blob, err = s.factionLogo(ctx, "zaibatsu-logo")
+			if err != nil {
+				return terror.Error(err)
+			}
+		}
+
+		faction.ImageUrl = fmt.Sprintf("/api/files/%s", blob.ID)
+
+		err = db.FactionCreate(ctx, s.Conn, faction)
 		if err != nil {
 			return terror.Error(err)
 		}
 	}
 	return nil
+}
+
+func (s *Seeder) factionLogo(ctx context.Context, filename string) (*passport.Blob, error) {
+	// get read file from asset
+	factionLogo, err := os.ReadFile(fmt.Sprintf("./asset/%s.svg", filename))
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	// Get hash
+	hasher := md5.New()
+	_, err = hasher.Write(factionLogo)
+	if err != nil {
+		return nil, terror.Error(err, "hash error")
+	}
+	hashResult := hasher.Sum(nil)
+	hash := hex.EncodeToString(hashResult)
+
+	blob := &passport.Blob{
+		FileName:      filename,
+		MimeType:      "image/svg+xml",
+		Extension:     "svg",
+		FileSizeBytes: int64(len(factionLogo)),
+		File:          factionLogo,
+		Hash:          &hash,
+		Public:        true,
+	}
+
+	// insert blob
+	err = db.BlobInsert(ctx, s.Conn, blob)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return blob, nil
 }
 
 // Roles for database spin-up

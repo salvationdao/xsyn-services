@@ -929,3 +929,24 @@ func UserIDsGetByFactionID(ctx context.Context, conn Conn, factionID passport.Fa
 
 	return userIDs, nil
 }
+
+// UserSupsGet return current user sups
+func UserSupsGet(ctx context.Context, conn Conn, userID passport.UserID) (passport.BigInt, error) {
+	sups := passport.BigInt{}
+
+	q := `
+		SELECT
+			sups
+		FROM
+			users
+		WHERE
+			id = $1
+	`
+
+	err := conn.QueryRow(ctx, q, userID).Scan(&sups)
+	if err != nil {
+		return sups, terror.Error(err)
+	}
+
+	return sups, nil
+}
