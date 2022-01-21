@@ -14,7 +14,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/lestrrat-go/jwx/jwt/openid"
-	"github.com/ninja-software/hub/v2/ext/auth"
+	"github.com/ninja-software/hub/v3/ext/auth"
 	"github.com/ninja-software/terror/v2"
 )
 

@@ -20,9 +20,9 @@ import (
 	"github.com/volatiletech/null/v8"
 	"google.golang.org/api/idtoken"
 
-	"github.com/ninja-software/hub/v2"
-	"github.com/ninja-software/hub/v2/ext/auth"
-	"github.com/ninja-software/hub/v2/ext/messagebus"
+	"github.com/ninja-software/hub/v3"
+	"github.com/ninja-software/hub/v3/ext/auth"
+	"github.com/ninja-software/hub/v3/ext/messagebus"
 	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
@@ -889,7 +889,7 @@ func (uc *UserController) OnlineStatusSubscribeHandler(ctx context.Context, hubc
 	}
 
 	if userID.IsNil() {
-		return req.TransactionID, "", terror.Error(fmt.Errorf("userId is still nil for %s %s", req.Payload.ID, req.Payload.Username), "Unable to load current user")
+		return req.TransactionID, "", terror.Error(fmt.Errorf("userID is still nil for %s %s", req.Payload.ID, req.Payload.Username), "Unable to load current user")
 	}
 
 	// get current online status

@@ -1128,8 +1128,8 @@ github.com/newrelic/go-agent v2.15.0+incompatible/go.mod h1:a8Fv1b/fYhFSReoTU6HD
 github.com/ngdinhtoan/glide-cleanup v0.2.0/go.mod h1:UQzsmiDOb8YV3nOsCxK/c9zPpCZVNoHScRE3EO9pVMM=
 github.com/ninja-software/go-check-passwd v0.0.0-20191023080747-0879e647a3ab h1:bvC84ZBXkVeVOK/eL6oXXfx/f/6j3LVZ5/U4fHii2ZM=
 github.com/ninja-software/go-check-passwd v0.0.0-20191023080747-0879e647a3ab/go.mod h1:mwse6v1g0o4Fv63/BRKJgFMWEjKxue4gW5vGHKwGMpg=
-github.com/ninja-software/hub/v2 v2.2.2 h1:8lrC6122mjTLzVG5ehtCLNs8zhlp+Emp5PekKrzJUhs=
-github.com/ninja-software/hub/v2 v2.2.2/go.mod h1:enOjEkEkQoplA1ctKu/8bpsLh4fsAZ44Uz/CK3fZ5mE=
+github.com/ninja-software/hub/v3 v3.0.2 h1:FkguHhesEWFrhYhh9z9iibD7gk8rG+owISjArNXLJA0=
+github.com/ninja-software/hub/v3 v3.0.2/go.mod h1:deE0azXnEVWbqaXPXTDv+y9RsBvXC36RWxLluTqRbIM=
 github.com/ninja-software/terror/v2 v2.0.7 h1:gV2v0TybYXQvAD3SYh6YiyuMt8rig4FwRYL81kx65xo=
 github.com/ninja-software/terror/v2 v2.0.7/go.mod h1:pwAw9I1KYYaZr3DLE/Z3WKkSSy/Ccj3ObjOpUvm+0Yo=
 github.com/ninja-software/tickle v1.3.2 h1:x4w9dWg1U4VQ0QMrfrH5sevBnJVX7HiqZNx3QUb1do8=
@@ -1895,6 +1895,7 @@ golang.org/x/sys v0.0.0-20210809222454-d867a43fc93e/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.0.0-20210816183151-1e6c022a8912/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20210908233432-aa78b53d3365/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.0.0-20210910150752-751e447fb3d0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20211124211545-fe61309f8881/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220110181412-a018aaa089fe h1:W8vbETX/n8S6EmY0Pu4Ix7VvpsJUESTwl0oCK8MJOgk=
 golang.org/x/sys v0.0.0-20220110181412-a018aaa089fe/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=

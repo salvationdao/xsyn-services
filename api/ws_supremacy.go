@@ -15,8 +15,8 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/hub/v2"
-	"github.com/ninja-software/hub/v2/ext/messagebus"
+	"github.com/ninja-software/hub/v3"
+	"github.com/ninja-software/hub/v3/ext/messagebus"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 	"github.com/rs/zerolog"
@@ -72,7 +72,7 @@ type SupremacyHoldSupsRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		Amount               passport.BigInt      `json:"amount"`
-		FromUserID           passport.UserID      `json:"userId"`
+		FromUserID           passport.UserID      `json:"userID"`
 		TransactionReference TransactionReference `json:"transactionReference"`
 	} `json:"payload"`
 }

@@ -2,7 +2,6 @@ module passport
 
 go 1.17
 
-
 require (
 	github.com/aymerick/raymond v2.0.3-0.20180322193309-b565731e1464+incompatible
 	github.com/caddyserver/caddy/v2 v2.4.5
@@ -22,9 +21,10 @@ require (
 	github.com/lestrrat-go/jwx v1.2.15
 	github.com/lib/pq v1.10.4
 	github.com/mailgun/mailgun-go/v4 v4.6.0
+	github.com/makiuchi-d/arelo v1.9.2
 	github.com/microcosm-cc/bluemonday v1.0.17
 	github.com/ninja-software/go-check-passwd v0.0.0-20191023080747-0879e647a3ab
-	github.com/ninja-software/hub/v2 v2.2.2
+	github.com/ninja-software/hub/v3 v3.0.2
 	github.com/ninja-software/terror/v2 v2.0.7
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
@@ -59,7 +59,6 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/makiuchi-d/arelo v1.9.2 // indirect
 	github.com/mitchellh/mapstructure v1.4.2 // indirect
 	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect

@@ -7,8 +7,8 @@ import (
 	"passport/db"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-software/hub/v2"
-	"github.com/ninja-software/hub/v2/ext/messagebus"
+	"github.com/ninja-software/hub/v3"
+	"github.com/ninja-software/hub/v3/ext/messagebus"
 )
 
 // ClientOnline gets trigger on connection online
@@ -28,10 +28,10 @@ func (api *API) ClientOffline(ctx context.Context, client *hub.Client, clients h
 		if err != nil {
 			api.Log.Err(err).Msgf("failed to get user uuid on logout for %s", client.Identifier())
 		}
-		userId := passport.UserID(userUUID)
+		userID := passport.UserID(userUUID)
 
 		// remove offline user to our user cache
-		go api.RemoveUserFromCache(userId)
+		go api.RemoveUserFromCache(userID)
 	}
 }
 
@@ -40,10 +40,10 @@ func (api *API) ClientLogout(ctx context.Context, client *hub.Client, clients hu
 	if err != nil {
 		api.Log.Err(err).Msgf("failed to get user uuid on logout for %s", client.Identifier())
 	}
-	userId := passport.UserID(userUUID)
+	userID := passport.UserID(userUUID)
 
 	// remove offline user to our user cache
-	go api.RemoveUserFromCache(userId)
+	go api.RemoveUserFromCache(userID)
 
 	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, client.Identifier())), false)
 	api.MessageBus.Unsub("", client, "")

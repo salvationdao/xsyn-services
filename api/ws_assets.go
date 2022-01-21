@@ -11,7 +11,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/hub/v2"
+	"github.com/ninja-software/hub/v3"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 )

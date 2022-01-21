@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/ninja-software/hub/v2"
+	"github.com/ninja-software/hub/v3"
 )
 
 type ServerClientsList map[ServerClientName]map[*hub.Client]bool
@@ -70,7 +70,7 @@ const (
 
 type ServerClientMessage struct {
 	Key           ServerClientMessageAction `json:"key"`
-	TransactionID string                    `json:"transactionId"`
+	TransactionID string                    `json:"transactionID"`
 	Payload       interface{}               `json:"payload,omitempty"`
 }
 
