@@ -33,7 +33,7 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 		API:  api,
 	}
 
-	api.SecureUserSubscribeCommand(HubKeyUserAssetsSubscribe, assetHub.UserAssetsUpdatedSubscribeHandler)
+	api.SecureUserSubscribeCommand(HubKeyAssetsSubscribe, assetHub.AssetsUpdatedSubscribeHandler)
 
 	api.SecureCommand(HubKeyAssetRegister, assetHub.RegisterHandler)
 	api.SecureCommand(HubKeyAssetQueueJoin, assetHub.JoinQueueHandler)
@@ -292,7 +292,7 @@ type AssetListResponse struct {
 	Total   int               `json:"total"`
 }
 
-// ListHandler list assets with pagination
+// ListHandler list assets with pagination/filters
 func (ctrlr *AssetController) ListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	errMsg := "Something went wrong, please try again."
 	req := &AssetListHandlerRequest{}
@@ -306,7 +306,6 @@ func (ctrlr *AssetController) ListHandler(ctx context.Context, hubc *hub.Client,
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	fmt.Println("this is req", req.Payload.Filter)
 	assets := []*passport.Asset{}
 	total, err := db.AssetList(
 		ctx, ctrlr.Conn, &assets,
@@ -332,13 +331,9 @@ func (ctrlr *AssetController) ListHandler(ctx context.Context, hubc *hub.Client,
 	return nil
 }
 
-const HubKeyUserAssetsSubscribe hub.HubCommandKey = "USER_ASSET:SUBSCRIBE"
+const HubKeyAssetsSubscribe hub.HubCommandKey = "ASSET:SUBSCRIBE"
 
-func (ctrlr *AssetController) UserAssetsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	// errMsg := "Something went wrong, please try again."
-	fmt.Println("!!!!!!!!!!!!!!!!")
-	fmt.Println("!!!!!!!!!!!!!!!!")
-
+func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &AssetListHandlerRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -350,7 +345,6 @@ func (ctrlr *AssetController) UserAssetsUpdatedSubscribeHandler(ctx context.Cont
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	fmt.Println("this is req", req.Payload.Filter)
 	assets := []*passport.Asset{}
 	total, err := db.AssetList(
 		ctx, ctrlr.Conn, &assets,
@@ -373,11 +367,6 @@ func (ctrlr *AssetController) UserAssetsUpdatedSubscribeHandler(ctx context.Cont
 
 	reply(resp)
 
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserAssetsSubscribe, req.Payload.UserID.String())), nil
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetsSubscribe, req.Payload.UserID.String())), nil
 
-}
-
-// CollectionListHandler list collections with pagination
-func (ctrlr *AssetController) CollectionListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	return nil
 }
