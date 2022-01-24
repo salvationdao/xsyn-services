@@ -12,8 +12,8 @@ import (
 	"nhooyr.io/websocket"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-software/hub/v2"
-	"github.com/ninja-software/hub/v2/ext/messagebus"
+	"github.com/ninja-software/hub/v3"
+	"github.com/ninja-software/hub/v3/ext/messagebus"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
@@ -21,8 +21,8 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/ninja-software/hub/v2/ext/auth"
-	zerologger "github.com/ninja-software/hub/v2/ext/zerolog"
+	"github.com/ninja-software/hub/v3/ext/auth"
+	zerologger "github.com/ninja-software/hub/v3/ext/zerolog"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 )
@@ -40,12 +40,17 @@ type API struct {
 	*auth.Auth
 	*messagebus.MessageBus
 
+	// online user cache
+	users chan func(userCacheList UserCacheMap)
+
 	// server clients
 	serverClients       chan func(serverClients ServerClientsList)
 	sendToServerClients chan *ServerClientMessage
 	//tx stuff
-	transaction chan *NewTransaction
-	TxConn      *sql.DB
+	transaction      chan *NewTransaction
+	heldTransactions chan func(heldTxList map[TransactionReference]*NewTransaction)
+
+	TxConn *sql.DB
 }
 
 // NewAPI registers routes
@@ -95,9 +100,13 @@ func NewAPI(
 		serverClients:       make(chan func(serverClients ServerClientsList)),
 		sendToServerClients: make(chan *ServerClientMessage),
 
+		// user cache map
+		users: make(chan func(userList UserCacheMap)),
+
 		// object to hold transaction stuff
-		TxConn:      txConn,
-		transaction: make(chan *NewTransaction),
+		TxConn:           txConn,
+		transaction:      make(chan *NewTransaction),
+		heldTransactions: make(chan func(heldTxList map[TransactionReference]*NewTransaction)),
 	}
 
 	api.Routes.Use(middleware.RequestID)
@@ -156,12 +165,13 @@ func NewAPI(
 		ClientID:        twitchClientID,
 		ClientSecret:    twitchClientSecret,
 	})
-	_ = NewAuthController(log, conn, api)
+
 	_ = NewFactionController(log, conn, api)
 	_ = NewOrganisationController(log, conn, api)
 	_ = NewRoleController(log, conn, api)
 	_ = NewProductController(log, conn, api)
 	_ = NewSupremacyController(log, conn, api)
+	_ = NewGamebarController(log, conn, api)
 
 	//api.Hub.Events.AddEventHandler(hub.EventOnline, api.ClientOnline)
 	api.Hub.Events.AddEventHandler(auth.EventLogin, api.ClientAuth)
@@ -171,8 +181,15 @@ func NewAPI(
 	// Run the server client channel listener
 	go api.HandleServerClients()
 
-	// Run the transaction channel listener
+	// Run the transaction channel listeners
 	go api.HandleTransactions()
+	go api.HandleHeldTransactions()
+
+	// Run the listener for the db user update event
+	go api.DBListenForUserUpdateEvent()
+
+	// Run the listener for the user cache
+	go api.HandleUserCache()
 
 	return api
 }

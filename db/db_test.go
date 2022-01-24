@@ -219,7 +219,7 @@ func BenchmarkTransactions(b *testing.B) {
 						From:                 offChainUser.ID,
 						To:                   randUser1.ID,
 						Amount:               *amountToTransfer,
-						TransactionReference: fmt.Sprintf("%d:%d", outI, inI),
+						TransactionReference: api.TransactionReference(fmt.Sprintf("%d:%d", outI, inI)),
 					}
 				}
 			}(outI)
@@ -231,7 +231,7 @@ func BenchmarkTransactions(b *testing.B) {
 		for {
 			transaction := <-transactionChannel
 
-			err := api.CreateTransactionEntry(txConn,
+			_, err := api.CreateTransactionEntry(txConn,
 				transaction.Amount,
 				transaction.To,
 				transaction.From,

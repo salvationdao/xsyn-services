@@ -20,9 +20,9 @@ import (
 	"github.com/volatiletech/null/v8"
 	"google.golang.org/api/idtoken"
 
-	"github.com/ninja-software/hub/v2"
-	"github.com/ninja-software/hub/v2/ext/auth"
-	"github.com/ninja-software/hub/v2/ext/messagebus"
+	"github.com/ninja-software/hub/v3"
+	"github.com/ninja-software/hub/v3/ext/auth"
+	"github.com/ninja-software/hub/v3/ext/messagebus"
 	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
@@ -48,6 +48,7 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 		Google: googleConfig,
 		Twitch: twitchConfig,
 	}
+
 	api.Command(HubKeyUserGet, userHub.GetHandler) // Perm check inside handler (users can get themselves; need UserRead permission to get other users)
 	api.SecureCommand(HubKeyUserUpdate, userHub.UpdateHandler)
 	api.SecureCommand(HubKeyUserFactionUpdate, userHub.UpdateUserFactionHandler) // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
@@ -72,6 +73,7 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 
 	// listen on queuing war machine
 	api.SecureUserSubscribeCommand(HubKeyUserWarMachineQueuePositionSubscribe, userHub.WarMachineQueuePositionUpdatedSubscribeHandler)
+	api.SecureUserSubscribeCommand(HubKeyUserSupsSubscribe, userHub.UserSupsUpdatedSubscribeHandler)
 
 	return userHub
 }
@@ -89,7 +91,7 @@ type GetUserRequest struct {
 const HubKeyUserGet hub.HubCommandKey = "USER:GET"
 
 // GetHandler gets the details for a user
-func (ctrlr *UserController) GetHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) GetHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &GetUserRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -100,7 +102,7 @@ func (ctrlr *UserController) GetHandler(ctx context.Context, hubc *hub.Client, p
 	}
 
 	if !req.Payload.ID.IsNil() {
-		user, err := db.UserGet(ctx, ctrlr.Conn, req.Payload.ID)
+		user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Unable to load current user")
 		}
@@ -114,7 +116,7 @@ func (ctrlr *UserController) GetHandler(ctx context.Context, hubc *hub.Client, p
 		return nil
 	}
 
-	user, err := db.UserByUsername(ctx, ctrlr.Conn, req.Payload.Username)
+	user, err := db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 	if err != nil {
 		return terror.Error(err, "Unable to load current user")
 	}
@@ -142,7 +144,7 @@ type UpdateUserFactionRequest struct {
 const HubKeyUserFactionUpdate hub.HubCommandKey = "USER:FACTION:UPDATE"
 
 // GetHandler gets the details for a user
-func (ctrlr *UserController) UpdateUserFactionHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) UpdateUserFactionHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &UpdateUserFactionRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -156,26 +158,26 @@ func (ctrlr *UserController) UpdateUserFactionHandler(ctx context.Context, hubc 
 		return terror.Error(terror.ErrInvalidInput, "Faction ID is required")
 	}
 
-	user, err := db.UserGet(ctx, ctrlr.Conn, req.Payload.UserID)
+	user, err := db.UserGet(ctx, uc.Conn, req.Payload.UserID)
 	if err != nil {
 		return terror.Error(err, "Unable to load current user")
 	}
 
 	user.FactionID = &req.Payload.FactionID
 
-	err = db.UserFactionEnlist(ctx, ctrlr.Conn, user)
+	err = db.UserFactionEnlist(ctx, uc.Conn, user)
 	if err != nil {
 		return terror.Error(err, "Unable to update user faction")
 	}
 
-	faction, err := db.FactionGet(ctx, ctrlr.Conn, req.Payload.FactionID)
+	faction, err := db.FactionGet(ctx, uc.Conn, req.Payload.FactionID)
 	if err != nil {
 		return terror.Error(err)
 	}
 	user.Faction = faction
 
 	// send user changes to connected clients
-	ctrlr.API.SendToAllServerClient(&ServerClientMessage{
+	uc.API.SendToAllServerClient(&ServerClientMessage{
 		Key: UserUpdated,
 		Payload: struct {
 			User *passport.User `json:"user"`
@@ -208,7 +210,7 @@ type UpdateUserRequest struct {
 }
 
 // UpdateHandler updates a user
-func (ctrlr *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &UpdateUserRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -220,12 +222,12 @@ func (ctrlr *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, ctrlr.Conn, req.Payload.ID)
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
 	} else {
-		user, err = db.UserByUsername(ctx, ctrlr.Conn, req.Payload.Username)
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
@@ -267,7 +269,7 @@ func (ctrlr *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client
 		if req.Payload.CurrentPassword == nil {
 			return terror.Error(terror.ErrInvalidInput, "Current Password is required")
 		}
-		hashB64, err := db.HashByUserID(ctx, ctrlr.Conn, req.Payload.ID)
+		hashB64, err := db.HashByUserID(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Current password is incorrect")
 		}
@@ -287,7 +289,7 @@ func (ctrlr *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client
 
 	// Start transaction
 	errMsg := "Unable to update user, please try again."
-	tx, err := ctrlr.Conn.Begin(ctx)
+	tx, err := uc.Conn.Begin(ctx)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -295,7 +297,7 @@ func (ctrlr *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client
 	defer func(tx pgx.Tx, ctx context.Context) {
 		err := tx.Rollback(ctx)
 		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			ctrlr.Log.Err(err).Msg("error rolling back")
+			uc.Log.Err(err).Msg("error rolling back")
 		}
 	}(tx, ctx)
 
@@ -358,13 +360,13 @@ func (ctrlr *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, ctrlr.Conn, user.ID)
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
 	if user.FactionID != nil && !user.FactionID.IsNil() {
-		faction, err := db.FactionGet(ctx, ctrlr.Conn, *user.FactionID)
+		faction, err := db.FactionGet(ctx, uc.Conn, *user.FactionID)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -372,7 +374,7 @@ func (ctrlr *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client
 	}
 
 	reply(user)
-	ctrlr.API.RecordUserActivity(ctx,
+	uc.API.RecordUserActivity(ctx,
 		hubc.Identifier(),
 		"Updated User",
 		passport.ObjectTypeUser,
@@ -386,10 +388,10 @@ func (ctrlr *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client
 		},
 	)
 
-	ctrlr.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	// send user changes to connected clients
-	ctrlr.API.SendToAllServerClient(&ServerClientMessage{
+	uc.API.SendToAllServerClient(&ServerClientMessage{
 		Key: UserUpdated,
 		Payload: struct {
 			User *passport.User `json:"user"`
@@ -428,7 +430,7 @@ type CreateUserRequest struct {
 }
 
 // CreateHandler creates a user
-func (ctrlr *UserController) CreateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) CreateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &CreateUserRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -461,14 +463,14 @@ func (ctrlr *UserController) CreateHandler(ctx context.Context, hubc *hub.Client
 
 	// Start transaction
 	errMsg := "Unable to create user, please try again."
-	tx, err := ctrlr.Conn.Begin(ctx)
+	tx, err := uc.Conn.Begin(ctx)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 	defer func(tx pgx.Tx, ctx context.Context) {
 		err := tx.Rollback(ctx)
 		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			ctrlr.Log.Err(err).Msg("error rolling back")
+			uc.Log.Err(err).Msg("error rolling back")
 		}
 	}(tx, ctx)
 
@@ -483,7 +485,7 @@ func (ctrlr *UserController) CreateHandler(ctx context.Context, hubc *hub.Client
 		user.AvatarID = req.Payload.AvatarID
 	}
 
-	err = db.UserCreate(ctx, ctrlr.Conn, user)
+	err = db.UserCreate(ctx, uc.Conn, user)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -509,7 +511,7 @@ func (ctrlr *UserController) CreateHandler(ctx context.Context, hubc *hub.Client
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, ctrlr.Conn, user.ID)
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -517,7 +519,7 @@ func (ctrlr *UserController) CreateHandler(ctx context.Context, hubc *hub.Client
 	reply(user)
 
 	// Record user activity
-	ctrlr.API.RecordUserActivity(ctx,
+	uc.API.RecordUserActivity(ctx,
 		hubc.Identifier(),
 		"Created User",
 		passport.ObjectTypeUser,
@@ -558,7 +560,7 @@ type UserListResponse struct {
 }
 
 // ListHandler lists users with pagination
-func (ctrlr *UserController) ListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) ListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	errMsg := "Something went wrong, please try again."
 
 	req := &ListHandlerRequest{}
@@ -574,7 +576,7 @@ func (ctrlr *UserController) ListHandler(ctx context.Context, hubc *hub.Client, 
 
 	users := []*passport.User{}
 	total, err := db.UserList(
-		ctx, ctrlr.Conn, &users,
+		ctx, uc.Conn, &users,
 		req.Payload.Search,
 		req.Payload.Archived,
 		req.Payload.Filter,
@@ -614,19 +616,19 @@ const (
 )
 
 // ArchiveHandler archives a user
-func (ctrlr *UserController) ArchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) ArchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &UserArchiveRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Failed to unmarshal data")
 	}
-	err = db.UserArchiveUpdate(ctx, ctrlr.Conn, req.Payload.ID, true)
+	err = db.UserArchiveUpdate(ctx, uc.Conn, req.Payload.ID, true)
 	if err != nil {
 		return terror.Error(err, "Issue while updating User, please try again.")
 	}
 
 	// Return user
-	user, err := db.UserGet(ctx, ctrlr.Conn, req.Payload.ID)
+	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -634,7 +636,7 @@ func (ctrlr *UserController) ArchiveHandler(ctx context.Context, hubc *hub.Clien
 
 	// Record user activity
 	if err == nil {
-		ctrlr.API.RecordUserActivity(ctx,
+		uc.API.RecordUserActivity(ctx,
 			hubc.Identifier(),
 			"Archived User",
 			passport.ObjectTypeUser,
@@ -648,19 +650,19 @@ func (ctrlr *UserController) ArchiveHandler(ctx context.Context, hubc *hub.Clien
 }
 
 // UnarchiveHandler unarchives a user
-func (ctrlr *UserController) UnarchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) UnarchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &UserArchiveRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Failed to unmarshal data")
 	}
-	err = db.UserArchiveUpdate(ctx, ctrlr.Conn, req.Payload.ID, false)
+	err = db.UserArchiveUpdate(ctx, uc.Conn, req.Payload.ID, false)
 	if err != nil {
 		return terror.Error(err, "Issue while updating User, please try again.")
 	}
 
 	// Return user
-	user, err := db.UserGet(ctx, ctrlr.Conn, req.Payload.ID)
+	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -668,7 +670,7 @@ func (ctrlr *UserController) UnarchiveHandler(ctx context.Context, hubc *hub.Cli
 
 	//// Record user activity
 	if err == nil {
-		ctrlr.API.RecordUserActivity(ctx,
+		uc.API.RecordUserActivity(ctx,
 			hubc.Identifier(),
 			"Unarchived User",
 			passport.ObjectTypeUser,
@@ -694,7 +696,7 @@ type UserChangePasswordRequest struct {
 }
 
 // ChangePasswordHandler
-func (ctrlr *UserController) ChangePasswordHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) ChangePasswordHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &UserChangePasswordRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -704,7 +706,7 @@ func (ctrlr *UserController) ChangePasswordHandler(ctx context.Context, hubc *hu
 		return terror.Error(terror.ErrInvalidInput, "User ID is required")
 	}
 
-	user, err := db.UserGet(ctx, ctrlr.Conn, req.Payload.ID)
+	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
 	if err != nil {
 		return terror.Error(err, "Unable to load current user")
 	}
@@ -734,14 +736,14 @@ func (ctrlr *UserController) ChangePasswordHandler(ctx context.Context, hubc *hu
 	// Update Password
 	errMsg := "Unable to update user, please try again."
 
-	tx, err := ctrlr.Conn.Begin(ctx)
+	tx, err := uc.Conn.Begin(ctx)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 	defer func(tx pgx.Tx, ctx context.Context) {
 		err := tx.Rollback(ctx)
 		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			ctrlr.Log.Err(err).Msg("error rolling back")
+			uc.Log.Err(err).Msg("error rolling back")
 		}
 	}(tx, ctx)
 
@@ -758,7 +760,7 @@ func (ctrlr *UserController) ChangePasswordHandler(ctx context.Context, hubc *hu
 	reply(true)
 
 	// Record user activity
-	ctrlr.API.RecordUserActivity(ctx,
+	uc.API.RecordUserActivity(ctx,
 		hubc.Identifier(),
 		"Changed User Password",
 		passport.ObjectTypeUser,
@@ -786,7 +788,7 @@ type UserForceDisconnectRequest struct {
 }
 
 // ForceDisconnectHandler to force disconnect a user and invalidate their tokens
-func (ctrlr *UserController) ForceDisconnectHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) ForceDisconnectHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &UserForceDisconnectRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -800,7 +802,7 @@ func (ctrlr *UserController) ForceDisconnectHandler(ctx context.Context, hubc *h
 		return terror.Error(terror.ErrForbidden, "You cannot force disconnect yourself")
 	}
 
-	user, err := db.UserGet(ctx, ctrlr.Conn, req.Payload.ID)
+	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
 	if err != nil {
 		return terror.Error(err, "Unable to load current user")
 	}
@@ -810,17 +812,17 @@ func (ctrlr *UserController) ForceDisconnectHandler(ctx context.Context, hubc *h
 		return terror.Error(terror.ErrUnauthorised, "You do not have permission to force disconnect this user")
 	}
 
-	ctrlr.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserForceDisconnected, user.ID.String())), nil)
+	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserForceDisconnected, user.ID.String())), nil)
 	reply(true)
 
 	// Delete issue tokens
-	err = db.AuthRemoveTokensFromUserID(ctx, ctrlr.Conn, req.Payload.ID)
+	err = db.AuthRemoveTokensFromUserID(ctx, uc.Conn, req.Payload.ID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
 	//Record user activity
-	ctrlr.API.RecordUserActivity(ctx,
+	uc.API.RecordUserActivity(ctx,
 		hubc.Identifier(),
 		"Force Disconnected User",
 		passport.ObjectTypeUser,
@@ -841,7 +843,7 @@ type ForceDisconnectRequest struct {
 const HubKeyUserForceDisconnected hub.HubCommandKey = "USER:FORCE_DISCONNECTED"
 
 // ForceDisconnectedHandler subscribes a user to force disconnected messages
-func (ctrlr *UserController) ForceDisconnectedHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (uc *UserController) ForceDisconnectedHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &ForceDisconnectRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -867,7 +869,7 @@ type HubKeyUserOnlineStatusRequest struct {
 }
 
 // OnlineStatusSubscribeHandler to subscribe to user online status changes
-func (ctrlr *UserController) OnlineStatusSubscribeHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (uc *UserController) OnlineStatusSubscribeHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &HubKeyUserOnlineStatusRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -879,7 +881,7 @@ func (ctrlr *UserController) OnlineStatusSubscribeHandler(ctx context.Context, h
 		return req.TransactionID, "", terror.Error(terror.ErrInvalidInput, "User ID or username is required")
 	}
 	if userID.IsNil() {
-		id, err := db.UserIDFromUsername(ctx, ctrlr.Conn, req.Payload.Username)
+		id, err := db.UserIDFromUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
 			return req.TransactionID, "", terror.Error(err, "Unable to load current user")
 		}
@@ -887,12 +889,12 @@ func (ctrlr *UserController) OnlineStatusSubscribeHandler(ctx context.Context, h
 	}
 
 	if userID.IsNil() {
-		return req.TransactionID, "", terror.Error(fmt.Errorf("userId is still nil for %s %s", req.Payload.ID, req.Payload.Username), "Unable to load current user")
+		return req.TransactionID, "", terror.Error(fmt.Errorf("userID is still nil for %s %s", req.Payload.ID, req.Payload.Username), "Unable to load current user")
 	}
 
 	// get current online status
 	online := false
-	ctrlr.API.Hub.Clients(func(clients hub.ClientsList) {
+	uc.API.Hub.Clients(func(clients hub.ClientsList) {
 		for cl := range clients {
 			if cl.Identifier() == userID.String() {
 				online = true
@@ -923,7 +925,7 @@ type AddServiceRequest struct {
 // HubKeyUserRemoveFacebook removes a linked Facebook account
 const HubKeyUserRemoveFacebook hub.HubCommandKey = "USER:REMOVE_FACEBOOK"
 
-func (ctrlr *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -935,12 +937,12 @@ func (ctrlr *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hu
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, ctrlr.Conn, req.Payload.ID)
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
 	} else {
-		user, err = db.UserByUsername(ctx, ctrlr.Conn, req.Payload.Username)
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
@@ -958,13 +960,13 @@ func (ctrlr *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hu
 	errMsg := "Unable to update user, please try again."
 
 	// Update user
-	err = db.UserRemoveFacebook(ctx, ctrlr.Conn, user)
+	err = db.UserRemoveFacebook(ctx, uc.Conn, user)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, ctrlr.Conn, user.ID)
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -972,7 +974,7 @@ func (ctrlr *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hu
 	reply(user)
 
 	//// Record user activity
-	ctrlr.API.RecordUserActivity(ctx,
+	uc.API.RecordUserActivity(ctx,
 		hubc.Identifier(),
 		"Removed Facebook account from User",
 		passport.ObjectTypeUser,
@@ -986,14 +988,14 @@ func (ctrlr *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hu
 		},
 	)
 
-	ctrlr.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
 // HubKeyUserAddFacebook removes a linked Facebook account
 const HubKeyUserAddFacebook hub.HubCommandKey = "USER:ADD_FACEBOOK"
 
-func (ctrlr *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &AddServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1025,7 +1027,7 @@ func (ctrlr *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.C
 	}
 
 	// Get user
-	user, err := db.UserGet(ctx, ctrlr.Conn, passport.UserID(userID))
+	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
 		return terror.Error(err, "failed to query user")
 	}
@@ -1034,13 +1036,13 @@ func (ctrlr *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.C
 	var oldUser passport.User = *user
 
 	// Update user's Facebook ID
-	err = db.UserAddFacebook(ctx, ctrlr.Conn, user, resp.ID)
+	err = db.UserAddFacebook(ctx, uc.Conn, user, resp.ID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, ctrlr.Conn, passport.UserID(userID))
+	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
 		return terror.Error(err, "Failed to query user")
 	}
@@ -1048,7 +1050,7 @@ func (ctrlr *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.C
 	reply(user)
 
 	// Record user activity
-	ctrlr.API.RecordUserActivity(ctx,
+	uc.API.RecordUserActivity(ctx,
 		hubc.Identifier(),
 		"Added Facebook account to User",
 		passport.ObjectTypeUser,
@@ -1062,7 +1064,7 @@ func (ctrlr *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.C
 		},
 	)
 
-	ctrlr.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	return nil
 }
@@ -1070,7 +1072,7 @@ func (ctrlr *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.C
 // HubKeyUserRemoveGoogle removes a linked Google account
 const HubKeyUserRemoveGoogle hub.HubCommandKey = "USER:REMOVE_GOOGLE"
 
-func (ctrlr *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1082,12 +1084,12 @@ func (ctrlr *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, ctrlr.Conn, req.Payload.ID)
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
 	} else {
-		user, err = db.UserByUsername(ctx, ctrlr.Conn, req.Payload.Username)
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
@@ -1105,13 +1107,13 @@ func (ctrlr *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.
 	errMsg := "Unable to update user, please try again."
 
 	// Update user
-	err = db.UserRemoveGoogle(ctx, ctrlr.Conn, user)
+	err = db.UserRemoveGoogle(ctx, uc.Conn, user)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, ctrlr.Conn, user.ID)
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1119,7 +1121,7 @@ func (ctrlr *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.
 	reply(user)
 
 	//// Record user activity
-	ctrlr.API.RecordUserActivity(ctx,
+	uc.API.RecordUserActivity(ctx,
 		hubc.Identifier(),
 		"Removed Google account from User",
 		passport.ObjectTypeUser,
@@ -1133,14 +1135,14 @@ func (ctrlr *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.
 		},
 	)
 
-	ctrlr.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
 // HubKeyUserRemoveTwitch adds a linked Twitch account
 const HubKeyUserAddGoogle hub.HubCommandKey = "USER:ADD_GOOGLE"
 
-func (ctrlr *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &AddServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1153,7 +1155,7 @@ func (ctrlr *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Cli
 
 	// Validate Google token
 	errMsg := "There was a problem finding a user associated with the provided Google account, please check your details and try again."
-	resp, err := idtoken.Validate(ctx, req.Payload.Token, ctrlr.Google.ClientID)
+	resp, err := idtoken.Validate(ctx, req.Payload.Token, uc.Google.ClientID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1169,7 +1171,7 @@ func (ctrlr *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Cli
 	}
 
 	// Get user
-	user, err := db.UserGet(ctx, ctrlr.Conn, passport.UserID(userID))
+	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
 		return terror.Error(err, "failed to query user")
 	}
@@ -1178,13 +1180,13 @@ func (ctrlr *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Cli
 	var oldUser passport.User = *user
 
 	// Update user's Google ID
-	err = db.UserAddGoogle(ctx, ctrlr.Conn, user, googleID)
+	err = db.UserAddGoogle(ctx, uc.Conn, user, googleID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, ctrlr.Conn, passport.UserID(userID))
+	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
 		return terror.Error(err, "Failed to query user")
 	}
@@ -1192,7 +1194,7 @@ func (ctrlr *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Cli
 	reply(user)
 
 	// Record user activity
-	ctrlr.API.RecordUserActivity(ctx,
+	uc.API.RecordUserActivity(ctx,
 		hubc.Identifier(),
 		"Added Google account to User",
 		passport.ObjectTypeUser,
@@ -1206,7 +1208,7 @@ func (ctrlr *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Cli
 		},
 	)
 
-	ctrlr.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	return nil
 }
@@ -1214,7 +1216,7 @@ func (ctrlr *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Cli
 // HubKeyUserRemoveTwitch removes a linked Twitch account
 const HubKeyUserRemoveTwitch hub.HubCommandKey = "USER:REMOVE_TWITCH"
 
-func (ctrlr *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1226,12 +1228,12 @@ func (ctrlr *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, ctrlr.Conn, req.Payload.ID)
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
 	} else {
-		user, err = db.UserByUsername(ctx, ctrlr.Conn, req.Payload.Username)
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
@@ -1249,13 +1251,13 @@ func (ctrlr *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.
 	errMsg := "Unable to update user, please try again."
 
 	// Update user
-	err = db.UserRemoveTwitch(ctx, ctrlr.Conn, user)
+	err = db.UserRemoveTwitch(ctx, uc.Conn, user)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, ctrlr.Conn, user.ID)
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1263,7 +1265,7 @@ func (ctrlr *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.
 	reply(user)
 
 	//// Record user activity
-	ctrlr.API.RecordUserActivity(ctx,
+	uc.API.RecordUserActivity(ctx,
 		hubc.Identifier(),
 		"Removed Twitch account from User",
 		passport.ObjectTypeUser,
@@ -1277,7 +1279,7 @@ func (ctrlr *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.
 		},
 	)
 
-	ctrlr.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -1292,7 +1294,7 @@ type AddTwitchRequest struct {
 	} `json:"payload"`
 }
 
-func (ctrlr *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &AddTwitchRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1305,7 +1307,7 @@ func (ctrlr *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Cli
 
 	keySet := oidc.NewRemoteKeySet(ctx, "https://id.twitch.tv/oauth2/keys")
 	oidcVerifier := oidc.NewVerifier("https://id.twitch.tv/oauth2", keySet, &oidc.Config{
-		ClientID: ctrlr.Twitch.ClientID,
+		ClientID: uc.Twitch.ClientID,
 	})
 
 	token, err := oidcVerifier.Verify(ctx, req.Payload.Token)
@@ -1337,7 +1339,7 @@ func (ctrlr *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Cli
 	}
 
 	// Get user
-	user, err := db.UserGet(ctx, ctrlr.Conn, passport.UserID(userID))
+	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
 		return terror.Error(err, "Failed to query user")
 	}
@@ -1346,13 +1348,13 @@ func (ctrlr *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Cli
 	var oldUser passport.User = *user
 
 	// Update user's Twitch ID
-	err = db.UserAddTwitch(ctx, ctrlr.Conn, user, twitchID)
+	err = db.UserAddTwitch(ctx, uc.Conn, user, twitchID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, ctrlr.Conn, passport.UserID(userID))
+	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
 		return terror.Error(err, "Failed to query user")
 	}
@@ -1360,7 +1362,7 @@ func (ctrlr *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Cli
 	reply(user)
 
 	// Record user activity
-	ctrlr.API.RecordUserActivity(ctx,
+	uc.API.RecordUserActivity(ctx,
 		hubc.Identifier(),
 		"Added Twitch account to User",
 		passport.ObjectTypeUser,
@@ -1374,7 +1376,7 @@ func (ctrlr *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Cli
 		},
 	)
 
-	ctrlr.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	return nil
 }
@@ -1392,7 +1394,7 @@ type RemoveWalletRequest struct {
 }
 
 // RemoveWalletHandler removes a linked wallet address
-func (ctrlr *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &RemoveWalletRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1404,12 +1406,12 @@ func (ctrlr *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, ctrlr.Conn, req.Payload.ID)
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
 	} else {
-		user, err = db.UserByUsername(ctx, ctrlr.Conn, req.Payload.Username)
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
@@ -1424,14 +1426,14 @@ func (ctrlr *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.
 
 	// Start transaction
 	errMsg := "Unable to update user, please try again."
-	tx, err := ctrlr.Conn.Begin(ctx)
+	tx, err := uc.Conn.Begin(ctx)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 	defer func(tx pgx.Tx, ctx context.Context) {
 		err := tx.Rollback(ctx)
 		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			ctrlr.Log.Err(err).Msg("error rolling back")
+			uc.Log.Err(err).Msg("error rolling back")
 		}
 	}(tx, ctx)
 
@@ -1448,7 +1450,7 @@ func (ctrlr *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, ctrlr.Conn, user.ID)
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1456,7 +1458,7 @@ func (ctrlr *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.
 	reply(user)
 
 	//// Record user activity
-	ctrlr.API.RecordUserActivity(ctx,
+	uc.API.RecordUserActivity(ctx,
 		hubc.Identifier(),
 		"Updated User",
 		passport.ObjectTypeUser,
@@ -1470,7 +1472,7 @@ func (ctrlr *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.
 		},
 	)
 
-	ctrlr.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -1488,7 +1490,7 @@ type AddWalletRequest struct {
 }
 
 // AddWalletHandler links a wallet address to a user
-func (ctrlr *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &AddWalletRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1507,12 +1509,12 @@ func (ctrlr *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Cli
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, ctrlr.Conn, req.Payload.ID)
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
 	} else {
-		user, err = db.UserByUsername(ctx, ctrlr.Conn, req.Payload.Username)
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
@@ -1527,20 +1529,20 @@ func (ctrlr *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Cli
 	var oldUser = *user
 
 	// verify they signed it
-	err = ctrlr.API.Auth.VerifySignature(req.Payload.Signature, user.Nonce.String, req.Payload.PublicAddress)
+	err = uc.API.Auth.VerifySignature(req.Payload.Signature, user.Nonce.String, req.Payload.PublicAddress)
 	if err != nil {
 		return terror.Error(err)
 	}
 
 	// Start transaction
-	tx, err := ctrlr.Conn.Begin(ctx)
+	tx, err := uc.Conn.Begin(ctx)
 	if err != nil {
 		return terror.Error(err)
 	}
 	defer func(tx pgx.Tx, ctx context.Context) {
 		err := tx.Rollback(ctx)
 		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			ctrlr.Log.Err(err).Msg("error rolling back")
+			uc.Log.Err(err).Msg("error rolling back")
 		}
 	}(tx, ctx)
 
@@ -1557,7 +1559,7 @@ func (ctrlr *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Cli
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, ctrlr.Conn, user.ID)
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -1565,7 +1567,7 @@ func (ctrlr *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Cli
 	reply(user)
 
 	// Record user activity
-	ctrlr.API.RecordUserActivity(ctx,
+	uc.API.RecordUserActivity(ctx,
 		hubc.Identifier(),
 		"Updated User",
 		passport.ObjectTypeUser,
@@ -1579,7 +1581,7 @@ func (ctrlr *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Cli
 		},
 	)
 
-	ctrlr.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -1594,7 +1596,7 @@ type UpdatedSubscribeRequest struct {
 	} `json:"payload"`
 }
 
-func (ctrlr *UserController) UpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1604,12 +1606,12 @@ func (ctrlr *UserController) UpdatedSubscribeHandler(ctx context.Context, client
 	var user *passport.User
 
 	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, ctrlr.Conn, req.Payload.ID)
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return req.TransactionID, "", terror.Error(err)
 		}
 	} else if req.Payload.Username != "" {
-		user, err = db.UserByUsername(ctx, ctrlr.Conn, req.Payload.Username)
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
 			return req.TransactionID, "", terror.Error(err)
 		}
@@ -1628,10 +1630,44 @@ func (ctrlr *UserController) UpdatedSubscribeHandler(ctx context.Context, client
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), nil
 }
 
+type UserWalletDetail struct {
+	OnChainSups passport.BigInt `json:"onChainSups"`
+	OnWorldSups passport.BigInt `json:"onWorldSups"`
+}
+
+const HubKeyUserSupsSubscribe hub.HubCommandKey = "USER:SUPS:SUBSCRIBE"
+
+func (uc *UserController) UserSupsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+
+	resp := &UserWalletDetail{}
+
+	userID := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrForbidden)
+	}
+
+	// get current on world sups
+	onWorldSups, err := db.UserSupsGet(ctx, uc.Conn, userID)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	resp.OnWorldSups = onWorldSups
+
+	reply(resp)
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, userID)), nil
+}
+
 const HubKeyUserWarMachineQueuePositionSubscribe hub.HubCommandKey = "USER:WAR:MACHINE:QUEUE:POSITION:SUBSCRIBE"
 
 // WarMachineQueuePositionUpdatedSubscribeHandler
-func (ctrlr *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1644,7 +1680,7 @@ func (ctrlr *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx 
 	}
 
 	// get user
-	user, err := db.UserGet(ctx, ctrlr.Conn, userID)
+	user, err := db.UserGet(ctx, uc.Conn, userID)
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
@@ -1652,7 +1688,7 @@ func (ctrlr *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx 
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueuePositionSubscribe, userID))
 
 	// TODO: run a request to gameserver to get the war machine list
-	ctrlr.API.SendToAllServerClient(&ServerClientMessage{
+	uc.API.SendToAllServerClient(&ServerClientMessage{
 		Key: WarMachineQueuePositionGet,
 		Payload: struct {
 			UserID    passport.UserID    `json:"userID"`

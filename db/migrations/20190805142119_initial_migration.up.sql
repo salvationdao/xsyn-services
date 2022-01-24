@@ -63,7 +63,17 @@ CREATE TABLE factions
 (
     id    UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     label TEXT             NOT NULL,
-    theme JSONB            NOT NULL DEFAULT '{}'
+    theme JSONB            NOT NULL DEFAULT '{}',
+    image_url TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    velocity INT NOT NULL DEFAULT 0,
+    share_percent INT NOT NULL DEFAULT 0,
+    recruit_number INT NOT NULL DEFAULT 0,
+    win_count INT NOT NULL DEFAULT 0,
+    loss_count INT NOT NULL DEFAULT 0,
+    kill_count INT NOT NULL DEFAULT 0,
+    death_count INT NOT NULL DEFAULT 0,
+    mvp TEXT NOT NULL DEFAULT ''
 );
 
 
@@ -323,6 +333,7 @@ CREATE TABLE xsyn_nft_metadata
     description         TEXT,
     external_url        TEXT,
     image               TEXT,
+    durability          INT                        NOT NULL DEFAULT 100,
     attributes          JSONB,
     additional_metadata JSONB,
     keywords            TSVECTOR, -- search
@@ -462,6 +473,39 @@ GRANT ALL ON users TO passport_tx;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO passport_tx;
 REVOKE ALL ON transactions FROM passport;
 GRANT SELECT ON transactions TO passport;
+
+
+/***********************************************************
+ *                User listen trigger                      *
+ ***********************************************************/
+--
+CREATE OR REPLACE FUNCTION user_update_event() RETURNS TRIGGER AS
+$noifyevent$
+DECLARE
+    data JSON;
+BEGIN
+    -- Convert the old or new row to JSON, based on the kind of action.
+    -- Action = DELETE?             -> OLD row
+    -- Action = INSERT or UPDATE?   -> NEW row
+    IF (TG_OP = 'DELETE') THEN
+        data = ROW_TO_JSON(OLD);
+    ELSE
+        data = ROW_TO_JSON(NEW);
+    END IF;
+
+    -- Execute pg_notify(channel, notification)
+    PERFORM pg_notify('user_update_event', data::TEXT);
+
+    -- Result is ignored since this is an AFTER trigger
+    RETURN NULL;
+END
+$noifyevent$ LANGUAGE plpgsql;
+
+CREATE TRIGGER user_notify_event
+    AFTER INSERT OR UPDATE OR DELETE
+    ON users
+    FOR EACH ROW
+EXECUTE PROCEDURE user_update_event();
 
 
 COMMIT;

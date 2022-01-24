@@ -1,11 +1,11 @@
 package api
 
 import (
-	"passport/log_helpers"
 	"context"
+	"passport/log_helpers"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/hub/v2"
+	"github.com/ninja-software/hub/v3"
 	"github.com/rs/zerolog"
 )
 

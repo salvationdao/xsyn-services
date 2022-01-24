@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"passport"
 
-	"github.com/ninja-software/hub/v2"
-	"github.com/ninja-software/hub/v2/ext/messagebus"
+	"github.com/ninja-software/hub/v3"
+	"github.com/ninja-software/hub/v3/ext/messagebus"
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -95,10 +95,9 @@ func (api *API) SubscribeCommandWithPermission(key hub.HubCommandKey, fn HubSubs
 func (api *API) SecureUserSubscribeCommand(key hub.HubCommandKey, fn HubSubscribeCommandFunc) {
 
 	api.SubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
-		// TODO fix this
-		// if wsc.Identifier() == "" || wsc.Level != passport.ServerClientLevel {
-		// 	return false
-		// }
+		if wsc.Identifier() == "" || wsc.Level < 1 {
+			return false
+		}
 		return true
 	})
 }

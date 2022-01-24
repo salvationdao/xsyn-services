@@ -29,6 +29,17 @@ tools: go-mod-tidy
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.43.0 go get -u golang.org/x/tools/cmd/goimports
 	go generate -tags tools ./tools/...
 
+.PHONY: tools-windows
+tools-windows: go-mod-tidy
+	-mkdir bin
+	cd $(BIN) && powershell Invoke-WebRequest -Uri "https://github.com/golangci/golangci-lint/releases/download/v1.43.0/golangci-lint-1.43.0-windows-amd64.zip" -OutFile "./golangci-lint.zip" -UseBasicParsing
+	cd $(BIN) && powershell Expand-Archive './golangci-lint.zip' -DestinationPath './'\
+	 && powershell rm './golangci-lint.zip'\
+	 && powershell mv ./golangci-lint-1.43.0-windows-amd64/golangci-lint.exe ./golangci-lint.exe\
+	 && powershell rm -r ./golangci-lint-1.43.0-windows-amd64
+	go generate -tags tools ./tools/...
+
+
 .PHONY: docker-start
 docker-start:
 	docker start $(DOCKER_CONTAINER) || docker run -d -p $(LOCAL_DEV_DB_PORT):5432 --name $(DOCKER_CONTAINER) -e POSTGRES_USER=$(PACKAGE) -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=$(PACKAGE) postgres:13-alpine
@@ -107,12 +118,16 @@ deps: go-mod-download
 
 .PHONY: serve
 serve:
-	${BIN}/air -c .air.toml
+	${BIN}/air -c ./.air.toml
 
 # TODO: add linter with arelo
 .PHONY: serve-arelo
 serve-arelo:
 	${BIN}/arelo -p '**/*.go' -i '**/.*' -i '**/*_test.go' -i 'tools/*'  -- go run cmd/platform/main.go serve
+
+.PHONY: test
+test:
+	echo "first" && echo "second"
 
 .PHONY: lb
 lb:

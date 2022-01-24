@@ -141,7 +141,7 @@ func (o *{{$alias.UpSingular}}) Insert({{if .NoContext}}exec boil.Executor{{else
 	}
 
 	{{if $canLastInsertID -}}
-	lastID, err = result.LastInsertId()
+	lastID, err = result.LastInsertID()
 	if err != nil {
 		return ErrSyncFail
 	}

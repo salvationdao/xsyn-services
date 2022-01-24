@@ -1,15 +1,15 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
 	"passport"
 	"passport/db"
 	"passport/helpers"
 	"passport/log_helpers"
-	"context"
-	"encoding/json"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/hub/v2"
+	"github.com/ninja-software/hub/v3"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 )
@@ -60,7 +60,7 @@ type ProductListRequest struct {
 // ProductListResponse is the response from the product list request
 type ProductListResponse struct {
 	Records []*passport.Product `json:"records"`
-	Total   int                    `json:"total"`
+	Total   int                 `json:"total"`
 }
 
 // ListHandler lists products with pagination
@@ -110,7 +110,7 @@ const HubKeyProductGet hub.HubCommandKey = "PRODUCT:GET"
 type ProductGetRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		Slug string                `json:"slug"`
+		Slug string             `json:"slug"`
 		ID   passport.ProductID `json:"id"`
 	} `json:"payload"`
 }
@@ -148,8 +148,8 @@ const HubKeyProductCreate hub.HubCommandKey = "PRODUCT:CREATE"
 
 // ProductPayload used for create and update requests
 type ProductPayload struct {
-	Name        string              `json:"name"`
-	Description string              `json:"description"`
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
 	ImageID     *passport.BlobID `json:"imageID"`
 }
 
@@ -378,7 +378,7 @@ type NudgeImageListRequest struct {
 // ImageListResponse is the response from the image list request
 type ImageListResponse struct {
 	Records []*passport.Blob `json:"records"`
-	Total   int                 `json:"total"`
+	Total   int              `json:"total"`
 }
 
 // ImageListHandler gets a list of images in the system (excluding avatars)

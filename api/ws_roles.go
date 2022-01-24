@@ -1,15 +1,15 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
 	"passport"
 	"passport/db"
 	"passport/helpers"
 	"passport/log_helpers"
-	"context"
-	"encoding/json"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/hub/v2"
+	"github.com/ninja-software/hub/v3"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 )
@@ -59,7 +59,7 @@ type RoleListRequest struct {
 // RoleListResponse is the response from the role list request
 type RoleListResponse struct {
 	Records []*passport.Role `json:"records"`
-	Total   int                 `json:"total"`
+	Total   int              `json:"total"`
 }
 
 // ListHandler lists roles with pagination
@@ -109,7 +109,7 @@ const HubKeyRoleGet hub.HubCommandKey = "ROLE:GET"
 type RoleGetRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		Name string             `json:"name"`
+		Name string          `json:"name"`
 		ID   passport.RoleID `json:"id"`
 	} `json:"payload"`
 }

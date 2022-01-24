@@ -3,11 +3,14 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"passport"
 	"passport/db"
 	"passport/log_helpers"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/hub/v2"
+	"github.com/ninja-software/hub/v3"
+	"github.com/ninja-software/hub/v3/ext/messagebus"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 )
@@ -28,6 +31,8 @@ func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Fa
 	}
 
 	api.Command(HubKeyFactionAll, factionHub.FactionAllHandler)
+
+	api.SecureUserSubscribeCommand(HubKeyFactionUpdatedSubscribe, factionHub.FactionUpdatedSubscribeHandler)
 
 	return factionHub
 }
@@ -51,4 +56,32 @@ func (fc *FactionController) FactionAllHandler(ctx context.Context, hubc *hub.Cl
 	reply(factions)
 
 	return nil
+}
+
+// FactionUpdatedSubscribeRequest subscribe to faction updates
+type FactionUpdatedSubscribeRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		FactionID passport.FactionID `json:""`
+	} `json:"payload"`
+}
+
+const HubKeyFactionUpdatedSubscribe hub.HubCommandKey = "FACTION:SUBSCRIBE"
+
+func (fc *FactionController) FactionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &FactionUpdatedSubscribeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+
+	// get faction detail
+	faction, err := db.FactionGet(ctx, fc.Conn, req.Payload.FactionID)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	reply(faction)
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionUpdatedSubscribe, req.Payload.FactionID)), nil
 }

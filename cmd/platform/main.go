@@ -240,8 +240,6 @@ func txConnect(
 		params.Encode(),
 	)
 
-	fmt.Println(connString)
-
 	conn, err := sql.Open("postgres", connString)
 	if err != nil {
 		return nil, terror.Error(err)
