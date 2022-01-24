@@ -328,7 +328,7 @@ CREATE TABLE xsyn_nft_metadata
 (
     token_id            NUMERIC(78, 0) PRIMARY KEY NOT NULL,
     name                TEXT                       NOT NULL,
-    game                TEXT,
+    collection          TEXT,
     game_object         JSONB,
     description         TEXT,
     external_url        TEXT,
@@ -353,7 +353,7 @@ DECLARE
     temp TSVECTOR;
 BEGIN
     SELECT (SETWEIGHT(TO_TSVECTOR('english', NEW.external_url), 'A') ||
-            SETWEIGHT(TO_TSVECTOR('english', NEW.name), 'A') || SETWEIGHT(TO_TSVECTOR('english', NEW.game), 'A') ||
+            SETWEIGHT(TO_TSVECTOR('english', NEW.name), 'A') || SETWEIGHT(TO_TSVECTOR('english', NEW.collection), 'A') ||
             SETWEIGHT(TO_TSVECTOR('english', NEW.image), 'A') ||
             SETWEIGHT(TO_TSVECTOR('english', NEW.description), 'A'))
     INTO temp;

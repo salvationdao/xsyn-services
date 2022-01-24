@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"passport"
 	"passport/db"
 	"passport/log_helpers"
@@ -12,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/hub/v3"
+	"github.com/ninja-software/hub/v3/ext/messagebus"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 )
@@ -30,6 +32,8 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 		Log:  log_helpers.NamedLogger(log, "role_hub"),
 		API:  api,
 	}
+
+	api.SecureUserSubscribeCommand(HubKeyAssetsSubscribe, assetHub.AssetsUpdatedSubscribeHandler)
 
 	api.SecureCommand(HubKeyAssetRegister, assetHub.RegisterHandler)
 	api.SecureCommand(HubKeyAssetQueueJoin, assetHub.JoinQueueHandler)
@@ -262,4 +266,68 @@ func parseWarMachineNFT(nft *passport.XsynNftMetadata, warMachineNFT *passport.W
 			warMachineNFT.UtilitySlots = int(att.Value.(float64))
 		}
 	}
+}
+
+// rootHub.SecureCommand(HubKeyAssetList, AssetController.GetHandler)
+const HubKeyAssetList hub.HubCommandKey = "ASSET:LIST"
+
+// AssetListHandlerRequest requests holds the filter for user list
+type AssetsUpdatedSubscribeRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		UserID   passport.UserID       `json:"user_id"`
+		SortDir  db.SortByDir          `json:"sortDir"`
+		SortBy   db.AssetColumn        `json:"sortBy"`
+		Filter   *db.ListFilterRequest `json:"filter"`
+		Archived bool                  `json:"archived"`
+		Search   string                `json:"search"`
+		PageSize int                   `json:"pageSize"`
+		Page     int                   `json:"page"`
+	} `json:"payload"`
+}
+
+// AssetListResponse is the response from get asset list
+type AssetListResponse struct {
+	Records []*passport.Asset `json:"records"`
+	Total   int               `json:"total"`
+}
+
+const HubKeyAssetsSubscribe hub.HubCommandKey = "ASSET:SUBSCRIBE"
+
+func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &AssetsUpdatedSubscribeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err)
+	}
+
+	offset := 0
+	if req.Payload.Page > 0 {
+		offset = req.Payload.Page * req.Payload.PageSize
+	}
+
+	assets := []*passport.Asset{}
+	total, err := db.AssetList(
+		ctx, ctrlr.Conn, &assets,
+		req.Payload.Search,
+		req.Payload.Archived,
+		req.Payload.Filter,
+		offset,
+		req.Payload.PageSize,
+		req.Payload.SortBy,
+		req.Payload.SortDir,
+	)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err)
+	}
+
+	resp := &AssetListResponse{
+		Total:   total,
+		Records: assets,
+	}
+
+	reply(resp)
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetsSubscribe, req.Payload.UserID.String())), nil
+
 }

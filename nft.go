@@ -23,7 +23,7 @@ const (
 type XsynNftMetadata struct {
 	TokenID            uint64                `json:"token_id" db:"token_id"`
 	Name               string                `json:"name" db:"name"`
-	Game               string                `json:"game" db:"game"`
+	Collection         string                `json:"collection" db:"collection"`
 	GameObject         interface{}           `json:"game_object" db:"game_object"`
 	Description        string                `json:"description" db:"description"`
 	ExternalUrl        string                `json:"external_url" db:"external_url"`

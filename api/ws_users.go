@@ -1621,7 +1621,7 @@ func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, client *h
 		return req.TransactionID, "", terror.Error(fmt.Errorf("unable to get user"))
 	}
 
-	//// Permission check
+	// Permission check
 	if user.ID.String() != client.Identifier() && !client.HasPermission(passport.PermUserRead.String()) {
 		return req.TransactionID, "", terror.Error(terror.ErrUnauthorised, "You do not have permission to look at other users.")
 	}
