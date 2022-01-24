@@ -116,59 +116,6 @@ func (id *UserID) Scan(src interface{}) error {
 	return err
 }
 
-// TokenID aliases uuid.UUID.
-// Doing this prevents situations where you use TokenID where it doesn't belong.
-type TokenID uuid.UUID
-
-// IsNil returns true for a nil uuid.
-func (id TokenID) IsNil() bool {
-	return id == TokenID{}
-}
-
-// String aliases UUID.String which returns a canonical RFC-4122 string representation of the UUID.
-// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.String.
-func (id TokenID) String() string {
-	return uuid.UUID(id).String()
-}
-
-// MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaler interface.
-// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.MarshalText.
-func (id TokenID) MarshalText() ([]byte, error) {
-	return uuid.UUID(id).MarshalText()
-}
-
-// UnmarshalText aliases UUID.UnmarshalText which implements the encoding.TextUnmarshaler interface.
-// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.UnmarshalText.
-func (id *TokenID) UnmarshalText(text []byte) error {
-	// Convert to uuid.UUID
-	uid := uuid.UUID(*id)
-	// Unmarshal as uuid.UUID
-	err := uid.UnmarshalText(text)
-	// Convert back to original type
-	*id = TokenID(uid)
-	// Retrun error
-	return err
-}
-
-// Value aliases UUID.Value which implements the driver.Valuer interface.
-// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Value.
-func (id TokenID) Value() (driver.Value, error) {
-	return uuid.UUID(id).Value()
-}
-
-// Scan implements the sql.Scanner interface.
-// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Scan.
-func (id *TokenID) Scan(src interface{}) error {
-	// Convert to uuid.UUID
-	uid := uuid.UUID(*id)
-	// Unmarshal as uuid.UUID
-	err := uid.Scan(src)
-	// Convert back to original type
-	*id = TokenID(uid)
-	// Retrun error
-	return err
-}
-
 // IssueTokenID aliases uuid.UUID.
 // Doing this prevents situations where you use IssueTokenID where it doesn't belong.
 type IssueTokenID uuid.UUID
