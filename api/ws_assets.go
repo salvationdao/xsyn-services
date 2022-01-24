@@ -292,45 +292,6 @@ type AssetListResponse struct {
 	Total   int               `json:"total"`
 }
 
-// ListHandler list assets with pagination/filters
-func (ctrlr *AssetController) ListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
-	req := &AssetListHandlerRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	offset := 0
-	if req.Payload.Page > 0 {
-		offset = req.Payload.Page * req.Payload.PageSize
-	}
-
-	assets := []*passport.Asset{}
-	total, err := db.AssetList(
-		ctx, ctrlr.Conn, &assets,
-		req.Payload.Search,
-		req.Payload.Archived,
-		req.Payload.Filter,
-		offset,
-		req.Payload.PageSize,
-		req.Payload.SortBy,
-		req.Payload.SortDir,
-	)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	resp := &AssetListResponse{
-		Total:   total,
-		Records: assets,
-	}
-
-	reply(resp)
-
-	return nil
-}
-
 const HubKeyAssetsSubscribe hub.HubCommandKey = "ASSET:SUBSCRIBE"
 
 func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
