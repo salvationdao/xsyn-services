@@ -272,7 +272,7 @@ func parseWarMachineNFT(nft *passport.XsynNftMetadata, warMachineNFT *passport.W
 const HubKeyAssetList hub.HubCommandKey = "ASSET:LIST"
 
 // AssetListHandlerRequest requests holds the filter for user list
-type AssetListHandlerRequest struct {
+type AssetsUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		UserID   passport.UserID       `json:"user_id"`
@@ -295,7 +295,7 @@ type AssetListResponse struct {
 const HubKeyAssetsSubscribe hub.HubCommandKey = "ASSET:SUBSCRIBE"
 
 func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &AssetListHandlerRequest{}
+	req := &AssetsUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
