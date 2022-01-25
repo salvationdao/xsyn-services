@@ -13,9 +13,9 @@ scp -r ./db/migrations "root@sale.supremacy.fi:/home/passport-server/migrations"
 # upload migrate binary
 scp ./bin/migrate "root@sale.supremacy.fi:/home/passport-server/migrate"
 # run migrations
-ssh root@sale.supremacy.fi 'cd /home/passport-server/ && source ./passport-server-staging.env && ./migrate -database "postgres://$LOCAL_DEV_DB_USER:$LOCAL_DEV_DB_PASS@$LOCAL_DEV_DB_HOST:$LOCAL_DEV_DB_PORT/$LOCAL_DEV_DB_DATABASE?sslmode=disable" -path ./migrations drop -f'
+ssh root@sale.supremacy.fi 'cd /home/passport-server/ && source ./passport-server-staging.env && ./migrate -database "postgres://$PASSPORT_DATABASE_USER:$PASSPORT_DATABASE_PASS@$PASSPORT_DATABASE_HOST:$PASSPORT_DATABASE_PORT/$PASSPORT_DATABASE_NAME?sslmode=disable" -path ./migrations drop -f'
 # run migrations
-ssh root@sale.supremacy.fi 'cd /home/passport-server/ && source ./passport-server-staging.env && ./migrate -database "postgres://$LOCAL_DEV_DB_USER:$LOCAL_DEV_DB_PASS@$LOCAL_DEV_DB_HOST:$LOCAL_DEV_DB_PORT/$LOCAL_DEV_DB_DATABASE?sslmode=disable" -path ./migrations up'
+ssh root@sale.supremacy.fi 'cd /home/passport-server/ && source ./passport-server-staging.env && ./migrate -database "postgres://$PASSPORT_DATABASE_USER:$PASSPORT_DATABASE_PASS@$PASSPORT_DATABASE_HOST:$PASSPORT_DATABASE_PORT/$LOCAL_DEV_DB_DATABASE?sslmode=disable" -path ./migrations up'
 # run seed
 ssh root@sale.supremacy.fi 'cd /home/passport-server/ && ./passport-server db'
 # move binary and restart services
