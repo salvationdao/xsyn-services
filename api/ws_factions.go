@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"passport"
 	"passport/db"
+	"passport/helpers"
 	"passport/log_helpers"
 
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/hub/v3"
-	"github.com/ninja-software/hub/v3/ext/messagebus"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 )
 
@@ -31,8 +33,9 @@ func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Fa
 	}
 
 	api.Command(HubKeyFactionAll, factionHub.FactionAllHandler)
+	api.SecureCommand(HubKeyFactionEnlist, factionHub.FactionEnlistHandler)
 
-	api.SecureUserSubscribeCommand(HubKeyFactionUpdatedSubscribe, factionHub.FactionUpdatedSubscribeHandler)
+	api.SubscribeCommand(HubKeyFactionUpdatedSubscribe, factionHub.FactionUpdatedSubscribeHandler)
 
 	return factionHub
 }
@@ -53,7 +56,90 @@ func (fc *FactionController) FactionAllHandler(ctx context.Context, hubc *hub.Cl
 		return terror.Error(err, "failed to query factions")
 	}
 
+	for _, f := range factions {
+		f.LogoUrl = fmt.Sprintf("%s/api/files/%s", fc.API.HostUrl, f.LogoBlobID)
+		f.BackgroundUrl = fmt.Sprintf("%s/api/files/%s", fc.API.HostUrl, f.BackgroundBlobID)
+	}
+
 	reply(factions)
+
+	return nil
+}
+
+// FactionEnlistRequest enlist a faction
+type FactionEnlistRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		FactionID passport.FactionID `json:"factionID"`
+	} `json:"payload"`
+}
+
+// rootHub.SecureCommand(HubKeyFactionEnlist, factionHub.FactionEnlistHandler)
+const HubKeyFactionEnlist hub.HubCommandKey = "FACTION:ENLIST"
+
+// FactionEnlistHandler assign faction to user
+func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &FactionEnlistRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	// get user
+	user, err := db.UserGet(ctx, fc.Conn, userID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	if user.FactionID != nil && !user.FactionID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput, "User has already enlisted in a faction")
+	}
+
+	// record old user state
+	oldUser := *user
+
+	// assign faction to current user
+	user.FactionID = &req.Payload.FactionID
+
+	err = db.UserFactionEnlist(ctx, fc.Conn, user)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// record user activity
+	fc.API.RecordUserActivity(ctx,
+		hubc.Identifier(),
+		"Enlist faction",
+		passport.ObjectTypeUser,
+		helpers.StringPointer(user.ID.String()),
+		&user.Username,
+		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		&passport.UserActivityChangeData{
+			Name: db.TableNames.Users,
+			From: oldUser,
+			To:   user,
+		},
+	)
+
+	// broadcast updated user to gamebar user
+	fc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+
+	// broadcast updated user to server client
+	fc.API.SendToAllServerClient(&ServerClientMessage{
+		Key: UserEnlistFaction,
+		Payload: struct {
+			UserID    passport.UserID    `json:"userID"`
+			FactionID passport.FactionID `json:"factionID"`
+		}{
+			UserID:    userID,
+			FactionID: req.Payload.FactionID,
+		},
+	})
 
 	return nil
 }

@@ -103,6 +103,16 @@ var Factions = []*passport.Faction{
 			Secondary:  "#FFFFFF",
 			Background: "#0D0404",
 		},
+		// TODO: remove from prod
+		Description:   "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
+		Velocity:      51,
+		SharePercent:  39,
+		RecruitNumber: 16554,
+		WinCount:      1916,
+		LossCount:     1337,
+		KillCount:     4810,
+		DeathCount:    3418,
+		MVP:           "test user",
 	},
 	{
 		ID:    passport.FactionID(uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2"))),
@@ -112,42 +122,76 @@ var Factions = []*passport.Faction{
 			Secondary:  "#FFFFFF",
 			Background: "#050A12",
 		},
+		// TODO: remove from prod
+		Description:   "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
+		Velocity:      51,
+		SharePercent:  39,
+		RecruitNumber: 16554,
+		WinCount:      1916,
+		LossCount:     1337,
+		KillCount:     4810,
+		DeathCount:    3418,
+		MVP:           "test user",
 	},
 	{
 		ID:    passport.FactionID(uuid.Must(uuid.FromString("880db344-e405-428d-84e5-6ebebab1fe6d"))),
 		Label: "Zaibatsu Heavy Industries",
 		Theme: &passport.FactionTheme{
 			Primary:    "#FFFFFF",
-			Secondary:  "#FFFFFF",
+			Secondary:  "#000000",
 			Background: "#0D0D0D",
 		},
+		// TODO: remove from prod
+		Description:   "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
+		Velocity:      51,
+		SharePercent:  39,
+		RecruitNumber: 16554,
+		WinCount:      1916,
+		LossCount:     1337,
+		KillCount:     4810,
+		DeathCount:    3418,
+		MVP:           "test user",
 	},
 }
 
 func (s *Seeder) factions(ctx context.Context) error {
 	for _, faction := range Factions {
 		var err error
-		blob := &passport.Blob{}
+		logoBlob := &passport.Blob{}
+		backgroundBlob := &passport.Blob{}
 
 		switch faction.Label {
 		case "Red Mountain Offworld Mining Corporation":
-			blob, err = s.factionLogo(ctx, "red_mountain_logo")
+			logoBlob, err = s.factionLogo(ctx, "red_mountain_logo")
+			if err != nil {
+				return terror.Error(err)
+			}
+			backgroundBlob, err = s.factionBackground(ctx, "red_mountain_bg")
 			if err != nil {
 				return terror.Error(err)
 			}
 		case "Boston Cybernetics":
-			blob, err = s.factionLogo(ctx, "boston_cybernetics_logo")
+			logoBlob, err = s.factionLogo(ctx, "boston_cybernetics_logo")
+			if err != nil {
+				return terror.Error(err)
+			}
+			backgroundBlob, err = s.factionBackground(ctx, "boston_cybernetics_bg")
 			if err != nil {
 				return terror.Error(err)
 			}
 		case "Zaibatsu Heavy Industries":
-			blob, err = s.factionLogo(ctx, "zaibatsu-logo")
+			logoBlob, err = s.factionLogo(ctx, "zaibatsu_logo")
+			if err != nil {
+				return terror.Error(err)
+			}
+			backgroundBlob, err = s.factionBackground(ctx, "zaibatsu_bg")
 			if err != nil {
 				return terror.Error(err)
 			}
 		}
 
-		faction.ImageUrl = fmt.Sprintf("/api/files/%s", blob.ID)
+		faction.LogoBlobID = logoBlob.ID
+		faction.BackgroundBlobID = backgroundBlob.ID
 
 		err = db.FactionCreate(ctx, s.Conn, faction)
 		if err != nil {
@@ -177,6 +221,41 @@ func (s *Seeder) factionLogo(ctx context.Context, filename string) (*passport.Bl
 		FileName:      filename,
 		MimeType:      "image/svg+xml",
 		Extension:     "svg",
+		FileSizeBytes: int64(len(factionLogo)),
+		File:          factionLogo,
+		Hash:          &hash,
+		Public:        true,
+	}
+
+	// insert blob
+	err = db.BlobInsert(ctx, s.Conn, blob)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return blob, nil
+}
+
+func (s *Seeder) factionBackground(ctx context.Context, filename string) (*passport.Blob, error) {
+	// get read file from asset
+	factionLogo, err := os.ReadFile(fmt.Sprintf("./asset/%s.webp", filename))
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	// Get hash
+	hasher := md5.New()
+	_, err = hasher.Write(factionLogo)
+	if err != nil {
+		return nil, terror.Error(err, "hash error")
+	}
+	hashResult := hasher.Sum(nil)
+	hash := hex.EncodeToString(hashResult)
+
+	blob := &passport.Blob{
+		FileName:      filename,
+		MimeType:      "image/webp",
+		Extension:     "webp",
 		FileSizeBytes: int64(len(factionLogo)),
 		File:          factionLogo,
 		Hash:          &hash,

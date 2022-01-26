@@ -14,9 +14,9 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/hub/v3"
-	"github.com/ninja-software/hub/v3/ext/auth"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/auth"
 	"github.com/rs/zerolog"
 )
 
@@ -365,6 +365,9 @@ func (userFields UserFields) Deleted() bool {
 }
 func (userFields UserFields) AvatarID() *uuid.UUID {
 	return (*uuid.UUID)(userFields.Secureuser.AvatarID)
+}
+func (userFields UserFields) FactionID() *uuid.UUID {
+	return (*uuid.UUID)(userFields.Secureuser.FactionID)
 }
 func (userFields UserFields) DeletedAt() *time.Time {
 	return userFields.Secureuser.DeletedAt

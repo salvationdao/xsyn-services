@@ -5,7 +5,7 @@ import (
 	"passport/log_helpers"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/hub/v3"
+	"github.com/ninja-syndicate/hub"
 	"github.com/rs/zerolog"
 )
 

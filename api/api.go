@@ -12,8 +12,8 @@ import (
 	"nhooyr.io/websocket"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-software/hub/v3"
-	"github.com/ninja-software/hub/v3/ext/messagebus"
+	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
@@ -21,8 +21,8 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/ninja-software/hub/v3/ext/auth"
-	zerologger "github.com/ninja-software/hub/v3/ext/zerolog"
+	"github.com/ninja-syndicate/hub/ext/auth"
+	zerologger "github.com/ninja-syndicate/hub/ext/zerolog"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 )
@@ -39,6 +39,8 @@ type API struct {
 	Tokens       *Tokens
 	*auth.Auth
 	*messagebus.MessageBus
+
+	HostUrl string
 
 	// online user cache
 	users chan func(userCacheList UserCacheMap)
@@ -62,6 +64,7 @@ func NewAPI(
 	googleClientID string,
 	mailer *email.Mailer,
 	addr string,
+	hostUrl string,
 	twitchExtensionSecret []byte,
 	twitchClientID string,
 	twitchClientSecret string,
@@ -100,6 +103,9 @@ func NewAPI(
 		serverClients:       make(chan func(serverClients ServerClientsList)),
 		sendToServerClients: make(chan *ServerClientMessage),
 
+		// hostURl
+		HostUrl: hostUrl,
+
 		// user cache map
 		users: make(chan func(userList UserCacheMap)),
 
@@ -114,6 +120,7 @@ func NewAPI(
 	api.Routes.Use(cors.New(cors.Options{
 		AllowedOrigins: []string{config.PassportWebHostURL, config.GameserverHostURL},
 	}).Handler)
+
 	var err error
 	api.Auth, err = auth.New(api.Hub, &auth.Config{
 		CreateUserIfNotExist:     true,

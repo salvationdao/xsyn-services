@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/ninja-software/hub/v3"
+	"github.com/ninja-syndicate/hub"
 )
 
 type ServerClientsList map[ServerClientName]map[*hub.Client]bool
@@ -62,6 +62,7 @@ const (
 	Authed                     ServerClientMessageAction = "AUTHED"
 	UserOnlineStatus           ServerClientMessageAction = "USER:ONLINE_STATUS"
 	UserUpdated                ServerClientMessageAction = "USER:UPDATED"
+	UserEnlistFaction          ServerClientMessageAction = "USER:ENLIST:FACTION"
 	UserSupsUpdated            ServerClientMessageAction = "USER:SUPS:UPDATED"
 	AssetQueueJoin             ServerClientMessageAction = "ASSET:QUEUE:JOIN"
 	AssetQueueLeave            ServerClientMessageAction = "ASSET:QUEUE:LEAVE"

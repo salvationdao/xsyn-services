@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ninja-software/hub/v3/ext/messagebus"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
 
 type UserCache struct {
@@ -57,17 +57,25 @@ func (api *API) InsertUserToCache(user *passport.User) {
 
 		// TODO: add passport user sup subscribe
 
-		// broadcast the update to server clients
-		api.SendToAllServerClient(&ServerClientMessage{
-			Key: UserSupsUpdated,
-			Payload: struct {
-				UserID passport.UserID `json:"userID"`
-				Sups   passport.BigInt `json:"sups"`
-			}{
-				UserID: user.ID,
-				Sups:   user.Sups,
-			},
-		})
+		// // broadcast the update to server clients
+		// api.SendToAllServerClient(&ServerClientMessage{
+		// 	Key: UserSupsUpdated,
+		// 	Payload: struct {
+		// 		UserID passport.UserID `json:"userID"`
+		// 		Sups   passport.BigInt `json:"sups"`
+		// 	}{
+		// 		UserID: user.ID,
+		// 		Sups:   user.Sups,
+		// 	},
+		// })
+
+		// broadcast to game bar
+		resp := &UserWalletDetail{
+			OnChainSups: "0",
+			OnWorldSups: user.Sups.Int.String(),
+		}
+
+		api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), resp)
 	})
 }
 
@@ -97,7 +105,7 @@ func (api *API) UpdateUserInCache(user *passport.User) {
 		userMap[user.ID].CacheLastUpdated = time.Now()
 
 		// broadcast the update to the users connected directly to passport
-		api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID)), user)
+		// api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID)), user)
 		// broadcast the update to connect client servers
 		//api.SendToAllServerClient(&ServerClientMessage{
 		//	Key: UserUpdated,
@@ -111,17 +119,25 @@ func (api *API) UpdateUserInCache(user *passport.User) {
 			// TODO: add passport user sup subscribe
 			//api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupSubscribe, user.ID)), user)
 
-			// broadcast the update to server clients
-			api.SendToAllServerClient(&ServerClientMessage{
-				Key: UserSupsUpdated,
-				Payload: struct {
-					UserID passport.UserID `json:"userID"`
-					Sups   passport.BigInt `json:"sups"`
-				}{
-					UserID: user.ID,
-					Sups:   user.Sups,
-				},
-			})
+			// // broadcast the update to server clients
+			// api.SendToAllServerClient(&ServerClientMessage{
+			// 	Key: UserSupsUpdated,
+			// 	Payload: struct {
+			// 		UserID passport.UserID `json:"userID"`
+			// 		Sups   passport.BigInt `json:"sups"`
+			// 	}{
+			// 		UserID: user.ID,
+			// 		Sups:   user.Sups,
+			// 	},
+			// })
+
+			// broadcast to game bar
+			resp := &UserWalletDetail{
+				OnChainSups: "0",
+				OnWorldSups: user.Sups.Int.String(),
+			}
+
+			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), resp)
 		}
 		//}
 	})
@@ -145,17 +161,25 @@ func (api *API) UpdateUserCacheAddSups(userID passport.UserID, amount big.Int) {
 			// TODO: add passport user sup subscribe
 			//api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupSubscribe, user.ID)), user)
 
-			// broadcast the update to server clients
-			api.SendToAllServerClient(&ServerClientMessage{
-				Key: UserSupsUpdated,
-				Payload: struct {
-					UserID passport.UserID `json:"userID"`
-					Sups   passport.BigInt `json:"sups"`
-				}{
-					UserID: user.ID,
-					Sups:   user.Sups,
-				},
-			})
+			// // broadcast the update to server clients
+			// api.SendToAllServerClient(&ServerClientMessage{
+			// 	Key: UserSupsUpdated,
+			// 	Payload: struct {
+			// 		UserID passport.UserID `json:"userID"`
+			// 		Sups   passport.BigInt `json:"sups"`
+			// 	}{
+			// 		UserID: user.ID,
+			// 		Sups:   user.Sups,
+			// 	},
+			// })
+
+			// broadcast to game bar
+			resp := &UserWalletDetail{
+				OnChainSups: "0",
+				OnWorldSups: user.Sups.Int.String(),
+			}
+
+			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), resp)
 		}
 	})
 }
@@ -175,20 +199,26 @@ func (api *API) UpdateUserCacheRemoveSups(userID passport.UserID, amount big.Int
 
 			user.Sups.Int = *user.Sups.Int.Sub(&user.Sups.Int, &amount)
 
-			// TODO: add passport user sup subscribe
-			//api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupSubscribe, user.ID)), user)
+			// // broadcast the update to server clients
+			// api.SendToAllServerClient(&ServerClientMessage{
+			// 	Key: UserSupsUpdated,
+			// 	Payload: struct {
+			// 		UserID passport.UserID `json:"userID"`
+			// 		Sups   passport.BigInt `json:"sups"`
+			// 	}{
+			// 		UserID: user.ID,
+			// 		Sups:   user.Sups,
+			// 	},
+			// })
 
-			// broadcast the update to server clients
-			api.SendToAllServerClient(&ServerClientMessage{
-				Key: UserSupsUpdated,
-				Payload: struct {
-					UserID passport.UserID `json:"userID"`
-					Sups   passport.BigInt `json:"sups"`
-				}{
-					UserID: user.ID,
-					Sups:   user.Sups,
-				},
-			})
+			// broadcast to game bar
+			resp := &UserWalletDetail{
+				OnChainSups: "0",
+				OnWorldSups: user.Sups.Int.String(),
+			}
+
+			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), resp)
+
 		}
 		errChan <- nil
 	})
