@@ -3,6 +3,7 @@
 env GOOS=linux GOARCH=amd64 go build -o ./cmd/platform/passport-server ./cmd/platform/
 # upload binary
 scp ./cmd/platform/passport-server "root@sale.supremacy.fi:/root/passport-server/passport-server"
+# upload .env file (don't need to do this every time since local file is empty)
 #scp passport-server-staging.env "root@sale.supremacy.fi:/home/passport-server/passport-server-staging.env"
 # upload nginx config
 scp ./passport-server.conf "root@sale.supremacy.fi:/home/passport-server/passport-server.conf"
