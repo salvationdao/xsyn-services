@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"passport"
 
-	"github.com/ninja-software/hub/v3"
-	"github.com/ninja-software/hub/v3/ext/messagebus"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
 
 func (api *API) Command(key hub.HubCommandKey, fn hub.HubCommandFunc) {

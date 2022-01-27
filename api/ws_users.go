@@ -20,10 +20,10 @@ import (
 	"github.com/volatiletech/null/v8"
 	"google.golang.org/api/idtoken"
 
-	"github.com/ninja-software/hub/v3"
-	"github.com/ninja-software/hub/v3/ext/auth"
-	"github.com/ninja-software/hub/v3/ext/messagebus"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/auth"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -74,6 +74,7 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 	// listen on queuing war machine
 	api.SecureUserSubscribeCommand(HubKeyUserWarMachineQueuePositionSubscribe, userHub.WarMachineQueuePositionUpdatedSubscribeHandler)
 	api.SecureUserSubscribeCommand(HubKeyUserSupsSubscribe, userHub.UserSupsUpdatedSubscribeHandler)
+	api.SecureUserSubscribeCommand(HubKeyUserFactionSubscribe, userHub.UserFactionUpdatedSubscribeHandler)
 
 	return userHub
 }
@@ -1289,8 +1290,9 @@ const HubKeyUserAddTwitch hub.HubCommandKey = "USER:ADD_TWITCH"
 type AddTwitchRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		Token       string `json:"token"`
-		RedirectURI string `json:"redirectURI"`
+		Token   string `json:"token"`
+		Website bool   `json:"website"`
+		// RedirectURI string `json:"redirectURI"`
 	} `json:"payload"`
 }
 
@@ -1305,30 +1307,46 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client
 		return terror.Error(terror.ErrInvalidInput, "Twitch JWT is empty")
 	}
 
-	keySet := oidc.NewRemoteKeySet(ctx, "https://id.twitch.tv/oauth2/keys")
-	oidcVerifier := oidc.NewVerifier("https://id.twitch.tv/oauth2", keySet, &oidc.Config{
-		ClientID: uc.Twitch.ClientID,
-	})
+	twitchID := ""
+	if req.Payload.Website {
+		keySet := oidc.NewRemoteKeySet(ctx, "https://id.twitch.tv/oauth2/keys")
+		oidcVerifier := oidc.NewVerifier("https://id.twitch.tv/oauth2", keySet, &oidc.Config{
+			ClientID: uc.Twitch.ClientID,
+		})
 
-	token, err := oidcVerifier.Verify(ctx, req.Payload.Token)
-	if err != nil {
-		return terror.Error(err, "Failed to verify Twitch JWT")
+		token, err := oidcVerifier.Verify(ctx, req.Payload.Token)
+		if err != nil {
+			return terror.Error(err, "Failed to verify Twitch JWT")
+		}
+
+		var claims struct {
+			Iss   string `json:"iss"`
+			Sub   string `json:"sub"`
+			Aud   string `json:"aud"`
+			Exp   int32  `json:"exp"`
+			Iat   int32  `json:"iat"`
+			Nonce string `json:"nonce"`
+			Email string `json:"email"`
+		}
+		if err := token.Claims(&claims); err != nil {
+			return terror.Error(err, "Failed to get claims from token")
+		}
+
+		twitchID = claims.Sub
+
+	} else {
+		claims, err := uc.API.Auth.GetClaimsFromTwitchExtensionToken(req.Payload.Token)
+		if err != nil {
+			return terror.Error(err, "Failed to parse twitch extension token")
+		}
+
+		if !strings.HasPrefix(claims.OpaqueUserID, "U") {
+			return terror.Error(terror.ErrInvalidInput, "Twitch user is not login")
+		}
+
+		twitchID = claims.TwitchAccountID
 	}
 
-	var claims struct {
-		Iss   string `json:"iss"`
-		Sub   string `json:"sub"`
-		Aud   string `json:"aud"`
-		Exp   int32  `json:"exp"`
-		Iat   int32  `json:"iat"`
-		Nonce string `json:"nonce"`
-		Email string `json:"email"`
-	}
-	if err := token.Claims(&claims); err != nil {
-		return terror.Error(err, "Failed to get claims from token")
-	}
-
-	twitchID := claims.Sub
 	if twitchID == "" {
 		return terror.Error(terror.ErrInvalidInput, "No Twitch account ID is provided")
 	}
@@ -1631,8 +1649,8 @@ func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, client *h
 }
 
 type UserWalletDetail struct {
-	OnChainSups passport.BigInt `json:"onChainSups"`
-	OnWorldSups passport.BigInt `json:"onWorldSups"`
+	OnChainSups string `json:"onChainSups"`
+	OnWorldSups string `json:"onWorldSups"`
 }
 
 const HubKeyUserSupsSubscribe hub.HubCommandKey = "USER:SUPS:SUBSCRIBE"
@@ -1644,24 +1662,73 @@ func (uc *UserController) UserSupsUpdatedSubscribeHandler(ctx context.Context, c
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
 
-	resp := &UserWalletDetail{}
+	resp := &UserWalletDetail{
+		OnChainSups: "0",
+	}
 
 	userID := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
 	if userID.IsNil() {
 		return "", "", terror.Error(terror.ErrForbidden)
 	}
 
+	user, err := db.UserGet(ctx, uc.Conn, userID)
 	// get current on world sups
-	onWorldSups, err := db.UserSupsGet(ctx, uc.Conn, userID)
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
 
-	resp.OnWorldSups = onWorldSups
+	resp.OnWorldSups = user.Sups.String()
 
 	reply(resp)
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, userID)), nil
+}
+
+type UserFactionDetail struct {
+	RecruitID      string          `json:"recruitID"`
+	SupsEarned     passport.BigInt `json:"supsEarned"`
+	Rank           string          `json:"rank"`
+	SpectatedCount int64           `json:"spectatedCount"`
+
+	// faction detail
+	LogoUrl       string                 `json:"logoUrl,omitempty"`
+	BackgroundUrl string                 `json:"backgroundUrl,omitempty"`
+	Theme         *passport.FactionTheme `json:"theme"`
+}
+
+const HubKeyUserFactionSubscribe hub.HubCommandKey = "USER:FACTION:SUBSCRIBE"
+
+func (uc *UserController) UserFactionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+
+	userID := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrForbidden)
+	}
+
+	// get user faction
+	faction, err := db.FactionGetByUserID(ctx, uc.Conn, userID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", "", terror.Error(err)
+	}
+
+	if faction != nil {
+		reply(&UserFactionDetail{
+			RecruitID:      "3000",
+			SupsEarned:     passport.BigInt{},
+			Rank:           "100",
+			SpectatedCount: 100,
+			Theme:          faction.Theme,
+			LogoUrl:        fmt.Sprintf("%s/api/files/%s", uc.API.HostUrl, faction.LogoBlobID),
+			BackgroundUrl:  fmt.Sprintf("%s/api/files/%s", uc.API.HostUrl, faction.BackgroundBlobID),
+		})
+	}
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserFactionSubscribe, userID)), nil
 }
 
 const HubKeyUserWarMachineQueuePositionSubscribe hub.HubCommandKey = "USER:WAR:MACHINE:QUEUE:POSITION:SUBSCRIBE"

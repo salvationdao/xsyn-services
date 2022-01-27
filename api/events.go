@@ -7,8 +7,8 @@ import (
 	"passport/db"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-software/hub/v3"
-	"github.com/ninja-software/hub/v3/ext/messagebus"
+	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
 
 // ClientOnline gets trigger on connection online
