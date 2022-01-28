@@ -37,7 +37,7 @@ func XsynNftMetadataInsert(ctx context.Context, conn Conn, nft *passport.XsynNft
 func XsynNftMetadataAssignUser(ctx context.Context, conn Conn, nftTokenID uint64, userID passport.UserID) error {
 	q := `
 		INSERT INTO 
-			xsyn_assets (token_id, owner_id)
+			xsyn_assets (token_id, user_id)
 		VALUES
 			($1, $2);
 	`
@@ -149,7 +149,7 @@ func XsynAssetUnfreezeableCheck(ctx context.Context, conn Conn, nftTokenID uint6
 		FROM 
 			xsyn_assets
 		WHERE
-			token_id = $1 AND owner_id = $2 AND frozen_at NOTNULL AND locked_by_id ISNULL;
+			token_id = $1 AND user_id = $2 AND frozen_at NOTNULL AND locked_by_id ISNULL;
 	`
 	_, err := conn.Exec(ctx, q, nftTokenID, userID)
 	if err != nil {
@@ -178,6 +178,9 @@ func XsynAssetBulkLock(ctx context.Context, conn Conn, nftTokenIDs []uint64, use
 
 		q += ")"
 	}
+
+	// don't lock if owned by faction account
+	q += `AND user_id NOT IN ('1a657a32-778e-4612-8cc1-14e360665f2b', '305da475-53dc-4973-8d78-a30d390d3de5','15f29ee9-e834-4f76-aff8-31e39faabe2d')`
 
 	_, err := conn.Exec(ctx, q, userID)
 	if err != nil {
@@ -215,4 +218,27 @@ func XsynAssetBulkRelease(ctx context.Context, conn Conn, nfts []*passport.WarMa
 	}
 
 	return nil
+}
+
+// DefaultWarMachineGet return given amount of default war machines for given faction
+func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID, amount int) ([]*passport.XsynNftMetadata, error) {
+	nft := []*passport.XsynNftMetadata{}
+	q := `
+		SELECT xnm.token_id, xnm.collection, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+		FROM xsyn_nft_metadata xnm
+				 INNER JOIN xsyn_assets xa ON xa.token_id = xnm.token_id
+		WHERE xa.user_id = $1
+		AND xnm.attributes @> '[{"value": "War Machine", "trait_type": "Asset Type"}]'
+		LIMIT $2
+	`
+
+	// TODO: find a better way to get the default warmachines out
+	err := pgxscan.Select(ctx, conn, &nft, q,
+		userID,
+		amount,
+	)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return nft, nil
 }

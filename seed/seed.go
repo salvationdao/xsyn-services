@@ -10,7 +10,6 @@ import (
 	"passport"
 	"passport/db"
 
-	"github.com/gofrs/uuid"
 	"github.com/gosimple/slug"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
@@ -56,6 +55,18 @@ func (s *Seeder) Run(isProd bool) error {
 		return terror.Error(err, "seed users failed")
 	}
 
+	fmt.Println("Seeding Supremacy Battle User")
+	_, err = s.SupremacyBattleUser(ctx)
+	if err != nil {
+		return terror.Error(err, "seed users failed")
+	}
+
+	fmt.Println("Seeding Supremacy Faction User")
+	_, err = s.SupremacyFactionUsers(ctx)
+	if err != nil {
+		return terror.Error(err, "seed users failed")
+	}
+
 	//fmt.Println("Seeding organisations")
 	//organisations, err := s.Organisations(ctx)
 	//if err != nil {
@@ -96,7 +107,7 @@ func (s *Seeder) Run(isProd bool) error {
 
 var Factions = []*passport.Faction{
 	{
-		ID:    passport.FactionID(uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f21-8843-458d62884060"))),
+		ID:    passport.RedMountainFactionID,
 		Label: "Red Mountain Offworld Mining Corporation",
 		Theme: &passport.FactionTheme{
 			Primary:    "#C24242",
@@ -115,7 +126,7 @@ var Factions = []*passport.Faction{
 		MVP:           "test user",
 	},
 	{
-		ID:    passport.FactionID(uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2"))),
+		ID:    passport.BostonCyberneticsFactionID,
 		Label: "Boston Cybernetics",
 		Theme: &passport.FactionTheme{
 			Primary:    "#428EC1",
@@ -134,7 +145,7 @@ var Factions = []*passport.Faction{
 		MVP:           "test user",
 	},
 	{
-		ID:    passport.FactionID(uuid.Must(uuid.FromString("880db344-e405-428d-84e5-6ebebab1fe6d"))),
+		ID:    passport.ZaibatsuFactionID,
 		Label: "Zaibatsu Heavy Industries",
 		Theme: &passport.FactionTheme{
 			Primary:    "#FFFFFF",
@@ -304,7 +315,7 @@ func (s *Seeder) Roles(ctx context.Context) error {
 
 	// Game Treasury Account role
 	gameTreasuryRole := &passport.Role{
-		ID:          passport.UserRoleGameTreasury,
+		ID:          passport.UserRoleGameAccount,
 		Name:        "Game Treasury",
 		Permissions: allPerms,
 		Tier:        1,

@@ -1,5 +1,11 @@
 package passport
 
+import "github.com/gofrs/uuid"
+
+var RedMountainFactionID = FactionID(uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f21-8843-458d62884060")))
+var BostonCyberneticsFactionID = FactionID(uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2")))
+var ZaibatsuFactionID = FactionID(uuid.Must(uuid.FromString("880db344-e405-428d-84e5-6ebebab1fe6d")))
+
 type FactionTheme struct {
 	Primary    string `json:"primary"`
 	Secondary  string `json:"secondary"`

@@ -51,22 +51,25 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 		return http.StatusOK, nil
 	}).Start()
 
-	// hold sups
+	// sup control
 	api.SupremacyCommand(HubKeySupremacyHoldSups, supremacyHub.SupremacyHoldSupsHandler)
-	// commit holds
 	api.SupremacyCommand(HubKeySupremacyCommitTransactions, supremacyHub.SupremacyCommitTransactionsHandler)
-	// release holds
 	api.SupremacyCommand(HubKeySupremacyReleaseTransactions, supremacyHub.SupremacyReleaseTransactionsHandler)
-
 	api.SupremacyCommand(HubKeySupremacyTickerTick, supremacyHub.SupremacyTickerTickHandler)
 
 	// user connection upgrade
 	api.SupremacyCommand(HubKeySupremacyUserConnectionUpgrade, supremacyHub.SupremacyUserConnectionUpgradeHandler)
 
+	api.SupremacyCommand(HubKeySupremacyWarMachineQueuePositionClear, supremacyHub.SupremacyWarMachineQueuePositionClearHandler)
+
+	// asset control
 	api.SupremacyCommand(HubKeySupremacyAssetFreeze, supremacyHub.SupremacyAssetFreezeHandler)
 	api.SupremacyCommand(HubKeySupremacyAssetLock, supremacyHub.SupremacyAssetLockHandler)
 	api.SupremacyCommand(HubKeySupremacyAssetRelease, supremacyHub.SupremacyAssetReleaseHandler)
 	api.SupremacyCommand(HubKeySupremacyWarMachineQueuePosition, supremacyHub.SupremacyWarMachineQueuePositionHandler)
+
+	// other?
+	api.SupremacyCommand(HubKeySupremacyDefaultWarMachines, supremacyHub.SupremacyDefaultWarMachinesHandler)
 
 	return supremacyHub
 }
@@ -98,11 +101,7 @@ func (sc *SupremacyControllerWS) SupremacyUserConnectionUpgradeHandler(ctx conte
 		}
 	})
 
-	reply(struct {
-		IsSuccess bool `json:"isSuccess"`
-	}{
-		IsSuccess: true,
-	})
+	reply(true)
 
 	return nil
 }
@@ -140,11 +139,7 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 		return terror.Error(err)
 	}
 
-	reply(struct {
-		IsSuccess bool `json:"isSuccess"`
-	}{
-		IsSuccess: true,
-	})
+	reply(true)
 	return nil
 }
 
@@ -214,11 +209,7 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 		sc.API.transaction <- tx
 	}
 
-	reply(struct {
-		IsSuccess bool `json:"isSuccess"`
-	}{
-		IsSuccess: true,
-	})
+	reply(true)
 	return nil
 }
 
@@ -252,11 +243,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context
 
 	// TODO: In the future, charge user's sups for joining the queue
 
-	reply(struct {
-		IsSuccess bool `json:"isSuccess"`
-	}{
-		IsSuccess: true,
-	})
+	reply(true)
 	return nil
 }
 
@@ -267,7 +254,6 @@ type SupremacyAssetLockRequest struct {
 	} `json:"payload"`
 }
 
-// 	rootHub.SecureCommand(HubKeySupremacyAssetFreeze, AssetController.RegisterHandler)
 const HubKeySupremacyAssetLock hub.HubCommandKey = "SUPREMACY:ASSET:LOCK"
 
 func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
@@ -287,12 +273,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 		return terror.Error(err)
 	}
 
-	reply(struct {
-		IsSuccess bool `json:"isSuccess"`
-	}{
-		IsSuccess: true,
-	})
-
+	reply(true)
 	return nil
 }
 
@@ -461,8 +442,6 @@ func (sc *SupremacyControllerWS) SupremacyReleaseTransactionsHandler(ctx context
 		return terror.Error(err, "Invalid request received")
 	}
 
-	// TODO: this is totally untested btw.
-
 	resultChan := make(chan []*passport.Transaction)
 
 	sc.API.ReleaseHeldTransaction(req.Payload.TransactionReferences...)
@@ -470,5 +449,74 @@ func (sc *SupremacyControllerWS) SupremacyReleaseTransactionsHandler(ctx context
 	results := <-resultChan
 
 	reply(results)
+	return nil
+}
+
+const HubKeySupremacyDefaultWarMachines = hub.HubCommandKey("SUPREMACY:GET_DEFAULT_WAR_MACHINES")
+
+type SupremacyDefaultWarMachinesRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		FactionID passport.FactionID `json:"factionID"`
+		Amount    int                `json:"amount"`
+	} `json:"payload"`
+}
+
+func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupremacyDefaultWarMachinesRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	var warMachines []*passport.WarMachineNFT
+	// check user own this asset and it has not joined the queue yet
+	switch req.Payload.FactionID {
+	case passport.RedMountainFactionID:
+		warMachinesMetaData, err := db.DefaultWarMachineGet(ctx, sc.Conn, passport.SupremacyRedMountainUserID, req.Payload.Amount)
+		if err != nil {
+			return terror.Error(err)
+		}
+		for _, wmmd := range warMachinesMetaData {
+			warMachineNFT := &passport.WarMachineNFT{
+				OwnedByID: passport.SupremacyRedMountainUserID,
+				FactionID: passport.RedMountainFactionID,
+			}
+			// parse nft
+			parseWarMachineNFT(wmmd, warMachineNFT)
+			warMachines = append(warMachines, warMachineNFT)
+		}
+
+	case passport.BostonCyberneticsFactionID:
+		warMachinesMetaData, err := db.DefaultWarMachineGet(ctx, sc.Conn, passport.SupremacyBostonCyberneticsUserID, req.Payload.Amount)
+		if err != nil {
+			return terror.Error(err)
+		}
+		for _, wmmd := range warMachinesMetaData {
+			warMachineNFT := &passport.WarMachineNFT{
+				OwnedByID: passport.SupremacyBostonCyberneticsUserID,
+				FactionID: passport.BostonCyberneticsFactionID,
+			}
+			// parse nft
+			parseWarMachineNFT(wmmd, warMachineNFT)
+			warMachines = append(warMachines, warMachineNFT)
+		}
+	case passport.ZaibatsuFactionID:
+		warMachinesMetaData, err := db.DefaultWarMachineGet(ctx, sc.Conn, passport.SupremacyZaibatsuUserID, req.Payload.Amount)
+		if err != nil {
+			return terror.Error(err)
+		}
+		for _, wmmd := range warMachinesMetaData {
+			warMachineNFT := &passport.WarMachineNFT{
+				OwnedByID: passport.SupremacyZaibatsuUserID,
+				FactionID: passport.ZaibatsuFactionID,
+			}
+			// parse nft
+			parseWarMachineNFT(wmmd, warMachineNFT)
+			warMachines = append(warMachines, warMachineNFT)
+		}
+	}
+
+	reply(warMachines)
 	return nil
 }

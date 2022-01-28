@@ -326,6 +326,7 @@ EXECUTE PROCEDURE updateProductKeywords();
  * This table is the nft metadata NOT assets *
  **********************************************/
 CREATE SEQUENCE IF NOT EXISTS token_id_seq;
+ALTER SEQUENCE token_id_seq RESTART WITH 1;
 
 CREATE TABLE xsyn_nft_metadata
 (

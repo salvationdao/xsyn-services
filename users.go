@@ -8,15 +8,23 @@ import (
 )
 
 const (
-	XsynTreasuryUsername  string = "Xsyn"
-	SupremacyGameUsername string = "Supremacy"
-	OnChainUsername       string = "OnChain"
+	XsynTreasuryUsername               string = "Xsyn"
+	SupremacyGameUsername              string = "Supremacy"
+	SupremacyBattleUsername            string = "Supremacy-Battle-Arena"
+	SupremacyZaibatsuUsername          string = "Zaibatsu"
+	SupremacyRedMountainUsername       string = "RedMountain"
+	SupremacyBostonCyberneticsUsername string = "BostonCybernetics"
+	OnChainUsername                    string = "OnChain"
 )
 
 var (
-	XsynTreasuryUserID  = UserID(uuid.Must(uuid.FromString("ebf30ca0-875b-4e84-9a78-0b3fa36a1f87")))
-	SupremacyGameUserID = UserID(uuid.Must(uuid.FromString("4fae8fdf-584f-46bb-9cb9-bb32ae20177e")))
-	OnChainUserID       = UserID(uuid.Must(uuid.FromString("2fa1a63e-a4fa-4618-921f-4b4d28132069")))
+	XsynTreasuryUserID               = UserID(uuid.Must(uuid.FromString("ebf30ca0-875b-4e84-9a78-0b3fa36a1f87")))
+	SupremacyGameUserID              = UserID(uuid.Must(uuid.FromString("4fae8fdf-584f-46bb-9cb9-bb32ae20177e")))
+	SupremacyBattleUserID            = UserID(uuid.Must(uuid.FromString("87c60803-b051-4abb-aa60-487104946bd7")))
+	SupremacyZaibatsuUserID          = UserID(uuid.Must(uuid.FromString("1a657a32-778e-4612-8cc1-14e360665f2b")))
+	SupremacyRedMountainUserID       = UserID(uuid.Must(uuid.FromString("305da475-53dc-4973-8d78-a30d390d3de5")))
+	SupremacyBostonCyberneticsUserID = UserID(uuid.Must(uuid.FromString("15f29ee9-e834-4f76-aff8-31e39faabe2d")))
+	OnChainUserID                    = UserID(uuid.Must(uuid.FromString("2fa1a63e-a4fa-4618-921f-4b4d28132069")))
 )
 
 const ServerClientLevel = 5
