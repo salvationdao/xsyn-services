@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"fmt"
 	"passport"
 
 	"github.com/georgysavva/scany/pgxscan"
@@ -91,8 +90,6 @@ func FactionAll(ctx context.Context, conn Conn) ([]*passport.Faction, error) {
 // FactionGetByUserID
 func FactionGetByUserID(ctx context.Context, conn Conn, userID passport.UserID) (*passport.Faction, error) {
 	result := &passport.Faction{}
-
-	fmt.Println(userID)
 	q := `
 		SELECT
 			f.*

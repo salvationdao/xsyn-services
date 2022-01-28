@@ -142,7 +142,7 @@ func GetUserFromToken(api *API, r *http.Request) (*passport.User, int, error) {
 		return nil, http.StatusUnauthorized, terror.Error(err)
 	}
 
-	user, err := db.UserGet(ctx, api.Conn, token.UserID)
+	user, err := db.UserGet(ctx, api.Conn, token.UserID, api.HostUrl)
 	if err != nil {
 		return nil, http.StatusUnauthorized, terror.Error(err)
 	}

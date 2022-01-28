@@ -91,7 +91,7 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 	}
 
 	// get user
-	user, err := db.UserGet(ctx, fc.Conn, userID)
+	user, err := db.UserGet(ctx, fc.Conn, userID, fc.API.HostUrl)
 	if err != nil {
 		return terror.Error(err)
 	}

@@ -90,10 +90,16 @@ func (sc *SupremacyControllerWS) SupremacyUserConnectionUpgradeHandler(ctx conte
 			if cl.SessionID == req.Payload.SessionID {
 				cl.SetLevel(2)
 
-				fmt.Println("upgrade client to level 2")
+				sc.API.Log.Info().Msgf("Hub client %s has been upgraded to level 2 client", cl.SessionID)
 				break
 			}
 		}
+	})
+
+	reply(struct {
+		IsSuccess bool `json:"isSuccess"`
+	}{
+		IsSuccess: true,
 	})
 
 	return nil
@@ -124,7 +130,13 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 		Amount:               req.Payload.Amount.Int,
 	}
 
-	sc.API.HoldTransaction(tx)
+	errChan := make(chan error, 10)
+	sc.API.HoldTransaction(errChan, tx)
+
+	err = <-errChan
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	reply(struct {
 		IsSuccess bool `json:"isSuccess"`
@@ -168,7 +180,6 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 	for multiplier, users := range req.Payload.UserMap {
 		totalPoints = totalPoints + (multiplier * len(users))
 	}
-
 	if totalPoints == 0 {
 		return nil
 	}
@@ -236,7 +247,11 @@ func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context
 
 	// TODO: In the future, charge user's sups for joining the queue
 
-	reply(true)
+	reply(struct {
+		IsSuccess bool `json:"isSuccess"`
+	}{
+		IsSuccess: true,
+	})
 	return nil
 }
 
@@ -264,11 +279,15 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 
 	err = db.XsynAssetBulkLock(ctx, sc.Conn, req.Payload.AssetTokenIDs, userID)
 	if err != nil {
-		reply(false)
 		return terror.Error(err)
 	}
 
-	reply(true)
+	reply(struct {
+		IsSuccess bool `json:"isSuccess"`
+	}{
+		IsSuccess: true,
+	})
+
 	return nil
 }
 

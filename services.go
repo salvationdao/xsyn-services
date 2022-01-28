@@ -2,7 +2,6 @@ package passport
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -28,7 +27,7 @@ func (s *APIService) Run(ctx context.Context, controller http.Handler) error {
 		s.Log.Info("Stopping API")
 		err := server.Shutdown(ctx)
 		if err != nil {
-			fmt.Println(err)
+			s.Log.Error(err)
 		}
 
 	}()

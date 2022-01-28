@@ -69,7 +69,7 @@ func (t Tokens) Retrieve(uuid uuid.UUID) (auth.Token, auth.SecureUser, error) {
 		return nil, nil, terror.Error(err)
 	}
 
-	user, err := db.UserGet(ctx, t.Conn, token.UserID)
+	user, err := db.UserGet(ctx, t.Conn, token.UserID, "")
 	if err != nil {
 		return nil, nil, terror.Error(err)
 	}

@@ -147,9 +147,10 @@ func NewAPI(
 		},
 		CookieSecure: config.CookieSecure,
 		UserController: &UserGetter{
-			Log:    log_helpers.NamedLogger(log, "user getter"),
-			Conn:   conn,
-			Mailer: mailer,
+			Log:     log_helpers.NamedLogger(log, "user getter"),
+			Conn:    conn,
+			Mailer:  mailer,
+			HostUrl: hostUrl,
 		},
 		Tokens:        api.Tokens,
 		Eip712Message: config.MetaMaskSignMessage,

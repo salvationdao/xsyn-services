@@ -124,7 +124,7 @@ func (ac *AssetController) LeaveQueueHandler(ctx context.Context, hubc *hub.Clie
 	}
 
 	// get user
-	user, err := db.UserGet(ctx, ac.Conn, userID)
+	user, err := db.UserGet(ctx, ac.Conn, userID, ac.API.HostUrl)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -177,7 +177,7 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	// TODO: In the future, check user has enough sups to join their war machine into battle queue
 
 	// get user
-	user, err := db.UserGet(ctx, ac.Conn, userID)
+	user, err := db.UserGet(ctx, ac.Conn, userID, ac.API.HostUrl)
 	if err != nil {
 		return terror.Error(err)
 	}

@@ -22,14 +22,15 @@ import (
 )
 
 type UserGetter struct {
-	Log    *zerolog.Logger
-	Conn   *pgxpool.Pool
-	Mailer *email.Mailer
+	Log     *zerolog.Logger
+	Conn    *pgxpool.Pool
+	Mailer  *email.Mailer
+	HostUrl string
 }
 
 func (ug *UserGetter) FacebookID(s string) (auth.SecureUser, error) {
 	ctx := context.Background()
-	user, err := db.UserByFacebookID(ctx, ug.Conn, s)
+	user, err := db.UserByFacebookID(ctx, ug.Conn, s, ug.HostUrl)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -51,7 +52,7 @@ func (ug *UserGetter) FacebookID(s string) (auth.SecureUser, error) {
 
 func (ug *UserGetter) GoogleID(s string) (auth.SecureUser, error) {
 	ctx := context.Background()
-	user, err := db.UserByGoogleID(ctx, ug.Conn, s)
+	user, err := db.UserByGoogleID(ctx, ug.Conn, s, ug.HostUrl)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -73,7 +74,7 @@ func (ug *UserGetter) GoogleID(s string) (auth.SecureUser, error) {
 
 func (ug *UserGetter) TwitchID(s string) (auth.SecureUser, error) {
 	ctx := context.Background()
-	user, err := db.UserByTwitchID(ctx, ug.Conn, s)
+	user, err := db.UserByTwitchID(ctx, ug.Conn, s, ug.HostUrl)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -212,7 +213,7 @@ func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebook
 
 func (ug *UserGetter) PublicAddress(s string) (auth.SecureUser, error) {
 	ctx := context.Background()
-	user, err := db.UserByPublicAddress(ctx, ug.Conn, s)
+	user, err := db.UserByPublicAddress(ctx, ug.Conn, s, ug.HostUrl)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -235,7 +236,7 @@ func (ug *UserGetter) PublicAddress(s string) (auth.SecureUser, error) {
 func (ug *UserGetter) ID(id uuid.UUID) (auth.SecureUser, error) {
 	ctx := context.Background()
 	userUUID := passport.UserID(id)
-	user, err := db.UserGet(ctx, ug.Conn, userUUID)
+	user, err := db.UserGet(ctx, ug.Conn, userUUID, ug.HostUrl)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -263,7 +264,7 @@ func (ug *UserGetter) Token(id uuid.UUID) (auth.SecureUser, error) {
 		return nil, terror.Error(err)
 	}
 
-	user, err := db.UserGet(ctx, ug.Conn, result.UserID)
+	user, err := db.UserGet(ctx, ug.Conn, result.UserID, ug.HostUrl)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -285,7 +286,7 @@ func (ug *UserGetter) Token(id uuid.UUID) (auth.SecureUser, error) {
 
 func (ug *UserGetter) Email(email string) (auth.SecureUser, error) {
 	ctx := context.Background()
-	user, err := db.UserByEmail(ctx, ug.Conn, email)
+	user, err := db.UserByEmail(ctx, ug.Conn, email, ug.HostUrl)
 	if err != nil {
 		return nil, terror.Error(err)
 	}

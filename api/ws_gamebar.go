@@ -74,7 +74,7 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 		return terror.Error(terror.ErrInvalidInput)
 	}
 
-	user, err := db.UserGet(ctx, gc.Conn, userID)
+	user, err := db.UserGet(ctx, gc.Conn, userID, gc.API.HostUrl)
 	if err != nil {
 		return terror.Error(terror.ErrInvalidInput)
 	}
@@ -104,7 +104,7 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 			return terror.Error(terror.ErrInvalidInput, "This Twitch account is already associated with a user")
 		}
 
-		user, err = db.UserGet(ctx, gc.Conn, user.ID)
+		user, err = db.UserGet(ctx, gc.Conn, user.ID, gc.API.HostUrl)
 		if err != nil {
 			return terror.Error(err)
 		}

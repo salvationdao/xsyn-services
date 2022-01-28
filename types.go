@@ -591,6 +591,10 @@ func (b *BigInt) String() string {
 	return b.Int.String()
 }
 
+func (b *BigInt) Init() {
+	b.calc()
+}
+
 // MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaller interface.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.MarshalText.
 func (b BigInt) MarshalText() ([]byte, error) {
