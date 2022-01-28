@@ -74,7 +74,6 @@ func (api *API) InsertUserToCache(user *passport.User) {
 			OnChainSups: "0",
 			OnWorldSups: user.Sups.Int.String(),
 		}
-
 		api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), resp)
 	})
 }
@@ -136,8 +135,9 @@ func (api *API) UpdateUserInCache(user *passport.User) {
 				OnChainSups: "0",
 				OnWorldSups: user.Sups.Int.String(),
 			}
-
-			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), resp)
+			if user.ID != passport.SupremacyGameUserID {
+				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), resp)
+			}
 		}
 		//}
 	})
