@@ -12,6 +12,7 @@ import (
 	"nhooyr.io/websocket"
 
 	"github.com/gofrs/uuid"
+	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 
@@ -48,9 +49,13 @@ type API struct {
 	// server clients
 	serverClients       chan func(serverClients ServerClientsList)
 	sendToServerClients chan *ServerClientMessage
+
 	//tx stuff
 	transaction      chan *NewTransaction
 	heldTransactions chan func(heldTxList map[TransactionReference]*NewTransaction)
+
+	// treasury ticker map
+	treasuryTickerMap map[ServerClientName]*tickle.Tickle
 
 	TxConn *sql.DB
 }
@@ -117,6 +122,9 @@ func NewAPI(
 		TxConn:           txConn,
 		transaction:      make(chan *NewTransaction),
 		heldTransactions: make(chan func(heldTxList map[TransactionReference]*NewTransaction)),
+
+		// treasury ticker map
+		treasuryTickerMap: make(map[ServerClientName]*tickle.Tickle),
 	}
 
 	api.Routes.Use(middleware.RequestID)
@@ -217,6 +225,9 @@ func NewAPI(
 
 	// Run the listener for the user cache
 	go api.HandleUserCache()
+
+	// Initialise treasury fund ticker
+	go api.InitialiseTreasuryFundTicker()
 
 	return api
 }

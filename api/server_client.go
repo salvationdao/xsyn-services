@@ -2,22 +2,57 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
+	"math/big"
+	"net/http"
+	"passport"
 	"sync"
+	"time"
 
+	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 )
+
+// InitialiseTreasuryFundTicker for every game server
+func (api *API) InitialiseTreasuryFundTicker() {
+	// set up treasury map tickle for supremacy game server
+	api.treasuryTickerMap[SupremacyGameServer] = tickle.New(fmt.Sprintf("Treasury Ticker for %s", SupremacyGameServer), 60, func() (int, error) {
+		fund := big.NewInt(0)
+		fund, ok := fund.SetString("50000000000000000000", 10)
+		if !ok {
+			return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to convert 50000000000000000000 to big int"))
+		}
+
+		treasuryTransfer := big.NewInt(0)
+		treasuryTransfer.Add(treasuryTransfer, fund)
+
+		api.transaction <- &NewTransaction{
+			From:                 passport.XsynTreasuryUserID,
+			To:                   passport.SupremacyGameUserID,
+			Amount:               *treasuryTransfer,
+			TransactionReference: TransactionReference(fmt.Sprintf("treasury|ticker|%s", time.Now())),
+		}
+
+		return http.StatusOK, nil
+	})
+}
 
 type ServerClientsList map[ServerClientName]map[*hub.Client]bool
 type ServerClientsFunc func(serverClients ServerClientsList)
 
 // ServerClientOnline adds a server client to the server client map
-func (api *API) ServerClientOnline(name ServerClientName, hubc *hub.Client) {
+func (api *API) ServerClientOnline(gameName ServerClientName, hubc *hub.Client) {
 	api.ServerClients(func(serverClients ServerClientsList) {
-		_, ok := serverClients[name]
+		_, ok := serverClients[gameName]
 		if !ok {
-			serverClients[name] = make(map[*hub.Client]bool)
+			// start treasury ticker for current server client
+			if tick, ok := api.treasuryTickerMap[gameName]; ok && tick.NextTick == nil {
+				tick.Start()
+			}
+			serverClients[gameName] = make(map[*hub.Client]bool)
 		}
-		serverClients[name][hubc] = true
+		serverClients[gameName][hubc] = true
 	})
 }
 
@@ -27,6 +62,10 @@ func (api *API) ServerClientOffline(hubc *hub.Client) {
 		for gameName, clientList := range serverClients {
 			delete(clientList, hubc)
 			if len(clientList) == 0 {
+				// end treasury ticker for current server client
+				if tick, ok := api.treasuryTickerMap[gameName]; ok && tick.NextTick != nil {
+					tick.Stop()
+				}
 				delete(serverClients, gameName)
 			}
 		}

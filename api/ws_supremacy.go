@@ -24,10 +24,11 @@ import (
 
 // SupremacyControllerWS holds handlers for supremacy and the supremacy held transactions
 type SupremacyControllerWS struct {
-	Conn            *pgxpool.Pool
-	Log             *zerolog.Logger
-	API             *API
-	SupremacyUserID passport.UserID
+	Conn               *pgxpool.Pool
+	Log                *zerolog.Logger
+	API                *API
+	SupremacyUserID    passport.UserID
+	XsynTreasuryUserID passport.UserID
 }
 
 // NewSupremacyController creates the supremacy hub
@@ -39,6 +40,7 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	}
 
 	supremacyHub.SupremacyUserID = passport.SupremacyGameUserID
+	supremacyHub.XsynTreasuryUserID = passport.XsynTreasuryUserID
 
 	// start nft repair ticker
 	tickle.New("NFT Repair Ticker", 60, func() (int, error) {
@@ -165,13 +167,16 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 
 	reference := fmt.Sprintf("supremacy|ticker|%s", time.Now())
 
-	// TODO: get token pool from somewhere
-	supPool := big.NewInt(0) // just setting the pool at 1000
-	supPool, ok := supPool.SetString("1000000000000000000000", 10)
-	if !ok {
-		return terror.Error(fmt.Errorf("failed to convert 1000000000000000000000 to big int"))
-	}
 	var transactions []*NewTransaction
+
+	// 50 sups per 60 second
+	// supremacy ticker tick every 3 second, so grab 2.5 sups on every tick
+	supPool := big.NewInt(0)
+	supPool, ok := supPool.SetString("2500000000000000000", 10)
+	if !ok {
+		return terror.Error(fmt.Errorf("failed to convert 2500000000000000000 to big int"))
+	}
+
 	totalPoints := 0
 	//  to avoid working in floats, a 100% multiplier is 100 points, a 25% is 25 points
 	// This will give us what we need to divide the pool by and then times by to give the user the correct share of the pool
