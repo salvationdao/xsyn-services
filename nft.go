@@ -7,6 +7,7 @@ import (
 type Attribute struct {
 	DisplayType DisplayType `json:"display_type,omitempty"`
 	TraitType   string      `json:"trait_type"`
+	TokenID     uint64      `json:"token_id"`
 	Value       interface{} `json:"value"` // string or number only
 }
 
@@ -21,7 +22,8 @@ const (
 
 // XsynNftMetadata holds xsyn nft metadata, the nfts main game data it stored here to show on opensea
 type XsynNftMetadata struct {
-	TokenID            uint64                `json:"token_id" db:"token_id"`
+	UserID             *UserID               `json:"userID" db:"user_id"`
+	TokenID            uint64                `json:"tokenID" db:"token_id"`
 	Name               string                `json:"name" db:"name"`
 	Collection         string                `json:"collection" db:"collection"`
 	GameObject         interface{}           `json:"game_object" db:"game_object"`
@@ -32,8 +34,9 @@ type XsynNftMetadata struct {
 	Attributes         []*Attribute          `json:"attributes" db:"attributes"`
 	AdditionalMetadata []*AdditionalMetadata `json:"additional_metadata" db:"additional_metadata"`
 	DeletedAt          *time.Time            `json:"deleted_at" db:"deleted_at"`
-	UpdatedAt          time.Time             `json:"updated_at" db:"updated_at"`
-	CreatedAt          time.Time             `json:"created_at" db:"created_at"`
+	FrozenAt           *time.Time            `json:"frozenAt" db:"frozen_at"`
+	UpdatedAt          time.Time             `json:"updatedAt" db:"updated_at"`
+	CreatedAt          time.Time             `json:"createdAt" db:"created_at"`
 }
 
 type AssetType string
@@ -46,7 +49,8 @@ const (
 
 // AdditionalMetadata holds metadata for a nfts non main game
 type AdditionalMetadata struct {
-	Game        string       `json:"game" db:"game"`
+	TokenID     uint64       `json:"tokenID"`
+	Collection  string       `json:"collection" db:"collection"`
 	GameObject  interface{}  `json:"game_object" db:"game_object"`
 	Name        string       `json:"name" db:"name"`
 	Description string       `json:"description" db:"description"`

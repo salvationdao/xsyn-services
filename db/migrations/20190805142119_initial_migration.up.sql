@@ -386,8 +386,10 @@ CREATE TABLE xsyn_assets
 (
     token_id          NUMERIC(78, 0) PRIMARY KEY REFERENCES xsyn_nft_metadata (token_id),
     user_id           UUID REFERENCES users (id) NOT NULL,
+    frozen_by_id      UUID REFERENCES users (id),
+    locked_by_id      UUID REFERENCES users (id),
     frozen_at         TIMESTAMPTZ,
-    transferred_in_at TIMESTAMPTZ                NOT NULL DEFAULT NOW()
+    transferred_in_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE transactions

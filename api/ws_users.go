@@ -570,7 +570,7 @@ type ListHandlerRequest struct {
 	} `json:"payload"`
 }
 
-// // UserListResponse is the response from get user list
+// UserListResponse is the response from get user list
 type UserListResponse struct {
 	Records []*passport.User `json:"records"`
 	Total   int              `json:"total"`

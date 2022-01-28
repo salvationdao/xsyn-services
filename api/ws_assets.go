@@ -34,6 +34,7 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 	}
 
 	api.SecureUserSubscribeCommand(HubKeyAssetsSubscribe, assetHub.AssetsUpdatedSubscribeHandler)
+	api.SecureUserSubscribeCommand(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)
 
 	api.SecureCommand(HubKeyAssetRegister, assetHub.RegisterHandler)
 	api.SecureCommand(HubKeyAssetQueueJoin, assetHub.JoinQueueHandler)
@@ -203,10 +204,10 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 		}
 
 		switch att.Value {
-		case passport.WarMachine:
+		case string(passport.WarMachine):
 			parseWarMachineNFT(nft, warMachineNFT)
-		case passport.Weapon:
-		case passport.Utility:
+		case string(passport.Weapon):
+		case string(passport.Utility):
 		}
 	}
 
@@ -223,6 +224,7 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 		},
 	})
 
+	reply(true)
 	return nil
 }
 
@@ -275,24 +277,25 @@ const HubKeyAssetList hub.HubCommandKey = "ASSET:LIST"
 type AssetsUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID   passport.UserID       `json:"user_id"`
-		SortDir  db.SortByDir          `json:"sortDir"`
-		SortBy   db.AssetColumn        `json:"sortBy"`
-		Filter   *db.ListFilterRequest `json:"filter"`
-		Archived bool                  `json:"archived"`
-		Search   string                `json:"search"`
-		PageSize int                   `json:"pageSize"`
-		Page     int                   `json:"page"`
+		UserID           passport.UserID       `json:"user_id"`
+		SortDir          db.SortByDir          `json:"sortDir"`
+		SortBy           db.AssetColumn        `json:"sortBy"`
+		IncludedTokenIDs []int                 `json:"includedTokenIDs"`
+		Filter           *db.ListFilterRequest `json:"filter"`
+		Archived         bool                  `json:"archived"`
+		Search           string                `json:"search"`
+		PageSize         int                   `json:"pageSize"`
+		Page             int                   `json:"page"`
 	} `json:"payload"`
 }
 
 // AssetListResponse is the response from get asset list
 type AssetListResponse struct {
-	Records []*passport.Asset `json:"records"`
-	Total   int               `json:"total"`
+	Records []*passport.XsynNftMetadata `json:"records"`
+	Total   int                         `json:"total"`
 }
 
-const HubKeyAssetsSubscribe hub.HubCommandKey = "ASSET:SUBSCRIBE"
+const HubKeyAssetsSubscribe hub.HubCommandKey = "ASSET_LIST:SUBSCRIBE"
 
 func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &AssetsUpdatedSubscribeRequest{}
@@ -306,11 +309,12 @@ func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context,
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	assets := []*passport.Asset{}
+	assets := []*passport.XsynNftMetadata{}
 	total, err := db.AssetList(
 		ctx, ctrlr.Conn, &assets,
 		req.Payload.Search,
 		req.Payload.Archived,
+		req.Payload.IncludedTokenIDs,
 		req.Payload.Filter,
 		offset,
 		req.Payload.PageSize,
@@ -330,4 +334,32 @@ func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context,
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetsSubscribe, req.Payload.UserID.String())), nil
 
+}
+
+// AssetUpdatedSubscribeRequest requests an update for an xsyn_nft_metadata
+type AssetUpdatedSubscribeRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		UserID  passport.UserID `json:"userID"`
+		TokenID int             `json:"tokenID"`
+	} `json:"payload"`
+}
+
+// 	rootHub.SecureCommand(HubKeyAssetSubscribe, AssetController.AssetSubscribe)
+const HubKeyAssetSubscribe hub.HubCommandKey = "ASSET:SUBSCRIBE"
+
+func (ctrlr *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &AssetUpdatedSubscribeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err)
+	}
+
+	asset, err := db.AssetGet(ctx, ctrlr.Conn, req.Payload.TokenID)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err)
+	}
+
+	reply(asset)
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetsSubscribe, req.Payload.UserID.String())), nil
 }

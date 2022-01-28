@@ -58,7 +58,7 @@ func XsynNftMetadataAvailableGet(ctx context.Context, conn Conn, userID passport
 		FROM 
 			xsyn_nft_metadata xnm
 		INNER JOIN
-			xsyn_assets xa ON xa.token_id = xnm.token_id AND xa.owner_id = $1 AND token_id = $2 AND frozen_at ISNULL
+			xsyn_assets xa ON xa.token_id = xnm.token_id AND xa.user_id = $1 AND xa.token_id = $2 AND xa.frozen_at ISNULL
 		WHERE
 			xnm.durability = 100
 	`

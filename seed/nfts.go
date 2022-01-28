@@ -9,15 +9,17 @@ import (
 )
 
 func (s *Seeder) SeedNFTS(ctx context.Context) (warMachines, weapons, utility []*passport.XsynNftMetadata, error error) {
-	warMachines, err := s.SeedWarMachine(ctx)
+	utility, err := s.SeedUtility(ctx)
 	if err != nil {
 		return nil, nil, nil, terror.Error(err)
 	}
+
 	weapons, err = s.SeedWeapons(ctx)
 	if err != nil {
 		return nil, nil, nil, terror.Error(err)
 	}
-	utility, err = s.SeedUtility(ctx)
+
+	warMachines, err = s.SeedWarMachine(ctx, weapons)
 	if err != nil {
 		return nil, nil, nil, terror.Error(err)
 	}
@@ -25,8 +27,8 @@ func (s *Seeder) SeedNFTS(ctx context.Context) (warMachines, weapons, utility []
 	return
 }
 
-func (s *Seeder) SeedWarMachine(ctx context.Context) ([]*passport.XsynNftMetadata, error) {
-	newNFT := []*passport.XsynNftMetadata{
+func (s *Seeder) SeedWarMachine(ctx context.Context, weapons []*passport.XsynNftMetadata) ([]*passport.XsynNftMetadata, error) {
+	newNFTs := []*passport.XsynNftMetadata{
 		{
 			Collection:         "SUPREMACY",
 			GameObject:         nil,
@@ -82,6 +84,7 @@ func (s *Seeder) SeedWarMachine(ctx context.Context) ([]*passport.XsynNftMetadat
 				{
 					TraitType: "Weapon One",
 					Value:     "none",
+					TokenID:   weapons[0].TokenID,
 				},
 				{
 					TraitType: "Weapon Two",
@@ -238,14 +241,14 @@ func (s *Seeder) SeedWarMachine(ctx context.Context) ([]*passport.XsynNftMetadat
 		},
 	}
 
-	for _, nft := range newNFT {
+	for _, nft := range newNFTs {
 		err := db.XsynNftMetadataInsert(ctx, s.Conn, nft)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
 	}
 
-	return newNFT, nil
+	return newNFTs, nil
 }
 
 func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, error) {

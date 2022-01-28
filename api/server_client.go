@@ -102,6 +102,8 @@ const (
 	UserOnlineStatus           ServerClientMessageAction = "USER:ONLINE_STATUS"
 	UserUpdated                ServerClientMessageAction = "USER:UPDATED"
 	UserEnlistFaction          ServerClientMessageAction = "USER:ENLIST:FACTION"
+	UserSupsUpdated            ServerClientMessageAction = "USER:SUPS:UPDATED"
+	AssetUpdated               ServerClientMessageAction = "ASSET:UPDATED"
 	AssetQueueJoin             ServerClientMessageAction = "ASSET:QUEUE:JOIN"
 	AssetQueueLeave            ServerClientMessageAction = "ASSET:QUEUE:LEAVE"
 	WarMachineQueuePositionGet ServerClientMessageAction = "WAR:MACHINE:QUEUE:POSITION:GET"
@@ -152,7 +154,6 @@ func (api *API) SendToAllServerClient(msg *ServerClientMessage) {
 					}
 				}(sc)
 			}
-
 		}
 	}
 }
