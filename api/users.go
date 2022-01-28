@@ -10,6 +10,7 @@ import (
 	"passport/email"
 	"passport/helpers"
 	"time"
+	"unicode"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
@@ -92,17 +93,80 @@ func (ug *UserGetter) TwitchID(s string) (auth.SecureUser, error) {
 	}, nil
 }
 
-func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebookID, googleID, twitchID, number, publicAddress, password string, other ...interface{}) (auth.SecureUser, error) {
+func (ug *UserGetter) TwitterID(s string) (auth.SecureUser, error) {
+	ctx := context.Background()
+	user, err := db.UserByTwitterID(ctx, ug.Conn, s)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	if user.FactionID != nil && !user.FactionID.IsNil() {
+		faction, err := db.FactionGet(ctx, ug.Conn, *user.FactionID)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		user.Faction = faction
+	}
+
+	return &Secureuser{
+		User:   user,
+		Conn:   ug.Conn,
+		Mailer: ug.Mailer,
+	}, nil
+}
+
+func (ug *UserGetter) DiscordID(s string) (auth.SecureUser, error) {
+	ctx := context.Background()
+	user, err := db.UserByDiscordID(ctx, ug.Conn, s)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	if user.FactionID != nil && !user.FactionID.IsNil() {
+		faction, err := db.FactionGet(ctx, ug.Conn, *user.FactionID)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		user.Faction = faction
+	}
+
+	return &Secureuser{
+		User:   user,
+		Conn:   ug.Conn,
+		Mailer: ug.Mailer,
+	}, nil
+}
+
+func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebookID, googleID, twitchID, twitterID, discordID, number, publicAddress, password string, other ...interface{}) (auth.SecureUser, error) {
 	ctx := context.Background()
 	if username == "" {
 		return nil, terror.Error(fmt.Errorf("username cannot be empty"), "Username cannot be empty.")
 	}
-	if facebookID == "" && googleID == "" && publicAddress == "" && twitchID == "" {
+	if facebookID == "" && googleID == "" && publicAddress == "" && twitchID == "" && twitterID == "" && discordID == "" {
 		if email == "" {
 			return nil, terror.Error(fmt.Errorf("email empty"), "Email cannot be empty")
 		}
-		if password == "" {
-			return nil, terror.Error(fmt.Errorf("password empty"), "Password cannot be empty")
+		// Must contain at least 8 characters
+		// Must contain at least 1 upper and 1 lower case letter
+		// Must contain at least 1 number
+		// Must contain at least one symbol
+		hasUpper := false
+		hasLower := false
+		hasNumber := true
+		hasSymbol := true
+		for _, r := range password {
+			if unicode.IsUpper(r) {
+				hasUpper = true
+			} else if unicode.IsLower(r) {
+				hasLower = true
+			} else if unicode.IsNumber(r) {
+				hasNumber = true
+			} else if unicode.IsSymbol(r) {
+				hasSymbol = true
+			}
+		}
+		if len(password) < 8 || !hasUpper || !hasLower || !hasNumber || !hasSymbol {
+			return nil, terror.Error(fmt.Errorf("password does not meet requirements"), "Invalid password. Please check that the requirements are fulfilled")
 		}
 	}
 
@@ -113,6 +177,8 @@ func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebook
 		FacebookID:    passport.NewString(facebookID),
 		GoogleID:      passport.NewString(googleID),
 		TwitchID:      passport.NewString(twitchID),
+		TwitterID:     passport.NewString(twitterID),
+		DiscordID:     passport.NewString(discordID),
 		Email:         passport.NewString(email),
 		PublicAddress: passport.NewString(publicAddress),
 		RoleID:        passport.UserRoleMemberID,

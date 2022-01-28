@@ -70,6 +70,10 @@ func NewAPI(
 	twitchClientSecret string,
 	HTMLSanitize *bluemonday.Policy,
 	config *passport.Config,
+	twitterAPIKey string,
+	twitterAPISecret string,
+	discordClientID string,
+	discordClientSecret string,
 ) *API {
 	msgBus, cleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
 	api := &API{
@@ -133,6 +137,14 @@ func NewAPI(
 			ClientID:        twitchClientID,
 			ClientSecret:    twitchClientSecret,
 		},
+		Twitter: &auth.TwitterConfig{
+			APIKey:    twitterAPIKey,
+			APISecret: twitterAPISecret,
+		},
+		Discord: &auth.DiscordConfig{
+			ClientID:     discordClientID,
+			ClientSecret: discordClientSecret,
+		},
 		CookieSecure: config.CookieSecure,
 		UserController: &UserGetter{
 			Log:    log_helpers.NamedLogger(log, "user getter"),
@@ -153,6 +165,10 @@ func NewAPI(
 			r.Use(sentryHandler.Handle)
 			r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn))
 			r.Mount("/files", FileRouter(conn, api))
+			r.Mount("/auth", AuthRouter(conn, api, &auth.TwitterConfig{
+				APIKey:    twitterAPIKey,
+				APISecret: twitterAPISecret,
+			}))
 			r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", WithError(api.Auth.GetNonce))
 		})
@@ -171,6 +187,9 @@ func NewAPI(
 		ExtensionSecret: twitchExtensionSecret,
 		ClientID:        twitchClientID,
 		ClientSecret:    twitchClientSecret,
+	}, &auth.DiscordConfig{
+		ClientID:     discordClientID,
+		ClientSecret: discordClientSecret,
 	})
 
 	_ = NewFactionController(log, conn, api)

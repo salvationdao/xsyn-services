@@ -93,6 +93,10 @@ func main() {
 					&cli.StringFlag{Name: "twitch_extension_secret", Value: "", EnvVars: []string{envPrefix + "_TWITCH_EXTENSION_SECRET", "TWITCH_EXTENSION_SECRET"}, Usage: "Twitch extension secret for verifying shadow account tokens sent with requests"},
 					&cli.StringFlag{Name: "twitch_client_id", Value: "", EnvVars: []string{envPrefix + "_TWITCH_CLIENT_ID", "TWITCH_CLIENT_ID"}, Usage: "Twitch client ID for verifying web account tokens sent with requests"},
 					&cli.StringFlag{Name: "twitch_client_secret", Value: "", EnvVars: []string{envPrefix + "_TWITCH_CLIENT_SECRET", "TWITCH_CLIENT_SECRET"}, Usage: "Twitch client secret for verifying web account tokens sent with requests"},
+					&cli.StringFlag{Name: "twitter_api_key", Value: "", EnvVars: []string{envPrefix + "_TWITTER_API_KEY", "TWITTER_API_KEY"}, Usage: "Twitter API key for requests used in the OAuth 1.0a flow"},
+					&cli.StringFlag{Name: "twitter_api_secret", Value: "", EnvVars: []string{envPrefix + "_TWITTER_API_SECRET", "TWITTER_API_SECRET"}, Usage: "Twitter API key for requests used in the OAuth 1.0a flow"},
+					&cli.StringFlag{Name: "discord_client_id", Value: "", EnvVars: []string{envPrefix + "_DISCORD_CLIENT_ID", "DISCORD_CLIENT_ID"}, Usage: "Discord client ID for verifying web account tokens sent with requests"},
+					&cli.StringFlag{Name: "discord_client_secret", Value: "", EnvVars: []string{envPrefix + "_DISCORD_CLIENT_SECRET", "DISCORD_CLIENT_SECRET"}, Usage: "Discord client secret for verifying web account tokens sent with requests"},
 				},
 
 				Usage: "run server",
@@ -327,6 +331,11 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		return terror.Error(api.ErrCheckDBDirty)
 	}
 
+	googleClientID := ctxCLI.String("google_client_id")
+	if googleClientID == "" {
+		return terror.Panic(fmt.Errorf("missing google client id"))
+	}
+
 	twitchExtensionSecretBase64 := ctxCLI.String("twitch_extension_secret")
 	if twitchExtensionSecretBase64 == "" {
 		return terror.Panic(fmt.Errorf("missing twitch extension secret"))
@@ -347,6 +356,26 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		return terror.Panic(fmt.Errorf("no twitch client secret"))
 	}
 
+	twitterAPIKey := ctxCLI.String("twitter_api_key")
+	if twitterAPIKey == "" {
+		return terror.Panic(fmt.Errorf("no twitter api key"))
+	}
+
+	twitterAPISecret := ctxCLI.String("twitter_api_secret")
+	if twitterAPISecret == "" {
+		return terror.Panic(fmt.Errorf("no twitter api secret"))
+	}
+
+	discordClientID := ctxCLI.String("discord_client_id")
+	if discordClientID == "" {
+		return terror.Panic(fmt.Errorf("no discord client id"))
+	}
+
+	discordClientSecret := ctxCLI.String("discord_client_secret")
+	if discordClientSecret == "" {
+		return terror.Panic(fmt.Errorf("no discord client secret"))
+	}
+
 	// Mailer
 	mailer, err := email.NewMailer(mailDomain, mailAPIKey, mailSender, config, log)
 	if err != nil {
@@ -362,6 +391,6 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
-	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, ctxCLI.String("google_client_id"), mailer, apiAddr, hostUrl, twitchExtensionSecret, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config)
+	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, googleClientID, mailer, apiAddr, hostUrl, twitchExtensionSecret, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config, twitterAPIKey, twitterAPISecret, discordClientID, discordClientSecret)
 	return api.Run(ctx)
 }

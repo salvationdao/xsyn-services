@@ -136,6 +136,8 @@ CREATE TABLE users
     facebook_id                         TEXT UNIQUE,
     google_id                           TEXT UNIQUE,
     twitch_id                           TEXT UNIQUE,
+    twitter_id                          TEXT UNIQUE,
+    discord_id                          TEXT UNIQUE,
     faction_id                          UUID REFERENCES factions (id),
     email                               TEXT UNIQUE,
     first_name                          TEXT                             DEFAULT '',

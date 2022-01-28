@@ -56,8 +56,8 @@ func (ic UserColumn) IsValid() error {
 
 const UserGetQuery string = `--sql
 SELECT 
-	users.id, users.role_id, users.two_factor_authentication_activated, users.two_factor_authentication_is_set, users.first_name, users.last_name, users.email, users.username, users.avatar_id, users.verified,
-	users.created_at, sups, users.updated_at, users.deleted_at, users.facebook_id, users.google_id, users.twitch_id, users.public_address, users.nonce, users.faction_id,
+	users.id, users.role_id, users.two_factor_authentication_activated, users.two_factor_authentication_is_set, users.first_name, users.last_name, users.email, users.username, users.avatar_id, users.verified, users.old_password_required,
+	users.created_at, sups, users.updated_at, users.deleted_at, users.facebook_id, users.google_id, users.twitch_id, users.twitter_id, users.discord_id, users.public_address, users.nonce, users.faction_id,
 	(SELECT COUNT(id) FROM user_recovery_codes urc WHERE urc.user_id = users.id) > 0 as has_recovery_code,
 	row_to_json(role) as role,
 	row_to_json(faction) as faction,
@@ -99,13 +99,35 @@ func UserByGoogleID(ctx context.Context, conn Conn, googleID string) (*passport.
 	return user, nil
 }
 
-// UserByGoogleID returns a user by google id
+// UserByTwitchID returns a user by Twitch id
 func UserByTwitchID(ctx context.Context, conn Conn, twitchID string) (*passport.User, error) {
 	user := &passport.User{}
 	q := UserGetQuery + ` WHERE users.twitch_id = $1`
 	err := pgxscan.Get(ctx, conn, user, q, twitchID)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting user from twitch id.")
+	}
+	return user, nil
+}
+
+// UserByTwitterID returns a user by Twitter id
+func UserByTwitterID(ctx context.Context, conn Conn, twitterID string) (*passport.User, error) {
+	user := &passport.User{}
+	q := UserGetQuery + ` WHERE users.twitter_id = $1`
+	err := pgxscan.Get(ctx, conn, user, q, twitterID)
+	if err != nil {
+		return nil, terror.Error(err, "Issue getting user from twitter id.")
+	}
+	return user, nil
+}
+
+// UserByDiscordID returns a user by Discord id
+func UserByDiscordID(ctx context.Context, conn Conn, discordID string) (*passport.User, error) {
+	user := &passport.User{}
+	q := UserGetQuery + ` WHERE users.discord_id = $1`
+	err := pgxscan.Get(ctx, conn, user, q, discordID)
+	if err != nil {
+		return nil, terror.Error(err, "Issue getting user from discord id.")
 	}
 	return user, nil
 }
@@ -256,10 +278,10 @@ func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 	}
 
 	q := `--sql
-		INSERT INTO users (first_name, last_name, email, username, public_address, avatar_id, role_id, verified, facebook_id, google_id, twitch_id)
-		VALUES ($1, $2, $3, $4, LOWER($5), $6, $7, $8, $9, $10, $11)
+		INSERT INTO users (first_name, last_name, email, username, public_address, avatar_id, role_id, verified, facebook_id, google_id, twitch_id, twitter_id, discord_id)
+		VALUES ($1, $2, $3, $4, LOWER($5), $6, $7, $8, $9, $10, $11, $12, $13)
 		RETURNING
-			id, role_id, first_name, last_name, email, username, avatar_id, created_at, updated_at, deleted_at, facebook_id, google_id, twitch_id`
+			id, role_id, first_name, last_name, email, username, avatar_id, created_at, updated_at, deleted_at, facebook_id, google_id, twitch_id, twitter_id, discord_id`
 	err = pgxscan.Get(ctx,
 		conn,
 		user,
@@ -275,6 +297,8 @@ func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 		user.FacebookID,
 		user.GoogleID,
 		user.TwitchID,
+		user.TwitterID,
+		user.DiscordID,
 	)
 	if err != nil {
 		return terror.Error(err)
@@ -307,6 +331,16 @@ func UserUpdate(ctx context.Context, conn Conn, user *passport.User) error {
 	}
 	if !usernameOK {
 		return terror.Error(fmt.Errorf("username is taken: %s", user.Username))
+	}
+
+	if user.Email.String != "" {
+		emailOK, err := EmailAvailable(ctx, conn, user.Email.String, &user.ID)
+		if err != nil {
+			return terror.Error(err)
+		}
+		if !emailOK {
+			return terror.Error(fmt.Errorf("email is taken: %s", user.Email.String), "Email is already in use, please use another one.")
+		}
 	}
 
 	q := `--sql
@@ -519,6 +553,104 @@ func UserAddTwitch(ctx context.Context, conn Conn, user *passport.User, twitchID
 		q,
 		user.ID,
 		twitchID,
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
+// UserRemoveTwitter will remove a users associated Twitter account
+func UserRemoveTwitter(ctx context.Context, conn Conn, user *passport.User) error {
+	q := `--sql
+		UPDATE users
+		SET twitter_id = null
+		WHERE id = $1`
+	_, err := conn.Exec(ctx,
+		q,
+		user.ID,
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
+// UserAddTwitter wil associate a user with a Twitter account
+func UserAddTwitter(ctx context.Context, conn Conn, user *passport.User, twitterID string) error {
+	count := 0
+
+	q := `--sql
+		SELECT count(*)
+		FROM users
+		WHERE twitter_id = $1`
+
+	err := pgxscan.Get(ctx, conn, &count, q, twitterID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	if count != 0 {
+		return terror.Error(fmt.Errorf("twitter already assigned to a user"), "This Twitter account is already associated with a user.")
+	}
+
+	q = `--sql
+		UPDATE users
+		SET twitter_id = $2
+		WHERE id = $1`
+	_, err = conn.Exec(ctx,
+		q,
+		user.ID,
+		twitterID,
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
+// UserRemoveDiscord will remove a users associated Discord account
+func UserRemoveDiscord(ctx context.Context, conn Conn, user *passport.User) error {
+	q := `--sql
+		UPDATE users
+		SET discord_id = null
+		WHERE id = $1`
+	_, err := conn.Exec(ctx,
+		q,
+		user.ID,
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
+// UserAddDiscord wil associate a user with a Discord account
+func UserAddDiscord(ctx context.Context, conn Conn, user *passport.User, discordID string) error {
+	count := 0
+
+	q := `--sql
+		SELECT count(*)
+		FROM users
+		WHERE discord_id = $1`
+
+	err := pgxscan.Get(ctx, conn, &count, q, discordID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	if count != 0 {
+		return terror.Error(fmt.Errorf("discord already assigned to a user"), "This Discord account is already associated with a user.")
+	}
+
+	q = `--sql
+		UPDATE users
+		SET discord_id = $2
+		WHERE id = $1`
+	_, err = conn.Exec(ctx,
+		q,
+		user.ID,
+		discordID,
 	)
 	if err != nil {
 		return terror.Error(err)
@@ -857,6 +989,33 @@ func UserUpdateNonce(ctx context.Context, conn Conn, userID passport.UserID, new
 		return terror.Error(err)
 	}
 	return nil
+}
+
+// EmailAvailable returns true if an email is free
+func EmailAvailable(ctx context.Context, conn Conn, emailToCheck string, userID *passport.UserID) (bool, error) {
+	count := 0
+
+	if userID != nil && !userID.IsNil() {
+		q := `
+        		SELECT count(*) FROM users
+        		WHERE email = $1 and id != $2
+        	`
+		err := pgxscan.Get(ctx, conn, &count, q, emailToCheck, userID)
+		if err != nil {
+			return false, terror.Error(err)
+		}
+		return count == 0, nil
+	}
+
+	q := `
+		SELECT count(*) FROM users
+		WHERE email = $1
+	`
+	err := pgxscan.Get(ctx, conn, &count, q, emailToCheck)
+	if err != nil {
+		return false, terror.Error(err)
+	}
+	return count == 0, nil
 }
 
 // UsernameAvailable returns true if a username is free

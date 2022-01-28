@@ -30,6 +30,8 @@ type User struct {
 	FacebookID                       null.String   `json:"facebookID" db:"facebook_id"`
 	GoogleID                         null.String   `json:"googleID" db:"google_id"`
 	TwitchID                         null.String   `json:"twitchID" db:"twitch_id"`
+	TwitterID                        null.String   `json:"twitterID" db:"twitter_id"`
+	DiscordID                        null.String   `json:"discordID" db:"discord_id"`
 	FactionID                        *FactionID    `json:"factionID" db:"faction_id"`
 	Faction                          *Faction      `json:"faction"`
 	Username                         string        `json:"username" db:"username"`

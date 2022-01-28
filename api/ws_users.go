@@ -2,9 +2,11 @@ package api
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"passport"
@@ -32,21 +34,23 @@ import (
 
 // UserController holds handlers for authentication
 type UserController struct {
-	Conn   *pgxpool.Pool
-	Log    *zerolog.Logger
-	API    *API
-	Google *auth.GoogleConfig
-	Twitch *auth.TwitchConfig
+	Conn    *pgxpool.Pool
+	Log     *zerolog.Logger
+	API     *API
+	Google  *auth.GoogleConfig
+	Twitch  *auth.TwitchConfig
+	Discord *auth.DiscordConfig
 }
 
 // NewUserController creates the user hub
-func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, googleConfig *auth.GoogleConfig, twitchConfig *auth.TwitchConfig) *UserController {
+func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, googleConfig *auth.GoogleConfig, twitchConfig *auth.TwitchConfig, discordConfig *auth.DiscordConfig) *UserController {
 	userHub := &UserController{
-		Conn:   conn,
-		Log:    log_helpers.NamedLogger(log, "user_hub"),
-		API:    api,
-		Google: googleConfig,
-		Twitch: twitchConfig,
+		Conn:    conn,
+		Log:     log_helpers.NamedLogger(log, "user_hub"),
+		API:     api,
+		Google:  googleConfig,
+		Twitch:  twitchConfig,
+		Discord: discordConfig,
 	}
 
 	api.Command(HubKeyUserGet, userHub.GetHandler) // Perm check inside handler (users can get themselves; need UserRead permission to get other users)
@@ -58,6 +62,10 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 	api.SecureCommand(HubKeyUserAddGoogle, userHub.AddGoogleHandler)             // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserRemoveTwitch, userHub.RemoveTwitchHandler)       // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserAddTwitch, userHub.AddTwitchHandler)             // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
+	api.SecureCommand(HubKeyUserRemoveTwitter, userHub.RemoveTwitterHandler)     // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
+	api.SecureCommand(HubKeyUserAddTwitter, userHub.AddTwitterHandler)           // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
+	api.SecureCommand(HubKeyUserRemoveDiscord, userHub.RemoveDiscordHandler)     // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
+	api.SecureCommand(HubKeyUserAddDiscord, userHub.AddDiscordHandler)           // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserRemoveWallet, userHub.RemoveWalletHandler)       // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserAddWallet, userHub.AddWalletHandler)             // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserCreate, userHub.CreateHandler)
@@ -253,6 +261,10 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 		}
 	}
 	if req.Payload.NewPassword != nil && *req.Payload.NewPassword != "" {
+		if user.Email.String == "" && req.Payload.Email.String == "" {
+			return terror.Error(terror.ErrInvalidInput, "Email is required when assigning a new password to this user")
+		}
+
 		err = helpers.IsValidPassword(*req.Payload.NewPassword)
 		if err != nil {
 			passwordErr := err.Error()
@@ -263,7 +275,11 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 			return terror.Error(err, passwordErr)
 		}
 
-		confirmPassword = req.Payload.ID.String() == hubc.Identifier() && user.OldPasswordRequired
+		hasPassword, err := db.UserHasPassword(ctx, uc.Conn, user)
+		if err != nil {
+			return terror.Error(err, "Something went wrong. Please try again.")
+		}
+		confirmPassword = req.Payload.ID.String() == hubc.Identifier() && user.OldPasswordRequired && *hasPassword
 	}
 
 	if confirmPassword {
@@ -335,7 +351,7 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 	// Update user
 	err = db.UserUpdate(ctx, tx, user)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err)
 	}
 
 	// Update password?
@@ -957,10 +973,14 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hub.C
 	// Setup user activity tracking
 	var oldUser passport.User = *user
 
-	// Start transaction
-	errMsg := "Unable to update user, please try again."
+	// Check if user can remove service
+	serviceCount := GetUserServiceCount(user)
+	if serviceCount < 2 {
+		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+	}
 
 	// Update user
+	errMsg := "Unable to update user, please try again."
 	err = db.UserRemoveFacebook(ctx, uc.Conn, user)
 	if err != nil {
 		return terror.Error(err, errMsg)
@@ -1104,10 +1124,14 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.Cli
 	// Setup user activity tracking
 	var oldUser passport.User = *user
 
-	// Start transaction
-	errMsg := "Unable to update user, please try again."
+	// Check if user can remove service
+	serviceCount := GetUserServiceCount(user)
+	if serviceCount < 2 {
+		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+	}
 
 	// Update user
+	errMsg := "Unable to update user, please try again."
 	err = db.UserRemoveGoogle(ctx, uc.Conn, user)
 	if err != nil {
 		return terror.Error(err, errMsg)
@@ -1140,7 +1164,7 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.Cli
 	return nil
 }
 
-// HubKeyUserRemoveTwitch adds a linked Twitch account
+// HubKeyUserAddGoogle adds a linked Google account
 const HubKeyUserAddGoogle hub.HubCommandKey = "USER:ADD_GOOGLE"
 
 func (uc *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
@@ -1248,10 +1272,14 @@ func (uc *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.Cli
 	// Setup user activity tracking
 	var oldUser passport.User = *user
 
-	// Start transaction
-	errMsg := "Unable to update user, please try again."
+	// Check if user can remove service
+	serviceCount := GetUserServiceCount(user)
+	if serviceCount < 2 {
+		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+	}
 
 	// Update user
+	errMsg := "Unable to update user, please try again."
 	err = db.UserRemoveTwitch(ctx, uc.Conn, user)
 	if err != nil {
 		return terror.Error(err, errMsg)
@@ -1292,7 +1320,6 @@ type AddTwitchRequest struct {
 	Payload struct {
 		Token   string `json:"token"`
 		Website bool   `json:"website"`
-		// RedirectURI string `json:"redirectURI"`
 	} `json:"payload"`
 }
 
@@ -1399,6 +1426,398 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client
 	return nil
 }
 
+// HubKeyUserRemoveTwitter removes a linked Twitter account
+const HubKeyUserRemoveTwitter hub.HubCommandKey = "USER:REMOVE_TWITTER"
+
+func (uc *UserController) RemoveTwitterHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &RemoveServiceRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+	if req.Payload.ID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput, "User ID is required")
+	}
+
+	var user *passport.User
+	if !req.Payload.ID.IsNil() {
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
+		if err != nil {
+			return terror.Error(err, "Failed to get user")
+		}
+	} else {
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
+		if err != nil {
+			return terror.Error(err, "Failed to get user")
+		}
+	}
+
+	//// Permission check
+	if user.ID.String() != hubc.Identifier() && !hubc.HasPermission(passport.PermUserUpdate.String()) {
+		return terror.Error(terror.ErrUnauthorised, "You do not have permission to update other users.")
+	}
+
+	// Setup user activity tracking
+	var oldUser passport.User = *user
+
+	// Check if user can remove service
+	serviceCount := GetUserServiceCount(user)
+	if serviceCount < 2 {
+		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+	}
+
+	// Update user
+	errMsg := "Unable to update user, please try again."
+	err = db.UserRemoveTwitter(ctx, uc.Conn, user)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	// Get user
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	reply(user)
+
+	//// Record user activity
+	uc.API.RecordUserActivity(ctx,
+		hubc.Identifier(),
+		"Removed Twitter account from User",
+		passport.ObjectTypeUser,
+		helpers.StringPointer(user.ID.String()),
+		&user.Username,
+		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		&passport.UserActivityChangeData{
+			Name: db.TableNames.Users,
+			From: oldUser,
+			To:   user,
+		},
+	)
+
+	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	return nil
+}
+
+type AddTwitterRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		OAuthToken    string `json:"oauthToken"`
+		OAuthVerifier string `json:"oauthVerifier"`
+	} `json:"payload"`
+}
+
+// HubKeyUserRemoveTwitter adds a linked Twitter account
+const HubKeyUserAddTwitter hub.HubCommandKey = "USER:ADD_TWITTER"
+
+func (uc *UserController) AddTwitterHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &AddTwitterRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	if req.Payload.OAuthToken == "" {
+		return terror.Error(terror.ErrInvalidInput, "Twitter OAuth token is empty")
+	}
+	if req.Payload.OAuthVerifier == "" {
+		return terror.Error(terror.ErrInvalidInput, "Twitter OAuth verifier is empty")
+	}
+
+	params := url.Values{}
+	params.Set("oauth_token", req.Payload.OAuthToken)
+	params.Set("oauth_verifier", req.Payload.OAuthVerifier)
+	client := &http.Client{}
+	r, err := http.NewRequest("GET", fmt.Sprintf("https://api.twitter.com/oauth/access_token?%s", params.Encode()), nil)
+	if err != nil {
+		return terror.Error(err)
+	}
+	res, err := client.Do(r)
+	if err != nil {
+		return terror.Error(err)
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	resp := &struct {
+		OauthToken       string
+		OauthTokenSecret string
+		UserID           string
+	}{}
+	values := strings.Split(string(body), "&")
+	for _, v := range values {
+		pair := strings.Split(v, "=")
+		switch pair[0] {
+		case "oauth_token":
+			resp.OauthToken = pair[1]
+		case "oauth_token_secret":
+			resp.OauthTokenSecret = pair[1]
+		case "user_id":
+			resp.UserID = pair[1]
+		}
+	}
+
+	twitterID := resp.UserID
+	if twitterID == "" {
+		return terror.Error(terror.ErrInvalidInput, "No Twitter account ID is provided")
+	}
+
+	userID, err := uuid.FromString(hubc.Identifier())
+	if err != nil {
+		return terror.Error(err, "Could not convert user ID to UUID")
+	}
+
+	// Get user
+	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID))
+	if err != nil {
+		return terror.Error(err, "Failed to query user")
+	}
+
+	// Activity tracking
+	var oldUser passport.User = *user
+
+	// Update user's Twitter ID
+	err = db.UserAddTwitter(ctx, uc.Conn, user, twitterID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// Get user
+	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID))
+	if err != nil {
+		return terror.Error(err, "Failed to query user")
+	}
+
+	reply(user)
+
+	// Record user activity
+	uc.API.RecordUserActivity(ctx,
+		hubc.Identifier(),
+		"Added Twitter account to User",
+		passport.ObjectTypeUser,
+		helpers.StringPointer(user.ID.String()),
+		&user.Username,
+		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		&passport.UserActivityChangeData{
+			Name: db.TableNames.Users,
+			From: oldUser,
+			To:   user,
+		},
+	)
+
+	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+
+	return nil
+}
+
+// HubKeyUserRemoveDiscord removes a linked Discord account
+const HubKeyUserRemoveDiscord hub.HubCommandKey = "USER:REMOVE_DISCORD"
+
+func (uc *UserController) RemoveDiscordHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &RemoveServiceRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+	if req.Payload.ID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput, "User ID is required")
+	}
+
+	var user *passport.User
+	if !req.Payload.ID.IsNil() {
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
+		if err != nil {
+			return terror.Error(err, "Failed to get user")
+		}
+	} else {
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
+		if err != nil {
+			return terror.Error(err, "Failed to get user")
+		}
+	}
+
+	//// Permission check
+	if user.ID.String() != hubc.Identifier() && !hubc.HasPermission(passport.PermUserUpdate.String()) {
+		return terror.Error(terror.ErrUnauthorised, "You do not have permission to update other users.")
+	}
+
+	// Setup user activity tracking
+	var oldUser passport.User = *user
+
+	// Check if user can remove service
+	serviceCount := GetUserServiceCount(user)
+	if serviceCount < 2 {
+		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+	}
+
+	// Update user
+	errMsg := "Unable to update user, please try again."
+	err = db.UserRemoveDiscord(ctx, uc.Conn, user)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	// Get user
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	reply(user)
+
+	//// Record user activity
+	uc.API.RecordUserActivity(ctx,
+		hubc.Identifier(),
+		"Removed Discord account from User",
+		passport.ObjectTypeUser,
+		helpers.StringPointer(user.ID.String()),
+		&user.Username,
+		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		&passport.UserActivityChangeData{
+			Name: db.TableNames.Users,
+			From: oldUser,
+			To:   user,
+		},
+	)
+
+	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	return nil
+}
+
+// HubKeyUserRemoveDiscord adds a linked Discord account
+const HubKeyUserAddDiscord hub.HubCommandKey = "USER:ADD_DISCORD"
+
+type AddDiscordRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Code        string `json:"code"`
+		RedirectURI string `json:"redirectURI"`
+	} `json:"payload"`
+}
+
+func (uc *UserController) AddDiscordHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &AddDiscordRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	if req.Payload.Code == "" {
+		return terror.Error(terror.ErrInvalidInput, "Discord code is empty")
+	}
+
+	// Validate Discord code and get access token
+	data := url.Values{}
+	data.Set("code", req.Payload.Code)
+	data.Set("grant_type", "authorization_code")
+	data.Set("redirect_uri", req.Payload.RedirectURI)
+
+	client := &http.Client{}
+	req1, err := http.NewRequest("POST", "https://discord.com/api/oauth2/token", strings.NewReader(data.Encode()))
+	req1.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(uc.Discord.ClientID+":"+uc.Discord.ClientSecret)))
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if err != nil {
+		return terror.Error(err)
+	}
+	res, err := client.Do(req1)
+	if err != nil {
+		return terror.Error(err, "Failed to verify token")
+	}
+	defer res.Body.Close()
+
+	resp := &struct {
+		AccessToken  string `json:"access_token"`
+		TokenType    string `json:"token_type"`
+		ExpiresIn    int    `json:"expires_in"`
+		RefreshToken string `json:"refresh_token"`
+		Scope        string `json:"scope"`
+	}{}
+	err = json.NewDecoder(res.Body).Decode(resp)
+	if err != nil {
+		return terror.Error(err, "Failed to authenticate user with Discord.")
+	}
+
+	// Get Discord user using access token
+	client = &http.Client{}
+	req2, err := http.NewRequest("GET", "https://discord.com/api/oauth2/@me", nil)
+	if err != nil {
+		return terror.Error(err)
+	}
+	req2.Header.Set("Authorization", "Bearer "+resp.AccessToken)
+	res2, err := client.Do(req2)
+	if err != nil {
+		return terror.Error(err, "Failed to get user with access token.")
+	}
+	defer res2.Body.Close()
+
+	resp2 := &struct {
+		User struct {
+			ID string `json:"id"`
+		} `json:"user"`
+	}{}
+	err = json.NewDecoder(res2.Body).Decode(resp2)
+	if err != nil {
+		return terror.Error(err, "Failed to authenticate user with Discord.")
+	}
+
+	discordID := resp2.User.ID
+	if discordID == "" {
+		return terror.Error(terror.ErrInvalidInput, "No Discord account ID is provided")
+	}
+
+	userID, err := uuid.FromString(hubc.Identifier())
+	if err != nil {
+		return terror.Error(err, "Could not convert user ID to UUID")
+	}
+
+	// Get user
+	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID))
+	if err != nil {
+		return terror.Error(err, "Failed to query user")
+	}
+
+	// Activity tracking
+	var oldUser passport.User = *user
+
+	// Update user's Discord ID
+	err = db.UserAddDiscord(ctx, uc.Conn, user, discordID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// Get user
+	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID))
+	if err != nil {
+		return terror.Error(err, "Failed to query user")
+	}
+
+	reply(user)
+
+	// Record user activity
+	uc.API.RecordUserActivity(ctx,
+		hubc.Identifier(),
+		"Added Discord account to User",
+		passport.ObjectTypeUser,
+		helpers.StringPointer(user.ID.String()),
+		&user.Username,
+		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		&passport.UserActivityChangeData{
+			Name: db.TableNames.Users,
+			From: oldUser,
+			To:   user,
+		},
+	)
+
+	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+
+	return nil
+}
+
 // HubKeyUserRemoveWallet removes a linked wallet address
 const HubKeyUserRemoveWallet hub.HubCommandKey = "USER:REMOVE_WALLET"
 
@@ -1454,6 +1873,12 @@ func (uc *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.Cli
 			uc.Log.Err(err).Msg("error rolling back")
 		}
 	}(tx, ctx)
+
+	// Check if user can remove service
+	serviceCount := GetUserServiceCount(user)
+	if serviceCount < 2 {
+		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+	}
 
 	// Update user
 	err = db.UserRemoveWallet(ctx, tx, user)
@@ -1767,4 +2192,29 @@ func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx con
 	})
 
 	return req.TransactionID, busKey, nil
+}
+
+// GetUserServiceCount returns the amount of services (email, facebook, google, discord etc.) the user is currently connected to
+func GetUserServiceCount(user *passport.User) int {
+	count := 0
+	if user.Email.String != "" {
+		count++
+	}
+	if user.FacebookID.String != "" {
+		count++
+	}
+	if user.GoogleID.String != "" {
+		count++
+	}
+	if user.TwitchID.String != "" {
+		count++
+	}
+	if user.TwitterID.String != "" {
+		count++
+	}
+	if user.DiscordID.String != "" {
+		count++
+	}
+
+	return count
 }
