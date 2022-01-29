@@ -60,6 +60,7 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	// user connection upgrade
 	api.SupremacyCommand(HubKeySupremacyUserConnectionUpgrade, supremacyHub.SupremacyUserConnectionUpgradeHandler)
 
+	// battle queue
 	api.SupremacyCommand(HubKeySupremacyWarMachineQueuePositionClear, supremacyHub.SupremacyWarMachineQueuePositionClearHandler)
 
 	// asset control
@@ -483,7 +484,7 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 				FactionID: passport.RedMountainFactionID,
 			}
 			// parse nft
-			parseWarMachineNFT(wmmd, warMachineNFT)
+			passport.ParseWarMachineNFT(wmmd, warMachineNFT)
 			warMachines = append(warMachines, warMachineNFT)
 		}
 
@@ -498,7 +499,7 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 				FactionID: passport.BostonCyberneticsFactionID,
 			}
 			// parse nft
-			parseWarMachineNFT(wmmd, warMachineNFT)
+			passport.ParseWarMachineNFT(wmmd, warMachineNFT)
 			warMachines = append(warMachines, warMachineNFT)
 		}
 	case passport.ZaibatsuFactionID:
@@ -512,7 +513,7 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 				FactionID: passport.ZaibatsuFactionID,
 			}
 			// parse nft
-			parseWarMachineNFT(wmmd, warMachineNFT)
+			passport.ParseWarMachineNFT(wmmd, warMachineNFT)
 			warMachines = append(warMachines, warMachineNFT)
 		}
 	}

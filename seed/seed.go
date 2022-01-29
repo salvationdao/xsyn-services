@@ -37,6 +37,12 @@ func (s *Seeder) Run(isProd bool) error {
 		return terror.Error(err, "seed roles failed")
 	}
 
+	fmt.Println("Seeding factions")
+	factions, err = s.factions(ctx)
+	if err != nil {
+		return terror.Error(err, "seed factions")
+	}
+
 	fmt.Println("Seeding Off world / On chain User")
 	_, err = s.ETHChainUser(ctx)
 	if err != nil {
@@ -88,24 +94,12 @@ func (s *Seeder) Run(isProd bool) error {
 
 	}
 
-	fmt.Println("Seeding factions")
-	err = s.factions(ctx)
-	if err != nil {
-		return terror.Error(err, "seed factions")
-	}
-
-	//fmt.Println("Seeding products")
-	//err = s.Products(ctx)
-	//if err != nil {
-	//	return terror.Error(err, "seed products failed")
-	//}
-
 	//s.Conn.
 	fmt.Println("Seed complete")
 	return nil
 }
 
-var Factions = []*passport.Faction{
+var factions = []*passport.Faction{
 	{
 		ID:    passport.RedMountainFactionID,
 		Label: "Red Mountain Offworld Mining Corporation",
@@ -165,8 +159,8 @@ var Factions = []*passport.Faction{
 	},
 }
 
-func (s *Seeder) factions(ctx context.Context) error {
-	for _, faction := range Factions {
+func (s *Seeder) factions(ctx context.Context) ([]*passport.Faction, error) {
+	for _, faction := range factions {
 		var err error
 		logoBlob := &passport.Blob{}
 		backgroundBlob := &passport.Blob{}
@@ -175,29 +169,29 @@ func (s *Seeder) factions(ctx context.Context) error {
 		case "Red Mountain Offworld Mining Corporation":
 			logoBlob, err = s.factionLogo(ctx, "red_mountain_logo")
 			if err != nil {
-				return terror.Error(err)
+				return nil, terror.Error(err)
 			}
 			backgroundBlob, err = s.factionBackground(ctx, "red_mountain_bg")
 			if err != nil {
-				return terror.Error(err)
+				return nil, terror.Error(err)
 			}
 		case "Boston Cybernetics":
 			logoBlob, err = s.factionLogo(ctx, "boston_cybernetics_logo")
 			if err != nil {
-				return terror.Error(err)
+				return nil, terror.Error(err)
 			}
 			backgroundBlob, err = s.factionBackground(ctx, "boston_cybernetics_bg")
 			if err != nil {
-				return terror.Error(err)
+				return nil, terror.Error(err)
 			}
 		case "Zaibatsu Heavy Industries":
 			logoBlob, err = s.factionLogo(ctx, "zaibatsu_logo")
 			if err != nil {
-				return terror.Error(err)
+				return nil, terror.Error(err)
 			}
 			backgroundBlob, err = s.factionBackground(ctx, "zaibatsu_bg")
 			if err != nil {
-				return terror.Error(err)
+				return nil, terror.Error(err)
 			}
 		}
 
@@ -206,10 +200,10 @@ func (s *Seeder) factions(ctx context.Context) error {
 
 		err = db.FactionCreate(ctx, s.Conn, faction)
 		if err != nil {
-			return terror.Error(err)
+			return nil, terror.Error(err)
 		}
 	}
-	return nil
+	return factions, nil
 }
 
 func (s *Seeder) factionLogo(ctx context.Context, filename string) (*passport.Blob, error) {

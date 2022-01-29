@@ -27,6 +27,14 @@ var (
 	OnChainUserID                    = UserID(uuid.Must(uuid.FromString("2fa1a63e-a4fa-4618-921f-4b4d28132069")))
 )
 
+func (e UserID) IsSystemUser() bool {
+	switch e {
+	case XsynTreasuryUserID, SupremacyGameUserID, OnChainUserID:
+		return true
+	}
+	return false
+}
+
 const ServerClientLevel = 5
 
 // User is a single user on the platform

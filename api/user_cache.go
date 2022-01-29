@@ -69,12 +69,12 @@ func (api *API) InsertUserToCache(user *passport.User) {
 		// 	},
 		// })
 
-		// broadcast to game bar
-		resp := &UserWalletDetail{
-			OnChainSups: "0",
-			OnWorldSups: user.Sups.Int.String(),
+		if !user.ID.IsSystemUser() {
+			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), &UserWalletDetail{
+				OnChainSups: "0",
+				OnWorldSups: user.Sups.Int.String(),
+			})
 		}
-		api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), resp)
 	})
 }
 
@@ -130,13 +130,11 @@ func (api *API) UpdateUserInCache(user *passport.User) {
 			// 	},
 			// })
 
-			// broadcast to game bar
-			resp := &UserWalletDetail{
-				OnChainSups: "0",
-				OnWorldSups: user.Sups.Int.String(),
-			}
-			if user.ID != passport.SupremacyGameUserID {
-				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), resp)
+			if !user.ID.IsSystemUser() {
+				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), &UserWalletDetail{
+					OnChainSups: "0",
+					OnWorldSups: user.Sups.Int.String(),
+				})
 			}
 		}
 		//}
@@ -173,13 +171,12 @@ func (api *API) UpdateUserCacheAddSups(userID passport.UserID, amount big.Int) {
 			// 	},
 			// })
 
-			// broadcast to game bar
-			resp := &UserWalletDetail{
-				OnChainSups: "0",
-				OnWorldSups: user.Sups.Int.String(),
+			if !user.ID.IsSystemUser() {
+				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), &UserWalletDetail{
+					OnChainSups: "0",
+					OnWorldSups: user.Sups.Int.String(),
+				})
 			}
-
-			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), resp)
 		}
 	})
 }
@@ -211,13 +208,12 @@ func (api *API) UpdateUserCacheRemoveSups(userID passport.UserID, amount big.Int
 			// 	},
 			// })
 
-			// broadcast to game bar
-			resp := &UserWalletDetail{
-				OnChainSups: "0",
-				OnWorldSups: user.Sups.Int.String(),
+			if !user.ID.IsSystemUser() {
+				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), &UserWalletDetail{
+					OnChainSups: "0",
+					OnWorldSups: user.Sups.Int.String(),
+				})
 			}
-
-			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), resp)
 
 		}
 		errChan <- nil

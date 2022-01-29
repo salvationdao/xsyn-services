@@ -205,7 +205,7 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 
 		switch att.Value {
 		case string(passport.WarMachine):
-			parseWarMachineNFT(nft, warMachineNFT)
+			passport.ParseWarMachineNFT(nft, warMachineNFT)
 		case string(passport.Weapon):
 		case string(passport.Utility):
 		}
@@ -226,48 +226,6 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 
 	reply(true)
 	return nil
-}
-
-type WarMachineAttField string
-
-const (
-	WarMachineAttFieldMaxHitPoint      WarMachineAttField = "Max Structure Hit Points"
-	WarMachineAttFieldSpeed            WarMachineAttField = "Speed"
-	WarMachineAttFieldPowerGrid        WarMachineAttField = "Power Grid"
-	WarMachineAttFieldCPU              WarMachineAttField = "CPU"
-	WarMachineAttFieldWeaponHardpoints WarMachineAttField = "Weapon Hardpoints"
-	WarMachineAttFieldTurretHardpoints WarMachineAttField = "Turret Hardpoints"
-	WarMachineAttFieldUtilitySlots     WarMachineAttField = "Utility Slots"
-)
-
-// parseWarMachineNFT
-func parseWarMachineNFT(nft *passport.XsynNftMetadata, warMachineNFT *passport.WarMachineNFT) {
-	warMachineNFT.TokenID = nft.TokenID
-	warMachineNFT.Name = nft.Name
-	warMachineNFT.Description = nft.Description
-	warMachineNFT.ExternalUrl = nft.ExternalUrl
-	warMachineNFT.Image = nft.Image
-	warMachineNFT.Durability = nft.Durability
-
-	for _, att := range nft.Attributes {
-		switch att.TraitType {
-		case string(WarMachineAttFieldMaxHitPoint):
-			warMachineNFT.MaxHitPoint = int(att.Value.(float64))
-			warMachineNFT.RemainHitPoint = int(att.Value.(float64))
-		case string(WarMachineAttFieldSpeed):
-			warMachineNFT.Speed = int(att.Value.(float64))
-		case string(WarMachineAttFieldPowerGrid):
-			warMachineNFT.PowerGrid = int(att.Value.(float64))
-		case string(WarMachineAttFieldCPU):
-			warMachineNFT.CPU = int(att.Value.(float64))
-		case string(WarMachineAttFieldWeaponHardpoints):
-			warMachineNFT.WeaponHardpoint = int(att.Value.(float64))
-		case string(WarMachineAttFieldTurretHardpoints):
-			warMachineNFT.TurretHardpoint = int(att.Value.(float64))
-		case string(WarMachineAttFieldUtilitySlots):
-			warMachineNFT.UtilitySlots = int(att.Value.(float64))
-		}
-	}
 }
 
 // rootHub.SecureCommand(HubKeyAssetList, AssetController.GetHandler)
