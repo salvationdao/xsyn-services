@@ -55,20 +55,6 @@ func (api *API) InsertUserToCache(user *passport.User) {
 			},
 		})
 
-		// TODO: add passport user sup subscribe
-
-		// // broadcast the update to server clients
-		// api.SendToAllServerClient(&ServerClientMessage{
-		// 	Key: UserSupsUpdated,
-		// 	Payload: struct {
-		// 		UserID passport.UserID `json:"userID"`
-		// 		Sups   passport.BigInt `json:"sups"`
-		// 	}{
-		// 		UserID: user.ID,
-		// 		Sups:   user.Sups,
-		// 	},
-		// })
-
 		if !user.ID.IsSystemUser() {
 			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), &UserWalletDetail{
 				OnChainSups: "0",
@@ -82,13 +68,13 @@ func (api *API) InsertUserToCache(user *passport.User) {
 func (api *API) UpdateUserInCache(user *passport.User) {
 
 	api.UserCache(func(userMap UserCacheMap) {
-		// TODO: Do NOT create a user if not exists, leaving it for now until gamebar is in twitch ui
-		// currently we dont know what user comes online if they auth through the twitchui/gameserver and no point adding it for now
-		if _, ok := userMap[user.ID]; !ok {
-			userMap[user.ID] = &UserCache{User: user, CacheLastUpdated: time.Now()}
+		// cache map should have the latest user sups detail
+		// so skip if user is already in the cache map
+		if _, ok := userMap[user.ID]; ok {
+			return
 		}
 
-		// TODO: check the held tx map
+		// otherwise process user uncommitted transactions
 		api.HeldTransactions(func(heldTxList map[TransactionReference]*NewTransaction) {
 			for _, tx := range heldTxList {
 				if tx.To == user.ID {
@@ -99,47 +85,17 @@ func (api *API) UpdateUserInCache(user *passport.User) {
 			}
 		})
 
-		supsChanged := userMap[user.ID].Sups.Int.Cmp(&user.Sups.Int) != 0
-		userMap[user.ID].User = user
-		userMap[user.ID].CacheLastUpdated = time.Now()
+		// add user to cache map
+		userMap[user.ID] = &UserCache{User: user, CacheLastUpdated: time.Now()}
 
-		// broadcast the update to the users connected directly to passport
-		// api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID)), user)
-		// broadcast the update to connect client servers
-		//api.SendToAllServerClient(&ServerClientMessage{
-		//	Key: UserUpdated,
-		//	Payload: struct {
-		//		User *passport.User `json:"user"`
-		//	}{
-		//		User: user,
-		//	},
-		//})
-		if supsChanged {
-			// TODO: add passport user sup subscribe
-			//api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupSubscribe, user.ID)), user)
-
-			// // broadcast the update to server clients
-			// api.SendToAllServerClient(&ServerClientMessage{
-			// 	Key: UserSupsUpdated,
-			// 	Payload: struct {
-			// 		UserID passport.UserID `json:"userID"`
-			// 		Sups   passport.BigInt `json:"sups"`
-			// 	}{
-			// 		UserID: user.ID,
-			// 		Sups:   user.Sups,
-			// 	},
-			// })
-
-			if !user.ID.IsSystemUser() {
-				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), &UserWalletDetail{
-					OnChainSups: "0",
-					OnWorldSups: user.Sups.Int.String(),
-				})
-			}
+		// broadcast user sups, if user is not the system user
+		if !user.ID.IsSystemUser() {
+			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), &UserWalletDetail{
+				OnChainSups: "0",
+				OnWorldSups: user.Sups.Int.String(),
+			})
 		}
-		//}
 	})
-
 }
 
 // RemoveUserFromCache removes a user from the cache
@@ -155,21 +111,6 @@ func (api *API) UpdateUserCacheAddSups(userID passport.UserID, amount big.Int) {
 		user, ok := userMap[userID]
 		if ok {
 			user.Sups.Int = *user.Sups.Int.Add(&user.Sups.Int, &amount)
-
-			// TODO: add passport user sup subscribe
-			//api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupSubscribe, user.ID)), user)
-
-			// // broadcast the update to server clients
-			// api.SendToAllServerClient(&ServerClientMessage{
-			// 	Key: UserSupsUpdated,
-			// 	Payload: struct {
-			// 		UserID passport.UserID `json:"userID"`
-			// 		Sups   passport.BigInt `json:"sups"`
-			// 	}{
-			// 		UserID: user.ID,
-			// 		Sups:   user.Sups,
-			// 	},
-			// })
 
 			if !user.ID.IsSystemUser() {
 				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), &UserWalletDetail{
@@ -195,18 +136,6 @@ func (api *API) UpdateUserCacheRemoveSups(userID passport.UserID, amount big.Int
 			}
 
 			user.Sups.Int = *user.Sups.Int.Sub(&user.Sups.Int, &amount)
-
-			// // broadcast the update to server clients
-			// api.SendToAllServerClient(&ServerClientMessage{
-			// 	Key: UserSupsUpdated,
-			// 	Payload: struct {
-			// 		UserID passport.UserID `json:"userID"`
-			// 		Sups   passport.BigInt `json:"sups"`
-			// 	}{
-			// 		UserID: user.ID,
-			// 		Sups:   user.Sups,
-			// 	},
-			// })
 
 			if !user.ID.IsSystemUser() {
 				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), &UserWalletDetail{

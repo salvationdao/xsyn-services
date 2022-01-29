@@ -89,15 +89,14 @@ func (api *API) ReleaseHeldTransaction(txRefs ...TransactionReference) {
 		api.HeldTransactions(func(heldTxList map[TransactionReference]*NewTransaction) {
 			tx, ok := heldTxList[txRef]
 			if ok {
-				api.UpdateUserCacheAddSups(tx.From, tx.Amount)
 				errChan := make(chan error, 10)
-
 				api.UpdateUserCacheRemoveSups(tx.To, tx.Amount, errChan)
 				err := <-errChan
 				if err != nil {
 					api.Log.Info().Err(err)
 					return
 				}
+				api.UpdateUserCacheAddSups(tx.From, tx.Amount)
 				delete(heldTxList, txRef)
 			}
 		})
@@ -111,17 +110,15 @@ func (api *API) HoldTransaction(holdErrChan chan error, txs ...*NewTransaction) 
 	// HERE SHIT ISNT WORKING
 	api.HeldTransactions(func(heldTxList map[TransactionReference]*NewTransaction) {
 		for _, tx := range txs {
-			api.UpdateUserCacheAddSups(tx.To, tx.Amount)
-
 			errChan := make(chan error, 10)
 			api.UpdateUserCacheRemoveSups(tx.From, tx.Amount, errChan)
-
 			err := <-errChan
 			if err != nil {
 				api.Log.Err(err).Msg(err.Error())
 				holdErrChan <- err
 				return
 			}
+			api.UpdateUserCacheAddSups(tx.To, tx.Amount)
 			heldTxList[tx.TransactionReference] = tx
 		}
 		holdErrChan <- nil
@@ -141,16 +138,19 @@ func (api *API) CommitTransactions(resultChan chan []*passport.Transaction, txRe
 				result := <-tx.ResultChan
 				// if result is failed, update the cache map
 				if result.Status == passport.TransactionFailed {
-					api.UpdateUserCacheAddSups(tx.From, tx.Amount)
-
 					errChan := make(chan error, 10)
 					api.UpdateUserCacheRemoveSups(tx.To, tx.Amount, errChan)
 					err := <-errChan
 					if err != nil {
 						api.Log.Err(err).Msg(err.Error())
+						continue
 					}
+					api.UpdateUserCacheAddSups(tx.From, tx.Amount)
 				}
 				results = append(results, result)
+
+				// remove cached transaction after it is committed
+				delete(heldTxList, txRef)
 			}
 		}
 		resultChan <- results

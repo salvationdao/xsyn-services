@@ -207,7 +207,20 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 
 	// send through transactions
 	for _, tx := range transactions {
+		tx.ResultChan = make(chan *passport.Transaction, 1)
 		sc.API.transaction <- tx
+		result := <-tx.ResultChan
+		// if result is success, update the cache map
+		if result.Status == passport.TransactionSuccess {
+			errChan := make(chan error, 10)
+			sc.API.UpdateUserCacheRemoveSups(tx.From, tx.Amount, errChan)
+			err := <-errChan
+			if err != nil {
+				sc.API.Log.Err(err).Msg(err.Error())
+				continue
+			}
+			sc.API.UpdateUserCacheAddSups(tx.To, tx.Amount)
+		}
 	}
 
 	reply(true)
