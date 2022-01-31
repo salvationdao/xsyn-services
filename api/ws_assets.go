@@ -298,7 +298,6 @@ func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context,
 type AssetUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID  passport.UserID `json:"userID"`
 		TokenID int             `json:"tokenID"`
 	} `json:"payload"`
 }
