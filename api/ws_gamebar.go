@@ -52,7 +52,8 @@ func (gc *GamebarController) GetSessionIDHandler(ctx context.Context, hubc *hub.
 type AuthTwitchRingCheckRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		TwitchExtensionJWT string `json:"twitchExtensionJWT"`
+		TwitchExtensionJWT  string `json:"twitchExtensionJWT"`
+		GameserverSessionID string `json:"gameserverSessionID"`
 	} `json:"payload"`
 }
 
@@ -65,10 +66,6 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 		return terror.Error(err)
 	}
 
-	if req.Payload.TwitchExtensionJWT == "" {
-		return terror.Error(terror.ErrInvalidInput)
-	}
-
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
 		return terror.Error(terror.ErrInvalidInput)
@@ -79,57 +76,80 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 		return terror.Error(terror.ErrInvalidInput)
 	}
 
-	claims, err := gc.API.Auth.GetClaimsFromTwitchExtensionToken(req.Payload.TwitchExtensionJWT)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	if !strings.HasPrefix(claims.OpaqueUserID, "U") {
-		return terror.Error(terror.ErrInvalidInput, "Twitch user is not login")
-	}
-
-	if claims.TwitchAccountID == "" {
-		return terror.Error(terror.ErrInvalidInput, "No twitch account id is provided")
-	}
-
-	if user.TwitchID.Valid {
-		// check twitch id match current passport user twitch account
-		if claims.TwitchAccountID != user.TwitchID.String {
-			return terror.Error(terror.ErrInvalidInput, "twitch account id does not match to current user")
-		}
-	} else {
-		// associate current twitch id with
-		err := db.UserAddTwitch(ctx, gc.Conn, user, claims.TwitchAccountID)
-		if err != nil {
-			return terror.Error(terror.ErrInvalidInput, "This Twitch account is already associated with a user")
-		}
-
-		user, err = db.UserGet(ctx, gc.Conn, user.ID, gc.API.HostUrl)
+	if req.Payload.TwitchExtensionJWT != "" {
+		claims, err := gc.API.Auth.GetClaimsFromTwitchExtensionToken(req.Payload.TwitchExtensionJWT)
 		if err != nil {
 			return terror.Error(err)
 		}
 
-		// broadcast the update
-		gc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+		if !strings.HasPrefix(claims.OpaqueUserID, "U") {
+			return terror.Error(terror.ErrInvalidInput, "Twitch user is not login")
+		}
+
+		if claims.TwitchAccountID == "" {
+			return terror.Error(terror.ErrInvalidInput, "No twitch account id is provided")
+		}
+
+		if user.TwitchID.Valid {
+			// check twitch id match current passport user twitch account
+			if claims.TwitchAccountID != user.TwitchID.String {
+				return terror.Error(terror.ErrInvalidInput, "twitch account id does not match to current user")
+			}
+		} else {
+			// associate current twitch id with
+			err := db.UserAddTwitch(ctx, gc.Conn, user, claims.TwitchAccountID)
+			if err != nil {
+				return terror.Error(terror.ErrInvalidInput, "This Twitch account is already associated with a user")
+			}
+
+			user, err = db.UserGet(ctx, gc.Conn, user.ID, gc.API.HostUrl)
+			if err != nil {
+				return terror.Error(err)
+			}
+
+			// broadcast the update
+			gc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+		}
+
+		reply(true)
+
+		// send to supremacy server
+		gc.API.SendToServerClient(SupremacyGameServer, &ServerClientMessage{
+			Key: "AUTH:RING:CHECK",
+			Payload: struct {
+				User               *passport.User `json:"user"`
+				TwitchExtensionJWT string         `json:"twitchExtensionJWT"`
+				SessionID          hub.SessionID  `json:"sessionID"`
+			}{
+				User:               user,
+				TwitchExtensionJWT: req.Payload.TwitchExtensionJWT,
+				SessionID:          hubc.SessionID,
+			},
+		})
+
+		return nil
+
+	} else if req.Payload.GameserverSessionID != "" {
+		reply(true)
+
+		// send to supremacy server
+		gc.API.SendToServerClient(SupremacyGameServer, &ServerClientMessage{
+			Key: "AUTH:RING:CHECK",
+			Payload: struct {
+				User                *passport.User `json:"user"`
+				GameserverSessionID string         `json:"gameserverSessionID"`
+				SessionID           hub.SessionID  `json:"sessionID"`
+			}{
+				User:                user,
+				GameserverSessionID: req.Payload.GameserverSessionID,
+				SessionID:           hubc.SessionID,
+			},
+		})
+
+		return nil
 	}
 
-	reply(true)
-
-	// send to supremacy server
-	gc.API.SendToServerClient(SupremacyGameServer, &ServerClientMessage{
-		Key: "AUTH:RING:CHECK",
-		Payload: struct {
-			User               *passport.User `json:"user"`
-			TwitchExtensionJWT string         `json:"twitchExtensionJWT"`
-			SessionID          hub.SessionID  `json:"sessionID"`
-		}{
-			User:               user,
-			TwitchExtensionJWT: req.Payload.TwitchExtensionJWT,
-			SessionID:          hubc.SessionID,
-		},
-	})
-
-	return nil
+	return terror.Error(terror.ErrInvalidInput)
 }
 
 const HubKeyGamebarUserSubscribe hub.HubCommandKey = "GAMEBAR:USER:SUBSCRIBE"
