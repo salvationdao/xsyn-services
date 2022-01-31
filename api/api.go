@@ -3,15 +3,19 @@ package api
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"passport"
 	"passport/db"
 	"passport/email"
 	"passport/log_helpers"
+	"strconv"
 
 	"nhooyr.io/websocket"
 
 	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -180,6 +184,9 @@ func NewAPI(
 			}))
 			r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", WithError(api.Auth.GetNonce))
+			r.Get("/asset/{token_id}", WithError(api.AssetGet))
+
+			
 		})
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
@@ -290,3 +297,34 @@ func (api *API) RecordUserActivity(
 		api.Log.Err(err).Msg("issue saving user activity")
 	}
 }
+
+
+// The TwitterAuth endpoint kicks off the OAuth 1.0a flow
+// https://developer.twitter.com/en/docs/authentication/oauth-1-0a/obtaining-user-access-tokens
+func (c *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
+	
+	// get token id 
+	tokenID := chi.URLParam(r, "token_id")
+	if tokenID == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("Invalid Token ID"))
+	}
+
+	_tokenID, err:= strconv.Atoi(tokenID)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed converting string token id"))
+		
+	}
+	
+	asset, err := db.AssetGet(r.Context(), c.Conn, _tokenID)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to get asset"))
+	}
+
+	err = json.NewEncoder(w).Encode(asset)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("json error"))
+	}
+
+	return http.StatusOK, nil
+}
+
