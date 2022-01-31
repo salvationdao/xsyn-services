@@ -255,11 +255,29 @@ func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context
 		return terror.Error(err)
 	}
 
+	asset, err := db.AssetGet(ctx, sc.Conn, int(req.Payload.AssetTokenID))
+	if err != nil {
+		reply(false)
+		return terror.Error(err)
+	}
+
 	// TODO: In the future, charge user's sups for joining the queue
+
+	sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.AssetTokenID)), asset)
+
+	sc.API.SendToAllServerClient(&ServerClientMessage{
+		Key: AssetUpdated,
+		Payload: struct {
+			Asset *passport.XsynNftMetadata `json:"asset"`
+		}{
+			Asset: asset,
+		},
+	})
 
 	reply(true)
 	return nil
 }
+
 
 type SupremacyAssetLockRequest struct {
 	*hub.HubCommandRequest

@@ -319,5 +319,5 @@ func (ctrlr *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, 
 	}
 
 	reply(asset)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetsSubscribe, req.Payload.UserID.String())), nil
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), nil
 }
