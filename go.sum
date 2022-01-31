@@ -1136,6 +1136,8 @@ github.com/ninja-software/tickle v1.3.2 h1:x4w9dWg1U4VQ0QMrfrH5sevBnJVX7HiqZNx3Q
 github.com/ninja-software/tickle v1.3.2/go.mod h1:kQimeRvKZb825ULSdc1XWos1ssxN7fx6q8htjkGvthE=
 github.com/ninja-syndicate/hub v1.1.0 h1:mAKM3JmRth93jfeok8Y/ZhDaAeB7Dr2oWgP7ium4AJc=
 github.com/ninja-syndicate/hub v1.1.0/go.mod h1:rm21PbCl5MlSTC6GDdwVRqcvkHPxp6IXWawXdveuzoM=
+github.com/ninja-syndicate/hub v1.1.1 h1:tepi5WQnGDiK+ZbSYgZXdDycMssd1oe9zJkVNF8fN18=
+github.com/ninja-syndicate/hub v1.1.1/go.mod h1:yIEUyL/gOJkieTS3U0k4ySC45IA3kCJCmUeRO4NwJ4Y=
 github.com/nishanths/predeclared v0.0.0-20200524104333-86fad755b4d3/go.mod h1:nt3d53pc1VYcphSCIaYAJtnPYnr3Zyn8fMq2wvPGPso=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8/go.mod h1:+ncqLTQzXmGhMZNUePPaPqPvBxHAIsmXswZKocGu+AU=
