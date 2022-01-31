@@ -36,6 +36,8 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 	api.SecureUserSubscribeCommand(HubKeyAssetsSubscribe, assetHub.AssetsUpdatedSubscribeHandler)
 	api.SecureUserSubscribeCommand(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)
 
+	api.SecureUserSubscribeCommand(HubKeyAssetsSubscribe, assetHub.AssetsUpdatedSubscribeHandler)
+
 	api.SecureCommand(HubKeyAssetRegister, assetHub.RegisterHandler)
 	api.SecureCommand(HubKeyAssetQueueJoin, assetHub.JoinQueueHandler)
 	api.SecureCommand(HubKeyAssetQueueLeave, assetHub.LeaveQueueHandler)
@@ -81,7 +83,8 @@ func (ac *AssetController) RegisterHandler(ctx context.Context, hubc *hub.Client
 	}(tx, ctx)
 
 	// insert asset to db
-	err = db.XsynNftMetadataInsert(ctx, tx, req.Payload.XsynNftMetadata)
+	// TODO
+	err = db.XsynNftMetadataInsert(ctx, tx, req.Payload.XsynNftMetadata, req.Payload.XsynNftMetadata.Collection.ID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -298,7 +301,7 @@ func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context,
 type AssetUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		TokenID int             `json:"tokenID"`
+		TokenID int `json:"tokenID"`
 	} `json:"payload"`
 }
 
@@ -320,3 +323,7 @@ func (ctrlr *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, 
 	reply(asset)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), nil
 }
+
+// collections
+
+// collection

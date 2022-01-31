@@ -67,12 +67,6 @@ func (s *Seeder) Run(isProd bool) error {
 		return terror.Error(err, "seed users failed")
 	}
 
-	fmt.Println("Seeding Supremacy Faction User")
-	_, err = s.SupremacyFactionUsers(ctx)
-	if err != nil {
-		return terror.Error(err, "seed users failed")
-	}
-
 	//fmt.Println("Seeding organisations")
 	//organisations, err := s.Organisations(ctx)
 	//if err != nil {
@@ -80,10 +74,22 @@ func (s *Seeder) Run(isProd bool) error {
 	//}
 
 	if !isProd {
+		fmt.Println("Seeding collections")
+		_, err := s.SeedCollections(ctx)
+		if err != nil {
+			return terror.Error(err, "seed collections failed")
+		}
+
 		fmt.Println("Seeding xsyn NFTs")
-		_, _, _, err := s.SeedNFTS(ctx)
+		_, _, _, err = s.SeedNFTS(ctx)
 		if err != nil {
 			return terror.Error(err, "seed nfts failed")
+		}
+
+		fmt.Println("Seeding Supremacy Faction User")
+		_, err = s.SupremacyFactionUsers(ctx)
+		if err != nil {
+			return terror.Error(err, "seed users failed")
 		}
 
 		fmt.Println("Seeding users")

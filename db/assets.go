@@ -17,7 +17,6 @@ const (
 	AssetColumnTokenID     AssetColumn = "token_id"
 	AssetColumnUserID      AssetColumn = "user_id"
 	AssetColumnName        AssetColumn = "name"
-	AssetColumnCollection  AssetColumn = "collection"
 	AssetColumnDescription AssetColumn = "description"
 	AssetColumnExternalUrl AssetColumn = "external_url"
 	AssetColumnImage       AssetColumn = "image"
@@ -34,7 +33,6 @@ func (ic AssetColumn) IsValid() error {
 		AssetColumnTokenID,
 		AssetColumnUserID,
 		AssetColumnName,
-		AssetColumnCollection,
 		AssetColumnDescription,
 		AssetColumnExternalUrl,
 		AssetColumnImage,
@@ -51,7 +49,6 @@ const AssetGetQuery string = `
 SELECT 
 xsyn_nft_metadata.token_id,
 xsyn_nft_metadata.name,
-xsyn_nft_metadata.collection,
 xsyn_nft_metadata.description,
 xsyn_nft_metadata.external_url,
 xsyn_nft_metadata.image,

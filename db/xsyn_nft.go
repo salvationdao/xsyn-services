@@ -9,15 +9,33 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
+// Collection inserts a new collection
+func CollectionInsert(ctx context.Context, conn Conn, collection *passport.Collection) error {
+	fmt.Println("!!!!!!!!", collection.Name)
+	q := `INSERT INTO collections (name) VALUES($1)`
+
+	_, err := conn.Exec(ctx, q, collection.Name)
+
+	fmt.Println("yyyyyyyyyyyyy")
+
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	fmt.Println("xxxxxxxxxxxx")
+
+	return nil
+}
+
 // XsynNftMetadataInsert inserts a new nft metadata
-func XsynNftMetadataInsert(ctx context.Context, conn Conn, nft *passport.XsynNftMetadata) error {
-	q := `	INSERT INTO xsyn_nft_metadata (token_id, name, collection, game_object,  description, external_url, image, attributes, additional_metadata)
+func XsynNftMetadataInsert(ctx context.Context, conn Conn, nft *passport.XsynNftMetadata, collection_id string) error {
+	q := `	INSERT INTO xsyn_nft_metadata (token_id, name, collection_id, game_object, description, external_url, image, attributes, additional_metadata)
 			VALUES((SELECT nextval('token_id_seq')),$1, $2, $3, $4, $5, $6, $7, $8)
 			RETURNING token_id,  name, description, external_url, image, attributes`
 
 	err := pgxscan.Get(ctx, conn, nft, q,
 		nft.Name,
-		nft.Collection,
+		collection_id,
 		nft.GameObject,
 		nft.Description,
 		nft.ExternalUrl,
@@ -54,7 +72,7 @@ func XsynNftMetadataAvailableGet(ctx context.Context, conn Conn, userID passport
 	nft := &passport.XsynNftMetadata{}
 	q := `
 		SELECT
-			xnm.token_id, xnm.collection, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+			xnm.token_id, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM 
 			xsyn_nft_metadata xnm
 		INNER JOIN
@@ -224,7 +242,7 @@ func XsynAssetBulkRelease(ctx context.Context, conn Conn, nfts []*passport.WarMa
 func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID, amount int) ([]*passport.XsynNftMetadata, error) {
 	nft := []*passport.XsynNftMetadata{}
 	q := `
-		SELECT xnm.token_id, xnm.collection, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+		SELECT xnm.token_id, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM xsyn_nft_metadata xnm
 				 INNER JOIN xsyn_assets xa ON xa.token_id = xnm.token_id
 		WHERE xa.user_id = $1

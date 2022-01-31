@@ -321,6 +321,16 @@ CREATE TRIGGER updateProductKeywords
 EXECUTE PROCEDURE updateProductKeywords();
 
 
+-- collections
+CREATE TABLE collections
+(
+    id              UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    name            TEXT UNIQUE      NOT NULL,
+    logo_blob_id    UUID REFERENCES blobs (id),
+    deleted_at      TIMESTAMPTZ,
+    updated_at      TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+    created_at      TIMESTAMPTZ      NOT NULL DEFAULT NOW()
+);
 /********************************************
  *           xsyn_nft_metadatas              *
  * This table is the nft metadata NOT assets *
@@ -332,7 +342,7 @@ CREATE TABLE xsyn_nft_metadata
 (
     token_id            NUMERIC(78, 0) PRIMARY KEY NOT NULL,
     name                TEXT                       NOT NULL,
-    collection          TEXT,
+    collection_id       UUID NOT NULL REFERENCES collections (id),
     game_object         JSONB,
     description         TEXT,
     external_url        TEXT,
@@ -357,7 +367,7 @@ DECLARE
     temp TSVECTOR;
 BEGIN
     SELECT (SETWEIGHT(TO_TSVECTOR('english', NEW.external_url), 'A') ||
-            SETWEIGHT(TO_TSVECTOR('english', NEW.name), 'A') || SETWEIGHT(TO_TSVECTOR('english', NEW.collection), 'A') ||
+            SETWEIGHT(TO_TSVECTOR('english', NEW.name), 'A')  ||
             SETWEIGHT(TO_TSVECTOR('english', NEW.image), 'A') ||
             SETWEIGHT(TO_TSVECTOR('english', NEW.description), 'A'))
     INTO temp;
