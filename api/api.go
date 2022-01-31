@@ -178,13 +178,10 @@ func NewAPI(
 			r.Use(sentryHandler.Handle)
 			r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn))
 			r.Mount("/files", FileRouter(conn, api))
-			r.Mount("/auth", AuthRouter(conn, api, &auth.TwitterConfig{
-				APIKey:    twitterAPIKey,
-				APISecret: twitterAPISecret,
-			}))
 			r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", WithError(api.Auth.GetNonce))
 			r.Get("/asset/{token_id}", WithError(api.AssetGet))
+			r.Get("/auth/twitter", WithError(api.Auth.TwitterAuth))
 		})
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
