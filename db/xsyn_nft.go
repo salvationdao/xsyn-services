@@ -11,18 +11,13 @@ import (
 
 // Collection inserts a new collection
 func CollectionInsert(ctx context.Context, conn Conn, collection *passport.Collection) error {
-	fmt.Println("!!!!!!!!", collection.Name)
 	q := `INSERT INTO collections (name) VALUES($1)`
 
 	_, err := conn.Exec(ctx, q, collection.Name)
 
-	fmt.Println("yyyyyyyyyyyyy")
-
 	if err != nil {
 		return terror.Error(err)
 	}
-
-	fmt.Println("xxxxxxxxxxxx")
 
 	return nil
 }

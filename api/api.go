@@ -295,31 +295,30 @@ func (api *API) RecordUserActivity(
 
 // AssetGet grabs asset's metadata via token id
 func (c *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
-	
-	// get token id 
+
+	// Get token id
 	tokenID := chi.URLParam(r, "token_id")
 	if tokenID == "" {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("Invalid Token ID"))
 	}
 
-	// convert token id from string to int
-	_tokenID, err:= strconv.Atoi(tokenID)
+	// Convert token id from string to int
+	_tokenID, err := strconv.Atoi(tokenID)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed converting string token id"))
-	}
-	
-	// get asset via token id
-	asset, err := db.AssetGet(r.Context(), c.Conn, _tokenID)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to get asset"))
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("Failed converting string token id to int"))
 	}
 
-	// encode result
+	// Get asset via token id
+	asset, err := db.AssetGet(r.Context(), c.Conn, uint64(_tokenID))
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("Failed to get asset"))
+	}
+
+	// Encode result
 	err = json.NewEncoder(w).Encode(asset)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("json error"))
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("Failed to encode JSON"))
 	}
 
 	return http.StatusOK, nil
 }
-

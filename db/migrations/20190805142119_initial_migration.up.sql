@@ -327,10 +327,41 @@ CREATE TABLE collections
     id              UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     name            TEXT UNIQUE      NOT NULL,
     logo_blob_id    UUID REFERENCES blobs (id),
+    keywords        TSVECTOR, -- search
     deleted_at      TIMESTAMPTZ,
     updated_at      TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
     created_at      TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
+
+-- for collection text search
+CREATE INDEX idx_fts_collections_vec ON collections USING gin (keywords);
+
+CREATE OR REPLACE FUNCTION updateCollectionsKeywords()
+    RETURNS TRIGGER
+AS
+$updateCollectionsKeywords$
+DECLARE
+    temp TSVECTOR;
+BEGIN
+    SELECT (SETWEIGHT(TO_TSVECTOR('english', NEW.name), 'A'))
+    INTO temp;
+    IF TG_OP = 'INSERT' OR temp != OLD.keywords THEN
+        UPDATE
+            collections
+        SET keywords = temp
+        WHERE id = NEW.id;
+    END IF;
+    RETURN NULL;
+END;
+$updateCollectionsKeywords$
+    LANGUAGE plpgsql;
+
+CREATE TRIGGER updateCollectionsKeywords
+    AFTER INSERT OR UPDATE
+    ON collections
+    FOR EACH ROW
+EXECUTE PROCEDURE updateCollectionsKeywords();
+
 /********************************************
  *           xsyn_nft_metadatas              *
  * This table is the nft metadata NOT assets *

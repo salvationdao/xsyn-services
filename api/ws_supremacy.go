@@ -255,7 +255,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context
 		return terror.Error(err)
 	}
 
-	asset, err := db.AssetGet(ctx, sc.Conn, int(req.Payload.AssetTokenID))
+	asset, err := db.AssetGet(ctx, sc.Conn, req.Payload.AssetTokenID)
 	if err != nil {
 		reply(false)
 		return terror.Error(err)
@@ -277,7 +277,6 @@ func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context
 	reply(true)
 	return nil
 }
-
 
 type SupremacyAssetLockRequest struct {
 	*hub.HubCommandRequest

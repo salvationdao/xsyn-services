@@ -13,14 +13,15 @@ import (
 type AssetColumn string
 
 const (
-	AssetColumnID          AssetColumn = "id"
-	AssetColumnTokenID     AssetColumn = "token_id"
-	AssetColumnUserID      AssetColumn = "user_id"
-	AssetColumnName        AssetColumn = "name"
-	AssetColumnDescription AssetColumn = "description"
-	AssetColumnExternalUrl AssetColumn = "external_url"
-	AssetColumnImage       AssetColumn = "image"
-	AssetColumnAttributes  AssetColumn = "attributes"
+	AssetColumnID           AssetColumn = "id"
+	AssetColumnTokenID      AssetColumn = "token_id"
+	AssetColumnUserID       AssetColumn = "user_id"
+	AssetColumnCollectionID AssetColumn = "collection_id"
+	AssetColumnName         AssetColumn = "name"
+	AssetColumnDescription  AssetColumn = "description"
+	AssetColumnExternalUrl  AssetColumn = "external_url"
+	AssetColumnImage        AssetColumn = "image"
+	AssetColumnAttributes   AssetColumn = "attributes"
 
 	AssetColumnDeletedAt AssetColumn = "deleted_at"
 	AssetColumnUpdatedAt AssetColumn = "updated_at"
@@ -32,6 +33,7 @@ func (ic AssetColumn) IsValid() error {
 	case AssetColumnID,
 		AssetColumnTokenID,
 		AssetColumnUserID,
+		AssetColumnCollectionID,
 		AssetColumnName,
 		AssetColumnDescription,
 		AssetColumnExternalUrl,
@@ -191,7 +193,7 @@ func AssetList(
 }
 
 // AssetGet returns a asset by given ID
-func AssetGet(ctx context.Context, conn Conn, tokenID int) (*passport.XsynNftMetadata, error) {
+func AssetGet(ctx context.Context, conn Conn, tokenID uint64) (*passport.XsynNftMetadata, error) {
 	asset := &passport.XsynNftMetadata{}
 	q := AssetGetQuery + ` WHERE xsyn_nft_metadata.token_id = $1`
 

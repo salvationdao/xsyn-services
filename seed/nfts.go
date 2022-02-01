@@ -2,7 +2,6 @@ package seed
 
 import (
 	"context"
-	"fmt"
 	"passport"
 	"passport/db"
 
@@ -34,19 +33,15 @@ func (s *Seeder) SeedNFTS(ctx context.Context) (warMachines, weapons, utility []
 		return nil, nil, nil, terror.Error(err)
 	}
 
-	fmt.Println("1111111111111111111111111111")
 	utility, err = s.SeedUtility(ctx, supremacyCollection)
 	if err != nil {
 		return nil, nil, nil, terror.Error(err)
 	}
-	fmt.Println("22222222222222222222")
 
 	weapons, err = s.SeedWeapons(ctx, supremacyCollection)
 	if err != nil {
 		return nil, nil, nil, terror.Error(err)
 	}
-
-	fmt.Println("333333333333333333333333")
 
 	warMachines, err = s.SeedWarMachine(ctx, weapons, supremacyCollection)
 	if err != nil {
@@ -1023,7 +1018,6 @@ func (s *Seeder) SeedUtility(ctx context.Context, collection *passport.Collectio
 	}
 
 	for _, nft := range newNFT {
-		fmt.Println("this", collection.ID)
 		err := db.XsynNftMetadataInsert(ctx, s.Conn, nft, collection.ID)
 		if err != nil {
 			return nil, terror.Error(err)

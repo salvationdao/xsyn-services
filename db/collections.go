@@ -2,7 +2,9 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"passport"
+	"strings"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
@@ -10,8 +12,8 @@ import (
 
 const CollectionGetQuery string = `
 SELECT 
+DISTINCT collections.name,
 collections.id,
-collections.name,
 collections.deleted_at,
 collections.updated_at,
 collections.created_at
@@ -19,7 +21,32 @@ collections.created_at
 
 const CollectionGetQueryFrom = `
 FROM collections
+LEFT OUTER JOIN xsyn_nft_metadata ON collections.id = xsyn_nft_metadata.collection_id 
+LEFT OUTER JOIN xsyn_assets ON xsyn_assets.token_id = xsyn_nft_metadata.token_id 
 `
+
+type CollectionColumn string
+
+const (
+	CollectionColumnID   CollectionColumn = "id"
+	CollectionColumnName CollectionColumn = "name"
+
+	CollectionColumnDeletedAt CollectionColumn = "deleted_at"
+	CollectionColumnUpdatedAt CollectionColumn = "updated_at"
+	CollectionColumnCreatedAt CollectionColumn = "created_at"
+)
+
+func (cc CollectionColumn) IsValid() error {
+	switch cc {
+	case CollectionColumnID,
+		CollectionColumnName,
+		CollectionColumnDeletedAt,
+		CollectionColumnUpdatedAt,
+		CollectionColumnCreatedAt:
+		return nil
+	}
+	return terror.Error(fmt.Errorf("invalid asset column type"))
+}
 
 // CollectionGet returns a collection by name
 func CollectionGet(ctx context.Context, conn Conn, name string) (*passport.Collection, error) {
@@ -31,4 +58,129 @@ func CollectionGet(ctx context.Context, conn Conn, name string) (*passport.Colle
 		return nil, terror.Error(err, "Issue getting collection.")
 	}
 	return collection, nil
+}
+
+// CollectionsList gets a list of collections depending on the filters
+func CollectionsList(
+	ctx context.Context,
+	conn Conn,
+	result *[]*passport.Collection,
+	search string,
+	archived bool,
+	includedTokenIDs []int,
+	filter *ListFilterRequest,
+	offset int,
+	pageSize int,
+	sortBy CollectionColumn,
+	sortDir SortByDir,
+) (int, error) {
+	// Prepare Filters
+	var args []interface{}
+
+	filterConditionsString := ""
+	if filter != nil {
+		filterConditions := []string{}
+		for i, f := range filter.Items {
+			column := CollectionColumn(f.ColumnField)
+			err := column.IsValid()
+			if err != nil {
+				return 0, terror.Error(err)
+			}
+
+			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, i+1)
+			if condition != "" {
+				filterConditions = append(filterConditions, condition)
+				args = append(args, value)
+			}
+		}
+		if len(filterConditions) > 0 {
+			filterConditionsString = "AND (" + strings.Join(filterConditions, " "+string(filter.LinkOperator)+" ") + ")"
+		}
+	}
+
+	// select specific assets via tokenIDs
+	// if includedTokenIDs != nil {
+	// 	cond := "("
+	// 	for i, nftTokenID := range includedTokenIDs {
+	// 		cond += fmt.Sprintf("%d", nftTokenID)
+	// 		if i < len(includedTokenIDs)-1 {
+	// 			cond += ","
+	// 			continue
+	// 		}
+
+	// 		cond += ")"
+	// 	}
+	// 	filterConditionsString += fmt.Sprintf(" AND xsyn_nft_metadata.token_id  IN %v", cond)
+	// }
+
+	archiveCondition := "IS NULL"
+	if archived {
+		archiveCondition = "IS NOT NULL"
+	}
+
+	searchCondition := ""
+	if search != "" {
+		xsearch := ParseQueryText(search, true)
+		if len(xsearch) > 0 {
+			args = append(args, xsearch)
+			searchCondition = fmt.Sprintf(" AND assets.keywords @@ to_tsquery($%d)", len(args))
+		}
+	}
+
+	// Get Total Found
+	countQ := fmt.Sprintf(`--sql
+		SELECT COUNT(DISTINCT xsyn_nft_metadata.token_id)
+		%s
+		WHERE xsyn_nft_metadata.deleted_at %s
+			%s
+			%s
+		`,
+		AessetGetQueryFrom,
+		archiveCondition,
+		filterConditionsString,
+		searchCondition,
+	)
+
+	var totalRows int
+	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
+	if err != nil {
+		return 0, terror.Error(err)
+	}
+	if totalRows == 0 {
+		return 0, nil
+	}
+
+	// Order and Limit
+	orderBy := " ORDER BY created_at desc"
+	if sortBy != "" {
+		err := sortBy.IsValid()
+		if err != nil {
+			return 0, terror.Error(err)
+		}
+		orderBy = fmt.Sprintf(" ORDER BY %s %s", sortBy, sortDir)
+	}
+	limit := ""
+	if pageSize > 0 {
+		limit = fmt.Sprintf(" LIMIT %d OFFSET %d", pageSize, offset)
+	}
+
+	// Get Paginated Result
+	q := fmt.Sprintf(
+		AssetGetQuery+`--sql
+		WHERE xsyn_nft_metadata.deleted_at %s
+			%s
+			%s
+		%s
+		%s`,
+		archiveCondition,
+		filterConditionsString,
+		searchCondition,
+		orderBy,
+		limit,
+	)
+	err = pgxscan.Select(ctx, conn, result, q, args...)
+	if err != nil {
+		return 0, terror.Error(err)
+	}
+	return totalRows, nil
 }
