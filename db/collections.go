@@ -53,7 +53,7 @@ func (cc CollectionColumn) IsValid() error {
 // CollectionGet returns a collection by name
 func CollectionGet(ctx context.Context, conn Conn, name string) (*passport.Collection, error) {
 	collection := &passport.Collection{}
-	q := CollectionGetQuery + ` WHERE collections.name = $1`
+	q := CollectionGetQuery + `WHERE collections.name = $1`
 
 	err := pgxscan.Get(ctx, conn, collection, q, name)
 	if err != nil {

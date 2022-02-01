@@ -105,7 +105,7 @@ func (ctrlr *CollectionController) CollectionsUpdatedSubscribeHandler(ctx contex
 type CollectionUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		id uint64 `json:"id"`
+		Name string `json:"name"`
 	} `json:"payload"`
 }
 
@@ -113,17 +113,17 @@ type CollectionUpdatedSubscribeRequest struct {
 const HubKeyCollectionSubscribe hub.HubCommandKey = "COLLECTION:SUBSCRIBE"
 
 func (ctrlr *CollectionController) CollectionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &AssetUpdatedSubscribeRequest{}
+	req := &CollectionUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
 	}
 
-	asset, err := db.AssetGet(ctx, ctrlr.Conn, req.Payload.TokenID)
+	collection, err := db.CollectionGet(ctx, ctrlr.Conn, req.Payload.Name)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
 	}
 
-	reply(asset)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), nil
+	reply(collection)
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyCollectionSubscribe, collection.ID)), nil
 }

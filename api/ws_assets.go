@@ -257,6 +257,7 @@ type AssetListResponse struct {
 const HubKeyAssetsSubscribe hub.HubCommandKey = "ASSET_LIST:SUBSCRIBE"
 
 func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+
 	req := &AssetsUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {

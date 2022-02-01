@@ -49,6 +49,7 @@ func (ic AssetColumn) IsValid() error {
 
 const AssetGetQuery string = `
 SELECT 
+row_to_json(c) as collection,
 xsyn_nft_metadata.token_id,
 xsyn_nft_metadata.name,
 xsyn_nft_metadata.description,
@@ -65,6 +66,7 @@ xsyn_assets.frozen_at
 const AessetGetQueryFrom = `
 FROM xsyn_nft_metadata 
 LEFT OUTER JOIN xsyn_assets ON xsyn_nft_metadata.token_id = xsyn_assets.token_id
+INNER JOIN collections c ON xsyn_nft_metadata.collection_id = c.id
 `
 
 // AssetList gets a list of assets depending on the filters
@@ -195,7 +197,16 @@ func AssetList(
 // AssetGet returns a asset by given ID
 func AssetGet(ctx context.Context, conn Conn, tokenID uint64) (*passport.XsynNftMetadata, error) {
 	asset := &passport.XsynNftMetadata{}
-	q := AssetGetQuery + ` WHERE xsyn_nft_metadata.token_id = $1`
+	q := AssetGetQuery + `WHERE xsyn_nft_metadata.token_id = $1`
+
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+
+	fmt.Println("this is asset query", q)
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
 
 	err := pgxscan.Get(ctx, conn, asset, q, tokenID)
 	if err != nil {
