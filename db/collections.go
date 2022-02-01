@@ -45,7 +45,7 @@ func (cc CollectionColumn) IsValid() error {
 		CollectionColumnCreatedAt:
 		return nil
 	}
-	return terror.Error(fmt.Errorf("invalid asset column type"))
+	return terror.Error(fmt.Errorf("invalid collection column type"))
 }
 
 // CollectionGet returns a collection by name
@@ -98,7 +98,7 @@ func CollectionsList(
 		}
 	}
 
-	// select specific assets via tokenIDs
+	// select specific collection via tokenIDs
 	// if includedTokenIDs != nil {
 	// 	cond := "("
 	// 	for i, nftTokenID := range includedTokenIDs {
@@ -123,15 +123,15 @@ func CollectionsList(
 		xsearch := ParseQueryText(search, true)
 		if len(xsearch) > 0 {
 			args = append(args, xsearch)
-			searchCondition = fmt.Sprintf(" AND assets.keywords @@ to_tsquery($%d)", len(args))
+			searchCondition = fmt.Sprintf(" AND collections.keywords @@ to_tsquery($%d)", len(args))
 		}
 	}
 
 	// Get Total Found
 	countQ := fmt.Sprintf(`--sql
-		SELECT COUNT(DISTINCT xsyn_nft_metadata.token_id)
+		SELECT COUNT(DISTINCT collections.id)
 		%s
-		WHERE xsyn_nft_metadata.deleted_at %s
+		WHERE collections.deleted_at %s
 			%s
 			%s
 		`,
@@ -166,8 +166,8 @@ func CollectionsList(
 
 	// Get Paginated Result
 	q := fmt.Sprintf(
-		AssetGetQuery+`--sql
-		WHERE xsyn_nft_metadata.deleted_at %s
+		CollectionGetQuery+`--sql
+		WHERE collections.deleted_at %s
 			%s
 			%s
 		%s

@@ -18,18 +18,18 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// AssetController holds handlers for roles
+// AssetController holds handlers for as
 type AssetController struct {
 	Conn *pgxpool.Pool
 	Log  *zerolog.Logger
 	API  *API
 }
 
-// NewAssetController creates the role hub
+// NewAssetController creates the asset hub
 func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *AssetController {
 	assetHub := &AssetController{
 		Conn: conn,
-		Log:  log_helpers.NamedLogger(log, "role_hub"),
+		Log:  log_helpers.NamedLogger(log, "asset_hub"),
 		API:  api,
 	}
 
@@ -38,8 +38,6 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 
 	// asset get
 	api.SecureUserSubscribeCommand(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)
-
-	// api.SecureUserSubscribeCommand(HubKeyAssetsSubscribe, assetHub.AssetsUpdatedSubscribeHandler)
 
 	api.SecureCommand(HubKeyAssetRegister, assetHub.RegisterHandler)
 	api.SecureCommand(HubKeyAssetQueueJoin, assetHub.JoinQueueHandler)
@@ -234,10 +232,7 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	return nil
 }
 
-// rootHub.SecureCommand(HubKeyAssetList, AssetController.GetHandler)
-const HubKeyAssetList hub.HubCommandKey = "ASSET:LIST"
-
-// AssetListHandlerRequest requests holds the filter for user list
+// AssetsUpdatedSubscribeRequest requests holds the filter for user list
 type AssetsUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
@@ -326,7 +321,3 @@ func (ctrlr *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, 
 	reply(asset)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), nil
 }
-
-// collections
-
-// collection
