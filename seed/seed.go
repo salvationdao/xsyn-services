@@ -74,6 +74,12 @@ func (s *Seeder) Run(isProd bool) error {
 	//}
 
 	if !isProd {
+		fmt.Println("Seeding users")
+		err = s.Users(ctx, nil)
+		if err != nil {
+			return terror.Error(err, "seed users failed")
+		}
+
 		fmt.Println("Seeding collections")
 		_, err := s.SeedCollections(ctx)
 		if err != nil {
@@ -92,15 +98,8 @@ func (s *Seeder) Run(isProd bool) error {
 			return terror.Error(err, "seed users failed")
 		}
 
-		fmt.Println("Seeding users")
-		err = s.Users(ctx, nil)
-		if err != nil {
-			return terror.Error(err, "seed users failed")
-		}
-
 	}
 
-	//s.Conn.
 	fmt.Println("Seed complete")
 	return nil
 }

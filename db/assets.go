@@ -199,18 +199,27 @@ func AssetGet(ctx context.Context, conn Conn, tokenID uint64) (*passport.XsynNft
 	asset := &passport.XsynNftMetadata{}
 	q := AssetGetQuery + `WHERE xsyn_nft_metadata.token_id = $1`
 
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-
-	fmt.Println("this is asset query", q)
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-
 	err := pgxscan.Get(ctx, conn, asset, q, tokenID)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting asset from token ID.")
+	}
+	return asset, nil
+}
+
+// AssetGet returns a asset by given ID
+func AssetGetByName(ctx context.Context, conn Conn, name string) (*passport.XsynNftMetadata, error) {
+	asset := &passport.XsynNftMetadata{}
+	q := AssetGetQuery + `WHERE xsyn_nft_metadata.name = $1`
+
+	fmt.Println()
+	fmt.Println()
+	fmt.Println("this is ass query")
+	fmt.Println(q)
+	fmt.Println()
+	fmt.Println()
+	err := pgxscan.Get(ctx, conn, asset, q, name)
+	if err != nil {
+		return nil, terror.Error(err, "Issue getting asset from name.")
 	}
 	return asset, nil
 }

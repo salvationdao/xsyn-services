@@ -318,6 +318,11 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		return nil, terror.Error(err)
 	}
 
+	err = s.AndAssignNftToMember(ctx, supremacyCollection)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
 	return u, nil
 }
 
@@ -753,5 +758,36 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 		}
 	}
 
+	return nil
+}
+
+func (s *Seeder) AndAssignNftToMember(ctx context.Context, collection *passport.Collection) error {
+
+	fmt.Println("0000000000")
+	fmt.Println("0000000000")
+	fmt.Println("0000000000")
+	fmt.Println("0000000000")
+
+	// get member user
+	member, err := db.UserByEmail(ctx, s.Conn, "member@example.com", "")
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	fmt.Println("11111111111111")
+
+	// get "Big War Machine" nft
+	nft, err := db.AssetGetByName(ctx, s.Conn, "Big War Machine")
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	fmt.Println("2222222222222222222")
+
+	// assign nft to member
+	err = db.XsynNftMetadataAssignUser(ctx, s.Conn, nft.TokenID, member.ID)
+	if err != nil {
+		return terror.Error(err)
+	}
 	return nil
 }
