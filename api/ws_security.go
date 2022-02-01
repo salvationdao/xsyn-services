@@ -25,7 +25,6 @@ func (api *API) SecureCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 
 		return fn(ctx, hubc, payload, reply)
 	})
-
 }
 
 // SecureCommandWithPerm registers a command to the hub that will only run if the websocket has authenticated and the user has the specified permission

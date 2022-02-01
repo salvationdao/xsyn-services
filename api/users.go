@@ -10,7 +10,6 @@ import (
 	"passport/email"
 	"passport/helpers"
 	"time"
-	"unicode"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
@@ -147,28 +146,27 @@ func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebook
 		if email == "" {
 			return nil, terror.Error(fmt.Errorf("email empty"), "Email cannot be empty")
 		}
-		// Must contain at least 8 characters
-		// Must contain at least 1 upper and 1 lower case letter
-		// Must contain at least 1 number
-		// Must contain at least one symbol
-		hasUpper := false
-		hasLower := false
-		hasNumber := true
-		hasSymbol := true
-		for _, r := range password {
-			if unicode.IsUpper(r) {
-				hasUpper = true
-			} else if unicode.IsLower(r) {
-				hasLower = true
-			} else if unicode.IsNumber(r) {
-				hasNumber = true
-			} else if unicode.IsSymbol(r) {
-				hasSymbol = true
-			}
+
+		err := helpers.IsValidPassword(password)
+		if err != nil {
+			return nil, terror.Error(err)
 		}
-		if len(password) < 8 || !hasUpper || !hasLower || !hasNumber || !hasSymbol {
-			return nil, terror.Error(fmt.Errorf("password does not meet requirements"), "Invalid password. Please check that the requirements are fulfilled")
+
+		emailAvailable, err := db.EmailAvailable(ctx, ug.Conn, email, nil)
+		if err != nil {
+			return nil, terror.Error(err, "Something went wrong. Please try again.")
 		}
+		if !emailAvailable {
+			return nil, terror.Error(fmt.Errorf("user already exists"), "A user with that email already exists. Perhaps you'd like to login instead?")
+		}
+	}
+
+	usernameAvailable, err := db.UsernameAvailable(ctx, ug.Conn, username, nil)
+	if err != nil {
+		return nil, terror.Error(err, "Something went wrong. Please try again.")
+	}
+	if !usernameAvailable {
+		return nil, terror.Error(fmt.Errorf("user already exists"), "A user with that username already exists. Perhaps you'd like to login instead?")
 	}
 
 	user := &passport.User{
@@ -199,7 +197,7 @@ func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebook
 		}, nil
 	}
 
-	err := db.UserCreate(ctx, ug.Conn, user)
+	err = db.UserCreate(ctx, ug.Conn, user)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
