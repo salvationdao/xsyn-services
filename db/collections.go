@@ -69,7 +69,6 @@ func CollectionsList(
 	result *[]*passport.Collection,
 	search string,
 	archived bool,
-	includedTokenIDs []int,
 	filter *ListFilterRequest,
 	offset int,
 	pageSize int,
@@ -78,12 +77,6 @@ func CollectionsList(
 ) (int, error) {
 	// Prepare Filters
 	var args []interface{}
-
-	fmt.Println("inner")
-	fmt.Println("inner")
-	fmt.Println("inner")
-	fmt.Println("inner")
-	fmt.Println("inner")
 
 	filterConditionsString := ""
 	if filter != nil {
@@ -106,22 +99,6 @@ func CollectionsList(
 		}
 	}
 
-	fmt.Println("1111111111111111")
-	// select specific collection via tokenIDs
-	// if includedTokenIDs != nil {
-	// 	cond := "("
-	// 	for i, nftTokenID := range includedTokenIDs {
-	// 		cond += fmt.Sprintf("%d", nftTokenID)
-	// 		if i < len(includedTokenIDs)-1 {
-	// 			cond += ","
-	// 			continue
-	// 		}
-
-	// 		cond += ")"
-	// 	}
-	// 	filterConditionsString += fmt.Sprintf(" AND xsyn_nft_metadata.token_id  IN %v", cond)
-	// }
-
 	archiveCondition := "IS NULL"
 	if archived {
 		archiveCondition = "IS NOT NULL"
@@ -135,8 +112,6 @@ func CollectionsList(
 			searchCondition = fmt.Sprintf(" AND collections.keywords @@ to_tsquery($%d)", len(args))
 		}
 	}
-
-	fmt.Println("22222222222222222")
 
 	// Get Total Found
 	countQ := fmt.Sprintf(`--sql
@@ -161,8 +136,6 @@ func CollectionsList(
 		return 0, nil
 	}
 
-	fmt.Println("3333333333333333333")
-
 	// Order and Limit
 	orderBy := " ORDER BY created_at desc"
 	if sortBy != "" {
@@ -176,8 +149,6 @@ func CollectionsList(
 	if pageSize > 0 {
 		limit = fmt.Sprintf(" LIMIT %d OFFSET %d", pageSize, offset)
 	}
-
-	fmt.Println("4444444444444444444")
 
 	// Get Paginated Result
 	q := fmt.Sprintf(

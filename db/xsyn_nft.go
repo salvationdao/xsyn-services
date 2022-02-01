@@ -67,11 +67,13 @@ func XsynNftMetadataAvailableGet(ctx context.Context, conn Conn, userID passport
 	nft := &passport.XsynNftMetadata{}
 	q := `
 		SELECT
-			xnm.token_id, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+			xnm.token_id, row_to_json(c) as collection, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM 
 			xsyn_nft_metadata xnm
 		INNER JOIN
 			xsyn_assets xa ON xa.token_id = xnm.token_id AND xa.user_id = $1 AND xa.token_id = $2 AND xa.frozen_at ISNULL
+		INNER JOIN
+			collections c on c.id = xnm.collection_id
 		WHERE
 			xnm.durability = 100
 	`

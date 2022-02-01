@@ -80,7 +80,6 @@ func (ctrlr *CollectionController) CollectionsUpdatedSubscribeHandler(ctx contex
 		ctx, ctrlr.Conn, &collections,
 		req.Payload.Search,
 		req.Payload.Archived,
-		req.Payload.IncludedTokenIDs,
 		req.Payload.Filter,
 		offset,
 		req.Payload.PageSize,
