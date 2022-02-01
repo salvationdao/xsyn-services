@@ -28,8 +28,9 @@ LEFT OUTER JOIN xsyn_assets ON xsyn_assets.token_id = xsyn_nft_metadata.token_id
 type CollectionColumn string
 
 const (
-	CollectionColumnID   CollectionColumn = "id"
-	CollectionColumnName CollectionColumn = "name"
+	CollectionColumnID     CollectionColumn = "id"
+	CollectionColumnName   CollectionColumn = "name"
+	CollectionColumnUserID CollectionColumn = "user_id"
 
 	CollectionColumnDeletedAt CollectionColumn = "deleted_at"
 	CollectionColumnUpdatedAt CollectionColumn = "updated_at"
@@ -40,6 +41,7 @@ func (cc CollectionColumn) IsValid() error {
 	switch cc {
 	case CollectionColumnID,
 		CollectionColumnName,
+		CollectionColumnUserID,
 		CollectionColumnDeletedAt,
 		CollectionColumnUpdatedAt,
 		CollectionColumnCreatedAt:
@@ -77,6 +79,12 @@ func CollectionsList(
 	// Prepare Filters
 	var args []interface{}
 
+	fmt.Println("inner")
+	fmt.Println("inner")
+	fmt.Println("inner")
+	fmt.Println("inner")
+	fmt.Println("inner")
+
 	filterConditionsString := ""
 	if filter != nil {
 		filterConditions := []string{}
@@ -98,6 +106,7 @@ func CollectionsList(
 		}
 	}
 
+	fmt.Println("1111111111111111")
 	// select specific collection via tokenIDs
 	// if includedTokenIDs != nil {
 	// 	cond := "("
@@ -127,6 +136,8 @@ func CollectionsList(
 		}
 	}
 
+	fmt.Println("22222222222222222")
+
 	// Get Total Found
 	countQ := fmt.Sprintf(`--sql
 		SELECT COUNT(DISTINCT collections.id)
@@ -135,7 +146,7 @@ func CollectionsList(
 			%s
 			%s
 		`,
-		AessetGetQueryFrom,
+		CollectionGetQueryFrom,
 		archiveCondition,
 		filterConditionsString,
 		searchCondition,
@@ -150,6 +161,8 @@ func CollectionsList(
 		return 0, nil
 	}
 
+	fmt.Println("3333333333333333333")
+
 	// Order and Limit
 	orderBy := " ORDER BY created_at desc"
 	if sortBy != "" {
@@ -163,6 +176,8 @@ func CollectionsList(
 	if pageSize > 0 {
 		limit = fmt.Sprintf(" LIMIT %d OFFSET %d", pageSize, offset)
 	}
+
+	fmt.Println("4444444444444444444")
 
 	// Get Paginated Result
 	q := fmt.Sprintf(

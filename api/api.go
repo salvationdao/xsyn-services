@@ -189,6 +189,7 @@ func NewAPI(
 	})
 
 	_ = NewAssetController(log, conn, api)
+	_ = NewCollectionController(log, conn, api)
 	_ = NewServerClientController(log, conn, api)
 	_ = NewCheckController(log, conn, api)
 	_ = NewUserActivityController(log, conn, api)

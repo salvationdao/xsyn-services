@@ -39,15 +39,13 @@ func NewCollectionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) 
 	return collectionHub
 }
 
-// rootHub.SecureCommand(HubKeyAssetList, AssetController.GetHandler)
-
-// AssetListHandlerRequest requests holds the filter for user list
+// CollectionsUpdatedSubscribeRequest requests holds the filter for collections list
 type CollectionsUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		UserID           passport.UserID       `json:"user_id"`
 		SortDir          db.SortByDir          `json:"sortDir"`
-		SortBy           db.AssetColumn        `json:"sortBy"`
+		SortBy           db.CollectionColumn   `json:"sortBy"`
 		IncludedTokenIDs []int                 `json:"includedTokenIDs"`
 		Filter           *db.ListFilterRequest `json:"filter"`
 		Archived         bool                  `json:"archived"`
@@ -57,16 +55,16 @@ type CollectionsUpdatedSubscribeRequest struct {
 	} `json:"payload"`
 }
 
-// CollectionListResponse is the response from get asset list
+// CollectionListResponse is the response from get collection list
 type CollectionListResponse struct {
-	Records []*passport.XsynNftMetadata `json:"records"`
-	Total   int                         `json:"total"`
+	Records []*passport.Collection `json:"records"`
+	Total   int                    `json:"total"`
 }
 
 const HubKeyCollectionsSubscribe hub.HubCommandKey = "COLLECTION_LIST:SUBSCRIBE"
 
 func (ctrlr *CollectionController) CollectionsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &AssetsUpdatedSubscribeRequest{}
+	req := &CollectionsUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
@@ -77,9 +75,9 @@ func (ctrlr *CollectionController) CollectionsUpdatedSubscribeHandler(ctx contex
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	assets := []*passport.XsynNftMetadata{}
-	total, err := db.AssetList(
-		ctx, ctrlr.Conn, &assets,
+	collections := []*passport.Collection{}
+	total, err := db.CollectionsList(
+		ctx, ctrlr.Conn, &collections,
 		req.Payload.Search,
 		req.Payload.Archived,
 		req.Payload.IncludedTokenIDs,
@@ -93,14 +91,14 @@ func (ctrlr *CollectionController) CollectionsUpdatedSubscribeHandler(ctx contex
 		return req.TransactionID, "", terror.Error(err)
 	}
 
-	resp := &AssetListResponse{
+	resp := &CollectionListResponse{
 		Total:   total,
-		Records: assets,
+		Records: collections,
 	}
 
 	reply(resp)
 
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetsSubscribe, req.Payload.UserID.String())), nil
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyCollectionsSubscribe, req.Payload.UserID.String())), nil
 
 }
 
@@ -113,7 +111,7 @@ type CollectionUpdatedSubscribeRequest struct {
 }
 
 // 	rootHub.SecureCommand(HubKeyCollectionSubscribe, CollectionController.CollectionSubscribe)
-const HubKeyCollectionSubscribe hub.HubCommandKey = "ASSET:SUBSCRIBE"
+const HubKeyCollectionSubscribe hub.HubCommandKey = "COLLECTION:SUBSCRIBE"
 
 func (ctrlr *CollectionController) CollectionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &AssetUpdatedSubscribeRequest{}
