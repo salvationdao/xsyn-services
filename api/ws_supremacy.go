@@ -502,49 +502,54 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 	}
 
 	var warMachines []*passport.WarMachineNFT
-	// check user own this asset and it has not joined the queue yet
+	// check user own this asset, and it has not joined the queue yet
 	switch req.Payload.FactionID {
 	case passport.RedMountainFactionID:
+		faction, err := db.FactionGet(ctx, sc.Conn, passport.RedMountainFactionID)
+
 		warMachinesMetaData, err := db.DefaultWarMachineGet(ctx, sc.Conn, passport.SupremacyRedMountainUserID, req.Payload.Amount)
 		if err != nil {
 			return terror.Error(err)
 		}
 		for _, wmmd := range warMachinesMetaData {
-			warMachineNFT := &passport.WarMachineNFT{
-				OwnedByID: passport.SupremacyRedMountainUserID,
-				FactionID: passport.RedMountainFactionID,
-			}
+			warMachineNFT := &passport.WarMachineNFT{}
 			// parse nft
 			passport.ParseWarMachineNFT(wmmd, warMachineNFT)
+			warMachineNFT.OwnedByID = passport.SupremacyRedMountainUserID
+			warMachineNFT.FactionID = passport.RedMountainFactionID
+			warMachineNFT.Faction = faction
+
 			warMachines = append(warMachines, warMachineNFT)
 		}
 
 	case passport.BostonCyberneticsFactionID:
+		faction, err := db.FactionGet(ctx, sc.Conn, passport.BostonCyberneticsFactionID)
 		warMachinesMetaData, err := db.DefaultWarMachineGet(ctx, sc.Conn, passport.SupremacyBostonCyberneticsUserID, req.Payload.Amount)
 		if err != nil {
 			return terror.Error(err)
 		}
 		for _, wmmd := range warMachinesMetaData {
-			warMachineNFT := &passport.WarMachineNFT{
-				OwnedByID: passport.SupremacyBostonCyberneticsUserID,
-				FactionID: passport.BostonCyberneticsFactionID,
-			}
+			warMachineNFT := &passport.WarMachineNFT{}
 			// parse nft
 			passport.ParseWarMachineNFT(wmmd, warMachineNFT)
+			warMachineNFT.OwnedByID = passport.SupremacyBostonCyberneticsUserID
+			warMachineNFT.FactionID = passport.BostonCyberneticsFactionID
+			warMachineNFT.Faction = faction
 			warMachines = append(warMachines, warMachineNFT)
 		}
 	case passport.ZaibatsuFactionID:
+		faction, err := db.FactionGet(ctx, sc.Conn, passport.ZaibatsuFactionID)
 		warMachinesMetaData, err := db.DefaultWarMachineGet(ctx, sc.Conn, passport.SupremacyZaibatsuUserID, req.Payload.Amount)
 		if err != nil {
 			return terror.Error(err)
 		}
 		for _, wmmd := range warMachinesMetaData {
-			warMachineNFT := &passport.WarMachineNFT{
-				OwnedByID: passport.SupremacyZaibatsuUserID,
-				FactionID: passport.ZaibatsuFactionID,
-			}
+			warMachineNFT := &passport.WarMachineNFT{}
 			// parse nft
 			passport.ParseWarMachineNFT(wmmd, warMachineNFT)
+			warMachineNFT.OwnedByID = passport.SupremacyZaibatsuUserID
+			warMachineNFT.FactionID = passport.ZaibatsuFactionID
+			warMachineNFT.Faction = faction
 			warMachines = append(warMachines, warMachineNFT)
 		}
 	}

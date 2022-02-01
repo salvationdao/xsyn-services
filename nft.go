@@ -63,22 +63,24 @@ type AdditionalMetadata struct {
 }
 
 type WarMachineNFT struct {
-	TokenID         uint64    `json:"tokenID"`
-	OwnedByID       UserID    `json:"ownedByID"`
-	Name            string    `json:"name"`
-	Description     string    `json:"description"`
-	ExternalUrl     string    `json:"externalUrl"`
-	Image           string    `json:"image"`
-	MaxHitPoint     int       `json:"maxHitPoint"`
-	RemainHitPoint  int       `json:"remainHitPoint"`
-	Speed           int       `json:"speed"`
-	Durability      int       `json:"durability"`
-	PowerGrid       int       `json:"powerGrid"`
-	CPU             int       `json:"cpu"`
-	WeaponHardpoint int       `json:"weaponHardpoint"`
-	TurretHardpoint int       `json:"turretHardpoint"`
-	UtilitySlots    int       `json:"utilitySlots"`
-	FactionID       FactionID `json:"factionID"`
+	TokenID            uint64    `json:"tokenID"`
+	OwnedByID          UserID    `json:"ownedByID"`
+	Name               string    `json:"name"`
+	Description        string    `json:"description"`
+	ExternalUrl        string    `json:"externalUrl"`
+	Image              string    `json:"image"`
+	MaxHitPoints       int       `json:"maxHitPoints"`
+	RemainingHitPoints int       `json:"remainingHitPoints"`
+	Speed              int       `json:"speed"`
+	Durability         int       `json:"durability"`
+	PowerGrid          int       `json:"powerGrid"`
+	CPU                int       `json:"cpu"`
+	WeaponHardpoint    int       `json:"weaponHardpoint"`
+	WeaponNames        []string  `json:"weaponNames"`
+	TurretHardpoint    int       `json:"turretHardpoint"`
+	UtilitySlots       int       `json:"utilitySlots"`
+	FactionID          FactionID `json:"factionID"`
+	Faction            *Faction  `json:"faction"`
 }
 
 type WarMachineAttField string
@@ -91,6 +93,10 @@ const (
 	WarMachineAttFieldWeaponHardpoints WarMachineAttField = "Weapon Hardpoints"
 	WarMachineAttFieldTurretHardpoints WarMachineAttField = "Turret Hardpoints"
 	WarMachineAttFieldUtilitySlots     WarMachineAttField = "Utility Slots"
+	WarMachineAttFieldWeapon01         WarMachineAttField = "Weapon One"
+	WarMachineAttFieldWeapon02         WarMachineAttField = "Weapon Two"
+	WarMachineAttFieldTurret01         WarMachineAttField = "Turret One"
+	WarMachineAttFieldTurret02         WarMachineAttField = "Turret Two"
 )
 
 // ParseWarMachineNFT convert json attribute to proper struct
@@ -105,8 +111,8 @@ func ParseWarMachineNFT(nft *XsynNftMetadata, warMachineNFT *WarMachineNFT) {
 	for _, att := range nft.Attributes {
 		switch att.TraitType {
 		case string(WarMachineAttFieldMaxHitPoint):
-			warMachineNFT.MaxHitPoint = int(att.Value.(float64))
-			warMachineNFT.RemainHitPoint = int(att.Value.(float64))
+			warMachineNFT.MaxHitPoints = int(att.Value.(float64))
+			warMachineNFT.RemainingHitPoints = int(att.Value.(float64))
 		case string(WarMachineAttFieldSpeed):
 			warMachineNFT.Speed = int(att.Value.(float64))
 		case string(WarMachineAttFieldPowerGrid):
@@ -119,6 +125,14 @@ func ParseWarMachineNFT(nft *XsynNftMetadata, warMachineNFT *WarMachineNFT) {
 			warMachineNFT.TurretHardpoint = int(att.Value.(float64))
 		case string(WarMachineAttFieldUtilitySlots):
 			warMachineNFT.UtilitySlots = int(att.Value.(float64))
+		case string(WarMachineAttFieldWeapon01),
+			string(WarMachineAttFieldWeapon02),
+			string(WarMachineAttFieldTurret01),
+			string(WarMachineAttFieldTurret02):
+			warMachineNFT.WeaponNames = append(warMachineNFT.WeaponNames, att.Value.(string))
+
 		}
+
 	}
+
 }
