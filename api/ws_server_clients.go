@@ -42,8 +42,7 @@ const HubKeyElevateAsServerClient = hub.HubCommandKey("AUTH:SERVERCLIENT")
 type ElevateAsServerClientRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		ClientID     string `json:"client_id"`
-		ClientSecret string `json:"client_secret"`
+		ClientToken string `json:"clientToken"`
 	} `json:"payload"`
 }
 
@@ -54,17 +53,19 @@ func (ch *ServerClientControllerWS) Handler(ctx context.Context, hubc *hub.Clien
 		return terror.Error(err, "Invalid request received")
 	}
 
-	// TODO: add some sorta auth
-	if req.Payload.ClientID == "" {
-		return terror.Error(fmt.Errorf("missing client id"))
-	}
-	if req.Payload.ClientSecret == "" {
-		return terror.Error(fmt.Errorf("missing client secret"))
+	if req.Payload.ClientToken == "" {
+		return terror.Error(fmt.Errorf("missing client auth token"))
 	}
 
-	// TODO: get the client IDs name from a db table then get the relative game user and set details on the hub client
+	// TODO: move to a db table with client IDs and secrets when we have more games connecting
+
+	if req.Payload.ClientToken != ch.API.ClientToken {
+		return terror.Error(terror.ErrUnauthorised)
+	}
+
 	supremacyUser, err := db.UserIDFromUsername(ctx, ch.Conn, passport.SupremacyGameUsername)
 	if err != nil {
+		hubc.Offline <- true
 		return terror.Error(err)
 	}
 	// setting level and identifier

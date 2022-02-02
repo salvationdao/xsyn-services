@@ -44,6 +44,7 @@ type API struct {
 	Tokens       *Tokens
 	*auth.Auth
 	*messagebus.MessageBus
+	ClientToken string
 
 	HostUrl string
 
@@ -83,9 +84,11 @@ func NewAPI(
 	twitterAPISecret string,
 	discordClientID string,
 	discordClientSecret string,
+	clientToken string,
 ) *API {
 	msgBus, cleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
 	api := &API{
+		ClientToken: clientToken,
 		Tokens: &Tokens{
 			Conn:                conn,
 			Mailer:              mailer,
