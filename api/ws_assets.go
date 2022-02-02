@@ -298,7 +298,7 @@ func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context,
 type AssetUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		TokenID int             `json:"tokenID"`
+		TokenID int `json:"tokenID"`
 	} `json:"payload"`
 }
 
