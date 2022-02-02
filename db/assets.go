@@ -108,24 +108,11 @@ func AssetList(
 		}
 	}
 
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-
-	fmt.Println()
-	fmt.Println("this is fc", assetType)
-	fmt.Println()
-	fmt.Println()
-	for _, ii := range filter.Items {
-		fmt.Println(ii)
-	}
-	fmt.Println()
-	fmt.Println()
-
 	// asset type filter
 	if assetType != "" {
-		filterConditionsString += fmt.Sprintf(`AND xsyn_nft_metadata.attributes @> '[{"trait_type": "Asset Type"}]' 
-										   AND xsyn_nft_metadata.attributes @> '[{"value": "%s"}]' `, assetType)
+		filterConditionsString += fmt.Sprintf(`
+		AND xsyn_nft_metadata.attributes @> '[{"trait_type": "Asset Type"}]' 
+        AND xsyn_nft_metadata.attributes @> '[{"value": "%s"}]' `, assetType)
 
 	}
 
@@ -154,7 +141,7 @@ func AssetList(
 		xsearch := ParseQueryText(search, true)
 		if len(xsearch) > 0 {
 			args = append(args, xsearch)
-			searchCondition = fmt.Sprintf(" AND assets.keywords @@ to_tsquery($%d)", len(args))
+			searchCondition = fmt.Sprintf(" AND xsyn_nft_metadata.keywords @@ to_tsquery($%d)", len(args))
 		}
 	}
 
@@ -232,13 +219,6 @@ func AssetGet(ctx context.Context, conn Conn, tokenID uint64) (*passport.XsynNft
 func AssetGetByName(ctx context.Context, conn Conn, name string) (*passport.XsynNftMetadata, error) {
 	asset := &passport.XsynNftMetadata{}
 	q := AssetGetQuery + `WHERE xsyn_nft_metadata.name = $1`
-
-	fmt.Println()
-	fmt.Println()
-	fmt.Println("this is ass query")
-	fmt.Println(q)
-	fmt.Println()
-	fmt.Println()
 	err := pgxscan.Get(ctx, conn, asset, q, name)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting asset from name.")

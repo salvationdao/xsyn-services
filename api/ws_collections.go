@@ -119,7 +119,6 @@ func (ctrlr *CollectionController) CollectionUpdatedSubscribeHandler(ctx context
 		return req.TransactionID, "", terror.Error(err)
 	}
 
-	fmt.Println("11111111111111111111111")
 	collection, err := db.CollectionGet(ctx, ctrlr.Conn, req.Payload.Name)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
