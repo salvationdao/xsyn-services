@@ -371,7 +371,6 @@ func (sc *SupremacyControllerWS) SupremacyDistributeBattleRewardHandler(ctx cont
 			sc.API.UpdateUserCacheRemoveSups(tx.From, tx.Amount, errChan)
 			err := <-errChan
 			if err != nil {
-				fmt.Println(tx.From)
 				sc.API.Log.Err(err).Msg(err.Error())
 				continue
 			}
