@@ -29,7 +29,13 @@ var (
 
 func (e UserID) IsSystemUser() bool {
 	switch e {
-	case XsynTreasuryUserID, SupremacyGameUserID, OnChainUserID:
+	case XsynTreasuryUserID,
+		SupremacyGameUserID,
+		OnChainUserID,
+		SupremacyBattleUserID,
+		SupremacyZaibatsuUserID,
+		SupremacyRedMountainUserID,
+		SupremacyBostonCyberneticsUserID:
 		return true
 	}
 	return false
