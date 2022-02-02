@@ -12,9 +12,7 @@ import (
 // Collection inserts a new collection
 func CollectionInsert(ctx context.Context, conn Conn, collection *passport.Collection) error {
 	q := `INSERT INTO collections (name) VALUES($1)`
-
 	_, err := conn.Exec(ctx, q, collection.Name)
-
 	if err != nil {
 		return terror.Error(err)
 	}
