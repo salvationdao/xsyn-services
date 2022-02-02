@@ -94,9 +94,9 @@ func (api *API) SubscribeCommandWithPermission(key hub.HubCommandKey, fn HubSubs
 func (api *API) SecureUserSubscribeCommand(key hub.HubCommandKey, fn HubSubscribeCommandFunc) {
 
 	api.SubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
-		if wsc.Identifier() == "" || wsc.Level < 1 {
-			return false
-		}
+		// if wsc.Identifier() == "" || wsc.Level < 1 {
+		// 	return false
+		// }
 		return true
 	})
 }

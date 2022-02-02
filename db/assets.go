@@ -78,6 +78,7 @@ func AssetList(
 	archived bool,
 	includedTokenIDs []int,
 	filter *ListFilterRequest,
+	assetType string,
 	offset int,
 	pageSize int,
 	sortBy AssetColumn,
@@ -105,6 +106,27 @@ func AssetList(
 		if len(filterConditions) > 0 {
 			filterConditionsString = "AND (" + strings.Join(filterConditions, " "+string(filter.LinkOperator)+" ") + ")"
 		}
+	}
+
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+
+	fmt.Println()
+	fmt.Println("this is fc", assetType)
+	fmt.Println()
+	fmt.Println()
+	for _, ii := range filter.Items {
+		fmt.Println(ii)
+	}
+	fmt.Println()
+	fmt.Println()
+
+	// asset type filter
+	if assetType != "" {
+		filterConditionsString += fmt.Sprintf(`AND xsyn_nft_metadata.attributes @> '[{"trait_type": "Asset Type"}]' 
+										   AND xsyn_nft_metadata.attributes @> '[{"value": "%s"}]' `, assetType)
+
 	}
 
 	// select specific assets via tokenIDs

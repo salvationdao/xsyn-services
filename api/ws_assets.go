@@ -241,6 +241,7 @@ type AssetsUpdatedSubscribeRequest struct {
 		SortBy           db.AssetColumn        `json:"sortBy"`
 		IncludedTokenIDs []int                 `json:"includedTokenIDs"`
 		Filter           *db.ListFilterRequest `json:"filter"`
+		AssetType        string                `json:"assetType"`
 		Archived         bool                  `json:"archived"`
 		Search           string                `json:"search"`
 		PageSize         int                   `json:"pageSize"`
@@ -269,6 +270,8 @@ func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context,
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
+	fmt.Println("this is asset type", req.Payload.AssetType)
+
 	assets := []*passport.XsynNftMetadata{}
 	total, err := db.AssetList(
 		ctx, ctrlr.Conn, &assets,
@@ -276,6 +279,7 @@ func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context,
 		req.Payload.Archived,
 		req.Payload.IncludedTokenIDs,
 		req.Payload.Filter,
+		req.Payload.AssetType,
 		offset,
 		req.Payload.PageSize,
 		req.Payload.SortBy,
