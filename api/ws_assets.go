@@ -270,8 +270,6 @@ func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context,
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	fmt.Println("this is asset type", req.Payload.AssetType)
-
 	assets := []*passport.XsynNftMetadata{}
 	total, err := db.AssetList(
 		ctx, ctrlr.Conn, &assets,
