@@ -303,25 +303,26 @@ func (c *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 	// Get token id
 	tokenID := chi.URLParam(r, "token_id")
 	if tokenID == "" {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("Invalid Token ID"))
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("invalid token id"), "Invalid Token ID")
 	}
 
 	// Convert token id from string to uint64
 	_tokenID, err := strconv.ParseUint(string(tokenID), 10, 64)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("Failed converting string token id to uint64"))
+		return http.StatusInternalServerError, terror.Error(err, "Failed converting string token id to uint64")
 	}
 
 	// Get asset via token id
 	asset, err := db.AssetGet(r.Context(), c.Conn, _tokenID)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("Failed to get asset"))
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset")
+
 	}
 
 	// Encode result
 	err = json.NewEncoder(w).Encode(asset)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("Failed to encode JSON"))
+		return http.StatusInternalServerError, terror.Error(err, "Failed to encode JSON")
 	}
 
 	return http.StatusOK, nil

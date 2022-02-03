@@ -43,7 +43,7 @@ func NewCollectionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) 
 type CollectionsUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID           passport.UserID       `json:"user_id"`
+		UserID           passport.UserID       `json:"userID"`
 		SortDir          db.SortByDir          `json:"sortDir"`
 		SortBy           db.CollectionColumn   `json:"sortBy"`
 		IncludedTokenIDs []int                 `json:"includedTokenIDs"`

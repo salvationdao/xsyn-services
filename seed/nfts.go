@@ -9,8 +9,7 @@ import (
 )
 
 func (s *Seeder) SeedCollections(ctx context.Context) ([]*passport.Collection, error) {
-	// TODO: replace with real collections
-	collectionNames := []string{"Supremacy", "Star Atlas"}
+	collectionNames := []string{"Supremacy"}
 	collections := []*passport.Collection{}
 	for _, name := range collectionNames {
 		collection := &passport.Collection{
