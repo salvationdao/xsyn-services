@@ -306,14 +306,14 @@ func (c *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("Invalid Token ID"))
 	}
 
-	// Convert token id from string to int
-	_tokenID, err := strconv.Atoi(tokenID)
+	// Convert token id from string to uint64
+	_tokenID, err := strconv.ParseUint(string(tokenID), 10, 64)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("Failed converting string token id to int"))
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("Failed converting string token id to uint64"))
 	}
 
 	// Get asset via token id
-	asset, err := db.AssetGet(r.Context(), c.Conn, uint64(_tokenID))
+	asset, err := db.AssetGet(r.Context(), c.Conn, _tokenID)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("Failed to get asset"))
 	}

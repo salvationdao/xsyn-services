@@ -321,11 +321,6 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		return nil, terror.Error(err)
 	}
 
-	err = s.AndAssignNftToMember(ctx, supremacyCollection)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
 	return u, nil
 }
 
@@ -764,7 +759,7 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 	return nil
 }
 
-func (s *Seeder) AndAssignNftToMember(ctx context.Context, collection *passport.Collection) error {
+func (s *Seeder) AndAssignNftToMember(ctx context.Context) error {
 	// get member user
 	member, err := db.UserByEmail(ctx, s.Conn, "member@example.com", "")
 	if err != nil {
