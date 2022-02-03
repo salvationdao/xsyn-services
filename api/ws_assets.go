@@ -34,9 +34,9 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 	}
 
 	// assets list
-	api.SecureUserSubscribeCommand(HubKeyAssetsSubscribe, assetHub.AssetsUpdatedSubscribeHandler)
+	api.Command(HubKeyAssetList, assetHub.AssetList)
 
-	// asset get
+	// asset subscribe
 	api.SecureUserSubscribeCommand(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)
 
 	api.SecureCommand(HubKeyAssetRegister, assetHub.RegisterHandler)
@@ -84,7 +84,6 @@ func (ac *AssetController) RegisterHandler(ctx context.Context, hubc *hub.Client
 	}(tx, ctx)
 
 	// insert asset to db
-	// TODO
 	err = db.XsynNftMetadataInsert(ctx, tx, req.Payload.XsynNftMetadata, req.Payload.XsynNftMetadata.Collection.ID)
 	if err != nil {
 		return terror.Error(err)
@@ -255,14 +254,14 @@ type AssetListResponse struct {
 	Total   int                         `json:"total"`
 }
 
-const HubKeyAssetsSubscribe hub.HubCommandKey = "ASSET_LIST:SUBSCRIBE"
+const HubKeyAssetList hub.HubCommandKey = "ASSET:LIST"
 
-func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (ctrlr *AssetController) AssetList(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 
 	req := &AssetsUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err)
+		terror.Error(err)
 	}
 
 	offset := 0
@@ -284,7 +283,7 @@ func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context,
 		req.Payload.SortDir,
 	)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err)
+		terror.Error(err)
 	}
 
 	resp := &AssetListResponse{
@@ -294,7 +293,7 @@ func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context,
 
 	reply(resp)
 
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetsSubscribe, req.Payload.UserID.String())), nil
+	return nil
 
 }
 

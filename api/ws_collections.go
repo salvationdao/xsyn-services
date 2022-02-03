@@ -31,10 +31,10 @@ func NewCollectionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) 
 	}
 
 	// collection list
-	api.SecureUserSubscribeCommand(HubKeyCollectionsSubscribe, collectionHub.CollectionsUpdatedSubscribeHandler)
+	api.Command(HubKeyCollectionList, collectionHub.CollectionsList)
 
-	// collection get
-	api.SecureUserSubscribeCommand(HubKeyCollectionSubscribe, collectionHub.CollectionUpdatedSubscribeHandler)
+	// collection subscribe
+	api.SubscribeCommand(HubKeyCollectionSubscribe, collectionHub.CollectionUpdatedSubscribeHandler)
 
 	return collectionHub
 }
@@ -61,13 +61,13 @@ type CollectionListResponse struct {
 	Total   int                    `json:"total"`
 }
 
-const HubKeyCollectionsSubscribe hub.HubCommandKey = "COLLECTION_LIST:SUBSCRIBE"
+const HubKeyCollectionList hub.HubCommandKey = "COLLECTION:LIST"
 
-func (ctrlr *CollectionController) CollectionsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (ctrlr *CollectionController) CollectionsList(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &CollectionsUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err)
+		terror.Error(err)
 	}
 
 	offset := 0
@@ -87,7 +87,7 @@ func (ctrlr *CollectionController) CollectionsUpdatedSubscribeHandler(ctx contex
 		req.Payload.SortDir,
 	)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err)
+		return terror.Error(err)
 	}
 
 	resp := &CollectionListResponse{
@@ -96,8 +96,7 @@ func (ctrlr *CollectionController) CollectionsUpdatedSubscribeHandler(ctx contex
 	}
 
 	reply(resp)
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyCollectionsSubscribe, req.Payload.UserID.String())), nil
+	return nil
 
 }
 
