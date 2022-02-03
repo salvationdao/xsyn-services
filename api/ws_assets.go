@@ -18,22 +18,25 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// AssetController holds handlers for roles
+// AssetController holds handlers for as
 type AssetController struct {
 	Conn *pgxpool.Pool
 	Log  *zerolog.Logger
 	API  *API
 }
 
-// NewAssetController creates the role hub
+// NewAssetController creates the asset hub
 func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *AssetController {
 	assetHub := &AssetController{
 		Conn: conn,
-		Log:  log_helpers.NamedLogger(log, "role_hub"),
+		Log:  log_helpers.NamedLogger(log, "asset_hub"),
 		API:  api,
 	}
 
-	api.SecureUserSubscribeCommand(HubKeyAssetsSubscribe, assetHub.AssetsUpdatedSubscribeHandler)
+	// assets list
+	api.Command(HubKeyAssetList, assetHub.AssetList)
+
+	// asset subscribe
 	api.SecureUserSubscribeCommand(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)
 
 	api.SecureCommand(HubKeyAssetRegister, assetHub.RegisterHandler)
@@ -81,7 +84,7 @@ func (ac *AssetController) RegisterHandler(ctx context.Context, hubc *hub.Client
 	}(tx, ctx)
 
 	// insert asset to db
-	err = db.XsynNftMetadataInsert(ctx, tx, req.Payload.XsynNftMetadata)
+	err = db.XsynNftMetadataInsert(ctx, tx, req.Payload.XsynNftMetadata, req.Payload.XsynNftMetadata.Collection.ID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -184,7 +187,7 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	if user.FactionID == nil || user.FactionID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User need to join a faction")
+		return terror.Error(terror.ErrInvalidInput, "User needs to join a faction to Deploy War Machine")
 	}
 
 	// check user own this asset and it has not joined the queue yet
@@ -228,10 +231,7 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	return nil
 }
 
-// rootHub.SecureCommand(HubKeyAssetList, AssetController.GetHandler)
-const HubKeyAssetList hub.HubCommandKey = "ASSET:LIST"
-
-// AssetListHandlerRequest requests holds the filter for user list
+// AssetsUpdatedSubscribeRequest requests holds the filter for user list
 type AssetsUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
@@ -240,6 +240,7 @@ type AssetsUpdatedSubscribeRequest struct {
 		SortBy           db.AssetColumn        `json:"sortBy"`
 		IncludedTokenIDs []int                 `json:"includedTokenIDs"`
 		Filter           *db.ListFilterRequest `json:"filter"`
+		AssetType        string                `json:"assetType"`
 		Archived         bool                  `json:"archived"`
 		Search           string                `json:"search"`
 		PageSize         int                   `json:"pageSize"`
@@ -253,13 +254,14 @@ type AssetListResponse struct {
 	Total   int                         `json:"total"`
 }
 
-const HubKeyAssetsSubscribe hub.HubCommandKey = "ASSET_LIST:SUBSCRIBE"
+const HubKeyAssetList hub.HubCommandKey = "ASSET:LIST"
 
-func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (ctrlr *AssetController) AssetList(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+
 	req := &AssetsUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err)
+		terror.Error(err)
 	}
 
 	offset := 0
@@ -274,13 +276,14 @@ func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context,
 		req.Payload.Archived,
 		req.Payload.IncludedTokenIDs,
 		req.Payload.Filter,
+		req.Payload.AssetType,
 		offset,
 		req.Payload.PageSize,
 		req.Payload.SortBy,
 		req.Payload.SortDir,
 	)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err)
+		terror.Error(err)
 	}
 
 	resp := &AssetListResponse{
@@ -290,7 +293,7 @@ func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context,
 
 	reply(resp)
 
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetsSubscribe, req.Payload.UserID.String())), nil
+	return nil
 
 }
 
@@ -298,7 +301,7 @@ func (ctrlr *AssetController) AssetsUpdatedSubscribeHandler(ctx context.Context,
 type AssetUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		TokenID int `json:"tokenID"`
+		TokenID uint64 `json:"tokenID"`
 	} `json:"payload"`
 }
 

@@ -30,9 +30,14 @@ func NewSeeder(conn *pgxpool.Pool, txConn *sql.DB) *Seeder {
 // Run for database spinup
 func (s *Seeder) Run(isProd bool) error {
 	ctx := context.Background()
+	fmt.Println("Seeding collections")
+	_, err := s.SeedCollections(ctx)
+	if err != nil {
+		return terror.Error(err, "seed collections failed")
+	}
 
 	fmt.Println("Seeding roles")
-	err := s.Roles(ctx)
+	err = s.Roles(ctx)
 	if err != nil {
 		return terror.Error(err, "seed roles failed")
 	}
@@ -72,7 +77,6 @@ func (s *Seeder) Run(isProd bool) error {
 	if err != nil {
 		return terror.Error(err, "seed users failed")
 	}
-
 	//fmt.Println("Seeding organisations")
 	//organisations, err := s.Organisations(ctx)
 	//if err != nil {
@@ -81,20 +85,22 @@ func (s *Seeder) Run(isProd bool) error {
 
 	if !isProd {
 		fmt.Println("Seeding xsyn NFTs")
-		_, _, _, err := s.SeedNFTS(ctx)
+		_, _, _, err = s.SeedNFTS(ctx)
 		if err != nil {
 			return terror.Error(err, "seed nfts failed")
 		}
-
 		fmt.Println("Seeding users")
 		err = s.Users(ctx, nil)
+		if err != nil {
+			return terror.Error(err, "seed users failed")
+		}
+		err = s.AndAssignNftToMember(ctx)
 		if err != nil {
 			return terror.Error(err, "seed users failed")
 		}
 
 	}
 
-	//s.Conn.
 	fmt.Println("Seed complete")
 	return nil
 }

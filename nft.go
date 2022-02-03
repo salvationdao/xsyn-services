@@ -4,6 +4,15 @@ import (
 	"time"
 )
 
+type Collection struct {
+	ID        string     `json:"id"`
+	Name      string     `json:"name"`
+	ImageURL  string     `json:"imageURL"`
+	DeletedAt *time.Time `json:"deleted_at" db:"deleted_at"`
+	UpdatedAt time.Time  `json:"updated_at" db:"updated_at"`
+	CreatedAt time.Time  `json:"created_at" db:"created_at"`
+}
+
 type Attribute struct {
 	DisplayType DisplayType `json:"display_type,omitempty"`
 	TraitType   string      `json:"trait_type"`
@@ -25,7 +34,7 @@ type XsynNftMetadata struct {
 	UserID             *UserID               `json:"userID" db:"user_id"`
 	TokenID            uint64                `json:"tokenID" db:"token_id"`
 	Name               string                `json:"name" db:"name"`
-	Collection         string                `json:"collection" db:"collection"`
+	Collection         Collection            `json:"collection" db:"collection"`
 	GameObject         interface{}           `json:"game_object" db:"game_object"`
 	Description        string                `json:"description" db:"description"`
 	ExternalUrl        string                `json:"external_url" db:"external_url"`
@@ -50,7 +59,7 @@ const (
 // AdditionalMetadata holds metadata for a nfts non main game
 type AdditionalMetadata struct {
 	TokenID     uint64       `json:"tokenID"`
-	Collection  string       `json:"collection" db:"collection"`
+	Collection  Collection   `json:"collection" db:"collection"`
 	GameObject  interface{}  `json:"game_object" db:"game_object"`
 	Name        string       `json:"name" db:"name"`
 	Description string       `json:"description" db:"description"`

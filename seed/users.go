@@ -255,6 +255,12 @@ func (s *Seeder) SupremacyBattleUser(ctx context.Context) (*passport.User, error
 }
 
 func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, error) {
+
+	supremacyCollection, err := db.CollectionGet(ctx, s.Conn, "Supremacy")
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
 	// Create user
 	u := &passport.User{
 		ID:        passport.SupremacyZaibatsuUserID,
@@ -265,7 +271,7 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 	}
 
 	// Insert
-	err := db.InsertSystemUser(ctx, s.Conn, u)
+	err = db.InsertSystemUser(ctx, s.Conn, u)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -300,17 +306,17 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		return nil, terror.Error(err)
 	}
 
-	err = s.SeedAndAssignZaibatsu(ctx)
+	err = s.SeedAndAssignZaibatsu(ctx, supremacyCollection)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
-	err = s.SeedAndAssignRedMountain(ctx)
+	err = s.SeedAndAssignRedMountain(ctx, supremacyCollection)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
-	err = s.SeedAndAssignBoston(ctx)
+	err = s.SeedAndAssignBoston(ctx, supremacyCollection)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -318,10 +324,10 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 	return u, nil
 }
 
-func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context) error {
+func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport.Collection) error {
 	newNFT := []*passport.XsynNftMetadata{
 		{
-			Collection:         "SUPREMACY",
+			Collection:         *collection,
 			Name:               "Tenshi Mk1",
 			Description:        "",
 			ExternalUrl:        "",
@@ -395,7 +401,7 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context) error {
 			},
 		},
 		{
-			Collection:         "SUPREMACY",
+			Collection:         *collection,
 			Name:               "Tenshi Mk1 B",
 			Description:        "",
 			ExternalUrl:        "",
@@ -471,7 +477,7 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context) error {
 	}
 
 	for _, nft := range newNFT {
-		err := db.XsynNftMetadataInsert(ctx, s.Conn, nft)
+		err := db.XsynNftMetadataInsert(ctx, s.Conn, nft, collection.ID)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -485,10 +491,10 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context) error {
 	return nil
 }
 
-func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context) error {
+func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passport.Collection) error {
 	newNFT := []*passport.XsynNftMetadata{
 		{
-			Collection:         "SUPREMACY",
+			Collection:         *collection,
 			Name:               "Olympus Mons LY07",
 			Description:        "",
 			ExternalUrl:        "",
@@ -552,7 +558,7 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context) error {
 			},
 		},
 		{
-			Collection:         "SUPREMACY",
+			Collection:         *collection,
 			Name:               "Olympus Mons LY07 B",
 			Description:        "",
 			ExternalUrl:        "",
@@ -618,7 +624,7 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context) error {
 	}
 
 	for _, nft := range newNFT {
-		err := db.XsynNftMetadataInsert(ctx, s.Conn, nft)
+		err := db.XsynNftMetadataInsert(ctx, s.Conn, nft, collection.ID)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -632,10 +638,10 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context) error {
 	return nil
 }
 
-func (s *Seeder) SeedAndAssignBoston(ctx context.Context) error {
+func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.Collection) error {
 	newNFT := []*passport.XsynNftMetadata{
 		{
-			Collection:         "SUPREMACY",
+			Collection:         *collection,
 			Name:               "Law Enforcer X-1000",
 			Description:        "",
 			ExternalUrl:        "",
@@ -686,7 +692,7 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context) error {
 			},
 		},
 		{
-			Collection:         "SUPREMACY",
+			Collection:         *collection,
 			Name:               "Law Enforcer X-1000 B",
 			Description:        "",
 			ExternalUrl:        "",
@@ -739,7 +745,7 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context) error {
 	}
 
 	for _, nft := range newNFT {
-		err := db.XsynNftMetadataInsert(ctx, s.Conn, nft)
+		err := db.XsynNftMetadataInsert(ctx, s.Conn, nft, collection.ID)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -750,5 +756,26 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context) error {
 		}
 	}
 
+	return nil
+}
+
+func (s *Seeder) AndAssignNftToMember(ctx context.Context) error {
+	// get member user
+	member, err := db.UserByEmail(ctx, s.Conn, "member@example.com", "")
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// get "Big War Machine" nft
+	nft, err := db.AssetGetByName(ctx, s.Conn, "Big War Machine")
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// assign nft to member
+	err = db.XsynNftMetadataAssignUser(ctx, s.Conn, nft.TokenID, member.ID)
+	if err != nil {
+		return terror.Error(err)
+	}
 	return nil
 }
