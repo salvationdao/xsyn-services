@@ -259,6 +259,13 @@ func (sc *SupremacyControllerWS) SupremacyDistributeBattleRewardHandler(ctx cont
 	if err != nil {
 		return terror.Error(err, "Failed to get battle arena user")
 	}
+
+	// skip calculation, if the is not sups in the pool
+	if battleUser.Sups.Int.Cmp(big.NewInt(0)) <= 0 {
+		reply(true)
+		return nil
+	}
+
 	// portion sups
 
 	// 25% sups for winner war machine owners and execute kill war machine owners
@@ -272,30 +279,22 @@ func (sc *SupremacyControllerWS) SupremacyDistributeBattleRewardHandler(ctx cont
 	// start distributing sups
 	var transactions []*NewTransaction
 
+	// get winning faction user
+	winningFactionUserID, err := db.FactionUserIDGetByFactionID(ctx, sc.Conn, req.Payload.WinnerFactionID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
 	/*************************
 	* Winner Faction Viewers *
 	*************************/
-
-	reference := fmt.Sprintf("supremacy|battle_reward|winning_faction_viewer|%s", time.Now())
-
 	viewerIDs := req.Payload.WinningFactionViewerIDs
 	// set faction user as viewer if there is no viewer online
 	if len(viewerIDs) == 0 {
-		// get faction user id
-		faction, err := db.FactionGet(ctx, sc.Conn, req.Payload.WinnerFactionID)
-		if err != nil {
-			return terror.Error(err)
-		}
-
-		switch faction.Label {
-		case "Red Mountain Offworld Mining Corporation":
-			viewerIDs = []passport.UserID{passport.SupremacyRedMountainUserID}
-		case "Boston Cybernetics":
-			viewerIDs = []passport.UserID{passport.SupremacyBostonCyberneticsUserID}
-		case "Zaibatsu Heavy Industries":
-			viewerIDs = []passport.UserID{passport.SupremacyZaibatsuUserID}
-		}
+		viewerIDs = []passport.UserID{winningFactionUserID}
 	}
+
+	reference := fmt.Sprintf("supremacy|battle_reward|winning_faction_viewer|%s", time.Now())
 
 	supsPerUser := big.NewInt(0)
 	supsPerUser.Div(supsPortionPercentage50, big.NewInt(int64(len(viewerIDs))))
@@ -315,12 +314,17 @@ func (sc *SupremacyControllerWS) SupremacyDistributeBattleRewardHandler(ctx cont
 	* Winning War Machine Owner *
 	****************************/
 
+	ownerIDs := req.Payload.WinningWarMachineOwnerIDs
+	if len(ownerIDs) == 0 {
+		ownerIDs = []passport.UserID{winningFactionUserID}
+	}
+
 	reference = fmt.Sprintf("supremacy|battle_reward|winning_war_machine_owner|%s", time.Now())
 
 	supsPerUser = big.NewInt(0)
-	supsPerUser.Div(supsPortionPercentage25, big.NewInt(int64(len(req.Payload.WinningWarMachineOwnerIDs))))
+	supsPerUser.Div(supsPortionPercentage25, big.NewInt(int64(len(ownerIDs))))
 
-	for _, ownerID := range req.Payload.WinningWarMachineOwnerIDs {
+	for _, ownerID := range ownerIDs {
 		amount := supsPerUser
 
 		transactions = append(transactions, &NewTransaction{
@@ -335,17 +339,22 @@ func (sc *SupremacyControllerWS) SupremacyDistributeBattleRewardHandler(ctx cont
 	* Execute Kill War Machine Owner *
 	*********************************/
 
+	killOwnerIDs := req.Payload.ExecuteKillWarMachineOwnerIDs
+	if len(killOwnerIDs) == 0 {
+		killOwnerIDs = []passport.UserID{winningFactionUserID}
+	}
+
 	reference = fmt.Sprintf("supremacy|battle_reward|execute_kill_war_machine_owner|%s", time.Now())
 
 	supsPerUser = big.NewInt(0)
-	supsPerUser.Div(supsPortionPercentage25, big.NewInt(int64(len(req.Payload.ExecuteKillWarMachineOwnerIDs))))
+	supsPerUser.Div(supsPortionPercentage25, big.NewInt(int64(len(killOwnerIDs))))
 
-	for _, ownerID := range req.Payload.ExecuteKillWarMachineOwnerIDs {
+	for _, killOwnerID := range killOwnerIDs {
 		amount := supsPerUser
 
 		transactions = append(transactions, &NewTransaction{
 			From:                 sc.BattleUserID,
-			To:                   ownerID,
+			To:                   killOwnerID,
 			Amount:               *amount,
 			TransactionReference: TransactionReference(reference),
 		})

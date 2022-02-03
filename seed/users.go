@@ -263,10 +263,11 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 
 	// Create user
 	u := &passport.User{
-		ID:       passport.SupremacyZaibatsuUserID,
-		Username: passport.SupremacyZaibatsuUsername,
-		RoleID:   passport.UserRoleGameAccount,
-		Verified: true,
+		ID:        passport.SupremacyZaibatsuUserID,
+		Username:  passport.SupremacyZaibatsuUsername,
+		RoleID:    passport.UserRoleGameAccount,
+		Verified:  true,
+		FactionID: &passport.ZaibatsuFactionID,
 	}
 
 	// Insert
@@ -277,10 +278,11 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 
 	// Create user
 	u = &passport.User{
-		ID:       passport.SupremacyBostonCyberneticsUserID,
-		Username: passport.SupremacyBostonCyberneticsUsername,
-		RoleID:   passport.UserRoleGameAccount,
-		Verified: true,
+		ID:        passport.SupremacyBostonCyberneticsUserID,
+		Username:  passport.SupremacyBostonCyberneticsUsername,
+		RoleID:    passport.UserRoleGameAccount,
+		Verified:  true,
+		FactionID: &passport.BostonCyberneticsFactionID,
 	}
 
 	// Insert
@@ -291,10 +293,11 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 
 	// Create user
 	u = &passport.User{
-		ID:       passport.SupremacyRedMountainUserID,
-		Username: passport.SupremacyRedMountainUsername,
-		RoleID:   passport.UserRoleGameAccount,
-		Verified: true,
+		ID:        passport.SupremacyRedMountainUserID,
+		Username:  passport.SupremacyRedMountainUsername,
+		RoleID:    passport.UserRoleGameAccount,
+		Verified:  true,
+		FactionID: &passport.RedMountainFactionID,
 	}
 
 	// Insert

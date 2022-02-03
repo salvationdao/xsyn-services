@@ -43,6 +43,9 @@ func (api *API) DBListenForUserUpdateEvent() {
 			api.Log.Err(err).Msg("failed to parse postgres notification to user struct")
 		}
 
-		api.UpdateUserInCache(user)
+		if !user.ID.IsSystemUser() {
+			api.UpdateUserInCache(user)
+		}
+
 	}
 }

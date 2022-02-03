@@ -1112,8 +1112,8 @@ func UsernameAvailable(ctx context.Context, conn Conn, nameToCheck string, userI
 func InsertSystemUser(ctx context.Context, conn Conn, user *passport.User) error {
 
 	q := `--sql
-			INSERT INTO users (id, username, role_id, verified)
-			VALUES ($1, $2, $3, $4)`
+			INSERT INTO users (id, username, role_id, verified, faction_id)
+			VALUES ($1, $2, $3, $4, $5)`
 
 	_, err := conn.Exec(ctx,
 		q,
@@ -1121,6 +1121,7 @@ func InsertSystemUser(ctx context.Context, conn Conn, user *passport.User) error
 		user.Username,
 		user.RoleID,
 		user.Verified,
+		user.FactionID,
 	)
 	if err != nil {
 		return terror.Error(err)
@@ -1147,4 +1148,25 @@ func UserIDsGetByFactionID(ctx context.Context, conn Conn, factionID passport.Fa
 	}
 
 	return userIDs, nil
+}
+
+// FactionUserIDGetByFactionID return the faction game account user by faction id
+func FactionUserIDGetByFactionID(ctx context.Context, conn Conn, factionID passport.FactionID) (passport.UserID, error) {
+	userID := passport.UserID{}
+
+	q := `
+		SELECT
+			id
+		FROM
+			users
+		WHERE
+			faction_id = $1 AND role_id = $2
+	`
+
+	err := pgxscan.Get(ctx, conn, &userID, q, factionID, passport.UserRoleGameAccount)
+	if err != nil {
+		return userID, terror.Error(err)
+	}
+
+	return userID, nil
 }
