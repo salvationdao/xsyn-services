@@ -61,20 +61,20 @@ $updateOrganisationKeywords$
  *************/
 CREATE TABLE factions
 (
-    id    UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    label TEXT             NOT NULL,
-    theme JSONB            NOT NULL DEFAULT '{}',
-    logo_blob_id uuid NOT NULL REFERENCES blobs (id),
-    background_blob_id uuid NOT NULL REFERENCES blobs (id),
-    description TEXT NOT NULL DEFAULT '',
-    velocity INT NOT NULL DEFAULT 0,
-    share_percent INT NOT NULL DEFAULT 0,
-    recruit_number INT NOT NULL DEFAULT 0,
-    win_count INT NOT NULL DEFAULT 0,
-    loss_count INT NOT NULL DEFAULT 0,
-    kill_count INT NOT NULL DEFAULT 0,
-    death_count INT NOT NULL DEFAULT 0,
-    mvp TEXT NOT NULL DEFAULT ''
+    id                 UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    label              TEXT             NOT NULL,
+    theme              JSONB            NOT NULL DEFAULT '{}',
+    logo_blob_id       UUID             NOT NULL REFERENCES blobs (id),
+    background_blob_id UUID             NOT NULL REFERENCES blobs (id),
+    description        TEXT             NOT NULL DEFAULT '',
+    velocity           INT              NOT NULL DEFAULT 0,
+    share_percent      INT              NOT NULL DEFAULT 0,
+    recruit_number     INT              NOT NULL DEFAULT 0,
+    win_count          INT              NOT NULL DEFAULT 0,
+    loss_count         INT              NOT NULL DEFAULT 0,
+    kill_count         INT              NOT NULL DEFAULT 0,
+    death_count        INT              NOT NULL DEFAULT 0,
+    mvp                TEXT             NOT NULL DEFAULT ''
 );
 
 
@@ -431,14 +431,14 @@ CREATE TABLE xsyn_assets
     frozen_by_id      UUID REFERENCES users (id),
     locked_by_id      UUID REFERENCES users (id),
     frozen_at         TIMESTAMPTZ,
-    transferred_in_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    transferred_in_at TIMESTAMPTZ                NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE transactions
 (
     id                    SERIAL PRIMARY KEY,
     description           TEXT        NOT NULL                                                  DEFAULT '',
-    transaction_reference TEXT        NOT NULL                                                  DEFAULT '',
+    transaction_reference TEXT UNIQUE NOT NULL                                                  DEFAULT '',
     amount                NUMERIC(28) NOT NULL CHECK (amount > 0.0),
     -- Every entry is a credit to one account...
     credit                UUID        NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
@@ -554,5 +554,19 @@ CREATE TRIGGER user_notify_event
     FOR EACH ROW
 EXECUTE PROCEDURE user_update_event();
 
+/***********************************************************
+ *               Waiting for confirmations table           *
+ ***********************************************************/
+
+CREATE TABLE chain_confirmations
+(
+    tx           TEXT PRIMARY KEY,
+    tx_id        BIGINT REFERENCES transactions (id),
+    block        NUMERIC(78, 0) NOT NULL,
+    chain_id     NUMERIC(78, 0) NOT NULL,
+    confirmed_at TIMESTAMPTZ,
+    deleted_at   TIMESTAMPTZ,
+    created_at   TIMESTAMPTZ    NOT NULL DEFAULT NOW()
+);
 
 COMMIT;

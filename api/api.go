@@ -219,6 +219,8 @@ func NewAPI(
 	api.Hub.Events.AddEventHandler(auth.EventLogout, api.ClientLogout)
 	api.Hub.Events.AddEventHandler(hub.EventOffline, api.ClientOffline)
 
+	go api.RunBridgeListener(config.BridgeParams)
+
 	// Run the server client channel listener
 	go api.HandleServerClients()
 

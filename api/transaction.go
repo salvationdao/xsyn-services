@@ -53,9 +53,9 @@ func CreateTransactionEntry(conn *sql.DB, amount big.Int, to, from passport.User
 	}
 	q := `INSERT INTO transactions(description, transaction_reference, amount, credit, debit)
 				VALUES($1, $2, $3, $4, $5)
-				RETURNING status, reason;`
+				RETURNING id, status, reason;`
 
-	err := conn.QueryRow(q, description, txRef, amount.String(), to, from).Scan(&result.Status, &result.Reason)
+	err := conn.QueryRow(q, description, txRef, amount.String(), to, from).Scan(&result.ID, &result.Status, &result.Reason)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
