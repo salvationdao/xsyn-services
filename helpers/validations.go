@@ -3,6 +3,7 @@ package helpers
 import (
 	"fmt"
 	"regexp"
+	"strings"
 	"unicode"
 
 	"github.com/ninja-software/terror/v2"
@@ -13,6 +14,10 @@ import (
 var FirstDigitRegexp = regexp.MustCompile(`\d`)
 
 var emailRegexp = regexp.MustCompile("^.+?@.+?...+?$")
+
+var PasswordRegExp = regexp.MustCompile("[`!@#$%^&*()_+\\-=\\[\\]{};':\"\\|,.<>\\/?~]")
+
+var UsernameRegExp = regexp.MustCompile("[`!@#$%^&*()+=\\[\\]{};':\"\\|,.<>\\/?]")
 
 // IsEmpty checks if string given is empty
 func IsEmpty(text *null.String) bool {
@@ -39,11 +44,7 @@ func IsValidPassword(password string) error {
 	hasLower := false
 	hasNumber := false
 	hasSymbol := false
-	reg, err := regexp.Compile("[`!@#$%^&*()_+\\-=\\[\\]{};':\"\\|,.<>\\/?~]")
-	if err != nil {
-		return terror.Error(err, "Something went wrong. Please try again.")
-	}
-	if reg.Match([]byte(password)) {
+	if PasswordRegExp.Match([]byte(password)) {
 		hasSymbol = true
 	}
 	for _, r := range password {
@@ -56,7 +57,7 @@ func IsValidPassword(password string) error {
 		}
 	}
 
-	err = fmt.Errorf("password does not meet requirements")
+	err := fmt.Errorf("password does not meet requirements")
 	if len(password) < 8 {
 		return terror.Error(err, "Invalid password. Your password must be at least 8 characters long.")
 	}
@@ -72,5 +73,31 @@ func IsValidPassword(password string) error {
 	if !hasSymbol {
 		return terror.Error(err, "Invalid password. Your password must contain at least 1 symbol.")
 	}
+	return nil
+}
+
+func IsValidUsername(username string) error {
+	// Must contain at least 3 characters
+	// Cannot contain more than 30 characters
+	// Can only contain the following symbols: _-~
+	hasDisallowedSymbol := false
+	if UsernameRegExp.Match([]byte(username)) {
+		hasDisallowedSymbol = true
+	}
+
+	err := fmt.Errorf("username does not meet requirements")
+	if len(username) < 3 {
+		return terror.Error(err, "Invalid username. Your username must be at least 3 characters long.")
+	}
+	if len(username) > 50 {
+		return terror.Error(err, "Invalid username. Your username cannot be more than 30 characters long.")
+	}
+	if strings.TrimSpace(username) == "" {
+		return terror.Error(err, "Invalid username. Your username cannot be empty.")
+	}
+	if hasDisallowedSymbol {
+		return terror.Error(err, "Invalid username. Your username contains a disallowed symbol.")
+	}
+
 	return nil
 }

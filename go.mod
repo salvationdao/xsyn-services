@@ -8,7 +8,6 @@ require (
 	github.com/caddyserver/xcaddy v0.2.0
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/cosmtrek/air v1.27.3
-	github.com/dghubble/oauth1 v0.7.1
 	github.com/georgysavva/scany v0.2.9
 	github.com/getsentry/sentry-go v0.11.0
 	github.com/go-chi/chi/v5 v5.0.7
@@ -24,9 +23,8 @@ require (
 	github.com/mailgun/mailgun-go/v4 v4.6.0
 	github.com/makiuchi-d/arelo v1.9.2
 	github.com/microcosm-cc/bluemonday v1.0.17
-	github.com/ninja-software/go-check-passwd v0.0.0-20191023080747-0879e647a3ab
 	github.com/ninja-software/terror/v2 v2.0.7
-	github.com/ninja-syndicate/hub v1.1.1
+	github.com/ninja-syndicate/hub v1.2.1
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/prometheus/client_golang v1.11.0
@@ -50,6 +48,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
 	github.com/containerd/continuity v0.0.0-20190827140505-75bee3e2ccb6 // indirect
 	github.com/deckarep/golang-set v0.0.0-20180603214616-504e848d77ea // indirect
+	github.com/dghubble/oauth1 v0.7.1 // indirect
 	github.com/docker/cli v20.10.11+incompatible // indirect
 	github.com/docker/docker v20.10.7+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
