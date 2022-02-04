@@ -34,6 +34,7 @@ type XsynNftMetadata struct {
 	UserID             *UserID               `json:"userID" db:"user_id"`
 	TokenID            uint64                `json:"tokenID" db:"token_id"`
 	Name               string                `json:"name" db:"name"`
+	CollectionID 	   CollectionID 		 `json:"collectionID" db:"collection_id"`
 	Collection         Collection            `json:"collection" db:"collection"`
 	GameObject         interface{}           `json:"game_object" db:"game_object"`
 	Description        string                `json:"description" db:"description"`
