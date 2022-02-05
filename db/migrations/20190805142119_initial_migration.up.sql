@@ -514,6 +514,22 @@ CREATE TRIGGER trigger_check_balance
 EXECUTE PROCEDURE check_balances();
 
 
+/***********************************************************
+ *               Waiting for confirmations table           *
+ ***********************************************************/
+
+CREATE TABLE chain_confirmations
+(
+    tx           TEXT PRIMARY KEY,
+    tx_id        BIGINT REFERENCES transactions (id),
+    block        NUMERIC(78, 0) NOT NULL,
+    chain_id     NUMERIC(78, 0) NOT NULL,
+    confirmed_at TIMESTAMPTZ,
+    deleted_at   TIMESTAMPTZ,
+    created_at   TIMESTAMPTZ    NOT NULL DEFAULT NOW()
+);
+
+
 -- Set permissions
 GRANT ALL ON transactions TO passport_tx;
 GRANT ALL ON users TO passport_tx;
@@ -553,20 +569,5 @@ CREATE TRIGGER user_notify_event
     ON users
     FOR EACH ROW
 EXECUTE PROCEDURE user_update_event();
-
-/***********************************************************
- *               Waiting for confirmations table           *
- ***********************************************************/
-
-CREATE TABLE chain_confirmations
-(
-    tx           TEXT PRIMARY KEY,
-    tx_id        BIGINT REFERENCES transactions (id),
-    block        NUMERIC(78, 0) NOT NULL,
-    chain_id     NUMERIC(78, 0) NOT NULL,
-    confirmed_at TIMESTAMPTZ,
-    deleted_at   TIMESTAMPTZ,
-    created_at   TIMESTAMPTZ    NOT NULL DEFAULT NOW()
-);
 
 COMMIT;
