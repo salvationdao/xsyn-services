@@ -52,6 +52,7 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 		}
 		return http.StatusOK, nil
 	})
+	// TODO: figure out how to set the logging for this to trace
 	repairTicker.DisableLogging = true
 	repairTicker.Start()
 
