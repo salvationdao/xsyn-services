@@ -45,13 +45,15 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	supremacyHub.BattleUserID = passport.SupremacyBattleUserID
 
 	// start nft repair ticker
-	tickle.New("NFT Repair Ticker", 60, func() (int, error) {
+	repairTicker := tickle.New("NFT Repair Ticker", 60, func() (int, error) {
 		err := db.XsynNftMetadataDurabilityBulkIncrement(context.Background(), conn)
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err)
 		}
 		return http.StatusOK, nil
-	}).Start()
+	})
+	repairTicker.DisableLogging = true
+	repairTicker.Start()
 
 	// sup control
 	api.SupremacyCommand(HubKeySupremacyHoldSups, supremacyHub.SupremacyHoldSupsHandler)
