@@ -215,20 +215,28 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 
 	// send through transactions
 	for _, tx := range transactions {
-		tx.ResultChan = make(chan *passport.Transaction, 1)
+		tx.ResultChan = make(chan *TransactionResult, 1)
 		sc.API.transaction <- tx
 		result := <-tx.ResultChan
 		// if result is success, update the cache map
-		if result.Status == passport.TransactionSuccess {
-			errChan := make(chan error, 10)
-			sc.API.UpdateUserCacheRemoveSups(tx.From, tx.Amount, errChan)
-			err := <-errChan
-			if err != nil {
-				sc.API.Log.Err(err).Msg(err.Error())
-				continue
-			}
-			sc.API.UpdateUserCacheAddSups(tx.To, tx.Amount)
+
+		if result.Error != nil {
+			continue // believe error logs already
 		}
+
+		if result.Transaction.Status != passport.TransactionSuccess {
+			sc.API.Log.Err(fmt.Errorf("transaction unsuccessful reason: %s", result.Transaction.Reason))
+			continue
+		}
+
+		errChan := make(chan error, 10)
+		sc.API.UpdateUserCacheRemoveSups(tx.From, tx.Amount, errChan)
+		err := <-errChan
+		if err != nil {
+			sc.API.Log.Err(err).Msg(err.Error())
+			continue
+		}
+		sc.API.UpdateUserCacheAddSups(tx.To, tx.Amount)
 	}
 
 	reply(true)
@@ -362,11 +370,11 @@ func (sc *SupremacyControllerWS) SupremacyDistributeBattleRewardHandler(ctx cont
 
 	// send through transactions
 	for _, tx := range transactions {
-		tx.ResultChan = make(chan *passport.Transaction, 1)
+		tx.ResultChan = make(chan *TransactionResult, 1)
 		sc.API.transaction <- tx
 		result := <-tx.ResultChan
 		// if result is success, update the cache map
-		if result.Status == passport.TransactionSuccess {
+		if result.Error == nil && result.Transaction != nil && result.Transaction.Status == passport.TransactionSuccess {
 			errChan := make(chan error, 10)
 			sc.API.UpdateUserCacheRemoveSups(tx.From, tx.Amount, errChan)
 			err := <-errChan
@@ -661,7 +669,9 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 	switch req.Payload.FactionID {
 	case passport.RedMountainFactionID:
 		faction, err := db.FactionGet(ctx, sc.Conn, passport.RedMountainFactionID)
-
+		if err != nil {
+			return terror.Error(err)
+		}
 		warMachinesMetaData, err := db.DefaultWarMachineGet(ctx, sc.Conn, passport.SupremacyRedMountainUserID, req.Payload.Amount)
 		if err != nil {
 			return terror.Error(err)
@@ -679,6 +689,9 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 
 	case passport.BostonCyberneticsFactionID:
 		faction, err := db.FactionGet(ctx, sc.Conn, passport.BostonCyberneticsFactionID)
+		if err != nil {
+			return terror.Error(err)
+		}
 		warMachinesMetaData, err := db.DefaultWarMachineGet(ctx, sc.Conn, passport.SupremacyBostonCyberneticsUserID, req.Payload.Amount)
 		if err != nil {
 			return terror.Error(err)
@@ -694,6 +707,9 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 		}
 	case passport.ZaibatsuFactionID:
 		faction, err := db.FactionGet(ctx, sc.Conn, passport.ZaibatsuFactionID)
+		if err != nil {
+			return terror.Error(err)
+		}
 		warMachinesMetaData, err := db.DefaultWarMachineGet(ctx, sc.Conn, passport.SupremacyZaibatsuUserID, req.Payload.Amount)
 		if err != nil {
 			return terror.Error(err)

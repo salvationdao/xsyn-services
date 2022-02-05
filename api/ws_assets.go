@@ -257,11 +257,10 @@ type AssetListResponse struct {
 const HubKeyAssetList hub.HubCommandKey = "ASSET:LIST"
 
 func (ctrlr *AssetController) AssetList(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-
 	req := &AssetsUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		terror.Error(err)
+		return terror.Error(err)
 	}
 
 	offset := 0
@@ -283,7 +282,7 @@ func (ctrlr *AssetController) AssetList(ctx context.Context, hubc *hub.Client, p
 		req.Payload.SortDir,
 	)
 	if err != nil {
-		terror.Error(err)
+		return terror.Error(err)
 	}
 
 	resp := &AssetListResponse{
@@ -292,9 +291,7 @@ func (ctrlr *AssetController) AssetList(ctx context.Context, hubc *hub.Client, p
 	}
 
 	reply(resp)
-
 	return nil
-
 }
 
 // AssetUpdatedSubscribeRequest requests an update for an xsyn_nft_metadata

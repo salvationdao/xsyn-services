@@ -17,13 +17,20 @@ type NewTransaction struct {
 	Amount               big.Int              `json:"amount" db:"amount"`
 	TransactionReference TransactionReference `json:"transactionReference" db:"transaction_reference"`
 	Description          string               `json:"description" db:"description"`
-	ResultChan           chan *passport.Transaction
+	ResultChan           chan *TransactionResult
+}
+
+type TransactionResult struct {
+	Transaction *passport.Transaction
+	Error       error
 }
 
 // HandleTransactions listens to the handle transaction channel and processes transactions, this is to ensure they happen asynchronously
 func (api *API) HandleTransactions() {
 	for {
 		transaction := <-api.transaction
+		transactionResult := &TransactionResult{}
+
 		resultTx, err := CreateTransactionEntry(
 			api.TxConn,
 			transaction.Amount,
@@ -32,12 +39,14 @@ func (api *API) HandleTransactions() {
 			"",
 			transaction.TransactionReference,
 		)
-
 		if err != nil {
+			transactionResult.Error = terror.Error(err, "failed to transfer sups")
 			api.Log.Err(err).Msg("failed to transfer sups")
 		}
+
+		transactionResult.Transaction = resultTx
 		if transaction.ResultChan != nil {
-			transaction.ResultChan <- resultTx
+			transaction.ResultChan <- transactionResult
 		}
 	}
 }
@@ -133,11 +142,12 @@ func (api *API) CommitTransactions(resultChan chan []*passport.Transaction, txRe
 	api.HeldTransactions(func(heldTxList map[TransactionReference]*NewTransaction) {
 		for _, txRef := range txRefs {
 			if tx, ok := heldTxList[txRef]; ok {
-				tx.ResultChan = make(chan *passport.Transaction, 1)
+				tx.ResultChan = make(chan *TransactionResult, 1)
 				api.transaction <- tx
 				result := <-tx.ResultChan
 				// if result is failed, update the cache map
-				if result.Status == passport.TransactionFailed {
+
+				if result.Error != nil || result.Transaction.Status == passport.TransactionFailed {
 					errChan := make(chan error, 10)
 					api.UpdateUserCacheRemoveSups(tx.To, tx.Amount, errChan)
 					err := <-errChan
@@ -147,7 +157,7 @@ func (api *API) CommitTransactions(resultChan chan []*passport.Transaction, txRe
 					}
 					api.UpdateUserCacheAddSups(tx.From, tx.Amount)
 				}
-				results = append(results, result)
+				results = append(results, result.Transaction)
 
 				// remove cached transaction after it is committed
 				delete(heldTxList, txRef)

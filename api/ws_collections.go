@@ -67,7 +67,7 @@ func (ctrlr *CollectionController) CollectionsList(ctx context.Context, hubc *hu
 	req := &CollectionsUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		terror.Error(err)
+		return terror.Error(err)
 	}
 
 	offset := 0
