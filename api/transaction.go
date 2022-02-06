@@ -122,7 +122,6 @@ func (api *API) HoldTransaction(holdErrChan chan error, txs ...*passport.NewTran
 func (api *API) CommitTransactions(resultChan chan []*passport.Transaction, txRefs ...passport.TransactionReference) {
 	results := []*passport.Transaction{}
 	// we loop the transactions, and see the results!
-
 	api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 		for _, txRef := range txRefs {
 			if tx, ok := heldTxList[txRef]; ok {
@@ -130,7 +129,6 @@ func (api *API) CommitTransactions(resultChan chan []*passport.Transaction, txRe
 				api.transaction <- tx
 				result := <-tx.ResultChan
 				// if result is failed, update the cache map
-
 				if result.Error != nil || result.Transaction.Status == passport.TransactionFailed {
 					errChan := make(chan error, 10)
 					api.UpdateUserCacheRemoveSups(tx.To, tx.Amount, errChan)
@@ -145,6 +143,8 @@ func (api *API) CommitTransactions(resultChan chan []*passport.Transaction, txRe
 
 				// remove cached transaction after it is committed
 				delete(heldTxList, txRef)
+			} else {
+				api.Log.Warn().Msgf("unable to find tx ref %s in held transactions", txRef)
 			}
 		}
 		resultChan <- results

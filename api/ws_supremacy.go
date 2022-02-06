@@ -120,7 +120,7 @@ type SupremacyHoldSupsRequest struct {
 	Payload struct {
 		Amount               passport.BigInt               `json:"amount"`
 		FromUserID           passport.UserID               `json:"userID"`
-		TransactionReference passport.TransactionReference `json:"passport.transactionReference"`
+		TransactionReference passport.TransactionReference `json:"transactionReference"`
 		IsBattleVote         bool                          `json:"isBattleVote"`
 	} `json:"payload"`
 }
@@ -615,11 +615,9 @@ func (sc *SupremacyControllerWS) SupremacyCommitTransactionsHandler(ctx context.
 		return terror.Error(err, "Invalid request received")
 	}
 	resultChan := make(chan []*passport.Transaction, len(req.Payload.TransactionReferences)+5)
-
 	sc.API.CommitTransactions(resultChan, req.Payload.TransactionReferences...)
 
 	results := <-resultChan
-
 	reply(results)
 	return nil
 }
