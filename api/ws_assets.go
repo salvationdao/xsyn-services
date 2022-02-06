@@ -3,14 +3,12 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"passport"
 	"passport/db"
 	"passport/log_helpers"
 
 	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
@@ -39,68 +37,10 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 	// asset subscribe
 	api.SecureUserSubscribeCommand(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)
 
-	api.SecureCommand(HubKeyAssetRegister, assetHub.RegisterHandler)
 	api.SecureCommand(HubKeyAssetQueueJoin, assetHub.JoinQueueHandler)
 	api.SecureCommand(HubKeyAssetQueueLeave, assetHub.LeaveQueueHandler)
 
 	return assetHub
-}
-
-// AssetRegisterRequest contain the nft that user want to plug into server
-type AssetRegisterRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		XsynNftMetadata *passport.XsynNftMetadata `json:"xsynNftMetadata"`
-	} `json:"payload"`
-}
-
-// 	rootHub.SecureCommand(HubKeyAssetRegister, AssetController.RegisterHandler)
-const HubKeyAssetRegister hub.HubCommandKey = "ASSET:REGISTER"
-
-// RegisterHandler allow user to register their nft to their passport
-func (ac *AssetController) RegisterHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &AssetRegisterRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received")
-	}
-
-	// parse user id
-	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
-	if userID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput)
-	}
-
-	tx, err := ac.Conn.Begin(ctx)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	defer func(tx pgx.Tx, ctx context.Context) {
-		err := tx.Rollback(ctx)
-		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			ac.Log.Err(err).Msg("error rolling back")
-		}
-	}(tx, ctx)
-
-	// insert asset to db
-	err = db.XsynNftMetadataInsert(ctx, tx, req.Payload.XsynNftMetadata, req.Payload.XsynNftMetadata.Collection.ID)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	// assign asset to user
-	err = db.XsynNftMetadataAssignUser(ctx, tx, req.Payload.XsynNftMetadata.TokenID, userID)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	err = tx.Commit(ctx)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
 }
 
 // AssetQueueRequest contain the asset token id that user want to join/leave the battle queue
@@ -142,7 +82,7 @@ func (ac *AssetController) LeaveQueueHandler(ctx context.Context, hubc *hub.Clie
 		return terror.Error(terror.ErrInvalidInput, "Current asset is unable to leave the battle queue")
 	}
 
-	warMachineNFT := &passport.WarMachineNFT{
+	warMachineMetadata := &passport.WarMachineMetadata{
 		TokenID:   req.Payload.AssetTokenID,
 		OwnedByID: userID,
 		FactionID: *user.FactionID,
@@ -152,9 +92,11 @@ func (ac *AssetController) LeaveQueueHandler(ctx context.Context, hubc *hub.Clie
 	ac.API.SendToAllServerClient(&ServerClientMessage{
 		Key: AssetQueueLeave,
 		Payload: struct {
-			WarMachineNFT *passport.WarMachineNFT `json:"warMachineNFT"`
+			// TODO: change this to metadata
+			WarMachineNFT *passport.WarMachineMetadata `json:"warMachineMetadata"`
 		}{
-			WarMachineNFT: warMachineNFT,
+			// TODO: change this to metadata
+			WarMachineNFT: warMachineMetadata,
 		},
 	})
 
@@ -191,39 +133,41 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	// check user own this asset and it has not joined the queue yet
-	nft, err := db.XsynNftMetadataAvailableGet(ctx, ac.Conn, userID, req.Payload.AssetTokenID)
+	metadata, err := db.XsynMetadataAvailableGet(ctx, ac.Conn, userID, req.Payload.AssetTokenID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	warMachineNFT := &passport.WarMachineNFT{
+	warMachineMetadata := &passport.WarMachineMetadata{
 		OwnedByID: userID,
 	}
 
-	// parse nft
-	for _, att := range nft.Attributes {
+	// parse metadata
+	for _, att := range metadata.Attributes {
 		if att.TraitType != "Asset Type" {
 			continue
 		}
 
 		switch att.Value {
 		case string(passport.WarMachine):
-			passport.ParseWarMachineNFT(nft, warMachineNFT)
+			passport.ParseWarMachineMetadata(metadata, warMachineMetadata)
 		case string(passport.Weapon):
 		case string(passport.Utility):
 		}
 	}
 
 	// assign faction id
-	warMachineNFT.FactionID = *user.FactionID
+	warMachineMetadata.FactionID = *user.FactionID
 
 	// join the asset to the queue
 	ac.API.SendToAllServerClient(&ServerClientMessage{
 		Key: AssetQueueJoin,
 		Payload: struct {
-			WarMachineNFT *passport.WarMachineNFT `json:"warMachineNFT"`
+			// TODO: change this to metadata
+			WarMachineNFT *passport.WarMachineMetadata `json:"warMachineMetadata"`
 		}{
-			WarMachineNFT: warMachineNFT,
+			// TODO: change this to metadata
+			WarMachineNFT: warMachineMetadata,
 		},
 	})
 
@@ -250,8 +194,8 @@ type AssetsUpdatedSubscribeRequest struct {
 
 // AssetListResponse is the response from get asset list
 type AssetListResponse struct {
-	Records []*passport.XsynNftMetadata `json:"records"`
-	Total   int                         `json:"total"`
+	Records []*passport.XsynMetadata `json:"records"`
+	Total   int                      `json:"total"`
 }
 
 const HubKeyAssetList hub.HubCommandKey = "ASSET:LIST"
@@ -268,7 +212,7 @@ func (ctrlr *AssetController) AssetList(ctx context.Context, hubc *hub.Client, p
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	assets := []*passport.XsynNftMetadata{}
+	assets := []*passport.XsynMetadata{}
 	total, err := db.AssetList(
 		ctx, ctrlr.Conn, &assets,
 		req.Payload.Search,
@@ -294,7 +238,7 @@ func (ctrlr *AssetController) AssetList(ctx context.Context, hubc *hub.Client, p
 	return nil
 }
 
-// AssetUpdatedSubscribeRequest requests an update for an xsyn_nft_metadata
+// AssetUpdatedSubscribeRequest requests an update for an xsyn_metadata
 type AssetUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {

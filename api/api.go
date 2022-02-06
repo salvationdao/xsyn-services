@@ -12,6 +12,8 @@ import (
 	"passport/log_helpers"
 	"strconv"
 
+	"github.com/shopspring/decimal"
+
 	"nhooyr.io/websocket"
 
 	"github.com/gofrs/uuid"
@@ -34,6 +36,7 @@ import (
 
 // API server
 type API struct {
+	SupUSD       decimal.Decimal
 	Log          *zerolog.Logger
 	Routes       chi.Router
 	Addr         string
@@ -56,8 +59,8 @@ type API struct {
 	sendToServerClients chan *ServerClientMessage
 
 	//tx stuff
-	transaction      chan *NewTransaction
-	heldTransactions chan func(heldTxList map[TransactionReference]*NewTransaction)
+	transaction      chan *passport.NewTransaction
+	heldTransactions chan func(heldTxList map[passport.TransactionReference]*passport.NewTransaction)
 
 	// treasury ticker map
 	treasuryTickerMap map[ServerClientName]*tickle.Tickle
@@ -88,6 +91,7 @@ func NewAPI(
 ) *API {
 	msgBus, cleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
 	api := &API{
+		SupUSD:      decimal.New(12, -2),
 		ClientToken: clientToken,
 		Tokens: &Tokens{
 			Conn:                conn,
@@ -127,8 +131,8 @@ func NewAPI(
 
 		// object to hold transaction stuff
 		TxConn:           txConn,
-		transaction:      make(chan *NewTransaction),
-		heldTransactions: make(chan func(heldTxList map[TransactionReference]*NewTransaction)),
+		transaction:      make(chan *passport.NewTransaction),
+		heldTransactions: make(chan func(heldTxList map[passport.TransactionReference]*passport.NewTransaction)),
 
 		// treasury ticker map
 		treasuryTickerMap: make(map[ServerClientName]*tickle.Tickle),
@@ -213,6 +217,7 @@ func NewAPI(
 	_ = NewProductController(log, conn, api)
 	_ = NewSupremacyController(log, conn, api)
 	_ = NewGamebarController(log, conn, api)
+	_ = NewStoreController(log, conn, api)
 
 	//api.Hub.Events.AddEventHandler(hub.EventOnline, api.ClientOnline)
 	api.Hub.Events.AddEventHandler(auth.EventLogin, api.ClientAuth)

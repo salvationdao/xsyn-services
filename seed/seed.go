@@ -77,15 +77,22 @@ func (s *Seeder) Run(isProd bool) error {
 	if err != nil {
 		return terror.Error(err, "seed users failed")
 	}
+
 	//fmt.Println("Seeding organisations")
 	//organisations, err := s.Organisations(ctx)
 	//if err != nil {
 	//	return terror.Error(err, "seed organisations failed")
 	//}
 
+	fmt.Println("Seeding initial store items")
+	err = s.SeedInitialStoreItems(ctx)
+	if err != nil {
+		return terror.Error(err, "seed users failed")
+	}
+
 	if !isProd {
-		fmt.Println("Seeding xsyn NFTs")
-		_, _, _, err = s.SeedNFTS(ctx)
+		fmt.Println("Seeding xsyn item metadata")
+		_, _, _, err = s.SeedItemMetadata(ctx)
 		if err != nil {
 			return terror.Error(err, "seed nfts failed")
 		}

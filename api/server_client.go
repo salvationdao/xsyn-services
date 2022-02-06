@@ -27,11 +27,11 @@ func (api *API) InitialiseTreasuryFundTicker() {
 		treasuryTransfer := big.NewInt(0)
 		treasuryTransfer.Add(treasuryTransfer, fund)
 
-		api.transaction <- &NewTransaction{
+		api.transaction <- &passport.NewTransaction{
 			From:                 passport.XsynTreasuryUserID,
 			To:                   passport.SupremacyGameUserID,
 			Amount:               *treasuryTransfer,
-			TransactionReference: TransactionReference(fmt.Sprintf("treasury|ticker|%s", time.Now())),
+			TransactionReference: passport.TransactionReference(fmt.Sprintf("treasury|ticker|%s", time.Now())),
 		}
 
 		return http.StatusOK, nil

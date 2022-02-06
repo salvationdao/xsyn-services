@@ -325,15 +325,31 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 }
 
 func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport.Collection) error {
-	newNFT := []*passport.XsynNftMetadata{
+	newNFT := []*passport.XsynMetadata{
 		{
-			Collection:         *collection,
-			Name:               "Tenshi Mk1",
+			CollectionID:       collection.ID,
+			Name:               "",
 			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Zaibatsu",
+				},
+				{
+					TraitType: "Model",
+					Value:     "WREX",
+				},
+				{
+					TraitType: "Name",
+					Value:     "Tenshi Mk1",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
 				{
 					TraitType: "Asset Type",
 					Value:     "War Machine",
@@ -401,13 +417,29 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 			},
 		},
 		{
-			Collection:         *collection,
+			CollectionID:       collection.ID,
 			Name:               "Tenshi Mk1 B",
 			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Zaibatsu",
+				},
+				{
+					TraitType: "Model",
+					Value:     "WREX",
+				},
+				{
+					TraitType: "Name",
+					Value:     "Tenshi Mk1 B",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
 				{
 					TraitType: "Asset Type",
 					Value:     "War Machine",
@@ -477,12 +509,12 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 	}
 
 	for _, nft := range newNFT {
-		err := db.XsynNftMetadataInsert(ctx, s.Conn, nft, collection.ID)
+		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
 		if err != nil {
 			return terror.Error(err)
 		}
 
-		err = db.XsynNftMetadataAssignUser(ctx, s.Conn, nft.TokenID, passport.SupremacyZaibatsuUserID)
+		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.TokenID, passport.SupremacyZaibatsuUserID)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -492,15 +524,31 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 }
 
 func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passport.Collection) error {
-	newNFT := []*passport.XsynNftMetadata{
+	newNFT := []*passport.XsynMetadata{
 		{
-			Collection:         *collection,
-			Name:               "Olympus Mons LY07",
+			CollectionID:       collection.ID,
+			Name:               "",
 			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Red Mountain",
+				},
+				{
+					TraitType: "Model",
+					Value:     "BXSD",
+				},
+				{
+					TraitType: "Name",
+					Value:     "Olympus Mons LY07",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
 				{
 					TraitType: "Asset Type",
 					Value:     "War Machine",
@@ -558,13 +606,29 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 			},
 		},
 		{
-			Collection:         *collection,
+			CollectionID:       collection.ID,
 			Name:               "Olympus Mons LY07 B",
 			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Red Mountain",
+				},
+				{
+					TraitType: "Model",
+					Value:     "BXSD",
+				},
+				{
+					TraitType: "Name",
+					Value:     "Olympus Mons LY07 B",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
 				{
 					TraitType: "Asset Type",
 					Value:     "War Machine",
@@ -624,12 +688,12 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 	}
 
 	for _, nft := range newNFT {
-		err := db.XsynNftMetadataInsert(ctx, s.Conn, nft, collection.ID)
+		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
 		if err != nil {
 			return terror.Error(err)
 		}
 
-		err = db.XsynNftMetadataAssignUser(ctx, s.Conn, nft.TokenID, passport.SupremacyRedMountainUserID)
+		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.TokenID, passport.SupremacyRedMountainUserID)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -639,15 +703,31 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 }
 
 func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.Collection) error {
-	newNFT := []*passport.XsynNftMetadata{
+	metadata := []*passport.XsynMetadata{
 		{
-			Collection:         *collection,
-			Name:               "Law Enforcer X-1000",
+			CollectionID:       collection.ID,
+			Name:               "",
 			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Boston Cybernetics",
+				},
+				{
+					TraitType: "Model",
+					Value:     "XFVS",
+				},
+				{
+					TraitType: "Name",
+					Value:     "Law Enforcer X-1000",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
 				{
 					TraitType: "Asset Type",
 					Value:     "War Machine",
@@ -692,13 +772,29 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 			},
 		},
 		{
-			Collection:         *collection,
+			CollectionID:       collection.ID,
 			Name:               "Law Enforcer X-1000 B",
 			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Boston Cybernetics",
+				},
+				{
+					TraitType: "Model",
+					Value:     "XFVS",
+				},
+				{
+					TraitType: "Name",
+					Value:     "Law Enforcer X-1000 B",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
 				{
 					TraitType: "Asset Type",
 					Value:     "War Machine",
@@ -744,13 +840,13 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 		},
 	}
 
-	for _, nft := range newNFT {
-		err := db.XsynNftMetadataInsert(ctx, s.Conn, nft, collection.ID)
+	for _, nft := range metadata {
+		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
 		if err != nil {
 			return terror.Error(err)
 		}
 
-		err = db.XsynNftMetadataAssignUser(ctx, s.Conn, nft.TokenID, passport.SupremacyBostonCyberneticsUserID)
+		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.TokenID, passport.SupremacyBostonCyberneticsUserID)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -773,7 +869,7 @@ func (s *Seeder) AndAssignNftToMember(ctx context.Context) error {
 	}
 
 	// assign nft to member
-	err = db.XsynNftMetadataAssignUser(ctx, s.Conn, nft.TokenID, member.ID)
+	err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.TokenID, member.ID)
 	if err != nil {
 		return terror.Error(err)
 	}

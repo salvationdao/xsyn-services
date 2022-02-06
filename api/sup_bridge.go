@@ -58,14 +58,14 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 						}
 					}
 
-					resultChan := make(chan *TransactionResult)
+					resultChan := make(chan *passport.TransactionResult)
 
-					api.transaction <- &NewTransaction{
+					api.transaction <- &passport.NewTransaction{
 						ResultChan:           resultChan,
 						To:                   user.ID,
 						From:                 passport.OnChainUserID,
 						Amount:               *supAmount,
-						TransactionReference: TransactionReference(xfer.TxID.Hex()),
+						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("sup purchase on BSC with BUSD %s", xfer.TxID.Hex()),
 					}
 
@@ -82,11 +82,11 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 
 					err = db.CreateChainConfirmationEntry(ctx, api.Conn, xfer.TxID.Hex(), result.Transaction.ID, xfer.Block, xfer.ChainID.Uint64())
 					if err != nil {
-						api.transaction <- &NewTransaction{
+						api.transaction <- &passport.NewTransaction{
 							To:                   passport.OnChainUserID,
 							From:                 user.ID,
 							Amount:               *supAmount,
-							TransactionReference: TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
+							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
 							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on BSC with BUSD %s", xfer.TxID.Hex()),
 						}
 						api.Log.Err(err).Msg("failed to insert chain confirmation entry")
@@ -123,14 +123,14 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 						}
 					}
 
-					resultChan := make(chan *TransactionResult)
+					resultChan := make(chan *passport.TransactionResult)
 
-					api.transaction <- &NewTransaction{
+					api.transaction <- &passport.NewTransaction{
 						ResultChan:           resultChan,
 						To:                   user.ID,
 						From:                 passport.OnChainUserID,
 						Amount:               *supAmount,
-						TransactionReference: TransactionReference(xfer.TxID.Hex()),
+						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("sup purchase on BSC with WBNB %s", xfer.TxID.Hex()),
 					}
 
@@ -147,11 +147,11 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 
 					err = db.CreateChainConfirmationEntry(ctx, api.Conn, xfer.TxID.Hex(), result.Transaction.ID, xfer.Block, xfer.ChainID.Uint64())
 					if err != nil {
-						api.transaction <- &NewTransaction{
+						api.transaction <- &passport.NewTransaction{
 							To:                   passport.OnChainUserID,
 							From:                 user.ID,
 							Amount:               *supAmount,
-							TransactionReference: TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
+							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
 							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on BSC with WBNB %s", xfer.TxID.Hex()),
 						}
 						api.Log.Err(err).Msg("failed to insert chain confirmation entry")
@@ -183,14 +183,14 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 						}
 					}
 
-					resultChan := make(chan *TransactionResult)
+					resultChan := make(chan *passport.TransactionResult)
 
-					api.transaction <- &NewTransaction{
+					api.transaction <- &passport.NewTransaction{
 						ResultChan:           resultChan,
 						To:                   user.ID,
 						From:                 passport.OnChainUserID,
 						Amount:               *xfer.Amount,
-						TransactionReference: TransactionReference(xfer.TxID.Hex()),
+						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("sup deposit on BSC %s", xfer.TxID.Hex()),
 					}
 
@@ -207,11 +207,11 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 
 					err = db.CreateChainConfirmationEntry(ctx, api.Conn, xfer.TxID.Hex(), result.Transaction.ID, xfer.Block, xfer.ChainID.Uint64())
 					if err != nil {
-						api.transaction <- &NewTransaction{
+						api.transaction <- &passport.NewTransaction{
 							To:                   passport.OnChainUserID,
 							From:                 user.ID,
 							Amount:               *xfer.Amount,
-							TransactionReference: TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
+							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
 							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup deposit on BSC %s", xfer.TxID.Hex()),
 						}
 						api.Log.Err(err).Msg("failed to insert chain confirmation entry")
@@ -260,14 +260,14 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 						}
 					}
 
-					resultChan := make(chan *TransactionResult)
+					resultChan := make(chan *passport.TransactionResult)
 
-					api.transaction <- &NewTransaction{
+					api.transaction <- &passport.NewTransaction{
 						ResultChan:           resultChan,
 						To:                   passport.XsynTreasuryUserID,
 						From:                 user.ID,
 						Amount:               *xfer.Amount,
-						TransactionReference: TransactionReference(xfer.TxID.Hex()),
+						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("sup redeem on BSC to BUSD %s", xfer.TxID.Hex()),
 					}
 
@@ -282,11 +282,11 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 					}
 					err = db.CreateChainConfirmationEntry(ctx, api.Conn, xfer.TxID.Hex(), result.Transaction.ID, xfer.Block, xfer.ChainID.Uint64())
 					if err != nil {
-						api.transaction <- &NewTransaction{
+						api.transaction <- &passport.NewTransaction{
 							To:                   user.ID,
 							From:                 passport.XsynTreasuryUserID,
 							Amount:               *xfer.Amount,
-							TransactionReference: TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
+							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
 							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup redeem on BSC to BUSD %s", xfer.TxID.Hex()),
 						}
 						api.Log.Err(err).Msg("failed to insert chain confirmation entry")
@@ -318,14 +318,14 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 							return
 						}
 					}
-					resultChan := make(chan *TransactionResult)
+					resultChan := make(chan *passport.TransactionResult)
 
-					api.transaction <- &NewTransaction{
+					api.transaction <- &passport.NewTransaction{
 						ResultChan:           resultChan,
 						To:                   passport.XsynTreasuryUserID,
 						From:                 user.ID,
 						Amount:               *xfer.Amount,
-						TransactionReference: TransactionReference(xfer.TxID.Hex()),
+						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("sup withdraw on BSC to %s", xfer.TxID.Hex()),
 					}
 
@@ -340,11 +340,11 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 					}
 					err = db.CreateChainConfirmationEntry(ctx, api.Conn, xfer.TxID.Hex(), result.Transaction.ID, xfer.Block, xfer.ChainID.Uint64())
 					if err != nil {
-						api.transaction <- &NewTransaction{
+						api.transaction <- &passport.NewTransaction{
 							To:                   user.ID,
 							From:                 passport.XsynTreasuryUserID,
 							Amount:               *xfer.Amount,
-							TransactionReference: TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
+							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
 							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - ssup withdraw on BSC to %s", xfer.TxID.Hex()),
 						}
 						api.Log.Err(err).Msg("failed to insert chain confirmation entry")
@@ -385,14 +385,14 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 							return
 						}
 					}
-					resultChan := make(chan *TransactionResult)
+					resultChan := make(chan *passport.TransactionResult)
 
-					api.transaction <- &NewTransaction{
+					api.transaction <- &passport.NewTransaction{
 						ResultChan:           resultChan,
 						To:                   user.ID,
 						From:                 passport.OnChainUserID,
 						Amount:               *supAmount,
-						TransactionReference: TransactionReference(xfer.TxID.Hex()),
+						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("sup purchase on Ethereum with USDC %s", xfer.TxID.Hex()),
 					}
 
@@ -407,11 +407,11 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 					}
 					err = db.CreateChainConfirmationEntry(ctx, api.Conn, xfer.TxID.Hex(), result.Transaction.ID, xfer.Block, xfer.ChainID.Uint64())
 					if err != nil {
-						api.transaction <- &NewTransaction{
+						api.transaction <- &passport.NewTransaction{
 							To:                   passport.OnChainUserID,
 							From:                 user.ID,
 							Amount:               *supAmount,
-							TransactionReference: TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
+							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
 							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on Ethereum with USDC %s", xfer.TxID.Hex()),
 						}
 						api.Log.Err(err).Msg("failed to insert chain confirmation entry")
@@ -448,14 +448,14 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 							return
 						}
 					}
-					resultChan := make(chan *TransactionResult)
+					resultChan := make(chan *passport.TransactionResult)
 
-					api.transaction <- &NewTransaction{
+					api.transaction <- &passport.NewTransaction{
 						ResultChan:           resultChan,
 						To:                   user.ID,
 						From:                 passport.OnChainUserID,
 						Amount:               *supAmount,
-						TransactionReference: TransactionReference(xfer.TxID.Hex()),
+						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("sup purchase on Ethereum with WETH %s", xfer.TxID.Hex()),
 					}
 
@@ -472,11 +472,11 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 
 					err = db.CreateChainConfirmationEntry(ctx, api.Conn, xfer.TxID.Hex(), result.Transaction.ID, xfer.Block, xfer.ChainID.Uint64())
 					if err != nil {
-						api.transaction <- &NewTransaction{
+						api.transaction <- &passport.NewTransaction{
 							To:                   passport.OnChainUserID,
 							From:                 user.ID,
 							Amount:               *supAmount,
-							TransactionReference: TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
+							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
 							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on Ethereum with WETH %s", xfer.TxID.Hex()),
 						}
 						api.Log.Err(err).Msg("failed to insert chain confirmation entry")

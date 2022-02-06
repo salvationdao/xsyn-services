@@ -75,7 +75,7 @@ func (api *API) UpdateUserInCache(user *passport.User) {
 		}
 
 		// otherwise process user uncommitted transactions
-		api.HeldTransactions(func(heldTxList map[TransactionReference]*NewTransaction) {
+		api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 			for _, tx := range heldTxList {
 				if tx.To == user.ID {
 					user.Sups.Int = *user.Sups.Int.Add(&user.Sups.Int, &tx.Amount)

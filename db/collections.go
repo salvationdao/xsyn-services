@@ -21,8 +21,8 @@ collections.created_at
 
 const CollectionGetQueryFrom = `
 FROM collections
-LEFT OUTER JOIN xsyn_nft_metadata ON collections.id = xsyn_nft_metadata.collection_id 
-LEFT OUTER JOIN xsyn_assets ON xsyn_assets.token_id = xsyn_nft_metadata.token_id 
+LEFT OUTER JOIN xsyn_metadata ON collections.id = xsyn_metadata.collection_id 
+LEFT OUTER JOIN xsyn_assets ON xsyn_assets.token_id = xsyn_metadata.token_id 
 `
 
 type CollectionColumn string

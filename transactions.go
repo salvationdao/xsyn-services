@@ -1,6 +1,7 @@
 package passport
 
 import (
+	"math/big"
 	"time"
 )
 
@@ -30,4 +31,20 @@ type ChainConfirmations struct {
 	ChainID     uint64     `json:"chainID" db:"chain_id"`
 	ConfirmedAt *time.Time `json:"confirmedAt" db:"confirmed_at"`
 	CreatedAt   time.Time  `json:"createdAt" db:"created_at"`
+}
+
+type TransactionReference string
+
+type NewTransaction struct {
+	To                   UserID               `json:"credit" db:"credit"`
+	From                 UserID               `json:"debit" db:"debit"`
+	Amount               big.Int              `json:"amount" db:"amount"`
+	TransactionReference TransactionReference `json:"transactionReference" db:"transaction_reference"`
+	Description          string               `json:"description" db:"description"`
+	ResultChan           chan *TransactionResult
+}
+
+type TransactionResult struct {
+	Transaction *Transaction
+	Error       error
 }

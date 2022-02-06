@@ -50,30 +50,30 @@ func (ic AssetColumn) IsValid() error {
 const AssetGetQuery string = `
 SELECT 
 row_to_json(c) as collection,
-xsyn_nft_metadata.token_id,
-xsyn_nft_metadata.name,
-xsyn_nft_metadata.description,
-xsyn_nft_metadata.external_url,
-xsyn_nft_metadata.image,
-xsyn_nft_metadata.attributes,
-xsyn_nft_metadata.deleted_at,
-xsyn_nft_metadata.updated_at,
-xsyn_nft_metadata.created_at,
+xsyn_metadata.token_id,
+xsyn_metadata.name,
+xsyn_metadata.description,
+xsyn_metadata.external_url,
+xsyn_metadata.image,
+xsyn_metadata.attributes,
+xsyn_metadata.deleted_at,
+xsyn_metadata.updated_at,
+xsyn_metadata.created_at,
 xsyn_assets.user_id,
 xsyn_assets.frozen_at
 ` + AessetGetQueryFrom
 
 const AessetGetQueryFrom = `
-FROM xsyn_nft_metadata 
-LEFT OUTER JOIN xsyn_assets ON xsyn_nft_metadata.token_id = xsyn_assets.token_id
-INNER JOIN collections c ON xsyn_nft_metadata.collection_id = c.id
+FROM xsyn_metadata 
+LEFT OUTER JOIN xsyn_assets ON xsyn_metadata.token_id = xsyn_assets.token_id
+INNER JOIN collections c ON xsyn_metadata.collection_id = c.id
 `
 
 // AssetList gets a list of assets depending on the filters
 func AssetList(
 	ctx context.Context,
 	conn Conn,
-	result *[]*passport.XsynNftMetadata,
+	result *[]*passport.XsynMetadata,
 	search string,
 	archived bool,
 	includedTokenIDs []int,
@@ -111,8 +111,8 @@ func AssetList(
 	// asset type filter
 	if assetType != "" {
 		filterConditionsString += fmt.Sprintf(`
-		AND xsyn_nft_metadata.attributes @> '[{"trait_type": "Asset Type"}]' 
-        AND xsyn_nft_metadata.attributes @> '[{"value": "%s"}]' `, assetType)
+		AND xsyn_metadata.attributes @> '[{"trait_type": "Asset Type"}]' 
+        AND xsyn_metadata.attributes @> '[{"value": "%s"}]' `, assetType)
 
 	}
 
@@ -128,7 +128,7 @@ func AssetList(
 
 			cond += ")"
 		}
-		filterConditionsString += fmt.Sprintf(" AND xsyn_nft_metadata.token_id  IN %v", cond)
+		filterConditionsString += fmt.Sprintf(" AND xsyn_metadata.token_id  IN %v", cond)
 	}
 
 	archiveCondition := "IS NULL"
@@ -141,15 +141,15 @@ func AssetList(
 		xsearch := ParseQueryText(search, true)
 		if len(xsearch) > 0 {
 			args = append(args, xsearch)
-			searchCondition = fmt.Sprintf(" AND xsyn_nft_metadata.keywords @@ to_tsquery($%d)", len(args))
+			searchCondition = fmt.Sprintf(" AND xsyn_metadata.keywords @@ to_tsquery($%d)", len(args))
 		}
 	}
 
 	// Get Total Found
 	countQ := fmt.Sprintf(`--sql
-		SELECT COUNT(DISTINCT xsyn_nft_metadata.token_id)
+		SELECT COUNT(DISTINCT xsyn_metadata.token_id)
 		%s
-		WHERE xsyn_nft_metadata.deleted_at %s
+		WHERE xsyn_metadata.deleted_at %s
 			%s
 			%s
 		`,
@@ -185,7 +185,7 @@ func AssetList(
 	// Get Paginated Result
 	q := fmt.Sprintf(
 		AssetGetQuery+`--sql
-		WHERE xsyn_nft_metadata.deleted_at %s
+		WHERE xsyn_metadata.deleted_at %s
 			%s
 			%s
 		%s
@@ -204,9 +204,9 @@ func AssetList(
 }
 
 // AssetGet returns a asset by given ID
-func AssetGet(ctx context.Context, conn Conn, tokenID uint64) (*passport.XsynNftMetadata, error) {
-	asset := &passport.XsynNftMetadata{}
-	q := AssetGetQuery + `WHERE xsyn_nft_metadata.token_id = $1`
+func AssetGet(ctx context.Context, conn Conn, tokenID uint64) (*passport.XsynMetadata, error) {
+	asset := &passport.XsynMetadata{}
+	q := AssetGetQuery + `WHERE xsyn_metadata.token_id = $1`
 
 	err := pgxscan.Get(ctx, conn, asset, q, tokenID)
 	if err != nil {
@@ -216,9 +216,9 @@ func AssetGet(ctx context.Context, conn Conn, tokenID uint64) (*passport.XsynNft
 }
 
 // AssetGet returns a asset by given ID
-func AssetGetByName(ctx context.Context, conn Conn, name string) (*passport.XsynNftMetadata, error) {
-	asset := &passport.XsynNftMetadata{}
-	q := AssetGetQuery + `WHERE xsyn_nft_metadata.name = $1`
+func AssetGetByName(ctx context.Context, conn Conn, name string) (*passport.XsynMetadata, error) {
+	asset := &passport.XsynMetadata{}
+	q := AssetGetQuery + `WHERE xsyn_metadata.name = $1`
 	err := pgxscan.Get(ctx, conn, asset, q, name)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting asset from name.")

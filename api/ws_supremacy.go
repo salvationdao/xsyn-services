@@ -44,9 +44,9 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	supremacyHub.XsynTreasuryUserID = passport.XsynTreasuryUserID
 	supremacyHub.BattleUserID = passport.SupremacyBattleUserID
 
-	// start nft repair ticker
-	repairTicker := tickle.New("NFT Repair Ticker", 60, func() (int, error) {
-		err := db.XsynNftMetadataDurabilityBulkIncrement(context.Background(), conn)
+	// start metadata repair ticker
+	repairTicker := tickle.New("Asset Repair Ticker", 60, func() (int, error) {
+		err := db.XsynAssetDurabilityBulkIncrement(context.Background(), conn)
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err)
 		}
@@ -118,10 +118,10 @@ const HubKeySupremacyHoldSups = hub.HubCommandKey("SUPREMACY:HOLD_SUPS")
 type SupremacyHoldSupsRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		Amount               passport.BigInt      `json:"amount"`
-		FromUserID           passport.UserID      `json:"userID"`
-		TransactionReference TransactionReference `json:"transactionReference"`
-		IsBattleVote         bool                 `json:"isBattleVote"`
+		Amount               passport.BigInt               `json:"amount"`
+		FromUserID           passport.UserID               `json:"userID"`
+		TransactionReference passport.TransactionReference `json:"passport.transactionReference"`
+		IsBattleVote         bool                          `json:"isBattleVote"`
 	} `json:"payload"`
 }
 
@@ -132,7 +132,7 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 		return terror.Error(err, "Invalid request received")
 	}
 
-	tx := &NewTransaction{
+	tx := &passport.NewTransaction{
 		From:                 req.Payload.FromUserID,
 		To:                   sc.SupremacyUserID,
 		TransactionReference: req.Payload.TransactionReference,
@@ -174,7 +174,7 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 
 	reference := fmt.Sprintf("supremacy|ticker|%s", time.Now())
 
-	var transactions []*NewTransaction
+	var transactions []*passport.NewTransaction
 
 	// 50 sups per 60 second
 	// supremacy ticker tick every 3 second, so grab 2.5 sups on every tick
@@ -205,11 +205,11 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 			usersSups := big.NewInt(0)
 			usersSups = usersSups.Mul(onePointWorth, big.NewInt(int64(multiplier)))
 
-			transactions = append(transactions, &NewTransaction{
+			transactions = append(transactions, &passport.NewTransaction{
 				From:                 sc.SupremacyUserID,
 				To:                   *user,
 				Amount:               *usersSups,
-				TransactionReference: TransactionReference(reference),
+				TransactionReference: passport.TransactionReference(reference),
 			})
 
 			supPool = supPool.Sub(supPool, usersSups)
@@ -218,7 +218,7 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 
 	// send through transactions
 	for _, tx := range transactions {
-		tx.ResultChan = make(chan *TransactionResult, 1)
+		tx.ResultChan = make(chan *passport.TransactionResult, 1)
 		sc.API.transaction <- tx
 		result := <-tx.ResultChan
 		// if result is success, update the cache map
@@ -288,7 +288,7 @@ func (sc *SupremacyControllerWS) SupremacyDistributeBattleRewardHandler(ctx cont
 	supsPortionPercentage50.Sub(&battleUser.Sups.Int, supsPortionPercentage25.Mul(supsPortionPercentage25, big.NewInt(2)))
 
 	// start distributing sups
-	var transactions []*NewTransaction
+	var transactions []*passport.NewTransaction
 
 	// get winning faction user
 	winningFactionUserID, err := db.FactionUserIDGetByFactionID(ctx, sc.Conn, req.Payload.WinnerFactionID)
@@ -313,11 +313,11 @@ func (sc *SupremacyControllerWS) SupremacyDistributeBattleRewardHandler(ctx cont
 	for _, viewerID := range viewerIDs {
 		amount := supsPerUser
 
-		transactions = append(transactions, &NewTransaction{
+		transactions = append(transactions, &passport.NewTransaction{
 			From:                 sc.BattleUserID,
 			To:                   viewerID,
 			Amount:               *amount,
-			TransactionReference: TransactionReference(reference),
+			TransactionReference: passport.TransactionReference(reference),
 		})
 	}
 
@@ -338,11 +338,11 @@ func (sc *SupremacyControllerWS) SupremacyDistributeBattleRewardHandler(ctx cont
 	for _, ownerID := range ownerIDs {
 		amount := supsPerUser
 
-		transactions = append(transactions, &NewTransaction{
+		transactions = append(transactions, &passport.NewTransaction{
 			From:                 sc.BattleUserID,
 			To:                   ownerID,
 			Amount:               *amount,
-			TransactionReference: TransactionReference(reference),
+			TransactionReference: passport.TransactionReference(reference),
 		})
 	}
 
@@ -363,17 +363,17 @@ func (sc *SupremacyControllerWS) SupremacyDistributeBattleRewardHandler(ctx cont
 	for _, killOwnerID := range killOwnerIDs {
 		amount := supsPerUser
 
-		transactions = append(transactions, &NewTransaction{
+		transactions = append(transactions, &passport.NewTransaction{
 			From:                 sc.BattleUserID,
 			To:                   killOwnerID,
 			Amount:               *amount,
-			TransactionReference: TransactionReference(reference),
+			TransactionReference: passport.TransactionReference(reference),
 		})
 	}
 
 	// send through transactions
 	for _, tx := range transactions {
-		tx.ResultChan = make(chan *TransactionResult, 1)
+		tx.ResultChan = make(chan *passport.TransactionResult, 1)
 		sc.API.transaction <- tx
 		result := <-tx.ResultChan
 		// if result is success, update the cache map
@@ -435,7 +435,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context
 	sc.API.SendToAllServerClient(&ServerClientMessage{
 		Key: AssetUpdated,
 		Payload: struct {
-			Asset *passport.XsynNftMetadata `json:"asset"`
+			Asset *passport.XsynMetadata `json:"asset"`
 		}{
 			Asset: asset,
 		},
@@ -478,7 +478,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 type SupremacyAssetReleaseRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		ReleasedAssets []*passport.WarMachineNFT `json:"releasedAssets"`
+		ReleasedAssets []*passport.WarMachineMetadata `json:"releasedAssets"`
 	} `json:"payload"`
 }
 
@@ -514,7 +514,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetReleaseHandler(ctx context.Contex
 		return terror.Error(err)
 	}
 
-	err = db.XsynNftMetadataDurabilityBulkUpdate(ctx, tx, req.Payload.ReleasedAssets)
+	err = db.XsynAsseetDurabilityBulkUpdate(ctx, tx, req.Payload.ReleasedAssets)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -542,8 +542,8 @@ type UserWarMachineQueuePosition struct {
 }
 
 type WarMachineQueuePosition struct {
-	WarMachineNFT *passport.WarMachineNFT `json:"warMachineNFT"`
-	Position      int                     `json:"position"`
+	WarMachineMetadata *passport.WarMachineMetadata `json:"warMachineNFT"` // TODO: change this to metadata
+	Position           int                          `json:"position"`
 }
 
 // SupremacyWarMachineQueuePositionHandler broadcast the updated battle queue position detail
@@ -604,7 +604,7 @@ const HubKeySupremacyCommitTransactions = hub.HubCommandKey("SUPREMACY:COMMIT_TR
 type SupremacyCommitTransactionsRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		TransactionReferences []TransactionReference `json:"transactionReferences"`
+		TransactionReferences []passport.TransactionReference `json:"transactionReferences"`
 	} `json:"payload"`
 }
 
@@ -629,7 +629,7 @@ const HubKeySupremacyReleaseTransactions = hub.HubCommandKey("SUPREMACY:RELEASE_
 type SupremacyReleaseTransactionsRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		TransactionReferences []TransactionReference `json:"transactions"`
+		TransactionReferences []passport.TransactionReference `json:"transactions"`
 	} `json:"payload"`
 }
 
@@ -667,7 +667,7 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 		return terror.Error(err, "Invalid request received")
 	}
 
-	var warMachines []*passport.WarMachineNFT
+	var warMachines []*passport.WarMachineMetadata
 	// check user own this asset, and it has not joined the queue yet
 	switch req.Payload.FactionID {
 	case passport.RedMountainFactionID:
@@ -680,14 +680,14 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 			return terror.Error(err)
 		}
 		for _, wmmd := range warMachinesMetaData {
-			warMachineNFT := &passport.WarMachineNFT{}
-			// parse nft
-			passport.ParseWarMachineNFT(wmmd, warMachineNFT)
-			warMachineNFT.OwnedByID = passport.SupremacyRedMountainUserID
-			warMachineNFT.FactionID = passport.RedMountainFactionID
-			warMachineNFT.Faction = faction
+			warMachineMetadata := &passport.WarMachineMetadata{}
+			// parse metadata
+			passport.ParseWarMachineMetadata(wmmd, warMachineMetadata)
+			warMachineMetadata.OwnedByID = passport.SupremacyRedMountainUserID
+			warMachineMetadata.FactionID = passport.RedMountainFactionID
+			warMachineMetadata.Faction = faction
 
-			warMachines = append(warMachines, warMachineNFT)
+			warMachines = append(warMachines, warMachineMetadata)
 		}
 
 	case passport.BostonCyberneticsFactionID:
@@ -700,13 +700,13 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 			return terror.Error(err)
 		}
 		for _, wmmd := range warMachinesMetaData {
-			warMachineNFT := &passport.WarMachineNFT{}
-			// parse nft
-			passport.ParseWarMachineNFT(wmmd, warMachineNFT)
-			warMachineNFT.OwnedByID = passport.SupremacyBostonCyberneticsUserID
-			warMachineNFT.FactionID = passport.BostonCyberneticsFactionID
-			warMachineNFT.Faction = faction
-			warMachines = append(warMachines, warMachineNFT)
+			warMachineMetadata := &passport.WarMachineMetadata{}
+			// parse metadata
+			passport.ParseWarMachineMetadata(wmmd, warMachineMetadata)
+			warMachineMetadata.OwnedByID = passport.SupremacyBostonCyberneticsUserID
+			warMachineMetadata.FactionID = passport.BostonCyberneticsFactionID
+			warMachineMetadata.Faction = faction
+			warMachines = append(warMachines, warMachineMetadata)
 		}
 	case passport.ZaibatsuFactionID:
 		faction, err := db.FactionGet(ctx, sc.Conn, passport.ZaibatsuFactionID)
@@ -718,13 +718,13 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 			return terror.Error(err)
 		}
 		for _, wmmd := range warMachinesMetaData {
-			warMachineNFT := &passport.WarMachineNFT{}
-			// parse nft
-			passport.ParseWarMachineNFT(wmmd, warMachineNFT)
-			warMachineNFT.OwnedByID = passport.SupremacyZaibatsuUserID
-			warMachineNFT.FactionID = passport.ZaibatsuFactionID
-			warMachineNFT.Faction = faction
-			warMachines = append(warMachines, warMachineNFT)
+			warMachineMetadata := &passport.WarMachineMetadata{}
+			// parse metadata
+			passport.ParseWarMachineMetadata(wmmd, warMachineMetadata)
+			warMachineMetadata.OwnedByID = passport.SupremacyZaibatsuUserID
+			warMachineMetadata.FactionID = passport.ZaibatsuFactionID
+			warMachineMetadata.Faction = faction
+			warMachines = append(warMachines, warMachineMetadata)
 		}
 	}
 
