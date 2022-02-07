@@ -46,6 +46,7 @@ type StoreItem struct {
 	DeletedAt       *time.Time   `json:"deletedAt" db:"deleted_at"`
 	CreatedAt       time.Time    `json:"createdAt" db:"created_at"`
 	UpdatedAt       time.Time    `json:"updatedAt" db:"updated_at"`
+	SupCost         string       `json:"supCost"`
 }
 
 // XsynMetadata holds xsyn nft metadata, the nfts main game data it stored here to show on opensea

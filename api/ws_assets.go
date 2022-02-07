@@ -96,7 +96,7 @@ func (ac *AssetController) LeaveQueueHandler(ctx context.Context, hubc *hub.Clie
 		Key: AssetQueueLeave,
 		Payload: struct {
 			// TODO: change this to metadata
-			WarMachineNFT *passport.WarMachineMetadata `json:"warMachineMetadata"`
+			WarMachineNFT *passport.WarMachineMetadata `json:"warMachineNFT"`
 		}{
 			// TODO: change this to metadata
 			WarMachineNFT: warMachineMetadata,
@@ -167,7 +167,7 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 		Key: AssetQueueJoin,
 		Payload: struct {
 			// TODO: change this to metadata
-			WarMachineNFT *passport.WarMachineMetadata `json:"warMachineMetadata"`
+			WarMachineNFT *passport.WarMachineMetadata `json:"warMachineNFT"`
 		}{
 			// TODO: change this to metadata
 			WarMachineNFT: warMachineMetadata,
@@ -186,7 +186,7 @@ type AssetsUpdatedSubscribeRequest struct {
 		SortDir          db.SortByDir          `json:"sortDir"`
 		SortBy           db.AssetColumn        `json:"sortBy"`
 		IncludedTokenIDs []int                 `json:"includedTokenIDs"`
-		Filter           *db.ListFilterRequest `json:"filter"`
+		Filter           *db.ListFilterRequest `json:"filter,omitempty"`
 		AssetType        string                `json:"assetType"`
 		Archived         bool                  `json:"archived"`
 		Search           string                `json:"search"`

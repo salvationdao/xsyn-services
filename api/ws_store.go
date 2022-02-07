@@ -90,7 +90,7 @@ type StoreListRequest struct {
 }
 
 type StoreListResponse struct {
-	StoreItemIDs []*passport.StoreItemID `json:"store_item_i_ds"`
+	StoreItemIDs []*passport.StoreItemID `json:"storeItemIDs"`
 }
 
 func (ctrlr *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
@@ -153,6 +153,10 @@ func (ctrlr *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, c
 	if *user.FactionID != item.FactionID {
 		return "", "", terror.Warn(fmt.Errorf("user has wrong faction, need %s, got %s", item.FactionID, user.FactionID), "You do not belong to the correct faction.")
 	}
+
+	priceAsDecimal := decimal.New(int64(item.UsdCentCost), 0).Div(ctrlr.API.SupUSD).Ceil()
+	priceAsSups := decimal.New(priceAsDecimal.IntPart(), 18).BigInt()
+	item.SupCost = priceAsSups.String()
 
 	reply(item)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyStoreItemSubscribe, item.ID)), nil
