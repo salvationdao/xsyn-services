@@ -113,7 +113,6 @@ func AssetList(
 		filterConditionsString += fmt.Sprintf(`
 		AND xsyn_metadata.attributes @> '[{"trait_type": "Asset Type"}]' 
         AND xsyn_metadata.attributes @> '[{"value": "%s"}]' `, assetType)
-
 	}
 
 	// select specific assets via tokenIDs
@@ -160,6 +159,7 @@ func AssetList(
 	)
 
 	var totalRows int
+
 	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
 	if err != nil {
 		return 0, terror.Error(err)
@@ -196,6 +196,7 @@ func AssetList(
 		orderBy,
 		limit,
 	)
+
 	err = pgxscan.Select(ctx, conn, result, q, args...)
 	if err != nil {
 		return 0, terror.Error(err)
@@ -224,4 +225,76 @@ func AssetGetByName(ctx context.Context, conn Conn, name string) (*passport.Xsyn
 		return nil, terror.Error(err, "Issue getting asset from name.")
 	}
 	return asset, nil
+}
+
+// AssetUpdate will update an asset name entry in attribute
+func AssetUpdate(ctx context.Context, conn Conn, tokenID uint64, newName string) error {
+	nameAvailable, err := AssetNameAvailable(ctx, conn, newName, tokenID)
+	if err != nil {
+		return terror.Error(err)
+	}
+	if !nameAvailable {
+		return terror.Error(fmt.Errorf("Name is taken: %s", newName), fmt.Sprintf("Name is taken: %s", newName))
+	}
+
+	// sql to update a 'Name' entry in the attributes column
+	// reference: https://stackoverflow.com/a/38996799
+	q := `--sql
+	UPDATE 
+    xsyn_metadata 
+	SET
+	    -- updates attributes with new name entry
+	    attributes = JSONB_SET(attributes, ARRAY[elem_index::TEXT, 'value'], TO_JSON($1::TEXT)::JSONB, FALSE)
+	FROM (
+	    SELECT 
+		    -- selects the indexes of attributes entries
+	        pos- 1 AS elem_index
+	    FROM 
+	        xsyn_metadata, 
+			-- gets indexes of attribute's entries
+	        JSONB_ARRAY_ELEMENTS(attributes) WITH ORDINALITY arr(elem, pos)
+	    WHERE
+	        token_id = $2 and
+			-- gets the name entry
+	        elem->>'trait_type' = 'Name'
+	    ) sub
+	WHERE
+	    token_id = $2;    
+	`
+	_, err = conn.Exec(ctx,
+		q,
+		newName,
+		tokenID,
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
+// AssetNameAvailable returns true if an asset name is free
+func AssetNameAvailable(ctx context.Context, conn Conn, nameToCheck string, tokenID uint64) (bool, error) {
+
+	if nameToCheck == "" {
+		return false, terror.Error(fmt.Errorf("name cannot be empty"), "Name cannot be empty.")
+	}
+	count := 0
+
+	q := `
+	SELECT 
+		count(token_id) 
+	FROM 
+		xsyn_metadata, 
+		JSONB_ARRAY_ELEMENTS(attributes) WITH ORDINALITY arr(elem, pos)
+	WHERE 
+	    elem ->>'trait_type' = 'Name'
+		AND elem->>'value' = $2
+		AND xsyn_metadata.token_id != $1
+		`
+	err := pgxscan.Get(ctx, conn, &count, q, tokenID, nameToCheck)
+	if err != nil {
+		return false, terror.Error(err)
+	}
+
+	return count == 0, nil
 }

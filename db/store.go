@@ -72,7 +72,7 @@ func StoreItemByID(ctx context.Context, conn Conn, storeItemID passport.StoreIte
 
 // StoreItemPurchased bumps a store items amount sold up
 func StoreItemPurchased(ctx context.Context, conn Conn, storeItem *passport.StoreItem) error {
-	q := `UPDATE xsyn_store SET amount_sold = amount_sold - 1 WHERE id = $1 RETURNING amount_sold`
+	q := `UPDATE xsyn_store SET amount_sold = amount_sold + 1 WHERE id = $1 RETURNING amount_sold`
 
 	err := pgxscan.Get(ctx, conn, storeItem, q, storeItem.ID)
 	if err != nil {
@@ -90,13 +90,14 @@ func StoreItemListByCollectionAndFaction(ctx context.Context, conn Conn,
 	pageSize int,
 ) ([]*passport.StoreItemID, error) {
 	storeItems := []*passport.StoreItemID{}
+
 	q := `	SELECT 	id
 			FROM xsyn_store
 			WHERE collection_id = $1
 			AND faction_id = $2
 			LIMIT $3 OFFSET $4`
 
-	err := pgxscan.Get(ctx, conn, storeItems, q, collectionID, factionID, pageSize, page*pageSize)
+	err := pgxscan.Select(ctx, conn, &storeItems, q, collectionID, factionID, pageSize, page*pageSize)
 	if err != nil {
 		return nil, terror.Error(err)
 	}

@@ -2,6 +2,7 @@ package items
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"passport"
 	"passport/db"
@@ -29,6 +30,10 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 		return terror.Error(err)
 	}
 
+	if storeItem.AmountSold >= storeItem.AmountAvailable {
+		return terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
+	}
+
 	if !storeItem.FactionID.IsNil() && (user.FactionID == nil || user.FactionID.IsNil()) {
 		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to purchase faction specific items.")
 	}
@@ -36,6 +41,7 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 	if !storeItem.FactionID.IsNil() && *user.FactionID != storeItem.FactionID {
 		return terror.Error(fmt.Errorf("user is wrong faction"), "You cannot buy items for another faction")
 	}
+
 	txID := uuid.Must(uuid.NewV4())
 	txRef := fmt.Sprintf("PURCHASE OF %s %s", storeItem.Name, txID)
 
@@ -83,8 +89,8 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 	}
 	defer func(tx pgx.Tx, ctx context.Context) {
 		err := tx.Rollback(ctx)
-		if err != nil {
-			log.Err(err).Msg("error rolling back?")
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			log.Err(err).Msg("error rolling back")
 		}
 	}(tx, ctx)
 
@@ -105,7 +111,7 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 	}
 
 	// assign new item to user
-	err = db.XsynMetadataAssignUser(ctx, conn, newItem.TokenID, *newItem.UserID)
+	err = db.XsynMetadataAssignUser(ctx, conn, newItem.TokenID, user.ID)
 	if err != nil {
 		refund(err.Error())
 		return terror.Error(err)
@@ -123,6 +129,10 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 		refund(err.Error())
 		return terror.Error(err)
 	}
+
+	priceAsDecimal := decimal.New(int64(storeItem.UsdCentCost), 0).Div(supPrice).Ceil()
+	priceAsSups := decimal.New(priceAsDecimal.IntPart(), 18).BigInt()
+	storeItem.SupCost = priceAsSups.String()
 
 	bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), storeItem)
 	return nil

@@ -16,7 +16,7 @@ type Collection struct {
 type Attribute struct {
 	DisplayType DisplayType `json:"display_type,omitempty"`
 	TraitType   string      `json:"trait_type"`
-	TokenID     uint64      `json:"token_id"`
+	TokenID     uint64      `json:"token_id,omitempty"`
 	Value       interface{} `json:"value"` // string or number only
 }
 
@@ -46,6 +46,7 @@ type StoreItem struct {
 	DeletedAt       *time.Time   `json:"deletedAt" db:"deleted_at"`
 	CreatedAt       time.Time    `json:"createdAt" db:"created_at"`
 	UpdatedAt       time.Time    `json:"updatedAt" db:"updated_at"`
+	SupCost         string       `json:"supCost"`
 }
 
 // XsynMetadata holds xsyn nft metadata, the nfts main game data it stored here to show on opensea

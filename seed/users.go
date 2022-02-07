@@ -863,7 +863,7 @@ func (s *Seeder) AndAssignNftToMember(ctx context.Context) error {
 	}
 
 	// get "Big War Machine" nft
-	nft, err := db.AssetGetByName(ctx, s.Conn, "Big War Machine")
+	nft, err := db.AssetGetByName(ctx, s.Conn, "Placeholder Brand Big War Machine")
 	if err != nil {
 		return terror.Error(err)
 	}
