@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"passport"
 
 	"github.com/ninja-software/terror/v2"
@@ -93,6 +94,8 @@ func (api *API) SubscribeCommandWithPermission(key hub.HubCommandKey, fn HubSubs
 // If fn is not provided, will use default
 func (api *API) SecureUserSubscribeCommand(key hub.HubCommandKey, fn HubSubscribeCommandFunc) {
 	api.SubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
+		fmt.Println(key, wsc.Identifier())
+		fmt.Println(key, wsc.Level)
 		if wsc.Identifier() == "" || wsc.Level < 1 {
 			return false
 		}

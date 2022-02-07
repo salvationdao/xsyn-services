@@ -172,8 +172,6 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 		return terror.Error(err, "Invalid request received")
 	}
 
-	reference := fmt.Sprintf("supremacy|ticker|%s", time.Now())
-
 	var transactions []*passport.NewTransaction
 
 	// 50 sups per 60 second
@@ -209,7 +207,7 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 				From:                 sc.SupremacyUserID,
 				To:                   *user,
 				Amount:               *usersSups,
-				TransactionReference: passport.TransactionReference(reference),
+				TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|ticker|%s|%s", *user, time.Now())),
 			})
 
 			supPool = supPool.Sub(supPool, usersSups)
