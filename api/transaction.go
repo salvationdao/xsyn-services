@@ -137,7 +137,7 @@ func (api *API) CommitTransactions(resultChan chan []*passport.Transaction, txRe
 				api.transaction <- tx
 				result := <-tx.ResultChan
 				// if result is failed, update the cache map
-				if result.Status == passport.TransactionFailed {
+				if result == nil || result.Status == passport.TransactionFailed {
 					errChan := make(chan error, 10)
 					api.UpdateUserCacheRemoveSups(tx.To, tx.Amount, errChan)
 					err := <-errChan
