@@ -159,13 +159,7 @@ func AssetList(
 	)
 
 	var totalRows int
-	fmt.Println()
-	fmt.Println(args...)
-	fmt.Println()
-	fmt.Println(countQ)
-	fmt.Println()
 
-	fmt.Println()
 	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
 	if err != nil {
 		return 0, terror.Error(err)
@@ -202,11 +196,7 @@ func AssetList(
 		orderBy,
 		limit,
 	)
-	fmt.Println()
-	fmt.Println(q)
-	fmt.Println()
-	fmt.Println(args...)
-	fmt.Println()
+
 	err = pgxscan.Select(ctx, conn, result, q, args...)
 	if err != nil {
 		return 0, terror.Error(err)
