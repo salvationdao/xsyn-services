@@ -32,10 +32,13 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 	}
 
 	// assets list
-	api.Command(HubKeyAssetList, assetHub.AssetList)
+	api.Command(HubKeyAssetList, assetHub.AssetListHandler)
 
 	// asset subscribe
 	api.SecureUserSubscribeCommand(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)
+
+	// asset set name
+	api.SecureCommand(HubKeyAssetUpdateName, assetHub.AssetUpdateNameHandler)
 
 	api.SecureCommand(HubKeyAssetQueueJoin, assetHub.JoinQueueHandler)
 	api.SecureCommand(HubKeyAssetQueueLeave, assetHub.LeaveQueueHandler)
@@ -200,7 +203,8 @@ type AssetListResponse struct {
 
 const HubKeyAssetList hub.HubCommandKey = "ASSET:LIST"
 
-func (ctrlr *AssetController) AssetList(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (ctrlr *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+
 	req := &AssetsUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -263,4 +267,78 @@ func (ctrlr *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, 
 
 	reply(asset)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), nil
+}
+
+// AssetSetNameRequest requests an update for an xsyn_metadata
+type AssetSetNameRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		TokenID uint64           `json:"tokenID"`
+		UserID  *passport.UserID `json:"userID"`
+		Name    string           `json:"name"`
+	} `json:"payload"`
+}
+
+// 	rootHub.SecureCommand(HubKeyAssetUpdateName, AssetController.AssetUpdateNameHandler)
+const HubKeyAssetUpdateName hub.HubCommandKey = "ASSET:UPDATE:NAME"
+
+// AssetSetName update's name of an asset
+func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &AssetSetNameRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// get asset
+	asset, err := db.AssetGet(ctx, ac.Conn, req.Payload.TokenID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// check if user owns asset
+	if *asset.UserID != *req.Payload.UserID {
+		return terror.Error(err, "Must own Asset to update it's name")
+	}
+
+	// check if war machine
+	isWarMachine := false
+	for _, att := range asset.Attributes {
+		if att.TraitType != "Asset Type" {
+			continue
+		}
+		switch att.Value {
+		case string(passport.WarMachine):
+			isWarMachine = true
+		}
+	}
+	if !isWarMachine {
+		return terror.Error(err, "Asset must be a War Machine")
+	}
+
+	// update asset name
+	err = db.AssetUpdate(ctx, ac.Conn, asset.TokenID, req.Payload.Name)
+	if err != nil {
+		return terror.Error(err, "Failed to update Asset name")
+	}
+
+	// get asset
+	asset, err = db.AssetGet(ctx, ac.Conn, req.Payload.TokenID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	ac.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.TokenID)), asset)
+
+	ac.API.SendToAllServerClient(&ServerClientMessage{
+		Key: AssetUpdated,
+		Payload: struct {
+			Asset *passport.XsynMetadata `json:"asset"`
+		}{
+			Asset: asset,
+		},
+	})
+
+	reply(asset)
+	return nil
 }

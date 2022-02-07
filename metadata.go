@@ -16,7 +16,7 @@ type Collection struct {
 type Attribute struct {
 	DisplayType DisplayType `json:"display_type,omitempty"`
 	TraitType   string      `json:"trait_type"`
-	TokenID     uint64      `json:"token_id"`
+	TokenID     uint64      `json:"token_id,omitempty"`
 	Value       interface{} `json:"value"` // string or number only
 }
 

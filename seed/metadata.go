@@ -48,6 +48,10 @@ func (s *Seeder) SeedWarMachine(ctx context.Context, weapons []*passport.XsynMet
 					Value:     "Big War Machine",
 				},
 				{
+					TraitType: "Brand",
+					Value:     "Placeholder Brand",
+				},
+				{
 					TraitType: "Asset Type",
 					Value:     "War Machine",
 				},
