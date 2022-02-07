@@ -12,6 +12,8 @@ import (
 	"passport/log_helpers"
 	"strconv"
 
+	"github.com/shopspring/decimal"
+
 	"nhooyr.io/websocket"
 
 	"github.com/gofrs/uuid"
@@ -34,6 +36,7 @@ import (
 
 // API server
 type API struct {
+	SupUSD       decimal.Decimal
 	Log          *zerolog.Logger
 	Routes       chi.Router
 	Addr         string
@@ -56,8 +59,8 @@ type API struct {
 	sendToServerClients chan *ServerClientMessage
 
 	//tx stuff
-	transaction      chan *NewTransaction
-	heldTransactions chan func(heldTxList map[TransactionReference]*NewTransaction)
+	transaction      chan *passport.NewTransaction
+	heldTransactions chan func(heldTxList map[passport.TransactionReference]*passport.NewTransaction)
 
 	// treasury ticker map
 	treasuryTickerMap map[ServerClientName]*tickle.Tickle
@@ -88,6 +91,7 @@ func NewAPI(
 ) *API {
 	msgBus, cleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
 	api := &API{
+		SupUSD:      decimal.New(12, -2),
 		ClientToken: clientToken,
 		Tokens: &Tokens{
 			Conn:                conn,
@@ -127,8 +131,8 @@ func NewAPI(
 
 		// object to hold transaction stuff
 		TxConn:           txConn,
-		transaction:      make(chan *NewTransaction),
-		heldTransactions: make(chan func(heldTxList map[TransactionReference]*NewTransaction)),
+		transaction:      make(chan *passport.NewTransaction),
+		heldTransactions: make(chan func(heldTxList map[passport.TransactionReference]*passport.NewTransaction)),
 
 		// treasury ticker map
 		treasuryTickerMap: make(map[ServerClientName]*tickle.Tickle),
@@ -192,6 +196,7 @@ func NewAPI(
 	})
 
 	_ = NewAssetController(log, conn, api)
+	_ = NewCollectionController(log, conn, api)
 	_ = NewServerClientController(log, conn, api)
 	_ = NewCheckController(log, conn, api)
 	_ = NewUserActivityController(log, conn, api)
@@ -212,11 +217,14 @@ func NewAPI(
 	_ = NewProductController(log, conn, api)
 	_ = NewSupremacyController(log, conn, api)
 	_ = NewGamebarController(log, conn, api)
+	_ = NewStoreController(log, conn, api)
 
 	//api.Hub.Events.AddEventHandler(hub.EventOnline, api.ClientOnline)
 	api.Hub.Events.AddEventHandler(auth.EventLogin, api.ClientAuth)
 	api.Hub.Events.AddEventHandler(auth.EventLogout, api.ClientLogout)
 	api.Hub.Events.AddEventHandler(hub.EventOffline, api.ClientOffline)
+
+	go api.RunBridgeListener(config.BridgeParams)
 
 	// Run the server client channel listener
 	go api.HandleServerClients()
@@ -299,28 +307,29 @@ func (api *API) RecordUserActivity(
 // AssetGet grabs asset's metadata via token id
 func (c *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 
-	// get token id
+	// Get token id
 	tokenID := chi.URLParam(r, "token_id")
 	if tokenID == "" {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("Invalid Token ID"))
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("invalid token id"), "Invalid Token ID")
 	}
 
-	// convert token id from string to int
-	_tokenID, err := strconv.Atoi(tokenID)
+	// Convert token id from string to uint64
+	_tokenID, err := strconv.ParseUint(string(tokenID), 10, 64)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed converting string token id"))
+		return http.StatusInternalServerError, terror.Error(err, "Failed converting string token id to uint64")
 	}
 
-	// get asset via token id
+	// Get asset via token id
 	asset, err := db.AssetGet(r.Context(), c.Conn, _tokenID)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to get asset"))
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset")
+
 	}
 
-	// encode result
+	// Encode result
 	err = json.NewEncoder(w).Encode(asset)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("json error"))
+		return http.StatusInternalServerError, terror.Error(err, "Failed to encode JSON")
 	}
 
 	return http.StatusOK, nil

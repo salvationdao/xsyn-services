@@ -9,15 +9,26 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
-// XsynNftMetadataInsert inserts a new nft metadata
-func XsynNftMetadataInsert(ctx context.Context, conn Conn, nft *passport.XsynNftMetadata) error {
-	q := `	INSERT INTO xsyn_nft_metadata (token_id, name, collection, game_object,  description, external_url, image, attributes, additional_metadata)
+// Collection inserts a new collection
+func CollectionInsert(ctx context.Context, conn Conn, collection *passport.Collection) error {
+	q := `INSERT INTO collections (name) VALUES($1)`
+	_, err := conn.Exec(ctx, q, collection.Name)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+// XsynMetadataInsert inserts a new item metadata
+func XsynMetadataInsert(ctx context.Context, conn Conn, nft *passport.XsynMetadata) error {
+	q := `	INSERT INTO xsyn_metadata (token_id, name, collection_id, game_object, description, external_url, image, attributes, additional_metadata)
 			VALUES((SELECT nextval('token_id_seq')),$1, $2, $3, $4, $5, $6, $7, $8)
 			RETURNING token_id,  name, description, external_url, image, attributes`
 
 	err := pgxscan.Get(ctx, conn, nft, q,
 		nft.Name,
-		nft.Collection,
+		nft.CollectionID,
 		nft.GameObject,
 		nft.Description,
 		nft.ExternalUrl,
@@ -33,8 +44,8 @@ func XsynNftMetadataInsert(ctx context.Context, conn Conn, nft *passport.XsynNft
 	return nil
 }
 
-// XsynNftMetadataAssignUser assign a nft metadata to a user
-func XsynNftMetadataAssignUser(ctx context.Context, conn Conn, nftTokenID uint64, userID passport.UserID) error {
+// XsynMetadataAssignUser assign a nft metadata to a user
+func XsynMetadataAssignUser(ctx context.Context, conn Conn, nftTokenID uint64, userID passport.UserID) error {
 	q := `
 		INSERT INTO 
 			xsyn_assets (token_id, user_id)
@@ -49,16 +60,18 @@ func XsynNftMetadataAssignUser(ctx context.Context, conn Conn, nftTokenID uint64
 	return nil
 }
 
-// XsynNftMetadataAvailableGet return a available nft for joining the battle queue
-func XsynNftMetadataAvailableGet(ctx context.Context, conn Conn, userID passport.UserID, nftTokenID uint64) (*passport.XsynNftMetadata, error) {
-	nft := &passport.XsynNftMetadata{}
+// XsynMetadataAvailableGet return a available nft for joining the battle queue
+func XsynMetadataAvailableGet(ctx context.Context, conn Conn, userID passport.UserID, nftTokenID uint64) (*passport.XsynMetadata, error) {
+	nft := &passport.XsynMetadata{}
 	q := `
 		SELECT
-			xnm.token_id, xnm.collection, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+			xnm.token_id, row_to_json(c) as collection, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM 
-			xsyn_nft_metadata xnm
+			xsyn_metadata xnm
 		INNER JOIN
 			xsyn_assets xa ON xa.token_id = xnm.token_id AND xa.user_id = $1 AND xa.token_id = $2 AND xa.frozen_at ISNULL
+		INNER JOIN
+			collections c on c.id = xnm.collection_id
 		WHERE
 			xnm.durability = 100
 	`
@@ -72,11 +85,11 @@ func XsynNftMetadataAvailableGet(ctx context.Context, conn Conn, userID passport
 	return nft, nil
 }
 
-// XsynNftMetadataDurabilityUpdate update xsyn NFT metadata durability
-func XsynNftMetadataDurabilityBulkUpdate(ctx context.Context, conn Conn, nfts []*passport.WarMachineNFT) error {
+// XsynAsseetDurabilityBulkUpdate update xsyn NFT metadata durability
+func XsynAsseetDurabilityBulkUpdate(ctx context.Context, conn Conn, nfts []*passport.WarMachineMetadata) error {
 	q := `
 		UPDATE 
-			xsyn_nft_metadata xnm
+			xsyn_metadata xnm
 		SET
 			durability = c.durability
 		FROM 
@@ -104,11 +117,11 @@ func XsynNftMetadataDurabilityBulkUpdate(ctx context.Context, conn Conn, nfts []
 	return nil
 }
 
-// XsynNftMetadataDurabilityBulkIncrement update xsyn NFT metadata durability
-func XsynNftMetadataDurabilityBulkIncrement(ctx context.Context, conn Conn) error {
+// XsynAssetDurabilityBulkIncrement update xsyn NFT metadata durability
+func XsynAssetDurabilityBulkIncrement(ctx context.Context, conn Conn) error {
 	q := `
 		UPDATE
-			xsyn_nft_metadata
+			xsyn_metadata
 		SET
 			durability = durability + 1
 		WHERE
@@ -191,7 +204,7 @@ func XsynAssetBulkLock(ctx context.Context, conn Conn, nftTokenIDs []uint64, use
 }
 
 // XsynAssetRelease freeze a xsyn nft
-func XsynAssetBulkRelease(ctx context.Context, conn Conn, nfts []*passport.WarMachineNFT, frozenByID passport.UserID) error {
+func XsynAssetBulkRelease(ctx context.Context, conn Conn, nfts []*passport.WarMachineMetadata, frozenByID passport.UserID) error {
 	q := `
 		UPDATE 
 			xsyn_assets
@@ -221,11 +234,11 @@ func XsynAssetBulkRelease(ctx context.Context, conn Conn, nfts []*passport.WarMa
 }
 
 // DefaultWarMachineGet return given amount of default war machines for given faction
-func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID, amount int) ([]*passport.XsynNftMetadata, error) {
-	nft := []*passport.XsynNftMetadata{}
+func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID, amount int) ([]*passport.XsynMetadata, error) {
+	nft := []*passport.XsynMetadata{}
 	q := `
-		SELECT xnm.token_id, xnm.collection, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
-		FROM xsyn_nft_metadata xnm
+		SELECT xnm.token_id, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+		FROM xsyn_metadata xnm
 				 INNER JOIN xsyn_assets xa ON xa.token_id = xnm.token_id
 		WHERE xa.user_id = $1
 		AND xnm.attributes @> '[{"value": "War Machine", "trait_type": "Asset Type"}]'

@@ -4,6 +4,15 @@ import (
 	"time"
 )
 
+type Collection struct {
+	ID        CollectionID `json:"id"`
+	Name      string       `json:"name"`
+	ImageURL  string       `json:"imageURL"`
+	DeletedAt *time.Time   `json:"deleted_at" db:"deleted_at"`
+	UpdatedAt time.Time    `json:"updated_at" db:"updated_at"`
+	CreatedAt time.Time    `json:"created_at" db:"created_at"`
+}
+
 type Attribute struct {
 	DisplayType DisplayType `json:"display_type,omitempty"`
 	TraitType   string      `json:"trait_type"`
@@ -20,12 +29,32 @@ const (
 	Date            DisplayType = "date"
 )
 
-// XsynNftMetadata holds xsyn nft metadata, the nfts main game data it stored here to show on opensea
-type XsynNftMetadata struct {
+// StoreItem holds data for a nft that is listed on the marketplace
+type StoreItem struct {
+	ID              StoreItemID  `json:"ID" db:"id"`
+	Name            string       `json:"name" db:"name"`
+	FactionID       FactionID    `json:"factionID" db:"faction_id"`
+	CollectionID    CollectionID `json:"collectionID" db:"collection_id"`
+	Description     string       `json:"description" db:"description"`
+	Image           string       `json:"image" db:"image"`
+	Attributes      []*Attribute `json:"attributes" db:"attributes"`
+	UsdCentCost     int          `json:"usdCentCost" db:"usd_cent_cost"`
+	AmountSold      int          `json:"amountSold" db:"amount_sold"`
+	AmountAvailable int          `json:"amountAvailable" db:"amount_available"`
+	SoldAfter       time.Time    `json:"soldAfter" db:"sold_after"`
+	SoldBefore      time.Time    `json:"soldBefore" db:"sold_before"`
+	DeletedAt       *time.Time   `json:"deletedAt" db:"deleted_at"`
+	CreatedAt       time.Time    `json:"createdAt" db:"created_at"`
+	UpdatedAt       time.Time    `json:"updatedAt" db:"updated_at"`
+}
+
+// XsynMetadata holds xsyn nft metadata, the nfts main game data it stored here to show on opensea
+type XsynMetadata struct {
 	UserID             *UserID               `json:"userID" db:"user_id"`
 	TokenID            uint64                `json:"tokenID" db:"token_id"`
 	Name               string                `json:"name" db:"name"`
-	Collection         string                `json:"collection" db:"collection"`
+	CollectionID       CollectionID          `json:"collectionID" db:"collection_id"`
+	Collection         Collection            `json:"collection" db:"collection"`
 	GameObject         interface{}           `json:"game_object" db:"game_object"`
 	Description        string                `json:"description" db:"description"`
 	ExternalUrl        string                `json:"external_url" db:"external_url"`
@@ -50,7 +79,7 @@ const (
 // AdditionalMetadata holds metadata for a nfts non main game
 type AdditionalMetadata struct {
 	TokenID     uint64       `json:"tokenID"`
-	Collection  string       `json:"collection" db:"collection"`
+	Collection  Collection   `json:"collection" db:"collection"`
 	GameObject  interface{}  `json:"game_object" db:"game_object"`
 	Name        string       `json:"name" db:"name"`
 	Description string       `json:"description" db:"description"`
@@ -62,7 +91,7 @@ type AdditionalMetadata struct {
 	CreatedAt   time.Time    `json:"created_at" db:"created_at"`
 }
 
-type WarMachineNFT struct {
+type WarMachineMetadata struct {
 	TokenID         uint64    `json:"tokenID"`
 	OwnedByID       UserID    `json:"ownedByID"`
 	Name            string    `json:"name"`
@@ -102,40 +131,40 @@ const (
 	WarMachineAttFieldTurret02          WarMachineAttField = "Turret Two"
 )
 
-// ParseWarMachineNFT convert json attribute to proper struct
-func ParseWarMachineNFT(nft *XsynNftMetadata, warMachineNFT *WarMachineNFT) {
-	warMachineNFT.TokenID = nft.TokenID
-	warMachineNFT.Name = nft.Name
-	warMachineNFT.Description = nft.Description
-	warMachineNFT.ExternalUrl = nft.ExternalUrl
-	warMachineNFT.Image = nft.Image
-	warMachineNFT.Durability = nft.Durability
+// ParseWarMachineMetadata convert json attribute to proper struct
+func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMachineMetadata) {
+	warMachineMetadata.TokenID = metadata.TokenID
+	warMachineMetadata.Name = metadata.Name
+	warMachineMetadata.Description = metadata.Description
+	warMachineMetadata.ExternalUrl = metadata.ExternalUrl
+	warMachineMetadata.Image = metadata.Image
+	warMachineMetadata.Durability = metadata.Durability
 
-	for _, att := range nft.Attributes {
+	for _, att := range metadata.Attributes {
 		switch att.TraitType {
 		case string(WarMachineAttFieldMaxHitPoint):
-			warMachineNFT.MaxHealth = int(att.Value.(float64))
-			warMachineNFT.Health = int(att.Value.(float64))
+			warMachineMetadata.MaxHealth = int(att.Value.(float64))
+			warMachineMetadata.Health = int(att.Value.(float64))
 		case string(WarMachineAttFieldMaxShieldHitPoint):
-			warMachineNFT.MaxShield = int(att.Value.(float64))
-			warMachineNFT.Shield = int(att.Value.(float64))
+			warMachineMetadata.MaxShield = int(att.Value.(float64))
+			warMachineMetadata.Shield = int(att.Value.(float64))
 		case string(WarMachineAttFieldSpeed):
-			warMachineNFT.Speed = int(att.Value.(float64))
+			warMachineMetadata.Speed = int(att.Value.(float64))
 		case string(WarMachineAttFieldPowerGrid):
-			warMachineNFT.PowerGrid = int(att.Value.(float64))
+			warMachineMetadata.PowerGrid = int(att.Value.(float64))
 		case string(WarMachineAttFieldCPU):
-			warMachineNFT.CPU = int(att.Value.(float64))
+			warMachineMetadata.CPU = int(att.Value.(float64))
 		case string(WarMachineAttFieldWeaponHardpoints):
-			warMachineNFT.WeaponHardpoint = int(att.Value.(float64))
+			warMachineMetadata.WeaponHardpoint = int(att.Value.(float64))
 		case string(WarMachineAttFieldTurretHardpoints):
-			warMachineNFT.TurretHardpoint = int(att.Value.(float64))
+			warMachineMetadata.TurretHardpoint = int(att.Value.(float64))
 		case string(WarMachineAttFieldUtilitySlots):
-			warMachineNFT.UtilitySlots = int(att.Value.(float64))
+			warMachineMetadata.UtilitySlots = int(att.Value.(float64))
 		case string(WarMachineAttFieldWeapon01),
 			string(WarMachineAttFieldWeapon02),
 			string(WarMachineAttFieldTurret01),
 			string(WarMachineAttFieldTurret02):
-			warMachineNFT.WeaponNames = append(warMachineNFT.WeaponNames, att.Value.(string))
+			warMachineMetadata.WeaponNames = append(warMachineMetadata.WeaponNames, att.Value.(string))
 
 		}
 

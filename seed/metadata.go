@@ -8,18 +8,23 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
-func (s *Seeder) SeedNFTS(ctx context.Context) (warMachines, weapons, utility []*passport.XsynNftMetadata, error error) {
-	utility, err := s.SeedUtility(ctx)
+func (s *Seeder) SeedItemMetadata(ctx context.Context) (warMachines, weapons, utility []*passport.XsynMetadata, error error) {
+	supremacyCollection, err := db.CollectionGet(ctx, s.Conn, "Supremacy")
 	if err != nil {
 		return nil, nil, nil, terror.Error(err)
 	}
 
-	weapons, err = s.SeedWeapons(ctx)
+	utility, err = s.SeedUtility(ctx, supremacyCollection)
 	if err != nil {
 		return nil, nil, nil, terror.Error(err)
 	}
 
-	warMachines, err = s.SeedWarMachine(ctx, weapons)
+	weapons, err = s.SeedWeapons(ctx, supremacyCollection)
+	if err != nil {
+		return nil, nil, nil, terror.Error(err)
+	}
+
+	warMachines, err = s.SeedWarMachine(ctx, weapons, supremacyCollection)
 	if err != nil {
 		return nil, nil, nil, terror.Error(err)
 	}
@@ -27,17 +32,21 @@ func (s *Seeder) SeedNFTS(ctx context.Context) (warMachines, weapons, utility []
 	return
 }
 
-func (s *Seeder) SeedWarMachine(ctx context.Context, weapons []*passport.XsynNftMetadata) ([]*passport.XsynNftMetadata, error) {
-	newNFTs := []*passport.XsynNftMetadata{
+func (s *Seeder) SeedWarMachine(ctx context.Context, weapons []*passport.XsynMetadata, collection *passport.Collection) ([]*passport.XsynMetadata, error) {
+	newNFTs := []*passport.XsynMetadata{
 		{
-			Collection:         "SUPREMACY",
+			CollectionID:       collection.ID,
 			GameObject:         nil,
-			Name:               "Big War Machine",
+			Name:               "",
 			Description:        "A big ass War Machine - links to attached nfts",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Big War Machine",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "War Machine",
@@ -109,12 +118,16 @@ func (s *Seeder) SeedWarMachine(ctx context.Context, weapons []*passport.XsynNft
 			},
 		},
 		{
-			Collection:  "SUPREMACY",
-			Name:        "Medium War Machine",
-			Description: "Average size War Machine - links to attached nfts",
-			ExternalUrl: "",
-			Image:       "",
+			CollectionID: collection.ID,
+			Name:         "Medium War Machine",
+			Description:  "Average size War Machine - links to attached nfts",
+			ExternalUrl:  "",
+			Image:        "",
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Medium War Machine",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "War Machine",
@@ -177,12 +190,16 @@ func (s *Seeder) SeedWarMachine(ctx context.Context, weapons []*passport.XsynNft
 			},
 		},
 		{
-			Collection:  "SUPREMACY",
-			Name:        "Small War Machine",
-			Description: "A iddy biddy tiny War Machine - links to attached nfts",
-			ExternalUrl: "",
-			Image:       "",
+			CollectionID: collection.ID,
+			Name:         "Small War Machine",
+			Description:  "A iddy biddy tiny War Machine - links to attached nfts",
+			ExternalUrl:  "",
+			Image:        "",
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Small War Machine",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "War Machine",
@@ -242,7 +259,7 @@ func (s *Seeder) SeedWarMachine(ctx context.Context, weapons []*passport.XsynNft
 	}
 
 	for _, nft := range newNFTs {
-		err := db.XsynNftMetadataInsert(ctx, s.Conn, nft)
+		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
@@ -251,11 +268,11 @@ func (s *Seeder) SeedWarMachine(ctx context.Context, weapons []*passport.XsynNft
 	return newNFTs, nil
 }
 
-func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, error) {
-	newNFT := []*passport.XsynNftMetadata{
+func (s *Seeder) SeedWeapons(ctx context.Context, collection *passport.Collection) ([]*passport.XsynMetadata, error) {
+	newNFT := []*passport.XsynMetadata{
 		// pulse rifles
 		{
-			Collection:         "SUPREMACY",
+			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Pulse Rifle",
 			Description:        "A rifle that shoots pulses",
@@ -263,6 +280,10 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Pulse Rifle",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "Weapon",
@@ -298,7 +319,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			},
 		},
 		{
-			Collection:         "SUPREMACY",
+			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Pulse Rifle",
 			Description:        "A rifle that shoots pulses",
@@ -306,6 +327,10 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Pulse Rifle",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "Weapon",
@@ -342,7 +367,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 		},
 		// auto cannons
 		{
-			Collection:         "SUPREMACY",
+			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Auto Cannon",
 			Description:        "A cannon that shoots projectiles",
@@ -350,6 +375,10 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Auto Cannon",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "Weapon",
@@ -395,7 +424,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			},
 		},
 		{
-			Collection:         "SUPREMACY",
+			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Auto Cannon",
 			Description:        "A cannon that shoots projectiles",
@@ -403,6 +432,10 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Auto Cannon",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "Weapon",
@@ -449,7 +482,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 		},
 		// rocket launchers
 		{
-			Collection:         "SUPREMACY",
+			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Rocket Launcher",
 			Description:        "A shoulder weapon that fires rockets",
@@ -457,6 +490,10 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Rocket Launcher",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "Weapon",
@@ -492,7 +529,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			},
 		},
 		{
-			Collection:         "SUPREMACY",
+			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Rocket Launcher",
 			Description:        "A shoulder weapon that fires rockets",
@@ -500,6 +537,10 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Rocket Launcher",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "Weapon",
@@ -536,7 +577,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 		},
 		// rapid rocket launchers
 		{
-			Collection:         "SUPREMACY",
+			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Rapid Rocket Launcher",
 			Description:        "A shoulder weapon that fires rockets quickly",
@@ -544,6 +585,10 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Rapid Rocket Launcher",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "Weapon",
@@ -589,7 +634,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			},
 		},
 		{
-			Collection:         "SUPREMACY",
+			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Rapid Rocket Launcher",
 			Description:        "A shoulder weapon that fires rockets quickly",
@@ -597,6 +642,10 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Rapid Rocket Launcher",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "Weapon",
@@ -644,7 +693,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 	}
 
 	for _, nft := range newNFT {
-		err := db.XsynNftMetadataInsert(ctx, s.Conn, nft)
+		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
@@ -653,11 +702,11 @@ func (s *Seeder) SeedWeapons(ctx context.Context) ([]*passport.XsynNftMetadata, 
 	return newNFT, nil
 }
 
-func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, error) {
-	newNFT := []*passport.XsynNftMetadata{
+func (s *Seeder) SeedUtility(ctx context.Context, collection *passport.Collection) ([]*passport.XsynMetadata, error) {
+	newNFT := []*passport.XsynMetadata{
 		// large shield
 		{
-			Collection:         "SUPREMACY",
+			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Large Shield",
 			Description:        "A large shield",
@@ -665,6 +714,10 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Large Shield",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "Utility",
@@ -701,7 +754,7 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			},
 		},
 		{
-			Collection:         "SUPREMACY",
+			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Large Shield",
 			Description:        "A large shield",
@@ -709,6 +762,10 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Large Shield",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "Utility",
@@ -746,7 +803,7 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 		},
 		// med shield
 		{
-			Collection:         "SUPREMACY",
+			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Medium Shield",
 			Description:        "A Medium shield",
@@ -754,6 +811,10 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Medium Shield",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "Utility",
@@ -790,7 +851,7 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			},
 		},
 		{
-			Collection:         "SUPREMACY",
+			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Medium Shield",
 			Description:        "A Medium shield",
@@ -798,6 +859,10 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Medium Shield",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "Utility",
@@ -835,7 +900,7 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 		},
 		// small shields
 		{
-			Collection:         "SUPREMACY",
+			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Small Shield",
 			Description:        "A small shield",
@@ -843,6 +908,10 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Small Shield",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "Utility",
@@ -879,7 +948,7 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			},
 		},
 		{
-			Collection:         "SUPREMACY",
+			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Small Shield",
 			Description:        "A small shield",
@@ -887,6 +956,10 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Small Shield",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "Utility",
@@ -924,7 +997,7 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 		},
 		// healing drone
 		{
-			Collection:         "SUPREMACY",
+			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Medium Shield",
 			Description:        "A Medium shield",
@@ -932,6 +1005,10 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Medium Shield",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "Utility",
@@ -958,7 +1035,7 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			},
 		},
 		{
-			Collection:         "SUPREMACY",
+			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Medium Shield",
 			Description:        "A Medium shield",
@@ -966,6 +1043,10 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 			Image:              "",
 			AdditionalMetadata: nil,
 			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Medium Shield",
+				},
 				{
 					TraitType: "Asset Type",
 					Value:     "Utility",
@@ -994,7 +1075,7 @@ func (s *Seeder) SeedUtility(ctx context.Context) ([]*passport.XsynNftMetadata, 
 	}
 
 	for _, nft := range newNFT {
-		err := db.XsynNftMetadataInsert(ctx, s.Conn, nft)
+		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
 		if err != nil {
 			return nil, terror.Error(err)
 		}

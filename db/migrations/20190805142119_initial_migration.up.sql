@@ -61,20 +61,20 @@ $updateOrganisationKeywords$
  *************/
 CREATE TABLE factions
 (
-    id    UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    label TEXT             NOT NULL,
-    theme JSONB            NOT NULL DEFAULT '{}',
-    logo_blob_id uuid NOT NULL REFERENCES blobs (id),
-    background_blob_id uuid NOT NULL REFERENCES blobs (id),
-    description TEXT NOT NULL DEFAULT '',
-    velocity INT NOT NULL DEFAULT 0,
-    share_percent INT NOT NULL DEFAULT 0,
-    recruit_number INT NOT NULL DEFAULT 0,
-    win_count INT NOT NULL DEFAULT 0,
-    loss_count INT NOT NULL DEFAULT 0,
-    kill_count INT NOT NULL DEFAULT 0,
-    death_count INT NOT NULL DEFAULT 0,
-    mvp TEXT NOT NULL DEFAULT ''
+    id                 UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    label              TEXT             NOT NULL,
+    theme              JSONB            NOT NULL DEFAULT '{}',
+    logo_blob_id       UUID             NOT NULL REFERENCES blobs (id),
+    background_blob_id UUID             NOT NULL REFERENCES blobs (id),
+    description        TEXT             NOT NULL DEFAULT '',
+    velocity           INT              NOT NULL DEFAULT 0,
+    share_percent      INT              NOT NULL DEFAULT 0,
+    recruit_number     INT              NOT NULL DEFAULT 0,
+    win_count          INT              NOT NULL DEFAULT 0,
+    loss_count         INT              NOT NULL DEFAULT 0,
+    kill_count         INT              NOT NULL DEFAULT 0,
+    death_count        INT              NOT NULL DEFAULT 0,
+    mvp                TEXT             NOT NULL DEFAULT ''
 );
 
 
@@ -193,6 +193,7 @@ CREATE TABLE user_recovery_codes
 (
     id            UUID        NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id       UUID        NOT NULL REFERENCES users (id),
+
     recovery_code TEXT        NOT NULL,
     used_at       TIMESTAMPTZ,
     updated_at    TIMESTAMPTZ NOT NULL             DEFAULT NOW(),
@@ -320,19 +321,119 @@ CREATE TRIGGER updateProductKeywords
     FOR EACH ROW
 EXECUTE PROCEDURE updateProductKeywords();
 
+-- collections
+CREATE TABLE collections
+(
+    id           UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    name         TEXT UNIQUE      NOT NULL,
+    logo_blob_id UUID REFERENCES blobs (id),
+    keywords     TSVECTOR, -- search
+    deleted_at   TIMESTAMPTZ,
+    updated_at   TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+    created_at   TIMESTAMPTZ      NOT NULL DEFAULT NOW()
+);
+
+-- for collection text search
+CREATE INDEX idx_fts_collections_vec ON collections USING gin (keywords);
+
+CREATE OR REPLACE FUNCTION updateCollectionsKeywords()
+    RETURNS TRIGGER
+AS
+$updateCollectionsKeywords$
+DECLARE
+    temp TSVECTOR;
+BEGIN
+    SELECT (SETWEIGHT(TO_TSVECTOR('english', NEW.name), 'A'))
+    INTO temp;
+    IF TG_OP = 'INSERT' OR temp != OLD.keywords THEN
+        UPDATE
+            collections
+        SET keywords = temp
+        WHERE id = NEW.id;
+    END IF;
+    RETURN NULL;
+END;
+$updateCollectionsKeywords$
+    LANGUAGE plpgsql;
+
+CREATE TRIGGER updateCollectionsKeywords
+    AFTER INSERT OR UPDATE
+    ON collections
+    FOR EACH ROW
+EXECUTE PROCEDURE updateCollectionsKeywords();
+
+
+/*****************************************************
+ *                   xsyn_store                  *
+ * This table will hold the nft's on the marketplace *
+ *****************************************************/
+CREATE TABLE xsyn_store
+(
+    id                  UUID        NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+    faction_id          UUID REFERENCES factions (id),
+    name                TEXT        NOT NULL,
+    collection_id       UUID REFERENCES collections (id),
+    description         TEXT        NOT NULL,
+    image               TEXT        NOT NULL,
+    attributes          JSONB,
+    additional_metadata JSONB,
+    keywords            TSVECTOR, -- search
+    usd_cent_cost       INT         NOT NULL,
+    amount_sold         INT         NOT NULL             DEFAULT 0,
+    amount_available    INT         NOT NULL             DEFAULT 9999999999,
+    sold_after          TIMESTAMPTZ NOT NULL             DEFAULT NOW(),
+    sold_before         TIMESTAMPTZ NOT NULL             DEFAULT '2999-01-01',
+    deleted_at          TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ NOT NULL             DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL             DEFAULT NOW()
+);
+
+-- for xsyn_store text search
+CREATE INDEX idx_fts_xsyn_store_vec ON products USING gin (keywords);
+
+CREATE OR REPLACE FUNCTION update_xsyn_storeKeywords()
+    RETURNS TRIGGER
+AS
+$updatexsyn_storeKeywords$
+DECLARE
+    temp TSVECTOR;
+BEGIN
+    SELECT (
+                       SETWEIGHT(TO_TSVECTOR('english', NEW.name), 'A') ||
+                       SETWEIGHT(TO_TSVECTOR('english', NEW.image), 'A') ||
+                       SETWEIGHT(TO_TSVECTOR('english', NEW.description), 'A')
+               )
+    INTO temp;
+    IF TG_OP = 'INSERT' OR temp != OLD.keywords THEN
+        UPDATE
+            xsyn_store
+        SET keywords = temp
+        WHERE id = NEW.id;
+    END IF;
+    RETURN NULL;
+END;
+$updatexsyn_storeKeywords$
+    LANGUAGE plpgsql;
+
+CREATE TRIGGER updatexsyn_storeKeywords
+    AFTER INSERT OR UPDATE
+    ON xsyn_store
+    FOR EACH ROW
+EXECUTE PROCEDURE update_xsyn_storeKeywords();
+
 
 /********************************************
- *           xsyn_nft_metadatas              *
+ *           xsyn_metadata              *
  * This table is the nft metadata NOT assets *
  **********************************************/
 CREATE SEQUENCE IF NOT EXISTS token_id_seq;
 ALTER SEQUENCE token_id_seq RESTART WITH 1;
 
-CREATE TABLE xsyn_nft_metadata
+CREATE TABLE xsyn_metadata
 (
     token_id            NUMERIC(78, 0) PRIMARY KEY NOT NULL,
     name                TEXT                       NOT NULL,
-    collection          TEXT,
+    collection_id       UUID                       NOT NULL REFERENCES collections (id),
     game_object         JSONB,
     description         TEXT,
     external_url        TEXT,
@@ -346,58 +447,109 @@ CREATE TABLE xsyn_nft_metadata
     created_at          TIMESTAMPTZ                NOT NULL DEFAULT NOW()
 );
 
--- for xsyn_nft_metadata text search
-CREATE INDEX idx_fts_xsyn_nft_metadata_vec ON xsyn_nft_metadata USING gin (keywords);
+-- for xsyn_metadata text search
+CREATE INDEX idx_fts_xsyn_metadata_vec ON xsyn_metadata USING gin (keywords);
 
-CREATE OR REPLACE FUNCTION updateXsyn_nft_metadataKeywords()
+CREATE OR REPLACE FUNCTION updateXsyn_metadataKeywords()
     RETURNS TRIGGER
 AS
-$updateXsyn_nft_metadataKeywords$
+$updateXsyn_metadataKeywords$
 DECLARE
     temp TSVECTOR;
 BEGIN
     SELECT (SETWEIGHT(TO_TSVECTOR('english', NEW.external_url), 'A') ||
-            SETWEIGHT(TO_TSVECTOR('english', NEW.name), 'A') || SETWEIGHT(TO_TSVECTOR('english', NEW.collection), 'A') ||
+            SETWEIGHT(TO_TSVECTOR('english', NEW.name), 'A') ||
             SETWEIGHT(TO_TSVECTOR('english', NEW.image), 'A') ||
             SETWEIGHT(TO_TSVECTOR('english', NEW.description), 'A'))
     INTO temp;
     IF TG_OP = 'INSERT' OR temp != OLD.keywords THEN
         UPDATE
-            xsyn_nft_metadata
+            xsyn_metadata
         SET keywords = temp
         WHERE token_id = NEW.token_id;
     END IF;
     RETURN NULL;
 END;
-$updateXsyn_nft_metadataKeywords$
+$updateXsyn_metadataKeywords$
     LANGUAGE plpgsql;
-
-CREATE TRIGGER updateXsyn_nft_metadataKeywords
+CREATE TRIGGER updateXsyn_metadataKeywords
     AFTER INSERT OR UPDATE
-    ON xsyn_nft_metadata
+    ON xsyn_metadata
     FOR EACH ROW
-EXECUTE PROCEDURE updateXsyn_nft_metadataKeywords();
+EXECUTE PROCEDURE updateXsyn_metadataKeywords();
+
+-- UPDATE NAME
+CREATE OR REPLACE FUNCTION updateXsyn_metadata_name()
+    RETURNS TRIGGER
+AS
+$updateXsyn_metadata_name$
+DECLARE
+    brand     TEXT DEFAULT '';
+    model     TEXT DEFAULT '';
+    sub_model TEXT DEFAULT '';
+    name      TEXT DEFAULT '';
+BEGIN
+    IF NEW.attributes @> '[{"trait_type": "Brand"}]' THEN
+        SELECT (SELECT CONCAT(arr.item_object ->> 'value', ' ')
+                FROM JSONB_ARRAY_ELEMENTS(NEW.attributes) WITH ORDINALITY arr(item_object)
+                WHERE arr.item_object ->> 'trait_type' = 'Brand')
+        INTO brand;
+    END IF;
+    IF NEW.attributes @> '[{"trait_type": "Model"}]' THEN
+        SELECT (SELECT CONCAT(arr.item_object ->> 'value', ' ')
+                FROM JSONB_ARRAY_ELEMENTS(NEW.attributes) WITH ORDINALITY arr(item_object)
+                WHERE arr.item_object ->> 'trait_type' = 'Model')
+        INTO model;
+    END IF;
+    IF NEW.attributes @> '[{"trait_type": "SubModel"}]' THEN
+        SELECT (SELECT CONCAT(arr.item_object ->> 'value', ' ')
+                FROM JSONB_ARRAY_ELEMENTS(NEW.attributes) WITH ORDINALITY arr(item_object)
+                WHERE arr.item_object ->> 'trait_type' = 'SubModel')
+        INTO sub_model;
+    END IF;
+    IF NEW.attributes @> '[{"trait_type": "Name"}]' THEN
+        SELECT (SELECT arr.item_object ->> 'value'
+                FROM JSONB_ARRAY_ELEMENTS(NEW.attributes) WITH ORDINALITY arr(item_object)
+                WHERE arr.item_object ->> 'trait_type' = 'Name')
+        INTO name;
+    END IF;
+    NEW.name = CONCAT(brand, model, sub_model, name);
+    RETURN NEW;
+END;
+$updateXsyn_metadata_name$ LANGUAGE plpgsql;
+
+CREATE TRIGGER updateXsyn_metadata_name
+    BEFORE INSERT OR UPDATE
+    ON xsyn_metadata
+    FOR EACH ROW
+EXECUTE PROCEDURE updateXsyn_metadata_name();
+
+CREATE TRIGGER updateXsyn_store_name
+    BEFORE INSERT OR UPDATE
+    ON xsyn_store
+    FOR EACH ROW
+EXECUTE PROCEDURE updateXsyn_metadata_name();
 
 
 /**********************************************************
  *                             Assets                      *
- * This is the table of who owns what xsync nft off chain  *
+ * This is the table of who owns what xsyn item off chain  *
  ***********************************************************/
 CREATE TABLE xsyn_assets
 (
-    token_id          NUMERIC(78, 0) PRIMARY KEY REFERENCES xsyn_nft_metadata (token_id),
+    token_id          NUMERIC(78, 0) PRIMARY KEY REFERENCES xsyn_metadata (token_id),
     user_id           UUID REFERENCES users (id) NOT NULL,
     frozen_by_id      UUID REFERENCES users (id),
     locked_by_id      UUID REFERENCES users (id),
     frozen_at         TIMESTAMPTZ,
-    transferred_in_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    transferred_in_at TIMESTAMPTZ                NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE transactions
 (
     id                    SERIAL PRIMARY KEY,
     description           TEXT        NOT NULL                                                  DEFAULT '',
-    transaction_reference TEXT        NOT NULL                                                  DEFAULT '',
+    transaction_reference TEXT UNIQUE NOT NULL                                                  DEFAULT '',
     amount                NUMERIC(28) NOT NULL CHECK (amount > 0.0),
     -- Every entry is a credit to one account...
     credit                UUID        NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
@@ -473,6 +625,22 @@ CREATE TRIGGER trigger_check_balance
 EXECUTE PROCEDURE check_balances();
 
 
+/***********************************************************
+ *               Waiting for confirmations table           *
+ ***********************************************************/
+
+CREATE TABLE chain_confirmations
+(
+    tx           TEXT PRIMARY KEY,
+    tx_id        BIGINT REFERENCES transactions (id),
+    block        NUMERIC(78, 0) NOT NULL,
+    chain_id     NUMERIC(78, 0) NOT NULL,
+    confirmed_at TIMESTAMPTZ,
+    deleted_at   TIMESTAMPTZ,
+    created_at   TIMESTAMPTZ    NOT NULL DEFAULT NOW()
+);
+
+
 -- Set permissions
 GRANT ALL ON transactions TO passport_tx;
 GRANT ALL ON users TO passport_tx;
@@ -512,6 +680,5 @@ CREATE TRIGGER user_notify_event
     ON users
     FOR EACH ROW
 EXECUTE PROCEDURE user_update_event();
-
 
 COMMIT;

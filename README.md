@@ -4,7 +4,7 @@
 
 ```bash
 git config --global --add url."git@github.com:".insteadOf "https://github.com/"
-export GOPRIVATE="github.com/ninja-software/*"
+export GOPRIVATE="github.com/ninja-syndicate/*"
 ```
 
 ### spinup

@@ -55,6 +55,7 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 
 	api.Command(HubKeyUserGet, userHub.GetHandler) // Perm check inside handler (users can get themselves; need UserRead permission to get other users)
 	api.SecureCommand(HubKeyUserUpdate, userHub.UpdateHandler)
+	api.SecureCommand(HubKeyUserUsernameUpdate, userHub.UpdateUserUsernameHandler)
 	api.SecureCommand(HubKeyUserFactionUpdate, userHub.UpdateUserFactionHandler) // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserRemoveFacebook, userHub.RemoveFacebookHandler)   // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserAddFacebook, userHub.AddFacebookHandler)         // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
@@ -138,6 +139,97 @@ func (uc *UserController) GetHandler(ctx context.Context, hubc *hub.Client, payl
 	reply(user)
 	return nil
 
+}
+
+type UpdateUserUsernameRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Username string `json:"username"`
+	} `json:"payload"`
+}
+
+const HubKeyUserUsernameUpdate hub.HubCommandKey = "USER:USERNAME:UPDATE"
+
+func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &UpdateUserUsernameRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if req.Payload.Username == "" {
+		return terror.Error(terror.ErrInvalidInput, "Username cannot be empty.")
+	}
+
+	username := strings.TrimSpace(req.Payload.Username)
+
+	// Validate username
+	err = helpers.IsValidUsername(username)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	userID, err := uuid.FromString(hubc.Identifier())
+	if err != nil {
+		return terror.Error(err, "Something went wrong. Please try again.")
+	}
+
+	// Get user
+	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID), uc.API.HostUrl)
+	if err != nil {
+		return terror.Error(err, "User does not exist.")
+	}
+
+	// Activity tracking
+	var oldUser passport.User = *user
+
+	// Check availability of username
+	if user.Username == username {
+		return terror.Error(fmt.Errorf("username cannot be same as current"), "New username cannot be the same as current username.")
+	}
+
+	isAvailable, err := db.UsernameAvailable(ctx, uc.Conn, username, &user.ID)
+	if err != nil {
+		return terror.Error(err, "Something went wrong. Please try again.")
+	}
+	if !isAvailable {
+		return terror.Error(fmt.Errorf("A user with that username already exists."))
+	}
+
+	// Update username
+	user.Username = username
+
+	// Update user
+	err = db.UserUpdate(ctx, uc.Conn, user)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// Get user
+	user, err = db.UserGet(ctx, uc.Conn, user.ID, uc.API.HostUrl)
+	if err != nil {
+		return terror.Error(err, "User does not exist.")
+	}
+
+	reply(user)
+
+	// Record user activity
+	uc.API.RecordUserActivity(ctx,
+		hubc.Identifier(),
+		"Updated user's username",
+		passport.ObjectTypeUser,
+		helpers.StringPointer(user.ID.String()),
+		&user.Username,
+		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		&passport.UserActivityChangeData{
+			Name: db.TableNames.Users,
+			From: oldUser,
+			To:   user,
+		},
+	)
+
+	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	return nil
 }
 
 // UpdateUserFactionRequest requests update user faction

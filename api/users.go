@@ -9,6 +9,7 @@ import (
 	"passport/db"
 	"passport/email"
 	"passport/helpers"
+	"strings"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -139,9 +140,6 @@ func (ug *UserGetter) DiscordID(s string) (auth.SecureUser, error) {
 
 func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebookID, googleID, twitchID, twitterID, discordID, number, publicAddress, password string, other ...interface{}) (auth.SecureUser, error) {
 	ctx := context.Background()
-	if username == "" {
-		return nil, terror.Error(fmt.Errorf("username cannot be empty"), "Username cannot be empty.")
-	}
 	if facebookID == "" && googleID == "" && publicAddress == "" && twitchID == "" && twitterID == "" && discordID == "" {
 		if email == "" {
 			return nil, terror.Error(fmt.Errorf("email empty"), "Email cannot be empty")
@@ -161,7 +159,13 @@ func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebook
 		}
 	}
 
-	usernameAvailable, err := db.UsernameAvailable(ctx, ug.Conn, username, nil)
+	trimmedUsername := strings.TrimSpace(username)
+	err := helpers.IsValidUsername(trimmedUsername)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	usernameAvailable, err := db.UsernameAvailable(ctx, ug.Conn, trimmedUsername, nil)
 	if err != nil {
 		return nil, terror.Error(err, "Something went wrong. Please try again.")
 	}
@@ -172,7 +176,7 @@ func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebook
 	user := &passport.User{
 		FirstName:     firstName,
 		LastName:      lastName,
-		Username:      username,
+		Username:      trimmedUsername,
 		FacebookID:    passport.NewString(facebookID),
 		GoogleID:      passport.NewString(googleID),
 		TwitchID:      passport.NewString(twitchID),
