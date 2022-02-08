@@ -2170,11 +2170,6 @@ func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, client *h
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), nil
 }
 
-type UserWalletDetail struct {
-	// OnChainSups string `json:"onChainSups"`
-	// OnWorldSups string `json:"onWorldSups"`
-}
-
 const HubKeyUserSupsSubscribe hub.HubCommandKey = "USER:SUPS:SUBSCRIBE"
 
 func (uc *UserController) UserSupsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
