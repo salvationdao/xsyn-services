@@ -299,6 +299,7 @@ type UpdateUserRequest struct {
 	Payload struct {
 		ID                               passport.UserID          `json:"id"`
 		Username                         string                   `json:"username"`
+		NewUsername                      *string                  `json:"newUsername"`
 		FirstName                        string                   `json:"firstName"`
 		LastName                         string                   `json:"lastName"`
 		Email                            null.String              `json:"email"`
@@ -351,6 +352,9 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 		if user.Email.String != email {
 			user.Email = null.StringFrom(email)
 		}
+	}
+	if req.Payload.NewUsername != nil && req.Payload.Username != *req.Payload.NewUsername {
+		user.Username = *req.Payload.NewUsername
 	}
 	if req.Payload.NewPassword != nil && *req.Payload.NewPassword != "" {
 		if user.Email.String == "" && req.Payload.Email.String == "" {
