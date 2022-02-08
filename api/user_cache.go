@@ -56,10 +56,7 @@ func (api *API) InsertUserToCache(user *passport.User) {
 		})
 
 		if !user.ID.IsSystemUser() {
-			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), &UserWalletDetail{
-				OnChainSups: "0",
-				OnWorldSups: user.Sups.Int.String(),
-			})
+			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 		}
 	})
 }
@@ -90,10 +87,7 @@ func (api *API) UpdateUserInCache(user *passport.User) {
 
 		// broadcast user sups, if user is not the system user
 		if !user.ID.IsSystemUser() {
-			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), &UserWalletDetail{
-				OnChainSups: "0",
-				OnWorldSups: user.Sups.Int.String(),
-			})
+			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 		}
 	})
 }
@@ -113,10 +107,7 @@ func (api *API) UpdateUserCacheAddSups(userID passport.UserID, amount big.Int) {
 			user.Sups.Int = *user.Sups.Int.Add(&user.Sups.Int, &amount)
 
 			if !user.ID.IsSystemUser() {
-				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), &UserWalletDetail{
-					OnChainSups: "0",
-					OnWorldSups: user.Sups.Int.String(),
-				})
+				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 			}
 		}
 	})
@@ -138,10 +129,7 @@ func (api *API) UpdateUserCacheRemoveSups(userID passport.UserID, amount big.Int
 			user.Sups.Int = *user.Sups.Int.Sub(&user.Sups.Int, &amount)
 
 			if !user.ID.IsSystemUser() {
-				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), &UserWalletDetail{
-					OnChainSups: "0",
-					OnWorldSups: user.Sups.Int.String(),
-				})
+				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 			}
 
 		}
