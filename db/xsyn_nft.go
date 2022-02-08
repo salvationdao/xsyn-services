@@ -255,3 +255,115 @@ func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID
 	}
 	return nft, nil
 }
+
+// AbilityAssetGet
+func AbilityAssetGet(ctx context.Context, conn Conn, abilityMetadata *passport.AbilityMetadata) error {
+	nft := &passport.XsynMetadata{}
+	q := `
+		SELECT 
+			xnm.token_id, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+		FROM 
+			xsyn_metadata xnm
+		WHERE 
+			xnm.token_id = $1 AND 
+			xnm.attributes @> '[{"value": "Ability", "trait_type": "Asset Type"}]';
+	`
+	err := pgxscan.Get(ctx, conn, nft, q, abilityMetadata.TokenID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// parse ability data
+	passport.ParseAbilityMetadata(nft, abilityMetadata)
+
+	return nil
+}
+
+// WarMachineAbilitySet
+func WarMachineAbilitySet(ctx context.Context, conn Conn, warMachineTokenID uint64, abilityTokenID uint64, warMachineAbilitySlot passport.WarMachineAttField) error {
+	if warMachineAbilitySlot != passport.WarMachineAttFieldAbility01 && warMachineAbilitySlot != passport.WarMachineAttFieldAbility02 {
+		return terror.Error(fmt.Errorf("Invalid attribute slot"))
+	}
+
+	q := fmt.Sprintf(`
+	UPDATE 	
+		xsyn_metadata xm
+	SET
+		attributes = (
+			select xm3.att || '{"trait_type": "%s", "value": "none", "token_id": %d}'
+			from (
+				SELECT xm2.token_id ,to_jsonb(array_agg(elem)) AS att
+				FROM   xsyn_metadata xm2, jsonb_array_elements(xm2."attributes") elem
+				WHERE  xm2.token_id = $1 and elem ->> 'trait_type' <> '%s'
+				group by token_id
+			) xm3
+		)
+	WHERE 
+		xm.token_id = $1;
+	`, warMachineAbilitySlot, abilityTokenID, warMachineAbilitySlot)
+	_, err := conn.Exec(ctx, q, warMachineTokenID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+// WarMachineGetByUserID return all the war machine owned by the user
+func WarMachineGetByUserID(ctx context.Context, conn Conn, userID passport.UserID) ([]*passport.XsynMetadata, error) {
+	xms := []*passport.XsynMetadata{}
+
+	q := `
+		SELECT xm.token_id, xm.collection_id, xm.durability, xm.name, xm.description, xm.external_url, xm.image, xm.attributes
+		FROM xsyn_metadata xm
+		INNER JOIN xsyn_assets xa ON xa.token_id = xm.token_id AND xa.user_id = $1
+	`
+	err := pgxscan.Select(ctx, conn, &xms, q, userID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return xms, nil
+}
+
+// WarMachineAbilityCostGet return the sups cost of the war machine ability
+func WarMachineAbilityCostGet(ctx context.Context, conn Conn, warMachineTokenID, abilityTokenID uint64) (string, error) {
+	supsCost := "0"
+
+	q := `
+		SELECT 
+			sups_cost
+		FROM 
+			war_machine_ability_sups_cost
+		WHERE
+			war_machine_token_id = $1 AND ability_token_id = $2
+	`
+
+	err := pgxscan.Get(ctx, conn, &supsCost, q, warMachineTokenID, abilityTokenID)
+	if err != nil {
+		return "", terror.Error(err)
+	}
+
+	return supsCost, nil
+}
+
+// WarMachineAbilityCostUpsert Upsert the sups cost of a war machine ability
+func WarMachineAbilityCostUpsert(ctx context.Context, conn Conn, warMachineTokenID, abilityTokenID uint64, supsCost string) error {
+	q := `
+		INSERT INTO 
+			war_machine_ability_sups_cost (war_machine_token_id, ability_token_id, sups_cost)
+		VALUES
+			($1, $2, $3)
+		ON CONFLICT
+			(war_machine_token_id, ability_token_id)
+		DO UPDATE SET
+			sups_cost = $3
+	`
+
+	_, err := conn.Exec(ctx, q, warMachineTokenID, abilityTokenID, supsCost)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}

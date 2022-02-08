@@ -414,6 +414,14 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 					TraitType: "Utility One",
 					Value:     "Shield",
 				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
+				},
 			},
 		},
 		{
@@ -503,6 +511,14 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 				{
 					TraitType: "Utility One",
 					Value:     "Shield",
+				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
 				},
 			},
 		},
@@ -603,6 +619,14 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 					TraitType: "Utility One",
 					Value:     "Shield",
 				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
+				},
 			},
 		},
 		{
@@ -682,6 +706,14 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 				{
 					TraitType: "Utility One",
 					Value:     "Shield",
+				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
 				},
 			},
 		},
@@ -769,6 +801,14 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 					TraitType: "Utility One",
 					Value:     "Shield",
 				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
+				},
 			},
 		},
 		{
@@ -835,6 +875,14 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 				{
 					TraitType: "Utility One",
 					Value:     "Shield",
+				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
 				},
 			},
 		},

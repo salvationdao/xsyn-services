@@ -75,6 +75,7 @@ const (
 	WarMachine AssetType = "War Machine"
 	Weapon     AssetType = "Weapon"
 	Utility    AssetType = "Utility"
+	Ability    AssetType = "Ability"
 )
 
 // AdditionalMetadata holds metadata for a nfts non main game
@@ -93,26 +94,27 @@ type AdditionalMetadata struct {
 }
 
 type WarMachineMetadata struct {
-	TokenID         uint64    `json:"tokenID"`
-	OwnedByID       UserID    `json:"ownedByID"`
-	Name            string    `json:"name"`
-	Description     string    `json:"description"`
-	ExternalUrl     string    `json:"externalUrl"`
-	Image           string    `json:"image"`
-	MaxHealth       int       `json:"maxHealth"`
-	Health          int       `json:"health"`
-	MaxShield       int       `json:"maxShield"`
-	Shield          int       `json:"shield"`
-	Speed           int       `json:"speed"`
-	Durability      int       `json:"durability"`
-	PowerGrid       int       `json:"powerGrid"`
-	CPU             int       `json:"cpu"`
-	WeaponHardpoint int       `json:"weaponHardpoint"`
-	WeaponNames     []string  `json:"weaponNames"`
-	TurretHardpoint int       `json:"turretHardpoint"`
-	UtilitySlots    int       `json:"utilitySlots"`
-	FactionID       FactionID `json:"factionID"`
-	Faction         *Faction  `json:"faction"`
+	TokenID         uint64             `json:"tokenID"`
+	OwnedByID       UserID             `json:"ownedByID"`
+	Name            string             `json:"name"`
+	Description     string             `json:"description"`
+	ExternalUrl     string             `json:"externalUrl"`
+	Image           string             `json:"image"`
+	MaxHealth       int                `json:"maxHealth"`
+	Health          int                `json:"health"`
+	MaxShield       int                `json:"maxShield"`
+	Shield          int                `json:"shield"`
+	Speed           int                `json:"speed"`
+	Durability      int                `json:"durability"`
+	PowerGrid       int                `json:"powerGrid"`
+	CPU             int                `json:"cpu"`
+	WeaponHardpoint int                `json:"weaponHardpoint"`
+	WeaponNames     []string           `json:"weaponNames"`
+	TurretHardpoint int                `json:"turretHardpoint"`
+	UtilitySlots    int                `json:"utilitySlots"`
+	FactionID       FactionID          `json:"factionID"`
+	Faction         *Faction           `json:"faction"`
+	Abilities       []*AbilityMetadata `json:"abilities"`
 }
 
 type WarMachineAttField string
@@ -130,6 +132,8 @@ const (
 	WarMachineAttFieldWeapon02          WarMachineAttField = "Weapon Two"
 	WarMachineAttFieldTurret01          WarMachineAttField = "Turret One"
 	WarMachineAttFieldTurret02          WarMachineAttField = "Turret Two"
+	WarMachineAttFieldAbility01         WarMachineAttField = "Ability One"
+	WarMachineAttFieldAbility02         WarMachineAttField = "Ability Two"
 )
 
 // ParseWarMachineMetadata convert json attribute to proper struct
@@ -166,9 +170,63 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 			string(WarMachineAttFieldTurret01),
 			string(WarMachineAttFieldTurret02):
 			warMachineMetadata.WeaponNames = append(warMachineMetadata.WeaponNames, att.Value.(string))
-
+		case string(WarMachineAttFieldAbility01),
+			string(WarMachineAttFieldAbility02):
+			if att.TokenID == 0 {
+				continue
+			}
+			warMachineMetadata.Abilities = append(warMachineMetadata.Abilities, &AbilityMetadata{
+				TokenID: uint64(att.TokenID),
+			})
 		}
 
 	}
 
+}
+
+type AbilityMetadata struct {
+	TokenID           uint64 `json:"tokenID"`
+	Name              string `json:"name"`
+	Description       string `json:"description"`
+	ExternalUrl       string `json:"externalUrl"`
+	Image             string `json:"image"`
+	SupsCost          string `json:"supsCost"`
+	GameClientID      int    `json:"gameClientID"`
+	RequiredSlot      string `json:"requiredSlot"`
+	RequiredPowerGrid int    `json:"requiredPowerGrid"`
+	RequiredCPU       int    `json:"requiredCPU"`
+}
+
+type AbilityAttField string
+
+const (
+	AbilityAttFieldAbilityCost       AbilityAttField = "Ability Cost"
+	AbilityAttFieldAbilityID         AbilityAttField = "Ability ID"
+	AbilityAttFieldRequiredSlot      AbilityAttField = "Required Slot"
+	AbilityAttFieldRequiredPowerGrid AbilityAttField = "Required Power Grid"
+	AbilityAttFieldRequiredCPU       AbilityAttField = "Required CPU"
+)
+
+// ParseAbilityMetadata convert json attribute to proper struct
+func ParseAbilityMetadata(metadata *XsynMetadata, abilityMetadata *AbilityMetadata) {
+	abilityMetadata.TokenID = metadata.TokenID
+	abilityMetadata.Name = metadata.Name
+	abilityMetadata.Description = metadata.Description
+	abilityMetadata.ExternalUrl = metadata.ExternalUrl
+	abilityMetadata.Image = metadata.Image
+
+	for _, att := range metadata.Attributes {
+		switch att.TraitType {
+		case string(AbilityAttFieldAbilityCost):
+			abilityMetadata.SupsCost = att.Value.(string)
+		case string(AbilityAttFieldAbilityID):
+			abilityMetadata.GameClientID = int(att.Value.(float64))
+		case string(AbilityAttFieldRequiredSlot):
+			abilityMetadata.RequiredSlot = att.Value.(string)
+		case string(AbilityAttFieldRequiredPowerGrid):
+			abilityMetadata.RequiredPowerGrid = int(att.Value.(float64))
+		case string(AbilityAttFieldRequiredCPU):
+			abilityMetadata.RequiredCPU = int(att.Value.(float64))
+		}
+	}
 }

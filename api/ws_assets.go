@@ -159,6 +159,23 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 		}
 	}
 
+	if len(warMachineMetadata.Abilities) > 0 {
+		// get abilities asset
+		for _, abilityMetadata := range warMachineMetadata.Abilities {
+			err := db.AbilityAssetGet(ctx, ac.Conn, abilityMetadata)
+			if err != nil {
+				return terror.Error(err)
+			}
+
+			supsCost, err := db.WarMachineAbilityCostGet(ctx, ac.Conn, warMachineMetadata.TokenID, abilityMetadata.TokenID)
+			if err != nil {
+				return terror.Error(err)
+			}
+
+			abilityMetadata.SupsCost = supsCost
+		}
+	}
+
 	// assign faction id
 	warMachineMetadata.FactionID = *user.FactionID
 

@@ -8,31 +8,36 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
-func (s *Seeder) SeedItemMetadata(ctx context.Context) (warMachines, weapons, utility []*passport.XsynMetadata, error error) {
+func (s *Seeder) SeedItemMetadata(ctx context.Context) (warMachines, abilities, weapons, utility []*passport.XsynMetadata, error error) {
 	supremacyCollection, err := db.CollectionGet(ctx, s.Conn, "Supremacy")
 	if err != nil {
-		return nil, nil, nil, terror.Error(err)
+		return nil, nil, nil, nil, terror.Error(err)
 	}
 
 	utility, err = s.SeedUtility(ctx, supremacyCollection)
 	if err != nil {
-		return nil, nil, nil, terror.Error(err)
+		return nil, nil, nil, nil, terror.Error(err)
 	}
 
 	weapons, err = s.SeedWeapons(ctx, supremacyCollection)
 	if err != nil {
-		return nil, nil, nil, terror.Error(err)
+		return nil, nil, nil, nil, terror.Error(err)
 	}
 
-	warMachines, err = s.SeedWarMachine(ctx, weapons, supremacyCollection)
+	abilities, err = s.SeedWarMachineAbility(ctx, supremacyCollection)
 	if err != nil {
-		return nil, nil, nil, terror.Error(err)
+		return nil, nil, nil, nil, terror.Error(err)
+	}
+
+	warMachines, err = s.SeedWarMachine(ctx, weapons, abilities, supremacyCollection)
+	if err != nil {
+		return nil, nil, nil, nil, terror.Error(err)
 	}
 
 	return
 }
 
-func (s *Seeder) SeedWarMachine(ctx context.Context, weapons []*passport.XsynMetadata, collection *passport.Collection) ([]*passport.XsynMetadata, error) {
+func (s *Seeder) SeedWarMachine(ctx context.Context, weapons, abilities []*passport.XsynMetadata, collection *passport.Collection) ([]*passport.XsynMetadata, error) {
 	newNFTs := []*passport.XsynMetadata{
 		{
 			CollectionID:       collection.ID,
@@ -119,6 +124,16 @@ func (s *Seeder) SeedWarMachine(ctx context.Context, weapons []*passport.XsynMet
 					TraitType: "Utility Two",
 					Value:     "none",
 				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+					TokenID:   abilities[0].TokenID,
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
+					TokenID:   abilities[1].TokenID,
+				},
 			},
 		},
 		{
@@ -191,6 +206,16 @@ func (s *Seeder) SeedWarMachine(ctx context.Context, weapons []*passport.XsynMet
 					TraitType: "Utility One",
 					Value:     "none",
 				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+					TokenID:   abilities[0].TokenID,
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
+					TokenID:   abilities[1].TokenID,
+				},
 			},
 		},
 		{
@@ -257,6 +282,14 @@ func (s *Seeder) SeedWarMachine(ctx context.Context, weapons []*passport.XsynMet
 				{
 					TraitType: "Utility Two",
 					Value:     "none",
+				},
+				{
+					TraitType: "Ability One",
+					TokenID:   abilities[1].TokenID,
+				},
+				{
+					TraitType: "Ability Two",
+					TokenID:   abilities[2].TokenID,
 				},
 			},
 		},
@@ -1078,6 +1111,142 @@ func (s *Seeder) SeedUtility(ctx context.Context, collection *passport.Collectio
 		},
 	}
 
+	for _, nft := range newNFT {
+		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+	}
+
+	return newNFT, nil
+}
+
+func (s *Seeder) SeedWarMachineAbility(ctx context.Context, collection *passport.Collection) ([]*passport.XsynMetadata, error) {
+	newNFT := []*passport.XsynMetadata{
+		{
+			CollectionID:       collection.ID,
+			GameObject:         nil,
+			Name:               "Power Boost",
+			Description:        "Increase damage for 15%",
+			ExternalUrl:        "",
+			Image:              "",
+			AdditionalMetadata: nil,
+			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Power Boost",
+				},
+				{
+					TraitType: "Asset Type",
+					Value:     "Ability",
+				},
+				{
+					TraitType: string(passport.AbilityAttFieldAbilityCost),
+					Value:     "100000000000000000000",
+				},
+				{
+					TraitType: string(passport.AbilityAttFieldAbilityID),
+					Value:     100,
+				},
+				{
+					TraitType: string(passport.AbilityAttFieldRequiredSlot),
+					Value:     "Ability",
+				},
+				{
+					TraitType:   string(passport.AbilityAttFieldRequiredPowerGrid),
+					Value:       50,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   string(passport.AbilityAttFieldRequiredCPU),
+					Value:       20,
+					DisplayType: passport.Number,
+				},
+			},
+		},
+		{
+			CollectionID:       collection.ID,
+			GameObject:         nil,
+			Name:               "Constant Recovery",
+			Description:        "Recover 10% of current missing health within 10 second",
+			ExternalUrl:        "",
+			Image:              "",
+			AdditionalMetadata: nil,
+			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Constant Recovery",
+				},
+				{
+					TraitType: "Asset Type",
+					Value:     "Ability",
+				},
+				{
+					TraitType: string(passport.AbilityAttFieldAbilityCost),
+					Value:     "100000000000000000000",
+				},
+				{
+					TraitType: string(passport.AbilityAttFieldAbilityID),
+					Value:     101,
+				},
+				{
+					TraitType: string(passport.AbilityAttFieldRequiredSlot),
+					Value:     "Ability",
+				},
+				{
+					TraitType:   string(passport.AbilityAttFieldRequiredPowerGrid),
+					Value:       40,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   string(passport.AbilityAttFieldRequiredCPU),
+					Value:       20,
+					DisplayType: passport.Number,
+				},
+			},
+		},
+		{
+			CollectionID:       collection.ID,
+			GameObject:         nil,
+			Name:               "Damage Immune",
+			Description:        "Immune all the damage for 3 second",
+			ExternalUrl:        "",
+			Image:              "",
+			AdditionalMetadata: nil,
+			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Name",
+					Value:     "Damage Immune",
+				},
+				{
+					TraitType: "Asset Type",
+					Value:     "Ability",
+				},
+				{
+					TraitType: string(passport.AbilityAttFieldAbilityCost),
+					Value:     "100000000000000000000",
+				},
+				{
+					TraitType: string(passport.AbilityAttFieldAbilityID),
+					Value:     102,
+				},
+				{
+					TraitType: string(passport.AbilityAttFieldRequiredSlot),
+					Value:     "Ability",
+				},
+				{
+					TraitType:   string(passport.AbilityAttFieldRequiredPowerGrid),
+					Value:       45,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   string(passport.AbilityAttFieldRequiredCPU),
+					Value:       25,
+					DisplayType: passport.Number,
+				},
+			},
+		},
+	}
 	for _, nft := range newNFT {
 		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
 		if err != nil {

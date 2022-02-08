@@ -530,6 +530,13 @@ CREATE TRIGGER updateXsyn_store_name
     FOR EACH ROW
 EXECUTE PROCEDURE updateXsyn_metadata_name();
 
+-- war_machine_ability_sups_cost store the sups cost for triggering the ability
+CREATE TABLE war_machine_ability_sups_cost(
+    ability_token_id  NUMERIC(78, 0) NOT NULL REFERENCES xsyn_metadata (token_id),
+    war_machine_token_id  NUMERIC(78, 0) NOT NULL REFERENCES xsyn_metadata (token_id),
+    sups_cost TEXT NOT NULL,
+    PRIMARY KEY (ability_token_id, war_machine_token_id)
+);
 
 /**********************************************************
  *                             Assets                      *

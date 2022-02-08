@@ -78,12 +78,6 @@ func (s *Seeder) Run(isProd bool) error {
 		return terror.Error(err, "seed users failed")
 	}
 
-	//fmt.Println("Seeding organisations")
-	//organisations, err := s.Organisations(ctx)
-	//if err != nil {
-	//	return terror.Error(err, "seed organisations failed")
-	//}
-
 	fmt.Println("Seeding initial store items")
 	err = s.SeedInitialStoreItems(ctx)
 	if err != nil {
@@ -92,7 +86,7 @@ func (s *Seeder) Run(isProd bool) error {
 
 	if !isProd {
 		fmt.Println("Seeding xsyn item metadata")
-		_, _, _, err = s.SeedItemMetadata(ctx)
+		_, abilities, _, _, err := s.SeedItemMetadata(ctx)
 		if err != nil {
 			return terror.Error(err, "seed nfts failed")
 		}
@@ -106,9 +100,52 @@ func (s *Seeder) Run(isProd bool) error {
 			return terror.Error(err, "seed users failed")
 		}
 
+		// seed ability to zaibatsu war machines
+		fmt.Println("Seeding assign ability to war machine")
+		err = s.zaibatsuWarMachineAbilitySet(ctx, abilities)
+		if err != nil {
+			return terror.Error(err, "unable to seed zaibatsu abilities")
+		}
+
 	}
 
 	fmt.Println("Seed complete")
+	return nil
+}
+
+func (s *Seeder) zaibatsuWarMachineAbilitySet(ctx context.Context, abilities []*passport.XsynMetadata) error {
+	// get Zaibatsu war machines
+	warMachines, err := db.WarMachineGetByUserID(ctx, s.Conn, passport.SupremacyZaibatsuUserID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	for i, wm := range warMachines {
+		abilityMetadata := &passport.AbilityMetadata{}
+		passport.ParseAbilityMetadata(abilities[i%len(abilities)], abilityMetadata)
+
+		err := db.WarMachineAbilitySet(ctx, s.Conn, wm.TokenID, abilityMetadata.TokenID, passport.WarMachineAttFieldAbility01)
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		err = db.WarMachineAbilityCostUpsert(ctx, s.Conn, wm.TokenID, abilityMetadata.TokenID, abilityMetadata.SupsCost)
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		passport.ParseAbilityMetadata(abilities[i+1%len(abilities)], abilityMetadata)
+		err = db.WarMachineAbilitySet(ctx, s.Conn, wm.TokenID, abilityMetadata.TokenID, passport.WarMachineAttFieldAbility02)
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		err = db.WarMachineAbilityCostUpsert(ctx, s.Conn, wm.TokenID, abilityMetadata.TokenID, abilityMetadata.SupsCost)
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
+
 	return nil
 }
 

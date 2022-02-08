@@ -77,6 +77,7 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 
 	// other?
 	api.SupremacyCommand(HubKeySupremacyDefaultWarMachines, supremacyHub.SupremacyDefaultWarMachinesHandler)
+	api.SupremacyCommand(HubKeySupremacyAbilityTargetPriceUpdate, supremacyHub.SupremacyAbilityTargetPriceUpdate)
 
 	return supremacyHub
 }
@@ -650,6 +651,33 @@ func (sc *SupremacyControllerWS) SupremacyReleaseTransactionsHandler(ctx context
 	return nil
 }
 
+const HubKeySupremacyAbilityTargetPriceUpdate = hub.HubCommandKey("SUPREMACY:ABILITY:TARGET:PRICE:UPDATE")
+
+type SupremacyAbilityTargetPriceUpdateRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		AbilityTokenID    uint64 `json:"abilityTokenID"`
+		WarMachineTokenID uint64 `json:"warMachineTokenID"`
+		SupsCost          string `json:"supsCost"`
+	} `json:"payload"`
+}
+
+func (sc *SupremacyControllerWS) SupremacyAbilityTargetPriceUpdate(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupremacyAbilityTargetPriceUpdateRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// store new sups cost
+	err = db.WarMachineAbilityCostUpsert(ctx, sc.Conn, req.Payload.WarMachineTokenID, req.Payload.AbilityTokenID, req.Payload.SupsCost)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
 const HubKeySupremacyDefaultWarMachines = hub.HubCommandKey("SUPREMACY:GET_DEFAULT_WAR_MACHINES")
 
 type SupremacyDefaultWarMachinesRequest struct {
@@ -687,6 +715,23 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 			warMachineMetadata.FactionID = passport.RedMountainFactionID
 			warMachineMetadata.Faction = faction
 
+			// parse war machine abilities
+			if len(warMachineMetadata.Abilities) > 0 {
+				for _, abilityMetadata := range warMachineMetadata.Abilities {
+					err := db.AbilityAssetGet(ctx, sc.Conn, abilityMetadata)
+					if err != nil {
+						return terror.Error(err)
+					}
+
+					supsCost, err := db.WarMachineAbilityCostGet(ctx, sc.Conn, warMachineMetadata.TokenID, abilityMetadata.TokenID)
+					if err != nil {
+						return terror.Error(err)
+					}
+
+					abilityMetadata.SupsCost = supsCost
+				}
+			}
+
 			warMachines = append(warMachines, warMachineMetadata)
 		}
 
@@ -706,6 +751,24 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 			warMachineMetadata.OwnedByID = passport.SupremacyBostonCyberneticsUserID
 			warMachineMetadata.FactionID = passport.BostonCyberneticsFactionID
 			warMachineMetadata.Faction = faction
+
+			// parse war machine abilities
+			if len(warMachineMetadata.Abilities) > 0 {
+				for _, abilityMetadata := range warMachineMetadata.Abilities {
+					err := db.AbilityAssetGet(ctx, sc.Conn, abilityMetadata)
+					if err != nil {
+						return terror.Error(err)
+					}
+
+					supsCost, err := db.WarMachineAbilityCostGet(ctx, sc.Conn, warMachineMetadata.TokenID, abilityMetadata.TokenID)
+					if err != nil {
+						return terror.Error(err)
+					}
+
+					abilityMetadata.SupsCost = supsCost
+				}
+			}
+
 			warMachines = append(warMachines, warMachineMetadata)
 		}
 	case passport.ZaibatsuFactionID:
@@ -724,6 +787,24 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 			warMachineMetadata.OwnedByID = passport.SupremacyZaibatsuUserID
 			warMachineMetadata.FactionID = passport.ZaibatsuFactionID
 			warMachineMetadata.Faction = faction
+
+			// parse war machine abilities
+			if len(warMachineMetadata.Abilities) > 0 {
+				for _, abilityMetadata := range warMachineMetadata.Abilities {
+					err := db.AbilityAssetGet(ctx, sc.Conn, abilityMetadata)
+					if err != nil {
+						return terror.Error(err)
+					}
+
+					supsCost, err := db.WarMachineAbilityCostGet(ctx, sc.Conn, warMachineMetadata.TokenID, abilityMetadata.TokenID)
+					if err != nil {
+						return terror.Error(err)
+					}
+
+					abilityMetadata.SupsCost = supsCost
+				}
+			}
+
 			warMachines = append(warMachines, warMachineMetadata)
 		}
 	}
