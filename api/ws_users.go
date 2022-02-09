@@ -2170,23 +2170,15 @@ func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, client *h
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), nil
 }
 
-type UserWalletDetail struct {
-	OnChainSups string `json:"onChainSups"`
-	OnWorldSups string `json:"onWorldSups"`
-}
+
 
 const HubKeyUserSupsSubscribe hub.HubCommandKey = "USER:SUPS:SUBSCRIBE"
 
 func (uc *UserController) UserSupsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	fmt.Println("hit here")
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
-	}
-
-	resp := &UserWalletDetail{
-		OnChainSups: "0",
 	}
 
 	userID := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
@@ -2200,10 +2192,7 @@ func (uc *UserController) UserSupsUpdatedSubscribeHandler(ctx context.Context, c
 		return "", "", terror.Error(err)
 	}
 
-	resp.OnWorldSups = user.Sups.String()
-
-	reply(resp)
-
+	reply(user.Sups.String())
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, userID)), nil
 }
 
