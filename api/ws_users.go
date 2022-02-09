@@ -112,7 +112,7 @@ func (uc *UserController) GetHandler(ctx context.Context, hubc *hub.Client, payl
 	}
 
 	if !req.Payload.ID.IsNil() {
-		user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID, uc.API.HostUrl)
+		user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Unable to load current user")
 		}
@@ -126,7 +126,7 @@ func (uc *UserController) GetHandler(ctx context.Context, hubc *hub.Client, payl
 		return nil
 	}
 
-	user, err := db.UserByUsername(ctx, uc.Conn, req.Payload.Username, uc.API.HostUrl)
+	user, err := db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 	if err != nil {
 		return terror.Error(err, "Unable to load current user")
 	}
@@ -175,7 +175,7 @@ func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, hubc *h
 	}
 
 	// Get user
-	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID), uc.API.HostUrl)
+	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
 		return terror.Error(err, "User does not exist.")
 	}
@@ -206,7 +206,7 @@ func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, hubc *h
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID, uc.API.HostUrl)
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
 		return terror.Error(err, "User does not exist.")
 	}
@@ -259,7 +259,7 @@ func (uc *UserController) UpdateUserFactionHandler(ctx context.Context, hubc *hu
 		return terror.Error(terror.ErrInvalidInput, "Faction ID is required")
 	}
 
-	user, err := db.UserGet(ctx, uc.Conn, req.Payload.UserID, uc.API.HostUrl)
+	user, err := db.UserGet(ctx, uc.Conn, req.Payload.UserID)
 	if err != nil {
 		return terror.Error(err, "Unable to load current user")
 	}
@@ -324,12 +324,12 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID, uc.API.HostUrl)
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
 	} else {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username, uc.API.HostUrl)
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
@@ -473,7 +473,7 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID, uc.API.HostUrl)
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -624,7 +624,7 @@ func (uc *UserController) CreateHandler(ctx context.Context, hubc *hub.Client, p
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID, uc.API.HostUrl)
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -697,7 +697,6 @@ func (uc *UserController) ListHandler(ctx context.Context, hubc *hub.Client, pay
 		req.Payload.PageSize,
 		req.Payload.SortBy,
 		req.Payload.SortDir,
-		uc.API.HostUrl,
 	)
 
 	if err != nil {
@@ -742,7 +741,7 @@ func (uc *UserController) ArchiveHandler(ctx context.Context, hubc *hub.Client, 
 	}
 
 	// Return user
-	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID, uc.API.HostUrl)
+	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -776,7 +775,7 @@ func (uc *UserController) UnarchiveHandler(ctx context.Context, hubc *hub.Client
 	}
 
 	// Return user
-	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID, uc.API.HostUrl)
+	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -820,7 +819,7 @@ func (uc *UserController) ChangePasswordHandler(ctx context.Context, hubc *hub.C
 		return terror.Error(terror.ErrInvalidInput, "User ID is required")
 	}
 
-	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID, uc.API.HostUrl)
+	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
 	if err != nil {
 		return terror.Error(err, "Unable to load current user")
 	}
@@ -916,7 +915,7 @@ func (uc *UserController) ForceDisconnectHandler(ctx context.Context, hubc *hub.
 		return terror.Error(terror.ErrForbidden, "You cannot force disconnect yourself")
 	}
 
-	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID, uc.API.HostUrl)
+	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
 	if err != nil {
 		return terror.Error(err, "Unable to load current user")
 	}
@@ -1051,12 +1050,12 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hub.C
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID, uc.API.HostUrl)
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
 	} else {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username, uc.API.HostUrl)
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
@@ -1084,7 +1083,7 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hub.C
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID, uc.API.HostUrl)
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1145,7 +1144,7 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.Clie
 	}
 
 	// Get user
-	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID), uc.API.HostUrl)
+	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
 		return terror.Error(err, "failed to query user")
 	}
@@ -1160,7 +1159,7 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.Clie
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID), uc.API.HostUrl)
+	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
 		return terror.Error(err, "Failed to query user")
 	}
@@ -1202,12 +1201,12 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.Cli
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID, uc.API.HostUrl)
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
 	} else {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username, uc.API.HostUrl)
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
@@ -1235,7 +1234,7 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.Cli
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID, uc.API.HostUrl)
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1293,7 +1292,7 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Client
 	}
 
 	// Get user
-	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID), uc.API.HostUrl)
+	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
 		return terror.Error(err, "failed to query user")
 	}
@@ -1308,7 +1307,7 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Client
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID), uc.API.HostUrl)
+	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
 		return terror.Error(err, "Failed to query user")
 	}
@@ -1350,12 +1349,12 @@ func (uc *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.Cli
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID, uc.API.HostUrl)
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
 	} else {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username, uc.API.HostUrl)
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
@@ -1383,7 +1382,7 @@ func (uc *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.Cli
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID, uc.API.HostUrl)
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1481,7 +1480,7 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client
 	}
 
 	// Get user
-	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID), uc.API.HostUrl)
+	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
 		return terror.Error(err, "Failed to query user")
 	}
@@ -1496,7 +1495,7 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID), uc.API.HostUrl)
+	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
 		return terror.Error(err, "Failed to query user")
 	}
@@ -1538,12 +1537,12 @@ func (uc *UserController) RemoveTwitterHandler(ctx context.Context, hubc *hub.Cl
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID, uc.API.HostUrl)
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
 	} else {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username, uc.API.HostUrl)
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
@@ -1571,7 +1570,7 @@ func (uc *UserController) RemoveTwitterHandler(ctx context.Context, hubc *hub.Cl
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID, uc.API.HostUrl)
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1670,7 +1669,7 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	// Get user
-	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID), uc.API.HostUrl)
+	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
 		return terror.Error(err, "Failed to query user")
 	}
@@ -1685,7 +1684,7 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID), uc.API.HostUrl)
+	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
 		return terror.Error(err, "Failed to query user")
 	}
@@ -1727,12 +1726,12 @@ func (uc *UserController) RemoveDiscordHandler(ctx context.Context, hubc *hub.Cl
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID, uc.API.HostUrl)
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
 	} else {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username, uc.API.HostUrl)
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
@@ -1760,7 +1759,7 @@ func (uc *UserController) RemoveDiscordHandler(ctx context.Context, hubc *hub.Cl
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID, uc.API.HostUrl)
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1873,7 +1872,7 @@ func (uc *UserController) AddDiscordHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	// Get user
-	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID), uc.API.HostUrl)
+	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
 		return terror.Error(err, "Failed to query user")
 	}
@@ -1888,7 +1887,7 @@ func (uc *UserController) AddDiscordHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID), uc.API.HostUrl)
+	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
 		return terror.Error(err, "Failed to query user")
 	}
@@ -1940,12 +1939,12 @@ func (uc *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.Cli
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID, uc.API.HostUrl)
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
 	} else {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username, uc.API.HostUrl)
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
@@ -1990,7 +1989,7 @@ func (uc *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.Cli
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID, uc.API.HostUrl)
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -2049,12 +2048,12 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Client
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID, uc.API.HostUrl)
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
 	} else {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username, uc.API.HostUrl)
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
 			return terror.Error(err, "Failed to get user")
 		}
@@ -2099,7 +2098,7 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Client
 	}
 
 	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID, uc.API.HostUrl)
+	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -2146,12 +2145,12 @@ func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, client *h
 	var user *passport.User
 
 	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID, uc.API.HostUrl)
+		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return req.TransactionID, "", terror.Error(err)
 		}
 	} else if req.Payload.Username != "" {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username, uc.API.HostUrl)
+		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
 			return req.TransactionID, "", terror.Error(err)
 		}
@@ -2170,8 +2169,6 @@ func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, client *h
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), nil
 }
 
-
-
 const HubKeyUserSupsSubscribe hub.HubCommandKey = "USER:SUPS:SUBSCRIBE"
 
 func (uc *UserController) UserSupsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
@@ -2186,7 +2183,7 @@ func (uc *UserController) UserSupsUpdatedSubscribeHandler(ctx context.Context, c
 		return "", "", terror.Error(terror.ErrForbidden)
 	}
 
-	user, err := db.UserGet(ctx, uc.Conn, userID, uc.API.HostUrl)
+	user, err := db.UserGet(ctx, uc.Conn, userID)
 	// get current on world sups
 	if err != nil {
 		return "", "", terror.Error(err)
@@ -2203,10 +2200,10 @@ type UserFactionDetail struct {
 	SpectatedCount int64           `json:"spectatedCount"`
 
 	// faction detail
-	FactionID     string                 `json:"factionID"`
-	LogoUrl       string                 `json:"logoUrl,omitempty"`
-	BackgroundUrl string                 `json:"backgroundUrl,omitempty"`
-	Theme         *passport.FactionTheme `json:"theme"`
+	FactionID        string                 `json:"factionID"`
+	LogoBlobID       passport.BlobID        `json:"logoBlobID" db:"logo_blob_id"`
+	BackgroundBlobID passport.BlobID        `json:"backgroundBlobID" db:"background_blob_id"`
+	Theme            *passport.FactionTheme `json:"theme"`
 }
 
 const HubKeyUserFactionSubscribe hub.HubCommandKey = "USER:FACTION:SUBSCRIBE"
@@ -2231,14 +2228,14 @@ func (uc *UserController) UserFactionUpdatedSubscribeHandler(ctx context.Context
 
 	if faction != nil {
 		reply(&UserFactionDetail{
-			RecruitID:      "3000",
-			SupsEarned:     passport.BigInt{},
-			Rank:           "100",
-			SpectatedCount: 100,
-			FactionID:      faction.ID.String(),
-			Theme:          faction.Theme,
-			LogoUrl:        fmt.Sprintf("%s/api/files/%s", uc.API.HostUrl, faction.LogoBlobID),
-			BackgroundUrl:  fmt.Sprintf("%s/api/files/%s", uc.API.HostUrl, faction.BackgroundBlobID),
+			RecruitID:        "3000",
+			SupsEarned:       passport.BigInt{},
+			Rank:             "100",
+			SpectatedCount:   100,
+			FactionID:        faction.ID.String(),
+			Theme:            faction.Theme,
+			LogoBlobID:       faction.LogoBlobID,
+			BackgroundBlobID: faction.BackgroundBlobID,
 		})
 	}
 
@@ -2261,7 +2258,7 @@ func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx con
 	}
 
 	// get user
-	user, err := db.UserGet(ctx, uc.Conn, userID, uc.API.HostUrl)
+	user, err := db.UserGet(ctx, uc.Conn, userID)
 	if err != nil {
 		return "", "", terror.Error(err)
 	}

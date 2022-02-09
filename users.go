@@ -66,7 +66,6 @@ type User struct {
 	Role                             Role          `json:"role" db:"role"`
 	Organisation                     *Organisation `json:"organisation" db:"organisation"`
 	AvatarID                         *BlobID       `json:"avatarID" db:"avatar_id"`
-	AvatarUrl                        string        `json:"avatarUrl"`
 	Sups                             BigInt
 	Online                           bool        `json:"online"`
 	TwoFactorAuthenticationActivated bool        `json:"twoFactorAuthenticationActivated" db:"two_factor_authentication_activated"`

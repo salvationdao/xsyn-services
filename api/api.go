@@ -49,8 +49,6 @@ type API struct {
 	*messagebus.MessageBus
 	ClientToken string
 
-	HostUrl string
-
 	// online user cache
 	users chan func(userCacheList UserCacheMap)
 
@@ -80,7 +78,6 @@ func NewAPI(
 	googleClientID string,
 	mailer *email.Mailer,
 	addr string,
-	hostUrl string,
 	twitchExtensionSecret []byte,
 	twitchClientID string,
 	twitchClientSecret string,
@@ -126,9 +123,6 @@ func NewAPI(
 		serverClients:       make(chan func(serverClients ServerClientsList)),
 		sendToServerClients: make(chan *ServerClientMessage),
 
-		// hostURl
-		HostUrl: hostUrl,
-
 		// user cache map
 		users: make(chan func(userList UserCacheMap)),
 
@@ -170,10 +164,9 @@ func NewAPI(
 		},
 		CookieSecure: config.CookieSecure,
 		UserController: &UserGetter{
-			Log:     log_helpers.NamedLogger(log, "user getter"),
-			Conn:    conn,
-			Mailer:  mailer,
-			HostUrl: hostUrl,
+			Log:    log_helpers.NamedLogger(log, "user getter"),
+			Conn:   conn,
+			Mailer: mailer,
 		},
 		Tokens:        api.Tokens,
 		Eip712Message: config.MetaMaskSignMessage,

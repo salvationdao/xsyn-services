@@ -64,7 +64,7 @@ func (ctrlr *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *h
 	if err != nil {
 		return terror.Error(err)
 	}
-	user, err := db.UserGet(ctx, ctrlr.Conn, passport.UserID(uid), ctrlr.API.HostUrl)
+	user, err := db.UserGet(ctx, ctrlr.Conn, passport.UserID(uid))
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -141,7 +141,7 @@ func (ctrlr *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, c
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
-	user, err := db.UserGet(ctx, ctrlr.Conn, passport.UserID(uid), ctrlr.API.HostUrl)
+	user, err := db.UserGet(ctx, ctrlr.Conn, passport.UserID(uid))
 	if err != nil {
 		return "", "", terror.Error(err)
 	}

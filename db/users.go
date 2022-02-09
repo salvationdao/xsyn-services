@@ -78,7 +78,7 @@ LEFT JOIN (
 `
 
 // UserByPublicAddress returns a user by given public wallet address
-func UserByPublicAddress(ctx context.Context, conn Conn, publicAddress string, hostUrl string) (*passport.User, error) {
+func UserByPublicAddress(ctx context.Context, conn Conn, publicAddress string) (*passport.User, error) {
 	user := &passport.User{}
 	q := UserGetQuery + ` WHERE users.public_address = LOWER($1)`
 	err := pgxscan.Get(ctx, conn, user, q, publicAddress)
@@ -89,15 +89,11 @@ func UserByPublicAddress(ctx context.Context, conn Conn, publicAddress string, h
 	// calc sups
 	user.Sups.Init()
 
-	if user.AvatarID != nil {
-		user.AvatarUrl = fmt.Sprintf("%s/api/files/%s", hostUrl, user.AvatarID)
-	}
-
 	return user, nil
 }
 
 // UserByGoogleID returns a user by google id
-func UserByGoogleID(ctx context.Context, conn Conn, googleID string, hostUrl string) (*passport.User, error) {
+func UserByGoogleID(ctx context.Context, conn Conn, googleID string) (*passport.User, error) {
 	user := &passport.User{}
 	q := UserGetQuery + ` WHERE users.google_id = $1`
 	err := pgxscan.Get(ctx, conn, user, q, googleID)
@@ -108,14 +104,11 @@ func UserByGoogleID(ctx context.Context, conn Conn, googleID string, hostUrl str
 	// calc sups
 	user.Sups.Init()
 
-	if user.AvatarID != nil {
-		user.AvatarUrl = fmt.Sprintf("%s/api/files/%s", hostUrl, user.AvatarID)
-	}
 	return user, nil
 }
 
 // UserByGoogleID returns a user by google id
-func UserByTwitchID(ctx context.Context, conn Conn, twitchID string, hostUrl string) (*passport.User, error) {
+func UserByTwitchID(ctx context.Context, conn Conn, twitchID string) (*passport.User, error) {
 	user := &passport.User{}
 	q := UserGetQuery + ` WHERE users.twitch_id = $1`
 	err := pgxscan.Get(ctx, conn, user, q, twitchID)
@@ -126,9 +119,6 @@ func UserByTwitchID(ctx context.Context, conn Conn, twitchID string, hostUrl str
 	// calc sups
 	user.Sups.Init()
 
-	if user.AvatarID != nil {
-		user.AvatarUrl = fmt.Sprintf("%s/api/files/%s", hostUrl, user.AvatarID)
-	}
 	return user, nil
 }
 
@@ -155,7 +145,7 @@ func UserByDiscordID(ctx context.Context, conn Conn, discordID string) (*passpor
 }
 
 // UserByFacebookID returns a user by google id
-func UserByFacebookID(ctx context.Context, conn Conn, facebookID string, hostUrl string) (*passport.User, error) {
+func UserByFacebookID(ctx context.Context, conn Conn, facebookID string) (*passport.User, error) {
 	user := &passport.User{}
 	q := UserGetQuery + ` WHERE users.facebook_id = $1`
 	err := pgxscan.Get(ctx, conn, user, q, facebookID)
@@ -166,14 +156,11 @@ func UserByFacebookID(ctx context.Context, conn Conn, facebookID string, hostUrl
 	// calc sups
 	user.Sups.Init()
 
-	if user.AvatarID != nil {
-		user.AvatarUrl = fmt.Sprintf("%s/api/files/%s", hostUrl, user.AvatarID)
-	}
 	return user, nil
 }
 
 // UserGet returns a user by given ID
-func UserGet(ctx context.Context, conn Conn, userID passport.UserID, hostUrl string) (*passport.User, error) {
+func UserGet(ctx context.Context, conn Conn, userID passport.UserID) (*passport.User, error) {
 	user := &passport.User{}
 	q := UserGetQuery + ` WHERE users.id = $1`
 
@@ -185,14 +172,11 @@ func UserGet(ctx context.Context, conn Conn, userID passport.UserID, hostUrl str
 	// calc sups
 	user.Sups.Init()
 
-	if user.AvatarID != nil {
-		user.AvatarUrl = fmt.Sprintf("%s/api/files/%s", hostUrl, user.AvatarID)
-	}
 	return user, nil
 }
 
 // UserByUsername returns a user by given username
-func UserByUsername(ctx context.Context, conn Conn, username string, hostUrl string) (*passport.User, error) {
+func UserByUsername(ctx context.Context, conn Conn, username string) (*passport.User, error) {
 	user := &passport.User{}
 	q := UserGetQuery + ` WHERE username = $1`
 	err := pgxscan.Get(ctx, conn, user, q, username)
@@ -203,14 +187,11 @@ func UserByUsername(ctx context.Context, conn Conn, username string, hostUrl str
 	// calc sups
 	user.Sups.Init()
 
-	if user.AvatarID != nil {
-		user.AvatarUrl = fmt.Sprintf("%s/api/files/%s", hostUrl, user.AvatarID)
-	}
 	return user, nil
 }
 
 // UserByEmail returns a user by given email address
-func UserByEmail(ctx context.Context, conn Conn, email string, hostUrl string) (*passport.User, error) {
+func UserByEmail(ctx context.Context, conn Conn, email string) (*passport.User, error) {
 	user := &passport.User{}
 
 	q := UserGetQuery + ` WHERE email = $1`
@@ -222,9 +203,6 @@ func UserByEmail(ctx context.Context, conn Conn, email string, hostUrl string) (
 	// calc sups
 	user.Sups.Init()
 
-	if user.AvatarID != nil {
-		user.AvatarUrl = fmt.Sprintf("%s/api/files/%s", hostUrl, user.AvatarID)
-	}
 	return user, nil
 }
 
@@ -746,7 +724,6 @@ func UserList(
 	pageSize int,
 	sortBy UserColumn,
 	sortDir SortByDir,
-	hostUrl string,
 ) (int, error) {
 	// Prepare Filters
 	var args []interface{}
@@ -846,9 +823,6 @@ func UserList(
 		// calc sups
 		user.Sups.Init()
 
-		if user.AvatarID != nil {
-			user.AvatarUrl = fmt.Sprintf("%s/api/files/%s", hostUrl, user.AvatarID)
-		}
 	}
 	return totalRows, nil
 }

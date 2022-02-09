@@ -923,7 +923,7 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 
 func (s *Seeder) AndAssignNftToMember(ctx context.Context) error {
 	// get member user
-	member, err := db.UserByEmail(ctx, s.Conn, "member@example.com", "")
+	member, err := db.UserByEmail(ctx, s.Conn, "member@example.com")
 	if err != nil {
 		return terror.Error(err)
 	}

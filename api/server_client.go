@@ -96,7 +96,7 @@ func (api *API) ServerClientOnline(gameName ServerClientName, hubc *hub.Client) 
 
 			// set up sups pool user cache
 			if gameName == SupremacyGameServer {
-				supsPoolUser, err := db.UserGet(context.Background(), api.Conn, passport.SupremacySupPoolUserID, "")
+				supsPoolUser, err := db.UserGet(context.Background(), api.Conn, passport.SupremacySupPoolUserID)
 				if err != nil {
 					api.Log.Err(err)
 					return

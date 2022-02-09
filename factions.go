@@ -27,6 +27,4 @@ type Faction struct {
 	KillCount        int64         `json:"killCount" db:"kill_count"`
 	DeathCount       int64         `json:"deathCount" db:"death_count"`
 	MVP              string        `json:"mvp" db:"mvp"`
-	LogoUrl          string        `json:"logoUrl,omitempty"`
-	BackgroundUrl    string        `json:"backgroundUrl,omitempty"`
 }

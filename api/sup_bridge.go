@@ -42,7 +42,7 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 						Str("Buyer", xfer.From.Hex()).
 						Msg("purchase")
 
-					user, err := db.UserByPublicAddress(ctx, api.Conn, xfer.From.Hex(), api.HostUrl)
+					user, err := db.UserByPublicAddress(ctx, api.Conn, xfer.From.Hex())
 					if err != nil {
 						// if error is no rows, create user!
 						if errors.Is(err, pgx.ErrNoRows) {
@@ -107,7 +107,7 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 						Str("Buyer", xfer.From.Hex()).
 						Msg("purchase")
 
-					user, err := db.UserByPublicAddress(ctx, api.Conn, xfer.From.Hex(), api.HostUrl)
+					user, err := db.UserByPublicAddress(ctx, api.Conn, xfer.From.Hex())
 					if err != nil {
 						// if error is no rows, create user!
 						if errors.Is(err, pgx.ErrNoRows) {
@@ -167,7 +167,7 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 						Str("User", xfer.From.Hex()).
 						Msg("deposit")
 
-					user, err := db.UserByPublicAddress(ctx, api.Conn, xfer.From.Hex(), api.HostUrl)
+					user, err := db.UserByPublicAddress(ctx, api.Conn, xfer.From.Hex())
 					if err != nil {
 						// if error is no rows, create user!
 						if errors.Is(err, pgx.ErrNoRows) {
@@ -244,7 +244,7 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 						Str("User", xfer.From.Hex()).
 						Msg("redeem")
 
-					user, err := db.UserByPublicAddress(ctx, api.Conn, xfer.From.Hex(), api.HostUrl)
+					user, err := db.UserByPublicAddress(ctx, api.Conn, xfer.From.Hex())
 					if err != nil {
 						// if error is no rows, create user!
 						if errors.Is(err, pgx.ErrNoRows) {
@@ -303,7 +303,7 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 						Str("User", xfer.To.Hex()).
 						Msg("withdraw")
 
-					user, err := db.UserByPublicAddress(ctx, api.Conn, xfer.From.Hex(), api.HostUrl)
+					user, err := db.UserByPublicAddress(ctx, api.Conn, xfer.From.Hex())
 					if err != nil {
 						// if error is no rows, create user!
 						if errors.Is(err, pgx.ErrNoRows) {
@@ -370,7 +370,7 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 						Str("Buyer", xfer.From.Hex()).
 						Msg("purchase")
 
-					user, err := db.UserByPublicAddress(ctx, api.Conn, xfer.From.Hex(), api.HostUrl)
+					user, err := db.UserByPublicAddress(ctx, api.Conn, xfer.From.Hex())
 					if err != nil {
 						// if error is no rows, create user!
 						if errors.Is(err, pgx.ErrNoRows) {
@@ -433,7 +433,7 @@ func (api *API) handleTransfer(p *passport.BridgeParams) func(xfer *bridge.Trans
 						Str("Buyer", xfer.From.Hex()).
 						Msg("purchase")
 
-					user, err := db.UserByPublicAddress(ctx, api.Conn, xfer.From.Hex(), api.HostUrl)
+					user, err := db.UserByPublicAddress(ctx, api.Conn, xfer.From.Hex())
 					if err != nil {
 						// if error is no rows, create user!
 						if errors.Is(err, pgx.ErrNoRows) {

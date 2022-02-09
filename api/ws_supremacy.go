@@ -288,7 +288,7 @@ const HubKeySupremacyTransferBattleFundToSupPool = hub.HubCommandKey("SUPREMACY:
 
 func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	// get sups from battle user
-	battleUser, err := db.UserGet(ctx, sc.Conn, passport.SupremacyBattleUserID, "")
+	battleUser, err := db.UserGet(ctx, sc.Conn, passport.SupremacyBattleUserID)
 	if err != nil {
 		return terror.Error(err, "Failed to get battle arena user")
 	}
@@ -319,7 +319,7 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 	}
 
 	// get sups pool user
-	supsPoolUser, err := db.UserGet(context.Background(), sc.Conn, passport.SupremacySupPoolUserID, "")
+	supsPoolUser, err := db.UserGet(context.Background(), sc.Conn, passport.SupremacySupPoolUserID)
 	if err != nil {
 		return terror.Error(err)
 	}

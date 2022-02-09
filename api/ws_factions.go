@@ -56,11 +56,6 @@ func (fc *FactionController) FactionAllHandler(ctx context.Context, hubc *hub.Cl
 		return terror.Error(err, "failed to query factions")
 	}
 
-	for _, f := range factions {
-		f.LogoUrl = fmt.Sprintf("%s/api/files/%s", fc.API.HostUrl, f.LogoBlobID)
-		f.BackgroundUrl = fmt.Sprintf("%s/api/files/%s", fc.API.HostUrl, f.BackgroundBlobID)
-	}
-
 	reply(factions)
 
 	return nil
@@ -91,7 +86,7 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 	}
 
 	// get user
-	user, err := db.UserGet(ctx, fc.Conn, userID, fc.API.HostUrl)
+	user, err := db.UserGet(ctx, fc.Conn, userID)
 	if err != nil {
 		return terror.Error(err)
 	}

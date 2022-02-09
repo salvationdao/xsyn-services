@@ -76,7 +76,7 @@ func (api *API) ClientAuth(ctx context.Context, client *hub.Client, clients hub.
 		api.Log.Err(err)
 	}
 
-	user, err := db.UserGet(ctx, api.Conn, passport.UserID(userUuid), api.HostUrl)
+	user, err := db.UserGet(ctx, api.Conn, passport.UserID(userUuid))
 	if err != nil {
 		api.Log.Err(err)
 	}
