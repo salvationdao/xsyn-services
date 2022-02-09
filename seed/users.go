@@ -254,6 +254,24 @@ func (s *Seeder) SupremacyBattleUser(ctx context.Context) (*passport.User, error
 	return u, nil
 }
 
+func (s *Seeder) SupremacySupPoolUser(ctx context.Context) (*passport.User, error) {
+	// Create user
+	u := &passport.User{
+		ID:       passport.SupremacySupPoolUserID,
+		Username: passport.SupremacySupPoolUsername,
+		RoleID:   passport.UserRoleGameAccount,
+		Verified: true,
+	}
+
+	// Insert
+	err := db.InsertSystemUser(ctx, s.Conn, u)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return u, nil
+}
+
 func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, error) {
 
 	supremacyCollection, err := db.CollectionGet(ctx, s.Conn, "Supremacy")

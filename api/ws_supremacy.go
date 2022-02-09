@@ -24,12 +24,9 @@ import (
 
 // SupremacyControllerWS holds handlers for supremacy and the supremacy held transactions
 type SupremacyControllerWS struct {
-	Conn               *pgxpool.Pool
-	Log                *zerolog.Logger
-	API                *API
-	SupremacyUserID    passport.UserID
-	XsynTreasuryUserID passport.UserID
-	BattleUserID       passport.UserID
+	Conn *pgxpool.Pool
+	Log  *zerolog.Logger
+	API  *API
 }
 
 // NewSupremacyController creates the supremacy hub
@@ -40,9 +37,9 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 		API:  api,
 	}
 
-	supremacyHub.SupremacyUserID = passport.SupremacyGameUserID
-	supremacyHub.XsynTreasuryUserID = passport.XsynTreasuryUserID
-	supremacyHub.BattleUserID = passport.SupremacyBattleUserID
+	// supremacyHub.SupremacyUserID = passport.SupremacyGameUserID
+	// supremacyHub.XsynTreasuryUserID = passport.XsynTreasuryUserID
+	// supremacyHub.BattleUserID = passport.SupremacyBattleUserID
 
 	// start metadata repair ticker
 	repairTicker := tickle.New("Asset Repair Ticker", 60, func() (int, error) {
@@ -61,7 +58,7 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	api.SupremacyCommand(HubKeySupremacyCommitTransactions, supremacyHub.SupremacyCommitTransactionsHandler)
 	api.SupremacyCommand(HubKeySupremacyReleaseTransactions, supremacyHub.SupremacyReleaseTransactionsHandler)
 	api.SupremacyCommand(HubKeySupremacyTickerTick, supremacyHub.SupremacyTickerTickHandler)
-	api.SupremacyCommand(HubKeySupremacyDistributeBattleReward, supremacyHub.SupremacyDistributeBattleRewardHandler)
+	api.SupremacyCommand(HubKeySupremacyTransferBattleFundToSupPool, supremacyHub.SupremacyTransferBattleFundToSupPoolHandler)
 
 	// user connection upgrade
 	api.SupremacyCommand(HubKeySupremacyUserConnectionUpgrade, supremacyHub.SupremacyUserConnectionUpgradeHandler)
@@ -139,13 +136,13 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 
 	tx := &passport.NewTransaction{
 		From:                 req.Payload.FromUserID,
-		To:                   sc.SupremacyUserID,
+		To:                   passport.SupremacyGameUserID,
 		TransactionReference: req.Payload.TransactionReference,
 		Amount:               req.Payload.Amount.Int,
 	}
 
 	if req.Payload.IsBattleVote {
-		tx.To = sc.BattleUserID
+		tx.To = passport.SupremacyBattleUserID
 	}
 
 	errChan := make(chan error, 10)
@@ -177,7 +174,24 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 		return terror.Error(err, "Invalid request received")
 	}
 
+	//  to avoid working in floats, a 100% multiplier is 100 points, a 25% is 25 points
+	// This will give us what we need to divide the pool by and then times by to give the user the correct share of the pool
+
+	totalPoints := 0
+	// loop once to get total point count
+	for multiplier, users := range req.Payload.UserMap {
+		totalPoints = totalPoints + (multiplier * len(users))
+	}
+
+	if totalPoints == 0 {
+		return nil
+	}
+
 	var transactions []*passport.NewTransaction
+
+	/////////////////////////////////////////
+	//  Standard Sups From Supremacy User  //
+	/////////////////////////////////////////
 
 	// 50 sups per 60 second
 	// supremacy ticker tick every 3 second, so grab 2.5 sups on every tick
@@ -185,18 +199,6 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 	supPool, ok := supPool.SetString("2500000000000000000", 10)
 	if !ok {
 		return terror.Error(fmt.Errorf("failed to convert 2500000000000000000 to big int"))
-	}
-
-	totalPoints := 0
-	//  to avoid working in floats, a 100% multiplier is 100 points, a 25% is 25 points
-	// This will give us what we need to divide the pool by and then times by to give the user the correct share of the pool
-
-	// loop once to get total point count
-	for multiplier, users := range req.Payload.UserMap {
-		totalPoints = totalPoints + (multiplier * len(users))
-	}
-	if totalPoints == 0 {
-		return nil
 	}
 
 	onePointWorth := big.NewInt(0)
@@ -209,7 +211,7 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 			usersSups = usersSups.Mul(onePointWorth, big.NewInt(int64(multiplier)))
 
 			transactions = append(transactions, &passport.NewTransaction{
-				From:                 sc.SupremacyUserID,
+				From:                 passport.SupremacyGameUserID,
 				To:                   *user,
 				Amount:               *usersSups,
 				TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|ticker|%s|%s", *user, time.Now())),
@@ -218,6 +220,39 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 			supPool = supPool.Sub(supPool, usersSups)
 		}
 	}
+
+	///////////////////////////////////
+	//  Sups From  Battle Sups Pool  //
+	///////////////////////////////////
+
+	// get trickle amount
+	trickleAmount := sc.API.SupremacySupPoolGetTrickleAmount()
+	if trickleAmount.Cmp(big.NewInt(0)) > 0 {
+		// cal
+		onePointWorth := big.NewInt(0)
+		onePointWorth.Div(&trickleAmount.Int, big.NewInt(int64(totalPoints)))
+
+		// loop again to create all transactions
+		for multiplier, users := range req.Payload.UserMap {
+			for _, user := range users {
+				usersSups := big.NewInt(0)
+				usersSups = usersSups.Mul(onePointWorth, big.NewInt(int64(multiplier)))
+
+				transactions = append(transactions, &passport.NewTransaction{
+					From:                 passport.SupremacySupPoolUserID,
+					To:                   *user,
+					Amount:               *usersSups,
+					TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|sup_pool|%s|%s", *user, time.Now())),
+				})
+
+				supPool = supPool.Sub(supPool, usersSups)
+			}
+		}
+	}
+
+	///////////////////////////
+	//  Insert Transactions  //
+	///////////////////////////
 
 	// send through transactions
 	for _, tx := range transactions {
@@ -249,25 +284,9 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 	return nil
 }
 
-const HubKeySupremacyDistributeBattleReward = hub.HubCommandKey("SUPREMACY:DISTRIBUTE_BATTLE_REWARD")
+const HubKeySupremacyTransferBattleFundToSupPool = hub.HubCommandKey("SUPREMACY:TRANSFER_BATTLE_FUND_TO_SUP_POOL")
 
-type SupremacyDistributeBattleRewardRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		WinnerFactionID               passport.FactionID `json:"winnerFactionID"`
-		WinningFactionViewerIDs       []passport.UserID  `json:"winningFactionViewerIDs"`
-		WinningWarMachineOwnerIDs     []passport.UserID  `json:"winningWarMachineOwnerIDs"`
-		ExecuteKillWarMachineOwnerIDs []passport.UserID  `json:"executeKillWarMachineOwnerIDs"`
-	} `json:"payload"`
-}
-
-func (sc *SupremacyControllerWS) SupremacyDistributeBattleRewardHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &SupremacyDistributeBattleRewardRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received")
-	}
-
+func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	// get sups from battle user
 	battleUser, err := db.UserGet(ctx, sc.Conn, passport.SupremacyBattleUserID, "")
 	if err != nil {
@@ -280,117 +299,33 @@ func (sc *SupremacyControllerWS) SupremacyDistributeBattleRewardHandler(ctx cont
 		return nil
 	}
 
-	// portion sups
+	transaction := &passport.NewTransaction{
+		From:                 passport.SupremacyBattleUserID,
+		To:                   passport.SupremacySupPoolUserID,
+		Amount:               battleUser.Sups.Int,
+		TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|battle_sups_spend_transfer|%s", time.Now())),
+	}
 
-	// 25% sups for winner war machine owners and execute kill war machine owners
-	supsPortionPercentage25 := big.NewInt(0)
-	supsPortionPercentage25.Div(&battleUser.Sups.Int, big.NewInt(4))
+	// transfer all the sups to sups pool user
+	transaction.ResultChan = make(chan *passport.TransactionResult, 1)
+	sc.API.transaction <- transaction
+	result := <-transaction.ResultChan
+	// if result is success, update the cache map
+	if result.Error != nil {
+		return terror.Error(result.Error)
+	}
+	if result.Transaction.Status == passport.TransactionFailed {
+		return terror.Error(fmt.Errorf("Failed to transfer sups spend over"))
+	}
 
-	// 50% sups for winner faction viewers
-	supsPortionPercentage50 := big.NewInt(0)
-	supsPortionPercentage50.Sub(&battleUser.Sups.Int, supsPortionPercentage25.Mul(supsPortionPercentage25, big.NewInt(2)))
-
-	// start distributing sups
-	var transactions []*passport.NewTransaction
-
-	// get winning faction user
-	winningFactionUserID, err := db.FactionUserIDGetByFactionID(ctx, sc.Conn, req.Payload.WinnerFactionID)
+	// get sups pool user
+	supsPoolUser, err := db.UserGet(context.Background(), sc.Conn, passport.SupremacySupPoolUserID, "")
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	/*************************
-	* Winner Faction Viewers *
-	*************************/
-	viewerIDs := req.Payload.WinningFactionViewerIDs
-	// set faction user as viewer if there is no viewer online
-	if len(viewerIDs) == 0 {
-		viewerIDs = []passport.UserID{winningFactionUserID}
-	}
-
-	reference := fmt.Sprintf("supremacy|battle_reward|winning_faction_viewer|%s", time.Now())
-
-	supsPerUser := big.NewInt(0)
-	supsPerUser.Div(supsPortionPercentage50, big.NewInt(int64(len(viewerIDs))))
-
-	for _, viewerID := range viewerIDs {
-		amount := supsPerUser
-
-		transactions = append(transactions, &passport.NewTransaction{
-			From:                 sc.BattleUserID,
-			To:                   viewerID,
-			Amount:               *amount,
-			TransactionReference: passport.TransactionReference(reference),
-		})
-	}
-
-	/****************************
-	* Winning War Machine Owner *
-	****************************/
-
-	ownerIDs := req.Payload.WinningWarMachineOwnerIDs
-	if len(ownerIDs) == 0 {
-		ownerIDs = []passport.UserID{winningFactionUserID}
-	}
-
-	reference = fmt.Sprintf("supremacy|battle_reward|winning_war_machine_owner|%s", time.Now())
-
-	supsPerUser = big.NewInt(0)
-	supsPerUser.Div(supsPortionPercentage25, big.NewInt(int64(len(ownerIDs))))
-
-	for _, ownerID := range ownerIDs {
-		amount := supsPerUser
-
-		transactions = append(transactions, &passport.NewTransaction{
-			From:                 sc.BattleUserID,
-			To:                   ownerID,
-			Amount:               *amount,
-			TransactionReference: passport.TransactionReference(reference),
-		})
-	}
-
-	/*********************************
-	* Execute Kill War Machine Owner *
-	*********************************/
-
-	killOwnerIDs := req.Payload.ExecuteKillWarMachineOwnerIDs
-	if len(killOwnerIDs) == 0 {
-		killOwnerIDs = []passport.UserID{winningFactionUserID}
-	}
-
-	reference = fmt.Sprintf("supremacy|battle_reward|execute_kill_war_machine_owner|%s", time.Now())
-
-	supsPerUser = big.NewInt(0)
-	supsPerUser.Div(supsPortionPercentage25, big.NewInt(int64(len(killOwnerIDs))))
-
-	for _, killOwnerID := range killOwnerIDs {
-		amount := supsPerUser
-
-		transactions = append(transactions, &passport.NewTransaction{
-			From:                 sc.BattleUserID,
-			To:                   killOwnerID,
-			Amount:               *amount,
-			TransactionReference: passport.TransactionReference(reference),
-		})
-	}
-
-	// send through transactions
-	for _, tx := range transactions {
-		tx.ResultChan = make(chan *passport.TransactionResult, 1)
-		sc.API.transaction <- tx
-		result := <-tx.ResultChan
-		// if result is success, update the cache map
-		if result.Error == nil && result.Transaction != nil && result.Transaction.Status == passport.TransactionSuccess {
-			errChan := make(chan error, 10)
-			sc.API.UpdateUserCacheRemoveSups(tx.From, tx.Amount, errChan)
-			err := <-errChan
-			if err != nil {
-				sc.API.Log.Err(err).Msg(err.Error())
-				continue
-			}
-			sc.API.UpdateUserCacheAddSups(tx.To, tx.Amount)
-		}
-	}
+	// set total sups pool
+	sc.API.SupremacySupPoolSet(supsPoolUser.Sups)
 
 	reply(true)
 

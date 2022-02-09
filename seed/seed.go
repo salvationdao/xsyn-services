@@ -72,6 +72,12 @@ func (s *Seeder) Run(isProd bool) error {
 		return terror.Error(err, "seed users failed")
 	}
 
+	fmt.Println("Seeding Supremacy Sups Pool User")
+	_, err = s.SupremacySupPoolUser(ctx)
+	if err != nil {
+		return terror.Error(err, "seed users failed")
+	}
+
 	fmt.Println("Seeding Supremacy Faction User")
 	_, err = s.SupremacyFactionUsers(ctx)
 	if err != nil {

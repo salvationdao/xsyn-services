@@ -1,11 +1,13 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"net/http"
 	"passport"
+	"passport/db"
 	"sync"
 	"time"
 
@@ -38,6 +40,47 @@ func (api *API) InitialiseTreasuryFundTicker() {
 	})
 }
 
+type SupremacySupPool struct {
+	TotalSups     passport.BigInt
+	TrickleAmount passport.BigInt
+}
+
+// StartSupremacySupPool cache the total sup pool in supremacy game
+func (api *API) StartSupremacySupPool() {
+	ssp := &SupremacySupPool{
+		TotalSups:     passport.BigInt{Int: *big.NewInt(0)},
+		TrickleAmount: passport.BigInt{Int: *big.NewInt(0)},
+	}
+
+	go func() {
+		for fn := range api.supremacySupsPool {
+			fn(ssp)
+		}
+	}()
+}
+
+// SupremacySupPoolSet set current sup pool detail
+func (api *API) SupremacySupPoolSet(sups passport.BigInt) {
+	api.supremacySupsPool <- func(ssp *SupremacySupPool) {
+		// initialise sup pool value
+		ssp.TotalSups = passport.BigInt{Int: *big.NewInt(0)}
+		ssp.TotalSups.Add(&ssp.TotalSups.Int, &sups.Int)
+
+		ssp.TrickleAmount = passport.BigInt{Int: *big.NewInt(0)}
+		ssp.TrickleAmount.Add(&ssp.TrickleAmount.Int, &sups.Int)
+		ssp.TrickleAmount.Div(&ssp.TrickleAmount.Int, big.NewInt(100))
+	}
+}
+
+// SupremacySupPoolGetTrickleAmount return current trickle amount
+func (api *API) SupremacySupPoolGetTrickleAmount() passport.BigInt {
+	amountChan := make(chan passport.BigInt)
+	api.supremacySupsPool <- func(ssp *SupremacySupPool) {
+		amountChan <- ssp.TrickleAmount
+	}
+	return <-amountChan
+}
+
 type ServerClientsList map[ServerClientName]map[*hub.Client]bool
 type ServerClientsFunc func(serverClients ServerClientsList)
 
@@ -47,9 +90,22 @@ func (api *API) ServerClientOnline(gameName ServerClientName, hubc *hub.Client) 
 		_, ok := serverClients[gameName]
 		if !ok {
 			// start treasury ticker for current server client
-			if tick, ok := api.treasuryTickerMap[gameName]; ok && tick.NextTick == nil {
+			if tick, ok := api.treasuryTickerMap[gameName]; ok && (tick.NextTick == nil || tick.NextTick.Before(time.Now())) {
 				tick.Start()
 			}
+
+			// set up sups pool user cache
+			if gameName == SupremacyGameServer {
+				supsPoolUser, err := db.UserGet(context.Background(), api.Conn, passport.SupremacySupPoolUserID, "")
+				if err != nil {
+					api.Log.Err(err)
+					return
+				}
+
+				// initial total sups pool
+				api.SupremacySupPoolSet(supsPoolUser.Sups)
+			}
+
 			serverClients[gameName] = make(map[*hub.Client]bool)
 		}
 		serverClients[gameName][hubc] = true

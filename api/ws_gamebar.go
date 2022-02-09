@@ -132,7 +132,6 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 	} else if req.Payload.GameserverSessionID != "" {
 		reply(true)
 
-		fmt.Println(req.Key)
 		// send to supremacy server
 		gc.API.SendToServerClient(SupremacyGameServer, &ServerClientMessage{
 			Key: "AUTH:RING:CHECK",

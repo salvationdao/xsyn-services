@@ -65,6 +65,9 @@ type API struct {
 	// treasury ticker map
 	treasuryTickerMap map[ServerClientName]*tickle.Tickle
 
+	// Supremacy Sups Pool
+	supremacySupsPool chan func(*SupremacySupPool)
+
 	TxConn *sql.DB
 }
 
@@ -136,6 +139,7 @@ func NewAPI(
 
 		// treasury ticker map
 		treasuryTickerMap: make(map[ServerClientName]*tickle.Tickle),
+		supremacySupsPool: make(chan func(*SupremacySupPool)),
 	}
 
 	api.Routes.Use(middleware.RequestID)
@@ -241,6 +245,9 @@ func NewAPI(
 
 	// Initialise treasury fund ticker
 	go api.InitialiseTreasuryFundTicker()
+
+	// Initial supremacy sup pool
+	go api.StartSupremacySupPool()
 
 	return api
 }
