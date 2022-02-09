@@ -2203,6 +2203,7 @@ type UserFactionDetail struct {
 	SpectatedCount int64           `json:"spectatedCount"`
 
 	// faction detail
+	FactionID     string                 `json:"factionID"`
 	LogoUrl       string                 `json:"logoUrl,omitempty"`
 	BackgroundUrl string                 `json:"backgroundUrl,omitempty"`
 	Theme         *passport.FactionTheme `json:"theme"`
@@ -2234,6 +2235,7 @@ func (uc *UserController) UserFactionUpdatedSubscribeHandler(ctx context.Context
 			SupsEarned:     passport.BigInt{},
 			Rank:           "100",
 			SpectatedCount: 100,
+			FactionID:      faction.ID.String(),
 			Theme:          faction.Theme,
 			LogoUrl:        fmt.Sprintf("%s/api/files/%s", uc.API.HostUrl, faction.LogoBlobID),
 			BackgroundUrl:  fmt.Sprintf("%s/api/files/%s", uc.API.HostUrl, faction.BackgroundBlobID),
