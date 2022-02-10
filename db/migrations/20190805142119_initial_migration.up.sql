@@ -1,20 +1,33 @@
 BEGIN;
 
+CREATE TABLE state
+(
+    latest_eth_block BIGINT,
+    latest_bsc_block BIGINT
+);
+
+
 -- Blobs
 CREATE TABLE blobs
 (
-    id              UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    id              UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid
+        (
+        ),
     file_name       TEXT             NOT NULL,
     mime_type       TEXT             NOT NULL,
     file_size_bytes BIGINT           NOT NULL,
-    extension       TEXT             NOT NULL,
+    EXTENSION       TEXT             NOT NULL,
     file            BYTEA            NOT NULL,
     views           INTEGER          NOT NULL DEFAULT 0,
-    hash            TEXT,
-    public          BOOLEAN          NOT NULL DEFAULT FALSE,
+    HASH            TEXT,
+    PUBLIC          BOOLEAN          NOT NULL DEFAULT FALSE,
     deleted_at      TIMESTAMPTZ,
-    updated_at      TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
-    created_at      TIMESTAMPTZ      NOT NULL DEFAULT NOW()
+    updated_at      TIMESTAMPTZ      NOT NULL DEFAULT NOW
+        (
+        ),
+    created_at      TIMESTAMPTZ      NOT NULL DEFAULT NOW
+        (
+        )
 );
 
 
@@ -531,10 +544,11 @@ CREATE TRIGGER updateXsyn_store_name
 EXECUTE PROCEDURE updateXsyn_metadata_name();
 
 -- war_machine_ability_sups_cost store the sups cost for triggering the ability
-CREATE TABLE war_machine_ability_sups_cost(
-    ability_token_id  NUMERIC(78, 0) NOT NULL REFERENCES xsyn_metadata (token_id),
-    war_machine_token_id  NUMERIC(78, 0) NOT NULL REFERENCES xsyn_metadata (token_id),
-    sups_cost TEXT NOT NULL,
+CREATE TABLE war_machine_ability_sups_cost
+(
+    ability_token_id     NUMERIC(78, 0) NOT NULL REFERENCES xsyn_metadata (token_id),
+    war_machine_token_id NUMERIC(78, 0) NOT NULL REFERENCES xsyn_metadata (token_id),
+    sups_cost            TEXT           NOT NULL,
     PRIMARY KEY (ability_token_id, war_machine_token_id)
 );
 

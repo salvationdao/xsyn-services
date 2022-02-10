@@ -113,6 +113,7 @@ func main() {
 					// BSC
 					&cli.StringFlag{Name: "busd_addr", Value: "0xeAf33Ba4AcA3fE3110EAddD7D4cf0897121583D0", Usage: "BUSD contract address"},
 					&cli.StringFlag{Name: "wbnb_addr", Value: "0xb2564d8Fd501868340eF0A1281B2aDA3E4506C7F", Usage: "WBNB contract address"},
+					&cli.StringFlag{Name: "sup_addr", Value: "0xED4664f5F37307abf8703dD39Fd6e72F421e7DE2", Usage: "SUP contract address"},
 
 					// wallet/contract addressed
 					&cli.StringFlag{Name: "purchase_addr", Value: "0x5591eBC09A89A8B11D9644eC1455e294Fd3BAbB5", Usage: "Purchase wallet address"},
@@ -121,8 +122,8 @@ func main() {
 					&cli.StringFlag{Name: "redemption_addr", Value: "0xBF7301CB28D765072D39CD21429f6E9Ec81ECe92", Usage: "Redemption contract address"},
 
 					// chain id
-					&cli.IntFlag{Name: "bsc_chain_id", Value: 97, Usage: "BSC Chain ID"},
-					&cli.IntFlag{Name: "eth_chain_id", Value: 5, Usage: "ETH Chain ID"},
+					&cli.Int64Flag{Name: "bsc_chain_id", Value: 97, Usage: "BSC Chain ID"},
+					&cli.Int64Flag{Name: "eth_chain_id", Value: 5, Usage: "ETH Chain ID"},
 
 					// node address
 					&cli.StringFlag{Name: "bsc_node_addr", Value: "wss://speedy-nodes-nyc.moralis.io/1375aa321ac8ac6cfba6aa9c/bsc/testnet/ws", Usage: "Binance WS node URL"},
@@ -325,13 +326,14 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	BusdAddr := ctxCLI.String("busd_addr")
 	WethAddr := ctxCLI.String("weth_addr")
 	WbnbAddr := ctxCLI.String("wbnb_addr")
+	SupAddr := ctxCLI.String("sup_addr")
 	PurchaseAddr := ctxCLI.String("purchase_addr")
 	WithdrawAddr := ctxCLI.String("withdraw_addr")
 	RedemptionAddr := ctxCLI.String("redemption_addr")
 	BscNodeAddr := ctxCLI.String("bsc_node_addr")
 	EthNodeAddr := ctxCLI.String("eth_node_addr")
-	BSCChainID := ctxCLI.Int("bsc_chain_id")
-	ETHChainID := ctxCLI.Int("eth_chain_id")
+	BSCChainID := ctxCLI.Int64("bsc_chain_id")
+	ETHChainID := ctxCLI.Int64("eth_chain_id")
 
 	USDCToSUPS, err := decimal.NewFromString(ctxCLI.String("usdc_to_sups"))
 	if err != nil {
@@ -371,6 +373,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 			BusdAddr:       common.HexToAddress(BusdAddr),
 			WethAddr:       common.HexToAddress(WethAddr),
 			WbnbAddr:       common.HexToAddress(WbnbAddr),
+			SupAddr:        common.HexToAddress(SupAddr),
 			PurchaseAddr:   common.HexToAddress(PurchaseAddr),
 			WithdrawAddr:   common.HexToAddress(WithdrawAddr),
 			RedemptionAddr: common.HexToAddress(RedemptionAddr),

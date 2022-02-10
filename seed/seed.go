@@ -60,6 +60,12 @@ func (s *Seeder) Run(isProd bool) error {
 		return terror.Error(err, "seed users failed")
 	}
 
+	fmt.Println("Seeding XSYN Sale Treasury User")
+	_, err = s.XsynSaleUser(ctx)
+	if err != nil {
+		return terror.Error(err, "seed users failed")
+	}
+
 	fmt.Println("Seeding Supremacy User")
 	_, err = s.SupremacyUser(ctx)
 	if err != nil {
@@ -80,12 +86,6 @@ func (s *Seeder) Run(isProd bool) error {
 
 	fmt.Println("Seeding Supremacy Faction User")
 	_, err = s.SupremacyFactionUsers(ctx)
-	if err != nil {
-		return terror.Error(err, "seed users failed")
-	}
-
-	fmt.Println("Seeding XSYN Sale Treasury User")
-	_, err = s.XsynSaleUser(ctx)
 	if err != nil {
 		return terror.Error(err, "seed users failed")
 	}
@@ -125,6 +125,16 @@ func (s *Seeder) Run(isProd bool) error {
 			return terror.Error(err, "unable to seed zaibatsu abilities")
 		}
 
+	}
+	fmt.Println("Seed initial state")
+
+	q := `INSERT INTO state (latest_eth_block,
+                             latest_bsc_block)
+			VALUES(6352924, 16623890);`
+
+	_, err = s.Conn.Exec(ctx, q)
+	if err != nil {
+		return terror.Error(err, "unable to seed state")
 	}
 
 	fmt.Println("Seed complete")

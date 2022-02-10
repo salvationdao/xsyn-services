@@ -2370,6 +2370,7 @@ func (uc *UserController) BlockConfirmationHandler(ctx context.Context, client *
 	if req.Payload.GetInitialData {
 		// db func to get a list of users transaction on the comfirm transaction table
 		// reply(their confirm objects)
+		return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), nil
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), nil

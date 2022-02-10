@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"math/big"
 	"passport"
+	"strings"
 	"sync"
 
 	"github.com/ninja-software/terror/v2"
@@ -25,7 +26,11 @@ func (api *API) HandleTransactions() {
 		)
 		if err != nil {
 			transactionResult.Error = terror.Error(err, "failed to transfer sups")
-			api.Log.Err(err).Msg("failed to transfer sups")
+			if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+				api.Log.Debug().Err(err).Msg("failed to transfer sups")
+			} else {
+				api.Log.Err(err).Msg("failed to transfer sups")
+			}
 		}
 
 		transactionResult.Transaction = resultTx
@@ -100,7 +105,6 @@ func (api *API) ReleaseHeldTransaction(txRefs ...passport.TransactionReference) 
 func (api *API) HoldTransaction(holdErrChan chan error, txs ...*passport.NewTransaction) {
 	// Here we take the sups away from the user in their cache and hold the transactions in a slice
 	// So later we can fire the commit command and put all the transactions into the database
-	// HERE SHIT ISNT WORKING
 	api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 		for _, tx := range txs {
 			errChan := make(chan error, 10)

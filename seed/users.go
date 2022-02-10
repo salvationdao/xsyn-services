@@ -216,7 +216,7 @@ func (s *Seeder) SupremacyUser(ctx context.Context) (*passport.User, error) {
 	}
 
 	// add 12mil
-	amount, ok := big.NewInt(0).SetString("1200000000000000000000000", 0)
+	amount, ok := big.NewInt(0).SetString("12000000000000000000000000", 0)
 	if !ok {
 		return nil, terror.Error(fmt.Errorf("invalid string for big int"))
 
@@ -250,7 +250,6 @@ func (s *Seeder) XsynSaleUser(ctx context.Context) (*passport.User, error) {
 		return nil, terror.Error(err)
 	}
 
-	// add 12mil
 	amount, ok := big.NewInt(0).SetString("217000000000000000000000000", 0)
 	if !ok {
 		return nil, terror.Error(fmt.Errorf("invalid string for big int"))

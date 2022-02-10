@@ -86,7 +86,7 @@ func ChainConfirmationsForUserID(ctx context.Context, conn Conn, userID *passpor
 }
 
 // PendingChainConfirmationsByChainID gets all chain confirmations that are not confirmed or deleted on the given chain ID
-func PendingChainConfirmationsByChainID(ctx context.Context, conn Conn, chainID uint64) ([]*passport.ChainConfirmations, error) {
+func PendingChainConfirmationsByChainID(ctx context.Context, conn Conn, chainID int64) ([]*passport.ChainConfirmations, error) {
 	var confirmations []*passport.ChainConfirmations
 
 	q := `SELECT cc.tx,
@@ -224,7 +224,7 @@ func UpdateConfirmationAmount(ctx context.Context, conn Conn, tx string, confirm
 }
 
 // CreateChainConfirmationEntry creates a chain confirmation record
-func CreateChainConfirmationEntry(ctx context.Context, conn Conn, tx string, txRef int64, block uint64, chainID uint64) (*passport.ChainConfirmations, error) {
+func CreateChainConfirmationEntry(ctx context.Context, conn Conn, tx string, txRef int64, block uint64, chainID int64) (*passport.ChainConfirmations, error) {
 	conf := &passport.ChainConfirmations{}
 
 	q := `INSERT INTO chain_confirmations (tx, tx_id, block, chain_id)

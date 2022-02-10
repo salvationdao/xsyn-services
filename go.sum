@@ -903,6 +903,7 @@ github.com/joho/godotenv v1.3.0/go.mod h1:7hK45KPybAkOC6peb+G5yklZfMxEjkZhHbwpqx
 github.com/jonboulle/clockwork v0.1.0/go.mod h1:Ii8DK3G1RaLaWxj9trq07+26W01tbo22gdxWY5EU2bo=
 github.com/jonboulle/clockwork v0.2.2/go.mod h1:Pkfl5aHPm1nk2H9h0bjmnJD/BcgbGXUBGnn1kMkgxc8=
 github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7/go.mod h1:2iMrUgbbvHEiQClaW2NsSzMyGHqN+rDFqY705q49KG0=
+github.com/jpillora/backoff v1.0.0 h1:uvFg412JmmHBHw7iwprIxkPMI+sGQ4kzOWsMeHnm2EA=
 github.com/jpillora/backoff v1.0.0/go.mod h1:J/6gKK9jxlEcS3zixgDgUAsiuZ7yrSoa/FX5e0EB2j4=
 github.com/jrick/logrotate v1.0.0/go.mod h1:LNinyqDIJnpAur+b8yyulnQw/wDuN1+BYKlTRt3OuAQ=
 github.com/json-iterator/go v1.1.6/go.mod h1:+SdeFBvtyEkXs7REEP0seUULqWtbJapLOCVDaaPEHmU=
@@ -1139,10 +1140,10 @@ github.com/ninja-software/terror/v2 v2.0.7 h1:gV2v0TybYXQvAD3SYh6YiyuMt8rig4FwRY
 github.com/ninja-software/terror/v2 v2.0.7/go.mod h1:pwAw9I1KYYaZr3DLE/Z3WKkSSy/Ccj3ObjOpUvm+0Yo=
 github.com/ninja-software/tickle v1.3.2 h1:x4w9dWg1U4VQ0QMrfrH5sevBnJVX7HiqZNx3QUb1do8=
 github.com/ninja-software/tickle v1.3.2/go.mod h1:kQimeRvKZb825ULSdc1XWos1ssxN7fx6q8htjkGvthE=
-github.com/ninja-syndicate/hub v1.2.2 h1:MsfbSeMMg79eMGM/x+KPIR5hKPN9OLoXHka+UjxVIQI=
-github.com/ninja-syndicate/hub v1.2.2/go.mod h1:yIEUyL/gOJkieTS3U0k4ySC45IA3kCJCmUeRO4NwJ4Y=
-github.com/ninja-syndicate/supremacy-bridge v0.1.1 h1:RlXPn9H/7ZqMHRvGQ/UIqhswYCXCJ0rJ9bBQDxN+tDQ=
-github.com/ninja-syndicate/supremacy-bridge v0.1.1/go.mod h1:GVhgtsXnmd9PFBNTdB7OYrMriHnHmb01z+n/0pY+1fY=
+github.com/ninja-syndicate/hub v1.2.3 h1:YpJDRKjjB2/9uoXNJ6WYuSFO/PRn0uXP07RaoTJdEpg=
+github.com/ninja-syndicate/hub v1.2.3/go.mod h1:yIEUyL/gOJkieTS3U0k4ySC45IA3kCJCmUeRO4NwJ4Y=
+github.com/ninja-syndicate/supremacy-bridge v0.1.5 h1:mTvNSIKnTZlYex4O0igvpU3vhcpANnzZ6H/H9MIkB9I=
+github.com/ninja-syndicate/supremacy-bridge v0.1.5/go.mod h1:Oq2bsCSyiza9gAg/D542GVkAfW4vSMn29SV/4mi1MWA=
 github.com/nishanths/predeclared v0.0.0-20200524104333-86fad755b4d3/go.mod h1:nt3d53pc1VYcphSCIaYAJtnPYnr3Zyn8fMq2wvPGPso=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8/go.mod h1:+ncqLTQzXmGhMZNUePPaPqPvBxHAIsmXswZKocGu+AU=

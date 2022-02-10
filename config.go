@@ -21,14 +21,15 @@ type BridgeParams struct {
 	BusdAddr       common.Address
 	WethAddr       common.Address
 	WbnbAddr       common.Address
+	SupAddr        common.Address
 	DepositAddr    common.Address
 	PurchaseAddr   common.Address
 	WithdrawAddr   common.Address
 	RedemptionAddr common.Address
 	BscNodeAddr    string
 	EthNodeAddr    string
-	BSCChainID     int
-	ETHChainID     int
+	BSCChainID     int64
+	ETHChainID     int64
 	USDCToSUPS     decimal.Decimal
 	BUSDToSUPS     decimal.Decimal
 	WETHToSUPS     decimal.Decimal

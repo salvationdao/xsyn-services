@@ -37,6 +37,7 @@ import (
 
 // API server
 type API struct {
+	State        *passport.State
 	SupUSD       decimal.Decimal
 	Log          *zerolog.Logger
 	Routes       chi.Router
@@ -176,6 +177,9 @@ func NewAPI(
 		log.Fatal().Msgf("failed to init hub auther: %s", err.Error())
 	}
 
+	// Runs the listeners for all the chain bridges
+	cc := RunChainListeners(log, api, config.BridgeParams)
+
 	api.Routes.Handle("/metrics", promhttp.Handler())
 	api.Routes.Route("/api", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
@@ -188,6 +192,8 @@ func NewAPI(
 			r.Get("/asset/{token_id}", WithError(api.AssetGet))
 			r.Get("/auth/twitter", WithError(api.Auth.TwitterAuth))
 			r.Get("/dummy-sale", WithError(api.Dummysale))
+			r.Get("/check-eth-tx/{tx_id}", WithError(cc.CheckEthTx))
+			r.Get("/check-bsc-tx/{tx_id}", WithError(cc.CheckBscTx))
 		})
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
@@ -223,7 +229,11 @@ func NewAPI(
 	api.Hub.Events.AddEventHandler(auth.EventLogout, api.ClientLogout)
 	api.Hub.Events.AddEventHandler(hub.EventOffline, api.ClientOffline)
 
-	go api.RunBridgeListener(config.BridgeParams)
+	ctx := context.TODO()
+	api.State, err = db.StateGet(ctx, api.Conn)
+	if err != nil {
+		log.Fatal().Msgf("failed to init state object")
+	}
 
 	// Run the server client channel listener
 	go api.HandleServerClients()
@@ -335,7 +345,7 @@ func (api *API) RecordUserActivity(
 }
 
 // AssetGet grabs asset's metadata via token id
-func (c *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
+func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 
 	// Get token id
 	tokenID := chi.URLParam(r, "token_id")
@@ -350,7 +360,7 @@ func (c *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 	}
 
 	// Get asset via token id
-	asset, err := db.AssetGet(r.Context(), c.Conn, _tokenID)
+	asset, err := db.AssetGet(r.Context(), api.Conn, _tokenID)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset")
 
