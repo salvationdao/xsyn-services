@@ -84,6 +84,18 @@ func (s *Seeder) Run(isProd bool) error {
 		return terror.Error(err, "seed users failed")
 	}
 
+	fmt.Println("Seeding XSYN Sale Treasury User")
+	_, err = s.XsynSaleUser(ctx)
+	if err != nil {
+		return terror.Error(err, "seed users failed")
+	}
+
+	//fmt.Println("Seeding organisations")
+	//organisations, err := s.Organisations(ctx)
+	//if err != nil {
+	//	return terror.Error(err, "seed organisations failed")
+	//}
+
 	fmt.Println("Seeding initial store items")
 	err = s.SeedInitialStoreItems(ctx)
 	if err != nil {
@@ -359,6 +371,17 @@ func (s *Seeder) Roles(ctx context.Context) error {
 		Tier:        1,
 	}
 	err = db.RoleCreateReserved(ctx, s.Conn, xsynTreasuryRole)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	xsynSaleTreasuryRole := &passport.Role{
+		ID:          passport.UserRoleXsynSaleTreasury,
+		Name:        "Xsyn Sale Treasury",
+		Permissions: allPerms,
+		Tier:        1,
+	}
+	err = db.RoleCreateReserved(ctx, s.Conn, xsynSaleTreasuryRole)
 	if err != nil {
 		return terror.Error(err)
 	}

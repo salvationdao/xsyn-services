@@ -25,12 +25,14 @@ type Transaction struct {
 }
 
 type ChainConfirmations struct {
-	Tx          string     `json:"tx" db:"tx"`
-	TxID        int64      `json:"txID" db:"tx_id"`
-	Block       uint64     `json:"block" db:"block"`
-	ChainID     uint64     `json:"chainID" db:"chain_id"`
-	ConfirmedAt *time.Time `json:"confirmedAt" db:"confirmed_at"`
-	CreatedAt   time.Time  `json:"createdAt" db:"created_at"`
+	Tx                 string     `json:"tx" db:"tx"`
+	TxID               int64      `json:"txID" db:"tx_id"`
+	Block              uint64     `json:"block" db:"block"`
+	ChainID            uint64     `json:"chainID" db:"chain_id"`
+	ConfirmedAt        *time.Time `json:"confirmedAt" db:"confirmed_at"`
+	CreatedAt          time.Time  `json:"createdAt" db:"created_at"`
+	ConfirmationAmount int        `json:"confirmationAmount" db:"confirmation_amount"`
+	UserID             UserID     `json:"userID" db:"user_id"`
 }
 
 type TransactionReference string

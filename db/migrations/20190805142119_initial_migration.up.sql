@@ -644,7 +644,8 @@ CREATE TABLE chain_confirmations
     chain_id     NUMERIC(78, 0) NOT NULL,
     confirmed_at TIMESTAMPTZ,
     deleted_at   TIMESTAMPTZ,
-    created_at   TIMESTAMPTZ    NOT NULL DEFAULT NOW()
+    created_at   TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
+    confirmation_amount INTEGER NOT NULL DEFAULT 0
 );
 
 

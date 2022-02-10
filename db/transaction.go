@@ -35,7 +35,6 @@ func TransactionGetList(ctx context.Context, conn Conn, transactionList []string
 	return transactions, nil
 }
 
-// UserBalance gets a users balance from the materialized view
 func UserBalance(ctx context.Context, conn Conn, userID passport.UserID) (*passport.BigInt, error) {
 	var wrap struct {
 		Sups passport.BigInt `db:"sups"`
@@ -90,18 +89,22 @@ func ChainConfirmationsForUserID(ctx context.Context, conn Conn, userID *passpor
 func PendingChainConfirmationsByChainID(ctx context.Context, conn Conn, chainID uint64) ([]*passport.ChainConfirmations, error) {
 	var confirmations []*passport.ChainConfirmations
 
-	q := `SELECT tx,
-				 tx_id,
-				 block,
-				 confirmed_at,
-				 chain_id,
-				 created_at 
-			FROM chain_confirmations WHERE chain_id = $1 AND confirmed_at IS NULL AND deleted_at IS NULL`
+	q := `SELECT cc.tx,
+				 cc.tx_id,
+				 cc.block,
+				 cc.confirmed_at,
+				 cc.chain_id,
+				 cc.created_at,
+				 t.credit as user_id
+			FROM chain_confirmations cc 
+			INNER JOIN transactions t ON t.id = tx_id
+			WHERE chain_id = $1 AND confirmed_at IS NULL AND deleted_at IS NULL`
 
 	rows, err := conn.Query(ctx, q, chainID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
+
 	for rows.Next() {
 		confirmation := &passport.ChainConfirmations{}
 		err := rows.Scan(
@@ -111,6 +114,7 @@ func PendingChainConfirmationsByChainID(ctx context.Context, conn Conn, chainID 
 			&confirmation.ConfirmedAt,
 			&confirmation.ChainID,
 			&confirmation.CreatedAt,
+			&confirmation.UserID,
 		)
 		if err != nil {
 			return nil, terror.Error(err)
@@ -166,7 +170,9 @@ func ConfirmChainConfirmation(ctx context.Context, conn Conn, tx string) (*passp
 					    block,
 					    confirmed_at,
 						chain_id,
-					    created_at`
+					    created_at,
+						confirmation_amount,
+						(SELECT credit FROM transactions WHERE id = tx_id) as user_id`
 
 	err := conn.QueryRow(ctx, q, tx).Scan(
 		&confirmation.Tx,
@@ -175,6 +181,40 @@ func ConfirmChainConfirmation(ctx context.Context, conn Conn, tx string) (*passp
 		&confirmation.ConfirmedAt,
 		&confirmation.ChainID,
 		&confirmation.CreatedAt,
+		&confirmation.ConfirmationAmount,
+		&confirmation.UserID,
+	)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return confirmation, nil
+}
+
+func UpdateConfirmationAmount(ctx context.Context, conn Conn, tx string, confirmedBlocks int) (*passport.ChainConfirmations, error) {
+	confirmation := &passport.ChainConfirmations{}
+
+	q := `UPDATE chain_confirmations
+		SET confirmation_amount = $1
+		WHERE tx = $2
+		RETURNING	tx,
+					tx_id,
+					block,
+					confirmed_at,
+					chain_id,
+					created_at,
+					confirmation_amount,
+					(SELECT credit FROM transactions WHERE id = tx_id) as user_id`
+
+	err := conn.QueryRow(ctx, q, confirmedBlocks, tx).Scan(
+		&confirmation.Tx,
+		&confirmation.TxID,
+		&confirmation.Block,
+		&confirmation.ConfirmedAt,
+		&confirmation.ChainID,
+		&confirmation.CreatedAt,
+		&confirmation.ConfirmationAmount,
+		&confirmation.UserID,
 	)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -184,14 +224,23 @@ func ConfirmChainConfirmation(ctx context.Context, conn Conn, tx string) (*passp
 }
 
 // CreateChainConfirmationEntry creates a chain confirmation record
-func CreateChainConfirmationEntry(ctx context.Context, conn Conn, tx string, txRef int64, block uint64, chainID uint64) error {
-	q := `INSERT INTO chain_confirmations (tx, tx_id, block, chain_id)
-			VALUES($1, $2, $3, $4)`
+func CreateChainConfirmationEntry(ctx context.Context, conn Conn, tx string, txRef int64, block uint64, chainID uint64) (*passport.ChainConfirmations, error) {
+	conf := &passport.ChainConfirmations{}
 
-	_, err := conn.Exec(ctx, q, tx, txRef, block, chainID)
+	q := `INSERT INTO chain_confirmations (tx, tx_id, block, chain_id)
+			VALUES($1, $2, $3, $4)
+			RETURNING 	tx,
+						tx_id,
+						block,
+						chain_id,
+						confirmed_at,
+						confirmation_amount`
+
+	err := pgxscan.Get(ctx, conn, conf, q,
+		tx, txRef, block, chainID)
 	if err != nil {
-		return terror.Error(err)
+		return nil, terror.Error(err)
 	}
 
-	return nil
+	return conf, nil
 }

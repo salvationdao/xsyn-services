@@ -79,11 +79,14 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 	api.SubscribeCommand(HubKeyUserForceDisconnected, userHub.ForceDisconnectedHandler)
 	api.SubscribeCommand(HubKeyUserSubscribe, userHub.UpdatedSubscribeHandler)
 	api.SubscribeCommand(HubKeyUserOnlineStatus, userHub.OnlineStatusSubscribeHandler)
+	api.SubscribeCommand(HubKeySUPSRemainingSubscribe, userHub.TotalSupRemainingHandler)
 
 	// listen on queuing war machine
 	api.SecureUserSubscribeCommand(HubKeyUserWarMachineQueuePositionSubscribe, userHub.WarMachineQueuePositionUpdatedSubscribeHandler)
 	api.SecureUserSubscribeCommand(HubKeyUserSupsSubscribe, userHub.UserSupsUpdatedSubscribeHandler)
 	api.SecureUserSubscribeCommand(HubKeyUserFactionSubscribe, userHub.UserFactionUpdatedSubscribeHandler)
+
+	api.SecureUserSubscribeCommand(HubKeyBlockConfirmation, userHub.BlockConfirmationHandler)
 
 	return userHub
 }
@@ -2303,4 +2306,71 @@ func GetUserServiceCount(user *passport.User) int {
 	}
 
 	return count
+}
+
+const HubKeySUPSRemainingSubscribe hub.HubCommandKey = "SUPS:TREASURY"
+
+func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &UpdatedSubscribeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+
+	sups, err := db.UserBalance(ctx, uc.API.Conn, passport.XsynSaleUserID)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	reply(sups.String())
+	return req.TransactionID, messagebus.BusKey(HubKeySUPSRemainingSubscribe), nil
+}
+
+const HubKeySUPSExchangeRates hub.HubCommandKey = "SUPS:EXCHANGE"
+
+func (uc *UserController) ExchangeRatesHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &UpdatedSubscribeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+
+	//TODO: get up to date conversion rates
+
+	reply(uc.API.SupUSD.String()) //0.12
+	return req.TransactionID, messagebus.BusKey(HubKeySUPSExchangeRates), nil
+}
+
+//key and handler- payload userid- check they are user return transaction key and error: SecureUserSubscribeCommand
+
+type BlockConfirmationRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		ID             passport.UserID `json:"id"`
+		GetInitialData bool            `json:"getInitialData"`
+	} `json:"payload"`
+}
+
+const HubKeyBlockConfirmation hub.HubCommandKey = "BLOCK:CONFIRM"
+
+func (uc *UserController) BlockConfirmationHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &BlockConfirmationRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+
+	var user *passport.User
+
+	user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Failed to get user")
+	}
+
+	if req.Payload.GetInitialData {
+		// db func to get a list of users transaction on the comfirm transaction table
+		// reply(their confirm objects)
+	}
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), nil
 }

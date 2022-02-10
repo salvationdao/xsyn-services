@@ -111,7 +111,7 @@ go-mod-tidy:
 init: db-setup deps tools go-mod-tidy db-reset
 
 .PHONY: init-docker
-init-docker: docker-start deps tools go-mod-tidy docker-setup db-reset
+init-docker: docker-start tools go-mod-tidy docker-setup db-reset
 
 .PHONY: deps
 deps: go-mod-download

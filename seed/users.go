@@ -178,8 +178,8 @@ func (s *Seeder) XsynTreasuryUser(ctx context.Context) (*passport.User, error) {
 		return nil, terror.Error(err)
 	}
 
-	// add 30mil
-	amount, ok := big.NewInt(0).SetString("30000000000000000000000123", 0)
+	// add 300mil
+	amount, ok := big.NewInt(0).SetString("300000000000000000000000000", 0)
 	if !ok {
 		return nil, terror.Error(fmt.Errorf("invalid string for big int"))
 
@@ -222,7 +222,42 @@ func (s *Seeder) SupremacyUser(ctx context.Context) (*passport.User, error) {
 
 	}
 
-	// create treasury opening balance (30mil sups)
+	_, err = api.CreateTransactionEntry(s.TxConn,
+		*amount,
+		u.ID,
+		passport.XsynTreasuryUserID,
+		"",
+		"",
+	)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return u, nil
+}
+
+func (s *Seeder) XsynSaleUser(ctx context.Context) (*passport.User, error) {
+	// Create user
+	u := &passport.User{
+		ID:       passport.XsynSaleUserID,
+		Username: passport.XsynSaleUsername,
+		RoleID:   passport.UserRoleXsynSaleTreasury,
+		Verified: true,
+	}
+
+	// Insert
+	err := db.InsertSystemUser(ctx, s.Conn, u)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	// add 12mil
+	amount, ok := big.NewInt(0).SetString("217000000000000000000000000", 0)
+	if !ok {
+		return nil, terror.Error(fmt.Errorf("invalid string for big int"))
+
+	}
+
+	// create xsynSaleUser balance of 217M from the xsynTreasuryUser
 	_, err = api.CreateTransactionEntry(s.TxConn,
 		*amount,
 		u.ID,

@@ -205,7 +205,7 @@ func BenchmarkTransactions(b *testing.B) {
 		userList = append(userList, u)
 	}
 
-	transactionChannel := make(chan *api.NewTransaction)
+	transactionChannel := make(chan *passport.NewTransaction)
 	amountToTransfer := big.NewInt(7223372036854775807)
 	go func() {
 		// spin up 100 go routines that each send 100 transactions
@@ -215,11 +215,11 @@ func BenchmarkTransactions(b *testing.B) {
 					rand.Seed(time.Now().Unix())
 					randUser1 := userList[rand.Intn(len(userList))]
 
-					transactionChannel <- &api.NewTransaction{
+					transactionChannel <- &passport.NewTransaction{
 						From:                 offChainUser.ID,
 						To:                   randUser1.ID,
 						Amount:               *amountToTransfer,
-						TransactionReference: api.TransactionReference(fmt.Sprintf("%d:%d", outI, inI)),
+						TransactionReference: passport.TransactionReference(fmt.Sprintf("%d:%d", outI, inI)),
 					}
 				}
 			}(outI)

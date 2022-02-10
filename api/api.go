@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"passport"
 	"passport/db"
@@ -186,6 +187,7 @@ func NewAPI(
 			r.Get("/get-nonce", WithError(api.Auth.GetNonce))
 			r.Get("/asset/{token_id}", WithError(api.AssetGet))
 			r.Get("/auth/twitter", WithError(api.Auth.TwitterAuth))
+			r.Get("/dummy-sale", WithError(api.Dummysale))
 		})
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
@@ -243,6 +245,34 @@ func NewAPI(
 	go api.StartSupremacySupPool()
 
 	return api
+}
+
+//test function for remaining supply
+func (api *API) Dummysale(w http.ResponseWriter, r *http.Request) (int, error) {
+	// get amount from get url
+	ctx := context.Background()
+	amount := r.URL.Query().Get("amount")
+
+	bigIntAmount := big.Int{}
+	bigIntAmount.SetString(amount, 10)
+
+	tx := &passport.NewTransaction{
+		From:                 passport.XsynSaleUserID,
+		To:                   passport.SupremacyGameUserID,
+		TransactionReference: "test sale",
+		Amount:               bigIntAmount,
+	}
+
+	api.transaction <- tx
+
+	sups, err := db.UserBalance(ctx, api.Conn, passport.XsynSaleUserID)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
+
+	api.MessageBus.Send(messagebus.BusKey(HubKeySUPSRemainingSubscribe), sups.String())
+
+	return http.StatusAccepted, nil
 }
 
 // Run the API service
