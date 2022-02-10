@@ -68,6 +68,8 @@ type API struct {
 	// Supremacy Sups Pool
 	supremacySupsPool chan func(*SupremacySupPool)
 
+	// Queue Reward
+
 	TxConn *sql.DB
 }
 

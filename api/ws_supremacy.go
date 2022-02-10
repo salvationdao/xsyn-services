@@ -37,10 +37,6 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 		API:  api,
 	}
 
-	// supremacyHub.SupremacyUserID = passport.SupremacyGameUserID
-	// supremacyHub.XsynTreasuryUserID = passport.XsynTreasuryUserID
-	// supremacyHub.BattleUserID = passport.SupremacyBattleUserID
-
 	// start metadata repair ticker
 	repairTicker := tickle.New("Asset Repair Ticker", 60, func() (int, error) {
 		err := db.XsynAssetDurabilityBulkIncrement(context.Background(), conn)
@@ -58,6 +54,7 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	api.SupremacyCommand(HubKeySupremacyCommitTransactions, supremacyHub.SupremacyCommitTransactionsHandler)
 	api.SupremacyCommand(HubKeySupremacyReleaseTransactions, supremacyHub.SupremacyReleaseTransactionsHandler)
 	api.SupremacyCommand(HubKeySupremacyTickerTick, supremacyHub.SupremacyTickerTickHandler)
+	api.SupremacyCommand(HubKeySupremacyGetSpoilOfWar, supremacyHub.SupremacyGetSpoilOfWarHandler)
 	api.SupremacyCommand(HubKeySupremacyTransferBattleFundToSupPool, supremacyHub.SupremacyTransferBattleFundToSupPoolHandler)
 
 	// user connection upgrade
@@ -242,7 +239,7 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 					From:                 passport.SupremacySupPoolUserID,
 					To:                   *user,
 					Amount:               *usersSups,
-					TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|sup_pool|%s|%s", *user, time.Now())),
+					TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|spoil_of_war|%s|%s", *user, time.Now())),
 				})
 
 				supPool = supPool.Sub(supPool, usersSups)
@@ -565,7 +562,7 @@ const HubKeySupremacyReleaseTransactions = hub.HubCommandKey("SUPREMACY:RELEASE_
 type SupremacyReleaseTransactionsRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		TransactionReferences []passport.TransactionReference `json:"transactions"`
+		TransactionReferences []passport.TransactionReference `json:"transactionReferences"`
 	} `json:"payload"`
 }
 
@@ -583,6 +580,33 @@ func (sc *SupremacyControllerWS) SupremacyReleaseTransactionsHandler(ctx context
 	results := <-resultChan
 
 	reply(results)
+	return nil
+}
+
+// 	api.SupremacyCommand(HubKeySupremacyGetSpoilOfWar, supremacyHub.SupremacyGetSpoilOfWarHandler)
+const HubKeySupremacyGetSpoilOfWar = hub.HubCommandKey("SUPREMACY:SUPS_POOL_AMOUNT")
+
+func (sc *SupremacyControllerWS) SupremacyGetSpoilOfWarHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+	// get current sup pool user sups
+	supsPoolUser, err := db.UserGet(ctx, sc.Conn, passport.SupremacySupPoolUserID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	battleUser, err := db.UserGet(ctx, sc.Conn, passport.SupremacyBattleUserID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	result := big.NewInt(0)
+	result.Add(&supsPoolUser.Sups.Int, &battleUser.Sups.Int)
+
+	reply(result.String())
 	return nil
 }
 
