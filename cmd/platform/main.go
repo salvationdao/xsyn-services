@@ -35,15 +35,16 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-// Version build Version
-const Version = "v0.1.0"
+// Variable passed in at compile time using `-ldflags`
+var (
+	Version          string // -X main.Version=$(git describe --tags --abbrev=0)
+	GitHash          string // -X main.GitHash=$(git rev-parse HEAD)
+	GitBranch        string // -X main.GitBranch=$(git rev-parse --abbrev-ref HEAD)
+	BuildDate        string // -X main.BuildDate=$(date -u +%Y%m%d%H%M%S)
+	UnCommittedFiles string // -X main.UnCommittedFiles=$(git status --porcelain | wc -l)"
+)
 
-// passed in using
-//   ```sh
-//   go build -ldflags "-X main.SentryVersion=" main.go
-//   ```
-var SentryVersion string
-
+const SentryReleasePrefix = "ninja_syndicate-passport_api"
 const envPrefix = "PASSPORT"
 
 func main() {
@@ -58,6 +59,25 @@ func main() {
 		},
 		Flags: []cli.Flag{},
 		Commands: []*cli.Command{
+			{
+				// This is not using the built in version so ansible can more easily read the version
+				Name: "version",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{Name: "full", Usage: "Prints full version and build info", Value: false},
+				},
+				Action: func(c *cli.Context) error {
+					if c.Bool("full") {
+						fmt.Printf("Version=%s\n", Version)
+						fmt.Printf("Commit=%s\n", GitHash)
+						fmt.Printf("Branch=%s\n", GitBranch)
+						fmt.Printf("BuildDate=%s\n", BuildDate)
+						fmt.Printf("WorkingCopyState=%s uncommitted\n", UnCommittedFiles)
+						return nil
+					}
+					fmt.Printf("%s-\n", Version)
+					return nil
+				},
+			},
 			{
 				Name:    "serve",
 				Aliases: []string{"s"},
@@ -221,6 +241,7 @@ func main() {
 	err := app.Run(os.Args)
 	if err != nil {
 		terror.Echo(err)
+		os.Exit(1) // so ci knows it no good
 	}
 }
 
@@ -296,7 +317,8 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
 	sentryTraceRate := ctxCLI.Float64("sentry_sample_rate")
-	err := log_helpers.SentryInit(sentryDSNBackend, sentryServerName, SentryVersion, environment, sentryTraceRate, log)
+	sentryRelease := fmt.Sprintf("%s@%s", SentryReleasePrefix, Version)
+	err := log_helpers.SentryInit(sentryDSNBackend, sentryServerName, sentryRelease, environment, sentryTraceRate, log)
 	switch errors.Unwrap(err) {
 	case log_helpers.ErrSentryInitEnvironment:
 		return terror.Error(err, fmt.Sprintf("got environment %s", environment))

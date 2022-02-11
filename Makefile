@@ -18,10 +18,44 @@ LOCAL_DEV_DB_PORT=5432
 LOCAL_DEV_DB_DATABASE=$(PACKAGE)
 DB_CONNECTION_STRING="postgres://$(LOCAL_DEV_DB_USER):$(LOCAL_DEV_DB_PASS)@$(LOCAL_DEV_DB_HOST):$(LOCAL_DEV_DB_PORT)/$(LOCAL_DEV_DB_DATABASE)?sslmode=disable"
 
+GITVERSION=`git describe --tags --abbrev=0`
+GITVERSION_CHECK := $(shell git describe --tags --abbrev=0  || echo fail)
+GITBRANCH=`git rev-parse --abbrev-ref HEAD`
+GITHASH=`git rev-parse HEAD`
+BUILDDATE=`date -u +%Y%m%d%H%M%S`
+GITSTATE=`git status --porcelain | wc -l`
+
 # Make Commands
+.PHONY: clean
+clean:
+	rm -rf deploy
+
+.PHONY: deploy-package
+deploy-prep: clean tools build
+	mkdir -p deploy
+	cp $(BIN)/migrate deploy/.
+	cp -r ./init deploy/.
+	cp -r ./configs deploy/.
+	cp -r ./asset deploy/.
+	cp -r $(SERVER)/db/migrations deploy/.
+
+define BUILD_ERROR_GIT_VER
+
+	Can not contiue, there are no git tags set, 
+	Tag the current version, I.E.
+	git tag 0.0.0-dev 
+
+endef
+
 .PHONY: build
 build:
-	go build -o platform cmd/platform/main.go
+ifeq ($(GITVERSION_CHECK), fail)
+	$(error $(BUILD_ERROR_GIT_VER))
+endif
+	cd $(SERVER) && go build \
+		-ldflags " -X main.Version=${GITVERSION} -X main.GitHash=${GITHASH} -X main.GitBranch=${GITBRANCH} -X main.BuildDate=${BUILDDATE} -X main.UnCommittedFiles=$(GITSTATE)" \
+		-o deploy/passport-api \
+		cmd/platform/main.go
 
 .PHONY: tools
 tools: go-mod-tidy
@@ -136,4 +170,3 @@ lb:
 .PHONY: wt
 wt:
 	wt --window 0 --tabColor #4747E2 --title "Boilerplate - Server" -p "PowerShell" -d ./server powershell -NoExit "${BIN}/arelo -p '**/*.go' -i '**/.*' -i '**/*_test.go' -i 'tools/*' -- go run cmd/platform/main.go serve" ; split-pane --tabColor #4747E2 --title "Boilerplate - Load Balancer" -p "PowerShell" -d ./ powershell -NoExit make lb ; split-pane -H -s 0.8 --tabColor #4747E2 --title "Boilerplate - Admin Frontend" --suppressApplicationTitle -p "PowerShell" -d ./web powershell -NoExit "$$env:BROWSER='none' \; npm run admin-start" ; split-pane -H -s 0.5 --tabColor #4747E2 --title "Boilerplate - Public Frontend" --suppressApplicationTitle -p "PowerShell" -d ./web powershell -NoExit "$$env:BROWSER='none' \; npm run public-start"
-

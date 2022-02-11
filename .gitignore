@@ -144,4 +144,5 @@ fabric.properties
 bin/*
 tmp/*
 cmd/platform/passport-server
+deploy/
 .vscode/settings.json
