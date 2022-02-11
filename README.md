@@ -1,5 +1,7 @@
 # passport-server
 
+[![Staging Deployment](https://github.com/ninja-syndicate/passport-server/actions/workflows/deploy-staging.yml/badge.svg)](https://github.com/ninja-syndicate/passport-server/actions/workflows/deploy-staging.yml)
+
 ### Setup to use private repo
 
 ```bash
