@@ -395,6 +395,10 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 					Value:     "WREX",
 				},
 				{
+					TraitType: "Skin",
+					Value:     "Black",
+				},
+				{
 					TraitType: "Name",
 					Value:     "Tenshi Mk1",
 				},
@@ -491,6 +495,10 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 				{
 					TraitType: "Model",
 					Value:     "WREX",
+				},
+				{
+					TraitType: "Skin",
+					Value:     "Black",
 				},
 				{
 					TraitType: "Name",
@@ -610,6 +618,10 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 					Value:     "BXSD",
 				},
 				{
+					TraitType: "Skin",
+					Value:     "Red_Steel",
+				},
+				{
 					TraitType: "Name",
 					Value:     "Olympus Mons LY07",
 				},
@@ -696,6 +708,10 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 				{
 					TraitType: "Model",
 					Value:     "BXSD",
+				},
+				{
+					TraitType: "Skin",
+					Value:     "Pink",
 				},
 				{
 					TraitType: "Name",
@@ -805,6 +821,10 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 					Value:     "XFVS",
 				},
 				{
+					TraitType: "Skin",
+					Value:     "BlueWhite",
+				},
+				{
 					TraitType: "Name",
 					Value:     "Law Enforcer X-1000",
 				},
@@ -878,6 +898,10 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 				{
 					TraitType: "Model",
 					Value:     "XFVS",
+				},
+				{
+					TraitType: "Skin",
+					Value:     "Police_DarkBlue",
 				},
 				{
 					TraitType: "Name",

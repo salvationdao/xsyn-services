@@ -100,6 +100,8 @@ type WarMachineMetadata struct {
 	Description     string             `json:"description"`
 	ExternalUrl     string             `json:"externalUrl"`
 	Image           string             `json:"image"`
+	Model           string             `json:"model"`
+	Skin            string             `json:"skin"`
 	MaxHealth       int                `json:"maxHealth"`
 	Health          int                `json:"health"`
 	MaxShield       int                `json:"maxShield"`
@@ -120,6 +122,8 @@ type WarMachineMetadata struct {
 type WarMachineAttField string
 
 const (
+	WarMachineAttModel                  WarMachineAttField = "Model"
+	WarMachineAttSkin                   WarMachineAttField = "Skin"
 	WarMachineAttFieldMaxHitPoint       WarMachineAttField = "Max Structure Hit Points"
 	WarMachineAttFieldMaxShieldHitPoint WarMachineAttField = "Max Shield Hit Points"
 	WarMachineAttFieldSpeed             WarMachineAttField = "Speed"
@@ -147,6 +151,10 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 
 	for _, att := range metadata.Attributes {
 		switch att.TraitType {
+		case string(WarMachineAttModel):
+			warMachineMetadata.Model = att.Value.(string)
+		case string(WarMachineAttSkin):
+			warMachineMetadata.Skin = att.Value.(string)
 		case string(WarMachineAttFieldMaxHitPoint):
 			warMachineMetadata.MaxHealth = int(att.Value.(float64))
 			warMachineMetadata.Health = int(att.Value.(float64))
