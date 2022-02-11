@@ -60,7 +60,8 @@ xsyn_metadata.deleted_at,
 xsyn_metadata.updated_at,
 xsyn_metadata.created_at,
 xsyn_assets.user_id,
-xsyn_assets.frozen_at
+xsyn_assets.frozen_at,
+xsyn_assets.locked_by_id
 ` + AessetGetQueryFrom
 
 const AessetGetQueryFrom = `
@@ -76,7 +77,7 @@ func AssetList(
 	result *[]*passport.XsynMetadata,
 	search string,
 	archived bool,
-	includedTokenIDs []int,
+	includedTokenIDs []uint64,
 	filter *ListFilterRequest,
 	assetType string,
 	offset int,
@@ -116,7 +117,7 @@ func AssetList(
 	}
 
 	// select specific assets via tokenIDs
-	if includedTokenIDs != nil {
+	if includedTokenIDs != nil && len(includedTokenIDs) > 0 {
 		cond := "("
 		for i, nftTokenID := range includedTokenIDs {
 			cond += fmt.Sprintf("%d", nftTokenID)

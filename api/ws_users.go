@@ -2266,6 +2266,10 @@ func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx con
 		return "", "", terror.Error(err)
 	}
 
+	if user.FactionID == nil || user.FactionID.IsNil() {
+		return "", "", terror.Error(terror.ErrForbidden, "User needs to join a faction to deploy War Machine")
+	}
+
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueuePositionSubscribe, userID))
 
 	// TODO: run a request to gameserver to get the war machine list

@@ -68,8 +68,12 @@ type API struct {
 	// Supremacy Sups Pool
 	supremacySupsPool chan func(*SupremacySupPool)
 
-	// Queue Reward
+	// War Machine Queue Contract
+	factionWarMachineContractMap map[passport.FactionID](chan func(*WarMachineContract))
+	fastAssetRepairCenter        chan func(RepairQueue)
+	standardAssetRepairCenter    chan func(RepairQueue)
 
+	// Queue Reward
 	TxConn *sql.DB
 }
 
@@ -138,6 +142,12 @@ func NewAPI(
 		// treasury ticker map
 		treasuryTickerMap: make(map[ServerClientName]*tickle.Tickle),
 		supremacySupsPool: make(chan func(*SupremacySupPool)),
+
+		// faction war machine contract
+		factionWarMachineContractMap: make(map[passport.FactionID]chan func(*WarMachineContract)),
+
+		// asset repair
+
 	}
 
 	api.Routes.Use(middleware.RequestID)
@@ -255,6 +265,14 @@ func NewAPI(
 
 	// Initial supremacy sup pool
 	go api.StartSupremacySupPool()
+
+	// Initial faction war machine contract
+	go api.InitialiseFactionWarMachineContract(passport.RedMountainFactionID)
+	go api.InitialiseFactionWarMachineContract(passport.BostonCyberneticsFactionID)
+	go api.InitialiseFactionWarMachineContract(passport.ZaibatsuFactionID)
+
+	// Initialise repair center
+	go api.InitialAssetRepairCenter()
 
 	return api
 }

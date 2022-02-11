@@ -1,6 +1,7 @@
 package passport
 
 import (
+	"math/big"
 	"time"
 )
 
@@ -65,6 +66,7 @@ type XsynMetadata struct {
 	AdditionalMetadata []*AdditionalMetadata `json:"additional_metadata" db:"additional_metadata"`
 	DeletedAt          *time.Time            `json:"deleted_at" db:"deleted_at"`
 	FrozenAt           *time.Time            `json:"frozenAt" db:"frozen_at"`
+	LockedByID         *UserID               `json:"lockedByID" db:"locked_by_id"`
 	UpdatedAt          time.Time             `json:"updatedAt" db:"updated_at"`
 	CreatedAt          time.Time             `json:"createdAt" db:"created_at"`
 }
@@ -117,6 +119,9 @@ type WarMachineMetadata struct {
 	FactionID       FactionID          `json:"factionID"`
 	Faction         *Faction           `json:"faction"`
 	Abilities       []*AbilityMetadata `json:"abilities"`
+
+	ContractReward big.Int `json:"contractReward"`
+	IsInsured      bool    `json:"isInsured"`
 }
 
 type WarMachineAttField string
