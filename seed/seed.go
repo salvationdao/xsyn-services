@@ -130,7 +130,7 @@ func (s *Seeder) Run(isProd bool) error {
 
 	q := `INSERT INTO state (latest_eth_block,
                              latest_bsc_block)
-			VALUES(6352924, 16623890);`
+			VALUES(6359098, 16654769);`
 
 	_, err = s.Conn.Exec(ctx, q)
 	if err != nil {

@@ -14,9 +14,10 @@ CURRENT_VER=$(git describe --tags --abbrev=0)
 CURRENT_HASH=$(git rev-parse --short HEAD)
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
-if [[ $CURRENT_BRANCH != "develop" || $CURRENT_BRANCH != "staging" ]]
+if [[ $CURRENT_BRANCH != "develop" && $CURRENT_BRANCH != "staging" ]]
 then
-    echo invalid branch, should be develop or staging
+    debugecho "failed branch check: " $CURRENT_BRANCH
+    echo invalid branch, should be develop or staging: current is $CURRENT_BRANCH
     exit 1
 fi
 
