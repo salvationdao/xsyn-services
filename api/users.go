@@ -158,6 +158,12 @@ func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebook
 		}
 	}
 
+	fmt.Println("here -------------------")
+	fmt.Println("here -------------------")
+	fmt.Println("here -------------------")
+	fmt.Println("here -------------------", username)
+
+
 	trimmedUsername := strings.TrimSpace(username)
 	err := helpers.IsValidUsername(trimmedUsername)
 	if err != nil {

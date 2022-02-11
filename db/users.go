@@ -107,7 +107,7 @@ func UserByGoogleID(ctx context.Context, conn Conn, googleID string) (*passport.
 	return user, nil
 }
 
-// UserByGoogleID returns a user by google id
+// UserByTwitchID returns a user by twitch id
 func UserByTwitchID(ctx context.Context, conn Conn, twitchID string) (*passport.User, error) {
 	user := &passport.User{}
 	q := UserGetQuery + ` WHERE users.twitch_id = $1`

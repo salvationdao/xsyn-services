@@ -547,6 +547,13 @@ type CreateUserRequest struct {
 
 // CreateHandler creates a user
 func (uc *UserController) CreateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	fmt.Println("wtf")
+	fmt.Println("wtf")
+	fmt.Println("wtf")
+	fmt.Println("wtf")
+	fmt.Println("wtf")
+	fmt.Println("wtf")
+
 	req := &CreateUserRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1423,6 +1430,16 @@ type AddTwitchRequest struct {
 }
 
 func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+
+	fmt.Println("tttttttttt")
+	fmt.Println("tttttttttt")
+	fmt.Println("tttttttttt")
+	fmt.Println("tttttttttt")
+	fmt.Println("tttttttttt")
+	fmt.Println("tttttttttt")
+	fmt.Println("tttttttttt")
+	fmt.Println("tttttttttt")
+
 	req := &AddTwitchRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {

@@ -140,6 +140,8 @@ github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMx
 github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6/go.mod h1:3eOhrUMpNV+6aFIbp5/iudMxNCF27Vw2OZgy4xEx0Fg=
 github.com/ThalesIgnite/crypto11 v1.2.4/go.mod h1:ILDKtnCKiQ7zRoNxcp36Y1ZR8LBPmR2E23+wTQe/MlE=
 github.com/ThomasRooney/gexpect v0.0.0-20161231170123-5482f0350944/go.mod h1:sPML5WwI6oxLRLPuuqbtoOKhtmpVDCYtwsps+I+vjIY=
+github.com/TwiN/go-away v1.6.0 h1:t3FxvM5z/C8RVsYcnCL9NpZwbPzmI2+9Ugu7Z2cfGrs=
+github.com/TwiN/go-away v1.6.0/go.mod h1:cQt5vCHAcyP9CzAh6ORZ9eJXWg4VTWjwTyDI5hB3sn0=
 github.com/VictoriaMetrics/fastcache v1.6.0 h1:C/3Oi3EiBCqufydp1neRZkqcwmEiuRT9c3fqvvgKm5o=
 github.com/VictoriaMetrics/fastcache v1.6.0/go.mod h1:0qHz5QP0GMX4pfmMA/zt5RgfNuXJrTP0zS7DqpHGGTw=
 github.com/VividCortex/gohistogram v1.0.0/go.mod h1:Pf5mBqqDxYaXu3hDrrU+w6nw50o/4+TcAqDqk/vUH7g=
