@@ -85,6 +85,27 @@ func XsynMetadataAvailableGet(ctx context.Context, conn Conn, userID passport.Us
 	return nft, nil
 }
 
+// XsynMetadataGet return check
+func XsynMetadataGet(ctx context.Context, conn Conn, userID passport.UserID, nftTokenID uint64) (*passport.XsynMetadata, error) {
+	nft := &passport.XsynMetadata{}
+	q := `
+		SELECT
+			xnm.token_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes, xa.frozen_at, xa.locked_by_id
+		FROM 
+			xsyn_metadata xnm
+		INNER JOIN
+			xsyn_assets xa ON xa.token_id = xnm.token_id AND xa.user_id = $1 AND xa.token_id = $2
+	`
+	err := pgxscan.Get(ctx, conn, nft, q,
+		userID,
+		nftTokenID,
+	)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return nft, nil
+}
+
 // XsynAsseetDurabilityBulkUpdate update xsyn NFT metadata durability
 func XsynAsseetDurabilityBulkUpdate(ctx context.Context, conn Conn, nfts []*passport.WarMachineMetadata) error {
 	q := `
@@ -118,21 +139,33 @@ func XsynAsseetDurabilityBulkUpdate(ctx context.Context, conn Conn, nfts []*pass
 }
 
 // XsynAssetDurabilityBulkIncrement update xsyn NFT metadata durability
-func XsynAssetDurabilityBulkIncrement(ctx context.Context, conn Conn) error {
+func XsynAssetDurabilityBulkIncrement(ctx context.Context, conn Conn, tokenIDs []uint64) ([]*passport.XsynMetadata, error) {
+	nfts := []*passport.XsynMetadata{}
 	q := `
 		UPDATE
 			xsyn_metadata
 		SET
 			durability = durability + 1
 		WHERE
-			durability < 100
+			durability < 100 AND token_id IN (
 	`
-	_, err := conn.Exec(ctx, q)
-	if err != nil {
-		return terror.Error(err)
+	for i, tokenID := range tokenIDs {
+		q += fmt.Sprintf("%v", tokenID)
+		if i < len(tokenIDs)-1 {
+			q += ","
+			continue
+		}
+		q += ")"
 	}
 
-	return nil
+	q += " RETURNING token_id, durability;"
+
+	err := pgxscan.Select(ctx, conn, &nfts, q)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return nfts, nil
 }
 
 // XsynAssetFreeze freeze a xsyn nft

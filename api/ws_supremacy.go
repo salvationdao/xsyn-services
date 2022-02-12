@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"net/http"
 	"passport"
 	"passport/db"
 	"passport/log_helpers"
@@ -16,7 +15,6 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
@@ -37,18 +35,6 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 		API:  api,
 	}
 
-	// start metadata repair ticker
-	repairTicker := tickle.New("Asset Repair Ticker", 60, func() (int, error) {
-		err := db.XsynAssetDurabilityBulkIncrement(context.Background(), conn)
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err)
-		}
-		return http.StatusOK, nil
-	})
-	// TODO: figure out how to set the logging for this to trace
-	repairTicker.DisableLogging = true
-	repairTicker.Start()
-
 	// sup control
 	api.SupremacyCommand(HubKeySupremacyHoldSups, supremacyHub.SupremacyHoldSupsHandler)
 	api.SupremacyCommand(HubKeySupremacyCommitTransactions, supremacyHub.SupremacyCommitTransactionsHandler)
@@ -60,9 +46,6 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	// user connection upgrade
 	api.SupremacyCommand(HubKeySupremacyUserConnectionUpgrade, supremacyHub.SupremacyUserConnectionUpgradeHandler)
 
-	// battle queue
-	api.SupremacyCommand(HubKeySupremacyWarMachineQueuePositionClear, supremacyHub.SupremacyWarMachineQueuePositionClearHandler)
-
 	// asset control
 	api.SupremacyCommand(HubKeySupremacyAssetFreeze, supremacyHub.SupremacyAssetFreezeHandler)
 	api.SupremacyCommand(HubKeySupremacyAssetLock, supremacyHub.SupremacyAssetLockHandler)
@@ -72,6 +55,9 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	// other?
 	api.SupremacyCommand(HubKeySupremacyDefaultWarMachines, supremacyHub.SupremacyDefaultWarMachinesHandler)
 	api.SupremacyCommand(HubKeySupremacyAbilityTargetPriceUpdate, supremacyHub.SupremacyAbilityTargetPriceUpdate)
+	api.SupremacyCommand(HubKeySupremacyWarMachineQueueContractUpdate, supremacyHub.SupremacyWarMachineQueueContractUpdateHandler)
+	api.SupremacyCommand(HubKeySupremacyPayAssetInsurance, supremacyHub.SupremacyPayAssetInsuranceHandler)
+	api.SupremacyCommand(HubKeySupremacyRedeemFactionContractReward, supremacyHub.SupremacyRedeemFactionContractRewardHandler)
 
 	return supremacyHub
 }
@@ -406,6 +392,16 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 		return terror.Error(err)
 	}
 
+	assets := []*passport.XsynMetadata{}
+	_, err = db.AssetList(
+		ctx, sc.Conn, &assets,
+		"", false, req.Payload.AssetTokenIDs, nil, "", 0, len(req.Payload.AssetTokenIDs), "", "",
+	)
+
+	for _, asset := range assets {
+		sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
+	}
+
 	reply(true)
 	return nil
 }
@@ -459,6 +455,28 @@ func (sc *SupremacyControllerWS) SupremacyAssetReleaseHandler(ctx context.Contex
 		return terror.Error(err)
 	}
 
+	tokenIDs := []uint64{}
+	for _, ra := range req.Payload.ReleasedAssets {
+		tokenIDs = append(tokenIDs, ra.TokenID)
+		if ra.Durability < 100 {
+			if ra.IsInsured {
+				sc.API.RegisterRepairCenter(RepairTypeFast, ra.TokenID)
+			} else {
+				sc.API.RegisterRepairCenter(RepairTypeStandard, ra.TokenID)
+			}
+		}
+	}
+
+	assets := []*passport.XsynMetadata{}
+	_, err = db.AssetList(
+		ctx, sc.Conn, &assets,
+		"", false, tokenIDs, nil, "", 0, len(tokenIDs), "", "",
+	)
+
+	for _, asset := range assets {
+		sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
+	}
+
 	return nil
 }
 
@@ -477,7 +495,7 @@ type UserWarMachineQueuePosition struct {
 }
 
 type WarMachineQueuePosition struct {
-	WarMachineMetadata *passport.WarMachineMetadata `json:"warMachineNFT"` // TODO: change this to metadata
+	WarMachineMetadata *passport.WarMachineMetadata `json:"warMachineMetadata"`
 	Position           int                          `json:"position"`
 }
 
@@ -492,42 +510,6 @@ func (sc *SupremacyControllerWS) SupremacyWarMachineQueuePositionHandler(ctx con
 	// broadcast war machine position to all user client
 	for _, uwm := range req.Payload.UserWarMachineQueuePosition {
 		go sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueuePositionSubscribe, uwm.UserID)), uwm.WarMachineQueuePositions)
-	}
-
-	return nil
-}
-
-type SupremacyWarMachineQueuePositionClearRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		FactionID passport.FactionID `json:"factionID"`
-	} `json:"payload"`
-}
-
-// 	rootHub.SecureCommand(HubKeySupremacyWarMachineQueuePositionClear, AssetController.RegisterHandler)
-const HubKeySupremacyWarMachineQueuePositionClear hub.HubCommandKey = "SUPREMACY:WAR:MACHINE:QUEUE:POSITION:CLEAR"
-
-// SupremacyWarMachineQueuePositionClearHandler broadcast user to clear the war machine queue
-func (sc *SupremacyControllerWS) SupremacyWarMachineQueuePositionClearHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &SupremacyWarMachineQueuePositionClearRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received")
-	}
-
-	// get faction users
-	userIDs, err := db.UserIDsGetByFactionID(ctx, sc.Conn, req.Payload.FactionID)
-	if err != nil {
-		return terror.Error(err, "Failed to get user id from faction")
-	}
-
-	if len(userIDs) == 0 {
-		return nil
-	}
-
-	// broadcast war machine position to all user client
-	for _, userID := range userIDs {
-		go sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueuePositionSubscribe, userID)), []*WarMachineQueuePosition{})
 	}
 
 	return nil
@@ -769,5 +751,153 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 	}
 
 	reply(warMachines)
+	return nil
+}
+
+const HubKeySupremacyWarMachineQueueContractUpdate = hub.HubCommandKey("SUPREMACY:WAR_MACHINE_QUEUE_CONTRACT_UPDATE")
+
+type SupremacyWarMachineQueueContractUpdateRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		FactionWarMachineQueues []*FactionWarMachineQueue `json:"factionWarMachineQueues"`
+	} `json:"payload"`
+}
+
+type FactionWarMachineQueue struct {
+	FactionID  passport.FactionID `json:"factionID"`
+	QueueTotal int                `json:"queueTotal"`
+}
+
+func (sc *SupremacyControllerWS) SupremacyWarMachineQueueContractUpdateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupremacyWarMachineQueueContractUpdateRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	for _, fwq := range req.Payload.FactionWarMachineQueues {
+		go sc.API.recalculateContractReward(fwq.FactionID, fwq.QueueTotal)
+	}
+
+	return nil
+}
+
+const HubKeySupremacyPayAssetInsurance = hub.HubCommandKey("SUPREMACY:PAY_ASSET_INSURANCE")
+
+type SupremacyPayAssetInsuranceRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		UserID               passport.UserID               `json:"userID"`
+		FactionID            passport.FactionID            `json:"factionID"`
+		Amount               passport.BigInt               `json:"amount"`
+		TransactionReference passport.TransactionReference `json:"transactionReference"`
+	} `json:"payload"`
+}
+
+func (sc *SupremacyControllerWS) SupremacyPayAssetInsuranceHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupremacyPayAssetInsuranceRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	if req.Payload.Amount.Cmp(big.NewInt(0)) < 0 {
+		return terror.Error(terror.ErrInvalidInput, "Sups amount can not be negative")
+	}
+
+	tx := &passport.NewTransaction{
+		From:                 req.Payload.UserID,
+		TransactionReference: req.Payload.TransactionReference,
+		Amount:               req.Payload.Amount.Int,
+	}
+
+	switch req.Payload.FactionID {
+	case passport.RedMountainFactionID:
+		tx.To = passport.SupremacyRedMountainUserID
+	case passport.BostonCyberneticsFactionID:
+		tx.To = passport.SupremacyBostonCyberneticsUserID
+	case passport.ZaibatsuFactionID:
+		tx.To = passport.SupremacyZaibatsuUserID
+	default:
+		return terror.Error(terror.ErrInvalidInput, "Provided faction does not exist")
+	}
+
+	errChan := make(chan error, 10)
+	sc.API.HoldTransaction(errChan, tx)
+	err = <-errChan
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	resultChan := make(chan []*passport.Transaction, 1)
+	sc.API.CommitTransactions(resultChan, tx.TransactionReference)
+	results := <-resultChan
+	for _, result := range results {
+		if result.Status != passport.TransactionSuccess {
+			return terror.Error(fmt.Errorf("Transaction Failed"))
+		}
+	}
+
+	reply(true)
+	return nil
+}
+
+const HubKeySupremacyRedeemFactionContractReward = hub.HubCommandKey("SUPREMACY:REDEEM_FACTION_CONTRACT_REWARD")
+
+type SupremacyRedeemFactionContractRewardRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		UserID               passport.UserID               `json:"userID"`
+		FactionID            passport.FactionID            `json:"factionID"`
+		Amount               passport.BigInt               `json:"amount"`
+		TransactionReference passport.TransactionReference `json:"transactionReference"`
+	} `json:"payload"`
+}
+
+func (sc *SupremacyControllerWS) SupremacyRedeemFactionContractRewardHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupremacyPayAssetInsuranceRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	if req.Payload.Amount.Cmp(big.NewInt(0)) < 0 {
+		return terror.Error(terror.ErrInvalidInput, "Sups amount can not be negative")
+	}
+
+	tx := &passport.NewTransaction{
+		To:                   req.Payload.UserID,
+		TransactionReference: req.Payload.TransactionReference,
+		Amount:               req.Payload.Amount.Int,
+	}
+
+	switch req.Payload.FactionID {
+	case passport.RedMountainFactionID:
+		tx.From = passport.SupremacyRedMountainUserID
+	case passport.BostonCyberneticsFactionID:
+		tx.From = passport.SupremacyBostonCyberneticsUserID
+	case passport.ZaibatsuFactionID:
+		tx.From = passport.SupremacyZaibatsuUserID
+	default:
+		return terror.Error(terror.ErrInvalidInput, "Provided faction does not exist")
+	}
+
+	errChan := make(chan error, 10)
+	sc.API.HoldTransaction(errChan, tx)
+	err = <-errChan
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	resultChan := make(chan []*passport.Transaction, 1)
+	sc.API.CommitTransactions(resultChan, tx.TransactionReference)
+	results := <-resultChan
+	for _, result := range results {
+		if result.Status != passport.TransactionSuccess {
+			return terror.Error(fmt.Errorf("Transaction Failed"))
+		}
+	}
+
+	reply(true)
 	return nil
 }

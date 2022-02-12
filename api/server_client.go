@@ -162,6 +162,7 @@ const (
 	AssetUpdated               ServerClientMessageAction = "ASSET:UPDATED"
 	AssetQueueJoin             ServerClientMessageAction = "ASSET:QUEUE:JOIN"
 	AssetQueueLeave            ServerClientMessageAction = "ASSET:QUEUE:LEAVE"
+	AssetInsurancePay          ServerClientMessageAction = "ASSET:INSURANCE:PAY"
 	WarMachineQueuePositionGet ServerClientMessageAction = "WAR:MACHINE:QUEUE:POSITION:GET"
 )
 
