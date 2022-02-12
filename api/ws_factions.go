@@ -98,6 +98,12 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 	// record old user state
 	oldUser := *user
 
+	faction, err := db.FactionGet(ctx, fc.Conn, req.Payload.FactionID)
+	if err != nil {
+		return terror.Error(err)
+	}
+	user.Faction = faction
+
 	// assign faction to current user
 	user.FactionID = &req.Payload.FactionID
 
