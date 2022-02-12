@@ -117,7 +117,7 @@ func AssetList(
 	}
 
 	// select specific assets via tokenIDs
-	if includedTokenIDs != nil && len(includedTokenIDs) > 0 {
+	if len(includedTokenIDs) > 0 {
 		cond := "("
 		for i, nftTokenID := range includedTokenIDs {
 			cond += fmt.Sprintf("%d", nftTokenID)

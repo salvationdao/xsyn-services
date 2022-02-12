@@ -163,6 +163,7 @@ const (
 	AssetQueueJoin             ServerClientMessageAction = "ASSET:QUEUE:JOIN"
 	AssetQueueLeave            ServerClientMessageAction = "ASSET:QUEUE:LEAVE"
 	AssetInsurancePay          ServerClientMessageAction = "ASSET:INSURANCE:PAY"
+	FactionStatGet             ServerClientMessageAction = "FACTION:STAT:GET"
 	WarMachineQueuePositionGet ServerClientMessageAction = "WAR:MACHINE:QUEUE:POSITION:GET"
 )
 

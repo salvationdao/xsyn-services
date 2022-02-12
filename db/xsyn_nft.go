@@ -85,8 +85,8 @@ func XsynMetadataAvailableGet(ctx context.Context, conn Conn, userID passport.Us
 	return nft, nil
 }
 
-// XsynMetadataGet return check
-func XsynMetadataGet(ctx context.Context, conn Conn, userID passport.UserID, nftTokenID uint64) (*passport.XsynMetadata, error) {
+// XsynMetadataOwnerGet return metadata that owner by the given user id and token id
+func XsynMetadataOwnerGet(ctx context.Context, conn Conn, userID passport.UserID, nftTokenID uint64) (*passport.XsynMetadata, error) {
 	nft := &passport.XsynMetadata{}
 	q := `
 		SELECT
@@ -98,6 +98,26 @@ func XsynMetadataGet(ctx context.Context, conn Conn, userID passport.UserID, nft
 	`
 	err := pgxscan.Get(ctx, conn, nft, q,
 		userID,
+		nftTokenID,
+	)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return nft, nil
+}
+
+// XsynMetadataGet return metadata that owner by the given user id and token id
+func XsynMetadataGet(ctx context.Context, conn Conn, nftTokenID uint64) (*passport.XsynMetadata, error) {
+	nft := &passport.XsynMetadata{}
+	q := `
+		SELECT
+			xnm.token_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+		FROM 
+			xsyn_metadata xnm
+		WHERE
+			xnm.token_id = $1
+	`
+	err := pgxscan.Get(ctx, conn, nft, q,
 		nftTokenID,
 	)
 	if err != nil {

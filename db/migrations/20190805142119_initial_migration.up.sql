@@ -79,15 +79,7 @@ CREATE TABLE factions
     theme              JSONB            NOT NULL DEFAULT '{}',
     logo_blob_id       UUID             NOT NULL REFERENCES blobs (id),
     background_blob_id UUID             NOT NULL REFERENCES blobs (id),
-    description        TEXT             NOT NULL DEFAULT '',
-    velocity           INT              NOT NULL DEFAULT 0,
-    share_percent      INT              NOT NULL DEFAULT 0,
-    recruit_number     INT              NOT NULL DEFAULT 0,
-    win_count          INT              NOT NULL DEFAULT 0,
-    loss_count         INT              NOT NULL DEFAULT 0,
-    kill_count         INT              NOT NULL DEFAULT 0,
-    death_count        INT              NOT NULL DEFAULT 0,
-    mvp                TEXT             NOT NULL DEFAULT ''
+    description        TEXT             NOT NULL DEFAULT ''
 );
 
 

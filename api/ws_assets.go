@@ -85,7 +85,7 @@ func (ac *AssetController) LeaveQueueHandler(ctx context.Context, hubc *hub.Clie
 		return terror.Error(terror.ErrInvalidInput, "User need to join a faction")
 	}
 
-	metadata, err := db.XsynMetadataGet(ctx, ac.Conn, userID, req.Payload.AssetTokenID)
+	metadata, err := db.XsynMetadataOwnerGet(ctx, ac.Conn, userID, req.Payload.AssetTokenID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -144,7 +144,7 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	// check user own this asset and it has not joined the queue yet
-	metadata, err := db.XsynMetadataGet(ctx, ac.Conn, userID, req.Payload.AssetTokenID)
+	metadata, err := db.XsynMetadataOwnerGet(ctx, ac.Conn, userID, req.Payload.AssetTokenID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -256,7 +256,7 @@ func (ac *AssetController) PayAssetInsuranceHandler(ctx context.Context, hubc *h
 	}
 
 	// check user own this asset and it has not joined the queue yet
-	metadata, err := db.XsynMetadataGet(ctx, ac.Conn, userID, req.Payload.AssetTokenID)
+	metadata, err := db.XsynMetadataOwnerGet(ctx, ac.Conn, userID, req.Payload.AssetTokenID)
 	if err != nil {
 		return terror.Error(err)
 	}

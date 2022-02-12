@@ -51,13 +51,18 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	api.SupremacyCommand(HubKeySupremacyAssetLock, supremacyHub.SupremacyAssetLockHandler)
 	api.SupremacyCommand(HubKeySupremacyAssetRelease, supremacyHub.SupremacyAssetReleaseHandler)
 	api.SupremacyCommand(HubKeySupremacyWarMachineQueuePosition, supremacyHub.SupremacyWarMachineQueuePositionHandler)
-
-	// other?
-	api.SupremacyCommand(HubKeySupremacyDefaultWarMachines, supremacyHub.SupremacyDefaultWarMachinesHandler)
-	api.SupremacyCommand(HubKeySupremacyAbilityTargetPriceUpdate, supremacyHub.SupremacyAbilityTargetPriceUpdate)
-	api.SupremacyCommand(HubKeySupremacyWarMachineQueueContractUpdate, supremacyHub.SupremacyWarMachineQueueContractUpdateHandler)
 	api.SupremacyCommand(HubKeySupremacyPayAssetInsurance, supremacyHub.SupremacyPayAssetInsuranceHandler)
+
+	// battle queue
+	api.SupremacyCommand(HubKeySupremacyDefaultWarMachines, supremacyHub.SupremacyDefaultWarMachinesHandler)
+	api.SupremacyCommand(HubKeySupremacyWarMachineQueueContractUpdate, supremacyHub.SupremacyWarMachineQueueContractUpdateHandler)
 	api.SupremacyCommand(HubKeySupremacyRedeemFactionContractReward, supremacyHub.SupremacyRedeemFactionContractRewardHandler)
+
+	// sups contribute
+	api.SupremacyCommand(HubKeySupremacyAbilityTargetPriceUpdate, supremacyHub.SupremacyAbilityTargetPriceUpdate)
+
+	// faction stat
+	api.SupremacyCommand(HubKeySupremacyFactionStatSend, supremacyHub.SupremacyFactionStatSend)
 
 	return supremacyHub
 }
@@ -397,6 +402,9 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 		ctx, sc.Conn, &assets,
 		"", false, req.Payload.AssetTokenIDs, nil, "", 0, len(req.Payload.AssetTokenIDs), "", "",
 	)
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	for _, asset := range assets {
 		sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
@@ -472,6 +480,9 @@ func (sc *SupremacyControllerWS) SupremacyAssetReleaseHandler(ctx context.Contex
 		ctx, sc.Conn, &assets,
 		"", false, tokenIDs, nil, "", 0, len(tokenIDs), "", "",
 	)
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	for _, asset := range assets {
 		sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
@@ -619,7 +630,75 @@ func (sc *SupremacyControllerWS) SupremacyAbilityTargetPriceUpdate(ctx context.C
 	return nil
 }
 
-const HubKeySupremacyDefaultWarMachines = hub.HubCommandKey("SUPREMACY:GET_DEFAULT_WAR_MACHINES")
+type SupremacyFactionStatSendRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		FactionStatSends []*FactionStatSend `json:"factionStatSends"`
+	} `json:"payload"`
+}
+
+type FactionStatSend struct {
+	FactionStat     *passport.FactionStat `json:"factionStat"`
+	ToUserID        *passport.UserID      `json:"toUserID,omitempty"`
+	ToUserSessionID *hub.SessionID        `json:"toUserSessionID,omitempty"`
+}
+
+const HubKeySupremacyFactionStatSend = hub.HubCommandKey("SUPREMACY:FACTION_STAT_SEND")
+
+func (sc *SupremacyControllerWS) SupremacyFactionStatSend(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupremacyFactionStatSendRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	for _, factionStatSend := range req.Payload.FactionStatSends {
+		// get recruit number
+		recruitNumber, err := db.FactionGetRecruitNumber(ctx, sc.Conn, factionStatSend.FactionStat.ID)
+		if err != nil {
+			sc.Log.Err(err).Msgf("Failed to get recruit number from faction %s", factionStatSend.FactionStat.ID)
+			continue
+		}
+		factionStatSend.FactionStat.RecruitNumber = recruitNumber
+
+		// get velocity number
+		// TODO: figure out what velocity is
+		factionStatSend.FactionStat.Velocity = 0
+
+		// get mvp
+		if factionStatSend.FactionStat.MvpTokenID > 0 {
+			assetMetadata, err := db.XsynMetadataGet(ctx, sc.Conn, factionStatSend.FactionStat.MvpTokenID)
+			if err != nil {
+				sc.Log.Err(err).Msgf("Failed to get mvp asset %v", factionStatSend.FactionStat.MvpTokenID)
+				continue
+			}
+
+			// NOTE: currently just return the of asset name,
+			//       can pass back more data back as we want in the future
+			factionStatSend.FactionStat.MVP = assetMetadata.Name
+		}
+
+		if factionStatSend.ToUserID == nil && factionStatSend.ToUserSessionID == nil {
+			// broadcast to all faction stat subscribers
+			sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionStatUpdatedSubscribe, factionStatSend.FactionStat.ID)), factionStatSend.FactionStat)
+			continue
+		}
+
+		// broadcast to specific subscribers
+		filterOption := messagebus.BusSendFilterOption{}
+		if factionStatSend.ToUserID != nil {
+			filterOption.Ident = factionStatSend.ToUserID.String()
+		}
+		if factionStatSend.ToUserSessionID != nil {
+			filterOption.SessionID = *factionStatSend.ToUserSessionID
+		}
+
+		// broadcast to the target user
+		sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionStatUpdatedSubscribe, factionStatSend.FactionStat.ID)), factionStatSend.FactionStat, filterOption)
+	}
+
+	return nil
+}
 
 type SupremacyDefaultWarMachinesRequest struct {
 	*hub.HubCommandRequest
@@ -628,6 +707,8 @@ type SupremacyDefaultWarMachinesRequest struct {
 		Amount    int                `json:"amount"`
 	} `json:"payload"`
 }
+
+const HubKeySupremacyDefaultWarMachines = hub.HubCommandKey("SUPREMACY:GET_DEFAULT_WAR_MACHINES")
 
 func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &SupremacyDefaultWarMachinesRequest{}
@@ -893,7 +974,7 @@ func (sc *SupremacyControllerWS) SupremacyRedeemFactionContractRewardHandler(ctx
 	sc.API.CommitTransactions(resultChan, tx.TransactionReference)
 	results := <-resultChan
 	for _, result := range results {
-		if result.Status != passport.TransactionSuccess {
+		if result == nil || result.Status == passport.TransactionFailed {
 			return terror.Error(fmt.Errorf("Transaction Failed"))
 		}
 	}
