@@ -565,13 +565,8 @@ func (sc *SupremacyControllerWS) SupremacyReleaseTransactionsHandler(ctx context
 		return terror.Error(err, "Invalid request received")
 	}
 
-	resultChan := make(chan []*passport.Transaction)
-
 	sc.API.ReleaseHeldTransaction(req.Payload.TransactionReferences...)
 
-	results := <-resultChan
-
-	reply(results)
 	return nil
 }
 
