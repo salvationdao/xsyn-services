@@ -2,6 +2,8 @@ module passport
 
 go 1.17
 
+replace github.com/ninja-syndicate/hub => /home/owen/go/src/github.com/ninja-syndicate/hub
+
 require (
 	github.com/aymerick/raymond v2.0.3-0.20180322193309-b565731e1464+incompatible
 	github.com/caddyserver/caddy/v2 v2.4.5

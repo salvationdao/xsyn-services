@@ -90,7 +90,7 @@ func IsValidUsername(username string) error {
 	if len(username) < 3 {
 		return terror.Error(err, "Invalid username. Your username must be at least 3 characters long.")
 	}
-	if len(username) > 15 {
+	if len(username) > 50 {
 		return terror.Error(err, "Invalid username. Your username cannot be more than 15 characters long.")
 	}
 	if strings.TrimSpace(username) == "" {
