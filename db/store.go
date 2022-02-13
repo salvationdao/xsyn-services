@@ -234,7 +234,7 @@ func StoreList(
 	if includedStoreItemIDs != nil {
 		cond := "("
 		for i, storeItemID := range includedStoreItemIDs {
-			cond += fmt.Sprintf("%s", storeItemID.String())
+			cond += storeItemID.String()
 			if i < len(includedStoreItemIDs)-1 {
 				cond += ","
 				continue

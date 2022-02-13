@@ -609,7 +609,6 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 
 	bscClientLoop:
 		for {
-			fmt.Println("starting connect loop")
 			ctx, cancel := context.WithCancel(ctx)
 
 			cc.Log.Info().Msg("Attempting to connect to BSC node")

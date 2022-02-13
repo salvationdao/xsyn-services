@@ -69,7 +69,7 @@ type API struct {
 	supremacySupsPool chan func(*SupremacySupPool)
 
 	// War Machine Queue Contract
-	factionWarMachineContractMap map[passport.FactionID](chan func(*WarMachineContract))
+	factionWarMachineContractMap map[passport.FactionID]chan func(*WarMachineContract)
 	fastAssetRepairCenter        chan func(RepairQueue)
 	standardAssetRepairCenter    chan func(RepairQueue)
 
@@ -86,7 +86,6 @@ func NewAPI(
 	googleClientID string,
 	mailer *email.Mailer,
 	addr string,
-	twitchExtensionSecret []byte,
 	twitchClientID string,
 	twitchClientSecret string,
 	HTMLSanitize *bluemonday.Policy,
@@ -164,9 +163,8 @@ func NewAPI(
 			ClientID: googleClientID,
 		},
 		Twitch: &auth.TwitchConfig{
-			ExtensionSecret: twitchExtensionSecret,
-			ClientID:        twitchClientID,
-			ClientSecret:    twitchClientSecret,
+			ClientID:     twitchClientID,
+			ClientSecret: twitchClientSecret,
 		},
 		Twitter: &auth.TwitterConfig{
 			APIKey:    twitterAPIKey,
@@ -220,9 +218,8 @@ func NewAPI(
 	_ = NewUserController(log, conn, api, &auth.GoogleConfig{
 		ClientID: googleClientID,
 	}, &auth.TwitchConfig{
-		ExtensionSecret: twitchExtensionSecret,
-		ClientID:        twitchClientID,
-		ClientSecret:    twitchClientSecret,
+		ClientID:     twitchClientID,
+		ClientSecret: twitchClientSecret,
 	}, &auth.DiscordConfig{
 		ClientID:     discordClientID,
 		ClientSecret: discordClientSecret,

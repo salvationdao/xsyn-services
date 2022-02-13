@@ -67,17 +67,17 @@ func (api *API) startRepairTicker(rt RepairType) {
 	var repairCenter chan func(RepairQueue)
 	switch rt {
 	case RepairTypeFast:
-		tickSecond = 18 // repair from 0 - 100 take 30 minutes
+		tickSecond = 18 // repair from 0 to 100 take 30 minutes
 		TraceTitle = "Fast Repair Center"
 		repairCenter = api.fastAssetRepairCenter
 	case RepairTypeStandard:
-		tickSecond = 864 // repair from 0 - 100 take 24 hours
+		tickSecond = 864 // repair from 0 to 100 take 24 hours
 		TraceTitle = "Standard Repair Center"
 		repairCenter = api.standardAssetRepairCenter
 	}
 
 	// build tickle
-	assetRepairCenterlogger := log_helpers.NamedLogger(api.Log, TraceTitle).Level(zerolog.TraceLevel)
+	assetRepairCenterLogger := log_helpers.NamedLogger(api.Log, TraceTitle).Level(zerolog.TraceLevel)
 	assetRepairCenter := tickle.New(TraceTitle, float64(tickSecond), func() (int, error) {
 		errChan := make(chan error)
 		repairCenter <- func(rq RepairQueue) {
@@ -90,8 +90,6 @@ func (api *API) startRepairTicker(rt RepairType) {
 			for tokenID := range rq {
 				tokenIDs = append(tokenIDs, tokenID)
 			}
-
-			fmt.Println(tokenIDs)
 
 			nfts, err := db.XsynAssetDurabilityBulkIncrement(context.Background(), api.Conn, tokenIDs)
 			if err != nil {
@@ -113,7 +111,8 @@ func (api *API) startRepairTicker(rt RepairType) {
 		}
 		return http.StatusOK, nil
 	})
-	assetRepairCenter.Log = &assetRepairCenterlogger
+	assetRepairCenter.Log = &assetRepairCenterLogger
+	assetRepairCenter.DisableLogging = true
 
 	assetRepairCenter.Start()
 }
@@ -137,7 +136,7 @@ func (api *API) InitialiseFactionWarMachineContract(factionID passport.FactionID
 	minPrice := big.NewInt(0)
 	minPrice, ok := minPrice.SetString(MinimumContractReward, 10)
 	if !ok {
-		api.Log.Err(fmt.Errorf("Failed to parse 1000000000000000000 to big int"))
+		api.Log.Err(fmt.Errorf("failed to parse 1000000000000000000 to big int"))
 		return
 	}
 
@@ -159,14 +158,14 @@ func (api *API) recalculateContractReward(factionID passport.FactionID, queueNum
 	minPrice := big.NewInt(0)
 	minPrice, ok := minPrice.SetString(MinimumContractReward, 10)
 	if !ok {
-		api.Log.Err(fmt.Errorf("Failed to parse 1000000000000000000 to big int"))
+		api.Log.Err(fmt.Errorf("failed to parse 1000000000000000000 to big int"))
 		return
 	}
 
 	maxPrice := big.NewInt(0)
 	maxPrice, ok = maxPrice.SetString(MaximumContractReward, 10)
 	if !ok {
-		api.Log.Err(fmt.Errorf("Failed to parse 10000000000000000000 to big int"))
+		api.Log.Err(fmt.Errorf("failed to parse 10000000000000000000 to big int"))
 		return
 	}
 
