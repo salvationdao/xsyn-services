@@ -113,10 +113,10 @@ func (s *Seeder) Run(isProd bool) error {
 		if err != nil {
 			return terror.Error(err, "seed users failed")
 		}
-		err = s.AndAssignNftToMember(ctx)
-		if err != nil {
-			return terror.Error(err, "seed users failed")
-		}
+		// err = s.AndAssignNftToMember(ctx)
+		// if err != nil {
+		// 	return terror.Error(err, "seed users failed")
+		// }
 
 		// seed ability to zaibatsu war machines
 		fmt.Println("Seeding assign ability to war machine")

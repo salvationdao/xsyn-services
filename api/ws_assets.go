@@ -38,7 +38,7 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 	api.Command(HubKeyAssetList, assetHub.AssetListHandler)
 
 	// asset subscribe
-	api.SecureUserSubscribeCommand(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)
+	api.SubscribeCommand(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)
 
 	// asset set name
 	api.SecureCommand(HubKeyAssetUpdateName, assetHub.AssetUpdateNameHandler)
@@ -304,8 +304,8 @@ type AssetsUpdatedSubscribeRequest struct {
 
 // AssetListResponse is the response from get asset list
 type AssetListResponse struct {
-	Records []*passport.XsynMetadata `json:"records"`
-	Total   int                      `json:"total"`
+	Total    int      `json:"total"`
+	TokenIDs []uint64 `json:"tokenIDs"`
 }
 
 const HubKeyAssetList hub.HubCommandKey = "ASSET:LIST"
@@ -323,9 +323,8 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Clien
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	assets := []*passport.XsynMetadata{}
-	total, err := db.AssetList(
-		ctx, ac.Conn, &assets,
+	total, assets, err := db.AssetList(
+		ctx, ac.Conn,
 		req.Payload.Search,
 		req.Payload.Archived,
 		req.Payload.IncludedTokenIDs,
@@ -340,9 +339,14 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Clien
 		return terror.Error(err)
 	}
 
+	tokenIDs := make([]uint64, 0)
+	for _, s := range assets {
+		tokenIDs = append(tokenIDs, s.TokenID)
+	}
+
 	resp := &AssetListResponse{
-		Total:   total,
-		Records: assets,
+		total,
+		tokenIDs,
 	}
 
 	reply(resp)
@@ -360,7 +364,7 @@ type AssetUpdatedSubscribeRequest struct {
 // 	rootHub.SecureCommand(HubKeyAssetSubscribe, AssetController.AssetSubscribe)
 const HubKeyAssetSubscribe hub.HubCommandKey = "ASSET:SUBSCRIBE"
 
-func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &AssetUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {

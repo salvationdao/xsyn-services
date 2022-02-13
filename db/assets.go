@@ -16,6 +16,7 @@ const (
 	AssetColumnID           AssetColumn = "id"
 	AssetColumnTokenID      AssetColumn = "token_id"
 	AssetColumnUserID       AssetColumn = "user_id"
+	AssetColumnUsername     AssetColumn = "username"
 	AssetColumnCollectionID AssetColumn = "collection_id"
 	AssetColumnName         AssetColumn = "name"
 	AssetColumnDescription  AssetColumn = "description"
@@ -33,6 +34,7 @@ func (ic AssetColumn) IsValid() error {
 	case AssetColumnID,
 		AssetColumnTokenID,
 		AssetColumnUserID,
+		AssetColumnUsername,
 		AssetColumnCollectionID,
 		AssetColumnName,
 		AssetColumnDescription,
@@ -61,20 +63,21 @@ xsyn_metadata.updated_at,
 xsyn_metadata.created_at,
 xsyn_assets.user_id,
 xsyn_assets.frozen_at,
-xsyn_assets.locked_by_id
-` + AessetGetQueryFrom
+xsyn_assets.locked_by_id,
+u.username
+` + AssetGetQueryFrom
 
-const AessetGetQueryFrom = `
+const AssetGetQueryFrom = `
 FROM xsyn_metadata 
 LEFT OUTER JOIN xsyn_assets ON xsyn_metadata.token_id = xsyn_assets.token_id
 INNER JOIN collections c ON xsyn_metadata.collection_id = c.id
+INNER JOIN users u ON xsyn_assets.user_id = u.id
 `
 
 // AssetList gets a list of assets depending on the filters
 func AssetList(
 	ctx context.Context,
 	conn Conn,
-	result *[]*passport.XsynMetadata,
 	search string,
 	archived bool,
 	includedTokenIDs []uint64,
@@ -84,7 +87,7 @@ func AssetList(
 	pageSize int,
 	sortBy AssetColumn,
 	sortDir SortByDir,
-) (int, error) {
+) (int, []*passport.XsynMetadata, error) {
 	// Prepare Filters
 	var args []interface{}
 
@@ -95,7 +98,7 @@ func AssetList(
 			column := AssetColumn(f.ColumnField)
 			err := column.IsValid()
 			if err != nil {
-				return 0, terror.Error(err)
+				return 0, nil, terror.Error(err)
 			}
 
 			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, i+1)
@@ -153,7 +156,7 @@ func AssetList(
 			%s
 			%s
 		`,
-		AessetGetQueryFrom,
+		AssetGetQueryFrom,
 		archiveCondition,
 		filterConditionsString,
 		searchCondition,
@@ -163,10 +166,10 @@ func AssetList(
 
 	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
 	if err != nil {
-		return 0, terror.Error(err)
+		return 0, nil, terror.Error(err)
 	}
 	if totalRows == 0 {
-		return 0, nil
+		return 0, make([]*passport.XsynMetadata, 0), nil
 	}
 
 	// Order and Limit
@@ -174,7 +177,7 @@ func AssetList(
 	if sortBy != "" {
 		err := sortBy.IsValid()
 		if err != nil {
-			return 0, terror.Error(err)
+			return 0, nil, terror.Error(err)
 		}
 		orderBy = fmt.Sprintf(" ORDER BY %s %s", sortBy, sortDir)
 	}
@@ -198,11 +201,12 @@ func AssetList(
 		limit,
 	)
 
-	err = pgxscan.Select(ctx, conn, result, q, args...)
+	result := make([]*passport.XsynMetadata, 0)
+	err = pgxscan.Select(ctx, conn, &result, q, args...)
 	if err != nil {
-		return 0, terror.Error(err)
+		return 0, nil, terror.Error(err)
 	}
-	return totalRows, nil
+	return totalRows, result, nil
 }
 
 // AssetGet returns a asset by given ID

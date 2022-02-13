@@ -397,9 +397,8 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 		return terror.Error(err)
 	}
 
-	assets := []*passport.XsynMetadata{}
-	_, err = db.AssetList(
-		ctx, sc.Conn, &assets,
+	_, assets, err := db.AssetList(
+		ctx, sc.Conn,
 		"", false, req.Payload.AssetTokenIDs, nil, "", 0, len(req.Payload.AssetTokenIDs), "", "",
 	)
 	if err != nil {
@@ -475,9 +474,8 @@ func (sc *SupremacyControllerWS) SupremacyAssetReleaseHandler(ctx context.Contex
 		}
 	}
 
-	assets := []*passport.XsynMetadata{}
-	_, err = db.AssetList(
-		ctx, sc.Conn, &assets,
+	_, assets, err := db.AssetList(
+		ctx, sc.Conn,
 		"", false, tokenIDs, nil, "", 0, len(tokenIDs), "", "",
 	)
 	if err != nil {
