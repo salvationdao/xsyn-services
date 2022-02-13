@@ -42,6 +42,7 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	api.SupremacyCommand(HubKeySupremacyTickerTick, supremacyHub.SupremacyTickerTickHandler)
 	api.SupremacyCommand(HubKeySupremacyGetSpoilOfWar, supremacyHub.SupremacyGetSpoilOfWarHandler)
 	api.SupremacyCommand(HubKeySupremacyTransferBattleFundToSupPool, supremacyHub.SupremacyTransferBattleFundToSupPoolHandler)
+	api.SupremacyCommand(HubKeySupremacyUserSupsMultiplierSend, supremacyHub.SupremacyUserSupsMultiplierSendHandler)
 
 	// user connection upgrade
 	api.SupremacyCommand(HubKeySupremacyUserConnectionUpgrade, supremacyHub.SupremacyUserConnectionUpgradeHandler)
@@ -625,6 +626,51 @@ func (sc *SupremacyControllerWS) SupremacyAbilityTargetPriceUpdate(ctx context.C
 		return terror.Error(err)
 	}
 
+	return nil
+}
+
+type SupremacyUserSupsMultiplierSendRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		UserSupsMultiplierSends []*UserSupsMultiplierSend `json:"userSupsMultiplierSends"`
+	} `json:"payload"`
+}
+
+type UserSupsMultiplierSend struct {
+	ToUserID        passport.UserID   `json:"toUserID"`
+	ToUserSessionID *hub.SessionID    `json:"toUserSessionID,omitempty"`
+	SupsMultipliers []*SupsMultiplier `json:"supsMultiplier"`
+}
+
+type SupsMultiplier struct {
+	Key       string    `json:"key"`
+	Value     int       `json:"value"`
+	ExpiredAt time.Time `json:"expiredAt"`
+}
+
+const HubKeySupremacyUserSupsMultiplierSend = hub.HubCommandKey("SUPREMACY:USER_SUPS_MULTIPLIER_SEND")
+
+func (sc *SupremacyControllerWS) SupremacyUserSupsMultiplierSendHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupremacyUserSupsMultiplierSendRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	for _, usm := range req.Payload.UserSupsMultiplierSends {
+		// broadcast to specific hub client if session id is provided
+		if usm.ToUserSessionID != nil && *usm.ToUserSessionID != "" {
+			sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsMultiplierSubscribe, usm.ToUserID)), usm.SupsMultipliers, messagebus.BusSendFilterOption{
+				SessionID: *usm.ToUserSessionID,
+			})
+			continue
+		}
+
+		// otherwise, broadcast to the target user
+		sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsMultiplierSubscribe, usm.ToUserID)), usm.SupsMultipliers)
+	}
+
+	reply(true)
 	return nil
 }
 

@@ -88,6 +88,9 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 
 	api.SecureUserSubscribeCommand(HubKeyBlockConfirmation, userHub.BlockConfirmationHandler)
 
+	// sups multiplier
+	api.SecureUserSubscribeCommand(HubKeyUserSupsMultiplierSubscribe, userHub.UserSupsMultiplierUpdatedSubscribeHandler)
+
 	return userHub
 }
 
@@ -2194,6 +2197,33 @@ func (uc *UserController) UserSupsUpdatedSubscribeHandler(ctx context.Context, c
 
 	reply(user.Sups.String())
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, userID)), nil
+}
+
+const HubKeyUserSupsMultiplierSubscribe hub.HubCommandKey = "USER:SUPS:MULTIPLIER:SUBSCRIBE"
+
+func (uc *UserController) UserSupsMultiplierUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+
+	// send faction stat request to game server
+	uc.API.SendToServerClient(
+		SupremacyGameServer,
+		&ServerClientMessage{
+			Key: UserSupsMultiplierGet,
+			Payload: struct {
+				UserID    passport.UserID `json:"userID"`
+				SessionID hub.SessionID   `json:"sessionID"`
+			}{
+				UserID:    passport.UserID(uuid.FromStringOrNil(client.Identifier())),
+				SessionID: client.SessionID,
+			},
+		},
+	)
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsMultiplierSubscribe, client.Identifier())), nil
 }
 
 type UserFactionDetail struct {

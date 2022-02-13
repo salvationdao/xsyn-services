@@ -176,6 +176,10 @@ func (fc *FactionController) FactionUpdatedSubscribeHandler(ctx context.Context,
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
 
+	if req.Payload.FactionID.IsNil() {
+		return "", "", terror.Error(terror.ErrInvalidInput, "Faction id is empty")
+	}
+
 	// get faction detail
 	faction, err := db.FactionGet(ctx, fc.Conn, req.Payload.FactionID)
 	if err != nil {
@@ -196,6 +200,10 @@ func (fc *FactionController) FactionStatUpdatedSubscribeHandler(ctx context.Cont
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
 
+	if req.Payload.FactionID.IsNil() {
+		return "", "", terror.Error(terror.ErrInvalidInput, "Faction id is empty")
+	}
+
 	var userID *passport.UserID
 	var sessionID *hub.SessionID
 
@@ -212,7 +220,7 @@ func (fc *FactionController) FactionStatUpdatedSubscribeHandler(ctx context.Cont
 		&ServerClientMessage{
 			Key: FactionStatGet,
 			Payload: struct {
-				UserID    *passport.UserID   `json:"userID"`
+				UserID    *passport.UserID   `json:"userID,omitempty"`
 				SessionID *hub.SessionID     `json:"sessionID,omitempty"`
 				FactionID passport.FactionID `json:"factionID,omitempty"`
 			}{
