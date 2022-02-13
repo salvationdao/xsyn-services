@@ -135,8 +135,7 @@ CREATE TABLE users
 (
     id                                  UUID        NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     username                            TEXT UNIQUE NOT NULL,
-    role_id                             UUID,
-    --     role_id                             UUID REFERENCES roles (id), // TODO reenable roles or remove
+    role_id                             UUID REFERENCES roles (id),
     avatar_id                           UUID REFERENCES blobs (id),
     facebook_id                         TEXT UNIQUE,
     google_id                           TEXT UNIQUE,
