@@ -660,7 +660,7 @@ GRANT ALL ON users TO passport_tx;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO passport_tx;
 REVOKE ALL ON transactions FROM passport;
 GRANT SELECT ON transactions TO passport;
-
+GRANT UPDATE ON transactions TO passport;
 
 /***********************************************************
  *                User listen trigger                      *
