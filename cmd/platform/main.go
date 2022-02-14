@@ -272,7 +272,7 @@ func pgxconnect(
 		return nil, terror.Panic(err, "could not initialise database")
 	}
 	poolConfig.ConnConfig.LogLevel = pgx.LogLevelTrace
-	poolConfig.MaxConns = 100
+	poolConfig.MaxConns = 95
 
 	ctx := context.Background()
 	conn, err := pgxpool.ConnectConfig(ctx, poolConfig)
