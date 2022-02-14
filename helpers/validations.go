@@ -79,7 +79,7 @@ func IsValidPassword(password string) error {
 
 func IsValidUsername(username string) error {
 	// Must contain at least 3 characters
-	// Cannot contain more than 15 characters
+	// Cannot contain more than 50 characters, note: twitter usernames allow up to 50 chars
 	// Can only contain the following symbols: _-~
 	hasDisallowedSymbol := false
 	if UsernameRegExp.Match([]byte(username)) {
@@ -91,7 +91,7 @@ func IsValidUsername(username string) error {
 		return terror.Error(err, "Invalid username. Your username must be at least 3 characters long.")
 	}
 	if len(username) > 50 {
-		return terror.Error(err, "Invalid username. Your username cannot be more than 15 characters long.")
+		return terror.Error(err, "Invalid username. Your username cannot be more than 50 characters long.")
 	}
 	if strings.TrimSpace(username) == "" {
 		return terror.Error(err, "Invalid username. Your username cannot be empty.")
