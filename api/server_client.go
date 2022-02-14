@@ -38,6 +38,7 @@ func (api *API) InitialiseTreasuryFundTicker() {
 
 		return http.StatusOK, nil
 	})
+	api.treasuryTickerMap[SupremacyGameServer].DisableLogging = true
 }
 
 type SupremacySupPool struct {
