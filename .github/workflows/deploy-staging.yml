@@ -1,4 +1,4 @@
-name: Staging Deployment
+name: Build and Staging Deployment
 
 on:
   push:
@@ -66,6 +66,8 @@ jobs:
         run: |
           go build \
             -ldflags "-X main.Version=${{env.GITVERSION}} -X main.GitHash=${{env.GITHASH}} -X main.GitBranch=${{env.GITBRANCH}} -X main.BuildDate=${{env.BUILDDATE}} -X main.UnCommittedFiles=${{env.GITSTATE}}" \
+            -gcflags=-trimpath=$(pwd) \
+            -asmflags=-trimpath=$(pwd) \            
             -o deploy/passport-api \
             cmd/platform/main.go
 
@@ -97,6 +99,7 @@ jobs:
         if: ${{ !env.ACT }} # if running in local test environment
         with:
           name: passport-web_${{env.TAG_NAME}}.tar.gz
+          path: ./deploy
 
       - name: Setup SSH
         run: |
