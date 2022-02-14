@@ -43,7 +43,7 @@ case $CURRENT_VER in
     then
         debugecho "case \* if staging"
         NEXT_VER=$(printf "%s-rc.1" $CURRENT_VER)
-    else
+    # else
         # echo invalid branch, should be develop or staging
         # exit 1
     fi
