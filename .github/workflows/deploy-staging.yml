@@ -35,15 +35,15 @@ jobs:
           git config --global --add url."git@hub.github.com:ninja-syndicate/hub".insteadOf "https://github.com/ninja-syndicate/hub"
           git config --global --add url."git@bridge.github.com:ninja-syndicate/supremacy-bridge".insteadOf "https://github.com/ninja-syndicate/supremacy-bridge"
 
-      - name: calculate version increment
-        run: |
-          NEWVER=$(scripts/increment_git_ver.sh)
-          git tag "$NEWVER"
-          echo "GITVERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
-          echo "GITHASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
-          echo "GITBRANCH=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_ENV
-          echo "BUILDDATE=$(date -u +%Y%m%d%H%M%S)" >> $GITHUB_ENV
-          echo "GITSTATE=$(git status --porcelain | wc -l)" >> $GITHUB_ENV
+      # - name: calculate version increment
+      #   run: |
+      #     NEWVER=$(scripts/increment_git_ver.sh)
+      #     git tag "$NEWVER"
+      #     echo "GITVERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+      #     echo "GITHASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
+      #     echo "GITBRANCH=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_ENV
+      #     echo "BUILDDATE=$(date -u +%Y%m%d%H%M%S)" >> $GITHUB_ENV
+      #     echo "GITSTATE=$(git status --porcelain | wc -l)" >> $GITHUB_ENV
 
       - name: Setup build env
         run: |
