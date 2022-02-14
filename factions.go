@@ -19,12 +19,17 @@ type Faction struct {
 	BackgroundBlobID BlobID        `json:"backgroundBlobID" db:"background_blob_id"`
 	Theme            *FactionTheme `json:"theme" db:"theme"`
 	Description      string        `json:"description" db:"description"`
-	Velocity         int64         `json:"velocity" db:"velocity"`
-	SharePercent     int64         `json:"sharePercent" db:"share_percent"`
-	RecruitNumber    int64         `json:"recruitNumber" db:"recruit_number"`
-	WinCount         int64         `json:"winCount" db:"win_count"`
-	LossCount        int64         `json:"lossCount" db:"loss_count"`
-	KillCount        int64         `json:"killCount" db:"kill_count"`
-	DeathCount       int64         `json:"deathCount" db:"death_count"`
-	MVP              string        `json:"mvp" db:"mvp"`
+}
+
+// from game server
+type FactionStat struct {
+	Velocity      int64     `json:"velocity"`
+	RecruitNumber int64     `json:"recruitNumber"`
+	ID            FactionID `json:"id" db:"id"`
+	WinCount      int64     `json:"winCount"`
+	LossCount     int64     `json:"lossCount"`
+	KillCount     int64     `json:"killCount"`
+	DeathCount    int64     `json:"deathCount"`
+	MvpTokenID    uint64    `json:"mvpTokenID"`
+	MVP           string    `json:"mvp"`
 }

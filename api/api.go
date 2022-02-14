@@ -68,8 +68,12 @@ type API struct {
 	// Supremacy Sups Pool
 	supremacySupsPool chan func(*SupremacySupPool)
 
-	// Queue Reward
+	// War Machine Queue Contract
+	factionWarMachineContractMap map[passport.FactionID]chan func(*WarMachineContract)
+	fastAssetRepairCenter        chan func(RepairQueue)
+	standardAssetRepairCenter    chan func(RepairQueue)
 
+	// Queue Reward
 	TxConn *sql.DB
 }
 
@@ -82,7 +86,6 @@ func NewAPI(
 	googleClientID string,
 	mailer *email.Mailer,
 	addr string,
-	twitchExtensionSecret []byte,
 	twitchClientID string,
 	twitchClientSecret string,
 	HTMLSanitize *bluemonday.Policy,
@@ -138,6 +141,12 @@ func NewAPI(
 		// treasury ticker map
 		treasuryTickerMap: make(map[ServerClientName]*tickle.Tickle),
 		supremacySupsPool: make(chan func(*SupremacySupPool)),
+
+		// faction war machine contract
+		factionWarMachineContractMap: make(map[passport.FactionID]chan func(*WarMachineContract)),
+
+		// asset repair
+
 	}
 
 	api.Routes.Use(middleware.RequestID)
@@ -154,9 +163,8 @@ func NewAPI(
 			ClientID: googleClientID,
 		},
 		Twitch: &auth.TwitchConfig{
-			ExtensionSecret: twitchExtensionSecret,
-			ClientID:        twitchClientID,
-			ClientSecret:    twitchClientSecret,
+			ClientID:     twitchClientID,
+			ClientSecret: twitchClientSecret,
 		},
 		Twitter: &auth.TwitterConfig{
 			APIKey:    twitterAPIKey,
@@ -210,9 +218,8 @@ func NewAPI(
 	_ = NewUserController(log, conn, api, &auth.GoogleConfig{
 		ClientID: googleClientID,
 	}, &auth.TwitchConfig{
-		ExtensionSecret: twitchExtensionSecret,
-		ClientID:        twitchClientID,
-		ClientSecret:    twitchClientSecret,
+		ClientID:     twitchClientID,
+		ClientSecret: twitchClientSecret,
 	}, &auth.DiscordConfig{
 		ClientID:     discordClientID,
 		ClientSecret: discordClientSecret,
@@ -255,6 +262,14 @@ func NewAPI(
 
 	// Initial supremacy sup pool
 	go api.StartSupremacySupPool()
+
+	// Initial faction war machine contract
+	go api.InitialiseFactionWarMachineContract(passport.RedMountainFactionID)
+	go api.InitialiseFactionWarMachineContract(passport.BostonCyberneticsFactionID)
+	go api.InitialiseFactionWarMachineContract(passport.ZaibatsuFactionID)
+
+	// Initialise repair center
+	go api.InitialAssetRepairCenter()
 
 	return api
 }

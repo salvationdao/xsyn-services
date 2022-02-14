@@ -113,10 +113,10 @@ func (s *Seeder) Run(isProd bool) error {
 		if err != nil {
 			return terror.Error(err, "seed users failed")
 		}
-		err = s.AndAssignNftToMember(ctx)
-		if err != nil {
-			return terror.Error(err, "seed users failed")
-		}
+		// err = s.AndAssignNftToMember(ctx)
+		// if err != nil {
+		// 	return terror.Error(err, "seed users failed")
+		// }
 
 		// seed ability to zaibatsu war machines
 		fmt.Println("Seeding assign ability to war machine")
@@ -186,16 +186,8 @@ var factions = []*passport.Faction{
 			Secondary:  "#FFFFFF",
 			Background: "#0D0404",
 		},
-		// TODO: remove from prod
-		Description:   "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
-		Velocity:      51,
-		SharePercent:  39,
-		RecruitNumber: 16554,
-		WinCount:      1916,
-		LossCount:     1337,
-		KillCount:     4810,
-		DeathCount:    3418,
-		MVP:           "test user",
+		// NOTE: change content
+		Description: "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
 	},
 	{
 		ID:    passport.BostonCyberneticsFactionID,
@@ -205,16 +197,8 @@ var factions = []*passport.Faction{
 			Secondary:  "#FFFFFF",
 			Background: "#050A12",
 		},
-		// TODO: remove from prod
-		Description:   "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
-		Velocity:      51,
-		SharePercent:  39,
-		RecruitNumber: 16554,
-		WinCount:      1916,
-		LossCount:     1337,
-		KillCount:     4810,
-		DeathCount:    3418,
-		MVP:           "test user",
+		// NOTE: change content
+		Description: "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
 	},
 	{
 		ID:    passport.ZaibatsuFactionID,
@@ -224,16 +208,8 @@ var factions = []*passport.Faction{
 			Secondary:  "#000000",
 			Background: "#0D0D0D",
 		},
-		// TODO: remove from prod
-		Description:   "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
-		Velocity:      51,
-		SharePercent:  39,
-		RecruitNumber: 16554,
-		WinCount:      1916,
-		LossCount:     1337,
-		KillCount:     4810,
-		DeathCount:    3418,
-		MVP:           "test user",
+		// NOTE: change content
+		Description: "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
 	},
 }
 

@@ -3,12 +3,15 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/big"
 	"passport"
 	"passport/db"
 	"passport/log_helpers"
 
 	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
@@ -35,13 +38,15 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 	api.Command(HubKeyAssetList, assetHub.AssetListHandler)
 
 	// asset subscribe
-	api.SecureUserSubscribeCommand(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)
+	api.SubscribeCommand(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)
 
 	// asset set name
 	api.SecureCommand(HubKeyAssetUpdateName, assetHub.AssetUpdateNameHandler)
 
 	api.SecureCommand(HubKeyAssetQueueJoin, assetHub.JoinQueueHandler)
 	api.SecureCommand(HubKeyAssetQueueLeave, assetHub.LeaveQueueHandler)
+	api.SecureCommand(HubKeyAssetInsurancePay, assetHub.PayAssetInsuranceHandler)
+	api.SecureUserSubscribeCommand(HubKeyAssetQueueContractReward, assetHub.AssetQueueContractRewardSubscriber)
 
 	return assetHub
 }
@@ -80,9 +85,13 @@ func (ac *AssetController) LeaveQueueHandler(ctx context.Context, hubc *hub.Clie
 		return terror.Error(terror.ErrInvalidInput, "User need to join a faction")
 	}
 
-	err = db.XsynAssetUnfreezeableCheck(ctx, ac.Conn, req.Payload.AssetTokenID, userID)
+	metadata, err := db.XsynMetadataOwnerGet(ctx, ac.Conn, userID, req.Payload.AssetTokenID)
 	if err != nil {
-		return terror.Error(terror.ErrInvalidInput, "Current asset is unable to leave the battle queue")
+		return terror.Error(err)
+	}
+
+	if !metadata.LockedByID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput, "Current asset is locked")
 	}
 
 	warMachineMetadata := &passport.WarMachineMetadata{
@@ -103,6 +112,7 @@ func (ac *AssetController) LeaveQueueHandler(ctx context.Context, hubc *hub.Clie
 		},
 	})
 
+	reply(true)
 	return nil
 }
 
@@ -123,8 +133,6 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 		return terror.Error(terror.ErrInvalidInput)
 	}
 
-	// TODO: In the future, check user has enough sups to join their war machine into battle queue
-
 	// get user
 	user, err := db.UserGet(ctx, ac.Conn, userID)
 	if err != nil {
@@ -132,18 +140,37 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	if user.FactionID == nil || user.FactionID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User needs to join a faction to Deploy War Machine")
+		return terror.Error(terror.ErrInvalidInput, "User needs to join a faction to deploy war machine")
 	}
 
 	// check user own this asset and it has not joined the queue yet
-	metadata, err := db.XsynMetadataAvailableGet(ctx, ac.Conn, userID, req.Payload.AssetTokenID)
+	metadata, err := db.XsynMetadataOwnerGet(ctx, ac.Conn, userID, req.Payload.AssetTokenID)
 	if err != nil {
 		return terror.Error(err)
+	}
+
+	if metadata.LockedByID != nil && metadata.LockedByID.IsNil() {
+		return terror.Error(fmt.Errorf("Current asset is locked"))
+	}
+
+	if metadata.FrozenAt != nil {
+		return terror.Error(fmt.Errorf("Current asset is frozen"))
+	}
+
+	if metadata.Durability < 100 {
+		return terror.Error(fmt.Errorf("Current asset's durability is low"))
 	}
 
 	warMachineMetadata := &passport.WarMachineMetadata{
 		OwnedByID: userID,
 	}
+
+	// get current faction contract reward
+	contractRewardChan := make(chan big.Int)
+	ac.API.factionWarMachineContractMap[*user.FactionID] <- func(wmc *WarMachineContract) {
+		contractRewardChan <- wmc.CurrentReward
+	}
+	warMachineMetadata.ContractReward = <-contractRewardChan
 
 	// parse metadata
 	for _, att := range metadata.Attributes {
@@ -196,13 +223,76 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 }
 
 // AssetsUpdatedSubscribeRequest requests holds the filter for user list
+type AssetsInsurancePayRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		AssetTokenID uint64 `json:"assetTokenID"`
+	} `json:"payload"`
+}
+
+const HubKeyAssetInsurancePay hub.HubCommandKey = "ASSET:INSURANCE:PAY"
+
+func (ac *AssetController) PayAssetInsuranceHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &AssetsInsurancePayRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// parse user id
+	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput)
+	}
+
+	// get user
+	user, err := db.UserGet(ctx, ac.Conn, userID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	if user.FactionID == nil || user.FactionID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput, "User needs to join a faction to Deploy War Machine")
+	}
+
+	// check user own this asset and it has not joined the queue yet
+	metadata, err := db.XsynMetadataOwnerGet(ctx, ac.Conn, userID, req.Payload.AssetTokenID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	if metadata.FrozenAt == nil {
+		return terror.Error(terror.ErrForbidden, "Error - current asset has not joined the queue")
+	}
+
+	if metadata.LockedByID != nil {
+		return terror.Error(terror.ErrForbidden, "Error - current asset has already joined the battle ")
+	}
+
+	// fire request to server client
+	ac.API.SendToAllServerClient(&ServerClientMessage{
+		Key: AssetInsurancePay,
+		Payload: struct {
+			FactionID    passport.FactionID `json:"factionID"`
+			AssetTokenID uint64             `json:"assetTokenID"`
+		}{
+			FactionID:    *user.FactionID,
+			AssetTokenID: metadata.TokenID,
+		},
+	})
+
+	reply(true)
+	return nil
+}
+
+// AssetsUpdatedSubscribeRequest requests holds the filter for user list
 type AssetsUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		UserID           passport.UserID       `json:"user_id"`
 		SortDir          db.SortByDir          `json:"sortDir"`
 		SortBy           db.AssetColumn        `json:"sortBy"`
-		IncludedTokenIDs []int                 `json:"includedTokenIDs"`
+		IncludedTokenIDs []uint64              `json:"includedTokenIDs"`
 		Filter           *db.ListFilterRequest `json:"filter,omitempty"`
 		AssetType        string                `json:"assetType"`
 		Archived         bool                  `json:"archived"`
@@ -214,13 +304,13 @@ type AssetsUpdatedSubscribeRequest struct {
 
 // AssetListResponse is the response from get asset list
 type AssetListResponse struct {
-	Records []*passport.XsynMetadata `json:"records"`
-	Total   int                      `json:"total"`
+	Total    int      `json:"total"`
+	TokenIDs []uint64 `json:"tokenIDs"`
 }
 
 const HubKeyAssetList hub.HubCommandKey = "ASSET:LIST"
 
-func (ctrlr *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (ac *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 
 	req := &AssetsUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
@@ -233,9 +323,8 @@ func (ctrlr *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Cl
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	assets := []*passport.XsynMetadata{}
-	total, err := db.AssetList(
-		ctx, ctrlr.Conn, &assets,
+	total, assets, err := db.AssetList(
+		ctx, ac.Conn,
 		req.Payload.Search,
 		req.Payload.Archived,
 		req.Payload.IncludedTokenIDs,
@@ -250,9 +339,14 @@ func (ctrlr *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Cl
 		return terror.Error(err)
 	}
 
+	tokenIDs := make([]uint64, 0)
+	for _, s := range assets {
+		tokenIDs = append(tokenIDs, s.TokenID)
+	}
+
 	resp := &AssetListResponse{
-		Total:   total,
-		Records: assets,
+		total,
+		tokenIDs,
 	}
 
 	reply(resp)
@@ -270,20 +364,48 @@ type AssetUpdatedSubscribeRequest struct {
 // 	rootHub.SecureCommand(HubKeyAssetSubscribe, AssetController.AssetSubscribe)
 const HubKeyAssetSubscribe hub.HubCommandKey = "ASSET:SUBSCRIBE"
 
-func (ctrlr *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &AssetUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
 	}
 
-	asset, err := db.AssetGet(ctx, ctrlr.Conn, req.Payload.TokenID)
+	asset, err := db.AssetGet(ctx, ac.Conn, req.Payload.TokenID)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
 	}
 
 	reply(asset)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), nil
+}
+
+// 	rootHub.SecureCommand(HubKeyAssetQueueContractReward, AssetController.AssetSubscribe)
+const HubKeyAssetQueueContractReward hub.HubCommandKey = "ASSET:QUEUE:CONTRACT:REWARD"
+
+func (ac *AssetController) AssetQueueContractRewardSubscriber(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err)
+	}
+
+	userID := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrForbidden)
+	}
+
+	// get user faction
+	faction, err := db.FactionGetByUserID(ctx, ac.Conn, userID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", "", terror.Error(err)
+	}
+
+	ac.API.factionWarMachineContractMap[faction.ID] <- func(wmc *WarMachineContract) {
+		reply(wmc.CurrentReward.String())
+	}
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetQueueContractReward, faction.ID)), nil
 }
 
 // AssetSetNameRequest requests an update for an xsyn_metadata

@@ -2,9 +2,11 @@ package db
 
 import (
 	"context"
+	"errors"
 	"passport"
 
 	"github.com/georgysavva/scany/pgxscan"
+	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -18,18 +20,10 @@ func FactionCreate(ctx context.Context, conn Conn, faction *passport.Faction) er
 				theme, 
 				logo_blob_id,
 				background_blob_id,
-				description,
-				velocity,
-				share_percent,
-				recruit_number,
-				win_count,
-				loss_count,
-				kill_count,
-				death_count,
-				mvp
+				description
 			)
 		VALUES
-			($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+			($1, $2, $3, $4, $5, $6)
 		RETURNING 
 			id, label
 	`
@@ -41,14 +35,6 @@ func FactionCreate(ctx context.Context, conn Conn, faction *passport.Faction) er
 		faction.LogoBlobID,
 		faction.BackgroundBlobID,
 		faction.Description,
-		faction.Velocity,
-		faction.SharePercent,
-		faction.RecruitNumber,
-		faction.WinCount,
-		faction.LossCount,
-		faction.KillCount,
-		faction.DeathCount,
-		faction.MVP,
 	)
 	if err != nil {
 		return terror.Error(err)
@@ -105,4 +91,24 @@ func FactionGetByUserID(ctx context.Context, conn Conn, userID passport.UserID) 
 	}
 
 	return result, nil
+}
+
+// FactionGetRecruitNumber return the number of users recruit the faction
+func FactionGetRecruitNumber(ctx context.Context, conn Conn, factionID passport.FactionID) (int64, error) {
+	recruitNumber := int64(0)
+	q := `
+		SELECT
+			COUNT(id)
+		FROM 
+			users u
+		WHERE
+			u.faction_id = $1
+	`
+
+	err := pgxscan.Get(ctx, conn, &recruitNumber, q, factionID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return 0, terror.Error(err)
+	}
+
+	return recruitNumber, nil
 }

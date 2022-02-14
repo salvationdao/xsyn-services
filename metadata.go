@@ -1,6 +1,7 @@
 package passport
 
 import (
+	"math/big"
 	"time"
 )
 
@@ -31,27 +32,31 @@ const (
 
 // StoreItem holds data for a nft that is listed on the marketplace
 type StoreItem struct {
-	ID              StoreItemID  `json:"ID" db:"id"`
-	Name            string       `json:"name" db:"name"`
-	FactionID       FactionID    `json:"factionID" db:"faction_id"`
-	CollectionID    CollectionID `json:"collectionID" db:"collection_id"`
-	Description     string       `json:"description" db:"description"`
-	Image           string       `json:"image" db:"image"`
-	Attributes      []*Attribute `json:"attributes" db:"attributes"`
-	UsdCentCost     int          `json:"usdCentCost" db:"usd_cent_cost"`
-	AmountSold      int          `json:"amountSold" db:"amount_sold"`
-	AmountAvailable int          `json:"amountAvailable" db:"amount_available"`
-	SoldAfter       time.Time    `json:"soldAfter" db:"sold_after"`
-	SoldBefore      time.Time    `json:"soldBefore" db:"sold_before"`
-	DeletedAt       *time.Time   `json:"deletedAt" db:"deleted_at"`
-	CreatedAt       time.Time    `json:"createdAt" db:"created_at"`
-	UpdatedAt       time.Time    `json:"updatedAt" db:"updated_at"`
-	SupCost         string       `json:"supCost"`
+	ID                 StoreItemID         `json:"ID" db:"id"`
+	Name               string              `json:"name" db:"name"`
+	FactionID          FactionID           `json:"factionID" db:"faction_id"`
+	Faction            *Faction            `json:"faction"`
+	CollectionID       CollectionID        `json:"collectionID" db:"collection_id"`
+	Collection         Collection          `json:"collection" db:"collection"`
+	Description        string              `json:"description" db:"description"`
+	Image              string              `json:"image" db:"image"`
+	Attributes         []*Attribute        `json:"attributes" db:"attributes"`
+	AdditionalMetadata *AdditionalMetadata `json:"additionalMetadata" db:"additional_metadata"`
+	UsdCentCost        int                 `json:"usdCentCost" db:"usd_cent_cost"`
+	AmountSold         int                 `json:"amountSold" db:"amount_sold"`
+	AmountAvailable    int                 `json:"amountAvailable" db:"amount_available"`
+	SoldAfter          time.Time           `json:"soldAfter" db:"sold_after"`
+	SoldBefore         time.Time           `json:"soldBefore" db:"sold_before"`
+	DeletedAt          *time.Time          `json:"deletedAt" db:"deleted_at"`
+	CreatedAt          time.Time           `json:"createdAt" db:"created_at"`
+	UpdatedAt          time.Time           `json:"updatedAt" db:"updated_at"`
+	SupCost            string              `json:"supCost"`
 }
 
 // XsynMetadata holds xsyn nft metadata, the nfts main game data it stored here to show on opensea
 type XsynMetadata struct {
 	UserID             *UserID               `json:"userID" db:"user_id"`
+	Username           *string               `json:"username" db:"username"`
 	TokenID            uint64                `json:"tokenID" db:"token_id"`
 	Name               string                `json:"name" db:"name"`
 	CollectionID       CollectionID          `json:"collectionID" db:"collection_id"`
@@ -65,6 +70,7 @@ type XsynMetadata struct {
 	AdditionalMetadata []*AdditionalMetadata `json:"additional_metadata" db:"additional_metadata"`
 	DeletedAt          *time.Time            `json:"deleted_at" db:"deleted_at"`
 	FrozenAt           *time.Time            `json:"frozenAt" db:"frozen_at"`
+	LockedByID         *UserID               `json:"lockedByID" db:"locked_by_id"`
 	UpdatedAt          time.Time             `json:"updatedAt" db:"updated_at"`
 	CreatedAt          time.Time             `json:"createdAt" db:"created_at"`
 }
@@ -117,6 +123,9 @@ type WarMachineMetadata struct {
 	FactionID       FactionID          `json:"factionID"`
 	Faction         *Faction           `json:"faction"`
 	Abilities       []*AbilityMetadata `json:"abilities"`
+
+	ContractReward big.Int `json:"contractReward"`
+	IsInsured      bool    `json:"isInsured"`
 }
 
 type WarMachineAttField string

@@ -82,14 +82,21 @@ const HubKeyStoreList = hub.HubCommandKey("STORE:LIST")
 type StoreListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		CollectionID passport.CollectionID `json:"collectionID"`
-		FactionID    passport.FactionID    `json:"factionID"`
-		Page         int                   `json:"page"`
-		PageSize     int                   `json:"pageSize"`
+		UserID               passport.UserID        `json:"user_id"`
+		SortDir              db.SortByDir           `json:"sortDir"`
+		SortBy               db.StoreColumn         `json:"sortBy"`
+		IncludedStoreItemIDs []passport.StoreItemID `json:"includedTokenIDs"`
+		Filter               *db.ListFilterRequest  `json:"filter,omitempty"`
+		AssetType            string                 `json:"assetType"`
+		Archived             bool                   `json:"archived"`
+		Search               string                 `json:"search"`
+		PageSize             int                    `json:"pageSize"`
+		Page                 int                    `json:"page"`
 	} `json:"payload"`
 }
 
 type StoreListResponse struct {
+	Total        int                     `json:"total"`
 	StoreItemIDs []*passport.StoreItemID `json:"storeItemIDs"`
 }
 
@@ -100,12 +107,36 @@ func (ctrlr *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.
 		return terror.Error(err, "Invalid request received")
 	}
 
-	storeItemIDs, err := db.StoreItemListByCollectionAndFaction(ctx, ctrlr.Conn, req.Payload.CollectionID, req.Payload.FactionID, req.Payload.Page, req.Payload.PageSize)
+	offset := 0
+	if req.Payload.Page > 0 {
+		offset = req.Payload.Page * req.Payload.PageSize
+	}
+
+	total, storeItems, err := db.StoreList(
+		ctx, ctrlr.Conn,
+		req.Payload.Search,
+		req.Payload.Archived,
+		req.Payload.IncludedStoreItemIDs,
+		req.Payload.Filter,
+		req.Payload.AssetType,
+		offset,
+		req.Payload.PageSize,
+		req.Payload.SortBy,
+		req.Payload.SortDir,
+	)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	reply(storeItemIDs)
+	storeItemIDs := make([]*passport.StoreItemID, 0)
+	for _, s := range storeItems {
+		storeItemIDs = append(storeItemIDs, &s.ID)
+	}
+
+	reply(&StoreListResponse{
+		total,
+		storeItemIDs,
+	})
 	return nil
 }
 

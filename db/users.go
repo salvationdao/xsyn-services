@@ -72,7 +72,7 @@ LEFT JOIN (
 	INNER JOIN organisations o ON o.id = organisation_id
 ) organisation ON organisation.user_id = users.id
 LEFT JOIN (
-    SELECT id, label, theme
+    SELECT id, label, theme, logo_blob_id as logoBlobID
     FROM factions
 ) faction ON faction.id = users.faction_id
 `
