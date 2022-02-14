@@ -79,15 +79,7 @@ CREATE TABLE factions
     theme              JSONB            NOT NULL DEFAULT '{}',
     logo_blob_id       UUID             NOT NULL REFERENCES blobs (id),
     background_blob_id UUID             NOT NULL REFERENCES blobs (id),
-    description        TEXT             NOT NULL DEFAULT '',
-    velocity           INT              NOT NULL DEFAULT 0,
-    share_percent      INT              NOT NULL DEFAULT 0,
-    recruit_number     INT              NOT NULL DEFAULT 0,
-    win_count          INT              NOT NULL DEFAULT 0,
-    loss_count         INT              NOT NULL DEFAULT 0,
-    kill_count         INT              NOT NULL DEFAULT 0,
-    death_count        INT              NOT NULL DEFAULT 0,
-    mvp                TEXT             NOT NULL DEFAULT ''
+    description        TEXT             NOT NULL DEFAULT ''
 );
 
 
@@ -143,8 +135,7 @@ CREATE TABLE users
 (
     id                                  UUID        NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     username                            TEXT UNIQUE NOT NULL,
-    role_id                             UUID,
-    --     role_id                             UUID REFERENCES roles (id), // TODO reenable roles or remove
+    role_id                             UUID REFERENCES roles (id),
     avatar_id                           UUID REFERENCES blobs (id),
     facebook_id                         TEXT UNIQUE,
     google_id                           TEXT UNIQUE,

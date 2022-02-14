@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"encoding/base64"
 	"errors"
 	"net/url"
 	"passport"
@@ -113,7 +112,6 @@ func main() {
 					&cli.IntFlag{Name: "jwt_expiry_days", Value: 1, EnvVars: []string{envPrefix + "_JWT_EXPIRY_DAYS", "JWT_EXPIRY_DAYS"}, Usage: "expiry days for auth tokens"},
 					&cli.StringFlag{Name: "metamask_sign_message", Value: "", EnvVars: []string{envPrefix + "_METAMASK_SIGN_MESSAGE", "METAMASK_SIGN_MESSAGE"}, Usage: "message to show in metamask key sign flow, needs to match frontend"},
 
-					&cli.StringFlag{Name: "twitch_extension_secret", Value: "123", EnvVars: []string{envPrefix + "_TWITCH_EXTENSION_SECRET", "TWITCH_EXTENSION_SECRET"}, Usage: "Twitch extension secret for verifying shadow account tokens sent with requests"},
 					&cli.StringFlag{Name: "twitch_client_id", Value: "123", EnvVars: []string{envPrefix + "_TWITCH_CLIENT_ID", "TWITCH_CLIENT_ID"}, Usage: "Twitch client ID for verifying web account tokens sent with requests"},
 					&cli.StringFlag{Name: "twitch_client_secret", Value: "123", EnvVars: []string{envPrefix + "_TWITCH_CLIENT_SECRET", "TWITCH_CLIENT_SECRET"}, Usage: "Twitch client secret for verifying web account tokens sent with requests"},
 					&cli.StringFlag{Name: "twitter_api_key", Value: "123", EnvVars: []string{envPrefix + "_TWITTER_API_KEY", "TWITTER_API_KEY"}, Usage: "Twitter API key for requests used in the OAuth 1.0a flow"},
@@ -454,16 +452,6 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		return terror.Panic(fmt.Errorf("missing google client id"))
 	}
 
-	twitchExtensionSecretBase64 := ctxCLI.String("twitch_extension_secret")
-	if twitchExtensionSecretBase64 == "" {
-		return terror.Panic(fmt.Errorf("missing twitch extension secret"))
-	}
-
-	twitchExtensionSecret, err := base64.StdEncoding.DecodeString(twitchExtensionSecretBase64)
-	if err != nil {
-		return terror.Panic(err, "Failed to decode twitch extension secret")
-	}
-
 	twitchClientID := ctxCLI.String("twitch_client_id")
 	if twitchClientID == "" {
 		return terror.Panic(fmt.Errorf("no twitch client id"))
@@ -506,6 +494,6 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
-	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, googleClientID, mailer, apiAddr, twitchExtensionSecret, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config, twitterAPIKey, twitterAPISecret, discordClientID, discordClientSecret, gameserverToken)
+	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, googleClientID, mailer, apiAddr, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config, twitterAPIKey, twitterAPISecret, discordClientID, discordClientSecret, gameserverToken)
 	return api.Run(ctx)
 }

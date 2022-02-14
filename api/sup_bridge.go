@@ -93,7 +93,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 					if err != nil {
 						// if error is no rows, create user!
 						if errors.Is(err, pgx.ErrNoRows) {
-							user = &passport.User{Username: xfer.From.Hex(), PublicAddress: passport.NewString(xfer.From.Hex())}
+							user = &passport.User{Username: xfer.From.Hex(), PublicAddress: passport.NewString(xfer.From.Hex()), RoleID: passport.UserRoleMemberID}
 							err = db.UserCreate(ctx, cc.API.Conn, user)
 							if err != nil {
 								cc.Log.Err(err).Msg("issue creating new user")
@@ -160,7 +160,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 					if err != nil {
 						// if error is no rows, create user!
 						if errors.Is(err, pgx.ErrNoRows) {
-							user = &passport.User{Username: xfer.From.Hex(), PublicAddress: passport.NewString(xfer.From.Hex())}
+							user = &passport.User{Username: xfer.From.Hex(), PublicAddress: passport.NewString(xfer.From.Hex()), RoleID: passport.UserRoleMemberID}
 							err = db.UserCreate(ctx, cc.API.Conn, user)
 							if err != nil {
 								cc.Log.Err(err).Msg("issue creating new user")
@@ -223,7 +223,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 					if err != nil {
 						// if error is no rows, create user!
 						if errors.Is(err, pgx.ErrNoRows) {
-							user = &passport.User{Username: xfer.From.Hex(), PublicAddress: passport.NewString(xfer.From.Hex())}
+							user = &passport.User{Username: xfer.From.Hex(), PublicAddress: passport.NewString(xfer.From.Hex()), RoleID: passport.UserRoleMemberID}
 							err = db.UserCreate(ctx, cc.API.Conn, user)
 							if err != nil {
 								cc.Log.Err(err).Msg("issue creating new user")
@@ -300,7 +300,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 					if err != nil {
 						// if error is no rows, create user!
 						if errors.Is(err, pgx.ErrNoRows) {
-							user = &passport.User{Username: xfer.From.Hex(), PublicAddress: passport.NewString(xfer.From.Hex())}
+							user = &passport.User{Username: xfer.From.Hex(), PublicAddress: passport.NewString(xfer.From.Hex()), RoleID: passport.UserRoleMemberID}
 							err = db.UserCreate(ctx, cc.API.Conn, user)
 							if err != nil {
 								cc.Log.Err(err).Msg("issue creating new user")
@@ -361,7 +361,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 					if err != nil {
 						// if error is no rows, create user!
 						if errors.Is(err, pgx.ErrNoRows) {
-							user = &passport.User{Username: xfer.From.Hex(), PublicAddress: passport.NewString(xfer.From.Hex())}
+							user = &passport.User{Username: xfer.From.Hex(), PublicAddress: passport.NewString(xfer.From.Hex()), RoleID: passport.UserRoleMemberID}
 							err = db.UserCreate(ctx, cc.API.Conn, user)
 							if err != nil {
 								cc.Log.Err(err).Msg("issue creating new user")
@@ -430,7 +430,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 					if err != nil {
 						// if error is no rows, create user!
 						if errors.Is(err, pgx.ErrNoRows) {
-							user = &passport.User{Username: xfer.From.Hex(), PublicAddress: passport.NewString(xfer.From.Hex())}
+							user = &passport.User{Username: xfer.From.Hex(), PublicAddress: passport.NewString(xfer.From.Hex()), RoleID: passport.UserRoleMemberID}
 							err = db.UserCreate(ctx, cc.API.Conn, user)
 							if err != nil {
 								cc.Log.Err(err).Msg("issue creating new user")
@@ -494,7 +494,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 					if err != nil {
 						// if error is no rows, create user!
 						if errors.Is(err, pgx.ErrNoRows) {
-							user = &passport.User{Username: xfer.From.Hex(), PublicAddress: passport.NewString(xfer.From.Hex())}
+							user = &passport.User{Username: xfer.From.Hex(), PublicAddress: passport.NewString(xfer.From.Hex()), RoleID: passport.UserRoleMemberID}
 							err = db.UserCreate(ctx, cc.API.Conn, user)
 							if err != nil {
 								cc.Log.Err(err).Msg("issue creating new user")
@@ -609,7 +609,6 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 
 	bscClientLoop:
 		for {
-			fmt.Println("starting connect loop")
 			ctx, cancel := context.WithCancel(ctx)
 
 			cc.Log.Info().Msg("Attempting to connect to BSC node")
