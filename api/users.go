@@ -315,6 +315,36 @@ func (ug *UserGetter) Email(email string) (auth.SecureUser, error) {
 	}, nil
 }
 
+func (ug *UserGetter) Username(email string) (auth.SecureUser, error) {
+	ctx := context.Background()
+	user, err := db.UserByUsername(ctx, ug.Conn, email)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	hash, err := db.HashByUserID(ctx, ug.Conn, user.ID)
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, terror.Error(err)
+		}
+	}
+
+	if user.FactionID != nil && !user.FactionID.IsNil() {
+		faction, err := db.FactionGet(ctx, ug.Conn, *user.FactionID)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		user.Faction = faction
+	}
+
+	return &Secureuser{
+		User:         user,
+		Conn:         ug.Conn,
+		Mailer:       ug.Mailer,
+		passwordHash: hash,
+	}, nil
+}
+
 type Secureuser struct {
 	*passport.User
 	passwordHash string
