@@ -131,6 +131,7 @@ type WarMachineMetadata struct {
 type WarMachineAttField string
 
 const (
+	WarMachineAttName                   WarMachineAttField = "Name"
 	WarMachineAttModel                  WarMachineAttField = "Model"
 	WarMachineAttSkin                   WarMachineAttField = "Skin"
 	WarMachineAttFieldMaxHitPoint       WarMachineAttField = "Max Structure Hit Points"
@@ -160,6 +161,8 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 
 	for _, att := range metadata.Attributes {
 		switch att.TraitType {
+		case string(WarMachineAttName):
+			warMachineMetadata.Name = att.Value.(string)
 		case string(WarMachineAttModel):
 			warMachineMetadata.Model = att.Value.(string)
 		case string(WarMachineAttSkin):

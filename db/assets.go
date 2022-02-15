@@ -6,6 +6,7 @@ import (
 	"passport"
 	"strings"
 
+	goaway "github.com/TwiN/go-away"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
 )
@@ -234,12 +235,18 @@ func AssetGetByName(ctx context.Context, conn Conn, name string) (*passport.Xsyn
 
 // AssetUpdate will update an asset name entry in attribute
 func AssetUpdate(ctx context.Context, conn Conn, tokenID uint64, newName string) error {
+
+	// profanity check
+	if goaway.IsProfane(newName) {
+		return terror.Error(fmt.Errorf("invalid asset name: cannot contain profanity"), "invalid asset name: cannot contain profanity")
+	}
+
 	nameAvailable, err := AssetNameAvailable(ctx, conn, newName, tokenID)
 	if err != nil {
 		return terror.Error(err)
 	}
 	if !nameAvailable {
-		return terror.Error(fmt.Errorf("Name is taken: %s", newName), fmt.Sprintf("Name is taken: %s", newName))
+		return terror.Error(fmt.Errorf("name is taken: %s", newName), fmt.Sprintf("Name is taken: %s", newName))
 	}
 
 	// sql to update a 'Name' entry in the attributes column

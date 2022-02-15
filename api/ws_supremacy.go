@@ -865,7 +865,6 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 					abilityMetadata.SupsCost = supsCost
 				}
 			}
-
 			warMachines = append(warMachines, warMachineMetadata)
 		}
 	}
