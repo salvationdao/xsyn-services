@@ -11,6 +11,7 @@ jobs:
         uses: reviewdog/action-golangci-lint@v2
         with:
           reporter: github-pr-review
+          fail_on_error: true
 
   golint:
     name: runner / golint
@@ -23,6 +24,7 @@ jobs:
         with:
           tool_name: golint
           reporter: github-pr-review
+          fail_on_error: true
 
   errcheck:
     name: runner / errcheck
@@ -35,3 +37,4 @@ jobs:
         with:
           tool_name: errcheck
           reporter: github-pr-review
+          fail_on_error: true
