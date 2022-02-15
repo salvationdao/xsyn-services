@@ -106,52 +106,54 @@ jobs:
         if: ${{ !env.ACT }} # if running in local test environment
         with:
           name: ${{ needs.build.outputs.artifact_filename }}
+      - name: List deploy dir
+        run: ls -lR
 
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo -e "Host ${{ secrets.STAGING_SSH_HOST }}\n  User ${{ secrets.STAGING_SSH_USER }}\n  Port ${{ secrets.STAGING_SSH_PORT }}" >> ~/.ssh/config
-          echo '${{ secrets.STAGING_SSH_KNOWN_HOSTS }}' > ~/.ssh/known_hosts
-          echo '${{ secrets.STAGING_SSH_PKEY }}' > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
+      # - name: Setup SSH
+      #   run: |
+      #     mkdir -p ~/.ssh
+      #     echo -e "Host ${{ secrets.STAGING_SSH_HOST }}\n  User ${{ secrets.STAGING_SSH_USER }}\n  Port ${{ secrets.STAGING_SSH_PORT }}" >> ~/.ssh/config
+      #     echo '${{ secrets.STAGING_SSH_KNOWN_HOSTS }}' > ~/.ssh/known_hosts
+      #     echo '${{ secrets.STAGING_SSH_PKEY }}' > ~/.ssh/id_ed25519
+      #     chmod 600 ~/.ssh/id_ed25519
 
-      - name: Rsync to server
-        if: ${{ !env.ACT }} # if running in local test environment
-        run: rsync -av "$PWD" ${{ secrets.STAGING_SSH_HOST }}:/usr/share/ninja_syndicate/passport-api_${{ needs.build.outputs.version }}
-
-      - name: Copy previous config
-        if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cp /usr/share/ninja_syndicate/passport-online/init/passport-staging.env /usr/share/ninja_syndicate/passport-api_${{ needs.build.outputs.version }}/init/passport-staging.env && cp /usr/share/ninja_syndicate/passport-online/init/passport-staging.env ~/.ssh/environment'
-
-      # - name: "DB: Backup" # Run this before changing the link
+      # - name: Rsync to server
       #   if: ${{ !env.ACT }} # if running in local test environment
-      #   run: ssh ${{ secrets.STAGING_SSH_HOST }} 'mkdir -p /usr/share/ninja_syndicate/passport-online/db_backup && \
-      #     /usr/bin/pg_dump postgres://$PASSPORT_DATABASE_USER:$PASSPORT_DATABASE_PASS@$PASSPORT_DATABASE_HOST:$PASSPORT_DATABASE_PORT/$PASSPORT_DATABASE_NAME?sslmode=disable > "/usr/share/ninja_syndicate/passport-online/db_backup/passport-api_$(date -Is).sql"'
+      #   run: rsync -av "$PWD" ${{ secrets.STAGING_SSH_HOST }}:/usr/share/ninja_syndicate/passport-api_${{ needs.build.outputs.version }}
 
-      - name: Bring new version online
-        if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'ln -Tfsv /usr/share/ninja_syndicate/passport-api_${{ needs.build.outputs.version }} /usr/share/ninja_syndicate/passport-online'
+      # - name: Copy previous config
+      #   if: ${{ !env.ACT }} # if running in local test environment
+      #   run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cp /usr/share/ninja_syndicate/passport-online/init/passport-staging.env /usr/share/ninja_syndicate/passport-api_${{ needs.build.outputs.version }}/init/passport-staging.env && cp /usr/share/ninja_syndicate/passport-online/init/passport-staging.env ~/.ssh/environment'
 
-      - name: stop service
-        if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }} 'sudo systemctl stop passport'
+      # # - name: "DB: Backup" # Run this before changing the link
+      # #   if: ${{ !env.ACT }} # if running in local test environment
+      # #   run: ssh ${{ secrets.STAGING_SSH_HOST }} 'mkdir -p /usr/share/ninja_syndicate/passport-online/db_backup && \
+      # #     /usr/bin/pg_dump postgres://$PASSPORT_DATABASE_USER:$PASSPORT_DATABASE_PASS@$PASSPORT_DATABASE_HOST:$PASSPORT_DATABASE_PORT/$PASSPORT_DATABASE_NAME?sslmode=disable > "/usr/share/ninja_syndicate/passport-online/db_backup/passport-api_$(date -Is).sql"'
 
-      - name: "DB: drop"
-        if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/passport-online && source ./init/passport-staging.env && ./migrate -database "postgres://$PASSPORT_DATABASE_USER:$PASSPORT_DATABASE_PASS@$PASSPORT_DATABASE_HOST:$PASSPORT_DATABASE_PORT/$PASSPORT_DATABASE_NAME?sslmode=disable" -path ./migrations drop -f'
+      # - name: Bring new version online
+      #   if: ${{ !env.ACT }} # if running in local test environment
+      #   run: ssh ${{ secrets.STAGING_SSH_HOST }} 'ln -Tfsv /usr/share/ninja_syndicate/passport-api_${{ needs.build.outputs.version }} /usr/share/ninja_syndicate/passport-online'
 
-      - name: "DB: up"
-        if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/passport-online && source ./init/passport-staging.env && ./migrate -database "postgres://$PASSPORT_DATABASE_USER:$PASSPORT_DATABASE_PASS@$PASSPORT_DATABASE_HOST:$PASSPORT_DATABASE_PORT/$PASSPORT_DATABASE_NAME?sslmode=disable" -path ./migrations up'
+      # - name: stop service
+      #   if: ${{ !env.ACT }} # if running in local test environment
+      #   run: ssh ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }} 'sudo systemctl stop passport'
 
-      - name: "DB: seed"
-        if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/passport-online && source ./init/passport-staging.env && ./passport-api db --database_user=$PASSPORT_DATABASE_USER --database_pass=$PASSPORT_DATABASE_PASS --database_host=$PASSPORT_DATABASE_HOST --database_port=$PASSPORT_DATABASE_PORT --database_name=$PASSPORT_DATABASE_NAME --database_tx_user=$PASSPORT_DATABASE_TX_USER --database_tx_pass=$PASSPORT_DATABASE_TX_PASS'
+      # - name: "DB: drop"
+      #   if: ${{ !env.ACT }} # if running in local test environment
+      #   run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/passport-online && source ./init/passport-staging.env && ./migrate -database "postgres://$PASSPORT_DATABASE_USER:$PASSPORT_DATABASE_PASS@$PASSPORT_DATABASE_HOST:$PASSPORT_DATABASE_PORT/$PASSPORT_DATABASE_NAME?sslmode=disable" -path ./migrations drop -f'
 
-      - name: restart api-server
-        if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }} 'sudo systemctl daemon-reload && sudo systemctl start passport.service'
+      # - name: "DB: up"
+      #   if: ${{ !env.ACT }} # if running in local test environment
+      #   run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/passport-online && source ./init/passport-staging.env && ./migrate -database "postgres://$PASSPORT_DATABASE_USER:$PASSPORT_DATABASE_PASS@$PASSPORT_DATABASE_HOST:$PASSPORT_DATABASE_PORT/$PASSPORT_DATABASE_NAME?sslmode=disable" -path ./migrations up'
 
-      - name: restart web-server
-        if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }} 'sudo nginx -t && sudo nginx -s reload'
+      # - name: "DB: seed"
+      #   if: ${{ !env.ACT }} # if running in local test environment
+      #   run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/passport-online && source ./init/passport-staging.env && ./passport-api db --database_user=$PASSPORT_DATABASE_USER --database_pass=$PASSPORT_DATABASE_PASS --database_host=$PASSPORT_DATABASE_HOST --database_port=$PASSPORT_DATABASE_PORT --database_name=$PASSPORT_DATABASE_NAME --database_tx_user=$PASSPORT_DATABASE_TX_USER --database_tx_pass=$PASSPORT_DATABASE_TX_PASS'
+
+      # - name: restart api-server
+      #   if: ${{ !env.ACT }} # if running in local test environment
+      #   run: ssh ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }} 'sudo systemctl daemon-reload && sudo systemctl start passport.service'
+
+      # - name: restart web-server
+      #   if: ${{ !env.ACT }} # if running in local test environment
+      #   run: ssh ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }} 'sudo nginx -t && sudo nginx -s reload'
