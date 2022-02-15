@@ -299,12 +299,15 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 
 		return 1, nil
 	})
-	cleanFunc := func(interface{}, error) {
+	battleSupTrickler.StopMaxInterval = ticksInFiveMinutes
+	battleSupTrickler.StopMaxError = 1
+	battleSupTrickler.DisableLogging = true
+	battleSupTrickler.FuncClean = func(interface{}, error) {
 		battleSupTrickler.Stop()
 	}
-	battleSupTrickler.StopMaxInterval = ticksInFiveMinutes
-	battleSupTrickler.DisableLogging = true
-	battleSupTrickler.FuncClean = cleanFunc
+	battleSupTrickler.FuncRecovery = func(error) {
+		battleSupTrickler.Stop()
+	}
 	battleSupTrickler.Start()
 
 	reply(true)
@@ -1074,7 +1077,7 @@ func (sc *SupremacyControllerWS) SupremacyRedeemFactionContractRewardHandler(ctx
 		return terror.Error(err, "Invalid request received")
 	}
 
-	if req.Payload.Amount.Cmp(big.NewInt(0)) < 0 {
+	if req.Payload.Amount.Cmp(big.NewInt(0)) <= 0 {
 		return terror.Error(terror.ErrInvalidInput, "Sups amount can not be negative")
 	}
 
