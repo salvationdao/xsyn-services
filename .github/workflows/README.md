@@ -35,7 +35,19 @@ STAGING_SSH_USER
    if staging, use `$PREVIOUS_TAG-rc.1`, incrementing the `rc.` number.  
    else fail.  
 
-   Also set any version related environment variables
+   Also set any version related environment variables  
+   **DEBUGGING**  
+   - Error `fatal: tag 'x.y.z-rc.n' already exists`  
+     Reason: There is a commit with 2 tags
+     Response: Switch to staging and increment the tag on a untagged commit.
+     `git switch staging && git commit --allow-empty -m 'tag error fix' && git tag x.y.z-rc.n+1 && git commit --allow-empty -m 'tag error fix'`
+   - Error `fatal: No names found, cannot describe anything.`  
+     Reason: There are no existing tags  
+     Response: ensure that `actions/checkout@v2` has `fetch-depth: "0"`  
+     Response alternitive: manually tag a commit on the same branch that the CI runs this  script on
+   - Error `fatal: something something GITHASH`  
+     This happens occasionally and I can't reproduce.
+     Response: Contact Nathan so it can be resolved and documented.
 
 3. Set private repo environment variables, build tools.  
 
