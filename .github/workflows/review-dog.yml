@@ -40,3 +40,16 @@ jobs:
           tool_name: errcheck
           reporter: github-pr-review
           fail_on_error: true
+
+  typecheck:
+    name: runner / typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+      - name: typecheck
+        uses: reviewdog/action-golangci-lint@v2
+        with:
+          tool_name: typecheck
+          reporter: github-pr-review
+          fail_on_error: true
