@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-20.04
     outputs:
       artifact_filename: ${{ steps.artifact.outputs.filename }}
+      version: ${{ steps.version.outputs.v }}
 
     steps:
       - uses: actions/checkout@v2
@@ -87,6 +88,8 @@ jobs:
 
       - id: artifact
         run: echo "::set-output name=filename::${{ steps.artifact.outputs.filename }}"
+      - id: version
+        run: echo "::set-output name=v::${{env.GITVERSION}}"
 
       - name: save artifact
         uses: actions/upload-artifact@v2
@@ -98,6 +101,8 @@ jobs:
   deploy:
     needs: [build]
     runs-on: ubuntu-20.04
+    env:
+      GITVERSION: ${{ needs.build.outputs.artifact_filename }}
     steps:
       - uses: actions/download-artifact@v2
         if: ${{ !env.ACT }} # if running in local test environment
