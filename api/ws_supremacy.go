@@ -289,7 +289,7 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 			return 0, terror.Error(result.Error)
 		}
 		if result.Transaction.Status == passport.TransactionFailed {
-			return 0, terror.Error(fmt.Errorf("failed to transfer sups from battle user to pool user"))
+			return 60, nil
 		}
 
 		// update pool cache
@@ -299,7 +299,7 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 
 		return 1, nil
 	})
-	battleSupTrickler.StopMaxInterval = ticksInFiveMinutes
+	battleSupTrickler.StopMaxInterval = ticksInFiveMinutes - 1
 	battleSupTrickler.StopMaxError = 1
 	battleSupTrickler.DisableLogging = true
 	battleSupTrickler.FuncClean = func(interface{}, error) {
