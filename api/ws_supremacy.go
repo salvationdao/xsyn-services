@@ -289,6 +289,7 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 			return 0, terror.Error(result.Error)
 		}
 		if result.Transaction.Status == passport.TransactionFailed {
+			sc.Log.Err(fmt.Errorf(result.Transaction.Reason)).Msgf("battle sup trickler transfer failed")
 			return 60, nil
 		}
 
