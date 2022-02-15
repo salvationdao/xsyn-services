@@ -7,49 +7,11 @@ jobs:
     steps:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
-      - name: golangci-lint
-        uses: reviewdog/action-golangci-lint@v2
+      - uses: reviewdog/action-setup@v1
         with:
-          reporter: github-pr-review
-          fail_on_error: true
-
-  golint:
-    name: runner / golint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-      - name: golint
-        uses: reviewdog/action-golangci-lint@v2
-        with:
-          tool_name: golint
-          reporter: github-pr-review
-          fail_on_error: true
-
-  errcheck:
-    name: runner / errcheck
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-      - name: errcheck
-        uses: reviewdog/action-golangci-lint@v2
-        with:
-          tool_name: errcheck
-          reporter: github-pr-review
-          fail_on_error: true
-
-  typecheck:
-    name: runner / typecheck
-    runs-on: ubuntu-latest
-    env:
-      REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-      - name: typecheck
-        uses: reviewdog/action-golangci-lint@v2
-        with:
-          tool_name: typecheck
-          reporter: github-pr-review
-          fail_on_error: true
+          reviewdog_version: latest
+      - name: Run reviewdog
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          reviewdog -reporter=github-pr-review -runners=golint,govet
