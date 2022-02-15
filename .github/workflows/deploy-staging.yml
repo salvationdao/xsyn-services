@@ -118,11 +118,11 @@ jobs:
 
       - name: Rsync to server
         if: ${{ !env.ACT }} # if running in local test environment
-        run: rsync -av deploy/ ${{ secrets.STAGING_SSH_HOST }}:/usr/share/ninja_syndicate/passport-api_${{${{ needs.build.outputs.version }}}}
+        run: rsync -av deploy/ ${{ secrets.STAGING_SSH_HOST }}:/usr/share/ninja_syndicate/passport-api_${{ needs.build.outputs.version }}
 
       - name: Copy previous config
         if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cp /usr/share/ninja_syndicate/passport-online/init/passport-staging.env /usr/share/ninja_syndicate/passport-api_${{${{ needs.build.outputs.version }}}}/init/passport-staging.env && cp /usr/share/ninja_syndicate/passport-online/init/passport-staging.env ~/.ssh/environment'
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cp /usr/share/ninja_syndicate/passport-online/init/passport-staging.env /usr/share/ninja_syndicate/passport-api_${{ needs.build.outputs.version }}/init/passport-staging.env && cp /usr/share/ninja_syndicate/passport-online/init/passport-staging.env ~/.ssh/environment'
 
       # - name: "DB: Backup" # Run this before changing the link
       #   if: ${{ !env.ACT }} # if running in local test environment
@@ -131,7 +131,7 @@ jobs:
 
       - name: Bring new version online
         if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'ln -Tfsv /usr/share/ninja_syndicate/passport-api_${{${{ needs.build.outputs.version }}}} /usr/share/ninja_syndicate/passport-online'
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'ln -Tfsv /usr/share/ninja_syndicate/passport-api_${{ needs.build.outputs.version }} /usr/share/ninja_syndicate/passport-online'
 
       - name: stop service
         if: ${{ !env.ACT }} # if running in local test environment
