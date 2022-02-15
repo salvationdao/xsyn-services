@@ -13,6 +13,8 @@ import (
 	"passport/log_helpers"
 	"strconv"
 
+	SentryTracer "github.com/ninja-syndicate/hub/ext/sentry"
+
 	"github.com/shopspring/decimal"
 
 	"nhooyr.io/websocket"
@@ -111,6 +113,7 @@ func NewAPI(
 		Hub: hub.New(&hub.Config{
 			ClientOfflineFn: cleanUpFunc,
 			Log:             zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
+			Tracer:          SentryTracer.New(),
 			WelcomeMsg: &hub.WelcomeMsg{
 				Key:     "WELCOME",
 				Payload: nil,
@@ -144,9 +147,6 @@ func NewAPI(
 
 		// faction war machine contract
 		factionWarMachineContractMap: make(map[passport.FactionID]chan func(*WarMachineContract)),
-
-		// asset repair
-
 	}
 
 	api.Routes.Use(middleware.RequestID)
@@ -264,8 +264,11 @@ func NewAPI(
 	go api.StartSupremacySupPool()
 
 	// Initial faction war machine contract
+	api.factionWarMachineContractMap[passport.RedMountainFactionID] = make(chan func(*WarMachineContract))
 	go api.InitialiseFactionWarMachineContract(passport.RedMountainFactionID)
+	api.factionWarMachineContractMap[passport.BostonCyberneticsFactionID] = make(chan func(*WarMachineContract))
 	go api.InitialiseFactionWarMachineContract(passport.BostonCyberneticsFactionID)
+	api.factionWarMachineContractMap[passport.ZaibatsuFactionID] = make(chan func(*WarMachineContract))
 	go api.InitialiseFactionWarMachineContract(passport.ZaibatsuFactionID)
 
 	// Initialise repair center
@@ -297,7 +300,7 @@ func (api *API) Dummysale(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	api.MessageBus.Send(messagebus.BusKey(HubKeySUPSRemainingSubscribe), sups.String())
+	api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSRemainingSubscribe), sups.String())
 
 	return http.StatusAccepted, nil
 }

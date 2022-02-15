@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"passport"
+	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
@@ -45,6 +46,7 @@ func UserBalance(ctx context.Context, conn Conn, userID passport.UserID) (*passp
 	if err != nil {
 		return nil, terror.Error(err)
 	}
+	wrap.Sups.Init()
 	return &wrap.Sups, nil
 }
 
@@ -243,4 +245,60 @@ func CreateChainConfirmationEntry(ctx context.Context, conn Conn, tx string, txR
 	}
 
 	return conf, nil
+}
+
+func BattleArenaSupsTopContributors(ctx context.Context, conn Conn, startTime, endTime time.Time) ([]*passport.User, error) {
+	uss := []*passport.User{}
+	q := `
+		SELECT 
+			u.username, 
+			u.avatar_id,
+			u.faction_id 
+		FROM 
+			transactions t
+		INNER JOIN 
+			users u ON u.id = t.debit AND u.faction_id NOTNULL
+		WHERE
+			t.credit = $1 AND t.created_at >= $2 AND t.created_at <= $3
+		GROUP BY 
+			u.id, t.debit
+		ORDER BY 
+			SUM(t.amount) DESC
+		LIMIT 3
+	`
+	err := pgxscan.Select(ctx, conn, &uss, q, passport.SupremacyBattleUserID, startTime, endTime)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return uss, nil
+}
+
+func BattleArenaSupsTopContributeFaction(ctx context.Context, conn Conn, startTime, endTime time.Time) ([]*passport.Faction, error) {
+	fss := []*passport.Faction{}
+	q := `
+		SELECT 
+			f.id,
+			f.label,
+			f.logo_blob_id
+		FROM 
+			transactions t
+		INNER JOIN 
+			users u ON u.id = t.debit AND u.faction_id NOTNULL
+		INNER JOIN 
+			factions f ON f.id = u.faction_id 
+		WHERE
+			t.credit = $1 AND t.created_at >= $2 AND t.created_at <= $3
+		GROUP BY 
+			f.id, t.debit
+		ORDER BY 
+			SUM(t.amount) DESC
+		LIMIT 3
+	`
+	err := pgxscan.Select(ctx, conn, &fss, q, passport.SupremacyBattleUserID, startTime, endTime)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return fss, nil
 }

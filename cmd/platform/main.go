@@ -160,8 +160,10 @@ func main() {
 					ctx, cancel := context.WithCancel(c.Context)
 					environment := c.String("environment")
 					log := log_helpers.LoggerInitZero(environment)
+
 					log.Info().Msg("zerolog initialised")
-					log.Level(zerolog.DebugLevel)
+					nlog := log.Level(zerolog.DebugLevel)
+					log = &nlog
 					g := &run.Group{}
 					// Listen for os.interrupt
 					g.Add(run.SignalHandler(ctx, os.Interrupt))
@@ -272,7 +274,7 @@ func pgxconnect(
 		return nil, terror.Panic(err, "could not initialise database")
 	}
 	poolConfig.ConnConfig.LogLevel = pgx.LogLevelTrace
-	poolConfig.MaxConns = 100
+	poolConfig.MaxConns = 95
 
 	ctx := context.Background()
 	conn, err := pgxpool.ConnectConfig(ctx, poolConfig)

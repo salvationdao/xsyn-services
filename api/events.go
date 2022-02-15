@@ -45,10 +45,10 @@ func (api *API) ClientLogout(ctx context.Context, client *hub.Client, clients hu
 	// remove offline user to our user cache
 	go api.RemoveUserFromCache(userID)
 
-	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, client.Identifier())), false)
+	api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, client.Identifier())), false)
 	api.MessageBus.Unsub("", client, "")
 	// broadcast user online status to server clients
-	api.SendToAllServerClient(&ServerClientMessage{
+	api.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: UserOnlineStatus,
 		Payload: struct {
 			UserID string `json:"userID"`
@@ -91,16 +91,16 @@ func (api *API) ClientAuth(ctx context.Context, client *hub.Client, clients hub.
 	client.SetPermissions(user.Role.Permissions)
 
 	// add online user to our user cache
-	go api.InsertUserToCache(user)
+	go api.InsertUserToCache(ctx, user)
 
 	// broadcast user online status
-	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, user.ID.String())), true)
+	api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, user.ID.String())), true)
 
 	// broadcast user to gamebar
-	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyGamebarUserSubscribe, client.SessionID)), user)
+	api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyGamebarUserSubscribe, client.SessionID)), user)
 
 	// broadcast user online status to server clients
-	api.SendToAllServerClient(&ServerClientMessage{
+	api.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: UserOnlineStatus,
 		Payload: struct {
 			UserID passport.UserID `json:"userID"`

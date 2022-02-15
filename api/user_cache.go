@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"passport"
@@ -39,14 +40,14 @@ func (api *API) UserCache(fn UserCacheFunc) {
 }
 
 // InsertUserToCache adds a user to the cache
-func (api *API) InsertUserToCache(user *passport.User) {
+func (api *API) InsertUserToCache(ctx context.Context, user *passport.User) {
 	api.UserCache(func(userMap UserCacheMap) {
 		userMap[user.ID] = &UserCache{User: user, CacheLastUpdated: time.Now()}
 
 		// broadcast the update to the users connected directly to passport
-		api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID)), user)
+		api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID)), user)
 		// broadcast the update to connect client servers
-		api.SendToAllServerClient(&ServerClientMessage{
+		api.SendToAllServerClient(ctx, &ServerClientMessage{
 			Key: UserUpdated,
 			Payload: struct {
 				User *passport.User `json:"user"`
@@ -56,13 +57,13 @@ func (api *API) InsertUserToCache(user *passport.User) {
 		})
 
 		if !user.ID.IsSystemUser() {
-			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
+			api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 		}
 	})
 }
 
 // UpdateUserInCache updates a user in the cache, if user doesn't exist it does nothing
-func (api *API) UpdateUserInCache(user *passport.User) {
+func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) {
 
 	api.UserCache(func(userMap UserCacheMap) {
 		// cache map should have the latest user sups detail
@@ -87,7 +88,7 @@ func (api *API) UpdateUserInCache(user *passport.User) {
 
 		// broadcast user sups, if user is not the system user
 		if !user.ID.IsSystemUser() {
-			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
+			api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 		}
 	})
 }
@@ -100,21 +101,21 @@ func (api *API) RemoveUserFromCache(userID passport.UserID) {
 }
 
 // UpdateUserCacheAddSups updates a users sups in the cache and adds the given amount
-func (api *API) UpdateUserCacheAddSups(userID passport.UserID, amount big.Int) {
+func (api *API) UpdateUserCacheAddSups(ctx context.Context, userID passport.UserID, amount big.Int) {
 	api.UserCache(func(userMap UserCacheMap) {
 		user, ok := userMap[userID]
 		if ok {
 			user.Sups.Int = *user.Sups.Int.Add(&user.Sups.Int, &amount)
 
 			if !user.ID.IsSystemUser() {
-				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
+				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 			}
 		}
 	})
 }
 
 // UpdateUserCacheRemoveSups updates a users sups in the cache and removes the given amount, returns error if not enough
-func (api *API) UpdateUserCacheRemoveSups(userID passport.UserID, amount big.Int, errChan chan error) {
+func (api *API) UpdateUserCacheRemoveSups(ctx context.Context, userID passport.UserID, amount big.Int, errChan chan error) {
 	api.UserCache(func(userMap UserCacheMap) {
 
 		user, ok := userMap[userID]
@@ -129,7 +130,7 @@ func (api *API) UpdateUserCacheRemoveSups(userID passport.UserID, amount big.Int
 			user.Sups.Int = *user.Sups.Int.Sub(&user.Sups.Int, &amount)
 
 			if !user.ID.IsSystemUser() {
-				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
+				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 			}
 
 		}
