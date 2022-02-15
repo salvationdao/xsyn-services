@@ -22,7 +22,7 @@ func (api *API) HandleTransactions() {
 			transaction.Amount,
 			transaction.To,
 			transaction.From,
-			"",
+			transaction.Description,
 			transaction.TransactionReference,
 		)
 		if err != nil {

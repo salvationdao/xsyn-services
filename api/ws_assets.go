@@ -104,11 +104,9 @@ func (ac *AssetController) LeaveQueueHandler(ctx context.Context, hubc *hub.Clie
 	ac.API.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: AssetQueueLeave,
 		Payload: struct {
-			// TODO: change this to metadata
-			WarMachineNFT *passport.WarMachineMetadata `json:"warMachineNFT"`
+			WarMachineMetadata *passport.WarMachineMetadata `json:"warMachineMetadata"`
 		}{
-			// TODO: change this to metadata
-			WarMachineNFT: warMachineMetadata,
+			WarMachineMetadata: warMachineMetadata,
 		},
 	})
 
@@ -212,11 +210,9 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	ac.API.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: AssetQueueJoin,
 		Payload: struct {
-			// TODO: change this to metadata
-			WarMachineNFT *passport.WarMachineMetadata `json:"warMachineNFT"`
+			WarMachineMetadata *passport.WarMachineMetadata `json:"warMachineMetadata"`
 		}{
-			// TODO: change this to metadata
-			WarMachineNFT: warMachineMetadata,
+			WarMachineMetadata: warMachineMetadata,
 		},
 	})
 
