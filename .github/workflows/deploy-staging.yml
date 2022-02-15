@@ -1,4 +1,4 @@
-name: Staging Deployment
+name: Build and deploy to staging
 
 on:
   push:
@@ -8,7 +8,7 @@ env:
   GO_VERSION: 1.17.7
 
 jobs:
-  cd:
+  build:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -66,8 +66,8 @@ jobs:
         run: |
           go build \
             -ldflags "-X main.Version=${{env.GITVERSION}} -X main.GitHash=${{env.GITHASH}} -X main.GitBranch=${{env.GITBRANCH}} -X main.BuildDate=${{env.BUILDDATE}} -X main.UnCommittedFiles=${{env.GITSTATE}}" \
-            -gcflags=-trimpath=$(pwd) \
-            -asmflags=-trimpath=$(pwd) \
+            -gcflags=-trimpath=${{env.GITHUB_WORKSPACE}} \
+            -asmflags=-trimpath=${{env.GITHUB_WORKSPACE}} \            
             -o deploy/passport-api \
             cmd/platform/main.go
 
@@ -83,6 +83,23 @@ jobs:
       # Send to server
       - name: List deploy dir
         run: find deploy
+
+      - name: save artifact
+        uses: actions/upload-artifact@v2
+        if: ${{ !env.ACT }} # if running in local test environment
+        with:
+          name: passport-web_${{env.TAG_NAME}}.tar.gz
+          path: ./deploy/
+
+  deploy:
+    needs: [build]
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/download-artifact@v2
+        if: ${{ !env.ACT }} # if running in local test environment
+        with:
+          name: passport-web_${{env.TAG_NAME}}.tar.gz
+          path: ./deploy
 
       - name: Setup SSH
         run: |
