@@ -76,9 +76,13 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 
 	// sups contribute
 	api.SupremacyCommand(HubKeySupremacyAbilityTargetPriceUpdate, supremacyHub.SupremacyAbilityTargetPriceUpdate)
+	api.SupremacyCommand(HubKeySupremacyTopSupsContruteUser, supremacyHub.SupremacyTopSupsContributeUser)
+	api.SupremacyCommand(HubKeySupremacyUserGet, supremacyHub.SupremacyUserGet)
 
 	// faction stat
 	api.SupremacyCommand(HubKeySupremacyFactionStatSend, supremacyHub.SupremacyFactionStatSend)
+	// user stat
+	api.SupremacyCommand(HubKeySupremacyUserStatSend, supremacyHub.SupremacyUserStatSend)
 
 	return supremacyHub
 }
@@ -243,6 +247,12 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 const HubKeySupremacyTransferBattleFundToSupPool = hub.HubCommandKey("SUPREMACY:TRANSFER_BATTLE_FUND_TO_SUP_POOL")
 
 func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	// recalculate faction mvp user
+	err := db.FactionMvpMaterialisedViewRefresh(ctx, sc.Conn)
+	if err != nil {
+		return terror.Error(err, "Failed to refresh faction mvp list")
+	}
+
 	// get sups from battle user
 	battleUser, err := db.UserBalance(ctx, sc.Conn, passport.SupremacyBattleUserID)
 	if err != nil {
@@ -577,8 +587,6 @@ func (sc *SupremacyControllerWS) SupremacyGetSpoilOfWarHandler(ctx context.Conte
 	return nil
 }
 
-const HubKeySupremacyAbilityTargetPriceUpdate = hub.HubCommandKey("SUPREMACY:ABILITY:TARGET:PRICE:UPDATE")
-
 type SupremacyAbilityTargetPriceUpdateRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
@@ -587,6 +595,8 @@ type SupremacyAbilityTargetPriceUpdateRequest struct {
 		SupsCost          string `json:"supsCost"`
 	} `json:"payload"`
 }
+
+const HubKeySupremacyAbilityTargetPriceUpdate = hub.HubCommandKey("SUPREMACY:ABILITY:TARGET:PRICE:UPDATE")
 
 func (sc *SupremacyControllerWS) SupremacyAbilityTargetPriceUpdate(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &SupremacyAbilityTargetPriceUpdateRequest{}
@@ -600,6 +610,79 @@ func (sc *SupremacyControllerWS) SupremacyAbilityTargetPriceUpdate(ctx context.C
 	if err != nil {
 		return terror.Error(err)
 	}
+
+	return nil
+}
+
+type SupremacyTopSupsContributorRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		StartTime time.Time `json:"startTime"`
+		EndTime   time.Time `json:"endTime"`
+	} `json:"payload"`
+}
+
+type SupremacyTopSupsContributorResponse struct {
+	TopSupsContributor       *passport.User    `json:"topSupsContributor"`
+	TopSupsContributeFaction *passport.Faction `json:"topSupsContributeFaction"`
+}
+
+const HubKeySupremacyTopSupsContruteUser = hub.HubCommandKey("SUPREMACY:TOP_SUPS_CONTRIBUTORS")
+
+func (sc *SupremacyControllerWS) SupremacyTopSupsContributeUser(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupremacyTopSupsContributorRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// get top contribute users
+	topSupsContributors, err := db.BattleArenaSupsTopContributors(ctx, sc.Conn, req.Payload.StartTime, req.Payload.EndTime)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// get top contribute faction
+	topSupsContributeFactions, err := db.BattleArenaSupsTopContributeFaction(ctx, sc.Conn, req.Payload.StartTime, req.Payload.EndTime)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	result := &SupremacyTopSupsContributorResponse{}
+	if len(topSupsContributors) > 0 {
+		result.TopSupsContributor = topSupsContributors[0]
+	}
+	if len(topSupsContributeFactions) > 0 {
+		result.TopSupsContributeFaction = topSupsContributeFactions[0]
+	}
+
+	reply(result)
+
+	return nil
+}
+
+type SupremacyUserGetRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		UserID passport.UserID `json:"userID"`
+	} `json:"payload"`
+}
+
+const HubKeySupremacyUserGet = hub.HubCommandKey("SUPREMACY:GET_USER")
+
+func (sc *SupremacyControllerWS) SupremacyUserGet(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupremacyUserGetRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	user, err := db.UserGet(ctx, sc.Conn, req.Payload.UserID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	reply(user)
 
 	return nil
 }
@@ -685,17 +768,12 @@ func (sc *SupremacyControllerWS) SupremacyFactionStatSend(ctx context.Context, w
 		factionStatSend.FactionStat.Velocity = 0
 
 		// get mvp
-		if factionStatSend.FactionStat.MvpTokenID > 0 {
-			assetMetadata, err := db.XsynMetadataGet(ctx, sc.Conn, factionStatSend.FactionStat.MvpTokenID)
-			if err != nil {
-				sc.Log.Err(err).Msgf("Failed to get mvp asset %v", factionStatSend.FactionStat.MvpTokenID)
-				continue
-			}
-
-			// NOTE: currently just return the of asset name,
-			//       can pass back more data back as we want in the future
-			factionStatSend.FactionStat.MVP = assetMetadata.Name
+		mvp, err := db.FactionMvpGet(ctx, sc.Conn, factionStatSend.FactionStat.ID)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			sc.Log.Err(err).Msgf("faction to get mvp from faction %s", factionStatSend.FactionStat.ID)
+			continue
 		}
+		factionStatSend.FactionStat.MVP = mvp
 
 		if factionStatSend.ToUserID == nil && factionStatSend.ToUserSessionID == nil {
 			// broadcast to all faction stat subscribers
@@ -714,6 +792,47 @@ func (sc *SupremacyControllerWS) SupremacyFactionStatSend(ctx context.Context, w
 
 		// broadcast to the target user
 		sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionStatUpdatedSubscribe, factionStatSend.FactionStat.ID)), factionStatSend.FactionStat, filterOption)
+	}
+
+	return nil
+}
+
+type SupremacyUserStatSendRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		UserStatSends []*UserStatSend `json:"userStatSends"`
+	} `json:"payload"`
+}
+
+type UserStatSend struct {
+	ToUserSessionID *hub.SessionID     `json:"toUserSessionID,omitempty"`
+	Stat            *passport.UserStat `json:"stat"`
+}
+
+const HubKeySupremacyUserStatSend = hub.HubCommandKey("SUPREMACY:USER_STAT_SEND")
+
+func (sc *SupremacyControllerWS) SupremacyUserStatSend(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupremacyUserStatSendRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	for _, userStatSend := range req.Payload.UserStatSends {
+
+		if userStatSend.ToUserSessionID == nil {
+			// broadcast to all faction stat subscribers
+			sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, userStatSend.Stat.ID)), userStatSend.Stat)
+			continue
+		}
+
+		// broadcast to specific subscribers
+		filterOption := messagebus.BusSendFilterOption{}
+		if userStatSend.ToUserSessionID != nil {
+			filterOption.SessionID = *userStatSend.ToUserSessionID
+		}
+
+		sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, userStatSend.Stat.ID)), userStatSend.Stat, filterOption)
 	}
 
 	return nil

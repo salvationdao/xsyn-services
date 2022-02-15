@@ -127,11 +127,6 @@ type WarMachineContract struct {
 }
 
 func (api *API) InitialiseFactionWarMachineContract(factionID passport.FactionID) {
-	// initialise channel
-	api.factionWarMachineContractMapLock.Lock()
-	api.factionWarMachineContractMap[factionID] = make(chan func(*WarMachineContract))
-	api.factionWarMachineContractMapLock.Unlock()
-
 	// get min price
 	minPrice := big.NewInt(0)
 	minPrice, ok := minPrice.SetString(MinimumContractReward, 10)

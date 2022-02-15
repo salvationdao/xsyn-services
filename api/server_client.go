@@ -161,6 +161,7 @@ const (
 	UserEnlistFaction          ServerClientMessageAction = "USER:ENLIST:FACTION"
 	UserSupsUpdated            ServerClientMessageAction = "USER:SUPS:UPDATED"
 	UserSupsMultiplierGet      ServerClientMessageAction = "USER:SUPS:MULTIPLIER:GET"
+	UserStatGet                ServerClientMessageAction = "USER:STAT:GET"
 	AssetUpdated               ServerClientMessageAction = "ASSET:UPDATED"
 	AssetQueueJoin             ServerClientMessageAction = "ASSET:QUEUE:JOIN"
 	AssetQueueLeave            ServerClientMessageAction = "ASSET:QUEUE:LEAVE"

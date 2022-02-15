@@ -82,7 +82,6 @@ CREATE TABLE factions
     description        TEXT             NOT NULL DEFAULT ''
 );
 
-
 /**********
  *  Roles  *
  **********/

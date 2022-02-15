@@ -148,22 +148,11 @@ func (s *Seeder) zaibatsuWarMachineAbilitySet(ctx context.Context, abilities []*
 		return terror.Error(err)
 	}
 
-	for i, wm := range warMachines {
+	for _, wm := range warMachines {
 		abilityMetadata := &passport.AbilityMetadata{}
-		passport.ParseAbilityMetadata(abilities[i%len(abilities)], abilityMetadata)
+		passport.ParseAbilityMetadata(abilities[0], abilityMetadata)
 
 		err := db.WarMachineAbilitySet(ctx, s.Conn, wm.TokenID, abilityMetadata.TokenID, passport.WarMachineAttFieldAbility01)
-		if err != nil {
-			return terror.Error(err)
-		}
-
-		err = db.WarMachineAbilityCostUpsert(ctx, s.Conn, wm.TokenID, abilityMetadata.TokenID, abilityMetadata.SupsCost)
-		if err != nil {
-			return terror.Error(err)
-		}
-
-		passport.ParseAbilityMetadata(abilities[i+1%len(abilities)], abilityMetadata)
-		err = db.WarMachineAbilitySet(ctx, s.Conn, wm.TokenID, abilityMetadata.TokenID, passport.WarMachineAttFieldAbility02)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -184,7 +173,7 @@ var factions = []*passport.Faction{
 		Theme: &passport.FactionTheme{
 			Primary:    "#C24242",
 			Secondary:  "#FFFFFF",
-			Background: "#0D0404",
+			Background: "#120E0E",
 		},
 		// NOTE: change content
 		Description: "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
@@ -195,7 +184,7 @@ var factions = []*passport.Faction{
 		Theme: &passport.FactionTheme{
 			Primary:    "#428EC1",
 			Secondary:  "#FFFFFF",
-			Background: "#050A12",
+			Background: "#080C12",
 		},
 		// NOTE: change content
 		Description: "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
@@ -257,6 +246,13 @@ func (s *Seeder) factions(ctx context.Context) ([]*passport.Faction, error) {
 			return nil, terror.Error(err)
 		}
 	}
+
+	// build faction mvp material view
+	err := db.FactionMvpMaterialisedViewCreate(ctx, s.Conn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
 	return factions, nil
 }
 

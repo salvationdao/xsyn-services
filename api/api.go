@@ -12,7 +12,6 @@ import (
 	"passport/email"
 	"passport/log_helpers"
 	"strconv"
-	"sync"
 
 	SentryTracer "github.com/ninja-syndicate/hub/ext/sentry"
 
@@ -72,10 +71,9 @@ type API struct {
 	supremacySupsPool chan func(*SupremacySupPool)
 
 	// War Machine Queue Contract
-	factionWarMachineContractMapLock sync.Mutex
-	factionWarMachineContractMap     map[passport.FactionID]chan func(*WarMachineContract)
-	fastAssetRepairCenter            chan func(RepairQueue)
-	standardAssetRepairCenter        chan func(RepairQueue)
+	factionWarMachineContractMap map[passport.FactionID]chan func(*WarMachineContract)
+	fastAssetRepairCenter        chan func(RepairQueue)
+	standardAssetRepairCenter    chan func(RepairQueue)
 
 	// Queue Reward
 	TxConn *sql.DB
@@ -148,8 +146,7 @@ func NewAPI(
 		supremacySupsPool: make(chan func(*SupremacySupPool)),
 
 		// faction war machine contract
-		factionWarMachineContractMapLock: sync.Mutex{},
-		factionWarMachineContractMap:     make(map[passport.FactionID]chan func(*WarMachineContract)),
+		factionWarMachineContractMap: make(map[passport.FactionID]chan func(*WarMachineContract)),
 	}
 
 	api.Routes.Use(middleware.RequestID)
@@ -267,8 +264,11 @@ func NewAPI(
 	go api.StartSupremacySupPool()
 
 	// Initial faction war machine contract
+	api.factionWarMachineContractMap[passport.RedMountainFactionID] = make(chan func(*WarMachineContract))
 	go api.InitialiseFactionWarMachineContract(passport.RedMountainFactionID)
+	api.factionWarMachineContractMap[passport.BostonCyberneticsFactionID] = make(chan func(*WarMachineContract))
 	go api.InitialiseFactionWarMachineContract(passport.BostonCyberneticsFactionID)
+	api.factionWarMachineContractMap[passport.ZaibatsuFactionID] = make(chan func(*WarMachineContract))
 	go api.InitialiseFactionWarMachineContract(passport.ZaibatsuFactionID)
 
 	// Initialise repair center

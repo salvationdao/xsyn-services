@@ -118,3 +118,12 @@ type UserOnlineStatusChange struct {
 	ID     UserID `json:"id" db:"id"`
 	Online bool   `json:"online"`
 }
+
+// from game server
+type UserStat struct {
+	ID                    UserID `json:"id"`
+	ViewBattleCount       int64  `json:"viewBattleCount"`
+	TotalVoteCount        int64  `json:"totalVoteCount"`
+	TotalAbilityTriggered int64  `json:"totalAbilityTriggered"`
+	KillCount             int64  `json:"killCount"`
+}
