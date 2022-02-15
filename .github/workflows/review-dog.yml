@@ -21,6 +21,7 @@ jobs:
       - name: golint
         uses: reviewdog/action-golangci-lint@v2
         with:
+          tool_name: golint
           reporter: github-pr-review
 
   errcheck:
@@ -32,4 +33,5 @@ jobs:
       - name: errcheck
         uses: reviewdog/action-golangci-lint@v2
         with:
+          tool_name: errcheck
           reporter: github-pr-review
