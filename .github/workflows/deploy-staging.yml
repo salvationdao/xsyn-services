@@ -95,7 +95,7 @@ jobs:
         uses: actions/upload-artifact@v2
         if: ${{ !env.ACT }} # if running in local test environment
         with:
-          name: passport-web_${{env.GITVERSION}}
+          name: passport-api_${{env.GITVERSION}}
           path: ./deploy/
 
   deploy:
@@ -106,7 +106,7 @@ jobs:
         if: ${{ !env.ACT }} # if running in local test environment
         with:
           name: ${{ needs.build.outputs.artifact_filename }}
-          path: ./deploy
+          path: ./deploy/
 
       - name: Setup SSH
         run: |
