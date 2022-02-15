@@ -169,7 +169,7 @@ func main() {
 					// start the server
 					g.Add(func() error { return ServeFunc(c, ctx, log) }, func(err error) { cancel() })
 
-					err := g.Run()
+					g.Run()
 
 					return nil
 				},
