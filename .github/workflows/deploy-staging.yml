@@ -106,7 +106,6 @@ jobs:
         if: ${{ !env.ACT }} # if running in local test environment
         with:
           name: ${{ needs.build.outputs.artifact_filename }}
-          path: ./deploy/
 
       - name: Setup SSH
         run: |
@@ -118,7 +117,7 @@ jobs:
 
       - name: Rsync to server
         if: ${{ !env.ACT }} # if running in local test environment
-        run: rsync -av deploy/ ${{ secrets.STAGING_SSH_HOST }}:/usr/share/ninja_syndicate/passport-api_${{ needs.build.outputs.version }}
+        run: rsync -av "$PWD" ${{ secrets.STAGING_SSH_HOST }}:/usr/share/ninja_syndicate/passport-api_${{ needs.build.outputs.version }}
 
       - name: Copy previous config
         if: ${{ !env.ACT }} # if running in local test environment
