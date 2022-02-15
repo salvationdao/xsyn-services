@@ -1,13 +1,35 @@
-name: Review Dog
+name: reviewdog
 on: [pull_request]
 jobs:
   golangci-lint:
     name: runner / golangci-lint
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
       - name: golangci-lint
+        uses: reviewdog/action-golangci-lint@v2
+        with:
+          reporter: github-pr-review
+
+  golint:
+    name: runner / golint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+      - name: golint
+        uses: reviewdog/action-golangci-lint@v2
+        with:
+          reporter: github-pr-review
+
+  errcheck:
+    name: runner / errcheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+      - name: errcheck
         uses: reviewdog/action-golangci-lint@v2
         with:
           reporter: github-pr-review
