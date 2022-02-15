@@ -66,8 +66,6 @@ jobs:
         run: |
           go build \
             -ldflags "-X main.Version=${{env.GITVERSION}} -X main.GitHash=${{env.GITHASH}} -X main.GitBranch=${{env.GITBRANCH}} -X main.BuildDate=${{env.BUILDDATE}} -X main.UnCommittedFiles=${{env.GITSTATE}}" \
-            -gcflags=-trimpath=${{env.GITHUB_WORKSPACE}} \
-            -asmflags=-trimpath=${{env.GITHUB_WORKSPACE}} \            
             -o deploy/passport-api \
             cmd/platform/main.go
 
