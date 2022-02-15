@@ -289,7 +289,8 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 			return 0, terror.Error(result.Error)
 		}
 		if result.Transaction.Status == passport.TransactionFailed {
-			return 0, terror.Error(fmt.Errorf("failed to transfer sups from battle user to pool user"))
+			sc.Log.Err(fmt.Errorf(result.Transaction.Reason)).Msgf("battle sup trickler transfer failed")
+			return 60, nil
 		}
 
 		// update pool cache
@@ -299,7 +300,7 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 
 		return 1, nil
 	})
-	battleSupTrickler.StopMaxInterval = ticksInFiveMinutes
+	battleSupTrickler.StopMaxInterval = ticksInFiveMinutes - 1
 	battleSupTrickler.StopMaxError = 1
 	battleSupTrickler.DisableLogging = true
 	battleSupTrickler.FuncClean = func(interface{}, error) {
@@ -641,13 +642,13 @@ func (sc *SupremacyControllerWS) SupremacyTopSupsContributeUser(ctx context.Cont
 
 	// get top contribute users
 	topSupsContributors, err := db.BattleArenaSupsTopContributors(ctx, sc.Conn, req.Payload.StartTime, req.Payload.EndTime)
-	if err != nil {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return terror.Error(err)
 	}
 
 	// get top contribute faction
 	topSupsContributeFactions, err := db.BattleArenaSupsTopContributeFaction(ctx, sc.Conn, req.Payload.StartTime, req.Payload.EndTime)
-	if err != nil {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return terror.Error(err)
 	}
 
