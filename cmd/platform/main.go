@@ -18,7 +18,6 @@ import (
 
 	_ "github.com/lib/pq" //postgres drivers for initialization
 
-	"github.com/getsentry/sentry-go"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
@@ -171,10 +170,7 @@ func main() {
 					g.Add(func() error { return ServeFunc(c, ctx, log) }, func(err error) { cancel() })
 
 					err := g.Run()
-					if errors.Is(err, run.SignalError{Signal: os.Interrupt}) {
-						err = terror.Warn(err)
-					}
-					log_helpers.TerrorEcho(sentry.CurrentHub(), err, log)
+
 					return nil
 				},
 			},
