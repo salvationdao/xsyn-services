@@ -101,7 +101,7 @@ func (ac *AssetController) LeaveQueueHandler(ctx context.Context, hubc *hub.Clie
 	}
 
 	// release the asset from the queue
-	ac.API.SendToAllServerClient(&ServerClientMessage{
+	ac.API.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: AssetQueueLeave,
 		Payload: struct {
 			// TODO: change this to metadata
@@ -167,8 +167,10 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 
 	// get current faction contract reward
 	contractRewardChan := make(chan big.Int)
-	ac.API.factionWarMachineContractMap[*user.FactionID] <- func(wmc *WarMachineContract) {
-		contractRewardChan <- wmc.CurrentReward
+	if _, ok := ac.API.factionWarMachineContractMap[*user.FactionID]; ok {
+		ac.API.factionWarMachineContractMap[*user.FactionID] <- func(wmc *WarMachineContract) {
+			contractRewardChan <- wmc.CurrentReward
+		}
 	}
 	warMachineMetadata.ContractReward = <-contractRewardChan
 
@@ -207,7 +209,7 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	warMachineMetadata.FactionID = *user.FactionID
 
 	// join the asset to the queue
-	ac.API.SendToAllServerClient(&ServerClientMessage{
+	ac.API.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: AssetQueueJoin,
 		Payload: struct {
 			// TODO: change this to metadata
@@ -270,7 +272,7 @@ func (ac *AssetController) PayAssetInsuranceHandler(ctx context.Context, hubc *h
 	}
 
 	// fire request to server client
-	ac.API.SendToAllServerClient(&ServerClientMessage{
+	ac.API.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: AssetInsurancePay,
 		Payload: struct {
 			FactionID    passport.FactionID `json:"factionID"`
@@ -380,7 +382,6 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hub
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), nil
 }
 
-// 	rootHub.SecureCommand(HubKeyAssetQueueContractReward, AssetController.AssetSubscribe)
 const HubKeyAssetQueueContractReward hub.HubCommandKey = "ASSET:QUEUE:CONTRACT:REWARD"
 
 func (ac *AssetController) AssetQueueContractRewardSubscriber(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
@@ -401,8 +402,10 @@ func (ac *AssetController) AssetQueueContractRewardSubscriber(ctx context.Contex
 		return "", "", terror.Error(err)
 	}
 
-	ac.API.factionWarMachineContractMap[faction.ID] <- func(wmc *WarMachineContract) {
-		reply(wmc.CurrentReward.String())
+	if _, ok := ac.API.factionWarMachineContractMap[faction.ID]; ok {
+		ac.API.factionWarMachineContractMap[faction.ID] <- func(wmc *WarMachineContract) {
+			reply(wmc.CurrentReward.String())
+		}
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetQueueContractReward, faction.ID)), nil
@@ -467,9 +470,9 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 		return terror.Error(err)
 	}
 
-	ac.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.TokenID)), asset)
+	ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.TokenID)), asset)
 
-	ac.API.SendToAllServerClient(&ServerClientMessage{
+	ac.API.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: AssetUpdated,
 		Payload: struct {
 			Asset *passport.XsynMetadata `json:"asset"`

@@ -9,7 +9,10 @@ import (
 	"passport"
 	"passport/db"
 	"passport/log_helpers"
+	"sync"
 	"time"
+
+	"github.com/ninja-software/tickle"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
@@ -22,9 +25,13 @@ import (
 
 // SupremacyControllerWS holds handlers for supremacy and the supremacy held transactions
 type SupremacyControllerWS struct {
-	Conn *pgxpool.Pool
-	Log  *zerolog.Logger
-	API  *API
+	Conn            *pgxpool.Pool
+	Log             *zerolog.Logger
+	API             *API
+	TickerPoolCache struct {
+		lock          sync.Mutex
+		AmountTicking *big.Int
+	}
 }
 
 // NewSupremacyController creates the supremacy hub
@@ -33,12 +40,20 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 		Conn: conn,
 		Log:  log_helpers.NamedLogger(log, "supremacy"),
 		API:  api,
+		TickerPoolCache: struct {
+			lock          sync.Mutex
+			AmountTicking *big.Int
+		}{
+			lock:          sync.Mutex{},
+			AmountTicking: big.NewInt(0),
+		},
 	}
 
 	// sup control
 	api.SupremacyCommand(HubKeySupremacyHoldSups, supremacyHub.SupremacyHoldSupsHandler)
 	api.SupremacyCommand(HubKeySupremacyCommitTransactions, supremacyHub.SupremacyCommitTransactionsHandler)
 	api.SupremacyCommand(HubKeySupremacyReleaseTransactions, supremacyHub.SupremacyReleaseTransactionsHandler)
+
 	api.SupremacyCommand(HubKeySupremacyTickerTick, supremacyHub.SupremacyTickerTickHandler)
 	api.SupremacyCommand(HubKeySupremacyGetSpoilOfWar, supremacyHub.SupremacyGetSpoilOfWarHandler)
 	api.SupremacyCommand(HubKeySupremacyTransferBattleFundToSupPool, supremacyHub.SupremacyTransferBattleFundToSupPoolHandler)
@@ -135,7 +150,7 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 	}
 
 	errChan := make(chan error, 10)
-	sc.API.HoldTransaction(errChan, tx)
+	sc.API.HoldTransaction(ctx, errChan, tx)
 
 	err = <-errChan
 	if err != nil {
@@ -178,21 +193,17 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 
 	var transactions []*passport.NewTransaction
 
-	/////////////////////////////////////////
-	//  Standard Sups From Supremacy User  //
-	/////////////////////////////////////////
-
-	// 50 sups per 60 second
-	// supremacy ticker tick every 3 second, so grab 2.5 sups on every tick
-	supPool := big.NewInt(0)
-	supPool, ok := supPool.SetString("2500000000000000000", 10)
-	if !ok {
-		return terror.Error(fmt.Errorf("failed to convert 2500000000000000000 to big int"))
+	// we take the whole balance of supremacy sup pool and give it to the users watching
+	// amounts depend on their multiplier
+	// the supremacy sup pool user gets sups trickled into it from the last battle and 4 every 5 seconds
+	supsForTick, err := db.UserBalance(ctx, sc.Conn, passport.SupremacySupPoolUserID)
+	if err != nil {
+		return terror.Error(err)
 	}
 
+	supPool := &supsForTick.Int
 	onePointWorth := big.NewInt(0)
-	onePointWorth.Div(supPool, big.NewInt(int64(totalPoints)))
-
+	onePointWorth = onePointWorth.Div(supPool, big.NewInt(int64(totalPoints)))
 	// loop again to create all transactions
 	for multiplier, users := range req.Payload.UserMap {
 		for _, user := range users {
@@ -200,42 +211,13 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 			usersSups = usersSups.Mul(onePointWorth, big.NewInt(int64(multiplier)))
 
 			transactions = append(transactions, &passport.NewTransaction{
-				From:                 passport.SupremacyGameUserID,
+				From:                 passport.SupremacySupPoolUserID,
 				To:                   *user,
 				Amount:               *usersSups,
 				TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|ticker|%s|%s", *user, time.Now())),
 			})
 
 			supPool = supPool.Sub(supPool, usersSups)
-		}
-	}
-
-	///////////////////////////////////
-	//  Sups From  Battle Sups Pool  //
-	///////////////////////////////////
-
-	// get trickle amount
-	trickleAmount := sc.API.SupremacySupPoolGetTrickleAmount()
-	if trickleAmount.Cmp(big.NewInt(0)) > 0 {
-		// cal
-		onePointWorth := big.NewInt(0)
-		onePointWorth.Div(&trickleAmount.Int, big.NewInt(int64(totalPoints)))
-
-		// loop again to create all transactions
-		for multiplier, users := range req.Payload.UserMap {
-			for _, user := range users {
-				usersSups := big.NewInt(0)
-				usersSups = usersSups.Mul(onePointWorth, big.NewInt(int64(multiplier)))
-
-				transactions = append(transactions, &passport.NewTransaction{
-					From:                 passport.SupremacySupPoolUserID,
-					To:                   *user,
-					Amount:               *usersSups,
-					TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|spoil_of_war|%s|%s", *user, time.Now())),
-				})
-
-				supPool = supPool.Sub(supPool, usersSups)
-			}
 		}
 	}
 
@@ -248,25 +230,10 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 		tx.ResultChan = make(chan *passport.TransactionResult, 1)
 		sc.API.transaction <- tx
 		result := <-tx.ResultChan
-		// if result is success, update the cache map
 
-		if result.Error != nil {
-			continue // believe error logs already
-		}
-
-		if result.Transaction.Status != passport.TransactionSuccess {
+		if result.Transaction != nil && result.Transaction.Status != passport.TransactionSuccess {
 			sc.API.Log.Err(fmt.Errorf("transaction unsuccessful reason: %s", result.Transaction.Reason))
-			continue
 		}
-
-		errChan := make(chan error, 10)
-		sc.API.UpdateUserCacheRemoveSups(tx.From, tx.Amount, errChan)
-		err := <-errChan
-		if err != nil {
-			sc.API.Log.Err(err).Msg(err.Error())
-			continue
-		}
-		sc.API.UpdateUserCacheAddSups(tx.To, tx.Amount)
 	}
 
 	reply(true)
@@ -277,47 +244,56 @@ const HubKeySupremacyTransferBattleFundToSupPool = hub.HubCommandKey("SUPREMACY:
 
 func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	// get sups from battle user
-	battleUser, err := db.UserGet(ctx, sc.Conn, passport.SupremacyBattleUserID)
+	battleUser, err := db.UserBalance(ctx, sc.Conn, passport.SupremacyBattleUserID)
 	if err != nil {
-		return terror.Error(err, "Failed to get battle arena user")
+		return terror.Error(err, "Failed to get battle arena user.")
 	}
 
-	// skip calculation, if the is not sups in the pool
-	if battleUser.Sups.Int.Cmp(big.NewInt(0)) <= 0 {
+	// remove cache amount
+	battleUserSups := battleUser.Int.Sub(&battleUser.Int, sc.TickerPoolCache.AmountTicking)
+
+	// skip calculation, if there is no sups in the pool
+	if battleUserSups.Cmp(big.NewInt(0)) <= 0 {
 		reply(true)
 		return nil
 	}
 
-	transaction := &passport.NewTransaction{
-		From:                 passport.SupremacyBattleUserID,
-		To:                   passport.SupremacySupPoolUserID,
-		Amount:               battleUser.Sups.Int,
-		TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|battle_sups_spend_transfer|%s", time.Now())),
-	}
+	// so here we want to trickle the battle pool out over 5 minutes, so we create a ticker that ticks every 5 seconds with a max ticks of 300 / 5
+	ticksInFiveMinutes := 300 / 5
+	supsPerTick := battleUserSups.Div(battleUserSups, big.NewInt(int64(ticksInFiveMinutes)))
 
-	// transfer all the sups to sups pool user
-	transaction.ResultChan = make(chan *passport.TransactionResult, 1)
-	sc.API.transaction <- transaction
-	result := <-transaction.ResultChan
-	// if result is success, update the cache map
-	if result.Error != nil {
-		return terror.Error(result.Error)
-	}
-	if result.Transaction.Status == passport.TransactionFailed {
-		return terror.Error(fmt.Errorf("Failed to transfer sups spend over"))
-	}
+	battleSupTrickler := tickle.New("battle sup trickler", 5, func() (int, error) {
 
-	// get sups pool user
-	supsPoolUser, err := db.UserGet(context.Background(), sc.Conn, passport.SupremacySupPoolUserID)
-	if err != nil {
-		return terror.Error(err)
-	}
+		resultChan := make(chan *passport.TransactionResult, 1)
+		transaction := &passport.NewTransaction{
+			ResultChan:           resultChan,
+			From:                 passport.SupremacyBattleUserID,
+			To:                   passport.SupremacySupPoolUserID,
+			Amount:               *supsPerTick,
+			TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|battle_sups_spend_transfer|%s", time.Now())),
+		}
 
-	// set total sups pool
-	sc.API.SupremacySupPoolSet(supsPoolUser.Sups)
+		sc.API.transaction <- transaction
+		result := <-transaction.ResultChan
+		if result.Error != nil {
+			return 0, terror.Error(result.Error)
+		}
+		if result.Transaction.Status == passport.TransactionFailed {
+			return 0, terror.Error(fmt.Errorf("failed to transfer sups from battle user to pool user"))
+		}
+
+		// update pool cache
+		sc.TickerPoolCache.lock.Lock()
+		sc.TickerPoolCache.AmountTicking = sc.TickerPoolCache.AmountTicking.Sub(sc.TickerPoolCache.AmountTicking, supsPerTick)
+		sc.TickerPoolCache.lock.Unlock()
+
+		return 1, nil
+	})
+	battleSupTrickler.StopMaxInterval = ticksInFiveMinutes
+	battleSupTrickler.DisableLogging = true
+	battleSupTrickler.Start()
 
 	reply(true)
-
 	return nil
 }
 
@@ -357,9 +333,9 @@ func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context
 
 	// TODO: In the future, charge user's sups for joining the queue
 
-	sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.AssetTokenID)), asset)
+	sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.AssetTokenID)), asset)
 
-	sc.API.SendToAllServerClient(&ServerClientMessage{
+	sc.API.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: AssetUpdated,
 		Payload: struct {
 			Asset *passport.XsynMetadata `json:"asset"`
@@ -407,7 +383,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 	}
 
 	for _, asset := range assets {
-		sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
+		sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
 	}
 
 	reply(true)
@@ -484,7 +460,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetReleaseHandler(ctx context.Contex
 	}
 
 	for _, asset := range assets {
-		sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
+		sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
 	}
 
 	return nil
@@ -519,7 +495,7 @@ func (sc *SupremacyControllerWS) SupremacyWarMachineQueuePositionHandler(ctx con
 
 	// broadcast war machine position to all user client
 	for _, uwm := range req.Payload.UserWarMachineQueuePosition {
-		go sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueuePositionSubscribe, uwm.UserID)), uwm.WarMachineQueuePositions)
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueuePositionSubscribe, uwm.UserID)), uwm.WarMachineQueuePositions)
 	}
 
 	return nil
@@ -542,7 +518,7 @@ func (sc *SupremacyControllerWS) SupremacyCommitTransactionsHandler(ctx context.
 		return terror.Error(err, "Invalid request received")
 	}
 	resultChan := make(chan []*passport.Transaction, len(req.Payload.TransactionReferences)+5)
-	sc.API.CommitTransactions(resultChan, req.Payload.TransactionReferences...)
+	sc.API.CommitTransactions(ctx, resultChan, req.Payload.TransactionReferences...)
 
 	results := <-resultChan
 	reply(results)
@@ -565,7 +541,7 @@ func (sc *SupremacyControllerWS) SupremacyReleaseTransactionsHandler(ctx context
 		return terror.Error(err, "Invalid request received")
 	}
 
-	sc.API.ReleaseHeldTransaction(req.Payload.TransactionReferences...)
+	sc.API.ReleaseHeldTransaction(ctx, req.Payload.TransactionReferences...)
 
 	return nil
 }
@@ -580,18 +556,18 @@ func (sc *SupremacyControllerWS) SupremacyGetSpoilOfWarHandler(ctx context.Conte
 		return terror.Error(err, "Invalid request received")
 	}
 	// get current sup pool user sups
-	supsPoolUser, err := db.UserGet(ctx, sc.Conn, passport.SupremacySupPoolUserID)
+	supsPoolUser, err := db.UserBalance(ctx, sc.Conn, passport.SupremacySupPoolUserID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	battleUser, err := db.UserGet(ctx, sc.Conn, passport.SupremacyBattleUserID)
+	battleUser, err := db.UserBalance(ctx, sc.Conn, passport.SupremacyBattleUserID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
 	result := big.NewInt(0)
-	result.Add(&supsPoolUser.Sups.Int, &battleUser.Sups.Int)
+	result.Add(&supsPoolUser.Int, &battleUser.Int)
 
 	reply(result.String())
 	return nil
@@ -655,14 +631,14 @@ func (sc *SupremacyControllerWS) SupremacyUserSupsMultiplierSendHandler(ctx cont
 	for _, usm := range req.Payload.UserSupsMultiplierSends {
 		// broadcast to specific hub client if session id is provided
 		if usm.ToUserSessionID != nil && *usm.ToUserSessionID != "" {
-			sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsMultiplierSubscribe, usm.ToUserID)), usm.SupsMultipliers, messagebus.BusSendFilterOption{
+			sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsMultiplierSubscribe, usm.ToUserID)), usm.SupsMultipliers, messagebus.BusSendFilterOption{
 				SessionID: *usm.ToUserSessionID,
 			})
 			continue
 		}
 
 		// otherwise, broadcast to the target user
-		sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsMultiplierSubscribe, usm.ToUserID)), usm.SupsMultipliers)
+		sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsMultiplierSubscribe, usm.ToUserID)), usm.SupsMultipliers)
 	}
 
 	reply(true)
@@ -719,7 +695,7 @@ func (sc *SupremacyControllerWS) SupremacyFactionStatSend(ctx context.Context, w
 
 		if factionStatSend.ToUserID == nil && factionStatSend.ToUserSessionID == nil {
 			// broadcast to all faction stat subscribers
-			sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionStatUpdatedSubscribe, factionStatSend.FactionStat.ID)), factionStatSend.FactionStat)
+			sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionStatUpdatedSubscribe, factionStatSend.FactionStat.ID)), factionStatSend.FactionStat)
 			continue
 		}
 
@@ -733,7 +709,7 @@ func (sc *SupremacyControllerWS) SupremacyFactionStatSend(ctx context.Context, w
 		}
 
 		// broadcast to the target user
-		sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionStatUpdatedSubscribe, factionStatSend.FactionStat.ID)), factionStatSend.FactionStat, filterOption)
+		sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionStatUpdatedSubscribe, factionStatSend.FactionStat.ID)), factionStatSend.FactionStat, filterOption)
 	}
 
 	return nil
@@ -895,7 +871,7 @@ func (sc *SupremacyControllerWS) SupremacyWarMachineQueueContractUpdateHandler(c
 	}
 
 	for _, fwq := range req.Payload.FactionWarMachineQueues {
-		go sc.API.recalculateContractReward(fwq.FactionID, fwq.QueueTotal)
+		go sc.API.recalculateContractReward(ctx, fwq.FactionID, fwq.QueueTotal)
 	}
 
 	return nil
@@ -924,11 +900,16 @@ func (sc *SupremacyControllerWS) SupremacyPayAssetInsuranceHandler(ctx context.C
 		return terror.Error(terror.ErrInvalidInput, "Sups amount can not be negative")
 	}
 
+	resultChan := make(chan *passport.TransactionResult)
+
 	tx := &passport.NewTransaction{
+		ResultChan:           resultChan,
 		From:                 req.Payload.UserID,
 		TransactionReference: req.Payload.TransactionReference,
 		Amount:               req.Payload.Amount.Int,
 	}
+
+	// TODO: validate the insurance is 10% of current reward price
 
 	switch req.Payload.FactionID {
 	case passport.RedMountainFactionID:
@@ -941,20 +922,10 @@ func (sc *SupremacyControllerWS) SupremacyPayAssetInsuranceHandler(ctx context.C
 		return terror.Error(terror.ErrInvalidInput, "Provided faction does not exist")
 	}
 
-	errChan := make(chan error, 10)
-	sc.API.HoldTransaction(errChan, tx)
-	err = <-errChan
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	resultChan := make(chan []*passport.Transaction, 1)
-	sc.API.CommitTransactions(resultChan, tx.TransactionReference)
-	results := <-resultChan
-	for _, result := range results {
-		if result.Status != passport.TransactionSuccess {
-			return terror.Error(fmt.Errorf("Transaction Failed"))
-		}
+	sc.API.transaction <- tx
+	result := <-resultChan
+	if result.Transaction.Status != passport.TransactionSuccess {
+		return terror.Error(fmt.Errorf("transaction failed: %s", result.Transaction.Reason), fmt.Sprintf("Transaction failed: %s.", result.Transaction.Reason))
 	}
 
 	reply(true)

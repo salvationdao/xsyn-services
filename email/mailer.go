@@ -96,6 +96,7 @@ func ParseTemplate(fileName string) (*raymond.Template, error) {
 
 // SendEmail sends a templated email via smtp. attachments must be the full file path
 func (m *Mailer) SendEmail(
+	ctx context.Context,
 	to string,
 	subject string,
 	template string,
@@ -129,7 +130,7 @@ func (m *Mailer) SendEmail(
 	}
 
 	// Send Email
-	emailCtx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	emailCtx, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 	_, _, err = m.MailGun.Send(emailCtx, message)
 	if err != nil {

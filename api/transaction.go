@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"math/big"
 	"passport"
@@ -82,19 +83,19 @@ func (api *API) HeldTransactions(fn func(heldTxList map[passport.TransactionRefe
 }
 
 // ReleaseHeldTransaction removes a held transaction and update the users sups in the user cache
-func (api *API) ReleaseHeldTransaction(txRefs ...passport.TransactionReference) {
+func (api *API) ReleaseHeldTransaction(ctx context.Context, txRefs ...passport.TransactionReference) {
 	for _, txRef := range txRefs {
 		api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 			tx, ok := heldTxList[txRef]
 			if ok {
 				errChan := make(chan error, 10)
-				api.UpdateUserCacheRemoveSups(tx.To, tx.Amount, errChan)
+				api.UpdateUserCacheRemoveSups(ctx, tx.To, tx.Amount, errChan)
 				err := <-errChan
 				if err != nil {
 					api.Log.Info().Err(err)
 					return
 				}
-				api.UpdateUserCacheAddSups(tx.From, tx.Amount)
+				api.UpdateUserCacheAddSups(ctx, tx.From, tx.Amount)
 				delete(heldTxList, txRef)
 			}
 		})
@@ -102,20 +103,20 @@ func (api *API) ReleaseHeldTransaction(txRefs ...passport.TransactionReference) 
 }
 
 // HoldTransaction adds a new transaction to the hold transaction map and updates the user cache sups accordingly
-func (api *API) HoldTransaction(holdErrChan chan error, txs ...*passport.NewTransaction) {
+func (api *API) HoldTransaction(ctx context.Context, holdErrChan chan error, txs ...*passport.NewTransaction) {
 	// Here we take the sups away from the user in their cache and hold the transactions in a slice
 	// So later we can fire the commit command and put all the transactions into the database
 	api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 		for _, tx := range txs {
 			errChan := make(chan error, 10)
-			api.UpdateUserCacheRemoveSups(tx.From, tx.Amount, errChan)
+			api.UpdateUserCacheRemoveSups(ctx, tx.From, tx.Amount, errChan)
 			err := <-errChan
 			if err != nil {
 				api.Log.Err(err).Msg(err.Error())
 				holdErrChan <- err
 				return
 			}
-			api.UpdateUserCacheAddSups(tx.To, tx.Amount)
+			api.UpdateUserCacheAddSups(ctx, tx.To, tx.Amount)
 			heldTxList[tx.TransactionReference] = tx
 		}
 		holdErrChan <- nil
@@ -123,7 +124,7 @@ func (api *API) HoldTransaction(holdErrChan chan error, txs ...*passport.NewTran
 }
 
 // CommitTransactions goes through and commits the given transactions, returning their status
-func (api *API) CommitTransactions(resultChan chan []*passport.Transaction, txRefs ...passport.TransactionReference) {
+func (api *API) CommitTransactions(ctx context.Context, resultChan chan []*passport.Transaction, txRefs ...passport.TransactionReference) {
 	results := []*passport.Transaction{}
 	// we loop the transactions, and see the results!
 	api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
@@ -135,13 +136,13 @@ func (api *API) CommitTransactions(resultChan chan []*passport.Transaction, txRe
 				// if result is failed, update the cache map
 				if result.Error != nil || result.Transaction.Status == passport.TransactionFailed {
 					errChan := make(chan error, 10)
-					api.UpdateUserCacheRemoveSups(tx.To, tx.Amount, errChan)
+					api.UpdateUserCacheRemoveSups(ctx, tx.To, tx.Amount, errChan)
 					err := <-errChan
 					if err != nil {
 						api.Log.Err(err).Msg(err.Error())
 						continue
 					}
-					api.UpdateUserCacheAddSups(tx.From, tx.Amount)
+					api.UpdateUserCacheAddSups(ctx, tx.From, tx.Amount)
 				}
 				results = append(results, result.Transaction)
 

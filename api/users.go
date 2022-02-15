@@ -377,7 +377,8 @@ func (user Secureuser) CheckPassword(pw string) bool {
 }
 
 func (user Secureuser) SendVerificationEmail(token string, tokenID string, newAccount bool) error {
-	err := user.Mailer.SendVerificationEmail(&email.User{
+
+	err := user.Mailer.SendVerificationEmail(context.Background(), &email.User{
 		IsAdmin:   user.IsAdmin(),
 		Email:     user.Email.String,
 		FirstName: user.FirstName,
@@ -394,7 +395,7 @@ func (user Secureuser) SendForgotPasswordEmail(token string, tokenID string) err
 		return terror.Error(fmt.Errorf("user missing email"))
 	}
 
-	err := user.Mailer.SendForgotPasswordEmail(&email.User{
+	err := user.Mailer.SendForgotPasswordEmail(context.Background(), &email.User{
 		IsAdmin:   user.IsAdmin(),
 		Email:     user.Email.String,
 		FirstName: user.FirstName,

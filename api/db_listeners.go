@@ -44,7 +44,7 @@ func (api *API) DBListenForUserUpdateEvent() {
 		}
 
 		if !user.ID.IsSystemUser() {
-			api.UpdateUserInCache(user)
+			api.UpdateUserInCache(ctx, user)
 		}
 
 	}

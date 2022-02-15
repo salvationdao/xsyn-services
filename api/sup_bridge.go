@@ -138,7 +138,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 						}
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
-					cc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
+					cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
 				}
 			case "WBNB":
 				if xfer.To == cc.Params.PurchaseAddr {
@@ -205,7 +205,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 						}
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
-					cc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
+					cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
 				}
 			case "SUPS":
 				if xfer.To == cc.Params.PurchaseAddr {
@@ -268,7 +268,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 						}
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
-					cc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
+					cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
 				}
 				if xfer.To == cc.Params.RedemptionAddr {
 					// UNTESTED
@@ -343,7 +343,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 						}
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
-					cc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
+					cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
 				}
 				if xfer.From == cc.Params.WithdrawAddr {
 					ctx := context.Background()
@@ -403,7 +403,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 						}
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
-					cc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
+					cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
 
 				}
 			}
@@ -472,7 +472,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 						}
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
-					cc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
+					cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
 				}
 			case "WETH":
 				if xfer.To == cc.Params.PurchaseAddr {
@@ -538,7 +538,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 						}
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
-					cc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
+					cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
 
 				}
 			}
@@ -590,7 +590,7 @@ func (cc *ChainClients) handleBlock(client *ethclient.Client, chainID int64) fun
 			}
 
 			if confirmedBlocks > 0 {
-				cc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, conf.UserID.String())), conf)
+				cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, conf.UserID.String())), conf)
 			}
 		}
 	}

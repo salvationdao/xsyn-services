@@ -12,7 +12,6 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
-	"github.com/rs/zerolog"
 )
 
 //////////////////
@@ -77,7 +76,6 @@ func (api *API) startRepairTicker(rt RepairType) {
 	}
 
 	// build tickle
-	assetRepairCenterLogger := log_helpers.NamedLogger(api.Log, TraceTitle).Level(zerolog.TraceLevel)
 	assetRepairCenter := tickle.New(TraceTitle, float64(tickSecond), func() (int, error) {
 		errChan := make(chan error)
 		repairCenter <- func(rq RepairQueue) {
@@ -111,7 +109,7 @@ func (api *API) startRepairTicker(rt RepairType) {
 		}
 		return http.StatusOK, nil
 	})
-	assetRepairCenter.Log = &assetRepairCenterLogger
+	assetRepairCenter.Log = log_helpers.NamedLogger(api.Log, TraceTitle)
 	assetRepairCenter.DisableLogging = true
 
 	assetRepairCenter.Start()
@@ -130,7 +128,9 @@ type WarMachineContract struct {
 
 func (api *API) InitialiseFactionWarMachineContract(factionID passport.FactionID) {
 	// initialise channel
+	api.factionWarMachineContractMapLock.Lock()
 	api.factionWarMachineContractMap[factionID] = make(chan func(*WarMachineContract))
+	api.factionWarMachineContractMapLock.Unlock()
 
 	// get min price
 	minPrice := big.NewInt(0)
@@ -154,7 +154,7 @@ func (api *API) InitialiseFactionWarMachineContract(factionID passport.FactionID
 }
 
 // recalculateContractReward
-func (api *API) recalculateContractReward(factionID passport.FactionID, queueNumber int) {
+func (api *API) recalculateContractReward(ctx context.Context, factionID passport.FactionID, queueNumber int) {
 	minPrice := big.NewInt(0)
 	minPrice, ok := minPrice.SetString(MinimumContractReward, 10)
 	if !ok {
@@ -169,27 +169,30 @@ func (api *API) recalculateContractReward(factionID passport.FactionID, queueNum
 		return
 	}
 
-	api.factionWarMachineContractMap[factionID] <- func(wmc *WarMachineContract) {
-		// reduce reward price when greater than 10
-		if queueNumber >= 10 {
-			wmc.CurrentReward.Mul(&wmc.CurrentReward, big.NewInt(99))
-			wmc.CurrentReward.Div(&wmc.CurrentReward, big.NewInt(100))
+	if _, ok := api.factionWarMachineContractMap[factionID]; ok {
 
-			if wmc.CurrentReward.Cmp(minPrice) < 0 {
-				wmc.CurrentReward = *big.NewInt(0)
-				wmc.CurrentReward.Add(&wmc.CurrentReward, minPrice)
-			}
-		} else {
-			wmc.CurrentReward.Mul(&wmc.CurrentReward, big.NewInt(101))
-			wmc.CurrentReward.Div(&wmc.CurrentReward, big.NewInt(100))
+		api.factionWarMachineContractMap[factionID] <- func(wmc *WarMachineContract) {
+			// reduce reward price when greater than 10
+			if queueNumber >= 10 {
+				wmc.CurrentReward.Mul(&wmc.CurrentReward, big.NewInt(99))
+				wmc.CurrentReward.Div(&wmc.CurrentReward, big.NewInt(100))
 
-			if wmc.CurrentReward.Cmp(maxPrice) > 0 {
-				wmc.CurrentReward = *big.NewInt(0)
-				wmc.CurrentReward.Add(&wmc.CurrentReward, maxPrice)
+				if wmc.CurrentReward.Cmp(minPrice) < 0 {
+					wmc.CurrentReward = *big.NewInt(0)
+					wmc.CurrentReward.Add(&wmc.CurrentReward, minPrice)
+				}
+			} else {
+				wmc.CurrentReward.Mul(&wmc.CurrentReward, big.NewInt(101))
+				wmc.CurrentReward.Div(&wmc.CurrentReward, big.NewInt(100))
+
+				if wmc.CurrentReward.Cmp(maxPrice) > 0 {
+					wmc.CurrentReward = *big.NewInt(0)
+					wmc.CurrentReward.Add(&wmc.CurrentReward, maxPrice)
+				}
 			}
+
+			// broadcast the latest reward
+			api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetQueueContractReward, factionID)), wmc.CurrentReward.String())
 		}
-
-		// broadcast latest reward
-		api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetQueueContractReward, factionID)), wmc.CurrentReward.String())
 	}
 }

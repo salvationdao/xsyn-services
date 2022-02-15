@@ -12,6 +12,7 @@ import (
 	"passport/email"
 	"passport/log_helpers"
 	"strconv"
+	"sync"
 
 	SentryTracer "github.com/ninja-syndicate/hub/ext/sentry"
 
@@ -71,9 +72,10 @@ type API struct {
 	supremacySupsPool chan func(*SupremacySupPool)
 
 	// War Machine Queue Contract
-	factionWarMachineContractMap map[passport.FactionID]chan func(*WarMachineContract)
-	fastAssetRepairCenter        chan func(RepairQueue)
-	standardAssetRepairCenter    chan func(RepairQueue)
+	factionWarMachineContractMapLock sync.Mutex
+	factionWarMachineContractMap     map[passport.FactionID]chan func(*WarMachineContract)
+	fastAssetRepairCenter            chan func(RepairQueue)
+	standardAssetRepairCenter        chan func(RepairQueue)
 
 	// Queue Reward
 	TxConn *sql.DB
@@ -146,10 +148,8 @@ func NewAPI(
 		supremacySupsPool: make(chan func(*SupremacySupPool)),
 
 		// faction war machine contract
-		factionWarMachineContractMap: make(map[passport.FactionID]chan func(*WarMachineContract)),
-
-		// asset repair
-
+		factionWarMachineContractMapLock: sync.Mutex{},
+		factionWarMachineContractMap:     make(map[passport.FactionID]chan func(*WarMachineContract)),
 	}
 
 	api.Routes.Use(middleware.RequestID)
@@ -300,7 +300,7 @@ func (api *API) Dummysale(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	api.MessageBus.Send(messagebus.BusKey(HubKeySUPSRemainingSubscribe), sups.String())
+	api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSRemainingSubscribe), sups.String())
 
 	return http.StatusAccepted, nil
 }

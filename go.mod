@@ -2,6 +2,7 @@ module passport
 
 go 1.17
 
+
 require (
 	github.com/TwiN/go-away v1.6.0
 	github.com/aymerick/raymond v2.0.3-0.20180322193309-b565731e1464+incompatible
@@ -26,7 +27,7 @@ require (
 	github.com/makiuchi-d/arelo v1.9.2
 	github.com/microcosm-cc/bluemonday v1.0.17
 	github.com/ninja-software/terror/v2 v2.0.7
-	github.com/ninja-syndicate/hub v1.3.3
+	github.com/ninja-syndicate/hub v1.3.4
 	github.com/ninja-syndicate/supremacy-bridge v0.1.5
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1

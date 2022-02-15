@@ -45,6 +45,7 @@ func UserBalance(ctx context.Context, conn Conn, userID passport.UserID) (*passp
 	if err != nil {
 		return nil, terror.Error(err)
 	}
+	wrap.Sups.Init()
 	return &wrap.Sups, nil
 }
 
