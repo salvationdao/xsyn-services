@@ -108,13 +108,13 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 			}
 
 			// broadcast the update
-			gc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+			gc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 		}
 
 		reply(true)
 
 		// send to supremacy server
-		gc.API.SendToServerClient(SupremacyGameServer, &ServerClientMessage{
+		gc.API.SendToServerClient(ctx, SupremacyGameServer, &ServerClientMessage{
 			Key: "AUTH:RING:CHECK",
 			Payload: struct {
 				User               *passport.User `json:"user"`
@@ -133,7 +133,7 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 		reply(true)
 
 		// send to supremacy server
-		gc.API.SendToServerClient(SupremacyGameServer, &ServerClientMessage{
+		gc.API.SendToServerClient(ctx, SupremacyGameServer, &ServerClientMessage{
 			Key: "AUTH:RING:CHECK",
 			Payload: struct {
 				User                *passport.User `json:"user"`

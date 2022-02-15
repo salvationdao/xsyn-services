@@ -315,6 +315,36 @@ func (ug *UserGetter) Email(email string) (auth.SecureUser, error) {
 	}, nil
 }
 
+func (ug *UserGetter) Username(email string) (auth.SecureUser, error) {
+	ctx := context.Background()
+	user, err := db.UserByUsername(ctx, ug.Conn, email)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	hash, err := db.HashByUserID(ctx, ug.Conn, user.ID)
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, terror.Error(err)
+		}
+	}
+
+	if user.FactionID != nil && !user.FactionID.IsNil() {
+		faction, err := db.FactionGet(ctx, ug.Conn, *user.FactionID)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		user.Faction = faction
+	}
+
+	return &Secureuser{
+		User:         user,
+		Conn:         ug.Conn,
+		Mailer:       ug.Mailer,
+		passwordHash: hash,
+	}, nil
+}
+
 type Secureuser struct {
 	*passport.User
 	passwordHash string
@@ -347,7 +377,8 @@ func (user Secureuser) CheckPassword(pw string) bool {
 }
 
 func (user Secureuser) SendVerificationEmail(token string, tokenID string, newAccount bool) error {
-	err := user.Mailer.SendVerificationEmail(&email.User{
+
+	err := user.Mailer.SendVerificationEmail(context.Background(), &email.User{
 		IsAdmin:   user.IsAdmin(),
 		Email:     user.Email.String,
 		FirstName: user.FirstName,
@@ -364,7 +395,7 @@ func (user Secureuser) SendForgotPasswordEmail(token string, tokenID string) err
 		return terror.Error(fmt.Errorf("user missing email"))
 	}
 
-	err := user.Mailer.SendForgotPasswordEmail(&email.User{
+	err := user.Mailer.SendForgotPasswordEmail(context.Background(), &email.User{
 		IsAdmin:   user.IsAdmin(),
 		Email:     user.Email.String,
 		FirstName: user.FirstName,

@@ -65,7 +65,7 @@ func (ch *ServerClientControllerWS) Handler(ctx context.Context, hubc *hub.Clien
 
 	supremacyUser, err := db.UserIDFromUsername(ctx, ch.Conn, passport.SupremacyGameUsername)
 	if err != nil {
-		hubc.Offline <- true
+		ch.API.Hub.Offline(hubc)
 		return terror.Error(err)
 	}
 	// setting level and identifier
@@ -80,7 +80,7 @@ func (ch *ServerClientControllerWS) Handler(ctx context.Context, hubc *hub.Clien
 	ch.API.ServerClientOnline(serverName, hubc)
 
 	reply(true)
-	ch.API.SendToServerClient(serverName, &ServerClientMessage{
+	ch.API.SendToServerClient(ctx, serverName, &ServerClientMessage{
 		Key:     Authed,
 		Payload: nil,
 	})

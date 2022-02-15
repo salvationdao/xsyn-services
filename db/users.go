@@ -107,7 +107,7 @@ func UserByGoogleID(ctx context.Context, conn Conn, googleID string) (*passport.
 	return user, nil
 }
 
-// UserByGoogleID returns a user by google id
+// UserByTwitchID returns a user by twitch id
 func UserByTwitchID(ctx context.Context, conn Conn, twitchID string) (*passport.User, error) {
 	user := &passport.User{}
 	q := UserGetQuery + ` WHERE users.twitch_id = $1`
@@ -179,6 +179,7 @@ func UserGet(ctx context.Context, conn Conn, userID passport.UserID) (*passport.
 func UserByUsername(ctx context.Context, conn Conn, username string) (*passport.User, error) {
 	user := &passport.User{}
 	q := UserGetQuery + ` WHERE username = $1`
+
 	err := pgxscan.Get(ctx, conn, user, q, username)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting user from Username.")

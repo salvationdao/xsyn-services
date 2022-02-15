@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"net/http"
 	"passport"
-	"passport/db"
 	"sync"
 	"time"
 
@@ -19,20 +18,21 @@ import (
 // InitialiseTreasuryFundTicker for every game server
 func (api *API) InitialiseTreasuryFundTicker() {
 	// set up treasury map tickle for supremacy game server
-	api.treasuryTickerMap[SupremacyGameServer] = tickle.New(fmt.Sprintf("Treasury Ticker for %s", SupremacyGameServer), 60, func() (int, error) {
+	tickle.MinDurationOverride = true
+	api.treasuryTickerMap[SupremacyGameServer] = tickle.New(fmt.Sprintf("Treasury Ticker for %s", SupremacyGameServer), 5, func() (int, error) {
 		fund := big.NewInt(0)
-		fund, ok := fund.SetString("50000000000000000000", 10)
+		fund, ok := fund.SetString("4000000000000000000", 10)
 		if !ok {
-			return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to convert 50000000000000000000 to big int"))
+			return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to convert 4000000000000000000 to big int"))
 		}
 
-		treasuryTransfer := big.NewInt(0)
-		treasuryTransfer.Add(treasuryTransfer, fund)
+		//treasuryTransfer := big.NewInt(0)
+		//treasuryTransfer.Add(treasuryTransfer, fund)
 
 		api.transaction <- &passport.NewTransaction{
 			From:                 passport.XsynTreasuryUserID,
-			To:                   passport.SupremacyGameUserID,
-			Amount:               *treasuryTransfer,
+			To:                   passport.SupremacySupPoolUserID,
+			Amount:               *fund,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("treasury|ticker|%s", time.Now())),
 		}
 
@@ -96,16 +96,16 @@ func (api *API) ServerClientOnline(gameName ServerClientName, hubc *hub.Client) 
 			}
 
 			// set up sups pool user cache
-			if gameName == SupremacyGameServer {
-				supsPoolUser, err := db.UserGet(context.Background(), api.Conn, passport.SupremacySupPoolUserID)
-				if err != nil {
-					api.Log.Err(err)
-					return
-				}
-
-				// initial total sups pool
-				api.SupremacySupPoolSet(supsPoolUser.Sups)
-			}
+			//if gameName == SupremacyGameServer {
+			//	supsPoolUser, err := db.UserGet(context.Background(), api.Conn, passport.SupremacySupPoolUserID)
+			//	if err != nil {
+			//		api.Log.Err(err)
+			//		return
+			//	}
+			//
+			//	// initial total sups pool
+			//	api.SupremacySupPoolSet(supsPoolUser.Sups)
+			//}
 
 			serverClients[gameName] = make(map[*hub.Client]bool)
 		}
@@ -175,7 +175,7 @@ type ServerClientMessage struct {
 	Payload       interface{}               `json:"payload,omitempty"`
 }
 
-func (api *API) SendToServerClient(name ServerClientName, msg *ServerClientMessage) {
+func (api *API) SendToServerClient(ctx context.Context, name ServerClientName, msg *ServerClientMessage) {
 	api.Log.Debug().Msgf("sending message to server clients: %s", name)
 	api.serverClients <- func(servers ServerClientsList) {
 		gameClientMap, ok := servers[name]
@@ -190,7 +190,7 @@ func (api *API) SendToServerClient(name ServerClientName, msg *ServerClientMessa
 			}
 
 			go func(client *hub.Client) {
-				err := client.Send(payload)
+				err := client.Send(ctx, payload)
 				if err != nil {
 					api.Log.Err(err).Msgf("error sending")
 				}
@@ -199,7 +199,7 @@ func (api *API) SendToServerClient(name ServerClientName, msg *ServerClientMessa
 	}
 }
 
-func (api *API) SendToAllServerClient(msg *ServerClientMessage) {
+func (api *API) SendToAllServerClient(ctx context.Context, msg *ServerClientMessage) {
 	api.serverClients <- func(servers ServerClientsList) {
 		for gameName, scm := range servers {
 			for sc := range scm {
@@ -208,7 +208,7 @@ func (api *API) SendToAllServerClient(msg *ServerClientMessage) {
 					api.Log.Err(err).Msgf("error sending message to server client: %s", gameName)
 				}
 				go func(client *hub.Client) {
-					err := client.Send(payload)
+					err := client.Send(ctx, payload)
 					if err != nil {
 						api.Log.Err(err).Msgf("error sending")
 					}

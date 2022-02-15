@@ -234,7 +234,7 @@ func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, hubc *h
 		},
 	)
 
-	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -284,7 +284,7 @@ func (uc *UserController) UpdateUserFactionHandler(ctx context.Context, hubc *hu
 	user.Faction = faction
 
 	// send user changes to connected clients
-	uc.API.SendToAllServerClient(&ServerClientMessage{
+	uc.API.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: UserUpdated,
 		Payload: struct {
 			User *passport.User `json:"user"`
@@ -507,10 +507,10 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 		},
 	)
 
-	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	// send user changes to connected clients
-	uc.API.SendToAllServerClient(&ServerClientMessage{
+	uc.API.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: UserUpdated,
 		Payload: struct {
 			User *passport.User `json:"user"`
@@ -931,7 +931,7 @@ func (uc *UserController) ForceDisconnectHandler(ctx context.Context, hubc *hub.
 		return terror.Error(terror.ErrUnauthorised, "You do not have permission to force disconnect this user")
 	}
 
-	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserForceDisconnected, user.ID.String())), nil)
+	uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserForceDisconnected, user.ID.String())), nil)
 	reply(true)
 
 	// Delete issue tokens
@@ -1111,7 +1111,7 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hub.C
 		},
 	)
 
-	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -1187,7 +1187,7 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.Clie
 		},
 	)
 
-	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	return nil
 }
@@ -1262,7 +1262,7 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.Cli
 		},
 	)
 
-	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -1335,7 +1335,7 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Client
 		},
 	)
 
-	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	return nil
 }
@@ -1410,7 +1410,7 @@ func (uc *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.Cli
 		},
 	)
 
-	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -1523,7 +1523,7 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client
 		},
 	)
 
-	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	return nil
 }
@@ -1598,7 +1598,7 @@ func (uc *UserController) RemoveTwitterHandler(ctx context.Context, hubc *hub.Cl
 		},
 	)
 
-	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -1712,7 +1712,7 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, hubc *hub.Clien
 		},
 	)
 
-	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	return nil
 }
@@ -1787,7 +1787,7 @@ func (uc *UserController) RemoveDiscordHandler(ctx context.Context, hubc *hub.Cl
 		},
 	)
 
-	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -1915,7 +1915,7 @@ func (uc *UserController) AddDiscordHandler(ctx context.Context, hubc *hub.Clien
 		},
 	)
 
-	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	return nil
 }
@@ -2017,7 +2017,7 @@ func (uc *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.Cli
 		},
 	)
 
-	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -2126,7 +2126,7 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Client
 		},
 	)
 
-	uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -2209,7 +2209,7 @@ func (uc *UserController) UserSupsMultiplierUpdatedSubscribeHandler(ctx context.
 	}
 
 	// send faction stat request to game server
-	uc.API.SendToServerClient(
+	uc.API.SendToServerClient(ctx,
 		SupremacyGameServer,
 		&ServerClientMessage{
 			Key: UserSupsMultiplierGet,
@@ -2277,7 +2277,6 @@ func (uc *UserController) UserFactionUpdatedSubscribeHandler(ctx context.Context
 
 const HubKeyUserWarMachineQueuePositionSubscribe hub.HubCommandKey = "USER:WAR:MACHINE:QUEUE:POSITION:SUBSCRIBE"
 
-// WarMachineQueuePositionUpdatedSubscribeHandler
 func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
@@ -2303,7 +2302,7 @@ func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx con
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueuePositionSubscribe, userID))
 
 	// TODO: run a request to gameserver to get the war machine list
-	uc.API.SendToAllServerClient(&ServerClientMessage{
+	uc.API.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: WarMachineQueuePositionGet,
 		Payload: struct {
 			UserID    passport.UserID    `json:"userID"`

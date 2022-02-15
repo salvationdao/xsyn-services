@@ -68,6 +68,7 @@ func (ctrlr *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *h
 	if err != nil {
 		return terror.Error(err)
 	}
+
 	err = items.Purchase(ctx, ctrlr.Conn, ctrlr.Log, ctrlr.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), ctrlr.API.transaction, *user, req.Payload.StoreItemID)
 	if err != nil {
 		return terror.Error(err)

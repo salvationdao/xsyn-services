@@ -645,6 +645,9 @@ func (b *BigInt) String() string {
 }
 
 func (b *BigInt) Init() {
+	if b.calculated {
+		return
+	}
 	b.calc()
 }
 

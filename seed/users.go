@@ -266,6 +266,7 @@ func (s *Seeder) XsynSaleUser(ctx context.Context) (*passport.User, error) {
 	)
 	if err != nil {
 		return nil, terror.Error(err)
+
 	}
 	return u, nil
 }

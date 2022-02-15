@@ -129,10 +129,10 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 	)
 
 	// broadcast updated user to gamebar user
-	fc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	// broadcast updated user to server client
-	fc.API.SendToAllServerClient(&ServerClientMessage{
+	fc.API.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: UserEnlistFaction,
 		Payload: struct {
 			UserID    passport.UserID    `json:"userID"`
@@ -145,6 +145,7 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 
 	// send faction stat request to game server
 	fc.API.SendToServerClient(
+		ctx,
 		SupremacyGameServer,
 		&ServerClientMessage{
 			Key: FactionStatGet,
@@ -215,7 +216,7 @@ func (fc *FactionController) FactionStatUpdatedSubscribeHandler(ctx context.Cont
 	}
 
 	// send faction stat request to game server
-	fc.API.SendToServerClient(
+	fc.API.SendToServerClient(ctx,
 		SupremacyGameServer,
 		&ServerClientMessage{
 			Key: FactionStatGet,
