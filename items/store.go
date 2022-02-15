@@ -26,6 +26,9 @@ import (
 func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
 	supPrice decimal.Decimal, txChan chan<- *passport.NewTransaction, user passport.User, storeItemID passport.StoreItemID) error {
 	storeItem, err := db.StoreItemByID(ctx, conn, storeItemID)
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	if storeItem.AmountSold >= storeItem.AmountAvailable {
 		return terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
