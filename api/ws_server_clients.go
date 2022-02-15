@@ -58,10 +58,18 @@ func (ch *ServerClientControllerWS) Handler(ctx context.Context, hubc *hub.Clien
 	}
 
 	// TODO: move to a db table with client IDs and secrets when we have more games connecting
-
 	if req.Payload.ClientToken != ch.API.ClientToken {
 		return terror.Error(terror.ErrUnauthorised)
 	}
+
+	// Remove any old supremacy connections
+	ch.API.ServerClients(func(serverClients ServerClientsList) {
+		if clients, ok := serverClients[SupremacyGameServer]; ok {
+			for c, _ := range clients {
+				ch.API.ServerClientOffline(c)
+			}
+		}
+	})
 
 	supremacyUser, err := db.UserIDFromUsername(ctx, ch.Conn, passport.SupremacyGameUsername)
 	if err != nil {
