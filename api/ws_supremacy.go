@@ -1001,21 +1001,23 @@ func (sc *SupremacyControllerWS) SupremacyRedeemFactionContractRewardHandler(ctx
 		return terror.Error(terror.ErrInvalidInput, "Provided faction does not exist")
 	}
 
-	errChan := make(chan error, 10)
-	sc.API.HoldTransaction(errChan, tx)
-	err = <-errChan
-	if err != nil {
-		return terror.Error(err)
-	}
+	sc.API.transaction <- tx
 
-	resultChan := make(chan []*passport.Transaction, 1)
-	sc.API.CommitTransactions(resultChan, tx.TransactionReference)
-	results := <-resultChan
-	for _, result := range results {
-		if result == nil || result.Status == passport.TransactionFailed {
-			return terror.Error(fmt.Errorf("Transaction Failed"))
-		}
-	}
+	//errChan := make(chan error, 10)
+	//sc.API.HoldTransaction(errChan, tx)
+	//err = <-errChan
+	//if err != nil {
+	//	return terror.Error(err)
+	//}
+	//
+	//resultChan := make(chan []*passport.Transaction, 1)
+	//sc.API.CommitTransactions(resultChan, tx.TransactionReference)
+	//results := <-resultChan
+	//for _, result := range results {
+	//	if result == nil || result.Status == passport.TransactionFailed {
+	//		return terror.Error(fmt.Errorf("Transaction Failed"))
+	//	}
+	//}
 
 	reply(true)
 	return nil

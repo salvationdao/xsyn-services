@@ -13,6 +13,8 @@ import (
 	"passport/log_helpers"
 	"strconv"
 
+	SentryTracer "github.com/ninja-syndicate/hub/ext/sentry"
+
 	"github.com/shopspring/decimal"
 
 	"nhooyr.io/websocket"
@@ -111,6 +113,7 @@ func NewAPI(
 		Hub: hub.New(&hub.Config{
 			ClientOfflineFn: cleanUpFunc,
 			Log:             zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
+			Tracer:          SentryTracer.New(),
 			WelcomeMsg: &hub.WelcomeMsg{
 				Key:     "WELCOME",
 				Payload: nil,

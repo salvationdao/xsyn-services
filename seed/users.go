@@ -307,6 +307,12 @@ func (s *Seeder) SupremacySupPoolUser(ctx context.Context) (*passport.User, erro
 }
 
 func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, error) {
+	// add 1mil
+	amount, ok := big.NewInt(0).SetString("1000000000000000000000000", 0)
+	if !ok {
+		return nil, terror.Error(fmt.Errorf("invalid string for big int"))
+
+	}
 
 	supremacyCollection, err := db.CollectionGet(ctx, s.Conn, "Supremacy")
 	if err != nil {
@@ -328,6 +334,17 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		return nil, terror.Error(err)
 	}
 
+	_, err = api.CreateTransactionEntry(s.TxConn,
+		*amount,
+		u.ID,
+		passport.XsynTreasuryUserID,
+		"Initial supremacy Zaibatsu supply seed.",
+		"Initial supremacy Zaibatsu supply seed.",
+	)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
 	// Create user
 	u = &passport.User{
 		ID:        passport.SupremacyBostonCyberneticsUserID,
@@ -343,6 +360,17 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		return nil, terror.Error(err)
 	}
 
+	_, err = api.CreateTransactionEntry(s.TxConn,
+		*amount,
+		u.ID,
+		passport.XsynTreasuryUserID,
+		"Initial supremacy BostonCybernetics supply seed.",
+		"Initial supremacy BostonCybernetics supply seed.",
+	)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
 	// Create user
 	u = &passport.User{
 		ID:        passport.SupremacyRedMountainUserID,
@@ -354,6 +382,17 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 
 	// Insert
 	err = db.InsertSystemUser(ctx, s.Conn, u)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	_, err = api.CreateTransactionEntry(s.TxConn,
+		*amount,
+		u.ID,
+		passport.XsynTreasuryUserID,
+		"Initial supremacy RedMountain supply seed.",
+		"Initial supremacy RedMountain supply seed.",
+	)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
