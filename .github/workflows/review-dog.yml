@@ -1,9 +1,6 @@
-name: reviewdog
+name: Review Dog
 on: [pull_request]
 jobs:
-  # NOTE: golangci-lint doesn't report multiple errors on the same line from
-  # different linters and just report one of the errors?
-
   golangci-lint:
     name: runner / golangci-lint
     runs-on: ubuntu-20.04
@@ -15,3 +12,4 @@ jobs:
         with:
           # optionally use a specific version of Go rather than the latest one
           go_version: "1.17"
+          github_token: ${{env.GITHUB_TOKEN}}
