@@ -289,8 +289,12 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 
 		return 1, nil
 	})
+	cleanFunc := func(interface{}, error) {
+		battleSupTrickler.Stop()
+	}
 	battleSupTrickler.StopMaxInterval = ticksInFiveMinutes
 	battleSupTrickler.DisableLogging = true
+	battleSupTrickler.FuncClean = cleanFunc
 	battleSupTrickler.Start()
 
 	reply(true)
