@@ -10,6 +10,9 @@ env:
 jobs:
   build:
     runs-on: ubuntu-20.04
+    outputs:
+      artifact_filename: ${{ steps.artifact.outputs.filename }}
+
     steps:
       - uses: actions/checkout@v2
         with:
@@ -66,6 +69,8 @@ jobs:
         run: |
           go build \
             -ldflags "-X main.Version=${{env.GITVERSION}} -X main.GitHash=${{env.GITHASH}} -X main.GitBranch=${{env.GITBRANCH}} -X main.BuildDate=${{env.BUILDDATE}} -X main.UnCommittedFiles=${{env.GITSTATE}}" \
+            -gcflags=-trimpath=${{env.GITHUB_WORKSPACE}} \
+            -asmflags=-trimpath=${{env.GITHUB_WORKSPACE}} \                
             -o deploy/passport-api \
             cmd/platform/main.go
 
@@ -82,11 +87,14 @@ jobs:
       - name: List deploy dir
         run: find deploy
 
+      - id: artifact
+      run: echo "::set-output name=filename::${{ steps.artifact.outputs.filename }}"
+
       - name: save artifact
         uses: actions/upload-artifact@v2
         if: ${{ !env.ACT }} # if running in local test environment
         with:
-          name: passport-web_${{env.GITVERSION}}.tar.gz
+          name: passport-web_${{env.GITVERSION}}
           path: ./deploy/
 
   deploy:
@@ -96,7 +104,7 @@ jobs:
       - uses: actions/download-artifact@v2
         if: ${{ !env.ACT }} # if running in local test environment
         with:
-          name: passport-web_${{env.GITVERSION}}.tar.gz
+          name: ${{ needs.build.outputs.artifact_filename }}
           path: ./deploy
 
       - name: Setup SSH

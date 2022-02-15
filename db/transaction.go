@@ -251,6 +251,7 @@ func BattleArenaSupsTopContributors(ctx context.Context, conn Conn, startTime, e
 	uss := []*passport.User{}
 	q := `
 		SELECT 
+			u.id,
 			u.username, 
 			u.avatar_id,
 			u.faction_id 
@@ -280,7 +281,8 @@ func BattleArenaSupsTopContributeFaction(ctx context.Context, conn Conn, startTi
 		SELECT 
 			f.id,
 			f.label,
-			f.logo_blob_id
+			f.logo_blob_id,
+			f.theme
 		FROM 
 			transactions t
 		INNER JOIN 

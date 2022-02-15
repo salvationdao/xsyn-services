@@ -65,7 +65,7 @@ func (ch *ServerClientControllerWS) Handler(ctx context.Context, hubc *hub.Clien
 	// Remove any old supremacy connections
 	ch.API.ServerClients(func(serverClients ServerClientsList) {
 		if clients, ok := serverClients[SupremacyGameServer]; ok {
-			for c, _ := range clients {
+			for c := range clients {
 				ch.API.ServerClientOffline(c)
 			}
 		}
