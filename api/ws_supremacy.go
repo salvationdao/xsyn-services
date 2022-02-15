@@ -641,13 +641,13 @@ func (sc *SupremacyControllerWS) SupremacyTopSupsContributeUser(ctx context.Cont
 
 	// get top contribute users
 	topSupsContributors, err := db.BattleArenaSupsTopContributors(ctx, sc.Conn, req.Payload.StartTime, req.Payload.EndTime)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err != nil {
 		return terror.Error(err)
 	}
 
 	// get top contribute faction
 	topSupsContributeFactions, err := db.BattleArenaSupsTopContributeFaction(ctx, sc.Conn, req.Payload.StartTime, req.Payload.EndTime)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err != nil {
 		return terror.Error(err)
 	}
 
