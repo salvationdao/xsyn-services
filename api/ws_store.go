@@ -38,7 +38,7 @@ func NewStoreController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Stor
 	api.Command(HubKeyStoreList, storeHub.StoreListHandler)
 	api.SecureCommand(HubKeyPurchaseItem, storeHub.PurchaseItemHandler)
 
-	api.SecureUserSubscribeCommand(HubKeyStoreItemSubscribe, storeHub.StoreItemSubscribeHandler)
+	api.SubscribeCommand(HubKeyStoreItemSubscribe, storeHub.StoreItemSubscribeHandler)
 
 	return storeHub
 }
@@ -83,16 +83,17 @@ const HubKeyStoreList = hub.HubCommandKey("STORE:LIST")
 type StoreListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID               passport.UserID        `json:"user_id"`
-		SortDir              db.SortByDir           `json:"sortDir"`
-		SortBy               db.StoreColumn         `json:"sortBy"`
-		IncludedStoreItemIDs []passport.StoreItemID `json:"includedTokenIDs"`
-		Filter               *db.ListFilterRequest  `json:"filter,omitempty"`
-		AssetType            string                 `json:"assetType"`
-		Archived             bool                   `json:"archived"`
-		Search               string                 `json:"search"`
-		PageSize             int                    `json:"pageSize"`
-		Page                 int                    `json:"page"`
+		UserID               passport.UserID            `json:"user_id"`
+		SortDir              db.SortByDir               `json:"sortDir"`
+		SortBy               db.StoreColumn             `json:"sortBy"`
+		IncludedStoreItemIDs []passport.StoreItemID     `json:"includedTokenIDs"`
+		Filter               *db.ListFilterRequest      `json:"filter,omitempty"`
+		AttributeFilter      *db.AttributeFilterRequest `json:"attributeFilter,omitempty"`
+		AssetType            string                     `json:"assetType"`
+		Archived             bool                       `json:"archived"`
+		Search               string                     `json:"search"`
+		PageSize             int                        `json:"pageSize"`
+		Page                 int                        `json:"page"`
 	} `json:"payload"`
 }
 
@@ -119,7 +120,7 @@ func (ctrlr *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.
 		req.Payload.Archived,
 		req.Payload.IncludedStoreItemIDs,
 		req.Payload.Filter,
-		req.Payload.AssetType,
+		req.Payload.AttributeFilter,
 		offset,
 		req.Payload.PageSize,
 		req.Payload.SortBy,
@@ -166,6 +167,10 @@ func (ctrlr *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, c
 	if item.FactionID.IsNil() {
 		reply(item)
 		return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyStoreItemSubscribe, item.ID)), nil
+	}
+
+	if client.Identifier() == "" || client.Level < 1 {
+		return "", "", terror.Error(fmt.Errorf("user not logged in"), "You must be logged in and enlisted in the faction to view this item.")
 	}
 
 	// get user to check faction

@@ -2,6 +2,8 @@ package db
 
 import (
 	"fmt"
+
+	"github.com/ninja-software/terror/v2"
 )
 
 type (
@@ -97,4 +99,112 @@ func GenerateListFilterSQL(column string, value string, operator OperatorValueTy
 	}
 
 	return condition, checkValue
+}
+
+type (
+	TraitType string
+)
+
+const (
+	TraitTypeRarity                TraitType = "Rarity"
+	TraitTypeBrand                 TraitType = "Brand"
+	TraitTypeModel                 TraitType = "Model"
+	TraitTypeSkin                  TraitType = "Skin"
+	TraitTypeName                  TraitType = "Name"
+	TraitTypeAssetType             TraitType = "Asset Type"
+	TraitTypeMaxStructureHitPoints TraitType = "Max Structure Hit Points"
+	TraitTypeMaxShieldHitPoints    TraitType = "Max Shield Hit Points"
+	TraitTypeSpeed                 TraitType = "Speed"
+	TraitTypeWeaponHardpoints      TraitType = "Weapon Hardpoints"
+	TraitTypeUtilitySlots          TraitType = "Utility Slots"
+	TraitTypeWeaponOne             TraitType = "Weapon One"
+	TraitTypeWeaponTwo             TraitType = "Weapon Two"
+	TraitTypeUtilityOne            TraitType = "Utility One"
+	TraitTypeAbilityOne            TraitType = "Ability One"
+	TraitTypeAbilityTwo            TraitType = "Ability Two"
+)
+
+func (t TraitType) IsValid() error {
+	switch t {
+	case
+		TraitTypeRarity,
+		TraitTypeBrand,
+		TraitTypeModel,
+		TraitTypeSkin,
+		TraitTypeName,
+		TraitTypeAssetType,
+		TraitTypeMaxStructureHitPoints,
+		TraitTypeMaxShieldHitPoints,
+		TraitTypeSpeed,
+		TraitTypeWeaponHardpoints,
+		TraitTypeUtilitySlots,
+		TraitTypeWeaponOne,
+		TraitTypeWeaponTwo,
+		TraitTypeUtilityOne,
+		TraitTypeAbilityOne,
+		TraitTypeAbilityTwo:
+		return nil
+	}
+	return terror.Error(fmt.Errorf("invalid attribute trait type"))
+}
+
+// AttributeFilterRequest contains attribute-specific filter data commonly used in list requests
+type AttributeFilterRequest struct {
+	LinkOperator LinkOperatorType              `json:"linkOperator"`
+	Items        []*AttributeFilterRequestItem `json:"items"`
+}
+
+// AttributeFilterRequestItem contains instructions on filtering
+type AttributeFilterRequestItem struct {
+	Trait         string            `json:"trait"`
+	Value         string            `json:"value"`
+	OperatorValue OperatorValueType `json:"operatorValue"`
+}
+
+// GenerateAttributeFilterSQL generates SQL for filtering a column
+func GenerateAttributeFilterSQL(trait string, value string, operator OperatorValueType, index int, tableName string) (*string, error) {
+	var condition string
+	// column := fmt.Sprintf("(xsyn_metadata.attributes->>'%s')", trait)
+	// indexStr := fmt.Sprintf("$%d", index)
+
+	condition = fmt.Sprintf(`
+	%[1]s.attributes @> '[{"trait_type": "%[2]s"}]' 
+	AND %[1]s.attributes @> '[{"value": "%[3]s"}]' `, tableName, trait, value)
+
+	// switch operator {
+	// case OperatorValueTypeNumberEquals, OperatorValueTypeNumberNotEquals, OperatorValueTypeGreaterThan, OperatorValueTypeGreaterOrEqual, OperatorValueTypeLessThan, OperatorValueTypeLessOrEqual:
+	// 	// Numbers
+	// 	if _, err := strconv.Atoi(value); err != nil {
+	// 		return nil, terror.Error(terror.ErrInvalidInput, "Attribute value must be a valid number value.")
+	// 	}
+	// 	column += "::NUMERIC"
+	// }
+
+	// switch operator {
+	// case OperatorValueTypeContains:
+	// 	temp := fmt.Sprintf(`%s @> %s`, column, indexStr)
+	// 	condition = &temp
+	// case OperatorValueTypeEquals, OperatorValueTypeIs, OperatorValueTypeNumberEquals:
+	// 	temp := fmt.Sprintf("%s = %s", column, indexStr)
+	// 	condition = &temp
+	// case OperatorValueTypeIsNot, OperatorValueTypeNumberNotEquals:
+	// 	temp := fmt.Sprintf("%s <> %s", column, indexStr)
+	// 	condition = &temp
+	// case OperatorValueTypeIsAfter, OperatorValueTypeGreaterThan:
+	// 	temp := fmt.Sprintf("%s > %s", column, indexStr)
+	// 	condition = &temp
+	// case OperatorValueTypeIsOnOrAfter, OperatorValueTypeGreaterOrEqual:
+	// 	temp := fmt.Sprintf("%s >= %s", column, indexStr)
+	// 	condition = &temp
+	// case OperatorValueTypeIsBefore, OperatorValueTypeLessThan:
+	// 	temp := fmt.Sprintf("%s < %s", column, indexStr)
+	// 	condition = &temp
+	// case OperatorValueTypeIsOnOrBefore, OperatorValueTypeLessOrEqual:
+	// 	temp := fmt.Sprintf("%s <= %s", column, indexStr)
+	// 	condition = &temp
+	// default:
+	// 	return nil, terror.Error(fmt.Errorf("invalid operator value: %s", operator), "Something went wrong. Please try again.")
+	// }
+
+	return &condition, nil
 }
