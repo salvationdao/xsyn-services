@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-20.04
     outputs:
       artifact_filename: ${{ steps.artifact.outputs.filename }}
+      version: ${{ steps.version.outputs.v }}
 
     steps:
       - uses: actions/checkout@v2
@@ -69,8 +70,6 @@ jobs:
         run: |
           go build \
             -ldflags "-X main.Version=${{env.GITVERSION}} -X main.GitHash=${{env.GITHASH}} -X main.GitBranch=${{env.GITBRANCH}} -X main.BuildDate=${{env.BUILDDATE}} -X main.UnCommittedFiles=${{env.GITSTATE}}" \
-            -gcflags=-trimpath=${{env.GITHUB_WORKSPACE}} \
-            -asmflags=-trimpath=${{env.GITHUB_WORKSPACE}} \                
             -o deploy/passport-api \
             cmd/platform/main.go
 
@@ -88,14 +87,19 @@ jobs:
         run: find deploy
 
       - id: artifact
-        run: echo "::set-output name=filename::${{ steps.artifact.outputs.filename }}"
+        run: echo "::set-output name=filename::passport-api_${{env.GITVERSION}}.tar"
+      - id: version
+        run: echo "::set-output name=v::${{env.GITVERSION}}"
+
+      - name: tar deploy directory
+        run: tar -cvf ${{ steps.artifact.outputs.filename }} ./deploy
 
       - name: save artifact
         uses: actions/upload-artifact@v2
         if: ${{ !env.ACT }} # if running in local test environment
         with:
-          name: passport-web_${{env.GITVERSION}}
-          path: ./deploy/
+          name: ${{ steps.artifact.outputs.filename }}
+          path: ${{ steps.artifact.outputs.filename }}
 
   deploy:
     needs: [build]
@@ -105,7 +109,9 @@ jobs:
         if: ${{ !env.ACT }} # if running in local test environment
         with:
           name: ${{ needs.build.outputs.artifact_filename }}
-          path: ./deploy
+      
+      - name: untar deploy directory
+        run: tar -xvf ${{ needs.build.outputs.artifact_filename }}
 
       - name: Setup SSH
         run: |
@@ -114,14 +120,14 @@ jobs:
           echo '${{ secrets.STAGING_SSH_KNOWN_HOSTS }}' > ~/.ssh/known_hosts
           echo '${{ secrets.STAGING_SSH_PKEY }}' > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-
+      
       - name: Rsync to server
         if: ${{ !env.ACT }} # if running in local test environment
-        run: rsync -av deploy/ ${{ secrets.STAGING_SSH_HOST }}:/usr/share/ninja_syndicate/passport-api_${{env.GITVERSION}}
+        run: rsync -av ./deploy/ ${{ secrets.STAGING_SSH_HOST }}:/usr/share/ninja_syndicate/passport-api_${{ needs.build.outputs.version }}
 
       - name: Copy previous config
         if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cp /usr/share/ninja_syndicate/passport-online/init/passport-staging.env /usr/share/ninja_syndicate/passport-api_${{env.GITVERSION}}/init/passport-staging.env && cp /usr/share/ninja_syndicate/passport-online/init/passport-staging.env ~/.ssh/environment'
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cp /usr/share/ninja_syndicate/passport-online/init/passport-staging.env /usr/share/ninja_syndicate/passport-api_${{ needs.build.outputs.version }}/init/passport-staging.env && cp /usr/share/ninja_syndicate/passport-online/init/passport-staging.env ~/.ssh/environment'
 
       # - name: "DB: Backup" # Run this before changing the link
       #   if: ${{ !env.ACT }} # if running in local test environment
@@ -130,7 +136,7 @@ jobs:
 
       - name: Bring new version online
         if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'ln -Tfsv /usr/share/ninja_syndicate/passport-api_${{env.GITVERSION}} /usr/share/ninja_syndicate/passport-online'
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'ln -Tfsv /usr/share/ninja_syndicate/passport-api_${{ needs.build.outputs.version }} /usr/share/ninja_syndicate/passport-online'
 
       - name: stop service
         if: ${{ !env.ACT }} # if running in local test environment
