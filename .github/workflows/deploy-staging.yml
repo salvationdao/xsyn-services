@@ -123,7 +123,7 @@ jobs:
       
       - name: Rsync to server
         if: ${{ !env.ACT }} # if running in local test environment
-        run: rsync -av ./passport-api_${{ needs.build.outputs.version }}/ ${{ secrets.STAGING_SSH_HOST }}:/usr/share/ninja_syndicate/passport-api_${{ needs.build.outputs.version }}
+        run: rsync -av ./deploy/ ${{ secrets.STAGING_SSH_HOST }}:/usr/share/ninja_syndicate/passport-api_${{ needs.build.outputs.version }}
 
       - name: Copy previous config
         if: ${{ !env.ACT }} # if running in local test environment
