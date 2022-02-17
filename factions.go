@@ -31,4 +31,5 @@ type FactionStat struct {
 	KillCount     int64     `json:"killCount"`
 	DeathCount    int64     `json:"deathCount"`
 	MVP           *User     `json:"mvp,omitempty"`
+	SupsVoted     string    `json:"supsVoted"`
 }

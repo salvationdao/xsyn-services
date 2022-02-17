@@ -769,10 +769,18 @@ func (sc *SupremacyControllerWS) SupremacyFactionStatSend(ctx context.Context, w
 		// get mvp
 		mvp, err := db.FactionMvpGet(ctx, sc.Conn, factionStatSend.FactionStat.ID)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			sc.Log.Err(err).Msgf("faction to get mvp from faction %s", factionStatSend.FactionStat.ID)
+			sc.Log.Err(err).Msgf("failed to get mvp from faction %s", factionStatSend.FactionStat.ID)
 			continue
 		}
 		factionStatSend.FactionStat.MVP = mvp
+
+		supsVoted, err := db.FactionSupsVotedGet(ctx, sc.Conn, factionStatSend.FactionStat.ID)
+		if err != nil {
+			sc.Log.Err(err).Msgf("failed to get sups voted from faction %s", factionStatSend.FactionStat.ID)
+			continue
+		}
+
+		factionStatSend.FactionStat.SupsVoted = supsVoted.String()
 
 		if factionStatSend.ToUserID == nil && factionStatSend.ToUserSessionID == nil {
 			// broadcast to all faction stat subscribers
