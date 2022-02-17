@@ -77,7 +77,7 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	// sups contribute
 	api.SupremacyCommand(HubKeySupremacyAbilityTargetPriceUpdate, supremacyHub.SupremacyAbilityTargetPriceUpdate)
 	api.SupremacyCommand(HubKeySupremacyTopSupsContruteUser, supremacyHub.SupremacyTopSupsContributeUser)
-	api.SupremacyCommand(HubKeySupremacyUserGet, supremacyHub.SupremacyUserGet)
+	api.SupremacyCommand(HubKeySupremacyUsersGet, supremacyHub.SupremacyUsersGet)
 
 	// faction stat
 	api.SupremacyCommand(HubKeySupremacyFactionStatSend, supremacyHub.SupremacyFactionStatSend)
@@ -627,8 +627,8 @@ type SupremacyTopSupsContributorRequest struct {
 }
 
 type SupremacyTopSupsContributorResponse struct {
-	TopSupsContributor       *passport.User    `json:"topSupsContributor"`
-	TopSupsContributeFaction *passport.Faction `json:"topSupsContributeFaction"`
+	TopSupsContributors       []*passport.User    `json:"topSupsContributors"`
+	TopSupsContributeFactions []*passport.Faction `json:"topSupsContributeFactions"`
 }
 
 const HubKeySupremacyTopSupsContruteUser = hub.HubCommandKey("SUPREMACY:TOP_SUPS_CONTRIBUTORS")
@@ -652,15 +652,10 @@ func (sc *SupremacyControllerWS) SupremacyTopSupsContributeUser(ctx context.Cont
 		return terror.Error(err)
 	}
 
-	result := &SupremacyTopSupsContributorResponse{}
-	if len(topSupsContributors) > 0 {
-		result.TopSupsContributor = topSupsContributors[0]
-	}
-	if len(topSupsContributeFactions) > 0 {
-		result.TopSupsContributeFaction = topSupsContributeFactions[0]
-	}
-
-	reply(result)
+	reply(&SupremacyTopSupsContributorResponse{
+		TopSupsContributors:       topSupsContributors,
+		TopSupsContributeFactions: topSupsContributeFactions,
+	})
 
 	return nil
 }
@@ -668,25 +663,25 @@ func (sc *SupremacyControllerWS) SupremacyTopSupsContributeUser(ctx context.Cont
 type SupremacyUserGetRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID passport.UserID `json:"userID"`
+		UserIDs []passport.UserID `json:"userIDs"`
 	} `json:"payload"`
 }
 
-const HubKeySupremacyUserGet = hub.HubCommandKey("SUPREMACY:GET_USER")
+const HubKeySupremacyUsersGet = hub.HubCommandKey("SUPREMACY:GET_USERS")
 
-func (sc *SupremacyControllerWS) SupremacyUserGet(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (sc *SupremacyControllerWS) SupremacyUsersGet(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &SupremacyUserGetRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
 	}
 
-	user, err := db.UserGet(ctx, sc.Conn, req.Payload.UserID)
+	users, err := db.UserGetByIDs(ctx, sc.Conn, req.Payload.UserIDs)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	reply(user)
+	reply(users)
 
 	return nil
 }
