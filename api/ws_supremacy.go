@@ -394,7 +394,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 
 	_, assets, err := db.AssetList(
 		ctx, sc.Conn,
-		"", false, req.Payload.AssetTokenIDs, nil, "", 0, len(req.Payload.AssetTokenIDs), "", "",
+		"", false, req.Payload.AssetTokenIDs, nil, nil, 0, len(req.Payload.AssetTokenIDs), "", "",
 	)
 	if err != nil {
 		return terror.Error(err)
@@ -471,7 +471,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetReleaseHandler(ctx context.Contex
 
 	_, assets, err := db.AssetList(
 		ctx, sc.Conn,
-		"", false, tokenIDs, nil, "", 0, len(tokenIDs), "", "",
+		"", false, tokenIDs, nil, nil, 0, len(tokenIDs), "", "",
 	)
 	if err != nil {
 		return terror.Error(err)

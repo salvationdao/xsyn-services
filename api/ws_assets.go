@@ -287,16 +287,17 @@ func (ac *AssetController) PayAssetInsuranceHandler(ctx context.Context, hubc *h
 type AssetsUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID           passport.UserID       `json:"user_id"`
-		SortDir          db.SortByDir          `json:"sortDir"`
-		SortBy           db.AssetColumn        `json:"sortBy"`
-		IncludedTokenIDs []uint64              `json:"includedTokenIDs"`
-		Filter           *db.ListFilterRequest `json:"filter,omitempty"`
-		AssetType        string                `json:"assetType"`
-		Archived         bool                  `json:"archived"`
-		Search           string                `json:"search"`
-		PageSize         int                   `json:"pageSize"`
-		Page             int                   `json:"page"`
+		UserID           passport.UserID            `json:"user_id"`
+		SortDir          db.SortByDir               `json:"sortDir"`
+		SortBy           db.AssetColumn             `json:"sortBy"`
+		IncludedTokenIDs []uint64                   `json:"includedTokenIDs"`
+		Filter           *db.ListFilterRequest      `json:"filter,omitempty"`
+		AttributeFilter  *db.AttributeFilterRequest `json:"attributeFilter,omitempty"`
+		AssetType        string                     `json:"assetType"`
+		Archived         bool                       `json:"archived"`
+		Search           string                     `json:"search"`
+		PageSize         int                        `json:"pageSize"`
+		Page             int                        `json:"page"`
 	} `json:"payload"`
 }
 
@@ -327,7 +328,7 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Clien
 		req.Payload.Archived,
 		req.Payload.IncludedTokenIDs,
 		req.Payload.Filter,
-		req.Payload.AssetType,
+		req.Payload.AttributeFilter,
 		offset,
 		req.Payload.PageSize,
 		req.Payload.SortBy,
