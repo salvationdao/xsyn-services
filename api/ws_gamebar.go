@@ -76,6 +76,14 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 		return terror.Error(terror.ErrInvalidInput)
 	}
 
+	if user == nil {
+		return terror.Error(fmt.Errorf("user not found"), "could not find user")
+	}
+
+	if !user.Verified {
+		return terror.Error(fmt.Errorf("user is not verified"), "Current user is not verified")
+	}
+
 	if req.Payload.TwitchExtensionJWT != "" {
 		claims, err := gc.API.Auth.GetClaimsFromTwitchExtensionToken(req.Payload.TwitchExtensionJWT)
 		if err != nil {
@@ -97,12 +105,6 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 			if claims.TwitchAccountID != user.TwitchID.String {
 				return terror.Error(terror.ErrInvalidInput, "twitch account id does not match to current user")
 			}
-
-			// get user from twitchid
-			user, err = db.UserByTwitchID(ctx, gc.Conn, claims.TwitchAccountID)
-			if err != nil {
-				return terror.Error(err)
-			}
 		} else {
 			// associate current twitch id with
 			err := db.UserAddTwitch(ctx, gc.Conn, user, claims.TwitchAccountID)
@@ -117,14 +119,6 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 
 			// broadcast the update
 			gc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
-		}
-
-		if user == nil {
-			return terror.Error(fmt.Errorf("user not found"), "could not find user")
-		}
-
-		if !user.Verified {
-			return terror.Error(fmt.Errorf("user is not verified"), "Current user is not verified")
 		}
 
 		reply(true)
@@ -146,6 +140,7 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 		return nil
 
 	} else if req.Payload.GameserverSessionID != "" {
+
 		reply(true)
 
 		// send to supremacy server
