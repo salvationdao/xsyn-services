@@ -90,10 +90,18 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 			return terror.Error(terror.ErrInvalidInput, "No twitch account id is provided")
 		}
 
+		var user *passport.User
+
 		if user.TwitchID.Valid {
 			// check twitch id match current passport user twitch account
 			if claims.TwitchAccountID != user.TwitchID.String {
 				return terror.Error(terror.ErrInvalidInput, "twitch account id does not match to current user")
+			}
+
+			// get user from twitchid
+			user, err = db.UserByTwitchID(ctx, gc.Conn, claims.TwitchAccountID)
+			if err != nil {
+				return terror.Error(err)
 			}
 		} else {
 			// associate current twitch id with
@@ -109,6 +117,14 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 
 			// broadcast the update
 			gc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+		}
+
+		if user == nil {
+			return terror.Error(fmt.Errorf("user not found"), "could not find user")
+		}
+
+		if !user.Verified {
+			return terror.Error(fmt.Errorf("user is not verified"), "Current user is not verified")
 		}
 
 		reply(true)
