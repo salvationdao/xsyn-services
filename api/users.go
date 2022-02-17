@@ -139,10 +139,13 @@ func (ug *UserGetter) DiscordID(s string) (auth.SecureUser, error) {
 
 func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebookID, googleID, twitchID, twitterID, discordID, number, publicAddress, password string, other ...interface{}) (auth.SecureUser, error) {
 	ctx := context.Background()
+	throughOauth := true
 	if facebookID == "" && googleID == "" && publicAddress == "" && twitchID == "" && twitterID == "" && discordID == "" {
 		if email == "" {
 			return nil, terror.Error(fmt.Errorf("email empty"), "Email cannot be empty")
 		}
+
+		throughOauth = false
 
 		err := helpers.IsValidPassword(password)
 		if err != nil {
@@ -184,6 +187,7 @@ func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebook
 		Email:         passport.NewString(email),
 		PublicAddress: passport.NewString(publicAddress),
 		RoleID:        passport.UserRoleMemberID,
+		Verified:      throughOauth, // verify users directly if they go through Oauth
 	}
 
 	if password != "" && email != "" {
