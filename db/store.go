@@ -193,7 +193,7 @@ func StoreList(
 	archived bool,
 	includedStoreItemIDs []passport.StoreItemID,
 	filter *ListFilterRequest,
-	assetType string,
+	attributeFilter *AttributeFilterRequest,
 	offset int,
 	pageSize int,
 	sortBy StoreColumn,
@@ -203,16 +203,18 @@ func StoreList(
 	var args []interface{}
 
 	filterConditionsString := ""
+	argIndex := 0
 	if filter != nil {
 		filterConditions := []string{}
-		for i, f := range filter.Items {
+		for _, f := range filter.Items {
 			column := StoreColumn(f.ColumnField)
 			err := column.IsValid()
 			if err != nil {
 				return 0, nil, terror.Error(err)
 			}
 
-			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, i+1)
+			argIndex += 1
+			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, argIndex)
 			if condition != "" {
 				filterConditions = append(filterConditions, condition)
 				args = append(args, value)
@@ -223,11 +225,26 @@ func StoreList(
 		}
 	}
 
-	// asset type filter
-	if assetType != "" {
-		filterConditionsString += fmt.Sprintf(`
-		AND xsyn_store.attributes @> '[{"trait_type": "Asset Type"}]' 
-        AND xsyn_store.attributes @> '[{"value": "%s"}]' `, assetType)
+	if attributeFilter != nil {
+		filterConditions := []string{}
+		for _, f := range attributeFilter.Items {
+			column := TraitType(f.Trait)
+			err := column.IsValid()
+			if err != nil {
+				return 0, nil, terror.Error(err)
+			}
+
+			// argIndex += 1
+			condition, err := GenerateAttributeFilterSQL(f.Trait, f.Value, f.OperatorValue, argIndex, "xsyn_store")
+			if err != nil {
+				return 0, nil, terror.Error(err)
+			}
+			filterConditions = append(filterConditions, *condition)
+			// args = append(args, f.Value)
+		}
+		if len(filterConditions) > 0 {
+			filterConditionsString += "AND (" + strings.Join(filterConditions, " "+string(attributeFilter.LinkOperator)+" ") + ")"
+		}
 	}
 
 	// select specific assets via tokenIDs
