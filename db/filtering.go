@@ -163,48 +163,9 @@ type AttributeFilterRequestItem struct {
 
 // GenerateAttributeFilterSQL generates SQL for filtering a column
 func GenerateAttributeFilterSQL(trait string, value string, operator OperatorValueType, index int, tableName string) (*string, error) {
-	var condition string
-	// column := fmt.Sprintf("(xsyn_metadata.attributes->>'%s')", trait)
-	// indexStr := fmt.Sprintf("$%d", index)
-
-	condition = fmt.Sprintf(`
+	condition := fmt.Sprintf(`
 	%[1]s.attributes @> '[{"trait_type": "%[2]s"}]' 
 	AND %[1]s.attributes @> '[{"value": "%[3]s"}]' `, tableName, trait, value)
-
-	// switch operator {
-	// case OperatorValueTypeNumberEquals, OperatorValueTypeNumberNotEquals, OperatorValueTypeGreaterThan, OperatorValueTypeGreaterOrEqual, OperatorValueTypeLessThan, OperatorValueTypeLessOrEqual:
-	// 	// Numbers
-	// 	if _, err := strconv.Atoi(value); err != nil {
-	// 		return nil, terror.Error(terror.ErrInvalidInput, "Attribute value must be a valid number value.")
-	// 	}
-	// 	column += "::NUMERIC"
-	// }
-
-	// switch operator {
-	// case OperatorValueTypeContains:
-	// 	temp := fmt.Sprintf(`%s @> %s`, column, indexStr)
-	// 	condition = &temp
-	// case OperatorValueTypeEquals, OperatorValueTypeIs, OperatorValueTypeNumberEquals:
-	// 	temp := fmt.Sprintf("%s = %s", column, indexStr)
-	// 	condition = &temp
-	// case OperatorValueTypeIsNot, OperatorValueTypeNumberNotEquals:
-	// 	temp := fmt.Sprintf("%s <> %s", column, indexStr)
-	// 	condition = &temp
-	// case OperatorValueTypeIsAfter, OperatorValueTypeGreaterThan:
-	// 	temp := fmt.Sprintf("%s > %s", column, indexStr)
-	// 	condition = &temp
-	// case OperatorValueTypeIsOnOrAfter, OperatorValueTypeGreaterOrEqual:
-	// 	temp := fmt.Sprintf("%s >= %s", column, indexStr)
-	// 	condition = &temp
-	// case OperatorValueTypeIsBefore, OperatorValueTypeLessThan:
-	// 	temp := fmt.Sprintf("%s < %s", column, indexStr)
-	// 	condition = &temp
-	// case OperatorValueTypeIsOnOrBefore, OperatorValueTypeLessOrEqual:
-	// 	temp := fmt.Sprintf("%s <= %s", column, indexStr)
-	// 	condition = &temp
-	// default:
-	// 	return nil, terror.Error(fmt.Errorf("invalid operator value: %s", operator), "Something went wrong. Please try again.")
-	// }
 
 	return &condition, nil
 }
