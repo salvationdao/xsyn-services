@@ -37,20 +37,7 @@ func NewSupController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, cc *Cha
 		cc:   cc,
 	}
 
-	//// sups list
-	//api.Command(HubKeySupList, supHub.SupListHandler)
-	//
-	//// sup subscribe
-	//api.SubscribeCommand(HubKeySupSubscribe, supHub.SupUpdatedSubscribeHandler)
-	//
-	//// sup set name
-	//api.SecureCommand(HubKeySupUpdateName, supHub.SupUpdateNameHandler)
-	//
 	api.SecureCommand(HubKeyWithdrawSups, supHub.WithdrawSupHandler)
-	//api.SecureCommand(HubKeySupQueueLeave, supHub.LeaveQueueHandler)
-	//api.SecureCommand(HubKeySupInsurancePay, supHub.PaySupInsuranceHandler)
-	//api.SecureUserSubscribeCommand(HubKeySupQueueContractReward, supHub.SupQueueContractRewardSubscriber)
-
 	return supHub
 }
 
@@ -70,68 +57,55 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 		return terror.Error(err, "Invalid request received")
 	}
 
-	fmt.Println("here123123123")
 	if sc.cc.SUPS == nil {
 		return terror.Error(fmt.Errorf("sups controller not initalized"), "Internal error, try again or contact support.")
 	}
 
-	fmt.Println("1")
 	withdrawAmount := big.NewInt(0)
 	if _, ok := withdrawAmount.SetString(req.Payload.Amount, 10); !ok {
 		return terror.Error(fmt.Errorf("failed to create big int from amount"), "Issue getting amount.")
 	}
-	fmt.Println("2")
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
 		return terror.Error(terror.ErrForbidden)
 	}
-	fmt.Println("3")
 	user, err := db.UserGet(ctx, sc.Conn, userID)
 	if userID.IsNil() {
 		return terror.Error(err)
 	}
-	fmt.Println("4")
 	if !user.PublicAddress.Valid || user.PublicAddress.String == "" {
 		return terror.Error(fmt.Errorf("user has no public address"), "Account missing public address.")
 	}
-	fmt.Println("5")
 	// if balance too low
 	if user.Sups.Cmp(withdrawAmount) < 0 {
 		return terror.Error(fmt.Errorf("user tried to withdraw without enough funds"), "Insufficient funds.")
 	}
-	fmt.Println("6")
 	// check withdraw wallet sups
 	balance, err := sc.cc.SUPS.Balance()
 	if err != nil {
 		return terror.Error(err)
 	}
-	fmt.Println("7")
 
 	// if wallet sups balance too low
 	if balance.Cmp(withdrawAmount) < 0 {
 		return terror.Error(fmt.Errorf("not enough funds in our withdraw wallet"), "Insufficient in funds in withdraw wallet at this time.")
 	}
-	fmt.Println("8")
 	// check withdraw wallet gas
 	pendingBalance, err := sc.cc.BscClient.PendingBalanceAt(ctx, sc.cc.SUPS.PublicAddress)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	fmt.Println("9")
 	suggestGasPrice, err := sc.cc.BscClient.SuggestGasPrice(ctx)
 	if err != nil {
 		return terror.Error(err)
 	}
-	fmt.Println("10")
 	if pendingBalance.Cmp(suggestGasPrice) < 0 {
 		return terror.Error(fmt.Errorf("not enough gas funds in our withdraw wallet"), "Insufficient gas in withdraw wallet at this time.")
 	}
-	fmt.Println("11")
 	txID := uuid.Must(uuid.NewV4())
 
 	txRef := fmt.Sprintf("sup|withdraw|%s", txID)
-	fmt.Println("12")
 	resultChan := make(chan *passport.TransactionResult, 1)
 	sc.API.transaction <- &passport.NewTransaction{
 		To:                   passport.OnChainUserID,
@@ -141,17 +115,13 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 		Description:          "Withdraw of SUPS.",
 		ResultChan:           resultChan,
 	}
-	fmt.Println("13")
 	result := <-resultChan
-	fmt.Println("14")
 	if result.Error != nil {
 		return terror.Error(result.Error, "Withdraw failed: %s", result.Error.Error())
 	}
-	fmt.Println("15")
 	if result.Transaction.Status != passport.TransactionSuccess {
 		return terror.Error(fmt.Errorf("withdraw failed: %s", result.Transaction.Reason), fmt.Sprintf("Withdraw failed: %s.", result.Transaction.Reason))
 	}
-	fmt.Println("16")
 	// refund callback
 	refund := func(reason string) {
 		sc.API.transaction <- &passport.NewTransaction{
@@ -162,20 +132,17 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 			Description:          "Refund of Withdraw of SUPS.",
 		}
 	}
-	fmt.Println("17")
 	tx, err := sc.cc.SUPS.Transfer(ctx, common.HexToAddress(user.PublicAddress.String), withdrawAmount)
 	if err != nil {
 		refund(err.Error())
 		return terror.Error(err, "Withdraw failed: %s", result.Error.Error())
 	}
-	fmt.Println("18")
 	errChan := make(chan error)
 	attemptsChan := make(chan int)
 	// we check every 5 seconds on updates to their transaction
 	go func() {
 		attempts := 0
 		for {
-			fmt.Printf("attempt: %d \n", attempts)
 			time.Sleep(5 * time.Second)
 
 			attempts++
@@ -205,7 +172,6 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 			return
 		}
 	}()
-	fmt.Println("19")
 	// wait for either 60 seconds or errChan
 	// if errChan == nil the transaction was successful
 	// if errChan wasn't nil, refund
@@ -215,17 +181,14 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 		select {
 		case attempts := <-attemptsChan:
 			if attempts == 12 {
-				fmt.Println("20")
 				reply(true)
 				return nil
 			}
 		case err := <-errChan:
 			if err != nil {
-				fmt.Println("21")
 				refund(err.Error())
 				return terror.Warn(err, "Transaction failed: %s", err.Error())
 			}
-			fmt.Println("22")
 			reply(true)
 			return nil
 		}
