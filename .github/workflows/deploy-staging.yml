@@ -41,7 +41,7 @@ jobs:
 
       - name: calculate version increment
         run: |
-          NEWVER=$(scripts/increment_git_ver.sh)
+          NEWVER=$(scripts/increment_git_ver.py)
           git tag "$NEWVER"
           echo "GITVERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
           echo "GITHASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
