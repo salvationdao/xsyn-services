@@ -21,7 +21,6 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/ethereum/go-ethereum/ethclient"
-	client "github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/ninja-syndicate/supremacy-bridge/bridge"
 )
@@ -33,6 +32,7 @@ type ChainClients struct {
 	API             *API
 	Log             *zerolog.Logger
 	updateStateFunc func(chainID int64, newBlock uint64)
+	updatePriceFunc func(addr common.Address, amount big.Int)
 }
 
 func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) *ChainClients {
@@ -60,6 +60,17 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) 
 		}
 	}
 
+	cc.updatePriceFunc = func(addr common.Address, amount big.Int) {
+		switch addr {
+		case cc.Params.WbnbAddr:
+			cc.Params.ExchangeRates.WBNBToSUPS = decimal.NewFromBigInt(&amount, 18).Div(cc.Params.ExchangeRates.SUPToUSD)
+		case cc.Params.WethAddr:
+			cc.Params.ExchangeRates.WBNBToSUPS = decimal.NewFromBigInt(&amount, 18).Div(cc.Params.ExchangeRates.SUPToUSD)
+		}
+		fmt.Println(cc.Params.ExchangeRates)
+		api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSExchangeRates), cc.Params.ExchangeRates)
+	}
+
 	go cc.runETHBridgeListener(ctx)
 	go cc.runBSCBridgeListener(ctx)
 
@@ -78,7 +89,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 					ctx := context.Background()
 
 					amountTimes100 := xfer.Amount.Mul(xfer.Amount, big.NewInt(1000))
-					supUSDPriceTimes100 := cc.Params.SUPToUSD.Mul(decimal.New(1000, 0)).BigInt()
+					supUSDPriceTimes100 := cc.Params.ExchangeRates.SUPToUSD.Mul(decimal.New(1000, 0)).BigInt()
 					supAmount := amountTimes100.Div(amountTimes100, supUSDPriceTimes100)
 
 					cc.Log.Info().
@@ -145,7 +156,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 					// if buying sups with WBNB
 					ctx := context.Background()
 					// TODO: probably do a * 1000 here? currently no decimals in conversion but possibly in future?
-					supAmount := cc.Params.WBNBToSUPS.BigInt()
+					supAmount := cc.Params.ExchangeRates.WBNBToSUPS.BigInt()
 					supAmount = supAmount.Mul(supAmount, xfer.Amount)
 
 					cc.Log.Info().
@@ -276,7 +287,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 					//busdAmount := d.Div(p.BUSDToSUPS)
 
 					// make sup cost 1000 * bigger to not deal with decimals
-					supUSDPriceTimes1000 := cc.Params.SUPToUSD.Mul(decimal.New(1000, 0)).BigInt()
+					supUSDPriceTimes1000 := cc.Params.ExchangeRates.SUPToUSD.Mul(decimal.New(1000, 0)).BigInt()
 					// amount * sup to usd price
 					amountTimesSupsPrice := xfer.Amount.Mul(xfer.Amount, supUSDPriceTimes1000)
 					// divide by 1000 to bring it back down
@@ -415,7 +426,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 					// if buying sups with USDC
 					ctx := context.Background()
 					amountTimes100 := xfer.Amount.Mul(xfer.Amount, big.NewInt(1000))
-					supUSDPriceTimes100 := cc.Params.SUPToUSD.Mul(decimal.New(1000, 0)).BigInt()
+					supUSDPriceTimes100 := cc.Params.ExchangeRates.SUPToUSD.Mul(decimal.New(1000, 0)).BigInt()
 					supAmount := amountTimes100.Div(amountTimes100, supUSDPriceTimes100)
 
 					cc.Log.Info().
@@ -479,7 +490,7 @@ func (cc *ChainClients) handleTransfer() func(xfer *bridge.Transfer) {
 					// if buying sups with WETH
 					ctx := context.Background()
 					// TODO: probably do a * 1000 here? currently no decimals in conversion but possibly in future?
-					supAmount := cc.Params.WETHToSUPS.BigInt()
+					supAmount := cc.Params.ExchangeRates.WETHToSUPS.BigInt()
 					supAmount = supAmount.Mul(supAmount, xfer.Amount)
 
 					cc.Log.Info().
@@ -612,7 +623,7 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 			ctx, cancel := context.WithCancel(ctx)
 
 			cc.Log.Info().Msg("Attempting to connect to BSC node")
-			bscClient, err := client.DialContext(ctx, cc.Params.BscNodeAddr)
+			bscClient, err := ethclient.DialContext(ctx, cc.Params.BscNodeAddr)
 			if err != nil {
 				cc.Log.Err(err).Msg("failed to connected to bsc node")
 				cancel()
@@ -668,6 +679,52 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 						errChan <- err
 						return
 					}
+					time.Sleep(10 * time.Second)
+				}
+			}()
+
+			wbnbPathAddrs := []common.Address{cc.Params.WbnbAddr, cc.Params.BusdAddr}
+			wethPathAddrs := []common.Address{cc.Params.WethAddr, cc.Params.UsdcAddr}
+
+			// creates a struct that then can be used to get busd to wbnb price
+			wbnbGetter, err := bridge.NewPriceGetter(cc.BscClient, common.HexToAddress("0x10ED43C718714eb63d5aA57B78B54704E256024E"), wbnbPathAddrs) // pathAddrs are an array of contract addresses, from one token to the other
+			if err != nil {
+				cc.Log.Err(err).Msg("failed to get wbnb price getter struct")
+				cancel()
+				return
+			}
+
+			wethGetter, err := bridge.NewPriceGetter(cc.EthClient, common.HexToAddress("0x10ED43C718714eb63d5aA57B78B54704E256024E"), wethPathAddrs) // pathAddrs are an array of contract addresses, from one token to the other
+			if err != nil {
+				cc.Log.Err(err).Msg("failed to get weth price getter struct")
+				cancel()
+				return
+			}
+
+			go func() {
+				for {
+					// gets how many busd for 1 wbnb
+					wbnbPrice, err := wbnbGetter.Price(decimal.New(1, int32(18)).BigInt())
+					fmt.Println(wbnbGetter.Paths)
+					if err != nil {
+						cc.Log.Err(err).Msg("failed to get WBNB price")
+						cancel()
+						time.Sleep(b.Duration())
+						errChan <- err
+						return
+					}
+					//gets how many usdc for 1 weth
+					wethPrice, err := wethGetter.Price(decimal.New(1, int32(18)).BigInt())
+					if err != nil {
+						cc.Log.Err(err).Msg("failed to get WETH price")
+						cancel()
+						time.Sleep(b.Duration())
+						errChan <- err
+						return
+					}
+					cc.updatePriceFunc(cc.Params.WbnbAddr, *wbnbPrice)
+					cc.updatePriceFunc(cc.Params.WethAddr, *wethPrice)
+
 					time.Sleep(10 * time.Second)
 				}
 			}()
@@ -826,7 +883,7 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 
 			cc.Log.Info().Msg("Attempting to connect to ETH node")
 
-			ethClient, err := client.DialContext(ctx, cc.Params.EthNodeAddr)
+			ethClient, err := ethclient.DialContext(ctx, cc.Params.EthNodeAddr)
 			if err != nil {
 				cc.Log.Err(err).Msg("failed to connected to eth node")
 				cancel()

@@ -30,9 +30,13 @@ type BridgeParams struct {
 	EthNodeAddr    string
 	BSCChainID     int64
 	ETHChainID     int64
-	USDCToSUPS     decimal.Decimal
-	BUSDToSUPS     decimal.Decimal
-	WETHToSUPS     decimal.Decimal
-	WBNBToSUPS     decimal.Decimal
-	SUPToUSD       decimal.Decimal
+	ExchangeRates  *ExchangeRates
+}
+
+type ExchangeRates struct {
+	USDCToSUPS decimal.Decimal
+	BUSDToSUPS decimal.Decimal
+	WETHToSUPS decimal.Decimal
+	WBNBToSUPS decimal.Decimal
+	SUPToUSD   decimal.Decimal
 }

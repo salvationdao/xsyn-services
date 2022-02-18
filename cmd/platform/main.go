@@ -403,11 +403,13 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 			EthNodeAddr:    EthNodeAddr,
 			BSCChainID:     BSCChainID,
 			ETHChainID:     ETHChainID,
-			USDCToSUPS:     USDCToSUPS,
-			BUSDToSUPS:     BUSDToSUPS,
-			WETHToSUPS:     WETHToSUPS,
-			WBNBToSUPS:     WBNBToSUPS,
-			SUPToUSD:       SUPToUSD,
+			ExchangeRates: &passport.ExchangeRates{
+				USDCToSUPS: USDCToSUPS,
+				BUSDToSUPS: BUSDToSUPS,
+				WETHToSUPS: WETHToSUPS,
+				WBNBToSUPS: WBNBToSUPS,
+				SUPToUSD:   SUPToUSD,
+			},
 		},
 	}
 

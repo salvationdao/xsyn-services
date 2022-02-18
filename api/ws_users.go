@@ -2397,9 +2397,6 @@ func (uc *UserController) ExchangeRatesHandler(ctx context.Context, client *hub.
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
 
-	//TODO: get up to date conversion rates
-
-	reply(uc.API.SupUSD.String()) //0.12
 	return req.TransactionID, messagebus.BusKey(HubKeySUPSExchangeRates), nil
 }
 
