@@ -90,7 +90,7 @@ func (ac *AssetController) LeaveQueueHandler(ctx context.Context, hubc *hub.Clie
 		return terror.Error(err)
 	}
 
-	if !metadata.LockedByID.IsNil() {
+	if metadata.LockedByID != nil && !metadata.LockedByID.IsNil() {
 		return terror.Error(terror.ErrInvalidInput, "Current asset is locked")
 	}
 
@@ -138,25 +138,21 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	if user.FactionID == nil || user.FactionID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User needs to join a faction to deploy war machine")
+		return terror.Error(terror.ErrInvalidInput, "User needs to join a faction to deploy war machine.")
 	}
 
-	// check user own this asset and it has not joined the queue yet
-	metadata, err := db.XsynMetadataOwnerGet(ctx, ac.Conn, userID, req.Payload.AssetTokenID)
+	// check user own this asset, and it has not joined the queue yet
+	asset, err := db.AssetGet(ctx, ac.Conn, req.Payload.AssetTokenID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	if metadata.LockedByID != nil && metadata.LockedByID.IsNil() {
-		return terror.Error(fmt.Errorf("Current asset is locked"))
+	if !asset.IsUsable() {
+		return terror.Error(fmt.Errorf("asset is locked"), "Asset is locked.")
 	}
 
-	if metadata.FrozenAt != nil {
-		return terror.Error(fmt.Errorf("Current asset is frozen"))
-	}
-
-	if metadata.Durability < 100 {
-		return terror.Error(fmt.Errorf("Current asset's durability is low"))
+	if asset.Durability < 100 {
+		return terror.Warn(fmt.Errorf("current assets durability is low"), "Current asset's durability is low.")
 	}
 
 	warMachineMetadata := &passport.WarMachineMetadata{
@@ -173,14 +169,14 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	warMachineMetadata.ContractReward = <-contractRewardChan
 
 	// parse metadata
-	for _, att := range metadata.Attributes {
+	for _, att := range asset.Attributes {
 		if att.TraitType != "Asset Type" {
 			continue
 		}
 
 		switch att.Value {
 		case string(passport.WarMachine):
-			passport.ParseWarMachineMetadata(metadata, warMachineMetadata)
+			passport.ParseWarMachineMetadata(asset, warMachineMetadata)
 		case string(passport.Weapon):
 		case string(passport.Utility):
 		}
@@ -467,7 +463,7 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 		return terror.Error(err)
 	}
 
-	ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.TokenID)), asset)
+	go ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.TokenID)), asset)
 
 	ac.API.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: AssetUpdated,

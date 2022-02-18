@@ -40,8 +40,8 @@ func FileRouter(conn *pgxpool.Pool, api *API) chi.Router {
 	}
 
 	r := chi.NewRouter()
-	r.Get("/{id}", WithError(c.FileGet))
-	r.Post("/upload", WithError(WithUser(api, c.FileUpload)))
+	r.Get("/{id}", api.WithError(c.FileGet))
+	r.Post("/upload", api.WithError(WithUser(api, c.FileUpload)))
 
 	return r
 }

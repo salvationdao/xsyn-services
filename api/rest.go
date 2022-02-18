@@ -38,7 +38,7 @@ type ErrorObject struct {
 }
 
 // WithError handles error responses.
-func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) http.HandlerFunc {
+func (api *API) WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) http.HandlerFunc {
 	// TODO: Ask about sentry ideas?
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		contents, _ := ioutil.ReadAll(r.Body)
@@ -57,6 +57,13 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) h
 			var bErr *terror.TError
 			if errors.As(err, &bErr) {
 				errObj.Message = bErr.Message
+
+				switch bErr.Level {
+				case terror.ErrLevelWarn:
+					api.Log.Warn().Err(err).Msg("rest error")
+				default:
+					api.Log.Err(err).Msg("rest error")
+				}
 
 				// set generic messages if friendly message not set making genric messages overrideable
 				if bErr.Error() == bErr.Message {
@@ -81,6 +88,8 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) h
 						errObj.Message = InputError.String()
 					}
 				}
+			} else {
+				api.Log.Err(err).Msg("rest error")
 			}
 
 			jsonErr, err := json.Marshal(errObj)
