@@ -129,7 +129,7 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 	)
 
 	// broadcast updated user to gamebar user
-	fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	go fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	// broadcast updated user to server client
 	fc.API.SendToAllServerClient(ctx, &ServerClientMessage{
@@ -156,6 +156,8 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 			},
 		},
 	)
+
+	reply(true)
 
 	return nil
 }

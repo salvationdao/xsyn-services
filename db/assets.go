@@ -58,6 +58,7 @@ xsyn_metadata.name,
 xsyn_metadata.description,
 xsyn_metadata.external_url,
 xsyn_metadata.image,
+xsyn_metadata.durability,
 xsyn_metadata.attributes,
 xsyn_metadata.deleted_at,
 xsyn_metadata.updated_at,
@@ -65,6 +66,8 @@ xsyn_metadata.created_at,
 xsyn_assets.user_id,
 xsyn_assets.frozen_at,
 xsyn_assets.locked_by_id,
+xsyn_assets.tx_history,
+COALESCE(xsyn_assets.minting_signature, '') as minting_signature,
 u.username
 ` + AssetGetQueryFrom
 
@@ -326,4 +329,42 @@ func AssetNameAvailable(ctx context.Context, conn Conn, nameToCheck string, toke
 	}
 
 	return count == 0, nil
+}
+
+// AssetTransfer changes ownership of an asset to another user // TODO: add internal transaciton details tx jsonb array
+func AssetTransfer(ctx context.Context, conn Conn, tokenID uint64, oldUserID, newUserID passport.UserID, txHash string) error {
+	args := []interface{}{
+		newUserID, oldUserID, tokenID,
+	}
+
+	hashUpdate := ""
+	if txHash != "" {
+		hashUpdate = fmt.Sprintf(`, tx_history = tx_history || '["%s"]'::jsonb`, txHash)
+	}
+
+	q := fmt.Sprintf(`
+	UPDATE xsyn_assets
+	SET user_id = $1 %s
+	WHERE user_id = $2 AND token_id = $3`, hashUpdate)
+
+	_, err := conn.Exec(ctx, q, args...)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+// AssetTransferOnChain adds a tx hash to the history
+func AssetTransferOnChain(ctx context.Context, conn Conn, tokenID uint64, txHash string) error {
+	q := fmt.Sprintf(`
+	UPDATE xsyn_assets
+	SET  tx_history = tx_history || '["%s"]'::jsonb
+	WHERE token_id = $1 AND NOT (tx_history @> '["%s"]'::jsonb) `, txHash, txHash)
+	_, err := conn.Exec(ctx, q, tokenID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
 }

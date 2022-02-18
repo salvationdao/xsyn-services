@@ -265,7 +265,7 @@ func BattleArenaSupsTopContributors(ctx context.Context, conn Conn, startTime, e
 			u.id, t.debit
 		ORDER BY 
 			SUM(t.amount) DESC
-		LIMIT 3
+		LIMIT 5
 	`
 	err := pgxscan.Select(ctx, conn, &uss, q, passport.SupremacyBattleUserID, startTime, endTime)
 	if err != nil {

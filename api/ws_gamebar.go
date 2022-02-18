@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"passport"
 	"passport/db"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
@@ -72,8 +74,12 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 	}
 
 	user, err := db.UserGet(ctx, gc.Conn, userID)
-	if err != nil {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return terror.Error(terror.ErrInvalidInput)
+	}
+
+	if user == nil {
+		return terror.Error(fmt.Errorf("user not found"), "could not find user")
 	}
 
 	if req.Payload.TwitchExtensionJWT != "" {
@@ -89,6 +95,8 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 		if claims.TwitchAccountID == "" {
 			return terror.Error(terror.ErrInvalidInput, "No twitch account id is provided")
 		}
+
+		var user *passport.User
 
 		if user.TwitchID.Valid {
 			// check twitch id match current passport user twitch account
@@ -108,7 +116,7 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 			}
 
 			// broadcast the update
-			gc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+			go gc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 		}
 
 		reply(true)
@@ -130,6 +138,7 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 		return nil
 
 	} else if req.Payload.GameserverSessionID != "" {
+
 		reply(true)
 
 		// send to supremacy server

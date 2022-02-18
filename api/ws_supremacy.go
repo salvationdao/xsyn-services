@@ -77,7 +77,7 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	// sups contribute
 	api.SupremacyCommand(HubKeySupremacyAbilityTargetPriceUpdate, supremacyHub.SupremacyAbilityTargetPriceUpdate)
 	api.SupremacyCommand(HubKeySupremacyTopSupsContruteUser, supremacyHub.SupremacyTopSupsContributeUser)
-	api.SupremacyCommand(HubKeySupremacyUserGet, supremacyHub.SupremacyUserGet)
+	api.SupremacyCommand(HubKeySupremacyUsersGet, supremacyHub.SupremacyUsersGet)
 
 	// faction stat
 	api.SupremacyCommand(HubKeySupremacyFactionStatSend, supremacyHub.SupremacyFactionStatSend)
@@ -337,21 +337,19 @@ func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	err = db.XsynAssetFreeze(ctx, sc.Conn, req.Payload.AssetTokenID, userID)
-	if err != nil {
-		reply(false)
-		return terror.Error(err)
-	}
-
 	asset, err := db.AssetGet(ctx, sc.Conn, req.Payload.AssetTokenID)
 	if err != nil {
 		reply(false)
 		return terror.Error(err)
 	}
 
-	// TODO: In the future, charge user's sups for joining the queue
+	err = db.XsynAssetFreeze(ctx, sc.Conn, req.Payload.AssetTokenID, userID)
+	if err != nil {
+		reply(false)
+		return terror.Error(err)
+	}
 
-	sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.AssetTokenID)), asset)
+	go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.AssetTokenID)), asset)
 
 	sc.API.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: AssetUpdated,
@@ -401,7 +399,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 	}
 
 	for _, asset := range assets {
-		sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
 	}
 
 	reply(true)
@@ -447,10 +445,10 @@ func (sc *SupremacyControllerWS) SupremacyAssetReleaseHandler(ctx context.Contex
 		return terror.Error(err)
 	}
 
-	err = db.XsynAsseetDurabilityBulkUpdate(ctx, tx, req.Payload.ReleasedAssets)
-	if err != nil {
-		return terror.Error(err)
-	}
+	//err = db.XsynAsseetDurabilityBulkUpdate(ctx, tx, req.Payload.ReleasedAssets)
+	//if err != nil {
+	//	return terror.Error(err)
+	//}
 
 	err = tx.Commit(ctx)
 	if err != nil {
@@ -478,7 +476,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetReleaseHandler(ctx context.Contex
 	}
 
 	for _, asset := range assets {
-		sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
 	}
 
 	return nil
@@ -627,8 +625,8 @@ type SupremacyTopSupsContributorRequest struct {
 }
 
 type SupremacyTopSupsContributorResponse struct {
-	TopSupsContributor       *passport.User    `json:"topSupsContributor"`
-	TopSupsContributeFaction *passport.Faction `json:"topSupsContributeFaction"`
+	TopSupsContributors       []*passport.User    `json:"topSupsContributors"`
+	TopSupsContributeFactions []*passport.Faction `json:"topSupsContributeFactions"`
 }
 
 const HubKeySupremacyTopSupsContruteUser = hub.HubCommandKey("SUPREMACY:TOP_SUPS_CONTRIBUTORS")
@@ -652,15 +650,10 @@ func (sc *SupremacyControllerWS) SupremacyTopSupsContributeUser(ctx context.Cont
 		return terror.Error(err)
 	}
 
-	result := &SupremacyTopSupsContributorResponse{}
-	if len(topSupsContributors) > 0 {
-		result.TopSupsContributor = topSupsContributors[0]
-	}
-	if len(topSupsContributeFactions) > 0 {
-		result.TopSupsContributeFaction = topSupsContributeFactions[0]
-	}
-
-	reply(result)
+	reply(&SupremacyTopSupsContributorResponse{
+		TopSupsContributors:       topSupsContributors,
+		TopSupsContributeFactions: topSupsContributeFactions,
+	})
 
 	return nil
 }
@@ -668,25 +661,25 @@ func (sc *SupremacyControllerWS) SupremacyTopSupsContributeUser(ctx context.Cont
 type SupremacyUserGetRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID passport.UserID `json:"userID"`
+		UserIDs []passport.UserID `json:"userIDs"`
 	} `json:"payload"`
 }
 
-const HubKeySupremacyUserGet = hub.HubCommandKey("SUPREMACY:GET_USER")
+const HubKeySupremacyUsersGet = hub.HubCommandKey("SUPREMACY:GET_USERS")
 
-func (sc *SupremacyControllerWS) SupremacyUserGet(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (sc *SupremacyControllerWS) SupremacyUsersGet(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &SupremacyUserGetRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
 	}
 
-	user, err := db.UserGet(ctx, sc.Conn, req.Payload.UserID)
+	users, err := db.UserGetByIDs(ctx, sc.Conn, req.Payload.UserIDs)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	reply(user)
+	reply(users)
 
 	return nil
 }
@@ -722,14 +715,14 @@ func (sc *SupremacyControllerWS) SupremacyUserSupsMultiplierSendHandler(ctx cont
 	for _, usm := range req.Payload.UserSupsMultiplierSends {
 		// broadcast to specific hub client if session id is provided
 		if usm.ToUserSessionID != nil && *usm.ToUserSessionID != "" {
-			sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsMultiplierSubscribe, usm.ToUserID)), usm.SupsMultipliers, messagebus.BusSendFilterOption{
+			go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsMultiplierSubscribe, usm.ToUserID)), usm.SupsMultipliers, messagebus.BusSendFilterOption{
 				SessionID: *usm.ToUserSessionID,
 			})
 			continue
 		}
 
 		// otherwise, broadcast to the target user
-		sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsMultiplierSubscribe, usm.ToUserID)), usm.SupsMultipliers)
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsMultiplierSubscribe, usm.ToUserID)), usm.SupsMultipliers)
 	}
 
 	reply(true)
@@ -774,14 +767,22 @@ func (sc *SupremacyControllerWS) SupremacyFactionStatSend(ctx context.Context, w
 		// get mvp
 		mvp, err := db.FactionMvpGet(ctx, sc.Conn, factionStatSend.FactionStat.ID)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			sc.Log.Err(err).Msgf("faction to get mvp from faction %s", factionStatSend.FactionStat.ID)
+			sc.Log.Err(err).Msgf("failed to get mvp from faction %s", factionStatSend.FactionStat.ID)
 			continue
 		}
 		factionStatSend.FactionStat.MVP = mvp
 
+		supsVoted, err := db.FactionSupsVotedGet(ctx, sc.Conn, factionStatSend.FactionStat.ID)
+		if err != nil {
+			sc.Log.Err(err).Msgf("failed to get sups voted from faction %s", factionStatSend.FactionStat.ID)
+			continue
+		}
+
+		factionStatSend.FactionStat.SupsVoted = supsVoted.String()
+
 		if factionStatSend.ToUserID == nil && factionStatSend.ToUserSessionID == nil {
 			// broadcast to all faction stat subscribers
-			sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionStatUpdatedSubscribe, factionStatSend.FactionStat.ID)), factionStatSend.FactionStat)
+			go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionStatUpdatedSubscribe, factionStatSend.FactionStat.ID)), factionStatSend.FactionStat)
 			continue
 		}
 
@@ -795,7 +796,7 @@ func (sc *SupremacyControllerWS) SupremacyFactionStatSend(ctx context.Context, w
 		}
 
 		// broadcast to the target user
-		sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionStatUpdatedSubscribe, factionStatSend.FactionStat.ID)), factionStatSend.FactionStat, filterOption)
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionStatUpdatedSubscribe, factionStatSend.FactionStat.ID)), factionStatSend.FactionStat, filterOption)
 	}
 
 	return nil
@@ -826,7 +827,7 @@ func (sc *SupremacyControllerWS) SupremacyUserStatSend(ctx context.Context, wsc 
 
 		if userStatSend.ToUserSessionID == nil {
 			// broadcast to all faction stat subscribers
-			sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, userStatSend.Stat.ID)), userStatSend.Stat)
+			go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, userStatSend.Stat.ID)), userStatSend.Stat)
 			continue
 		}
 
@@ -836,7 +837,7 @@ func (sc *SupremacyControllerWS) SupremacyUserStatSend(ctx context.Context, wsc 
 			filterOption.SessionID = *userStatSend.ToUserSessionID
 		}
 
-		sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, userStatSend.Stat.ID)), userStatSend.Stat, filterOption)
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, userStatSend.Stat.ID)), userStatSend.Stat, filterOption)
 	}
 
 	return nil
