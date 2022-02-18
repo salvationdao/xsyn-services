@@ -154,9 +154,10 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 	}
 
 	errChan := make(chan error, 10)
+	fmt.Println("start outer hold")
 	sc.API.HoldTransaction(ctx, errChan, tx)
-
 	err = <-errChan
+	fmt.Println("end outer hold")
 	if err != nil {
 		return terror.Error(err)
 	}

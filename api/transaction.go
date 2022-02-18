@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"math/big"
 	"passport"
 	"strings"
@@ -109,10 +110,11 @@ func (api *API) HoldTransaction(ctx context.Context, holdErrChan chan error, txs
 	api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 		for _, tx := range txs {
 			errChan := make(chan error, 10)
+			fmt.Println("start remove sup")
 			api.UpdateUserCacheRemoveSups(ctx, tx.From, tx.Amount, errChan)
 			err := <-errChan
+			fmt.Println("end remove sup")
 			if err != nil {
-				api.Log.Err(err).Msg(err.Error())
 				holdErrChan <- err
 				return
 			}
