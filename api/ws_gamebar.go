@@ -138,7 +138,6 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 		return nil
 
 	} else if req.Payload.GameserverSessionID != "" {
-
 		reply(true)
 
 		// send to supremacy server

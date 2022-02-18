@@ -66,10 +66,14 @@ func (api *API) InsertUserToCache(ctx context.Context, user *passport.User) {
 func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) {
 
 	api.UserCache(func(userMap UserCacheMap) {
-		// cache map should have the latest user sups detail
-		// so skip if user is already in the cache map
-		if _, ok := userMap[user.ID]; ok {
+		// skip if user is system user
+		if user.ID.IsSystemUser() {
 			return
+		}
+
+		// add user to cache if not exist
+		if _, ok := userMap[user.ID]; !ok {
+			userMap[user.ID] = &UserCache{User: user, CacheLastUpdated: time.Now()}
 		}
 
 		// otherwise process user uncommitted transactions
@@ -83,13 +87,8 @@ func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) {
 			}
 		})
 
-		// add user to cache map
-		userMap[user.ID] = &UserCache{User: user, CacheLastUpdated: time.Now()}
-
 		// broadcast user sups, if user is not the system user
-		if !user.ID.IsSystemUser() {
-			api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
-		}
+		api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 	})
 }
 
