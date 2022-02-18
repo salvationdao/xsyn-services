@@ -157,6 +157,8 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 		},
 	)
 
+	reply(true)
+
 	return nil
 }
 
