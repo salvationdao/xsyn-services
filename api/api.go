@@ -51,7 +51,8 @@ type API struct {
 	Tokens       *Tokens
 	*auth.Auth
 	*messagebus.MessageBus
-	ClientToken string
+	ClientToken  string
+	BridgeParams *passport.BridgeParams
 
 	// online user cache
 	users chan func(userCacheList UserCacheMap)
@@ -100,8 +101,9 @@ func NewAPI(
 ) *API {
 	msgBus, cleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
 	api := &API{
-		SupUSD:      decimal.New(12, -2),
-		ClientToken: clientToken,
+		SupUSD:       decimal.New(12, -2),
+		BridgeParams: config.BridgeParams,
+		ClientToken:  clientToken,
 		Tokens: &Tokens{
 			Conn:                conn,
 			Mailer:              mailer,
@@ -197,19 +199,22 @@ func NewAPI(
 			r.Use(sentryHandler.Handle)
 			r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn))
 			r.Mount("/files", FileRouter(conn, api))
-			r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
-			r.Get("/get-nonce", WithError(api.Auth.GetNonce))
-			r.Get("/asset/{token_id}", WithError(api.AssetGet))
-			r.Get("/auth/twitter", WithError(api.Auth.TwitterAuth))
-			r.Get("/dummy-sale", WithError(api.Dummysale))
-			r.Get("/check-eth-tx/{tx_id}", WithError(cc.CheckEthTx))
-			r.Get("/check-bsc-tx/{tx_id}", WithError(cc.CheckBscTx))
+			r.Get("/verify", api.WithError(api.Auth.VerifyAccountHandler))
+			r.Get("/get-nonce", api.WithError(api.Auth.GetNonce))
+			//r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSups)) // commented out by vinnie 13/02/2022, changing how we withdraw sups, will be used
+			r.Get("/mint-nft/{address}/{nonce}/{tokenID}", api.WithError(api.MintAsset))
+			r.Get("/asset/{token_id}", api.WithError(api.AssetGet))
+			r.Get("/auth/twitter", api.WithError(api.Auth.TwitterAuth))
+			r.Get("/dummy-sale", api.WithError(api.Dummysale))
+			r.Get("/check-eth-tx/{tx_id}", api.WithError(cc.CheckEthTx))
+			r.Get("/check-bsc-tx/{tx_id}", api.WithError(cc.CheckBscTx))
 		})
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
 		r.Handle("/ws", api.Hub)
 	})
 
+	_ = NewSupController(log, conn, api, cc)
 	_ = NewAssetController(log, conn, api)
 	_ = NewCollectionController(log, conn, api)
 	_ = NewServerClientController(log, conn, api)
@@ -300,7 +305,7 @@ func (api *API) Dummysale(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSRemainingSubscribe), sups.String())
+	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSRemainingSubscribe), sups.String())
 
 	return http.StatusAccepted, nil
 }

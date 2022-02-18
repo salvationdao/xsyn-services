@@ -187,7 +187,7 @@ func (api *API) recalculateContractReward(ctx context.Context, factionID passpor
 			}
 
 			// broadcast the latest reward
-			api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetQueueContractReward, factionID)), wmc.CurrentReward.String())
+			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetQueueContractReward, factionID)), wmc.CurrentReward.String())
 		}
 	}
 }

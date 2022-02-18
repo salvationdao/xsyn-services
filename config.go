@@ -17,22 +17,25 @@ type Config struct {
 }
 
 type BridgeParams struct {
-	UsdcAddr       common.Address
-	BusdAddr       common.Address
-	WethAddr       common.Address
-	WbnbAddr       common.Address
-	SupAddr        common.Address
-	DepositAddr    common.Address
-	PurchaseAddr   common.Address
-	WithdrawAddr   common.Address
-	RedemptionAddr common.Address
-	BscNodeAddr    string
-	EthNodeAddr    string
-	BSCChainID     int64
-	ETHChainID     int64
-	USDCToSUPS     decimal.Decimal
-	BUSDToSUPS     decimal.Decimal
-	WETHToSUPS     decimal.Decimal
-	WBNBToSUPS     decimal.Decimal
-	SUPToUSD       decimal.Decimal
+	UsdcAddr          common.Address
+	BusdAddr          common.Address
+	WethAddr          common.Address
+	WbnbAddr          common.Address
+	SupAddr           common.Address
+	DepositAddr       common.Address
+	PurchaseAddr      common.Address
+	WithdrawAddr      common.Address
+	RedemptionAddr    common.Address
+	SignerAddr        string
+	EthNftAddr        common.Address
+	EthNftStakingAddr common.Address
+	BscNodeAddr       string
+	EthNodeAddr       string
+	BSCChainID        int64
+	ETHChainID        int64
+	USDCToSUPS        decimal.Decimal
+	BUSDToSUPS        decimal.Decimal
+	WETHToSUPS        decimal.Decimal
+	WBNBToSUPS        decimal.Decimal
+	SUPToUSD          decimal.Decimal
 }

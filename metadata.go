@@ -71,8 +71,10 @@ type XsynMetadata struct {
 	DeletedAt          *time.Time            `json:"deleted_at" db:"deleted_at"`
 	FrozenAt           *time.Time            `json:"frozenAt" db:"frozen_at"`
 	LockedByID         *UserID               `json:"lockedByID" db:"locked_by_id"`
+	MintingSignature   string                `json:"mintingSignature" db:"minting_signature"`
 	UpdatedAt          time.Time             `json:"updatedAt" db:"updated_at"`
 	CreatedAt          time.Time             `json:"createdAt" db:"created_at"`
+	TxHistory          interface{}           `json:"txHistory" db:"tx_history"`
 }
 
 type AssetType string
@@ -249,4 +251,22 @@ func ParseAbilityMetadata(metadata *XsynMetadata, abilityMetadata *AbilityMetada
 			abilityMetadata.RequiredCPU = int(att.Value.(float64))
 		}
 	}
+}
+
+// IsUsable returns true if the asset isn't locked in any way
+func (xsmd *XsynMetadata) IsUsable() bool {
+	if xsmd.LockedByID != nil && !xsmd.LockedByID.IsNil() {
+		return false
+	}
+	if xsmd.FrozenAt != nil && !xsmd.FrozenAt.IsZero() {
+		return false
+	}
+	if xsmd.DeletedAt != nil && !xsmd.DeletedAt.IsZero() {
+		return false
+	}
+	if xsmd.MintingSignature != "" {
+		return false
+	}
+
+	return true
 }

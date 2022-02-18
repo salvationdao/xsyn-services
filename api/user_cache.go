@@ -45,7 +45,7 @@ func (api *API) InsertUserToCache(ctx context.Context, user *passport.User) {
 		userMap[user.ID] = &UserCache{User: user, CacheLastUpdated: time.Now()}
 
 		// broadcast the update to the users connected directly to passport
-		api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID)), user)
+		go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID)), user)
 		// broadcast the update to connect client servers
 		api.SendToAllServerClient(ctx, &ServerClientMessage{
 			Key: UserUpdated,
@@ -57,19 +57,20 @@ func (api *API) InsertUserToCache(ctx context.Context, user *passport.User) {
 		})
 
 		if !user.ID.IsSystemUser() {
-			api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
+			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 		}
 	})
 }
 
-// UpdateUserInCache updates a user in the cache, if user doesn't exist it does nothing
-func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) {
-
+// UpdateUserInCache updates a user in the cache, if user doesn't exist it does nothing and returns false
+func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) bool {
+	userInCache := false
 	api.UserCache(func(userMap UserCacheMap) {
 		// skip if user is system user
 		if user.ID.IsSystemUser() {
 			return
 		}
+		userInCache = true
 
 		// add user to cache if not exist
 		if _, ok := userMap[user.ID]; !ok {
@@ -88,8 +89,10 @@ func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) {
 		})
 
 		// broadcast user sups, if user is not the system user
-		api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
+		go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 	})
+
+	return userInCache
 }
 
 // RemoveUserFromCache removes a user from the cache
@@ -107,7 +110,7 @@ func (api *API) UpdateUserCacheAddSups(ctx context.Context, userID passport.User
 			user.Sups.Int = *user.Sups.Int.Add(&user.Sups.Int, &amount)
 
 			if !user.ID.IsSystemUser() {
-				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
+				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 			}
 		}
 	})
@@ -129,7 +132,7 @@ func (api *API) UpdateUserCacheRemoveSups(ctx context.Context, userID passport.U
 			user.Sups.Int = *user.Sups.Int.Sub(&user.Sups.Int, &amount)
 
 			if !user.ID.IsSystemUser() {
-				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
+				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 			}
 
 		}
