@@ -62,15 +62,16 @@ func (api *API) InsertUserToCache(ctx context.Context, user *passport.User) {
 	})
 }
 
-// UpdateUserInCache updates a user in the cache, if user doesn't exist it does nothing
-func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) {
-
+// UpdateUserInCache updates a user in the cache, if user doesn't exist it does nothing and returns false
+func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) bool {
+	userInCache := false
 	api.UserCache(func(userMap UserCacheMap) {
 		// cache map should have the latest user sups detail
 		// so skip if user is already in the cache map
 		if _, ok := userMap[user.ID]; ok {
 			return
 		}
+		userInCache = true
 
 		// otherwise process user uncommitted transactions
 		api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
@@ -91,6 +92,8 @@ func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) {
 			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 		}
 	})
+
+	return userInCache
 }
 
 // RemoveUserFromCache removes a user from the cache
