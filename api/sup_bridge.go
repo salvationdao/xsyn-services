@@ -688,29 +688,29 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 			cc.Log.Info().Msg("Started sup controller")
 			cc.SUPS = supsController
 
-			wbnbPathAddrs := []common.Address{cc.Params.WbnbAddr, cc.Params.BusdAddr}
-			wethPathAddrs := []common.Address{cc.Params.WethAddr, cc.Params.UsdcAddr}
+			busdPathAddrs := []common.Address{cc.Params.BusdAddr, cc.Params.SupAddr}
+			//wethPathAddrs := []common.Address{cc.Params.WethAddr, cc.Params.UsdcAddr}
 
 			// creates a struct that then can be used to get busd to wbnb price
-			wbnbGetter, err := bridge.NewPriceGetter(cc.BscClient, common.HexToAddress("0x10ED43C718714eb63d5aA57B78B54704E256024E"), wbnbPathAddrs) // pathAddrs are an array of contract addresses, from one token to the other
+			busdGetter, err := bridge.NewPriceGetter(cc.BscClient, common.HexToAddress("0xdc4904b5f716Ff30d8495e35dC99c109bb5eCf81"), busdPathAddrs) // pathAddrs are an array of contract addresses, from one token to the other
 			if err != nil {
 				cc.Log.Err(err).Msg("failed to get wbnb price getter struct")
 				cancel()
 				return
 			}
 
-			wethGetter, err := bridge.NewPriceGetter(cc.EthClient, common.HexToAddress("0x10ED43C718714eb63d5aA57B78B54704E256024E"), wethPathAddrs) // pathAddrs are an array of contract addresses, from one token to the other
-			if err != nil {
-				cc.Log.Err(err).Msg("failed to get weth price getter struct")
-				cancel()
-				return
-			}
+			// wethGetter, err := bridge.NewPriceGetter(cc.EthClient, common.HexToAddress("0x10ED43C718714eb63d5aA57B78B54704E256024E"), wethPathAddrs) // pathAddrs are an array of contract addresses, from one token to the other
+			// if err != nil {
+			// 	cc.Log.Err(err).Msg("failed to get weth price getter struct")
+			// 	cancel()
+			// 	return
+			// }
 
 			go func() {
 				for {
 					// gets how many busd for 1 wbnb
-					wbnbPrice, err := wbnbGetter.Price(decimal.New(1, int32(18)).BigInt())
-					fmt.Println(wbnbGetter.Paths)
+					wbnbPrice, err := busdGetter.Price(decimal.New(1, int32(18)).BigInt())
+					fmt.Println(busdGetter.Paths)
 					if err != nil {
 						cc.Log.Err(err).Msg("failed to get WBNB price")
 						cancel()
@@ -719,16 +719,16 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 						return
 					}
 					//gets how many usdc for 1 weth
-					wethPrice, err := wethGetter.Price(decimal.New(1, int32(18)).BigInt())
-					if err != nil {
-						cc.Log.Err(err).Msg("failed to get WETH price")
-						cancel()
-						time.Sleep(b.Duration())
-						errChan <- err
-						return
-					}
+					// wethPrice, err := wethGetter.Price(decimal.New(1, int32(18)).BigInt())
+					// if err != nil {
+					// 	cc.Log.Err(err).Msg("failed to get WETH price")
+					// 	cancel()
+					// 	time.Sleep(b.Duration())
+					// 	errChan <- err
+					// 	return
+					// }
 					cc.updatePriceFunc(cc.Params.WbnbAddr, *wbnbPrice)
-					cc.updatePriceFunc(cc.Params.WethAddr, *wethPrice)
+					//cc.updatePriceFunc(cc.Params.WethAddr, *wethPrice)
 
 					time.Sleep(10 * time.Second)
 				}
