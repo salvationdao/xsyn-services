@@ -191,7 +191,7 @@ func (api *API) SendToServerClient(ctx context.Context, name ServerClientName, m
 			}
 
 			go func(client *hub.Client) {
-				err := client.Send(ctx, payload)
+				err := client.Send(payload)
 				if err != nil {
 					api.Log.Err(err).Msgf("error sending")
 				}
@@ -209,7 +209,7 @@ func (api *API) SendToAllServerClient(ctx context.Context, msg *ServerClientMess
 					api.Log.Err(err).Msgf("error sending message to server client: %s", gameName)
 				}
 				go func(client *hub.Client) {
-					err := client.Send(ctx, payload)
+					err := client.Send(payload)
 					if err != nil {
 						api.Log.Err(err).Msgf("error sending")
 					}

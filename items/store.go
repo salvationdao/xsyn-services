@@ -135,6 +135,6 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 	priceAsSups := decimal.New(priceAsDecimal.IntPart(), 18).BigInt()
 	storeItem.SupCost = priceAsSups.String()
 
-	bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), storeItem)
+	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), storeItem)
 	return nil
 }

@@ -430,7 +430,6 @@ EXECUTE PROCEDURE update_xsyn_storeKeywords();
  * This table is the nft metadata NOT assets *
  **********************************************/
 CREATE SEQUENCE IF NOT EXISTS token_id_seq;
-ALTER SEQUENCE token_id_seq RESTART WITH 1;
 
 CREATE TABLE xsyn_metadata
 (
@@ -550,13 +549,16 @@ CREATE TABLE xsyn_assets
 (
     token_id          NUMERIC(78, 0) PRIMARY KEY REFERENCES xsyn_metadata (token_id),
     user_id           UUID REFERENCES users (id) NOT NULL,
+    transferred_in_at TIMESTAMPTZ                NOT NULL DEFAULT NOW(),
+--     if any of the below are not null, the asset it locked
     frozen_by_id      UUID REFERENCES users (id),
     locked_by_id      UUID REFERENCES users (id),
     frozen_at         TIMESTAMPTZ,
-    transferred_in_at TIMESTAMPTZ                NOT NULL DEFAULT NOW()
+    minting_signature TEXT DEFAULT '',
+    tx_history JSONB DEFAULT '[]'
 );
 
-CREATE TABLE transactions
+ CREATE TABLE transactions
 (
     id                    SERIAL PRIMARY KEY,
     description           TEXT        NOT NULL                                                  DEFAULT '',
