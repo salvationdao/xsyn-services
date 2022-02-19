@@ -178,17 +178,19 @@ func UserGet(ctx context.Context, conn Conn, userID passport.UserID) (*passport.
 // UserGetByIDs returns a user by given ID
 func UserGetByIDs(ctx context.Context, conn Conn, userIDs []passport.UserID) ([]*passport.User, error) {
 	users := []*passport.User{}
+	var args []interface{}
 	q := UserGetQuery + ` WHERE users.id IN (`
 	for i, userID := range userIDs {
-		q += fmt.Sprintf("'%s'", userID)
+		args = append(args, userID)
+		q += fmt.Sprintf("$%d", len(args)+1)
 		if i < len(userIDs)-1 {
 			q += ","
 			continue
 		}
-		q += ")"
 	}
+	q += ")"
 
-	err := pgxscan.Select(ctx, conn, &users, q)
+	err := pgxscan.Select(ctx, conn, &users, q, args...)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting user from ID.")
 	}
