@@ -30,18 +30,22 @@ jobs:
           mkdir -p ~/.ssh
           echo -e "Host hub.github.com\n  HostName github.com\n IdentityFile ~/.ssh/id_ed25519_hub\n  IdentitiesOnly yes" >> ~/.ssh/config
           echo -e "Host bridge.github.com\n  HostName github.com\n IdentityFile ~/.ssh/id_ed25519_bridge\n  IdentitiesOnly yes" >> ~/.ssh/config
+          echo -e "Host sale.github.com\n  HostName github.com\n  IdentityFile ~/.ssh/id_ed25519_sale\n  IdentitiesOnly yes" >> ~/.ssh/config
           echo '${{ secrets.GH_DEPLOY_HUB_PK }}' > ~/.ssh/id_ed25519_hub
           chmod 600 ~/.ssh/id_ed25519_hub
           echo '${{ secrets.GH_DEPLOY_BRIDGE_PK }}' > ~/.ssh/id_ed25519_bridge
           chmod 600 ~/.ssh/id_ed25519_bridge
+          echo '${{ secrets.GH_DEPLOY_SALE_PK }}' > ~/.ssh/id_ed25519_sale
+          chmod 600 ~/.ssh/id_ed25519_sale
           git config --global user.name "Github CI"
           git config --global user.email "team@syndicate.ninja"
           git config --global --add url."git@hub.github.com:ninja-syndicate/hub".insteadOf "https://github.com/ninja-syndicate/hub"
           git config --global --add url."git@bridge.github.com:ninja-syndicate/supremacy-bridge".insteadOf "https://github.com/ninja-syndicate/supremacy-bridge"
+          git config --global --add url."git@sale.github.com:ninja-software/sale".insteadOf "https://github.com/ninja-software/sale"
 
       - name: calculate version increment
         run: |
-          NEWVER=$(scripts/increment_git_ver.sh)
+          NEWVER=$(scripts/increment_git_ver.py)
           git tag "$NEWVER"
           echo "GITVERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
           echo "GITHASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
@@ -51,7 +55,7 @@ jobs:
 
       - name: Setup build env
         run: |
-          export GOPRIVATE="github.com/ninja-syndicate/*"
+          export GOPRIVATE="github.com/ninja-software/*,github.com/ninja-syndicate/*"
           mkdir -p bin
           make tools
 
