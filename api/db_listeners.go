@@ -3,10 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"passport"
-
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 
 	"github.com/jackc/pgconn"
 )
@@ -47,10 +44,10 @@ func (api *API) DBListenForUserUpdateEvent() {
 		}
 
 		if !user.ID.IsSystemUser() {
-			inCache := api.UpdateUserInCache(ctx, user)
-			if !inCache {
-				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
-			}
+			api.UpdateUserInCache(ctx, user)
+			// if !inCache {
+			// 	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
+			// }
 		}
 
 	}

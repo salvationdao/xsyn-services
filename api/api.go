@@ -124,6 +124,7 @@ func NewAPI(
 				InsecureSkipVerify: true, // TODO: set this depending on environment
 				OriginPatterns:     []string{config.PassportWebHostURL, config.GameserverHostURL},
 			},
+			WebsocketReadLimit: 104857600,
 		}),
 		Log:          log_helpers.NamedLogger(log, "api"),
 		Conn:         conn,

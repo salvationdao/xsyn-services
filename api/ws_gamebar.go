@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 	"passport"
 	"passport/db"
 	"passport/log_helpers"
@@ -139,16 +138,6 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 		return nil
 
 	} else if req.Payload.GameserverSessionID != "" {
-		sups := big.NewInt(1000000000000000000)
-		sups = sups.Mul(sups, big.NewInt(1000))
-
-		gc.API.transaction <- &passport.NewTransaction{
-			From:                 passport.XsynSaleUserID,
-			To:                   user.ID,
-			Amount:               *sups,
-			TransactionReference: passport.TransactionReference(uuid.Must(uuid.NewV4()).String()),
-		}
-
 		reply(true)
 
 		// send to supremacy server
