@@ -67,7 +67,7 @@ func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) {
 
 			// add user to cache if not exist
 			if _, ok := userMap[user.ID]; !ok {
-				userMap[user.ID] = &UserCache{User: user, CacheLastUpdated: time.Now()}
+				userMap[user.ID] = &UserCache{}
 			}
 
 			for _, tx := range heldTxList {
@@ -77,6 +77,10 @@ func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) {
 					user.Sups.Int = *user.Sups.Int.Sub(&user.Sups.Int, &tx.Amount)
 				}
 			}
+
+			// update cache
+			userMap[user.ID].User = user
+			userMap[user.ID].CacheLastUpdated = time.Now()
 
 			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 		})
