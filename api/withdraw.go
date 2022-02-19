@@ -138,7 +138,7 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
 	}
 	if asset == nil {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("asset doesn't exist"), "Asset doesn't exist.")
+		return http.StatusBadRequest, terror.Warn(err, "Asset doesn't exist")
 	}
 
 	if asset.UserID != nil && *asset.UserID != user.ID {
@@ -172,7 +172,7 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 
 	}
 	if asset == nil {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("asset doesn't exist"), "Failed to get asset.")
+		return http.StatusBadRequest, terror.Warn(err, "Asset doesn't exist")
 	}
 	go api.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetSubscribe, tokenID)), asset)
 

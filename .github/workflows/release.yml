@@ -61,7 +61,6 @@ jobs:
           echo "GITSTATE=$(git status --porcelain | wc -l)" >> $GITHUB_ENV
 
       - name: Build API server
-        working-directory: ./server
         run: |
           go build \
             -ldflags "-X main.Version=${{env.GITVERSION}} -X main.GitHash=${{env.GITHASH}} -X main.GitBranch=${{env.GITBRANCH}} -X main.BuildDate=${{env.BUILDDATE}} -X main.UnCommittedFiles=${{env.GITSTATE}}" \
@@ -71,7 +70,7 @@ jobs:
             cmd/platform/main.go
 
       - name: Add info text
-        run: deploy/gameserver version --full > deploy/BuildInfo.txt
+        run: deploy/passport-api version --full > deploy/BuildInfo.txt
 
       - name: Tar Gzip
         run: |

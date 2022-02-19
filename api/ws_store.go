@@ -158,7 +158,7 @@ func (ctrlr *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, c
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
 
-	item, err := db.StoreItemByID(ctx, ctrlr.Conn, req.Payload.StoreItemID)
+	item, err := db.StoreItemGet(ctx, ctrlr.Conn, req.Payload.StoreItemID)
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
