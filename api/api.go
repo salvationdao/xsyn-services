@@ -389,7 +389,9 @@ func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 	asset, err := db.AssetGet(r.Context(), api.Conn, _tokenID)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset")
-
+	}
+	if asset == nil {
+		return http.StatusInternalServerError, terror.Error(err, "Asset doesn't exist")
 	}
 
 	// Encode result
