@@ -20,6 +20,7 @@ type BridgeParams struct {
 	UsdcAddr          common.Address
 	BusdAddr          common.Address
 	WethAddr          common.Address
+	BscTestWethAddr   common.Address
 	WbnbAddr          common.Address
 	SupAddr           common.Address
 	DepositAddr       common.Address
@@ -33,8 +34,8 @@ type BridgeParams struct {
 	EthNodeAddr       string
 	BSCChainID        int64
 	ETHChainID        int64
-
-	ExchangeRates *ExchangeRates
+	RouterAddr        common.Address
+	ExchangeRates     *ExchangeRates
 }
 
 type ExchangeRates struct {
@@ -42,14 +43,3 @@ type ExchangeRates struct {
 	USDtoBNB decimal.Decimal
 	SUPtoUSD decimal.Decimal
 }
-
-// USDCToSUPS decimal.Decimal // ETH Chain
-// SUPToUSD   decimal.Decimal // Use BUSD against SUPS (inverse)
-// BUSDToSUPS decimal.Decimal // BSC Chain
-
-// WETHToSUPS decimal.Decimal // ETH Chain (and BSC)
-
-// WBNBToSUPS decimal.Decimal // BSC Chain
-// Grab eth price in busd
-// Grab bnb price in busd
-// Grab sups price in busd

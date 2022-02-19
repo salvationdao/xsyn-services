@@ -68,8 +68,8 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) 
 		switch addr {
 		case cc.Params.SupAddr:
 			cc.Params.ExchangeRates.SUPtoUSD = amount
-		// case cc.Params.WethAddr:
-		// 	cc.Params.ExchangeRates.USDtoETH = amount
+		case cc.Params.WethAddr:
+			cc.Params.ExchangeRates.USDtoETH = amount
 		case cc.Params.WbnbAddr:
 			cc.Params.ExchangeRates.USDtoBNB = amount
 		}
@@ -692,26 +692,32 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 			cc.Log.Info().Msg("Started sup controller")
 			cc.SUPS = supsController
 
-			//getting SUPs to USD price
+			//Path address gets the value of [0] in terms of [1]
 			SUPSPathAddr := []common.Address{cc.Params.SupAddr, cc.Params.BusdAddr}
-			//WETHPathAddr := []common.Address{cc.Params.BusdAddr, cc.Params.WethAddr}
 			WBNBPathAddr := []common.Address{cc.Params.BusdAddr, cc.Params.WbnbAddr}
 
-			// creates a struct that then can be used to get sup to busd price
-			supGetter, err := bridge.NewPriceGetter(cc.BscClient, common.HexToAddress("0x9ac64cc6e4415144c455bd8e4837fea55603e5c3"), SUPSPathAddr) // pathAddrs are an array of contract addresses, from one token to the other
+			//IMPORTANT!: Will have to manually change cc.Params.BscTestWethAddr to cc.Params.WethAddr during production-
+			//BscTestWethAddr is a WETH copy on the BSC network which our router points to
+			WETHPathAddr := []common.Address{cc.Params.BscTestWethAddr, cc.Params.BusdAddr}
+
+			// creates a struct that then can be used to get sup price in USD
+			supGetter, err := bridge.NewPriceGetter(cc.BscClient, cc.Params.RouterAddr, SUPSPathAddr) // pathAddrs are an array of contract addresses, from one token to the other
 			if err != nil {
 				cc.Log.Err(err).Msg("failed to get sup to busd price getter struct")
 				cancel()
 				return
 			}
-			//have to find a different router: weth to usdc
-			// wethGetter, err := bridge.NewPriceGetter(cc.BscClient, common.HexToAddress("0x9ac64cc6e4415144c455bd8e4837fea55603e5c3"), WETHPathAddr) // pathAddrs are an array of contract addresses, from one token to the other
-			// if err != nil {
-			// 	cc.Log.Err(err).Msg("failed to get weth to usd price getter struct")
-			// 	cancel()
-			// 	return
-			// }
-			wbnbGetter, err := bridge.NewPriceGetter(cc.BscClient, common.HexToAddress("0x9ac64cc6e4415144c455bd8e4837fea55603e5c3"), WBNBPathAddr) // pathAddrs are an array of contract addresses, from one token to the other
+
+			// creates struct that then can be used to get weth price in USD
+			wethGetter, err := bridge.NewPriceGetter(cc.BscClient, cc.Params.RouterAddr, WETHPathAddr) // pathAddrs are an array of contract addresses, from one token to the other
+			if err != nil {
+				cc.Log.Err(err).Msg("failed to get weth to usd price getter struct")
+				cancel()
+				return
+			}
+
+			//creates struct that then can be used to get weth price in USD
+			wbnbGetter, err := bridge.NewPriceGetter(cc.BscClient, cc.Params.RouterAddr, WBNBPathAddr) // pathAddrs are an array of contract addresses, from one token to the other
 			if err != nil {
 				cc.Log.Err(err).Msg("failed to get wbnb to usd price getter struct")
 				cancel()
@@ -732,15 +738,15 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 					supPrice := decimal.NewFromBigInt(supBigPrice, -18)
 
 					//gets how many weth for 1 busd
-					// wethBigPrice, err := wethGetter.Price(decimal.New(1, int32(18)).BigInt())
-					// if err != nil {
-					// 	cc.Log.Err(err).Msg("failed to get weth to usd price")
-					// 	cancel()
-					// 	time.Sleep(b.Duration())
-					// 	errChan <- err
-					// 	return
-					// }
-					// wethPrice := decimal.NewFromBigInt(wethBigPrice, -18)
+					wethBigPrice, err := wethGetter.Price(decimal.New(1, int32(18)).BigInt())
+					if err != nil {
+						cc.Log.Err(err).Msg("failed to get weth to usd price")
+						cancel()
+						time.Sleep(b.Duration())
+						errChan <- err
+						return
+					}
+					wethPrice := decimal.NewFromBigInt(wethBigPrice, -18)
 
 					//gets how many wbnb for 1 busd
 					wbnbBigPrice, err := wbnbGetter.Price(decimal.New(1, int32(18)).BigInt())
@@ -753,8 +759,8 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 					}
 					wbnbPrice := decimal.NewFromBigInt(wbnbBigPrice, -18)
 
-					cc.updatePriceFunc(cc.Params.BusdAddr, supPrice)
-					//cc.updatePriceFunc(cc.Params.WethAddr, wethPrice)
+					cc.updatePriceFunc(cc.Params.SupAddr, supPrice)
+					cc.updatePriceFunc(cc.Params.WethAddr, wethPrice)
 					cc.updatePriceFunc(cc.Params.WbnbAddr, wbnbPrice)
 
 					time.Sleep(10 * time.Second)
