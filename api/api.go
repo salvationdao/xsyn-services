@@ -372,7 +372,6 @@ func (api *API) RecordUserActivity(
 
 // AssetGet grabs asset's metadata via token id
 func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
-
 	// Get token id
 	tokenID := chi.URLParam(r, "token_id")
 	if tokenID == "" {
@@ -391,7 +390,7 @@ func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset")
 	}
 	if asset == nil {
-		return http.StatusInternalServerError, terror.Error(err, "Asset doesn't exist")
+		return http.StatusBadRequest, terror.Warn(err, "Asset doesn't exist")
 	}
 
 	// Encode result

@@ -47,7 +47,6 @@ func (api *API) WithError(next func(w http.ResponseWriter, r *http.Request) (int
 
 		code, err := next(w, r)
 		if err != nil {
-			terror.Echo(err)
 
 			errObj := &ErrorObject{
 				Message:   err.Error(),

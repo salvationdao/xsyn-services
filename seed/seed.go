@@ -91,6 +91,11 @@ func (s *Seeder) Run(isProd bool) error {
 		return terror.Error(err, "seed users failed")
 	}
 
+	fmt.Println("Seeding Early Contributors")
+	err = s.EarlyContributors(ctx)
+	if err != nil {
+		return terror.Error(err, "seed early contributors failed")
+	}
 	//fmt.Println("Seeding organisations")
 	//organisations, err := s.Organisations(ctx)
 	//if err != nil {
@@ -131,7 +136,7 @@ func (s *Seeder) Run(isProd bool) error {
 
 	q := `INSERT INTO state (latest_eth_block,
                              latest_bsc_block)
-			VALUES(6359098, 16654769);`
+			VALUES(6402269, 16886589);`
 
 	_, err = s.Conn.Exec(ctx, q)
 	if err != nil {
