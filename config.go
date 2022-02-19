@@ -17,10 +17,10 @@ type Config struct {
 }
 
 type BridgeParams struct {
+	MoralisKey        string
 	UsdcAddr          common.Address
 	BusdAddr          common.Address
 	WethAddr          common.Address
-	BscTestWethAddr   common.Address
 	WbnbAddr          common.Address
 	SupAddr           common.Address
 	DepositAddr       common.Address
@@ -34,7 +34,7 @@ type BridgeParams struct {
 	EthNodeAddr       string
 	BSCChainID        int64
 	ETHChainID        int64
-	RouterAddr        common.Address
+	BSCRouterAddr     common.Address
 	ExchangeRates     *ExchangeRates
 }
 

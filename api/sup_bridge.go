@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"passport"
 	"passport/db"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -34,15 +35,19 @@ type ChainClients struct {
 	API             *API
 	Log             *zerolog.Logger
 	updateStateFunc func(chainID int64, newBlock uint64)
-	updatePriceFunc func(addr common.Address, amount decimal.Decimal)
+
+	updatePriceFuncMu sync.Mutex
+	updatePriceFunc   func(addr common.Address, amount decimal.Decimal)
 }
 
 func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) *ChainClients {
+
 	ctx := context.Background()
 	cc := &ChainClients{
-		Params: p,
-		API:    api,
-		Log:    log,
+		Params:            p,
+		API:               api,
+		Log:               log,
+		updatePriceFuncMu: sync.Mutex{},
 	}
 
 	// func to update state
@@ -76,7 +81,6 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) 
 
 		fmt.Println(cc.Params.ExchangeRates)
 		api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSExchangeRates), cc.Params.ExchangeRates)
-
 	}
 
 	go cc.runETHBridgeListener(ctx)
@@ -694,35 +698,17 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 
 			//Path address gets the value of [0] in terms of [1]
 			SUPSPathAddr := []common.Address{cc.Params.SupAddr, cc.Params.BusdAddr}
-			WBNBPathAddr := []common.Address{cc.Params.BusdAddr, cc.Params.WbnbAddr}
-
-			//IMPORTANT!: Will have to manually change cc.Params.BscTestWethAddr to cc.Params.WethAddr during production-
-			//BscTestWethAddr is a WETH copy on the BSC network which our router points to
-			WETHPathAddr := []common.Address{cc.Params.BscTestWethAddr, cc.Params.BusdAddr}
 
 			// creates a struct that then can be used to get sup price in USD
-			supGetter, err := bridge.NewPriceGetter(cc.BscClient, cc.Params.RouterAddr, SUPSPathAddr) // pathAddrs are an array of contract addresses, from one token to the other
+			supGetter, err := bridge.NewPriceGetter(cc.BscClient, cc.Params.BSCRouterAddr, SUPSPathAddr) // pathAddrs are an array of contract addresses, from one token to the other
 			if err != nil {
 				cc.Log.Err(err).Msg("failed to get sup to busd price getter struct")
 				cancel()
 				return
 			}
 
-			// creates struct that then can be used to get weth price in USD
-			wethGetter, err := bridge.NewPriceGetter(cc.BscClient, cc.Params.RouterAddr, WETHPathAddr) // pathAddrs are an array of contract addresses, from one token to the other
-			if err != nil {
-				cc.Log.Err(err).Msg("failed to get weth to usd price getter struct")
-				cancel()
-				return
-			}
-
-			//creates struct that then can be used to get weth price in USD
-			wbnbGetter, err := bridge.NewPriceGetter(cc.BscClient, cc.Params.RouterAddr, WBNBPathAddr) // pathAddrs are an array of contract addresses, from one token to the other
-			if err != nil {
-				cc.Log.Err(err).Msg("failed to get wbnb to usd price getter struct")
-				cancel()
-				return
-			}
+			fmt.Println(cc.Params.MoralisKey)
+			o := bridge.NewOracle(cc.Params.MoralisKey)
 
 			go func() {
 				for {
@@ -737,31 +723,24 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 					}
 					supPrice := decimal.NewFromBigInt(supBigPrice, -18)
 
-					//gets how many weth for 1 busd
-					wethBigPrice, err := wethGetter.Price(decimal.New(1, int32(18)).BigInt())
-					if err != nil {
-						cc.Log.Err(err).Msg("failed to get weth to usd price")
-						cancel()
-						time.Sleep(b.Duration())
-						errChan <- err
-						return
-					}
-					wethPrice := decimal.NewFromBigInt(wethBigPrice, -18)
-
 					//gets how many wbnb for 1 busd
-					wbnbBigPrice, err := wbnbGetter.Price(decimal.New(1, int32(18)).BigInt())
+					wbnbPrice, err := o.BNBUSDPrice()
+					fmt.Println(wbnbPrice)
 					if err != nil {
-						cc.Log.Err(err).Msg("failed to get wbnb to usd price")
+						cc.Log.Err(err).Msg("failed to get wbnb price")
 						cancel()
 						time.Sleep(b.Duration())
 						errChan <- err
 						return
 					}
-					wbnbPrice := decimal.NewFromBigInt(wbnbBigPrice, -18)
 
+					cc.updatePriceFuncMu.Lock()
 					cc.updatePriceFunc(cc.Params.SupAddr, supPrice)
-					cc.updatePriceFunc(cc.Params.WethAddr, wethPrice)
+					cc.updatePriceFuncMu.Unlock()
+
+					cc.updatePriceFuncMu.Lock()
 					cc.updatePriceFunc(cc.Params.WbnbAddr, wbnbPrice)
+					cc.updatePriceFuncMu.Unlock()
 
 					time.Sleep(10 * time.Second)
 				}
@@ -891,6 +870,7 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 						return
 					default:
 						cc.Log.Info().Str("chain", "BSC").Msg("Start header listener")
+						// TODO use real deposit address
 						blockBSC := bridge.NewHeadListener(cc.BscClient, cc.Params.BSCChainID, cc.handleBlock(ctx, cc.BscClient, cc.Params.BSCChainID))
 						err := blockBSC.Listen(ctx)
 						if err != nil {
@@ -1054,8 +1034,30 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 				time.Sleep(b.Duration())
 				continue ethClientLoop
 			}
-
+			// TODO use real deposit address
 			blockEth := bridge.NewHeadListener(cc.EthClient, cc.Params.ETHChainID, cc.handleBlock(ctx, ethClient, cc.Params.ETHChainID))
+
+			o := bridge.NewOracle(cc.Params.MoralisKey)
+
+			go func() {
+				for {
+					// //gets how many weth for 1 busd
+					wethPrice, err := o.ETHUSDPrice()
+					if err != nil {
+						cc.Log.Err(err).Msg("Could not get WETH price")
+						cancel()
+						time.Sleep(b.Duration())
+						errChan <- err
+						return
+					}
+
+					cc.updatePriceFuncMu.Lock()
+					cc.updatePriceFunc(cc.Params.WethAddr, wethPrice)
+					cc.updatePriceFuncMu.Unlock()
+
+					time.Sleep(10 * time.Second)
+				}
+			}()
 
 			// replay
 			go func() {

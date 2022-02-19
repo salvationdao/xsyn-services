@@ -2397,6 +2397,7 @@ func (uc *UserController) ExchangeRatesHandler(ctx context.Context, client *hub.
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
 
+	reply(uc.API.BridgeParams.ExchangeRates)
 	return req.TransactionID, messagebus.BusKey(HubKeySUPSExchangeRates), nil
 }
 

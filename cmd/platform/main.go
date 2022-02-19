@@ -156,7 +156,10 @@ func main() {
 					&cli.StringFlag{Name: "usd_to_wbnb", Value: "400", EnvVars: []string{envPrefix + "_EX_usd_to_wbnb"}, Usage: "Exchange rate for 1 WBNB to USD"},
 
 					//router address for exchange rates
-					&cli.StringFlag{Name: "router_addr", Value: "0x9ac64cc6e4415144c455bd8e4837fea55603e5c3", EnvVars: []string{envPrefix + "_ROUTER_ADDR"}, Usage: "Router address"},
+					&cli.StringFlag{Name: "bsc_router_addr", Value: "0x9ac64cc6e4415144c455bd8e4837fea55603e5c3", EnvVars: []string{envPrefix + "_BSC_ROUTER_ADDR"}, Usage: "BSC Router address"},
+
+					//moralis key- set in env vars
+					&cli.StringFlag{Name: "moralis_key", Value: "", EnvVars: []string{envPrefix + "_MORALIS_KEY"}, Usage: "Key to connect to moralis API"},
 				},
 
 				Usage: "run server",
@@ -347,12 +350,12 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	databaseName := ctxCLI.String("database_name")
 	databaseAppName := ctxCLI.String("database_application_name")
 
+	MoralisKey := ctxCLI.String("moralis_key")
 	UsdcAddr := ctxCLI.String("usdc_addr")
 	BusdAddr := ctxCLI.String("busd_addr")
 	WethAddr := ctxCLI.String("weth_addr")
 	WbnbAddr := ctxCLI.String("wbnb_addr")
 	SupAddr := ctxCLI.String("sup_addr")
-	BscTestWethAddr := ctxCLI.String("bsc_test_weth_addr")
 	PurchaseAddr := ctxCLI.String("purchase_addr")
 	WithdrawAddr := ctxCLI.String("withdraw_addr")
 	RedemptionAddr := ctxCLI.String("redemption_addr")
@@ -363,7 +366,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	EthNodeAddr := ctxCLI.String("eth_node_addr")
 	BSCChainID := ctxCLI.Int64("bsc_chain_id")
 	ETHChainID := ctxCLI.Int64("eth_chain_id")
-	RouterAddr := ctxCLI.String("router_addr")
+	BSCRouterAddr := ctxCLI.String("bsc_router_addr")
 
 	USDtoETH, err := decimal.NewFromString(ctxCLI.String("usd_to_weth"))
 	if err != nil {
@@ -391,10 +394,10 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		TokenExpirationDays: ctxCLI.Int("jwt_expiry_days"),
 		MetaMaskSignMessage: ctxCLI.String("metamask_sign_message"),
 		BridgeParams: &passport.BridgeParams{
+			MoralisKey:        MoralisKey,
 			UsdcAddr:          common.HexToAddress(UsdcAddr),
 			BusdAddr:          common.HexToAddress(BusdAddr),
 			WethAddr:          common.HexToAddress(WethAddr),
-			BscTestWethAddr:   common.HexToAddress(BscTestWethAddr),
 			WbnbAddr:          common.HexToAddress(WbnbAddr),
 			SupAddr:           common.HexToAddress(SupAddr),
 			PurchaseAddr:      common.HexToAddress(PurchaseAddr),
@@ -407,7 +410,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 			EthNodeAddr:       EthNodeAddr,
 			BSCChainID:        BSCChainID,
 			ETHChainID:        ETHChainID,
-			RouterAddr:        common.HexToAddress(RouterAddr),
+			BSCRouterAddr:     common.HexToAddress(BSCRouterAddr),
 			ExchangeRates: &passport.ExchangeRates{
 				USDtoETH: USDtoETH,
 				USDtoBNB: USDtoBNB,
