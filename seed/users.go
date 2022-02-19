@@ -440,7 +440,7 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 				},
 				{
 					TraitType: "Name",
-					Value:     "Tenshi Mk1",
+					Value:     "Alex",
 				},
 				//{
 				//	TraitType: "SubModel",
@@ -522,7 +522,7 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 		},
 		{
 			CollectionID:       collection.ID,
-			Name:               "Tenshi Mk1 B",
+			Name:               "",
 			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
@@ -542,7 +542,109 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 				},
 				{
 					TraitType: "Name",
-					Value:     "Tenshi Mk1 B",
+					Value:     "John",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
+				{
+					TraitType: "Asset Type",
+					Value:     "War Machine",
+				},
+				{
+					TraitType:   "Max Structure Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Max Shield Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Speed",
+					Value:       2500,
+					DisplayType: passport.Number,
+				},
+				//{
+				//	TraitType:   "Power Grid",
+				//	Value:       170,
+				//	DisplayType: passport.Number,
+				//},
+				//{
+				//	TraitType:   "CPU",
+				//	Value:       100,
+				//	DisplayType: passport.Number,
+				//},
+				{
+					TraitType:   "Weapon Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Turret Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Utility Slots",
+					Value:       1,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType: "Weapon One",
+					Value:     "Sniper Rifle",
+				},
+				{
+					TraitType: "Weapon Two",
+					Value:     "Laser Sword",
+				},
+				{
+					TraitType: "Turret One",
+					Value:     "Rocket Pod",
+				},
+				{
+					TraitType: "Turret Two",
+					Value:     "Rocket Pod",
+				},
+				{
+					TraitType: "Utility One",
+					Value:     "Shield",
+				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
+				},
+			},
+		},
+		{
+			CollectionID:       collection.ID,
+			Name:               "",
+			Description:        "",
+			ExternalUrl:        "",
+			Image:              "",
+			AdditionalMetadata: nil,
+			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Zaibatsu",
+				},
+				{
+					TraitType: "Model",
+					Value:     "WREX",
+				},
+				{
+					TraitType: "Skin",
+					Value:     "Black",
+				},
+				{
+					TraitType: "Name",
+					Value:     "Mac",
 				},
 				//{
 				//	TraitType: "SubModel",
@@ -663,7 +765,7 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 				},
 				{
 					TraitType: "Name",
-					Value:     "Olympus Mons LY07",
+					Value:     "Vinnie",
 				},
 				//{
 				//	TraitType: "SubModel",
@@ -755,7 +857,99 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 				},
 				{
 					TraitType: "Name",
-					Value:     "Olympus Mons LY07 B",
+					Value:     "Owen",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
+				{
+					TraitType: "Asset Type",
+					Value:     "War Machine",
+				},
+				{
+					TraitType:   "Max Structure Hit Points",
+					Value:       1500,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Max Shield Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Speed",
+					Value:       1750,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Weapon Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Turret Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Utility Slots",
+					Value:       1,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType: "Weapon One",
+					Value:     "Auto Cannon",
+				},
+				{
+					TraitType: "Weapon Two",
+					Value:     "Auto Cannon",
+				},
+				{
+					TraitType: "Turret One",
+					Value:     "Rocket Pod",
+				},
+				{
+					TraitType: "Turret Two",
+					Value:     "Rocket Pod",
+				},
+				{
+					TraitType: "Utility One",
+					Value:     "Shield",
+				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
+				},
+			},
+		},
+		{
+			CollectionID:       collection.ID,
+			Name:               "Olympus Mons LY07 B",
+			Description:        "",
+			ExternalUrl:        "",
+			Image:              "",
+			AdditionalMetadata: nil,
+			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Red Mountain",
+				},
+				{
+					TraitType: "Model",
+					Value:     "BXSD",
+				},
+				{
+					TraitType: "Skin",
+					Value:     "Pink",
+				},
+				{
+					TraitType: "Name",
+					Value:     "James",
 				},
 				//{
 				//	TraitType: "SubModel",
@@ -866,7 +1060,7 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 				},
 				{
 					TraitType: "Name",
-					Value:     "Law Enforcer X-1000",
+					Value:     "Darren",
 				},
 				//{
 				//	TraitType: "SubModel",
@@ -945,7 +1139,86 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 				},
 				{
 					TraitType: "Name",
-					Value:     "Law Enforcer X-1000 B",
+					Value:     "Yong",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
+				{
+					TraitType: "Asset Type",
+					Value:     "War Machine",
+				},
+				{
+					TraitType:   "Max Structure Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Max Shield Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Speed",
+					Value:       2750,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Weapon Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Utility Slots",
+					Value:       1,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType: "Weapon One",
+					Value:     "Plasma Rifle",
+				},
+				{
+					TraitType: "Weapon Two",
+					Value:     "Sword",
+				},
+				{
+					TraitType: "Utility One",
+					Value:     "Shield",
+				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
+				},
+			},
+		},
+		{
+			CollectionID:       collection.ID,
+			Name:               "Law Enforcer X-1000 B",
+			Description:        "",
+			ExternalUrl:        "",
+			Image:              "",
+			AdditionalMetadata: nil,
+			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Boston Cybernetics",
+				},
+				{
+					TraitType: "Model",
+					Value:     "XFVS",
+				},
+				{
+					TraitType: "Skin",
+					Value:     "Police_DarkBlue",
+				},
+				{
+					TraitType: "Name",
+					Value:     "Corey",
 				},
 				//{
 				//	TraitType: "SubModel",
