@@ -341,6 +341,9 @@ func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context
 		reply(false)
 		return terror.Error(err)
 	}
+	if asset == nil {
+		return terror.Error(fmt.Errorf("asset doesn't exist"), "Failed to get asset.")
+	}
 
 	err = db.XsynAssetFreeze(ctx, sc.Conn, req.Payload.AssetTokenID, userID)
 	if err != nil {
