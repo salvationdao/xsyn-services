@@ -768,6 +768,96 @@ func (s *Seeder) SeedInitialStoreItems(ctx context.Context, passportURL string) 
 				},
 			},
 		},
+		{
+			Name:            "",
+			FactionID:       passport.ZaibatsuFactionID,
+			CollectionID:    supremacyCollection.ID,
+			Description:     "Gold",
+			Image:           "",
+			AnimationURL:    "",
+			UsdCentCost:     200000,
+			AmountAvailable: 100000,
+			//SoldAfter: time,
+			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
+			Attributes: []*passport.Attribute{
+
+				{
+					TraitType: "Brand",
+					Value:     "Zaibatsu",
+				},
+				{
+					TraitType: "Model",
+					Value:     "Tenshi Mk1",
+				},
+				{
+					TraitType: "SubModel",
+					Value:     "Gold",
+				},
+				{
+					TraitType: "Rarity",
+					Value:     "Legendary",
+				},
+				{
+					TraitType: "Asset Type",
+					Value:     "War Machine",
+				},
+				{
+					TraitType:   "Max Structure Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Max Shield Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+			},
+		},
+		{
+			Name:            "",
+			FactionID:       passport.BostonCyberneticsFactionID,
+			CollectionID:    supremacyCollection.ID,
+			Description:     "Gold",
+			Image:           "",
+			AnimationURL:    "",
+			UsdCentCost:     200000,
+			AmountAvailable: 100000,
+			//SoldAfter: time,
+			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
+			Attributes: []*passport.Attribute{
+
+				{
+					TraitType: "Brand",
+					Value:     "Boston Cybernetics",
+				},
+				{
+					TraitType: "Model",
+					Value:     "Law Enforcer X-1000",
+				},
+				{
+					TraitType: "SubModel",
+					Value:     "Gold",
+				},
+				{
+					TraitType: "Rarity",
+					Value:     "Legendary",
+				},
+				{
+					TraitType: "Asset Type",
+					Value:     "War Machine",
+				},
+				{
+					TraitType:   "Max Structure Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Max Shield Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+			},
+		},
 		{Name: "Boston Cybernetics Law Enforcer X-1000 Crystal Blue", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Crystal Blue", UsdCentCost: 100000, AmountAvailable: 100000, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Crystal Blue"}, {TraitType: "Rarity", Value: "Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
 		{Name: "Boston Cybernetics Law Enforcer X-1000 Dark Blue Police", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Dark Blue Police", UsdCentCost: 100000, AmountAvailable: 100000, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Dark Blue Police"}, {TraitType: "Rarity", Value: "Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
 		{Name: "Boston Cybernetics Law Enforcer X-1000 Dune", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Dune", UsdCentCost: 100000, AmountAvailable: 100000, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Dune"}, {TraitType: "Rarity", Value: "Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
