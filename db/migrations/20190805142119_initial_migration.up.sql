@@ -377,7 +377,8 @@ CREATE TABLE xsyn_store
     name                TEXT        NOT NULL,
     collection_id       UUID REFERENCES collections (id),
     description         TEXT        NOT NULL,
-    image               TEXT        NOT NULL,
+    image               TEXT        NOT NULL             DEFAULT '',
+    animation_url       TEXT        NOT NULL             DEFAULT '',
     attributes          JSONB,
     additional_metadata JSONB,
     keywords            TSVECTOR, -- search
@@ -441,6 +442,7 @@ CREATE TABLE xsyn_metadata
     description         TEXT,
     external_url        TEXT,
     image               TEXT,
+    animation_url       TEXT,       
     durability          INT                        NOT NULL DEFAULT 100,
     attributes          JSONB,
     additional_metadata JSONB,
