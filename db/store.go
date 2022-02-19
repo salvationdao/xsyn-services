@@ -20,6 +20,7 @@ const (
 	StoreColumnCollectionID       StoreColumn = "collection_id"
 	StoreColumnDescription        StoreColumn = "description"
 	StoreColumnImage              StoreColumn = "image"
+	StoreColumnAnimationURL       StoreColumn = "animation_url"
 	StoreColumnAttributes         StoreColumn = "attributes"
 	StoreColumnAdditionalMetadata StoreColumn = "additional_metadata"
 	StoreColumnUsdCentCost        StoreColumn = "usd_cent_cost"
@@ -42,6 +43,7 @@ func (ic StoreColumn) IsValid() error {
 		StoreColumnCollectionID,
 		StoreColumnDescription,
 		StoreColumnImage,
+		StoreColumnAnimationURL,
 		StoreColumnAttributes,
 		StoreColumnAdditionalMetadata,
 		StoreColumnUsdCentCost,
@@ -60,12 +62,14 @@ func (ic StoreColumn) IsValid() error {
 const StoreGetQuery string = `
 SELECT 
 row_to_json(c) as collection,
+row_to_json(faction) as faction,
 xsyn_store.id,
 xsyn_store.faction_id,
 xsyn_store.name,
 xsyn_store.collection_id,
 xsyn_store.description,
 xsyn_store.image,
+xsyn_store.animation_url,
 xsyn_store.attributes,
 xsyn_store.additional_metadata,
 xsyn_store.usd_cent_cost,
@@ -81,6 +85,10 @@ xsyn_store.created_at
 const StoreGetQueryFrom = `
 FROM xsyn_store 
 INNER JOIN collections c ON xsyn_store.collection_id = c.id
+LEFT JOIN (
+	SELECT id, label, theme, logo_blob_id as logoBlobID
+	FROM factions
+) faction ON faction.id = xsyn_store.faction_id
 `
 
 // AddItemToStore added the object to the xsyn nft store table
@@ -90,13 +98,14 @@ func AddItemToStore(ctx context.Context, conn Conn, storeObject *passport.StoreI
                                       collection_id,
                                       description,
                                       image,
+									  animation_url,
                                       attributes,
                                       usd_cent_cost,
                                       amount_sold,
                                       amount_available,
                                       sold_after,
                                       sold_before)
-			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 			RETURNING id`
 
 	_, err := conn.Exec(ctx, q,
@@ -105,6 +114,7 @@ func AddItemToStore(ctx context.Context, conn Conn, storeObject *passport.StoreI
 		storeObject.CollectionID,
 		storeObject.Description,
 		storeObject.Image,
+		storeObject.AnimationURL,
 		storeObject.Attributes,
 		storeObject.UsdCentCost,
 		storeObject.AmountSold,
@@ -119,28 +129,10 @@ func AddItemToStore(ctx context.Context, conn Conn, storeObject *passport.StoreI
 	return nil
 }
 
-// StoreItemByID get store item by id
-func StoreItemByID(ctx context.Context, conn Conn, storeItemID passport.StoreItemID) (*passport.StoreItem, error) {
+// StoreItemGet get store item by id
+func StoreItemGet(ctx context.Context, conn Conn, storeItemID passport.StoreItemID) (*passport.StoreItem, error) {
 	storeItem := &passport.StoreItem{}
-	q := `SELECT 	xsyn_store.id, 
-					xsyn_store.faction_id,
-					xsyn_store.name,
-					xsyn_store.collection_id,
-					xsyn_store.description,
-					xsyn_store.image,
-					xsyn_store.attributes,
-					xsyn_store.usd_cent_cost,
-					xsyn_store.amount_sold,
-					xsyn_store.amount_available,
-					xsyn_store.sold_after,
-					xsyn_store.sold_before,
-					row_to_json(faction) as faction
-			FROM xsyn_store
-			LEFT JOIN (
-				SELECT id, label, theme, logo_blob_id as logoBlobID
-				FROM factions
-			) faction ON faction.id = xsyn_store.faction_id
-			WHERE xsyn_store.id = $1`
+	q := StoreGetQuery + "WHERE xsyn_store.id = $1"
 
 	err := pgxscan.Get(ctx, conn, storeItem, q, storeItemID)
 	if err != nil {

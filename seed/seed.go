@@ -17,13 +17,14 @@ import (
 )
 
 type Seeder struct {
-	Conn   *pgxpool.Pool
-	TxConn *sql.DB
+	Conn            *pgxpool.Pool
+	TxConn          *sql.DB
+	PassportHostUrl string
 }
 
 // NewSeeder returns a new Seeder
-func NewSeeder(conn *pgxpool.Pool, txConn *sql.DB) *Seeder {
-	s := &Seeder{Conn: conn, TxConn: txConn}
+func NewSeeder(conn *pgxpool.Pool, txConn *sql.DB, passportHostUrl string) *Seeder {
+	s := &Seeder{Conn: conn, TxConn: txConn, PassportHostUrl: passportHostUrl}
 	return s
 }
 
@@ -97,7 +98,7 @@ func (s *Seeder) Run(isProd bool) error {
 	//}
 
 	fmt.Println("Seeding initial store items")
-	err = s.SeedInitialStoreItems(ctx)
+	err = s.SeedInitialStoreItems(ctx, s.PassportHostUrl)
 	if err != nil {
 		return terror.Error(err, "seed users failed")
 	}

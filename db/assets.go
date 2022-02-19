@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"passport"
 	"strings"
@@ -233,10 +235,14 @@ func AssetList(
 // AssetGet returns a asset by given ID
 func AssetGet(ctx context.Context, conn Conn, tokenID uint64) (*passport.XsynMetadata, error) {
 	asset := &passport.XsynMetadata{}
+
 	q := AssetGetQuery + `WHERE xsyn_metadata.token_id = $1`
 
 	err := pgxscan.Get(ctx, conn, asset, q, tokenID)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, terror.Error(err, "Issue getting asset from token ID.")
 	}
 	return asset, nil
