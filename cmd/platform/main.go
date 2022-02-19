@@ -192,6 +192,7 @@ func main() {
 					&cli.StringFlag{Name: "database_port", Value: "5432", EnvVars: []string{"PASSPORT_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
 					&cli.StringFlag{Name: "database_name", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{"PASSPORT_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+					&cli.StringFlag{Name: "passport_web_host_url", Value: "http://localhost:8086", EnvVars: []string{envPrefix + "_HOST_URL_API"}, Usage: "The API Url where files are hosted"},
 					&cli.BoolFlag{Name: "database_prod", Value: false, EnvVars: []string{"PASSPORT_DB_PROD", "DB_PROD"}, Usage: "seed the database (prod)"},
 					&cli.StringFlag{Name: "environment", Value: "development", DefaultText: "development", EnvVars: []string{"PASSPORT_ENVIRONMENT", "ENVIRONMENT"}, Usage: "This program environment (development, testing, training, staging, production), it sets the log levels"},
 					&cli.BoolFlag{Name: "seed", EnvVars: []string{"PASSPORT_DB_SEED", "DB_SEED"}, Usage: "seed the database"},
@@ -207,6 +208,7 @@ func main() {
 					databaseName := c.String("database_name")
 					databaseAppName := c.String("database_application_name")
 					databaseProd := c.Bool("database_prod")
+					passportWebHostUrl := c.String("passport_web_host_url")
 
 					pgxconn, err := pgxconnect(
 						databaseUser,
@@ -232,7 +234,7 @@ func main() {
 						return terror.Panic(err)
 					}
 
-					seeder := seed.NewSeeder(pgxconn, txConn)
+					seeder := seed.NewSeeder(pgxconn, txConn, passportWebHostUrl)
 					return seeder.Run(databaseProd)
 				},
 			},

@@ -153,9 +153,8 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 		tx.To = passport.SupremacyBattleUserID
 	}
 
-	errChan := make(chan error, 10)
+	errChan := make(chan error)
 	sc.API.HoldTransaction(ctx, errChan, tx)
-
 	err = <-errChan
 	if err != nil {
 		return terror.Error(err)
@@ -533,7 +532,7 @@ func (sc *SupremacyControllerWS) SupremacyCommitTransactionsHandler(ctx context.
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
 	}
-	resultChan := make(chan []*passport.Transaction, len(req.Payload.TransactionReferences)+5)
+	resultChan := make(chan []*passport.Transaction)
 	sc.API.CommitTransactions(ctx, resultChan, req.Payload.TransactionReferences...)
 
 	results := <-resultChan

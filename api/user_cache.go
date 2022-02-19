@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"passport"
-	"sync"
 	"time"
 
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -22,21 +21,16 @@ type UserCacheFunc func(userCacheList UserCacheMap)
 // HandleUserCache is where the user cache map lives and where we pass through the updates to it
 func (api *API) HandleUserCache() {
 	var userCacheMap UserCacheMap = map[passport.UserID]*UserCache{}
-	for {
-		userFunc := <-api.users
+	for userFunc := range api.users {
 		userFunc(userCacheMap)
 	}
 }
 
 // UserCache accepts a function that loops over the user cache map
 func (api *API) UserCache(fn UserCacheFunc) {
-	var wg sync.WaitGroup
-	wg.Add(1)
 	api.users <- func(userCacheList UserCacheMap) {
 		fn(userCacheList)
-		wg.Done()
 	}
-	wg.Wait()
 }
 
 // InsertUserToCache adds a user to the cache
@@ -62,18 +56,20 @@ func (api *API) InsertUserToCache(ctx context.Context, user *passport.User) {
 	})
 }
 
-// UpdateUserInCache updates a user in the cache, if user doesn't exist it does nothing
+// UpdateUserInCache updates a user in the cache, if user doesn't exist it does nothing and returns false
 func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) {
+	api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
+		api.UserCache(func(userMap UserCacheMap) {
+			// skip if user is system user
+			if user.ID.IsSystemUser() {
+				return
+			}
 
-	api.UserCache(func(userMap UserCacheMap) {
-		// cache map should have the latest user sups detail
-		// so skip if user is already in the cache map
-		if _, ok := userMap[user.ID]; ok {
-			return
-		}
+			// add user to cache if not exist
+			if _, ok := userMap[user.ID]; !ok {
+				userMap[user.ID] = &UserCache{User: user, CacheLastUpdated: time.Now()}
+			}
 
-		// otherwise process user uncommitted transactions
-		api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 			for _, tx := range heldTxList {
 				if tx.To == user.ID {
 					user.Sups.Int = *user.Sups.Int.Add(&user.Sups.Int, &tx.Amount)
@@ -81,15 +77,9 @@ func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) {
 					user.Sups.Int = *user.Sups.Int.Sub(&user.Sups.Int, &tx.Amount)
 				}
 			}
-		})
 
-		// add user to cache map
-		userMap[user.ID] = &UserCache{User: user, CacheLastUpdated: time.Now()}
-
-		// broadcast user sups, if user is not the system user
-		if !user.ID.IsSystemUser() {
 			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
-		}
+		})
 	})
 }
 
@@ -117,7 +107,6 @@ func (api *API) UpdateUserCacheAddSups(ctx context.Context, userID passport.User
 // UpdateUserCacheRemoveSups updates a users sups in the cache and removes the given amount, returns error if not enough
 func (api *API) UpdateUserCacheRemoveSups(ctx context.Context, userID passport.UserID, amount big.Int, errChan chan error) {
 	api.UserCache(func(userMap UserCacheMap) {
-
 		user, ok := userMap[userID]
 		if ok {
 			enoughFunds := user.Sups.Int.Cmp(&amount) >= 0
