@@ -7,7 +7,8 @@
 ### Setup to use private repo
 
 ```bash
-rd1
+git config --global --add url."git@github.com:".insteadOf "https://github.com/"
+export GOPRIVATE="github.com/ninja-software/*,github.com/ninja-syndicate/*"
 ```
 
 ### spinup

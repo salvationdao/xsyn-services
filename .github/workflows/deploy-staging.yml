@@ -37,7 +37,9 @@ jobs:
           git config --global user.name "Github CI"
           git config --global user.email "team@syndicate.ninja"
           git config --global --add url."git@hub.github.com:ninja-syndicate/hub".insteadOf "https://github.com/ninja-syndicate/hub"
+          git config --global --add url."git@hub.github.com:ninja-software/sale".insteadOf "https://github.com/ninja-software/sale"
           git config --global --add url."git@bridge.github.com:ninja-syndicate/supremacy-bridge".insteadOf "https://github.com/ninja-syndicate/supremacy-bridge"
+          git config --global --add url."git@bridge.github.com:ninja-software/sale".insteadOf "https://github.com/ninja-software/sale"
 
       - name: calculate version increment
         run: |
@@ -51,7 +53,7 @@ jobs:
 
       - name: Setup build env
         run: |
-          export GOPRIVATE="github.com/ninja-syndicate/*"
+          export GOPRIVATE="github.com/ninja-software/*,github.com/ninja-syndicate/*"
           mkdir -p bin
           make tools
 
