@@ -67,8 +67,9 @@ func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) {
 
 			// add user to cache if not exist
 			if _, ok := userMap[user.ID]; !ok {
-				userMap[user.ID] = &UserCache{User: user, CacheLastUpdated: time.Now()}
+				userMap[user.ID] = &UserCache{}
 			}
+			userMap[user.ID] = &UserCache{User: user, CacheLastUpdated: time.Now()}
 
 			for _, tx := range heldTxList {
 				if tx.To == user.ID {
