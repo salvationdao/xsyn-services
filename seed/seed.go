@@ -91,6 +91,11 @@ func (s *Seeder) Run(isProd bool) error {
 		return terror.Error(err, "seed users failed")
 	}
 
+	fmt.Println("Seeding Early Contributors")
+	err = s.EarlyContributors(ctx)
+	if err != nil {
+		return terror.Error(err, "seed early contributors failed")
+	}
 	//fmt.Println("Seeding organisations")
 	//organisations, err := s.Organisations(ctx)
 	//if err != nil {
