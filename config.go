@@ -38,9 +38,18 @@ type BridgeParams struct {
 }
 
 type ExchangeRates struct {
-	USDCToSUPS decimal.Decimal
-	BUSDToSUPS decimal.Decimal
-	WETHToSUPS decimal.Decimal
-	WBNBToSUPS decimal.Decimal
-	SUPToUSD   decimal.Decimal
+	USDtoETH decimal.Decimal
+	USDtoBNB decimal.Decimal
+	SUPtoUSD decimal.Decimal
 }
+
+// USDCToSUPS decimal.Decimal // ETH Chain
+// SUPToUSD   decimal.Decimal // Use BUSD against SUPS (inverse)
+// BUSDToSUPS decimal.Decimal // BSC Chain
+
+// WETHToSUPS decimal.Decimal // ETH Chain (and BSC)
+
+// WBNBToSUPS decimal.Decimal // BSC Chain
+// Grab eth price in busd
+// Grab bnb price in busd
+// Grab sups price in busd

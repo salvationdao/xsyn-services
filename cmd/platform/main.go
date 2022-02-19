@@ -150,11 +150,9 @@ func main() {
 					&cli.StringFlag{Name: "eth_node_addr", Value: "wss://speedy-nodes-nyc.moralis.io/1375aa321ac8ac6cfba6aa9c/eth/goerli/ws", EnvVars: []string{envPrefix + "_ETH_WS_NODE_URL"}, Usage: "Ethereum WS node URL"},
 
 					// exchange rates
-					&cli.StringFlag{Name: "usdc_to_sups", Value: "8.333333333333333333", EnvVars: []string{envPrefix + "_EX_USDC_TO_SUPS"}, Usage: "Exchange rate for 1 USDC to SUPS"},
-					&cli.StringFlag{Name: "busd_to_sups", Value: "8.333333333333333333", EnvVars: []string{envPrefix + "_EX_BUSD_TO_SUPS"}, Usage: "Exchange rate for 1 BUSD to SUPS"},
-					&cli.StringFlag{Name: "sup_price", Value: "0.12", EnvVars: []string{envPrefix + "_EX_SUPS_TO_USD"}, Usage: "Exchange rate for 1 SUP to USD"},
-					&cli.StringFlag{Name: "weth_to_sups", Value: "21000", EnvVars: []string{envPrefix + "_EX_WETH_TO_SUPS"}, Usage: "Exchange rate for 1 WETH to SUPS"},
-					&cli.StringFlag{Name: "wbnb_to_sups", Value: "3000", EnvVars: []string{envPrefix + "_EX_WBNB_TO_SUPS"}, Usage: "Exchange rate for 1 WBNB to SUPS"},
+					&cli.StringFlag{Name: "sup_to_usd", Value: "0.12", EnvVars: []string{envPrefix + "_EX_SUPS_TO_USD"}, Usage: "Exchange rate for 1 SUP to USD"},
+					&cli.StringFlag{Name: "usd_to_weth", Value: "3000", EnvVars: []string{envPrefix + "_EX_usd_to_weth"}, Usage: "Exchange rate for 1 WETH to USD"},
+					&cli.StringFlag{Name: "usd_to_wbnb", Value: "400", EnvVars: []string{envPrefix + "_EX_usd_to_wbnb"}, Usage: "Exchange rate for 1 WBNB to USD"},
 				},
 
 				Usage: "run server",
@@ -361,23 +359,15 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	BSCChainID := ctxCLI.Int64("bsc_chain_id")
 	ETHChainID := ctxCLI.Int64("eth_chain_id")
 
-	USDCToSUPS, err := decimal.NewFromString(ctxCLI.String("usdc_to_sups"))
+	USDtoETH, err := decimal.NewFromString(ctxCLI.String("usd_to_weth"))
 	if err != nil {
 		return err
 	}
-	BUSDToSUPS, err := decimal.NewFromString(ctxCLI.String("busd_to_sups"))
+	USDtoBNB, err := decimal.NewFromString(ctxCLI.String("usd_to_wbnb"))
 	if err != nil {
 		return err
 	}
-	WETHToSUPS, err := decimal.NewFromString(ctxCLI.String("weth_to_sups"))
-	if err != nil {
-		return err
-	}
-	WBNBToSUPS, err := decimal.NewFromString(ctxCLI.String("wbnb_to_sups"))
-	if err != nil {
-		return err
-	}
-	SUPToUSD, err := decimal.NewFromString(ctxCLI.String("sup_price"))
+	SUPtoUSD, err := decimal.NewFromString(ctxCLI.String("sup_to_usd"))
 	if err != nil {
 		return err
 	}
@@ -411,11 +401,9 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 			BSCChainID:        BSCChainID,
 			ETHChainID:        ETHChainID,
 			ExchangeRates: &passport.ExchangeRates{
-				USDCToSUPS: USDCToSUPS,
-				BUSDToSUPS: BUSDToSUPS,
-				WETHToSUPS: WETHToSUPS,
-				WBNBToSUPS: WBNBToSUPS,
-				SUPToUSD:   SUPToUSD,
+				USDtoETH: USDtoETH,
+				USDtoBNB: USDtoBNB,
+				SUPtoUSD: SUPtoUSD,
 			},
 		},
 	}

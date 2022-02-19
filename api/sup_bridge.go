@@ -34,7 +34,7 @@ type ChainClients struct {
 	API             *API
 	Log             *zerolog.Logger
 	updateStateFunc func(chainID int64, newBlock uint64)
-	updatePriceFunc func(addr common.Address, amount big.Int)
+	updatePriceFunc func(addr common.Address, amount decimal.Decimal)
 }
 
 func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) *ChainClients {
@@ -64,15 +64,19 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) 
 		}
 	}
 
-	cc.updatePriceFunc = func(addr common.Address, amount big.Int) {
+	cc.updatePriceFunc = func(addr common.Address, amount decimal.Decimal) {
 		switch addr {
+		case cc.Params.SupAddr:
+			cc.Params.ExchangeRates.SUPtoUSD = amount
+		// case cc.Params.WethAddr:
+		// 	cc.Params.ExchangeRates.USDtoETH = amount
 		case cc.Params.WbnbAddr:
-			cc.Params.ExchangeRates.WBNBToSUPS = decimal.NewFromBigInt(&amount, 18).Div(cc.Params.ExchangeRates.SUPToUSD)
-		case cc.Params.WethAddr:
-			cc.Params.ExchangeRates.WBNBToSUPS = decimal.NewFromBigInt(&amount, 18).Div(cc.Params.ExchangeRates.SUPToUSD)
+			cc.Params.ExchangeRates.USDtoBNB = amount
 		}
+
 		fmt.Println(cc.Params.ExchangeRates)
 		api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSExchangeRates), cc.Params.ExchangeRates)
+
 	}
 
 	go cc.runETHBridgeListener(ctx)
@@ -92,7 +96,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					// if buying sups with BUSD
 
 					amountTimes100 := xfer.Amount.Mul(xfer.Amount, big.NewInt(1000))
-					supUSDPriceTimes100 := cc.Params.ExchangeRates.SUPToUSD.Mul(decimal.New(1000, 0)).BigInt()
+					supUSDPriceTimes100 := cc.Params.ExchangeRates.SUPtoUSD.Mul(decimal.New(1000, 0)).BigInt()
 					supAmount := amountTimes100.Div(amountTimes100, supUSDPriceTimes100)
 
 					cc.Log.Info().
@@ -159,7 +163,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					// if buying sups with WBNB
 
 					// TODO: probably do a * 1000 here? currently no decimals in conversion but possibly in future?
-					supAmount := cc.Params.ExchangeRates.WBNBToSUPS.BigInt()
+					supAmount := cc.Params.ExchangeRates.USDtoBNB.Div(cc.Params.ExchangeRates.SUPtoUSD).BigInt()
 					supAmount = supAmount.Mul(supAmount, xfer.Amount)
 
 					cc.Log.Info().
@@ -288,7 +292,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					//busdAmount := d.Div(p.BUSDToSUPS)
 
 					// make sup cost 1000 * bigger to not deal with decimals
-					supUSDPriceTimes1000 := cc.Params.ExchangeRates.SUPToUSD.Mul(decimal.New(1000, 0)).BigInt()
+					supUSDPriceTimes1000 := cc.Params.ExchangeRates.SUPtoUSD.Mul(decimal.New(1000, 0)).BigInt()
 					// amount * sup to usd price
 					amountTimesSupsPrice := xfer.Amount.Mul(xfer.Amount, supUSDPriceTimes1000)
 					// divide by 1000 to bring it back down
@@ -425,7 +429,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 				if xfer.To == cc.Params.PurchaseAddr {
 					// if buying sups with USDC
 					amountTimes100 := xfer.Amount.Mul(xfer.Amount, big.NewInt(1000))
-					supUSDPriceTimes100 := cc.Params.ExchangeRates.SUPToUSD.Mul(decimal.New(1000, 0)).BigInt()
+					supUSDPriceTimes100 := cc.Params.ExchangeRates.SUPtoUSD.Mul(decimal.New(1000, 0)).BigInt()
 					supAmount := amountTimes100.Div(amountTimes100, supUSDPriceTimes100)
 
 					cc.Log.Info().
@@ -488,7 +492,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 				if xfer.To == cc.Params.PurchaseAddr {
 					// if buying sups with WETH
 					// TODO: probably do a * 1000 here? currently no decimals in conversion but possibly in future?
-					supAmount := cc.Params.ExchangeRates.WETHToSUPS.BigInt()
+					supAmount := cc.Params.ExchangeRates.USDtoETH.Div(cc.Params.ExchangeRates.SUPtoUSD).BigInt()
 					supAmount = supAmount.Mul(supAmount, xfer.Amount)
 
 					cc.Log.Info().
@@ -688,47 +692,70 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 			cc.Log.Info().Msg("Started sup controller")
 			cc.SUPS = supsController
 
-			busdPathAddrs := []common.Address{cc.Params.BusdAddr, cc.Params.SupAddr}
-			//wethPathAddrs := []common.Address{cc.Params.WethAddr, cc.Params.UsdcAddr}
+			//getting SUPs to USD price
+			SUPSPathAddr := []common.Address{cc.Params.SupAddr, cc.Params.BusdAddr}
+			//WETHPathAddr := []common.Address{cc.Params.BusdAddr, cc.Params.WethAddr}
+			WBNBPathAddr := []common.Address{cc.Params.BusdAddr, cc.Params.WbnbAddr}
 
-			// creates a struct that then can be used to get busd to wbnb price
-			busdGetter, err := bridge.NewPriceGetter(cc.BscClient, common.HexToAddress("0xdc4904b5f716Ff30d8495e35dC99c109bb5eCf81"), busdPathAddrs) // pathAddrs are an array of contract addresses, from one token to the other
+			// creates a struct that then can be used to get sup to busd price
+			supGetter, err := bridge.NewPriceGetter(cc.BscClient, common.HexToAddress("0x9ac64cc6e4415144c455bd8e4837fea55603e5c3"), SUPSPathAddr) // pathAddrs are an array of contract addresses, from one token to the other
 			if err != nil {
-				cc.Log.Err(err).Msg("failed to get wbnb price getter struct")
+				cc.Log.Err(err).Msg("failed to get sup to busd price getter struct")
+				cancel()
+				return
+			}
+			//have to find a different router: weth to usdc
+			// wethGetter, err := bridge.NewPriceGetter(cc.BscClient, common.HexToAddress("0x9ac64cc6e4415144c455bd8e4837fea55603e5c3"), WETHPathAddr) // pathAddrs are an array of contract addresses, from one token to the other
+			// if err != nil {
+			// 	cc.Log.Err(err).Msg("failed to get weth to usd price getter struct")
+			// 	cancel()
+			// 	return
+			// }
+			wbnbGetter, err := bridge.NewPriceGetter(cc.BscClient, common.HexToAddress("0x9ac64cc6e4415144c455bd8e4837fea55603e5c3"), WBNBPathAddr) // pathAddrs are an array of contract addresses, from one token to the other
+			if err != nil {
+				cc.Log.Err(err).Msg("failed to get wbnb to usd price getter struct")
 				cancel()
 				return
 			}
 
-			// wethGetter, err := bridge.NewPriceGetter(cc.EthClient, common.HexToAddress("0x10ED43C718714eb63d5aA57B78B54704E256024E"), wethPathAddrs) // pathAddrs are an array of contract addresses, from one token to the other
-			// if err != nil {
-			// 	cc.Log.Err(err).Msg("failed to get weth price getter struct")
-			// 	cancel()
-			// 	return
-			// }
-
 			go func() {
 				for {
-					// gets how many busd for 1 wbnb
-					wbnbPrice, err := busdGetter.Price(decimal.New(1, int32(18)).BigInt())
-					fmt.Println(busdGetter.Paths)
+					// gets how many sups for 1 busd
+					supBigPrice, err := supGetter.Price(decimal.New(1, int32(18)).BigInt())
 					if err != nil {
-						cc.Log.Err(err).Msg("failed to get WBNB price")
+						cc.Log.Err(err).Msg("failed to get sup to busd price")
 						cancel()
 						time.Sleep(b.Duration())
 						errChan <- err
 						return
 					}
-					//gets how many usdc for 1 weth
-					// wethPrice, err := wethGetter.Price(decimal.New(1, int32(18)).BigInt())
+					supPrice := decimal.NewFromBigInt(supBigPrice, -18)
+
+					//gets how many weth for 1 busd
+					// wethBigPrice, err := wethGetter.Price(decimal.New(1, int32(18)).BigInt())
 					// if err != nil {
-					// 	cc.Log.Err(err).Msg("failed to get WETH price")
+					// 	cc.Log.Err(err).Msg("failed to get weth to usd price")
 					// 	cancel()
 					// 	time.Sleep(b.Duration())
 					// 	errChan <- err
 					// 	return
 					// }
-					cc.updatePriceFunc(cc.Params.WbnbAddr, *wbnbPrice)
-					//cc.updatePriceFunc(cc.Params.WethAddr, *wethPrice)
+					// wethPrice := decimal.NewFromBigInt(wethBigPrice, -18)
+
+					//gets how many wbnb for 1 busd
+					wbnbBigPrice, err := wbnbGetter.Price(decimal.New(1, int32(18)).BigInt())
+					if err != nil {
+						cc.Log.Err(err).Msg("failed to get wbnb to usd price")
+						cancel()
+						time.Sleep(b.Duration())
+						errChan <- err
+						return
+					}
+					wbnbPrice := decimal.NewFromBigInt(wbnbBigPrice, -18)
+
+					cc.updatePriceFunc(cc.Params.BusdAddr, supPrice)
+					//cc.updatePriceFunc(cc.Params.WethAddr, wethPrice)
+					cc.updatePriceFunc(cc.Params.WbnbAddr, wbnbPrice)
 
 					time.Sleep(10 * time.Second)
 				}
