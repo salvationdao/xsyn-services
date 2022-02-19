@@ -77,7 +77,7 @@ jobs:
 
       - name: Add info text
         run: |
-          deploy/passport-api version full > deploy/BuildInfo.txt
+          deploy/passport-api version --full > deploy/BuildInfo.txt
 
       - name: Update tags
         run: |
