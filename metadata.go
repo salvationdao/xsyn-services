@@ -35,7 +35,7 @@ type StoreItem struct {
 	ID                 StoreItemID         `json:"ID" db:"id"`
 	Name               string              `json:"name" db:"name"`
 	FactionID          FactionID           `json:"factionID" db:"faction_id"`
-	Faction            *Faction            `json:"faction"`
+	Faction            *Faction            `json:"faction" db:"faction"`
 	CollectionID       CollectionID        `json:"collectionID" db:"collection_id"`
 	Collection         Collection          `json:"collection" db:"collection"`
 	Description        string              `json:"description" db:"description"`
