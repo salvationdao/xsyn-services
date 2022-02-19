@@ -377,7 +377,8 @@ CREATE TABLE xsyn_store
     name                TEXT        NOT NULL,
     collection_id       UUID REFERENCES collections (id),
     description         TEXT        NOT NULL,
-    image               TEXT        NOT NULL,
+    image               TEXT        NOT NULL             DEFAULT '',
+    animation_url       TEXT        NOT NULL             DEFAULT '',
     attributes          JSONB,
     additional_metadata JSONB,
     keywords            TSVECTOR, -- search
@@ -430,7 +431,6 @@ EXECUTE PROCEDURE update_xsyn_storeKeywords();
  * This table is the nft metadata NOT assets *
  **********************************************/
 CREATE SEQUENCE IF NOT EXISTS token_id_seq;
-ALTER SEQUENCE token_id_seq RESTART WITH 1;
 
 CREATE TABLE xsyn_metadata
 (
@@ -441,6 +441,7 @@ CREATE TABLE xsyn_metadata
     description         TEXT,
     external_url        TEXT,
     image               TEXT,
+    animation_url       TEXT,       
     durability          INT                        NOT NULL DEFAULT 100,
     attributes          JSONB,
     additional_metadata JSONB,

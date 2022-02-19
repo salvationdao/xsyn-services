@@ -1167,6 +1167,10 @@ func (cc *ChainClients) handleNFTTransfer(ctx context.Context) func(xfer *bridge
 		func() {
 			asset, err := db.AssetGet(ctx, cc.API.Conn, ev.TokenID.Uint64())
 			if err != nil {
+				cc.Log.Err(err).Msgf("issue getting asset: %s", ev.TokenID.String())
+				return
+			}
+			if asset == nil {
 				cc.Log.Err(err).Msgf("failed to find asset: %s", ev.TokenID.String())
 				return
 			}
@@ -1243,6 +1247,10 @@ func (cc *ChainClients) handleNFTTransfer(ctx context.Context) func(xfer *bridge
 		// get updated asset
 		asset, err := db.AssetGet(ctx, cc.API.Conn, ev.TokenID.Uint64())
 		if err != nil {
+			cc.Log.Err(err).Msgf("failed to find asset: %s", ev.TokenID.String())
+			return
+		}
+		if asset == nil {
 			cc.Log.Err(err).Msgf("failed to find asset: %s", ev.TokenID.String())
 			return
 		}

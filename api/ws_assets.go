@@ -146,6 +146,9 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	if err != nil {
 		return terror.Error(err)
 	}
+	if asset == nil {
+		return terror.Error(fmt.Errorf("asset doesn't exist"))
+	}
 
 	if !asset.IsUsable() {
 		return terror.Error(fmt.Errorf("asset is locked"), "Asset is locked.")
@@ -188,6 +191,9 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 			err := db.AbilityAssetGet(ctx, ac.Conn, abilityMetadata)
 			if err != nil {
 				return terror.Error(err)
+			}
+			if asset == nil {
+				return terror.Error(fmt.Errorf("asset doesn't exist"))
 			}
 
 			supsCost, err := db.WarMachineAbilityCostGet(ctx, ac.Conn, warMachineMetadata.TokenID, abilityMetadata.TokenID)
@@ -370,6 +376,9 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hub
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
 	}
+	if asset == nil {
+		return req.TransactionID, "", terror.Error(fmt.Errorf("asset doesn't exist"))
+	}
 
 	reply(asset)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), nil
@@ -430,6 +439,9 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 	if err != nil {
 		return terror.Error(err)
 	}
+	if asset == nil {
+		return terror.Error(fmt.Errorf("asset doesn't exist"))
+	}
 
 	// check if user owns asset
 	if *asset.UserID != *req.Payload.UserID {
@@ -461,6 +473,9 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 	asset, err = db.AssetGet(ctx, ac.Conn, req.Payload.TokenID)
 	if err != nil {
 		return terror.Error(err)
+	}
+	if asset == nil {
+		return terror.Error(fmt.Errorf("asset doesn't exist"))
 	}
 
 	go ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.TokenID)), asset)
