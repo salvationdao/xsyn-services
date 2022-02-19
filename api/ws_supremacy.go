@@ -253,8 +253,10 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 	}
 
 	// get sups from battle user
+	sc.TickerPoolCache.lock.Lock()
 	battleUser, err := db.UserBalance(ctx, sc.Conn, passport.SupremacyBattleUserID)
 	if err != nil {
+		sc.TickerPoolCache.lock.Unlock()
 		return terror.Error(err, "Failed to get battle arena user.")
 	}
 	fmt.Printf("total amount: %s \n", battleUser.String())
@@ -265,9 +267,11 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 	fmt.Printf("amount for this rounds ticker: %s \n", battleUserSups.String())
 	// skip calculation, if there is no sups in the pool
 	if battleUserSups.Cmp(big.NewInt(0)) <= 0 {
+		sc.TickerPoolCache.lock.Unlock()
 		reply(true)
 		return nil
 	}
+	sc.TickerPoolCache.lock.Unlock()
 
 	// so here we want to trickle the battle pool out over 5 minutes, so we create a ticker that ticks every 5 seconds with a max ticks of 300 / 5
 	ticksInFiveMinutes := 300 / 5
@@ -285,18 +289,20 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|battle_sups_spend_transfer|%s", time.Now())),
 		}
 
+		// update pool cache
+		sc.TickerPoolCache.lock.Lock()
 		sc.API.transaction <- transaction
 		result := <-transaction.ResultChan
 		if result.Error != nil {
+			sc.TickerPoolCache.lock.Unlock()
 			return 0, terror.Error(result.Error)
 		}
 		if result.Transaction.Status == passport.TransactionFailed {
+			sc.TickerPoolCache.lock.Unlock()
 			sc.Log.Err(fmt.Errorf(result.Transaction.Reason)).Msgf("battle sup trickler transfer failed")
 			return 60, nil
 		}
 
-		// update pool cache
-		sc.TickerPoolCache.lock.Lock()
 		sc.TickerPoolCache.AmountTicking = sc.TickerPoolCache.AmountTicking.Sub(sc.TickerPoolCache.AmountTicking, supsPerTick)
 		fmt.Printf("updating tick left amount to: %s \n", sc.TickerPoolCache.AmountTicking.String())
 		sc.TickerPoolCache.lock.Unlock()
