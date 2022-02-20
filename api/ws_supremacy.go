@@ -351,7 +351,7 @@ func (sc *SupremacyControllerWS) trickleFactory(key string, totalTick int, supsP
 			sc.poolLowPriorityUnlock()
 
 			// log error
-			sc.Log.Err(result.Error).Msgf("battle sup trickler transfer failed")
+			sc.Log.Err(result.Error).Int("tick", i).Msgf("battle sup trickler transfer failed")
 			return
 		}
 		if result.Transaction.Status == passport.TransactionFailed {
@@ -360,7 +360,7 @@ func (sc *SupremacyControllerWS) trickleFactory(key string, totalTick int, supsP
 			sc.poolLowPriorityUnlock()
 
 			// log error
-			sc.Log.Err(fmt.Errorf(result.Transaction.Reason)).Msgf("battle sup trickler transfer failed")
+			sc.Log.Err(fmt.Errorf(result.Transaction.Reason)).Int("tick", i).Msgf("battle sup trickler transfer failed")
 			return
 		}
 
