@@ -294,80 +294,80 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
 				}
-				if xfer.To == cc.Params.RedemptionAddr {
-					// UNTESTED
-					//busdAmount := d.Div(p.BUSDToSUPS)
+				// if xfer.To == cc.Params.RedemptionAddr {
+				// 	// UNTESTED
+				// 	//busdAmount := d.Div(p.BUSDToSUPS)
 
-					// make sup cost 1000 * bigger to not deal with decimals
-					supUSDPriceTimes1000 := cc.API.State.SUPtoUSD.Mul(decimal.New(1000, 0)).BigInt()
-					// amount * sup to usd price
-					amountTimesSupsPrice := xfer.Amount.Mul(xfer.Amount, supUSDPriceTimes1000)
-					// divide by 1000 to bring it back down
-					amountTimesSupsPriceNormalized := amountTimesSupsPrice.Div(amountTimesSupsPrice, big.NewInt(1000))
-					// so now we have it at 18 decimals because that is what sups are, we need to reduce it to match the given token decimal
-					// TODO: get decimals for from chain for BUSD
-					busdDecimals := 6
-					decimalDifference := xfer.Decimals - busdDecimals
-					toDivideBy := big.NewInt(10)
-					toDivideBy = toDivideBy.Exp(toDivideBy, big.NewInt(int64(decimalDifference)), nil)
-					amountOfBUSD := amountTimesSupsPriceNormalized.Div(amountTimesSupsPriceNormalized, toDivideBy)
+				// 	// make sup cost 1000 * bigger to not deal with decimals
+				// 	supUSDPriceTimes1000 := cc.Params.SUPToUSD.Mul(decimal.New(1000, 0)).BigInt()
+				// 	// amount * sup to usd price
+				// 	amountTimesSupsPrice := xfer.Amount.Mul(xfer.Amount, supUSDPriceTimes1000)
+				// 	// divide by 1000 to bring it back down
+				// 	amountTimesSupsPriceNormalized := amountTimesSupsPrice.Div(amountTimesSupsPrice, big.NewInt(1000))
+				// 	// so now we have it at 18 decimals because that is what sups are, we need to reduce it to match the given token decimal
+				// 	// TODO: get decimals for from chain for BUSD
+				// 	busdDecimals := 6
+				// 	decimalDifference := xfer.Decimals - busdDecimals
+				// 	toDivideBy := big.NewInt(10)
+				// 	toDivideBy = toDivideBy.Exp(toDivideBy, big.NewInt(int64(decimalDifference)), nil)
+				// 	amountOfBUSD := amountTimesSupsPriceNormalized.Div(amountTimesSupsPriceNormalized, toDivideBy)
 
-					cc.Log.Info().
-						Str("Chain", "BSC").
-						Str("SUPS", decimal.NewFromBigInt(xfer.Amount, 0).Div(decimal.New(1, int32(xfer.Decimals))).String()).
-						Str("BUSD", decimal.NewFromBigInt(amountOfBUSD, 0).Div(decimal.New(1, int32(6))).String()). // TODO: get decimals from chain for this
-						Str("User", xfer.From.Hex()).
-						Msg("redeem")
+				// 	cc.Log.Info().
+				// 		Str("Chain", "BSC").
+				// 		Str("SUPS", decimal.NewFromBigInt(xfer.Amount, 0).Div(decimal.New(1, int32(xfer.Decimals))).String()).
+				// 		Str("BUSD", decimal.NewFromBigInt(amountOfBUSD, 0).Div(decimal.New(1, int32(6))).String()). // TODO: get decimals from chain for this
+				// 		Str("User", xfer.From.Hex()).
+				// 		Msg("redeem")
 
-					user, err := db.UserByPublicAddress(ctx, cc.API.Conn, xfer.From.Hex())
-					if err != nil {
-						// if error is no rows, create user!
-						if errors.Is(err, pgx.ErrNoRows) {
-							user = &passport.User{Username: xfer.From.Hex(), PublicAddress: passport.NewString(xfer.From.Hex()), RoleID: passport.UserRoleMemberID}
-							err = db.UserCreate(ctx, cc.API.Conn, user)
-							if err != nil {
-								cc.Log.Err(err).Msg("issue creating new user")
-								return
-							}
-						} else {
-							cc.Log.Err(err).Msg("issue finding users public address")
-							return
-						}
-					}
+				// 	user, err := db.UserByPublicAddress(ctx, cc.API.Conn, xfer.From.Hex())
+				// 	if err != nil {
+				// 		// if error is no rows, create user!
+				// 		if errors.Is(err, pgx.ErrNoRows) {
+				// 			user = &passport.User{Username: xfer.From.Hex(), PublicAddress: passport.NewString(xfer.From.Hex()), RoleID: passport.UserRoleMemberID}
+				// 			err = db.UserCreate(ctx, cc.API.Conn, user)
+				// 			if err != nil {
+				// 				cc.Log.Err(err).Msg("issue creating new user")
+				// 				return
+				// 			}
+				// 		} else {
+				// 			cc.Log.Err(err).Msg("issue finding users public address")
+				// 			return
+				// 		}
+				// 	}
 
-					resultChan := make(chan *passport.TransactionResult)
+				// 	resultChan := make(chan *passport.TransactionResult)
 
-					cc.API.transaction <- &passport.NewTransaction{
-						ResultChan:           resultChan,
-						To:                   passport.XsynTreasuryUserID,
-						From:                 user.ID,
-						Amount:               *xfer.Amount,
-						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
-						Description:          fmt.Sprintf("sup redeem on BSC to BUSD %s", xfer.TxID.Hex()),
-					}
+				// 	cc.API.transaction <- &passport.NewTransaction{
+				// 		ResultChan:           resultChan,
+				// 		To:                   passport.XsynTreasuryUserID,
+				// 		From:                 user.ID,
+				// 		Amount:               *xfer.Amount,
+				// 		TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
+				// 		Description:          fmt.Sprintf("sup redeem on BSC to BUSD %s", xfer.TxID.Hex()),
+				// 	}
 
-					result := <-resultChan
-					if result.Error != nil {
-						return // believe error logs already
-					}
+				// 	result := <-resultChan
+				// 	if result.Error != nil {
+				// 		return // believe error logs already
+				// 	}
 
-					if result.Transaction.Status != passport.TransactionSuccess {
-						cc.Log.Err(fmt.Errorf("transaction unsuccessful reason: %s", result.Transaction.Reason))
-						return
-					}
-					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), result.Transaction.ID, xfer.Block, xfer.ChainID)
-					if err != nil {
-						cc.API.transaction <- &passport.NewTransaction{
-							To:                   user.ID,
-							From:                 passport.XsynTreasuryUserID,
-							Amount:               *xfer.Amount,
-							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
-							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup redeem on BSC to BUSD %s", xfer.TxID.Hex()),
-						}
-						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
-					}
-					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
-				}
+				// 	if result.Transaction.Status != passport.TransactionSuccess {
+				// 		cc.Log.Err(fmt.Errorf("transaction unsuccessful reason: %s", result.Transaction.Reason))
+				// 		return
+				// 	}
+				// 	conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), result.Transaction.ID, xfer.Block, xfer.ChainID)
+				// 	if err != nil {
+				// 		cc.API.transaction <- &passport.NewTransaction{
+				// 			To:                   user.ID,
+				// 			From:                 passport.XsynTreasuryUserID,
+				// 			Amount:               *xfer.Amount,
+				// 			TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
+				// 			Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup redeem on BSC to BUSD %s", xfer.TxID.Hex()),
+				// 		}
+				// 		cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
+				// 	}
+				// 	go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
+				// }
 				if xfer.From == cc.Params.WithdrawAddr {
 
 					// UNTESTED
@@ -379,7 +379,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						Str("TxID", xfer.TxID.Hex()).
 						Msg("withdraw")
 
-					user, err := db.UserByPublicAddress(ctx, cc.API.Conn, xfer.From.Hex())
+					user, err := db.UserByPublicAddress(ctx, cc.API.Conn, xfer.To.Hex())
 					if err != nil {
 						// if error is no rows, create user!
 						if errors.Is(err, pgx.ErrNoRows) {
@@ -398,11 +398,11 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 
 					cc.API.transaction <- &passport.NewTransaction{
 						ResultChan:           resultChan,
-						To:                   passport.XsynTreasuryUserID,
 						From:                 user.ID,
+						To:                   passport.XsynTreasuryUserID,
 						Amount:               *xfer.Amount,
 						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
-						Description:          fmt.Sprintf("sup withdraw on BSC to %s", xfer.TxID.Hex()),
+						Description:          fmt.Sprintf("[SUPS] Withdraw on BSC to %s", xfer.To.Hex()),
 					}
 
 					result := <-resultChan

@@ -67,8 +67,7 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get users SUP balance.")
 	}
-
-	if userSups.Cmp(amountBigInt) > 0 {
+	if userSups.Cmp(amountBigInt) <= 0 {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("user has insufficient funds"), "Insufficient funds.")
 	}
 
