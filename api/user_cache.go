@@ -66,11 +66,6 @@ func (api *API) InsertUserToCache(ctx context.Context, user *passport.User) {
 func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) {
 	api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 		api.UserCache(func(userMap UserCacheMap) {
-			// skip if user is system user
-			if user.ID.IsSystemUser() {
-				return
-			}
-
 			// add user to cache if not exist
 			if _, ok := userMap[user.ID]; !ok {
 				userMap[user.ID] = &UserCache{}

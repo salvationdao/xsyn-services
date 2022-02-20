@@ -603,9 +603,11 @@ func (sc *SupremacyControllerWS) SupremacyCommitTransactionsHandler(ctx context.
 		return terror.Error(err, "Invalid request received")
 	}
 	resultChan := make(chan []*passport.Transaction)
+	sc.Log.Info().Msg("START SupremacyCommitTransactionsHandler")
 	sc.API.CommitTransactions(ctx, resultChan, req.Payload.TransactionReferences...)
 
 	results := <-resultChan
+	sc.Log.Info().Msg("CLOSE SupremacyCommitTransactionsHandler")
 	reply(results)
 	return nil
 }

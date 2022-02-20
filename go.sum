@@ -1146,16 +1146,23 @@ github.com/newrelic/go-agent v2.15.0+incompatible/go.mod h1:a8Fv1b/fYhFSReoTU6HD
 github.com/ngdinhtoan/glide-cleanup v0.2.0/go.mod h1:UQzsmiDOb8YV3nOsCxK/c9zPpCZVNoHScRE3EO9pVMM=
 github.com/ninja-software/hub v1.0.9/go.mod h1:3d2oAARpoTDPaCPkDWE25tlxwzzXJfZXe2vucpFtQB4=
 github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6/go.mod h1:DrC0haE5EY4HSX+cpjvJZGE4Gk/XDbSWdzhMsF3nY7Y=
+<<<<<<< HEAD
 github.com/ninja-software/sale v0.0.3 h1:WFGkfP2omExVBQv3nRrlGM0+Mt1ot3lIxDLDfjtCjRE=
 github.com/ninja-software/sale v0.0.3/go.mod h1:lkuzfEBQPYcI7I9QfNFDPrNsMmm+0+H4O6R9pRWzuXM=
+=======
+github.com/ninja-software/sale v0.0.4 h1:9Q/afbd0A1fW73n9Lq4T8/iJubpec5zufepcKC0RNAE=
+github.com/ninja-software/sale v0.0.4/go.mod h1:lkuzfEBQPYcI7I9QfNFDPrNsMmm+0+H4O6R9pRWzuXM=
+>>>>>>> develop
 github.com/ninja-software/terror/v2 v2.0.7 h1:gV2v0TybYXQvAD3SYh6YiyuMt8rig4FwRYL81kx65xo=
 github.com/ninja-software/terror/v2 v2.0.7/go.mod h1:pwAw9I1KYYaZr3DLE/Z3WKkSSy/Ccj3ObjOpUvm+0Yo=
 github.com/ninja-software/tickle v1.3.2 h1:x4w9dWg1U4VQ0QMrfrH5sevBnJVX7HiqZNx3QUb1do8=
 github.com/ninja-software/tickle v1.3.2/go.mod h1:kQimeRvKZb825ULSdc1XWos1ssxN7fx6q8htjkGvthE=
 github.com/ninja-syndicate/hub v1.4.0 h1:Lbpbdg/0gTFsG3BR2E1ZQfSay4VpPvhKuU7SgclOj8g=
 github.com/ninja-syndicate/hub v1.4.0/go.mod h1:ah/XLu/W5WVHLvGdeZOgbUJQ6rwKyjEmkmracfxmFVk=
-github.com/ninja-syndicate/supremacy-bridge v0.1.22 h1:qgo2Dd3tVJYHdfHAWkveIAKnnD7OJxHyMVlR4n9Bv3M=
-github.com/ninja-syndicate/supremacy-bridge v0.1.22/go.mod h1:Oq2bsCSyiza9gAg/D542GVkAfW4vSMn29SV/4mi1MWA=
+github.com/ninja-syndicate/supremacy-bridge v0.1.24 h1:DiPPWCQcSNI+p5Rd0vDtyqIXBNydQ6bYiqqkyBfim5c=
+github.com/ninja-syndicate/supremacy-bridge v0.1.24/go.mod h1:Oq2bsCSyiza9gAg/D542GVkAfW4vSMn29SV/4mi1MWA=
+github.com/ninja-syndicate/supremacy-bridge v0.1.25 h1:Xpz9uYDNGyMa0gxrl8Z28Kq79JNBZi8Qrnq1AHXOC5k=
+github.com/ninja-syndicate/supremacy-bridge v0.1.25/go.mod h1:Oq2bsCSyiza9gAg/D542GVkAfW4vSMn29SV/4mi1MWA=
 github.com/nishanths/predeclared v0.0.0-20200524104333-86fad755b4d3/go.mod h1:nt3d53pc1VYcphSCIaYAJtnPYnr3Zyn8fMq2wvPGPso=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8/go.mod h1:+ncqLTQzXmGhMZNUePPaPqPvBxHAIsmXswZKocGu+AU=

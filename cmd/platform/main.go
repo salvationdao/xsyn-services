@@ -12,8 +12,6 @@ import (
 	"passport/seed"
 	"time"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/ethereum/go-ethereum/common"
 
 	_ "github.com/lib/pq" //postgres drivers for initialization
@@ -126,17 +124,14 @@ func main() {
 					 ***************************/
 					// ETH
 					&cli.StringFlag{Name: "usdc_addr", Value: "0x8BB4eC208CDDE7761ac7f3346deBb9C931f80A33", EnvVars: []string{envPrefix + "_USDC_CONTRACT_ADDR"}, Usage: "USDC contract address"},
-					&cli.StringFlag{Name: "weth_addr", Value: "0x8cAEF228f1C322e34B04AD77f70b9f4bDdbd0fFD", EnvVars: []string{envPrefix + "_WETH_CONTRACT_ADDR"}, Usage: "WETH contract address"},
 
 					// BSC
 					&cli.StringFlag{Name: "busd_addr", Value: "0xeAf33Ba4AcA3fE3110EAddD7D4cf0897121583D0", EnvVars: []string{envPrefix + "_BUSD_CONTRACT_ADDR"}, Usage: "BUSD contract address"},
-					&cli.StringFlag{Name: "wbnb_addr", Value: "0xb2564d8Fd501868340eF0A1281B2aDA3E4506C7F", EnvVars: []string{envPrefix + "_WBNB_CONTRACT_ADDR"}, Usage: "WBNB contract address"},
-					&cli.StringFlag{Name: "sup_addr", Value: "0xED4664f5F37307abf8703dD39Fd6e72F421e7DE2", EnvVars: []string{envPrefix + "_SUP_CONTRACT_ADDR"}, Usage: "SUP contract address"},
+					&cli.StringFlag{Name: "sup_addr", Value: "0x5e8b6999B44E011F485028bf1AF0aF601F845304", EnvVars: []string{envPrefix + "_SUP_CONTRACT_ADDR"}, Usage: "SUP contract address"},
 
 					// wallet/contract addressed
 					&cli.StringFlag{Name: "purchase_addr", Value: "0x5591eBC09A89A8B11D9644eC1455e294Fd3BAbB5", EnvVars: []string{envPrefix + "_PURCHASE_WALLET_ADDR"}, Usage: "Purchase wallet address"},
-					&cli.StringFlag{Name: "withdraw_addr", Value: "0xEebebbd60e8800Db03e48E8052d9Ff7fb5cF81D2", EnvVars: []string{envPrefix + "_WITHDRAW_CONTRACT_ADDR"}, Usage: "Withdraw contract address"},
-					&cli.StringFlag{Name: "redemption_addr", Value: "0xBF7301CB28D765072D39CD21429f6E9Ec81ECe92", EnvVars: []string{envPrefix + "_REDEMPTION_CONTRACT_ADDR"}, Usage: "Redemption contract address"},
+					&cli.StringFlag{Name: "withdraw_addr", Value: "0x2EBb5cd54C71eeD2fE9A82036588De38c59eB0E0", EnvVars: []string{envPrefix + "_WITHDRAW_CONTRACT_ADDR"}, Usage: "Withdraw contract address"},
 					&cli.StringFlag{Name: "eth_nft_addr", Value: "0x0B921c2014ab181B7f2109Ae56DEd3534ff0a156", EnvVars: []string{envPrefix + "_NFT_CONTRACT_ADDR"}, Usage: "NFT contract address"},
 					&cli.StringFlag{Name: "eth_nft_staking_addr", Value: "0xE3a14f901FaeabdE7d9ea4138cf2533dB67646e3", EnvVars: []string{envPrefix + "_NFT_STAKING_CONTRACT_ADDR"}, Usage: "NFT staking contract address"},
 					&cli.StringFlag{Name: "signer_addr", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_SIGNER_ADDR"}, Usage: "Signer address"},
@@ -149,12 +144,11 @@ func main() {
 					&cli.StringFlag{Name: "bsc_node_addr", Value: "wss://speedy-nodes-nyc.moralis.io/1375aa321ac8ac6cfba6aa9c/bsc/testnet/ws", EnvVars: []string{envPrefix + "_BSC_WS_NODE_URL"}, Usage: "Binance WS node URL"},
 					&cli.StringFlag{Name: "eth_node_addr", Value: "wss://speedy-nodes-nyc.moralis.io/1375aa321ac8ac6cfba6aa9c/eth/goerli/ws", EnvVars: []string{envPrefix + "_ETH_WS_NODE_URL"}, Usage: "Ethereum WS node URL"},
 
-					// exchange rates
-					&cli.StringFlag{Name: "usdc_to_sups", Value: "8.333333333333333333", EnvVars: []string{envPrefix + "_EX_USDC_TO_SUPS"}, Usage: "Exchange rate for 1 USDC to SUPS"},
-					&cli.StringFlag{Name: "busd_to_sups", Value: "8.333333333333333333", EnvVars: []string{envPrefix + "_EX_BUSD_TO_SUPS"}, Usage: "Exchange rate for 1 BUSD to SUPS"},
-					&cli.StringFlag{Name: "sup_price", Value: "0.12", EnvVars: []string{envPrefix + "_EX_SUPS_TO_USD"}, Usage: "Exchange rate for 1 SUP to USD"},
-					&cli.StringFlag{Name: "weth_to_sups", Value: "21000", EnvVars: []string{envPrefix + "_EX_WETH_TO_SUPS"}, Usage: "Exchange rate for 1 WETH to SUPS"},
-					&cli.StringFlag{Name: "wbnb_to_sups", Value: "3000", EnvVars: []string{envPrefix + "_EX_WBNB_TO_SUPS"}, Usage: "Exchange rate for 1 WBNB to SUPS"},
+					//router address for exchange rates
+					&cli.StringFlag{Name: "bsc_router_addr", Value: "0x9ac64cc6e4415144c455bd8e4837fea55603e5c3", EnvVars: []string{envPrefix + "_BSC_ROUTER_ADDR"}, Usage: "BSC Router address"},
+
+					//moralis key- set in env vars
+					&cli.StringFlag{Name: "moralis_key", Value: "", EnvVars: []string{envPrefix + "_MORALIS_KEY"}, Usage: "Key to connect to moralis API"},
 				},
 
 				Usage: "run server",
@@ -347,14 +341,12 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	databaseName := ctxCLI.String("database_name")
 	databaseAppName := ctxCLI.String("database_application_name")
 
+	MoralisKey := ctxCLI.String("moralis_key")
 	UsdcAddr := ctxCLI.String("usdc_addr")
 	BusdAddr := ctxCLI.String("busd_addr")
-	WethAddr := ctxCLI.String("weth_addr")
-	WbnbAddr := ctxCLI.String("wbnb_addr")
 	SupAddr := ctxCLI.String("sup_addr")
 	PurchaseAddr := ctxCLI.String("purchase_addr")
 	WithdrawAddr := ctxCLI.String("withdraw_addr")
-	RedemptionAddr := ctxCLI.String("redemption_addr")
 	EthNftAddr := ctxCLI.String("eth_nft_addr")
 	EthNftStakingAddr := ctxCLI.String("eth_nft_staking_addr")
 	SignerAddr := ctxCLI.String("signer_addr")
@@ -362,27 +354,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	EthNodeAddr := ctxCLI.String("eth_node_addr")
 	BSCChainID := ctxCLI.Int64("bsc_chain_id")
 	ETHChainID := ctxCLI.Int64("eth_chain_id")
-
-	USDCToSUPS, err := decimal.NewFromString(ctxCLI.String("usdc_to_sups"))
-	if err != nil {
-		return err
-	}
-	BUSDToSUPS, err := decimal.NewFromString(ctxCLI.String("busd_to_sups"))
-	if err != nil {
-		return err
-	}
-	WETHToSUPS, err := decimal.NewFromString(ctxCLI.String("weth_to_sups"))
-	if err != nil {
-		return err
-	}
-	WBNBToSUPS, err := decimal.NewFromString(ctxCLI.String("wbnb_to_sups"))
-	if err != nil {
-		return err
-	}
-	SUPToUSD, err := decimal.NewFromString(ctxCLI.String("sup_price"))
-	if err != nil {
-		return err
-	}
+	BSCRouterAddr := ctxCLI.String("bsc_router_addr")
 
 	mailDomain := ctxCLI.String("mail_domain")
 	mailAPIKey := ctxCLI.String("mail_apikey")
@@ -397,27 +369,21 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		TokenExpirationDays: ctxCLI.Int("jwt_expiry_days"),
 		MetaMaskSignMessage: ctxCLI.String("metamask_sign_message"),
 		BridgeParams: &passport.BridgeParams{
-			UsdcAddr:          common.HexToAddress(UsdcAddr),
-			BusdAddr:          common.HexToAddress(BusdAddr),
-			WethAddr:          common.HexToAddress(WethAddr),
-			WbnbAddr:          common.HexToAddress(WbnbAddr),
-			SupAddr:           common.HexToAddress(SupAddr),
-			PurchaseAddr:      common.HexToAddress(PurchaseAddr),
-			WithdrawAddr:      common.HexToAddress(WithdrawAddr),
-			RedemptionAddr:    common.HexToAddress(RedemptionAddr),
+			MoralisKey:   MoralisKey,
+			UsdcAddr:     common.HexToAddress(UsdcAddr),
+			BusdAddr:     common.HexToAddress(BusdAddr),
+			SupAddr:      common.HexToAddress(SupAddr),
+			PurchaseAddr: common.HexToAddress(PurchaseAddr),
+			WithdrawAddr: common.HexToAddress(WithdrawAddr),
+
 			EthNftAddr:        common.HexToAddress(EthNftAddr),
 			EthNftStakingAddr: common.HexToAddress(EthNftStakingAddr),
 			SignerAddr:        SignerAddr,
-
-			BscNodeAddr: BscNodeAddr,
-			EthNodeAddr: EthNodeAddr,
-			BSCChainID:  BSCChainID,
-			ETHChainID:  ETHChainID,
-			USDCToSUPS:  USDCToSUPS,
-			BUSDToSUPS:  BUSDToSUPS,
-			WETHToSUPS:  WETHToSUPS,
-			WBNBToSUPS:  WBNBToSUPS,
-			SUPToUSD:    SUPToUSD,
+			BscNodeAddr:       BscNodeAddr,
+			EthNodeAddr:       EthNodeAddr,
+			BSCChainID:        BSCChainID,
+			ETHChainID:        ETHChainID,
+			BSCRouterAddr:     common.HexToAddress(BSCRouterAddr),
 		},
 	}
 

@@ -25,10 +25,10 @@ require (
 	github.com/mailgun/mailgun-go/v4 v4.6.0
 	github.com/makiuchi-d/arelo v1.9.2
 	github.com/microcosm-cc/bluemonday v1.0.17
-	github.com/ninja-software/sale v0.0.3
+	github.com/ninja-software/sale v0.0.4
 	github.com/ninja-software/terror/v2 v2.0.7
 	github.com/ninja-syndicate/hub v1.4.0
-	github.com/ninja-syndicate/supremacy-bridge v0.1.22
+	github.com/ninja-syndicate/supremacy-bridge v0.1.25
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/prometheus/client_golang v1.11.0
