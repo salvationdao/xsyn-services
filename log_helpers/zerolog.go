@@ -18,6 +18,7 @@ func LoggerInitZero(sentryEnvironment string) *zerolog.Logger {
 	output := loggerStdout(sentryEnvironment)
 
 	log := zerolog.New(output).With().Timestamp().Logger()
+	log = log.With().Caller().Logger()
 	return &log
 }
 
