@@ -53,7 +53,7 @@ func (api *API) InsertUserToCache(ctx context.Context, user *passport.User) {
 		// broadcast the update to the users connected directly to passport
 		go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID)), user)
 		// broadcast the update to connect client servers
-		api.SendToAllServerClient(ctx, &ServerClientMessage{
+		go api.SendToAllServerClient(ctx, &ServerClientMessage{
 			Key: UserUpdated,
 			Payload: struct {
 				User *passport.User `json:"user"`
@@ -116,14 +116,15 @@ func (api *API) UpdateUserCacheAddSups(ctx context.Context, userID passport.User
 }
 
 // UpdateUserCacheRemoveSups updates a users sups in the cache and removes the given amount, returns error if not enough
-func (api *API) UpdateUserCacheRemoveSups(ctx context.Context, userID passport.UserID, amount big.Int, errChan chan error) {
+func (api *API) UpdateUserCacheRemoveSups(ctx context.Context, userID passport.UserID, amount big.Int) error {
+	var err error = nil
 	api.UserCache(func(userMap UserCacheMap) {
 		user, ok := userMap[userID]
 		if ok {
 			enoughFunds := user.Sups.Int.Cmp(&amount) >= 0
 
 			if !enoughFunds {
-				errChan <- fmt.Errorf("not enough funds")
+				err = fmt.Errorf("not enough funds")
 				return
 			}
 
@@ -134,6 +135,6 @@ func (api *API) UpdateUserCacheRemoveSups(ctx context.Context, userID passport.U
 			}
 
 		}
-		errChan <- nil
 	}, "UpdateUserCacheRemoveSups")
+	return err
 }

@@ -95,9 +95,7 @@ func (api *API) ReleaseHeldTransaction(ctx context.Context, txRefs ...passport.T
 		api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 			tx, ok := heldTxList[txRef]
 			if ok {
-				errChan := make(chan error)
-				api.UpdateUserCacheRemoveSups(ctx, tx.To, tx.Amount, errChan)
-				err := <-errChan
+				err := api.UpdateUserCacheRemoveSups(ctx, tx.To, tx.Amount)
 				if err != nil {
 					api.Log.Info().Err(err)
 					return
@@ -115,12 +113,9 @@ func (api *API) HoldTransaction(ctx context.Context, holdErrChan chan error, tx 
 	// So later we can fire the commit command and put all the transactions into the database
 	api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 		//for _, tx := range txs {
-		errChan := make(chan error)
 		fmt.Println("START UpdateUserCacheRemoveSups")
-		api.UpdateUserCacheRemoveSups(ctx, tx.From, tx.Amount, errChan)
+		err := api.UpdateUserCacheRemoveSups(ctx, tx.From, tx.Amount)
 		fmt.Println("END UpdateUserCacheRemoveSups")
-		err := <-errChan
-		fmt.Println("END 2 UpdateUserCacheRemoveSups")
 		if err != nil {
 			holdErrChan <- err
 			return
@@ -147,11 +142,9 @@ func (api *API) CommitTransactions(ctx context.Context, txRefs ...passport.Trans
 				result := <-tx.ResultChan
 				// if result is failed, update the cache map
 				if result.Error != nil || result.Transaction.Status == passport.TransactionFailed {
-					errChan := make(chan error)
 					api.Log.Debug().Msg("START UpdateUserCacheRemoveSups in CommitTransactions")
-					api.UpdateUserCacheRemoveSups(ctx, tx.To, tx.Amount, errChan)
+					err := api.UpdateUserCacheRemoveSups(ctx, tx.To, tx.Amount)
 					api.Log.Debug().Msg("FINISH UpdateUserCacheRemoveSups in CommitTransactions")
-					err := <-errChan
 					if err != nil {
 						api.Log.Err(err).Msg(err.Error())
 						results = append(results, result.Transaction)
