@@ -80,7 +80,7 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) 
 		}
 
 		fmt.Println(cc.Params.ExchangeRates)
-		api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSExchangeRates), cc.Params.ExchangeRates)
+		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSExchangeRates), cc.Params.ExchangeRates)
 	}
 
 	go cc.runETHBridgeListener(ctx)
@@ -707,42 +707,51 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 				return
 			}
 
-			fmt.Println(cc.Params.MoralisKey)
 			o := bridge.NewOracle(cc.Params.MoralisKey)
 
 			go func() {
+				exchangeRateBackoff := &backoff.Backoff{
+					Min:    1 * time.Second,
+					Max:    30 * time.Second,
+					Factor: 2,
+				}
+
 				for {
-					// gets how many sups for 1 busd
-					supBigPrice, err := supGetter.Price(decimal.New(1, int32(18)).BigInt())
-					if err != nil {
-						cc.Log.Err(err).Msg("failed to get sup to busd price")
-						cancel()
-						time.Sleep(b.Duration())
-						errChan <- err
+					select {
+					case <-ctx.Done():
 						return
+					default:
+						// gets how many sups for 1 busd
+						supBigPrice, err := supGetter.Price(decimal.New(1, int32(18)).BigInt())
+						if err != nil {
+							cc.Log.Err(err).Msg("failed to get sup to busd price")
+							time.Sleep(b.Duration())
+							continue
+						}
+						supPrice := decimal.NewFromBigInt(supBigPrice, -18)
+
+						//gets how many wbnb for 1 busd
+						wbnbPrice, err := o.BNBUSDPrice()
+
+						if err != nil {
+							cc.Log.Err(err).Msg("failed to get wbnb price")
+							time.Sleep(exchangeRateBackoff.Duration())
+							continue
+						}
+
+						exchangeRateBackoff.Reset()
+
+						cc.updatePriceFuncMu.Lock()
+						cc.updatePriceFunc(cc.Params.SupAddr, supPrice)
+						cc.updatePriceFuncMu.Unlock()
+
+						cc.updatePriceFuncMu.Lock()
+						cc.updatePriceFunc(cc.Params.WbnbAddr, wbnbPrice)
+						cc.updatePriceFuncMu.Unlock()
+
+						time.Sleep(10 * time.Second)
 					}
-					supPrice := decimal.NewFromBigInt(supBigPrice, -18)
 
-					//gets how many wbnb for 1 busd
-					wbnbPrice, err := o.BNBUSDPrice()
-					fmt.Println(wbnbPrice)
-					if err != nil {
-						cc.Log.Err(err).Msg("failed to get wbnb price")
-						cancel()
-						time.Sleep(b.Duration())
-						errChan <- err
-						return
-					}
-
-					cc.updatePriceFuncMu.Lock()
-					cc.updatePriceFunc(cc.Params.SupAddr, supPrice)
-					cc.updatePriceFuncMu.Unlock()
-
-					cc.updatePriceFuncMu.Lock()
-					cc.updatePriceFunc(cc.Params.WbnbAddr, wbnbPrice)
-					cc.updatePriceFuncMu.Unlock()
-
-					time.Sleep(10 * time.Second)
 				}
 			}()
 
@@ -1040,22 +1049,33 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 			o := bridge.NewOracle(cc.Params.MoralisKey)
 
 			go func() {
-				for {
-					// //gets how many weth for 1 busd
-					wethPrice, err := o.ETHUSDPrice()
-					if err != nil {
-						cc.Log.Err(err).Msg("Could not get WETH price")
-						cancel()
-						time.Sleep(b.Duration())
-						errChan <- err
-						return
+				exchangeRateBackoff := &backoff.Backoff{
+					Min:    1 * time.Second,
+					Max:    30 * time.Second,
+					Factor: 2,
+				}
+				select {
+				case <-ctx.Done():
+					return
+				default:
+
+					for {
+						// //gets how many weth for 1 busd
+						wethPrice, err := o.ETHUSDPrice()
+						if err != nil {
+							cc.Log.Err(err).Msg("Could not get WETH price")
+							time.Sleep(exchangeRateBackoff.Duration())
+							continue
+						}
+
+						exchangeRateBackoff.Reset()
+
+						cc.updatePriceFuncMu.Lock()
+						cc.updatePriceFunc(cc.Params.WethAddr, wethPrice)
+						cc.updatePriceFuncMu.Unlock()
+
+						time.Sleep(10 * time.Second)
 					}
-
-					cc.updatePriceFuncMu.Lock()
-					cc.updatePriceFunc(cc.Params.WethAddr, wethPrice)
-					cc.updatePriceFuncMu.Unlock()
-
-					time.Sleep(10 * time.Second)
 				}
 			}()
 

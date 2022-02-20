@@ -80,6 +80,7 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 	api.SubscribeCommand(HubKeyUserSubscribe, userHub.UpdatedSubscribeHandler)
 	api.SubscribeCommand(HubKeyUserOnlineStatus, userHub.OnlineStatusSubscribeHandler)
 	api.SubscribeCommand(HubKeySUPSRemainingSubscribe, userHub.TotalSupRemainingHandler)
+	api.SubscribeCommand(HubKeySUPSExchangeRates, userHub.ExchangeRatesHandler)
 
 	// listen on queuing war machine
 	api.SecureUserSubscribeCommand(HubKeyUserWarMachineQueuePositionSubscribe, userHub.WarMachineQueuePositionUpdatedSubscribeHandler)
