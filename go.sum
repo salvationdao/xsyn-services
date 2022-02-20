@@ -1159,12 +1159,6 @@ github.com/ninja-software/tickle v1.3.2 h1:x4w9dWg1U4VQ0QMrfrH5sevBnJVX7HiqZNx3Q
 github.com/ninja-software/tickle v1.3.2/go.mod h1:kQimeRvKZb825ULSdc1XWos1ssxN7fx6q8htjkGvthE=
 github.com/ninja-syndicate/hub v1.4.0 h1:Lbpbdg/0gTFsG3BR2E1ZQfSay4VpPvhKuU7SgclOj8g=
 github.com/ninja-syndicate/hub v1.4.0/go.mod h1:ah/XLu/W5WVHLvGdeZOgbUJQ6rwKyjEmkmracfxmFVk=
-github.com/ninja-syndicate/supremacy-bridge v0.1.15 h1:+OMDprQdEcGYAy/zEAH1YxgG3CwGmmKiMkbJSHFX9d8=
-github.com/ninja-syndicate/supremacy-bridge v0.1.15/go.mod h1:Oq2bsCSyiza9gAg/D542GVkAfW4vSMn29SV/4mi1MWA=
-github.com/ninja-syndicate/supremacy-bridge v0.1.20 h1:Fgox9ajdsvgRbCoBwrJ8mtCyCFgwY7W6byQh/E2p7aA=
-github.com/ninja-syndicate/supremacy-bridge v0.1.20/go.mod h1:Oq2bsCSyiza9gAg/D542GVkAfW4vSMn29SV/4mi1MWA=
-github.com/ninja-syndicate/supremacy-bridge v0.1.21 h1:ngReycZr9og8RHWTB7riGm7tR12ERv6dxE+0AKbNddE=
-github.com/ninja-syndicate/supremacy-bridge v0.1.21/go.mod h1:Oq2bsCSyiza9gAg/D542GVkAfW4vSMn29SV/4mi1MWA=
 github.com/ninja-syndicate/supremacy-bridge v0.1.22 h1:qgo2Dd3tVJYHdfHAWkveIAKnnD7OJxHyMVlR4n9Bv3M=
 github.com/ninja-syndicate/supremacy-bridge v0.1.22/go.mod h1:Oq2bsCSyiza9gAg/D542GVkAfW4vSMn29SV/4mi1MWA=
 github.com/nishanths/predeclared v0.0.0-20200524104333-86fad755b4d3/go.mod h1:nt3d53pc1VYcphSCIaYAJtnPYnr3Zyn8fMq2wvPGPso=

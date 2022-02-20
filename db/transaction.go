@@ -292,7 +292,7 @@ func BattleArenaSupsTopContributeFaction(ctx context.Context, conn Conn, startTi
 		WHERE
 			t.credit = $1 AND t.created_at >= $2 AND t.created_at <= $3
 		GROUP BY 
-			f.id, t.debit
+			f.id
 		ORDER BY 
 			SUM(t.amount) DESC
 		LIMIT 3
