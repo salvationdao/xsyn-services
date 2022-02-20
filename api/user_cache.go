@@ -29,7 +29,10 @@ func (api *API) HandleUserCache() {
 }
 
 // UserCache accepts a function that loops over the user cache map
-func (api *API) UserCache(fn UserCacheFunc) {
+func (api *API) UserCache(fn UserCacheFunc, stuff ...string) {
+	if len(stuff) > 0 {
+		fmt.Printf("start %s\n", stuff[0])
+	}
 	var wg sync.WaitGroup
 	wg.Add(1)
 	api.users <- func(userCacheList UserCacheMap) {
@@ -37,6 +40,9 @@ func (api *API) UserCache(fn UserCacheFunc) {
 		wg.Done()
 	}
 	wg.Wait()
+	if len(stuff) > 0 {
+		fmt.Printf("end %s\n", stuff[0])
+	}
 }
 
 // InsertUserToCache adds a user to the cache
@@ -59,7 +65,7 @@ func (api *API) InsertUserToCache(ctx context.Context, user *passport.User) {
 		if !user.ID.IsSystemUser() {
 			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 		}
-	})
+	}, "InsertUserToCache")
 }
 
 // UpdateUserInCache updates a user in the cache, if user doesn't exist it does nothing and returns false
@@ -84,7 +90,7 @@ func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) {
 			userMap[user.ID].CacheLastUpdated = time.Now()
 
 			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
-		})
+		}, "HeldTransactions - UserCache")
 	}, "UpdateUserInCache")
 }
 
@@ -92,7 +98,7 @@ func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) {
 func (api *API) RemoveUserFromCache(userID passport.UserID) {
 	api.UserCache(func(userMap UserCacheMap) {
 		delete(userMap, userID)
-	})
+	}, "RemoveUserFromCache")
 }
 
 // UpdateUserCacheAddSups updates a users sups in the cache and adds the given amount
@@ -106,7 +112,7 @@ func (api *API) UpdateUserCacheAddSups(ctx context.Context, userID passport.User
 				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 			}
 		}
-	})
+	}, "UpdateUserCacheAddSups")
 }
 
 // UpdateUserCacheRemoveSups updates a users sups in the cache and removes the given amount, returns error if not enough
@@ -129,5 +135,5 @@ func (api *API) UpdateUserCacheRemoveSups(ctx context.Context, userID passport.U
 
 		}
 		errChan <- nil
-	})
+	}, "UpdateUserCacheRemoveSups")
 }
