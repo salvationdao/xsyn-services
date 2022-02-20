@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"math/big"
 	"passport"
 	"strings"
@@ -97,21 +98,27 @@ func (api *API) ReleaseHeldTransaction(ctx context.Context, txRefs ...passport.T
 }
 
 // HoldTransaction adds a new transaction to the hold transaction map and updates the user cache sups accordingly
-func (api *API) HoldTransaction(ctx context.Context, holdErrChan chan error, txs ...*passport.NewTransaction) {
+func (api *API) HoldTransaction(ctx context.Context, holdErrChan chan error, tx *passport.NewTransaction) {
 	// Here we take the sups away from the user in their cache and hold the transactions in a slice
 	// So later we can fire the commit command and put all the transactions into the database
 	api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
-		for _, tx := range txs {
-			errChan := make(chan error)
-			api.UpdateUserCacheRemoveSups(ctx, tx.From, tx.Amount, errChan)
-			err := <-errChan
-			if err != nil {
-				holdErrChan <- err
-				return
-			}
-			api.UpdateUserCacheAddSups(ctx, tx.To, tx.Amount)
-			heldTxList[tx.TransactionReference] = tx
+		//for _, tx := range txs {
+		errChan := make(chan error)
+		fmt.Println("START UpdateUserCacheRemoveSups")
+		api.UpdateUserCacheRemoveSups(ctx, tx.From, tx.Amount, errChan)
+		fmt.Println("END UpdateUserCacheRemoveSups")
+		err := <-errChan
+		fmt.Println("END 2 UpdateUserCacheRemoveSups")
+		if err != nil {
+			holdErrChan <- err
+			return
 		}
+		fmt.Println("START UpdateUserCacheAddSups")
+		api.UpdateUserCacheAddSups(ctx, tx.To, tx.Amount)
+		fmt.Println("END UpdateUserCacheAddSups")
+
+		heldTxList[tx.TransactionReference] = tx
+		//}
 		holdErrChan <- nil
 	})
 }
