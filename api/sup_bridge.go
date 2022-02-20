@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"passport"
 	"passport/db"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -34,14 +35,19 @@ type ChainClients struct {
 	API             *API
 	Log             *zerolog.Logger
 	updateStateFunc func(chainID int64, newBlock uint64)
+
+	updatePriceFuncMu sync.Mutex
+	updatePriceFunc   func(addr common.Address, amount decimal.Decimal)
 }
 
 func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) *ChainClients {
+
 	ctx := context.Background()
 	cc := &ChainClients{
-		Params: p,
-		API:    api,
-		Log:    log,
+		Params:            p,
+		API:               api,
+		Log:               log,
+		updatePriceFuncMu: sync.Mutex{},
 	}
 
 	// func to update state
@@ -63,6 +69,23 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) 
 		}
 	}
 
+	cc.updatePriceFunc = func(addr common.Address, amount decimal.Decimal) {
+		switch addr {
+		case cc.Params.SupAddr:
+			cc.API.State.SUPtoUSD = amount
+		case cc.Params.WethAddr:
+			cc.API.State.ETHtoUSD = amount
+		case cc.Params.WbnbAddr:
+			cc.API.State.BNBtoUSD = amount
+		}
+
+		_, err := db.UpdateExchangeRates(ctx, cc.API.Conn, cc.API.State)
+		if err != nil {
+			api.Log.Err(err).Msg("failed to update exchange rates")
+		}
+		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSExchangeRates), cc.API.State)
+	}
+
 	go cc.runETHBridgeListener(ctx)
 	go cc.runBSCBridgeListener(ctx)
 
@@ -80,7 +103,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					// if buying sups with BUSD
 
 					amountTimes100 := xfer.Amount.Mul(xfer.Amount, big.NewInt(1000))
-					supUSDPriceTimes100 := cc.Params.SUPToUSD.Mul(decimal.New(1000, 0)).BigInt()
+					supUSDPriceTimes100 := cc.API.State.SUPtoUSD.Mul(decimal.New(1000, 0)).BigInt()
 					supAmount := amountTimes100.Div(amountTimes100, supUSDPriceTimes100)
 
 					cc.Log.Info().
@@ -147,7 +170,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					// if buying sups with WBNB
 
 					// TODO: probably do a * 1000 here? currently no decimals in conversion but possibly in future?
-					supAmount := cc.Params.WBNBToSUPS.BigInt()
+					supAmount := cc.API.State.BNBtoUSD.Div(cc.API.State.SUPtoUSD).BigInt()
 					supAmount = supAmount.Mul(supAmount, xfer.Amount)
 
 					cc.Log.Info().
@@ -276,7 +299,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					//busdAmount := d.Div(p.BUSDToSUPS)
 
 					// make sup cost 1000 * bigger to not deal with decimals
-					supUSDPriceTimes1000 := cc.Params.SUPToUSD.Mul(decimal.New(1000, 0)).BigInt()
+					supUSDPriceTimes1000 := cc.API.State.SUPtoUSD.Mul(decimal.New(1000, 0)).BigInt()
 					// amount * sup to usd price
 					amountTimesSupsPrice := xfer.Amount.Mul(xfer.Amount, supUSDPriceTimes1000)
 					// divide by 1000 to bring it back down
@@ -413,7 +436,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 				if xfer.To == cc.Params.PurchaseAddr {
 					// if buying sups with USDC
 					amountTimes100 := xfer.Amount.Mul(xfer.Amount, big.NewInt(1000))
-					supUSDPriceTimes100 := cc.Params.SUPToUSD.Mul(decimal.New(1000, 0)).BigInt()
+					supUSDPriceTimes100 := cc.API.State.SUPtoUSD.Mul(decimal.New(1000, 0)).BigInt()
 					supAmount := amountTimes100.Div(amountTimes100, supUSDPriceTimes100)
 
 					cc.Log.Info().
@@ -476,7 +499,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 				if xfer.To == cc.Params.PurchaseAddr {
 					// if buying sups with WETH
 					// TODO: probably do a * 1000 here? currently no decimals in conversion but possibly in future?
-					supAmount := cc.Params.WETHToSUPS.BigInt()
+					supAmount := cc.API.State.ETHtoUSD.Div(cc.API.State.SUPtoUSD).BigInt()
 					supAmount = supAmount.Mul(supAmount, xfer.Amount)
 
 					cc.Log.Info().
@@ -675,6 +698,65 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 			}
 			cc.Log.Info().Msg("Started sup controller")
 			cc.SUPS = supsController
+
+			//Path address gets the value of [0] in terms of [1]
+			SUPSPathAddr := []common.Address{cc.Params.SupAddr, cc.Params.BusdAddr}
+
+			// creates a struct that then can be used to get sup price in USD
+			supGetter, err := bridge.NewPriceGetter(cc.BscClient, cc.Params.BSCRouterAddr, SUPSPathAddr) // pathAddrs are an array of contract addresses, from one token to the other
+			if err != nil {
+				cc.Log.Err(err).Msg("failed to get sup to busd price getter struct")
+				cancel()
+				return
+			}
+
+			o := bridge.NewOracle(cc.Params.MoralisKey)
+
+			go func() {
+				exchangeRateBackoff := &backoff.Backoff{
+					Min:    1 * time.Second,
+					Max:    30 * time.Second,
+					Factor: 2,
+				}
+
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					default:
+						// gets how many sups for 1 busd
+						supBigPrice, err := supGetter.Price(decimal.New(1, int32(18)).BigInt())
+						if err != nil {
+							cc.Log.Err(err).Msg("failed to get sup to busd price")
+							time.Sleep(exchangeRateBackoff.Duration())
+							continue
+						}
+						supPrice := decimal.NewFromBigInt(supBigPrice, -18)
+
+						//gets how many wbnb for 1 busd
+						wbnbPrice, err := o.BNBUSDPrice()
+
+						if err != nil {
+							cc.Log.Err(err).Msg("failed to get wbnb price")
+							time.Sleep(exchangeRateBackoff.Duration())
+							continue
+						}
+
+						exchangeRateBackoff.Reset()
+
+						cc.updatePriceFuncMu.Lock()
+						cc.updatePriceFunc(cc.Params.SupAddr, supPrice)
+						cc.updatePriceFuncMu.Unlock()
+
+						cc.updatePriceFuncMu.Lock()
+						cc.updatePriceFunc(cc.Params.WbnbAddr, wbnbPrice)
+						cc.updatePriceFuncMu.Unlock()
+
+						time.Sleep(10 * time.Second)
+					}
+
+				}
+			}()
 
 			/*****************
 			This second replays any blocks we've missed.
@@ -963,8 +1045,41 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 				time.Sleep(b.Duration())
 				continue ethClientLoop
 			}
-
+			// TODO use real deposit address
 			blockEth := bridge.NewHeadListener(cc.EthClient, cc.Params.ETHChainID, cc.handleBlock(ctx, ethClient, cc.Params.ETHChainID))
+
+			o := bridge.NewOracle(cc.Params.MoralisKey)
+
+			go func() {
+				exchangeRateBackoff := &backoff.Backoff{
+					Min:    1 * time.Second,
+					Max:    30 * time.Second,
+					Factor: 2,
+				}
+				select {
+				case <-ctx.Done():
+					return
+				default:
+
+					for {
+						// //gets how many weth for 1 busd
+						wethPrice, err := o.ETHUSDPrice()
+						if err != nil {
+							cc.Log.Err(err).Msg("Could not get WETH price")
+							time.Sleep(exchangeRateBackoff.Duration())
+							continue
+						}
+
+						exchangeRateBackoff.Reset()
+
+						cc.updatePriceFuncMu.Lock()
+						cc.updatePriceFunc(cc.Params.WethAddr, wethPrice)
+						cc.updatePriceFuncMu.Unlock()
+
+						time.Sleep(10 * time.Second)
+					}
+				}
+			}()
 
 			// replay
 			go func() {

@@ -12,8 +12,6 @@ import (
 	"passport/seed"
 	"time"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/ethereum/go-ethereum/common"
 
 	_ "github.com/lib/pq" //postgres drivers for initialization
@@ -149,12 +147,11 @@ func main() {
 					&cli.StringFlag{Name: "bsc_node_addr", Value: "wss://speedy-nodes-nyc.moralis.io/1375aa321ac8ac6cfba6aa9c/bsc/testnet/ws", EnvVars: []string{envPrefix + "_BSC_WS_NODE_URL"}, Usage: "Binance WS node URL"},
 					&cli.StringFlag{Name: "eth_node_addr", Value: "wss://speedy-nodes-nyc.moralis.io/1375aa321ac8ac6cfba6aa9c/eth/goerli/ws", EnvVars: []string{envPrefix + "_ETH_WS_NODE_URL"}, Usage: "Ethereum WS node URL"},
 
-					// exchange rates
-					&cli.StringFlag{Name: "usdc_to_sups", Value: "8.333333333333333333", EnvVars: []string{envPrefix + "_EX_USDC_TO_SUPS"}, Usage: "Exchange rate for 1 USDC to SUPS"},
-					&cli.StringFlag{Name: "busd_to_sups", Value: "8.333333333333333333", EnvVars: []string{envPrefix + "_EX_BUSD_TO_SUPS"}, Usage: "Exchange rate for 1 BUSD to SUPS"},
-					&cli.StringFlag{Name: "sup_price", Value: "0.12", EnvVars: []string{envPrefix + "_EX_SUPS_TO_USD"}, Usage: "Exchange rate for 1 SUP to USD"},
-					&cli.StringFlag{Name: "weth_to_sups", Value: "21000", EnvVars: []string{envPrefix + "_EX_WETH_TO_SUPS"}, Usage: "Exchange rate for 1 WETH to SUPS"},
-					&cli.StringFlag{Name: "wbnb_to_sups", Value: "3000", EnvVars: []string{envPrefix + "_EX_WBNB_TO_SUPS"}, Usage: "Exchange rate for 1 WBNB to SUPS"},
+					//router address for exchange rates
+					&cli.StringFlag{Name: "bsc_router_addr", Value: "0x9ac64cc6e4415144c455bd8e4837fea55603e5c3", EnvVars: []string{envPrefix + "_BSC_ROUTER_ADDR"}, Usage: "BSC Router address"},
+
+					//moralis key- set in env vars
+					&cli.StringFlag{Name: "moralis_key", Value: "", EnvVars: []string{envPrefix + "_MORALIS_KEY"}, Usage: "Key to connect to moralis API"},
 				},
 
 				Usage: "run server",
@@ -347,6 +344,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	databaseName := ctxCLI.String("database_name")
 	databaseAppName := ctxCLI.String("database_application_name")
 
+	MoralisKey := ctxCLI.String("moralis_key")
 	UsdcAddr := ctxCLI.String("usdc_addr")
 	BusdAddr := ctxCLI.String("busd_addr")
 	WethAddr := ctxCLI.String("weth_addr")
@@ -362,27 +360,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	EthNodeAddr := ctxCLI.String("eth_node_addr")
 	BSCChainID := ctxCLI.Int64("bsc_chain_id")
 	ETHChainID := ctxCLI.Int64("eth_chain_id")
-
-	USDCToSUPS, err := decimal.NewFromString(ctxCLI.String("usdc_to_sups"))
-	if err != nil {
-		return err
-	}
-	BUSDToSUPS, err := decimal.NewFromString(ctxCLI.String("busd_to_sups"))
-	if err != nil {
-		return err
-	}
-	WETHToSUPS, err := decimal.NewFromString(ctxCLI.String("weth_to_sups"))
-	if err != nil {
-		return err
-	}
-	WBNBToSUPS, err := decimal.NewFromString(ctxCLI.String("wbnb_to_sups"))
-	if err != nil {
-		return err
-	}
-	SUPToUSD, err := decimal.NewFromString(ctxCLI.String("sup_price"))
-	if err != nil {
-		return err
-	}
+	BSCRouterAddr := ctxCLI.String("bsc_router_addr")
 
 	mailDomain := ctxCLI.String("mail_domain")
 	mailAPIKey := ctxCLI.String("mail_apikey")
@@ -397,6 +375,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		TokenExpirationDays: ctxCLI.Int("jwt_expiry_days"),
 		MetaMaskSignMessage: ctxCLI.String("metamask_sign_message"),
 		BridgeParams: &passport.BridgeParams{
+			MoralisKey:        MoralisKey,
 			UsdcAddr:          common.HexToAddress(UsdcAddr),
 			BusdAddr:          common.HexToAddress(BusdAddr),
 			WethAddr:          common.HexToAddress(WethAddr),
@@ -408,16 +387,11 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 			EthNftAddr:        common.HexToAddress(EthNftAddr),
 			EthNftStakingAddr: common.HexToAddress(EthNftStakingAddr),
 			SignerAddr:        SignerAddr,
-
-			BscNodeAddr: BscNodeAddr,
-			EthNodeAddr: EthNodeAddr,
-			BSCChainID:  BSCChainID,
-			ETHChainID:  ETHChainID,
-			USDCToSUPS:  USDCToSUPS,
-			BUSDToSUPS:  BUSDToSUPS,
-			WETHToSUPS:  WETHToSUPS,
-			WBNBToSUPS:  WBNBToSUPS,
-			SUPToUSD:    SUPToUSD,
+			BscNodeAddr:       BscNodeAddr,
+			EthNodeAddr:       EthNodeAddr,
+			BSCChainID:        BSCChainID,
+			ETHChainID:        ETHChainID,
+			BSCRouterAddr:     common.HexToAddress(BSCRouterAddr),
 		},
 	}
 

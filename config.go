@@ -2,7 +2,6 @@ package passport
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/shopspring/decimal"
 )
 
 type Config struct {
@@ -17,6 +16,7 @@ type Config struct {
 }
 
 type BridgeParams struct {
+	MoralisKey        string
 	UsdcAddr          common.Address
 	BusdAddr          common.Address
 	WethAddr          common.Address
@@ -33,9 +33,5 @@ type BridgeParams struct {
 	EthNodeAddr       string
 	BSCChainID        int64
 	ETHChainID        int64
-	USDCToSUPS        decimal.Decimal
-	BUSDToSUPS        decimal.Decimal
-	WETHToSUPS        decimal.Decimal
-	WBNBToSUPS        decimal.Decimal
-	SUPToUSD          decimal.Decimal
+	BSCRouterAddr     common.Address
 }

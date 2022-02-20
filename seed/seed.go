@@ -135,8 +135,11 @@ func (s *Seeder) Run(isProd bool) error {
 	fmt.Println("Seed initial state")
 
 	q := `INSERT INTO state (latest_eth_block,
-                             latest_bsc_block)
-			VALUES(6402269, 16886589);`
+                             latest_bsc_block,
+							 eth_to_usd,
+							 bnb_to_usd,
+							 sup_to_usd)
+			VALUES(6402269, 16886589, 2000, 300, .12);`
 
 	_, err = s.Conn.Exec(ctx, q)
 	if err != nil {
