@@ -85,7 +85,7 @@ func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) {
 
 			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 		})
-	})
+	}, "UpdateUserInCache")
 }
 
 // RemoveUserFromCache removes a user from the cache

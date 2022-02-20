@@ -71,9 +71,15 @@ func (api *API) HandleHeldTransactions() {
 }
 
 // HeldTransactions accepts a function that loops over the held transaction map
-func (api *API) HeldTransactions(fn func(heldTxList map[passport.TransactionReference]*passport.NewTransaction)) {
+func (api *API) HeldTransactions(fn func(heldTxList map[passport.TransactionReference]*passport.NewTransaction), stuff ...string) {
+	if len(stuff) > 0 {
+		fmt.Printf("start %s\n", stuff[0])
+	}
 	api.heldTransactions <- func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 		fn(heldTxList)
+	}
+	if len(stuff) > 0 {
+		fmt.Printf("end %s\n", stuff[0])
 	}
 }
 
@@ -93,7 +99,7 @@ func (api *API) ReleaseHeldTransaction(ctx context.Context, txRefs ...passport.T
 				api.UpdateUserCacheAddSups(ctx, tx.From, tx.Amount)
 				delete(heldTxList, txRef)
 			}
-		})
+		}, "ReleaseHeldTransaction")
 	}
 }
 
@@ -120,7 +126,7 @@ func (api *API) HoldTransaction(ctx context.Context, holdErrChan chan error, tx 
 		heldTxList[tx.TransactionReference] = tx
 		//}
 		holdErrChan <- nil
-	})
+	}, "HoldTransaction")
 }
 
 // CommitTransactions goes through and commits the given transactions, returning their status
@@ -160,6 +166,6 @@ func (api *API) CommitTransactions(ctx context.Context, resultChan chan []*passp
 			}
 		}
 
-	})
+	}, "CommitTransactions")
 	resultChan <- results
 }
