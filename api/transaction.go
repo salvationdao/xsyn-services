@@ -82,7 +82,7 @@ func (api *API) ReleaseHeldTransaction(ctx context.Context, txRefs ...passport.T
 		api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 			tx, ok := heldTxList[txRef]
 			if ok {
-				errChan := make(chan error, 10)
+				errChan := make(chan error)
 				api.UpdateUserCacheRemoveSups(ctx, tx.To, tx.Amount, errChan)
 				err := <-errChan
 				if err != nil {
@@ -102,7 +102,7 @@ func (api *API) HoldTransaction(ctx context.Context, holdErrChan chan error, txs
 	// So later we can fire the commit command and put all the transactions into the database
 	api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 		for _, tx := range txs {
-			errChan := make(chan error, 10)
+			errChan := make(chan error)
 			api.UpdateUserCacheRemoveSups(ctx, tx.From, tx.Amount, errChan)
 			err := <-errChan
 			if err != nil {

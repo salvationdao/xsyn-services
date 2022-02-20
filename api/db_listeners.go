@@ -45,10 +45,6 @@ func (api *API) DBListenForUserUpdateEvent() {
 
 		if !user.ID.IsSystemUser() {
 			api.UpdateUserInCache(ctx, user)
-			// if !inCache {
-			// 	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
-			// }
 		}
-
 	}
 }
