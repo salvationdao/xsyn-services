@@ -25,7 +25,7 @@ import (
 // Purchase attempts to make a purchase for a given user ID and a given
 func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
 	supPrice decimal.Decimal, txChan chan<- *passport.NewTransaction, user passport.User, storeItemID passport.StoreItemID) error {
-	storeItem, err := db.StoreItemByID(ctx, conn, storeItemID)
+	storeItem, err := db.StoreItemGet(ctx, conn, storeItemID)
 	if err != nil {
 		return terror.Error(err)
 	}

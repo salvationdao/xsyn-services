@@ -12,8 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ninja-software/tickle"
-
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -29,8 +27,10 @@ type SupremacyControllerWS struct {
 	Log             *zerolog.Logger
 	API             *API
 	TickerPoolCache struct {
-		lock          sync.Mutex
-		AmountTicking *big.Int
+		outerMx            sync.Mutex
+		nextAccessMx       sync.Mutex
+		dataMx             sync.Mutex
+		TricklingAmountMap map[string]*big.Int
 	}
 }
 
@@ -41,11 +41,15 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 		Log:  log_helpers.NamedLogger(log, "supremacy"),
 		API:  api,
 		TickerPoolCache: struct {
-			lock          sync.Mutex
-			AmountTicking *big.Int
+			outerMx            sync.Mutex
+			nextAccessMx       sync.Mutex
+			dataMx             sync.Mutex
+			TricklingAmountMap map[string]*big.Int
 		}{
-			lock:          sync.Mutex{},
-			AmountTicking: big.NewInt(0),
+			outerMx:            sync.Mutex{},
+			nextAccessMx:       sync.Mutex{},
+			dataMx:             sync.Mutex{},
+			TricklingAmountMap: make(map[string]*big.Int),
 		},
 	}
 
@@ -153,9 +157,8 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 		tx.To = passport.SupremacyBattleUserID
 	}
 
-	errChan := make(chan error, 10)
+	errChan := make(chan error)
 	sc.API.HoldTransaction(ctx, errChan, tx)
-
 	err = <-errChan
 	if err != nil {
 		return terror.Error(err)
@@ -253,28 +256,82 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 		return terror.Error(err, "Failed to refresh faction mvp list")
 	}
 
-	// get sups from battle user
+	// generate new go routine to trickle sups
+	sc.poolHighPriorityLock()
+
+	// get current battle user sups
 	battleUser, err := db.UserBalance(ctx, sc.Conn, passport.SupremacyBattleUserID)
 	if err != nil {
-		return terror.Error(err, "Failed to get battle arena user.")
+		sc.poolHighPriorityUnlock()
+		return terror.Error(err, "failed to get battle user balance from db")
 	}
 
-	// remove cache amount
-	battleUserSups := battleUser.Int.Sub(&battleUser.Int, sc.TickerPoolCache.AmountTicking)
+	// calc trickling sups for current round
+	supsForTrickle := big.NewInt(0)
+	supsForTrickle.Add(supsForTrickle, &battleUser.Int)
+	for _, tricklingSups := range sc.TickerPoolCache.TricklingAmountMap {
+		supsForTrickle.Sub(supsForTrickle, tricklingSups)
+	}
 
-	// skip calculation, if there is no sups in the pool
-	if battleUserSups.Cmp(big.NewInt(0)) <= 0 {
+	// skip, if trickle amount is empty
+	if supsForTrickle.BitLen() == 0 {
+		sc.poolHighPriorityUnlock()
 		reply(true)
 		return nil
 	}
 
+	// append the amount set to the list
+	key := uuid.Must(uuid.NewV4()).String()
+	sc.TickerPoolCache.TricklingAmountMap[key] = big.NewInt(0)
+	sc.TickerPoolCache.TricklingAmountMap[key].Add(sc.TickerPoolCache.TricklingAmountMap[key], supsForTrickle)
+
+	// start a new go routine for current round
+	go sc.trickleFactory(key, supsForTrickle)
+	sc.poolHighPriorityUnlock()
+
+	reply(true)
+	return nil
+}
+
+// priority locks
+
+// poolHighPriorityLock
+func (sc *SupremacyControllerWS) poolHighPriorityLock() {
+	sc.TickerPoolCache.nextAccessMx.Lock()
+	sc.TickerPoolCache.dataMx.Lock()
+	sc.TickerPoolCache.nextAccessMx.Unlock()
+}
+
+// poolHighPriorityUnlock
+func (sc *SupremacyControllerWS) poolHighPriorityUnlock() {
+	sc.TickerPoolCache.dataMx.Unlock()
+}
+
+// poolLowPriorityLock
+func (sc *SupremacyControllerWS) poolLowPriorityLock() {
+	sc.TickerPoolCache.outerMx.Lock()
+	sc.TickerPoolCache.nextAccessMx.Lock()
+	sc.TickerPoolCache.dataMx.Lock()
+	sc.TickerPoolCache.nextAccessMx.Unlock()
+}
+
+// poolLowPriorityUnlock
+func (sc *SupremacyControllerWS) poolLowPriorityUnlock() {
+	sc.TickerPoolCache.dataMx.Unlock()
+	sc.TickerPoolCache.outerMx.Unlock()
+}
+
+// trickle factory
+func (sc *SupremacyControllerWS) trickleFactory(key string, supsForTrickle *big.Int) {
+
 	// so here we want to trickle the battle pool out over 5 minutes, so we create a ticker that ticks every 5 seconds with a max ticks of 300 / 5
 	ticksInFiveMinutes := 300 / 5
-	supsPerTick := battleUserSups.Div(battleUserSups, big.NewInt(int64(ticksInFiveMinutes)))
+	supsPerTick := big.NewInt(0)
+	supsPerTick.Div(supsForTrickle, big.NewInt(int64(ticksInFiveMinutes)))
 
-	battleSupTrickler := tickle.New("battle sup trickler", 5, func() (int, error) {
-
-		resultChan := make(chan *passport.TransactionResult, 1)
+	i := 0
+	for {
+		resultChan := make(chan *passport.TransactionResult)
 		transaction := &passport.NewTransaction{
 			ResultChan:           resultChan,
 			From:                 passport.SupremacyBattleUserID,
@@ -283,36 +340,44 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|battle_sups_spend_transfer|%s", time.Now())),
 		}
 
+		sc.poolLowPriorityLock()
 		sc.API.transaction <- transaction
 		result := <-transaction.ResultChan
 		if result.Error != nil {
-			return 0, terror.Error(result.Error)
+			// clean up
+			delete(sc.TickerPoolCache.TricklingAmountMap, key)
+			sc.poolLowPriorityUnlock()
+
+			// log error
+			sc.Log.Err(result.Error).Msgf("battle sup trickler transfer failed")
+			return
 		}
 		if result.Transaction.Status == passport.TransactionFailed {
+			// clean up
+			delete(sc.TickerPoolCache.TricklingAmountMap, key)
+			sc.poolLowPriorityUnlock()
+
+			// log error
 			sc.Log.Err(fmt.Errorf(result.Transaction.Reason)).Msgf("battle sup trickler transfer failed")
-			return 60, nil
+			return
 		}
 
-		// update pool cache
-		sc.TickerPoolCache.lock.Lock()
-		sc.TickerPoolCache.AmountTicking = sc.TickerPoolCache.AmountTicking.Sub(sc.TickerPoolCache.AmountTicking, supsPerTick)
-		sc.TickerPoolCache.lock.Unlock()
+		// if the routine is not finished
+		if i < ticksInFiveMinutes {
+			// update current trickling amount
+			sc.TickerPoolCache.TricklingAmountMap[key].Sub(sc.TickerPoolCache.TricklingAmountMap[key], supsPerTick)
+			sc.poolLowPriorityUnlock()
 
-		return 1, nil
-	})
-	battleSupTrickler.StopMaxInterval = ticksInFiveMinutes - 1
-	battleSupTrickler.StopMaxError = 1
-	battleSupTrickler.DisableLogging = true
-	battleSupTrickler.FuncClean = func(interface{}, error) {
-		battleSupTrickler.Stop()
-	}
-	battleSupTrickler.FuncRecovery = func(error) {
-		battleSupTrickler.Stop()
-	}
-	battleSupTrickler.Start()
+			time.Sleep(5 * time.Second)
+			i++
+			continue
+		}
 
-	reply(true)
-	return nil
+		// otherwise, delete the trickle amount from the map
+		delete(sc.TickerPoolCache.TricklingAmountMap, key)
+		sc.poolLowPriorityUnlock()
+		break
+	}
 }
 
 type SupremacyAssetFreezeRequest struct {
@@ -341,6 +406,9 @@ func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context
 	if err != nil {
 		reply(false)
 		return terror.Error(err)
+	}
+	if asset == nil {
+		return terror.Error(fmt.Errorf("asset doesn't exist"), "Failed to get asset.")
 	}
 
 	err = db.XsynAssetFreeze(ctx, sc.Conn, req.Payload.AssetTokenID, userID)
@@ -533,7 +601,7 @@ func (sc *SupremacyControllerWS) SupremacyCommitTransactionsHandler(ctx context.
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
 	}
-	resultChan := make(chan []*passport.Transaction, len(req.Payload.TransactionReferences)+5)
+	resultChan := make(chan []*passport.Transaction)
 	sc.API.CommitTransactions(ctx, resultChan, req.Payload.TransactionReferences...)
 
 	results := <-resultChan
@@ -680,7 +748,6 @@ func (sc *SupremacyControllerWS) SupremacyUsersGet(ctx context.Context, hubc *hu
 	}
 
 	reply(users)
-
 	return nil
 }
 
@@ -1079,6 +1146,8 @@ func (sc *SupremacyControllerWS) SupremacyRedeemFactionContractRewardHandler(ctx
 		return terror.Error(err, "Invalid request received")
 	}
 
+	fmt.Println(req.Payload.Amount)
+	fmt.Println()
 	if req.Payload.Amount.Cmp(big.NewInt(0)) <= 0 {
 		return terror.Error(terror.ErrInvalidInput, "Sups amount can not be negative")
 	}

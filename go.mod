@@ -25,9 +25,10 @@ require (
 	github.com/mailgun/mailgun-go/v4 v4.6.0
 	github.com/makiuchi-d/arelo v1.9.2
 	github.com/microcosm-cc/bluemonday v1.0.17
+	github.com/ninja-software/sale v0.0.1
 	github.com/ninja-software/terror/v2 v2.0.7
-	github.com/ninja-syndicate/hub v1.3.7
-	github.com/ninja-syndicate/supremacy-bridge v0.1.20
+	github.com/ninja-syndicate/hub v1.4.0
+	github.com/ninja-syndicate/supremacy-bridge v0.1.22
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/prometheus/client_golang v1.11.0
@@ -104,7 +105,7 @@ require (
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.0-20210816181553-5444fa50b93d // indirect
-	github.com/ethereum/go-ethereum v1.10.15
+	github.com/ethereum/go-ethereum v1.10.16
 	github.com/fatih/color v1.10.0 // indirect
 	github.com/friendsofgo/errors v0.9.2 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect

@@ -57,6 +57,13 @@ endif
 		-o deploy/passport-api \
 		cmd/platform/main.go
 
+
+.PHONY: tools-darwin
+tools-darwin: go-mod-tidy
+	@mkdir -p $(BIN)
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.43.0 go get -u golang.org/x/tools/cmd/goimports
+	go generate -tags tools ./tools/...
+
 .PHONY: tools
 tools: go-mod-tidy
 	@mkdir -p $(BIN)
@@ -139,7 +146,7 @@ go-mod-download:
 
 .PHONY: go-mod-tidy
 go-mod-tidy:
-	go mod tidy
+	go mod tidy -compat=1.17
 
 .PHONY: init
 init: db-setup deps tools go-mod-tidy db-reset

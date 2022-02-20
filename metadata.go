@@ -35,11 +35,12 @@ type StoreItem struct {
 	ID                 StoreItemID         `json:"ID" db:"id"`
 	Name               string              `json:"name" db:"name"`
 	FactionID          FactionID           `json:"factionID" db:"faction_id"`
-	Faction            *Faction            `json:"faction"`
+	Faction            *Faction            `json:"faction" db:"faction"`
 	CollectionID       CollectionID        `json:"collectionID" db:"collection_id"`
 	Collection         Collection          `json:"collection" db:"collection"`
 	Description        string              `json:"description" db:"description"`
 	Image              string              `json:"image" db:"image"`
+	AnimationURL       string              `json:"animation_url" db:"animation_url"`
 	Attributes         []*Attribute        `json:"attributes" db:"attributes"`
 	AdditionalMetadata *AdditionalMetadata `json:"additionalMetadata" db:"additional_metadata"`
 	UsdCentCost        int                 `json:"usdCentCost" db:"usd_cent_cost"`
@@ -65,6 +66,7 @@ type XsynMetadata struct {
 	Description        string                `json:"description" db:"description"`
 	ExternalUrl        string                `json:"external_url" db:"external_url"`
 	Image              string                `json:"image" db:"image"`
+	AnimationURL       string                `json:"animation_url" db:"animation_url"`
 	Durability         int                   `json:"durability" db:"durability"`
 	Attributes         []*Attribute          `json:"attributes" db:"attributes"`
 	AdditionalMetadata []*AdditionalMetadata `json:"additional_metadata" db:"additional_metadata"`

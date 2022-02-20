@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"passport"
 	"strings"
-	"sync"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -65,21 +64,16 @@ func CreateTransactionEntry(conn *sql.DB, amount big.Int, to, from passport.User
 // HandleHeldTransactions is where the held transactions live
 func (api *API) HandleHeldTransactions() {
 	heldTransactions := make(map[passport.TransactionReference]*passport.NewTransaction)
-	for {
-		heldTxFunc := <-api.heldTransactions
+	for heldTxFunc := range api.heldTransactions {
 		heldTxFunc(heldTransactions)
 	}
 }
 
 // HeldTransactions accepts a function that loops over the held transaction map
 func (api *API) HeldTransactions(fn func(heldTxList map[passport.TransactionReference]*passport.NewTransaction)) {
-	var wg sync.WaitGroup
-	wg.Add(1)
 	api.heldTransactions <- func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 		fn(heldTxList)
-		wg.Done()
 	}
-	wg.Wait()
 }
 
 // ReleaseHeldTransaction removes a held transaction and update the users sups in the user cache
@@ -112,7 +106,6 @@ func (api *API) HoldTransaction(ctx context.Context, holdErrChan chan error, txs
 			api.UpdateUserCacheRemoveSups(ctx, tx.From, tx.Amount, errChan)
 			err := <-errChan
 			if err != nil {
-				api.Log.Err(err).Msg(err.Error())
 				holdErrChan <- err
 				return
 			}
@@ -130,12 +123,12 @@ func (api *API) CommitTransactions(ctx context.Context, resultChan chan []*passp
 	api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 		for _, txRef := range txRefs {
 			if tx, ok := heldTxList[txRef]; ok {
-				tx.ResultChan = make(chan *passport.TransactionResult, 1)
+				tx.ResultChan = make(chan *passport.TransactionResult)
 				api.transaction <- tx
 				result := <-tx.ResultChan
 				// if result is failed, update the cache map
 				if result.Error != nil || result.Transaction.Status == passport.TransactionFailed {
-					errChan := make(chan error, 10)
+					errChan := make(chan error)
 					api.UpdateUserCacheRemoveSups(ctx, tx.To, tx.Amount, errChan)
 					err := <-errChan
 					if err != nil {

@@ -137,6 +137,9 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
 	}
+	if asset == nil {
+		return http.StatusBadRequest, terror.Warn(err, "Asset doesn't exist")
+	}
 
 	if asset.UserID != nil && *asset.UserID != user.ID {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("unable to validate ownership of asset"), "Unable to validate ownership of asset.")
@@ -167,6 +170,9 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
 
+	}
+	if asset == nil {
+		return http.StatusBadRequest, terror.Warn(err, "Asset doesn't exist")
 	}
 	go api.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetSubscribe, tokenID)), asset)
 
