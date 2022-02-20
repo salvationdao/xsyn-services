@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"passport"
+	"sync"
 	"time"
 
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -21,16 +22,21 @@ type UserCacheFunc func(userCacheList UserCacheMap)
 // HandleUserCache is where the user cache map lives and where we pass through the updates to it
 func (api *API) HandleUserCache() {
 	var userCacheMap UserCacheMap = map[passport.UserID]*UserCache{}
-	for userFunc := range api.users {
+	for {
+		userFunc := <-api.users
 		userFunc(userCacheMap)
 	}
 }
 
 // UserCache accepts a function that loops over the user cache map
 func (api *API) UserCache(fn UserCacheFunc) {
+	var wg sync.WaitGroup
+	wg.Add(1)
 	api.users <- func(userCacheList UserCacheMap) {
 		fn(userCacheList)
+		wg.Done()
 	}
+	wg.Wait()
 }
 
 // InsertUserToCache adds a user to the cache
