@@ -74,9 +74,9 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) 
 		case cc.Params.SupAddr:
 			cc.Params.ExchangeRates.SUPtoUSD = amount
 		case cc.Params.WethAddr:
-			cc.Params.ExchangeRates.USDtoETH = amount
+			cc.Params.ExchangeRates.ETHtoUSD = amount
 		case cc.Params.WbnbAddr:
-			cc.Params.ExchangeRates.USDtoBNB = amount
+			cc.Params.ExchangeRates.BNBtoUSD = amount
 		}
 
 		fmt.Println(cc.Params.ExchangeRates)
@@ -167,7 +167,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					// if buying sups with WBNB
 
 					// TODO: probably do a * 1000 here? currently no decimals in conversion but possibly in future?
-					supAmount := cc.Params.ExchangeRates.USDtoBNB.Div(cc.Params.ExchangeRates.SUPtoUSD).BigInt()
+					supAmount := cc.Params.ExchangeRates.BNBtoUSD.Div(cc.Params.ExchangeRates.SUPtoUSD).BigInt()
 					supAmount = supAmount.Mul(supAmount, xfer.Amount)
 
 					cc.Log.Info().
@@ -496,7 +496,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 				if xfer.To == cc.Params.PurchaseAddr {
 					// if buying sups with WETH
 					// TODO: probably do a * 1000 here? currently no decimals in conversion but possibly in future?
-					supAmount := cc.Params.ExchangeRates.USDtoETH.Div(cc.Params.ExchangeRates.SUPtoUSD).BigInt()
+					supAmount := cc.Params.ExchangeRates.ETHtoUSD.Div(cc.Params.ExchangeRates.SUPtoUSD).BigInt()
 					supAmount = supAmount.Mul(supAmount, xfer.Amount)
 
 					cc.Log.Info().

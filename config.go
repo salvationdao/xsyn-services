@@ -39,7 +39,7 @@ type BridgeParams struct {
 }
 
 type ExchangeRates struct {
-	USDtoETH decimal.Decimal
-	USDtoBNB decimal.Decimal
-	SUPtoUSD decimal.Decimal
+	ETHtoUSD decimal.Decimal `json:"ETHtoUSD"`
+	BNBtoUSD decimal.Decimal `json:"BNBtoUSD"`
+	SUPtoUSD decimal.Decimal `json:"SUPtoUSD"`
 }

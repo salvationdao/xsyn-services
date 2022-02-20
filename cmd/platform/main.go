@@ -152,8 +152,8 @@ func main() {
 
 					// exchange rates
 					&cli.StringFlag{Name: "sup_to_usd", Value: "0.12", EnvVars: []string{envPrefix + "_EX_SUPS_TO_USD"}, Usage: "Exchange rate for 1 SUP to USD"},
-					&cli.StringFlag{Name: "usd_to_weth", Value: "3000", EnvVars: []string{envPrefix + "_EX_usd_to_weth"}, Usage: "Exchange rate for 1 WETH to USD"},
-					&cli.StringFlag{Name: "usd_to_wbnb", Value: "400", EnvVars: []string{envPrefix + "_EX_usd_to_wbnb"}, Usage: "Exchange rate for 1 WBNB to USD"},
+					&cli.StringFlag{Name: "weth_to_usd", Value: "3000", EnvVars: []string{envPrefix + "_EX_WETH_TO_USD"}, Usage: "Exchange rate for 1 WETH to USD"},
+					&cli.StringFlag{Name: "wbnb_to_usd", Value: "400", EnvVars: []string{envPrefix + "_EX_WBNB_TO_USD"}, Usage: "Exchange rate for 1 WBNB to USD"},
 
 					//router address for exchange rates
 					&cli.StringFlag{Name: "bsc_router_addr", Value: "0x9ac64cc6e4415144c455bd8e4837fea55603e5c3", EnvVars: []string{envPrefix + "_BSC_ROUTER_ADDR"}, Usage: "BSC Router address"},
@@ -370,11 +370,11 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	ETHChainID := ctxCLI.Int64("eth_chain_id")
 	BSCRouterAddr := ctxCLI.String("bsc_router_addr")
 
-	USDtoETH, err := decimal.NewFromString(ctxCLI.String("usd_to_weth"))
+	ETHtoUSD, err := decimal.NewFromString(ctxCLI.String("weth_to_usd"))
 	if err != nil {
 		return err
 	}
-	USDtoBNB, err := decimal.NewFromString(ctxCLI.String("usd_to_wbnb"))
+	BNBtoUSD, err := decimal.NewFromString(ctxCLI.String("wbnb_to_usd"))
 	if err != nil {
 		return err
 	}
@@ -414,8 +414,8 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 			ETHChainID:        ETHChainID,
 			BSCRouterAddr:     common.HexToAddress(BSCRouterAddr),
 			ExchangeRates: &passport.ExchangeRates{
-				USDtoETH: USDtoETH,
-				USDtoBNB: USDtoBNB,
+				ETHtoUSD: ETHtoUSD,
+				BNBtoUSD: BNBtoUSD,
 				SUPtoUSD: SUPtoUSD,
 			},
 		},
