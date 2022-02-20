@@ -79,7 +79,6 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) 
 			cc.Params.ExchangeRates.BNBtoUSD = amount
 		}
 
-		fmt.Println(cc.Params.ExchangeRates)
 		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSExchangeRates), cc.Params.ExchangeRates)
 	}
 
