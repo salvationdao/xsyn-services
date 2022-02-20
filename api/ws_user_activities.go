@@ -6,7 +6,8 @@ import (
 	"errors"
 	"passport"
 	"passport/db"
-	"passport/log_helpers"
+
+	"github.com/ninja-software/log_helpers"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"

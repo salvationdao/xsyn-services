@@ -668,7 +668,6 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 
 						//gets how many bnb for 1 busd
 						bnbPrice, err := o.BNBUSDPrice()
-
 						if err != nil {
 							cc.Log.Err(err).Msg("failed to get bnb price")
 							time.Sleep(exchangeRateBackoff.Duration())
