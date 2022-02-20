@@ -2,7 +2,6 @@ package passport
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/shopspring/decimal"
 )
 
 type Config struct {
@@ -35,11 +34,4 @@ type BridgeParams struct {
 	BSCChainID        int64
 	ETHChainID        int64
 	BSCRouterAddr     common.Address
-	ExchangeRates     *ExchangeRates
-}
-
-type ExchangeRates struct {
-	ETHtoUSD decimal.Decimal `json:"ETHtoUSD"`
-	BNBtoUSD decimal.Decimal `json:"BNBtoUSD"`
-	SUPtoUSD decimal.Decimal `json:"SUPtoUSD"`
 }

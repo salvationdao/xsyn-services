@@ -72,14 +72,18 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) 
 	cc.updatePriceFunc = func(addr common.Address, amount decimal.Decimal) {
 		switch addr {
 		case cc.Params.SupAddr:
-			cc.Params.ExchangeRates.SUPtoUSD = amount
+			cc.API.State.SUPtoUSD = amount
 		case cc.Params.WethAddr:
-			cc.Params.ExchangeRates.ETHtoUSD = amount
+			cc.API.State.ETHtoUSD = amount
 		case cc.Params.WbnbAddr:
-			cc.Params.ExchangeRates.BNBtoUSD = amount
+			cc.API.State.BNBtoUSD = amount
 		}
 
-		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSExchangeRates), cc.Params.ExchangeRates)
+		_, err := db.UpdateExchangeRates(ctx, cc.API.Conn, cc.API.State)
+		if err != nil {
+			api.Log.Err(err).Msg("failed to update exchange rates")
+		}
+		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSExchangeRates), cc.API.State)
 	}
 
 	go cc.runETHBridgeListener(ctx)
@@ -99,7 +103,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					// if buying sups with BUSD
 
 					amountTimes100 := xfer.Amount.Mul(xfer.Amount, big.NewInt(1000))
-					supUSDPriceTimes100 := cc.Params.ExchangeRates.SUPtoUSD.Mul(decimal.New(1000, 0)).BigInt()
+					supUSDPriceTimes100 := cc.API.State.SUPtoUSD.Mul(decimal.New(1000, 0)).BigInt()
 					supAmount := amountTimes100.Div(amountTimes100, supUSDPriceTimes100)
 
 					cc.Log.Info().
@@ -166,7 +170,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					// if buying sups with WBNB
 
 					// TODO: probably do a * 1000 here? currently no decimals in conversion but possibly in future?
-					supAmount := cc.Params.ExchangeRates.BNBtoUSD.Div(cc.Params.ExchangeRates.SUPtoUSD).BigInt()
+					supAmount := cc.API.State.BNBtoUSD.Div(cc.API.State.SUPtoUSD).BigInt()
 					supAmount = supAmount.Mul(supAmount, xfer.Amount)
 
 					cc.Log.Info().
@@ -295,7 +299,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					//busdAmount := d.Div(p.BUSDToSUPS)
 
 					// make sup cost 1000 * bigger to not deal with decimals
-					supUSDPriceTimes1000 := cc.Params.ExchangeRates.SUPtoUSD.Mul(decimal.New(1000, 0)).BigInt()
+					supUSDPriceTimes1000 := cc.API.State.SUPtoUSD.Mul(decimal.New(1000, 0)).BigInt()
 					// amount * sup to usd price
 					amountTimesSupsPrice := xfer.Amount.Mul(xfer.Amount, supUSDPriceTimes1000)
 					// divide by 1000 to bring it back down
@@ -432,7 +436,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 				if xfer.To == cc.Params.PurchaseAddr {
 					// if buying sups with USDC
 					amountTimes100 := xfer.Amount.Mul(xfer.Amount, big.NewInt(1000))
-					supUSDPriceTimes100 := cc.Params.ExchangeRates.SUPtoUSD.Mul(decimal.New(1000, 0)).BigInt()
+					supUSDPriceTimes100 := cc.API.State.SUPtoUSD.Mul(decimal.New(1000, 0)).BigInt()
 					supAmount := amountTimes100.Div(amountTimes100, supUSDPriceTimes100)
 
 					cc.Log.Info().
@@ -495,7 +499,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 				if xfer.To == cc.Params.PurchaseAddr {
 					// if buying sups with WETH
 					// TODO: probably do a * 1000 here? currently no decimals in conversion but possibly in future?
-					supAmount := cc.Params.ExchangeRates.ETHtoUSD.Div(cc.Params.ExchangeRates.SUPtoUSD).BigInt()
+					supAmount := cc.API.State.ETHtoUSD.Div(cc.API.State.SUPtoUSD).BigInt()
 					supAmount = supAmount.Mul(supAmount, xfer.Amount)
 
 					cc.Log.Info().

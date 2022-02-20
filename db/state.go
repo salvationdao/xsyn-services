@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"passport"
 
 	"github.com/georgysavva/scany/pgxscan"
@@ -14,6 +15,7 @@ func StateGet(ctx context.Context, conn Conn) (*passport.State, error) {
 	q := `SELECT * FROM state`
 	err := pgxscan.Get(ctx, conn, state, q)
 	if err != nil {
+		fmt.Println(err)
 		return nil, terror.Error(err)
 	}
 	return state, nil
@@ -35,6 +37,17 @@ func UpdateLatestBSCBlock(ctx context.Context, conn Conn, latestBlock uint64) (*
 	state := &passport.State{}
 	q := `UPDATE state SET latest_bsc_block = $1 RETURNING latest_eth_block, latest_bsc_block`
 	err := pgxscan.Get(ctx, conn, state, q, latestBlock)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return state, nil
+}
+
+// UpdateExchangeRates updates the latest eth block checked
+func UpdateExchangeRates(ctx context.Context, conn Conn, exchangeRates *passport.State) (*passport.State, error) {
+	state := &passport.State{}
+	q := `UPDATE state SET eth_to_usd = $1, bnb_to_usd = $2, sup_to_usd = $3`
+	err := pgxscan.Get(ctx, conn, state, q, exchangeRates.ETHtoUSD, exchangeRates.BNBtoUSD, exchangeRates.SUPtoUSD)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
