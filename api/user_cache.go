@@ -31,7 +31,7 @@ func (api *API) HandleUserCache() {
 // UserCache accepts a function that loops over the user cache map
 func (api *API) UserCache(fn UserCacheFunc, stuff ...string) {
 	if len(stuff) > 0 {
-		fmt.Printf("start %s\n", stuff[0])
+		fmt.Printf("users cache start %s\n", stuff[0])
 	}
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -41,7 +41,7 @@ func (api *API) UserCache(fn UserCacheFunc, stuff ...string) {
 	}
 	wg.Wait()
 	if len(stuff) > 0 {
-		fmt.Printf("end %s\n", stuff[0])
+		fmt.Printf("users cache end %s\n", stuff[0])
 	}
 }
 
