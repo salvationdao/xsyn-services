@@ -80,6 +80,7 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 	api.SubscribeCommand(HubKeyUserSubscribe, userHub.UpdatedSubscribeHandler)
 	api.SubscribeCommand(HubKeyUserOnlineStatus, userHub.OnlineStatusSubscribeHandler)
 	api.SubscribeCommand(HubKeySUPSRemainingSubscribe, userHub.TotalSupRemainingHandler)
+	api.SubscribeCommand(HubKeySUPSExchangeRates, userHub.ExchangeRatesHandler)
 
 	// listen on queuing war machine
 	api.SecureUserSubscribeCommand(HubKeyUserWarMachineQueuePositionSubscribe, userHub.WarMachineQueuePositionUpdatedSubscribeHandler)
@@ -2397,9 +2398,7 @@ func (uc *UserController) ExchangeRatesHandler(ctx context.Context, client *hub.
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
 
-	//TODO: get up to date conversion rates
-
-	reply(uc.API.SupUSD.String()) //0.12
+	reply(uc.API.State)
 	return req.TransactionID, messagebus.BusKey(HubKeySUPSExchangeRates), nil
 }
 

@@ -3,7 +3,10 @@ BEGIN;
 CREATE TABLE state
 (
     latest_eth_block BIGINT,
-    latest_bsc_block BIGINT
+    latest_bsc_block BIGINT,
+    eth_to_usd DECIMAL,
+    bnb_to_usd DECIMAL,
+    sup_to_usd DECIMAL
 );
 
 
