@@ -8,9 +8,10 @@ import (
 	"math/big"
 	"passport"
 	"passport/db"
-	"passport/log_helpers"
 	"sync"
 	"time"
+
+	"github.com/ninja-software/log_helpers"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"

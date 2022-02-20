@@ -13,8 +13,9 @@ import (
 	"passport/crypto"
 	"passport/db"
 	"passport/helpers"
-	"passport/log_helpers"
 	"strings"
+
+	"github.com/ninja-software/log_helpers"
 
 	oidc "github.com/coreos/go-oidc"
 	"github.com/jackc/pgx/v4"

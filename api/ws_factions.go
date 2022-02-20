@@ -7,7 +7,8 @@ import (
 	"passport"
 	"passport/db"
 	"passport/helpers"
-	"passport/log_helpers"
+
+	"github.com/ninja-software/log_helpers"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"

@@ -7,7 +7,8 @@ import (
 	"passport"
 	"passport/db"
 	"passport/items"
-	"passport/log_helpers"
+
+	"github.com/ninja-software/log_helpers"
 
 	"github.com/shopspring/decimal"
 

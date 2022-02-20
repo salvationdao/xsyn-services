@@ -7,8 +7,9 @@ import (
 	"math/big"
 	"passport"
 	"passport/db"
-	"passport/log_helpers"
 	"time"
+
+	"github.com/ninja-software/log_helpers"
 
 	"github.com/ethereum/go-ethereum/common"
 

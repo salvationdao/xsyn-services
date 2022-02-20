@@ -8,15 +8,14 @@ import (
 	"passport/api"
 	"passport/db"
 	"passport/email"
-	"passport/log_helpers"
 	"passport/seed"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ninja-software/log_helpers"
 
 	_ "github.com/lib/pq" //postgres drivers for initialization
 
-	"github.com/getsentry/sentry-go"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
@@ -93,6 +92,7 @@ func main() {
 					&cli.StringFlag{Name: "sentry_dsn_backend", Value: "", EnvVars: []string{envPrefix + "_SENTRY_DSN_BACKEND", "SENTRY_DSN_BACKEND"}, Usage: "Sends error to remote server. If set, it will send error."},
 					&cli.StringFlag{Name: "sentry_server_name", Value: "dev-pc", EnvVars: []string{envPrefix + "_SENTRY_SERVER_NAME", "SENTRY_SERVER_NAME"}, Usage: "The machine name that this program is running on."},
 					&cli.Float64Flag{Name: "sentry_sample_rate", Value: 1, EnvVars: []string{envPrefix + "_SENTRY_SAMPLE_RATE", "SENTRY_SAMPLE_RATE"}, Usage: "The percentage of trace sample to collect (0.0-1)"},
+					&cli.StringFlag{Name: "log_level", Value: "DebugLevel", EnvVars: []string{envPrefix + "_LOG_LEVEL"}, Usage: "Set the log level for zerolog (Options: PanicLevel, FatalLevel, ErrorLevel, WarnLevel, InfoLevel, DebugLevel, TraceLevel"},
 
 					&cli.StringFlag{Name: "passport_web_host_url", Value: "http://localhost:5003", EnvVars: []string{envPrefix + "_HOST_URL_FRONTEND"}, Usage: "The Public Site URL used for CORS and links (eg: in the mailer)"},
 					&cli.StringFlag{Name: "gameserver_web_host_url", Value: "http://localhost:8084", EnvVars: []string{"GAMESERVER_HOST_URL"}, Usage: "The host for the gameserver, to allow it to connect"},
@@ -155,11 +155,10 @@ func main() {
 				Action: func(c *cli.Context) error {
 					ctx, cancel := context.WithCancel(c.Context)
 					environment := c.String("environment")
-					log := log_helpers.LoggerInitZero(environment)
-
+					level := c.String("log_level")
+					log := log_helpers.LoggerInitZero(environment, level)
 					log.Info().Msg("zerolog initialised")
-					nlog := log.Level(zerolog.DebugLevel)
-					log = &nlog
+
 					g := &run.Group{}
 					// Listen for os.interrupt
 					g.Add(run.SignalHandler(ctx, os.Interrupt))
@@ -170,7 +169,7 @@ func main() {
 					if errors.Is(err, run.SignalError{Signal: os.Interrupt}) {
 						err = terror.Warn(err)
 					}
-					log_helpers.TerrorEcho(sentry.CurrentHub(), err, log)
+					log_helpers.TerrorEcho(ctx, err, log)
 					return nil
 				},
 			},

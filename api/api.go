@@ -10,8 +10,9 @@ import (
 	"passport"
 	"passport/db"
 	"passport/email"
-	"passport/log_helpers"
 	"strconv"
+
+	"github.com/ninja-software/log_helpers"
 
 	SentryTracer "github.com/ninja-syndicate/hub/ext/sentry"
 

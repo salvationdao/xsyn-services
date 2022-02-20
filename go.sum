@@ -1145,6 +1145,7 @@ github.com/neo4j/neo4j-go-driver v1.8.1-0.20200803113522-b626aa943eba/go.mod h1:
 github.com/newrelic/go-agent v2.15.0+incompatible/go.mod h1:a8Fv1b/fYhFSReoTU6HDkTYIMZeSVNffmoS726Y0LzQ=
 github.com/ngdinhtoan/glide-cleanup v0.2.0/go.mod h1:UQzsmiDOb8YV3nOsCxK/c9zPpCZVNoHScRE3EO9pVMM=
 github.com/ninja-software/hub v1.0.9/go.mod h1:3d2oAARpoTDPaCPkDWE25tlxwzzXJfZXe2vucpFtQB4=
+github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6 h1:YDmDWpPnibpTJsbIzGYhcgzBgXmLE9Ov4cC9fbS0rPY=
 github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6/go.mod h1:DrC0haE5EY4HSX+cpjvJZGE4Gk/XDbSWdzhMsF3nY7Y=
 github.com/ninja-software/sale v0.0.4 h1:9Q/afbd0A1fW73n9Lq4T8/iJubpec5zufepcKC0RNAE=
 github.com/ninja-software/sale v0.0.4/go.mod h1:lkuzfEBQPYcI7I9QfNFDPrNsMmm+0+H4O6R9pRWzuXM=
