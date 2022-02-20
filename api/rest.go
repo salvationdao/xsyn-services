@@ -44,7 +44,7 @@ func (api *API) WithError(next func(w http.ResponseWriter, r *http.Request) (int
 		contents, _ := ioutil.ReadAll(r.Body)
 
 		r.Body = ioutil.NopCloser(bytes.NewReader(contents))
-
+		defer r.Body.Close()
 		code, err := next(w, r)
 		if err != nil {
 

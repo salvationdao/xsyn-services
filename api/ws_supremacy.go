@@ -269,12 +269,19 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 	// calc trickling sups for current round
 	supsForTrickle := big.NewInt(0)
 	supsForTrickle.Add(supsForTrickle, &battleUser.Int)
+
+	// subtrack the sups that is trickling at the moment
 	for _, tricklingSups := range sc.TickerPoolCache.TricklingAmountMap {
 		supsForTrickle.Sub(supsForTrickle, tricklingSups)
 	}
 
+	// so here we want to trickle the battle pool out over 5 minutes, so we create a ticker that ticks every 5 seconds with a max ticks of 300 / 5
+	ticksInFiveMinutes := 300 / 5
+	supsPerTick := big.NewInt(0)
+	supsPerTick.Div(supsForTrickle, big.NewInt(int64(ticksInFiveMinutes)))
+
 	// skip, if trickle amount is empty
-	if supsForTrickle.BitLen() == 0 {
+	if supsPerTick.BitLen() == 0 {
 		sc.poolHighPriorityUnlock()
 		reply(true)
 		return nil
@@ -286,7 +293,7 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 	sc.TickerPoolCache.TricklingAmountMap[key].Add(sc.TickerPoolCache.TricklingAmountMap[key], supsForTrickle)
 
 	// start a new go routine for current round
-	go sc.trickleFactory(key, supsForTrickle)
+	go sc.trickleFactory(key, ticksInFiveMinutes, supsPerTick)
 	sc.poolHighPriorityUnlock()
 
 	reply(true)
@@ -322,15 +329,10 @@ func (sc *SupremacyControllerWS) poolLowPriorityUnlock() {
 }
 
 // trickle factory
-func (sc *SupremacyControllerWS) trickleFactory(key string, supsForTrickle *big.Int) {
-
-	// so here we want to trickle the battle pool out over 5 minutes, so we create a ticker that ticks every 5 seconds with a max ticks of 300 / 5
-	ticksInFiveMinutes := 300 / 5
-	supsPerTick := big.NewInt(0)
-	supsPerTick.Div(supsForTrickle, big.NewInt(int64(ticksInFiveMinutes)))
-
+func (sc *SupremacyControllerWS) trickleFactory(key string, totalTick int, supsPerTick *big.Int) {
 	i := 0
 	for {
+		i++
 		resultChan := make(chan *passport.TransactionResult)
 		transaction := &passport.NewTransaction{
 			ResultChan:           resultChan,
@@ -349,7 +351,7 @@ func (sc *SupremacyControllerWS) trickleFactory(key string, supsForTrickle *big.
 			sc.poolLowPriorityUnlock()
 
 			// log error
-			sc.Log.Err(result.Error).Msgf("battle sup trickler transfer failed")
+			sc.Log.Err(result.Error).Int("tick", i).Msgf("battle sup trickler transfer failed")
 			return
 		}
 		if result.Transaction.Status == passport.TransactionFailed {
@@ -358,18 +360,17 @@ func (sc *SupremacyControllerWS) trickleFactory(key string, supsForTrickle *big.
 			sc.poolLowPriorityUnlock()
 
 			// log error
-			sc.Log.Err(fmt.Errorf(result.Transaction.Reason)).Msgf("battle sup trickler transfer failed")
+			sc.Log.Err(fmt.Errorf(result.Transaction.Reason)).Int("tick", i).Msgf("battle sup trickler transfer failed")
 			return
 		}
 
 		// if the routine is not finished
-		if i < ticksInFiveMinutes {
+		if i < totalTick {
 			// update current trickling amount
 			sc.TickerPoolCache.TricklingAmountMap[key].Sub(sc.TickerPoolCache.TricklingAmountMap[key], supsPerTick)
 			sc.poolLowPriorityUnlock()
 
 			time.Sleep(5 * time.Second)
-			i++
 			continue
 		}
 
