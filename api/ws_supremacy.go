@@ -159,9 +159,7 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 		tx.To = passport.SupremacyBattleUserID
 	}
 
-	errChan := make(chan error)
-	sc.API.HoldTransaction(ctx, errChan, tx)
-	err = <-errChan
+	err = sc.API.HoldTransaction(ctx, tx)
 	if err != nil {
 		return terror.Error(err)
 	}

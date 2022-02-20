@@ -108,16 +108,16 @@ func (api *API) ReleaseHeldTransaction(ctx context.Context, txRefs ...passport.T
 }
 
 // HoldTransaction adds a new transaction to the hold transaction map and updates the user cache sups accordingly
-func (api *API) HoldTransaction(ctx context.Context, holdErrChan chan error, tx *passport.NewTransaction) {
+func (api *API) HoldTransaction(ctx context.Context, tx *passport.NewTransaction) error {
+	var err error = nil
 	// Here we take the sups away from the user in their cache and hold the transactions in a slice
 	// So later we can fire the commit command and put all the transactions into the database
 	api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 		//for _, tx := range txs {
 		fmt.Println("START UpdateUserCacheRemoveSups")
-		err := api.UpdateUserCacheRemoveSups(ctx, tx.From, tx.Amount)
+		err = api.UpdateUserCacheRemoveSups(ctx, tx.From, tx.Amount)
 		fmt.Println("END UpdateUserCacheRemoveSups")
 		if err != nil {
-			holdErrChan <- err
 			return
 		}
 		fmt.Println("START UpdateUserCacheAddSups")
@@ -126,8 +126,8 @@ func (api *API) HoldTransaction(ctx context.Context, holdErrChan chan error, tx 
 
 		heldTxList[tx.TransactionReference] = tx
 		//}
-		holdErrChan <- nil
 	}, "HoldTransaction")
+	return err
 }
 
 // CommitTransactions goes through and commits the given transactions, returning their status
