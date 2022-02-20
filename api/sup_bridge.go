@@ -728,7 +728,7 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 						supBigPrice, err := supGetter.Price(decimal.New(1, int32(18)).BigInt())
 						if err != nil {
 							cc.Log.Err(err).Msg("failed to get sup to busd price")
-							time.Sleep(b.Duration())
+							time.Sleep(exchangeRateBackoff.Duration())
 							continue
 						}
 						supPrice := decimal.NewFromBigInt(supBigPrice, -18)
@@ -882,7 +882,6 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 						return
 					default:
 						cc.Log.Info().Str("chain", "BSC").Msg("Start header listener")
-						// TODO use real deposit address
 						blockBSC := bridge.NewHeadListener(cc.BscClient, cc.Params.BSCChainID, cc.handleBlock(ctx, cc.BscClient, cc.Params.BSCChainID))
 						err := blockBSC.Listen(ctx)
 						if err != nil {
