@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"passport"
 	"strings"
+	"sync"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -75,9 +76,14 @@ func (api *API) HeldTransactions(fn func(heldTxList map[passport.TransactionRefe
 	if len(stuff) > 0 {
 		fmt.Printf("start %s\n", stuff[0])
 	}
+	var wg sync.WaitGroup
+	wg.Add(1)
+
 	api.heldTransactions <- func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 		fn(heldTxList)
+		wg.Done()
 	}
+	wg.Wait()
 	if len(stuff) > 0 {
 		fmt.Printf("end %s\n", stuff[0])
 	}
@@ -130,7 +136,7 @@ func (api *API) HoldTransaction(ctx context.Context, holdErrChan chan error, tx 
 }
 
 // CommitTransactions goes through and commits the given transactions, returning their status
-func (api *API) CommitTransactions(ctx context.Context, resultChan chan []*passport.Transaction, txRefs ...passport.TransactionReference) {
+func (api *API) CommitTransactions(ctx context.Context, txRefs ...passport.TransactionReference) []*passport.Transaction {
 	results := []*passport.Transaction{}
 	// we loop the transactions, and see the results!
 	api.HeldTransactions(func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
@@ -154,7 +160,7 @@ func (api *API) CommitTransactions(ctx context.Context, resultChan chan []*passp
 					}
 					api.Log.Debug().Msg("START UpdateUserCacheAddSups in CommitTransactions")
 					api.UpdateUserCacheAddSups(ctx, tx.From, tx.Amount)
-					api.Log.Debug().Msg("FINISH UpdateUserCacheAddSups in CommitTransactions")
+					api.Log.Debug().Msg("`FINISH UpdateUserCacheAddSups in CommitTransactions")
 
 				}
 				results = append(results, result.Transaction)
@@ -167,5 +173,5 @@ func (api *API) CommitTransactions(ctx context.Context, resultChan chan []*passp
 		}
 
 	}, "CommitTransactions")
-	resultChan <- results
+	return results
 }

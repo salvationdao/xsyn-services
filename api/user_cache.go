@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"passport"
+	"sync"
 	"time"
 
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -32,9 +33,13 @@ func (api *API) UserCache(fn UserCacheFunc, stuff ...string) {
 	if len(stuff) > 0 {
 		fmt.Printf("start %s\n", stuff[0])
 	}
+	var wg sync.WaitGroup
+	wg.Add(1)
 	api.users <- func(userCacheList UserCacheMap) {
 		fn(userCacheList)
+		wg.Done()
 	}
+	wg.Wait()
 	if len(stuff) > 0 {
 		fmt.Printf("end %s\n", stuff[0])
 	}
