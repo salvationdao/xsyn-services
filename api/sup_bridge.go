@@ -27,6 +27,11 @@ import (
 	"github.com/ninja-syndicate/supremacy-bridge/bridge"
 )
 
+const ETHSymbol = "ETH"
+const BNBSymbol = "BNB"
+const BUSDSymbol = "BUSD"
+const USDCSymbol = "USDC"
+
 type ChainClients struct {
 	SUPS            *bridge.SUPS
 	EthClient       *ethclient.Client
@@ -37,11 +42,11 @@ type ChainClients struct {
 	updateStateFunc func(chainID int64, newBlock uint64)
 
 	updatePriceFuncMu sync.Mutex
-	updatePriceFunc   func(addr common.Address, amount decimal.Decimal)
+	updatePriceFunc   func(symbol string, amount decimal.Decimal)
 }
 
 func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) *ChainClients {
-
+	log.Debug().Str("purchase_addr", p.PurchaseAddr.Hex()).Str("deposit_addr", p.DepositAddr.Hex()).Str("busd_addr", p.BusdAddr.Hex()).Str("usdc_addr", p.UsdcAddr.Hex()).Msg("addresses")
 	ctx := context.Background()
 	cc := &ChainClients{
 		Params:            p,
@@ -69,13 +74,13 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) 
 		}
 	}
 
-	cc.updatePriceFunc = func(addr common.Address, amount decimal.Decimal) {
-		switch addr {
-		case cc.Params.SupAddr:
+	cc.updatePriceFunc = func(symbol string, amount decimal.Decimal) {
+		switch symbol {
+		case "SUPS":
 			cc.API.State.SUPtoUSD = amount
-		case cc.Params.WethAddr:
+		case "ETH":
 			cc.API.State.ETHtoUSD = amount
-		case cc.Params.WbnbAddr:
+		case "BNB":
 			cc.API.State.BNBtoUSD = amount
 		}
 
@@ -83,6 +88,10 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) 
 		if err != nil {
 			api.Log.Err(err).Msg("failed to update exchange rates")
 		}
+		cc.Log.Debug().
+			Str(symbol, amount.String()).
+			Msg("update rate")
+
 		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSExchangeRates), cc.API.State)
 	}
 
@@ -165,18 +174,20 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
 				}
-			case "WBNB":
+			case "BNB":
 				if xfer.To == cc.Params.PurchaseAddr {
-					// if buying sups with WBNB
+					// if buying sups with BNB
 
 					// TODO: probably do a * 1000 here? currently no decimals in conversion but possibly in future?
 					supAmount := cc.API.State.BNBtoUSD.Div(cc.API.State.SUPtoUSD).BigInt()
 					supAmount = supAmount.Mul(supAmount, xfer.Amount)
 
 					cc.Log.Info().
+						Str("BNBtoUSD", cc.API.State.BNBtoUSD.String()).
+						Str("SUPtoUSD", cc.API.State.SUPtoUSD.String()).
 						Str("Chain", "BSC").
-						Str("SUPS", decimal.NewFromBigInt(supAmount, 0).Div(decimal.New(1, int32(18))).String()).
-						Str("WBNB", decimal.NewFromBigInt(xfer.Amount, 0).Div(decimal.New(1, int32(xfer.Decimals))).String()).
+						Str("SUPS", supAmount.String()).
+						Str("BNB", xfer.Amount.String()).
 						Str("Buyer", xfer.From.Hex()).
 						Str("TxID", xfer.TxID.Hex()).
 						Msg("purchase")
@@ -205,7 +216,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						From:                 passport.XsynSaleUserID,
 						Amount:               *supAmount,
 						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
-						Description:          fmt.Sprintf("sup purchase on BSC with WBNB %s", xfer.TxID.Hex()),
+						Description:          fmt.Sprintf("sup purchase on BSC with BNB %s", xfer.TxID.Hex()),
 					}
 
 					result := <-resultChan
@@ -226,7 +237,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 							From:                 user.ID,
 							Amount:               *supAmount,
 							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
-							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on BSC with WBNB %s", xfer.TxID.Hex()),
+							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on BSC with BNB %s", xfer.TxID.Hex()),
 						}
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
@@ -294,80 +305,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
 				}
-				if xfer.To == cc.Params.RedemptionAddr {
-					// UNTESTED
-					//busdAmount := d.Div(p.BUSDToSUPS)
 
-					// make sup cost 1000 * bigger to not deal with decimals
-					supUSDPriceTimes1000 := cc.API.State.SUPtoUSD.Mul(decimal.New(1000, 0)).BigInt()
-					// amount * sup to usd price
-					amountTimesSupsPrice := xfer.Amount.Mul(xfer.Amount, supUSDPriceTimes1000)
-					// divide by 1000 to bring it back down
-					amountTimesSupsPriceNormalized := amountTimesSupsPrice.Div(amountTimesSupsPrice, big.NewInt(1000))
-					// so now we have it at 18 decimals because that is what sups are, we need to reduce it to match the given token decimal
-					// TODO: get decimals for from chain for BUSD
-					busdDecimals := 6
-					decimalDifference := xfer.Decimals - busdDecimals
-					toDivideBy := big.NewInt(10)
-					toDivideBy = toDivideBy.Exp(toDivideBy, big.NewInt(int64(decimalDifference)), nil)
-					amountOfBUSD := amountTimesSupsPriceNormalized.Div(amountTimesSupsPriceNormalized, toDivideBy)
-
-					cc.Log.Info().
-						Str("Chain", "BSC").
-						Str("SUPS", decimal.NewFromBigInt(xfer.Amount, 0).Div(decimal.New(1, int32(xfer.Decimals))).String()).
-						Str("BUSD", decimal.NewFromBigInt(amountOfBUSD, 0).Div(decimal.New(1, int32(6))).String()). // TODO: get decimals from chain for this
-						Str("User", xfer.From.Hex()).
-						Msg("redeem")
-
-					user, err := db.UserByPublicAddress(ctx, cc.API.Conn, xfer.From.Hex())
-					if err != nil {
-						// if error is no rows, create user!
-						if errors.Is(err, pgx.ErrNoRows) {
-							user = &passport.User{Username: xfer.From.Hex(), PublicAddress: passport.NewString(xfer.From.Hex()), RoleID: passport.UserRoleMemberID}
-							err = db.UserCreate(ctx, cc.API.Conn, user)
-							if err != nil {
-								cc.Log.Err(err).Msg("issue creating new user")
-								return
-							}
-						} else {
-							cc.Log.Err(err).Msg("issue finding users public address")
-							return
-						}
-					}
-
-					resultChan := make(chan *passport.TransactionResult)
-
-					cc.API.transaction <- &passport.NewTransaction{
-						ResultChan:           resultChan,
-						To:                   passport.XsynTreasuryUserID,
-						From:                 user.ID,
-						Amount:               *xfer.Amount,
-						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
-						Description:          fmt.Sprintf("sup redeem on BSC to BUSD %s", xfer.TxID.Hex()),
-					}
-
-					result := <-resultChan
-					if result.Error != nil {
-						return // believe error logs already
-					}
-
-					if result.Transaction.Status != passport.TransactionSuccess {
-						cc.Log.Err(fmt.Errorf("transaction unsuccessful reason: %s", result.Transaction.Reason))
-						return
-					}
-					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), result.Transaction.ID, xfer.Block, xfer.ChainID)
-					if err != nil {
-						cc.API.transaction <- &passport.NewTransaction{
-							To:                   user.ID,
-							From:                 passport.XsynTreasuryUserID,
-							Amount:               *xfer.Amount,
-							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
-							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup redeem on BSC to BUSD %s", xfer.TxID.Hex()),
-						}
-						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
-					}
-					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
-				}
 				if xfer.From == cc.Params.WithdrawAddr {
 
 					// UNTESTED
@@ -379,7 +317,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						Str("TxID", xfer.TxID.Hex()).
 						Msg("withdraw")
 
-					user, err := db.UserByPublicAddress(ctx, cc.API.Conn, xfer.From.Hex())
+					user, err := db.UserByPublicAddress(ctx, cc.API.Conn, xfer.To.Hex())
 					if err != nil {
 						// if error is no rows, create user!
 						if errors.Is(err, pgx.ErrNoRows) {
@@ -398,11 +336,11 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 
 					cc.API.transaction <- &passport.NewTransaction{
 						ResultChan:           resultChan,
-						To:                   passport.XsynTreasuryUserID,
 						From:                 user.ID,
+						To:                   passport.XsynTreasuryUserID,
 						Amount:               *xfer.Amount,
 						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
-						Description:          fmt.Sprintf("sup withdraw on BSC to %s", xfer.TxID.Hex()),
+						Description:          fmt.Sprintf("[SUPS] Withdraw on BSC to %s", xfer.To.Hex()),
 					}
 
 					result := <-resultChan
@@ -495,9 +433,9 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
 				}
-			case "WETH":
+			case "ETH":
 				if xfer.To == cc.Params.PurchaseAddr {
-					// if buying sups with WETH
+					// if buying sups with ETH
 					// TODO: probably do a * 1000 here? currently no decimals in conversion but possibly in future?
 					supAmount := cc.API.State.ETHtoUSD.Div(cc.API.State.SUPtoUSD).BigInt()
 					supAmount = supAmount.Mul(supAmount, xfer.Amount)
@@ -505,7 +443,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					cc.Log.Info().
 						Str("Chain", "Ethereum").
 						Str("SUPS", decimal.NewFromBigInt(supAmount, 0).Div(decimal.New(1, int32(18))).String()).
-						Str("WETH", decimal.NewFromBigInt(xfer.Amount, 0).Div(decimal.New(1, int32(xfer.Decimals))).String()).
+						Str("ETH", decimal.NewFromBigInt(xfer.Amount, 0).Div(decimal.New(1, int32(xfer.Decimals))).String()).
 						Str("Buyer", xfer.From.Hex()).
 						Str("TxID", xfer.TxID.Hex()).
 						Msg("purchase")
@@ -533,7 +471,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						From:                 passport.XsynSaleUserID,
 						Amount:               *supAmount,
 						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
-						Description:          fmt.Sprintf("sup purchase on Ethereum with WETH %s", xfer.TxID.Hex()),
+						Description:          fmt.Sprintf("[SUPS] purchase on Ethereum with ETH %s", xfer.TxID.Hex()),
 					}
 
 					result := <-resultChan
@@ -554,7 +492,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 							From:                 user.ID,
 							Amount:               *supAmount,
 							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
-							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on Ethereum with WETH %s", xfer.TxID.Hex()),
+							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on Ethereum with ETH %s", xfer.TxID.Hex()),
 						}
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
@@ -673,13 +611,7 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 				time.Sleep(b.Duration())
 				continue bscClientLoop
 			}
-			wbnbListener, err := bridge.NewERC20Listener(cc.Params.WbnbAddr, cc.Params.BSCChainID, cc.BscClient, cc.handleTransfer(ctx))
-			if err != nil {
-				cc.Log.Err(err).Msg("failed create listener for wbnb")
-				cancel()
-				time.Sleep(b.Duration())
-				continue bscClientLoop
-			}
+			bnbListener := bridge.NewNativeListener(cc.BscClient, cc.Params.PurchaseAddr, "BNB", 18, cc.Params.BSCChainID, cc.handleTransfer(ctx))
 			supListener, err := bridge.NewERC20Listener(cc.Params.SupAddr, cc.Params.BSCChainID, cc.BscClient, cc.handleTransfer(ctx))
 			if err != nil {
 				cc.Log.Err(err).Msg("failed create listener for sups")
@@ -731,13 +663,14 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 							time.Sleep(exchangeRateBackoff.Duration())
 							continue
 						}
+
 						supPrice := decimal.NewFromBigInt(supBigPrice, -18)
 
-						//gets how many wbnb for 1 busd
-						wbnbPrice, err := o.BNBUSDPrice()
+						//gets how many bnb for 1 busd
+						bnbPrice, err := o.BNBUSDPrice()
 
 						if err != nil {
-							cc.Log.Err(err).Msg("failed to get wbnb price")
+							cc.Log.Err(err).Msg("failed to get bnb price")
 							time.Sleep(exchangeRateBackoff.Duration())
 							continue
 						}
@@ -745,11 +678,10 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 						exchangeRateBackoff.Reset()
 
 						cc.updatePriceFuncMu.Lock()
-						cc.updatePriceFunc(cc.Params.SupAddr, supPrice)
+						cc.updatePriceFunc(supListener.TokenSymbol, supPrice)
 						cc.updatePriceFuncMu.Unlock()
-
 						cc.updatePriceFuncMu.Lock()
-						cc.updatePriceFunc(cc.Params.WbnbAddr, wbnbPrice)
+						cc.updatePriceFunc(bnbListener.Symbol, bnbPrice)
 						cc.updatePriceFuncMu.Unlock()
 
 						time.Sleep(10 * time.Second)
@@ -790,15 +722,11 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 						}
 					}()
 					go func() {
-						WBNBrecords, err := wbnbListener.Replay(ctx, int(cc.API.State.LatestBscBlock), int(currentBSCBlock))
+						err := bnbListener.Replay(ctx, int(cc.API.State.LatestBscBlock), int(currentBSCBlock))
 						if err != nil {
-							cc.Log.Err(err).Msg("failed to replay transactions for WBNB")
+							cc.Log.Err(err).Msg("failed to replay transactions for BNB")
 							errChan <- err
 							return
-						}
-						for _, record := range WBNBrecords {
-							fn := cc.handleTransfer(ctx)
-							fn(record)
 						}
 					}()
 					go func() {
@@ -902,10 +830,10 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 					case <-ctx.Done():
 						return
 					default:
-						cc.Log.Info().Str("sym", "WBNB").Msg("Start listener")
-						err := wbnbListener.Listen(ctx)
+						cc.Log.Info().Str("sym", "WNB").Msg("Start listener")
+						err := bnbListener.Listen(ctx)
 						if err != nil {
-							cc.Log.Err(err).Msg("error listening to wbnb")
+							cc.Log.Err(err).Msg("error listening to bnb")
 							errChan <- err
 							return
 						}
@@ -1021,13 +949,9 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 				time.Sleep(b.Duration())
 				continue ethClientLoop
 			}
-			wethListener, err := bridge.NewERC20Listener(cc.Params.WethAddr, cc.Params.ETHChainID, cc.EthClient, cc.handleTransfer(ctx))
-			if err != nil {
-				cc.Log.Err(err).Msg("failed create listener for weth")
-				cancel()
-				time.Sleep(b.Duration())
-				continue ethClientLoop
-			}
+
+			ethListener := bridge.NewNativeListener(cc.EthClient, cc.Params.PurchaseAddr, "ETH", 18, cc.Params.ETHChainID, cc.handleTransfer(ctx))
+
 			nftListener, err := bridge.NewERC721Listener(
 				cc.Params.EthNftAddr,
 				cc.EthClient,
@@ -1062,10 +986,10 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 				default:
 
 					for {
-						// //gets how many weth for 1 busd
-						wethPrice, err := o.ETHUSDPrice()
+						// //gets how many eth for 1 busd
+						ethPrice, err := o.ETHUSDPrice()
 						if err != nil {
-							cc.Log.Err(err).Msg("Could not get WETH price")
+							cc.Log.Err(err).Msg("Could not get ETH price")
 							time.Sleep(exchangeRateBackoff.Duration())
 							continue
 						}
@@ -1073,7 +997,7 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 						exchangeRateBackoff.Reset()
 
 						cc.updatePriceFuncMu.Lock()
-						cc.updatePriceFunc(cc.Params.WethAddr, wethPrice)
+						cc.updatePriceFunc(ethListener.Symbol, ethPrice)
 						cc.updatePriceFuncMu.Unlock()
 
 						time.Sleep(10 * time.Second)
@@ -1107,15 +1031,11 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 
 					}()
 					go func() {
-						WETHrecords, err := wethListener.Replay(ctx, int(cc.API.State.LatestEthBlock), int(currentETHBlock))
+						err := ethListener.Replay(ctx, int(cc.API.State.LatestEthBlock), int(currentETHBlock))
 						if err != nil {
-							cc.Log.Err(err).Msg("failed to replay transactions for WETH")
+							cc.Log.Err(err).Msg("failed to replay transactions for ETH")
 							errChan <- err
 							return
-						}
-						for _, record := range WETHrecords {
-							fn := cc.handleTransfer(ctx)
-							fn(record)
 						}
 					}()
 					go func() {
@@ -1172,10 +1092,10 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 					case <-ctx.Done():
 						return
 					default:
-						cc.Log.Info().Str("sym", "WETH").Msg("Start listener")
-						err := wethListener.Listen(ctx)
+						cc.Log.Info().Str("sym", "ETH").Msg("Start listener")
+						err := ethListener.Listen(ctx)
 						if err != nil {
-							cc.Log.Err(err).Msg("error listening to weth")
+							cc.Log.Err(err).Msg("error listening to eth")
 							errChan <- err
 							return
 						}
