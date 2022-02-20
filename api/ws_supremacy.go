@@ -146,6 +146,7 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 	if req.Payload.Amount.Cmp(big.NewInt(0)) < 0 {
 		return terror.Error(terror.ErrInvalidInput, "Sups amount can not be negative")
 	}
+	fmt.Println("1 SupremacyHoldSupsHandler")
 
 	tx := &passport.NewTransaction{
 		From:                 req.Payload.FromUserID,
@@ -164,7 +165,7 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 	if err != nil {
 		return terror.Error(err)
 	}
-
+	fmt.Println("2 SupremacyHoldSupsHandler")
 	reply(true)
 	return nil
 }
