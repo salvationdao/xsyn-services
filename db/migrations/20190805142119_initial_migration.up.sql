@@ -153,7 +153,7 @@ CREATE TABLE users
     two_factor_authentication_activated BOOLEAN     NOT NULL             DEFAULT FALSE,
     two_factor_authentication_secret    TEXT        NOT NULL             DEFAULT '',
     two_factor_authentication_is_set    BOOLEAN     NOT NULL             DEFAULT FALSE,
-    sups                                DECIMAL NOT NULL             DEFAULT 0,    -- this check in this is in the trigger_check_balance trigger
+    sups                                NUMERIC(28) NOT NULL             DEFAULT 0,    -- this check in this is in the trigger_check_balance trigger
     public_address                      TEXT UNIQUE,
     private_address                     TEXT UNIQUE,
     nonce                               TEXT,
@@ -568,7 +568,7 @@ CREATE TABLE xsyn_assets
     id                    SERIAL PRIMARY KEY,
     description           TEXT        NOT NULL                                                  DEFAULT '',
     transaction_reference TEXT UNIQUE NOT NULL                                                  DEFAULT '',
-    amount                DECIMAL NOT NULL CHECK (amount > 0.0),
+    amount                NUMERIC(28) NOT NULL CHECK (amount > 0.0),
     -- Every entry is a credit to one account...
     credit                UUID        NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
     -- And a debit to another

@@ -49,7 +49,6 @@ func UpdateExchangeRates(ctx context.Context, conn Conn, exchangeRates *passport
 	q := `UPDATE state SET eth_to_usd = $1, bnb_to_usd = $2, sup_to_usd = $3 RETURNING eth_to_usd, bnb_to_usd, sup_to_usd`
 	err := pgxscan.Get(ctx, conn, state, q, exchangeRates.ETHtoUSD, exchangeRates.BNBtoUSD, exchangeRates.SUPtoUSD)
 	if err != nil {
-		fmt.Println(err)
 		return nil, terror.Error(err)
 	}
 	return state, nil
