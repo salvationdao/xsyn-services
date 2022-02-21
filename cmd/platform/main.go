@@ -135,7 +135,7 @@ func main() {
 					&cli.StringFlag{Name: "signer_private_key", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing (usually operator)"},
 					&cli.StringFlag{Name: "purchase_addr", Value: "0x5591eBC09A89A8B11D9644eC1455e294Fd3BAbB5", EnvVars: []string{envPrefix + "_PURCHASE_WALLET_ADDR"}, Usage: "Wallet address to receive payments and deposits"},
 
-					&cli.StringFlag{Name: "withdraw_addr", Value: "0x2EBb5cd54C71eeD2fE9A82036588De38c59eB0E0", EnvVars: []string{envPrefix + "_WITHDRAW_CONTRACT_ADDR"}, Usage: "Withdraw contract address"},
+					&cli.StringFlag{Name: "withdraw_addr", Value: "0x9DAcEA338E4DDd856B152Ce553C7540DF920Bb15", EnvVars: []string{envPrefix + "_WITHDRAW_CONTRACT_ADDR"}, Usage: "Withdraw contract address"},
 					&cli.StringFlag{Name: "eth_nft_addr", Value: "0x0B921c2014ab181B7f2109Ae56DEd3534ff0a156", EnvVars: []string{envPrefix + "_NFT_CONTRACT_ADDR"}, Usage: "NFT contract address for minting"},
 					&cli.StringFlag{Name: "eth_nft_staking_addr", Value: "0xE3a14f901FaeabdE7d9ea4138cf2533dB67646e3", EnvVars: []string{envPrefix + "_NFT_STAKING_CONTRACT_ADDR"}, Usage: "NFT staking contract address for locking"},
 
