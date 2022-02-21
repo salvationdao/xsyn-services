@@ -36,11 +36,11 @@ func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Fa
 
 	api.Command(HubKeyFactionAll, factionHub.FactionAllHandler)
 	api.SecureCommand(HubKeyFactionEnlist, factionHub.FactionEnlistHandler)
-	api.SecureCommand(HubKeyFactionChat, factionHub.FactionChatHandler)
+	api.SecureCommand(HubKeyChatMessage, factionHub.ChatMessageHandler)
 
 	api.SubscribeCommand(HubKeyFactionUpdatedSubscribe, factionHub.FactionUpdatedSubscribeHandler)
 	api.SubscribeCommand(HubKeyFactionStatUpdatedSubscribe, factionHub.FactionStatUpdatedSubscribeHandler)
-	api.SubscribeCommand(HubKeyFactionChatSubscribe, factionHub.FactionChatUpdatedSubscribeHandler)
+	api.SecureUserSubscribeCommand(HubKeyFactionChatSubscribe, factionHub.FactionChatUpdatedSubscribeHandler)
 	api.SubscribeCommand(HubKeyGlobalChatSubscribe, factionHub.GlobalChatUpdatedSubscribeHandler)
 
 	return factionHub
@@ -176,20 +176,20 @@ type FactionChatRequest struct {
 	} `json:"payload"`
 }
 
-// FactionChatSend contains chat message data to send.
-type FactionChatSend struct {
+// ChatMessageSend contains chat message data to send.
+type ChatMessageSend struct {
 	Message       string           `json:"message"`
 	FromUsername  string           `json:"fromUsername"`
-	FactionColour *string          `json:"factionColour"`
+	FactionColour *string          `json:"factionColour,omitempty"`
 	AvatarID      *passport.BlobID `json:"avatarID,omitempty"`
 	SentAt        time.Time        `json:"sentAt"`
 }
 
-// rootHub.SecureCommand(HubKeyFactionChat, factionHub.FactionChatHandler)
-const HubKeyFactionChat hub.HubCommandKey = "FACTION:CHAT"
+// rootHub.SecureCommand(HubKeyFactionChat, factionHub.ChatMessageHandler)
+const HubKeyChatMessage hub.HubCommandKey = "CHAT:MESSAGE"
 
-// FactionChatHandler sends chat message from user
-func (fc *FactionController) FactionChatHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+// ChatMessageHandler sends chat message from user
+func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &FactionChatRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -229,7 +229,7 @@ func (fc *FactionController) FactionChatHandler(ctx context.Context, hubc *hub.C
 		}
 
 		// send message
-		fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID)), &FactionChatSend{
+		fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID)), &ChatMessageSend{
 			Message:       req.Payload.Message,
 			FromUsername:  user.Username,
 			AvatarID:      user.AvatarID,
@@ -241,7 +241,7 @@ func (fc *FactionController) FactionChatHandler(ctx context.Context, hubc *hub.C
 	}
 
 	// global message
-	fc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyGlobalChatSubscribe), &FactionChatSend{
+	fc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyGlobalChatSubscribe), &ChatMessageSend{
 		Message:       req.Payload.Message,
 		FromUsername:  user.Username,
 		AvatarID:      user.AvatarID,

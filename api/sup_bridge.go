@@ -654,8 +654,8 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 			}
 
 			o := bridge.NewOracle(cc.Params.MoralisKey)
-
 			go func() {
+
 				exchangeRateBackoff := &backoff.Backoff{
 					Min:    1 * time.Second,
 					Max:    30 * time.Second,
@@ -680,6 +680,28 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 							cc.Log.Warn().Msg("new supPrice was 0, exiting loop")
 							continue
 						}
+						exchangeRateBackoff.Reset()
+						cc.updatePriceFuncMu.Lock()
+						cc.updatePriceFunc(supListener.TokenSymbol, supPrice)
+						cc.updatePriceFuncMu.Unlock()
+
+						time.Sleep(10 * time.Minute)
+					}
+				}
+
+			}()
+			go func() {
+				exchangeRateBackoff := &backoff.Backoff{
+					Min:    1 * time.Second,
+					Max:    30 * time.Second,
+					Factor: 2,
+				}
+
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					default:
 
 						//gets how many bnb for 1 busd
 						bnbPrice, err := o.BNBUSDPrice()
@@ -696,13 +718,10 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 						exchangeRateBackoff.Reset()
 
 						cc.updatePriceFuncMu.Lock()
-						cc.updatePriceFunc(supListener.TokenSymbol, supPrice)
-						cc.updatePriceFuncMu.Unlock()
-						cc.updatePriceFuncMu.Lock()
 						cc.updatePriceFunc(bnbListener.Symbol, bnbPrice)
 						cc.updatePriceFuncMu.Unlock()
 
-						time.Sleep(10 * time.Second)
+						time.Sleep(10 * time.Minute)
 					}
 
 				}
