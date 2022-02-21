@@ -79,6 +79,8 @@ type API struct {
 
 	// Queue Reward
 	TxConn *sql.DB
+
+	walletOnlyConnect bool
 }
 
 // NewAPI registers routes
@@ -151,6 +153,8 @@ func NewAPI(
 
 		// faction war machine contract
 		factionWarMachineContractMap: make(map[passport.FactionID]chan func(*WarMachineContract)),
+
+		walletOnlyConnect: config.OnlyWalletConnect,
 	}
 
 	api.Routes.Use(middleware.RequestID)
@@ -211,6 +215,7 @@ func NewAPI(
 			r.Get("/dummy-sale", api.WithError(api.Dummysale))
 			r.Get("/check-eth-tx/{tx_id}", api.WithError(cc.CheckEthTx))
 			r.Get("/check-bsc-tx/{tx_id}", api.WithError(cc.CheckBscTx))
+			r.Get("/whitelist/check", api.WithError(api.WhitelistOnlyWalletCheck))
 		})
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
