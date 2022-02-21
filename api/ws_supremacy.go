@@ -146,6 +146,7 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 	if req.Payload.Amount.Cmp(big.NewInt(0)) < 0 {
 		return terror.Error(terror.ErrInvalidInput, "Sups amount can not be negative")
 	}
+	fmt.Printf("1 SupremacyHoldSupsHandler %s\n", req.TransactionID)
 
 	tx := &passport.NewTransaction{
 		From:                 req.Payload.FromUserID,
@@ -158,13 +159,11 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 		tx.To = passport.SupremacyBattleUserID
 	}
 
-	errChan := make(chan error)
-	sc.API.HoldTransaction(ctx, errChan, tx)
-	err = <-errChan
+	err = sc.API.HoldTransaction(ctx, tx)
 	if err != nil {
 		return terror.Error(err)
 	}
-
+	fmt.Printf("2 SupremacyHoldSupsHandler %s\n", req.TransactionID)
 	reply(true)
 	return nil
 }
@@ -603,11 +602,9 @@ func (sc *SupremacyControllerWS) SupremacyCommitTransactionsHandler(ctx context.
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
 	}
-	resultChan := make(chan []*passport.Transaction)
 	sc.Log.Info().Msg("START SupremacyCommitTransactionsHandler")
-	sc.API.CommitTransactions(ctx, resultChan, req.Payload.TransactionReferences...)
+	results := sc.API.CommitTransactions(ctx, req.Payload.TransactionReferences...)
 
-	results := <-resultChan
 	sc.Log.Info().Msg("CLOSE SupremacyCommitTransactionsHandler")
 	reply(results)
 	return nil

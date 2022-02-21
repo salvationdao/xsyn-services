@@ -29,7 +29,10 @@ func (api *API) HandleUserCache() {
 }
 
 // UserCache accepts a function that loops over the user cache map
-func (api *API) UserCache(fn UserCacheFunc) {
+func (api *API) UserCache(fn UserCacheFunc, stuff ...string) {
+	if len(stuff) > 0 {
+		fmt.Printf("users cache start %s\n", stuff[0])
+	}
 	var wg sync.WaitGroup
 	wg.Add(1)
 	api.users <- func(userCacheList UserCacheMap) {
@@ -37,6 +40,9 @@ func (api *API) UserCache(fn UserCacheFunc) {
 		wg.Done()
 	}
 	wg.Wait()
+	if len(stuff) > 0 {
+		fmt.Printf("users cache end %s\n", stuff[0])
+	}
 }
 
 // InsertUserToCache adds a user to the cache
@@ -47,7 +53,7 @@ func (api *API) InsertUserToCache(ctx context.Context, user *passport.User) {
 		// broadcast the update to the users connected directly to passport
 		go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID)), user)
 		// broadcast the update to connect client servers
-		api.SendToAllServerClient(ctx, &ServerClientMessage{
+		go api.SendToAllServerClient(ctx, &ServerClientMessage{
 			Key: UserUpdated,
 			Payload: struct {
 				User *passport.User `json:"user"`
@@ -59,7 +65,7 @@ func (api *API) InsertUserToCache(ctx context.Context, user *passport.User) {
 		if !user.ID.IsSystemUser() {
 			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 		}
-	})
+	}, "InsertUserToCache")
 }
 
 // UpdateUserInCache updates a user in the cache, if user doesn't exist it does nothing and returns false
@@ -84,15 +90,15 @@ func (api *API) UpdateUserInCache(ctx context.Context, user *passport.User) {
 			userMap[user.ID].CacheLastUpdated = time.Now()
 
 			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
-		})
-	})
+		}, "HeldTransactions - UserCache")
+	}, "UpdateUserInCache")
 }
 
 // RemoveUserFromCache removes a user from the cache
 func (api *API) RemoveUserFromCache(userID passport.UserID) {
 	api.UserCache(func(userMap UserCacheMap) {
 		delete(userMap, userID)
-	})
+	}, "RemoveUserFromCache")
 }
 
 // UpdateUserCacheAddSups updates a users sups in the cache and adds the given amount
@@ -106,18 +112,19 @@ func (api *API) UpdateUserCacheAddSups(ctx context.Context, userID passport.User
 				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, user.ID)), user.Sups.Int.String())
 			}
 		}
-	})
+	}, "UpdateUserCacheAddSups")
 }
 
 // UpdateUserCacheRemoveSups updates a users sups in the cache and removes the given amount, returns error if not enough
-func (api *API) UpdateUserCacheRemoveSups(ctx context.Context, userID passport.UserID, amount big.Int, errChan chan error) {
+func (api *API) UpdateUserCacheRemoveSups(ctx context.Context, userID passport.UserID, amount big.Int) error {
+	var err error = nil
 	api.UserCache(func(userMap UserCacheMap) {
 		user, ok := userMap[userID]
 		if ok {
 			enoughFunds := user.Sups.Int.Cmp(&amount) >= 0
 
 			if !enoughFunds {
-				errChan <- fmt.Errorf("not enough funds")
+				err = fmt.Errorf("not enough funds")
 				return
 			}
 
@@ -128,6 +135,6 @@ func (api *API) UpdateUserCacheRemoveSups(ctx context.Context, userID passport.U
 			}
 
 		}
-		errChan <- nil
-	})
+	}, "UpdateUserCacheRemoveSups")
+	return err
 }
