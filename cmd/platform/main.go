@@ -130,12 +130,14 @@ func main() {
 					&cli.StringFlag{Name: "busd_addr", Value: "0xeAf33Ba4AcA3fE3110EAddD7D4cf0897121583D0", EnvVars: []string{envPrefix + "_BUSD_CONTRACT_ADDR"}, Usage: "BUSD contract address"},
 					&cli.StringFlag{Name: "sup_addr", Value: "0x5e8b6999B44E011F485028bf1AF0aF601F845304", EnvVars: []string{envPrefix + "_SUP_CONTRACT_ADDR"}, Usage: "SUP contract address"},
 
-					// wallet/contract addressed
-					&cli.StringFlag{Name: "purchase_addr", Value: "0x5591eBC09A89A8B11D9644eC1455e294Fd3BAbB5", EnvVars: []string{envPrefix + "_PURCHASE_WALLET_ADDR"}, Usage: "Purchase wallet address"},
+					// wallet/contract addresses
+					&cli.StringFlag{Name: "operator_addr", Value: "0xc01c2f6DD7cCd2B9F8DB9aa1Da9933edaBc5079E", EnvVars: []string{envPrefix + "_OPERATOR_WALLET_ADDR"}, Usage: "Wallet address for administration"},
+					&cli.StringFlag{Name: "signer_private_key", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing (usually operator)"},
+					&cli.StringFlag{Name: "purchase_addr", Value: "0x5591eBC09A89A8B11D9644eC1455e294Fd3BAbB5", EnvVars: []string{envPrefix + "_PURCHASE_WALLET_ADDR"}, Usage: "Wallet address to receive payments and deposits"},
+
 					&cli.StringFlag{Name: "withdraw_addr", Value: "0x2EBb5cd54C71eeD2fE9A82036588De38c59eB0E0", EnvVars: []string{envPrefix + "_WITHDRAW_CONTRACT_ADDR"}, Usage: "Withdraw contract address"},
-					&cli.StringFlag{Name: "eth_nft_addr", Value: "0x0B921c2014ab181B7f2109Ae56DEd3534ff0a156", EnvVars: []string{envPrefix + "_NFT_CONTRACT_ADDR"}, Usage: "NFT contract address"},
-					&cli.StringFlag{Name: "eth_nft_staking_addr", Value: "0xE3a14f901FaeabdE7d9ea4138cf2533dB67646e3", EnvVars: []string{envPrefix + "_NFT_STAKING_CONTRACT_ADDR"}, Usage: "NFT staking contract address"},
-					&cli.StringFlag{Name: "signer_addr", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_SIGNER_ADDR"}, Usage: "Signer address"},
+					&cli.StringFlag{Name: "eth_nft_addr", Value: "0x0B921c2014ab181B7f2109Ae56DEd3534ff0a156", EnvVars: []string{envPrefix + "_NFT_CONTRACT_ADDR"}, Usage: "NFT contract address for minting"},
+					&cli.StringFlag{Name: "eth_nft_staking_addr", Value: "0xE3a14f901FaeabdE7d9ea4138cf2533dB67646e3", EnvVars: []string{envPrefix + "_NFT_STAKING_CONTRACT_ADDR"}, Usage: "NFT staking contract address for locking"},
 
 					// chain id
 					&cli.Int64Flag{Name: "bsc_chain_id", Value: 97, EnvVars: []string{envPrefix + "_BSC_CHAIN_ID"}, Usage: "BSC Chain ID"},
@@ -349,7 +351,8 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	WithdrawAddr := ctxCLI.String("withdraw_addr")
 	EthNftAddr := ctxCLI.String("eth_nft_addr")
 	EthNftStakingAddr := ctxCLI.String("eth_nft_staking_addr")
-	SignerAddr := ctxCLI.String("signer_addr")
+	OperatorAddr := ctxCLI.String("operator_addr")
+	SignerPrivateKey := ctxCLI.String("signer_private_key")
 	BscNodeAddr := ctxCLI.String("bsc_node_addr")
 	EthNodeAddr := ctxCLI.String("eth_node_addr")
 	BSCChainID := ctxCLI.Int64("bsc_chain_id")
@@ -370,6 +373,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		MetaMaskSignMessage: ctxCLI.String("metamask_sign_message"),
 		BridgeParams: &passport.BridgeParams{
 			MoralisKey:   MoralisKey,
+			OperatorAddr: common.HexToAddress(OperatorAddr),
 			UsdcAddr:     common.HexToAddress(UsdcAddr),
 			BusdAddr:     common.HexToAddress(BusdAddr),
 			SupAddr:      common.HexToAddress(SupAddr),
@@ -378,7 +382,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 			EthNftAddr:        common.HexToAddress(EthNftAddr),
 			EthNftStakingAddr: common.HexToAddress(EthNftStakingAddr),
-			SignerAddr:        SignerAddr,
+			SignerPrivateKey:  SignerPrivateKey,
 			BscNodeAddr:       BscNodeAddr,
 			EthNodeAddr:       EthNodeAddr,
 			BSCChainID:        BSCChainID,
