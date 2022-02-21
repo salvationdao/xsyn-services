@@ -17,6 +17,7 @@ type Config struct {
 }
 
 type BridgeParams struct {
+	OperatorAddr      common.Address
 	MoralisKey        string
 	UsdcAddr          common.Address
 	BusdAddr          common.Address
@@ -24,7 +25,7 @@ type BridgeParams struct {
 	DepositAddr       common.Address
 	PurchaseAddr      common.Address
 	WithdrawAddr      common.Address
-	SignerAddr        string
+	SignerPrivateKey  string
 	EthNftAddr        common.Address
 	EthNftStakingAddr common.Address
 	BscNodeAddr       string

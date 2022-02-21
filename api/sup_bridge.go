@@ -103,6 +103,17 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) 
 
 func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Transfer) {
 	fn := func(xfer *bridge.Transfer) {
+		if xfer.From.Hex() == cc.Params.OperatorAddr.Hex() || xfer.To.Hex() == cc.Params.OperatorAddr.Hex() {
+			amt := decimal.NewFromBigInt(xfer.Amount, -18)
+			cc.Log.Debug().
+				Str("txid", xfer.TxID.Hex()).
+				Str("from", xfer.From.Hex()).
+				Str("to", xfer.To.Hex()).
+				Str("sym", xfer.Symbol).
+				Str("amt", amt.Round(2).String()).
+				Msg("operator tx detected. Skipping...")
+			return
+		}
 		chainID := xfer.ChainID
 		switch chainID {
 		case cc.Params.BSCChainID:
@@ -576,7 +587,7 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 				continue bscClientLoop
 			}
 			cc.BscClient = bscClient
-			cc.Log.Info().Msg("Successfully to connect to BSC node")
+			cc.Log.Info().Str("url", cc.Params.BscNodeAddr).Msg("Successfully connect to BSC node")
 
 			// call the first ping outside the loop
 			err = pingFunc(ctx, bscClient)
@@ -621,7 +632,7 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 			}
 
 			// Create the sups' controller for transferring sups
-			supsController, err := bridge.NewSUPS(cc.Params.SupAddr, cc.Params.SignerAddr, cc.BscClient, big.NewInt(cc.Params.BSCChainID))
+			supsController, err := bridge.NewSUPS(cc.Params.SupAddr, cc.Params.SignerPrivateKey, cc.BscClient, big.NewInt(cc.Params.BSCChainID))
 			if err != nil {
 				cc.Log.Err(err).Msg("failed create sups controller")
 				cancel()
@@ -921,7 +932,7 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 				continue ethClientLoop
 			}
 			cc.EthClient = ethClient
-			cc.Log.Info().Msg("Successfully to connect to ETH node")
+			cc.Log.Info().Str("url", cc.Params.EthNodeAddr).Msg("Successfully connect to ETH node")
 
 			// call the first ping outside the loop
 			err = pingFunc(ctx, ethClient)
