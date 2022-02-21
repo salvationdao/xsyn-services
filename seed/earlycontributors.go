@@ -17,6 +17,7 @@ import (
 // Relies on the exported variable dispersions.go from the
 func (s *Seeder) EarlyContributors(ctx context.Context) error {
 	dispersionMap := dispersions.All()
+	i := 0
 	for k, v := range dispersionMap {
 		u := &passport.User{}
 		u.Username = k.Hex()
@@ -26,7 +27,7 @@ func (s *Seeder) EarlyContributors(ctx context.Context) error {
 		if err != nil {
 			return terror.Error(err)
 		}
-		for i, output := range v {
+		for _, output := range v {
 			amt := decimal.New(int64(output.Output), 18)
 			_, err = api.CreateTransactionEntry(s.TxConn,
 				*amt.BigInt(),
@@ -38,6 +39,7 @@ func (s *Seeder) EarlyContributors(ctx context.Context) error {
 			if err != nil {
 				return terror.Error(err)
 			}
+			i++
 		}
 	}
 
