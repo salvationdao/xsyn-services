@@ -2,7 +2,8 @@ package api
 
 import (
 	"context"
-	"passport/log_helpers"
+
+	"github.com/ninja-software/log_helpers"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-syndicate/hub"

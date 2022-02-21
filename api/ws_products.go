@@ -6,7 +6,7 @@ import (
 	"passport"
 	"passport/db"
 	"passport/helpers"
-	"passport/log_helpers"
+	"github.com/ninja-software/log_helpers"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"

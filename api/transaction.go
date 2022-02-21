@@ -129,13 +129,20 @@ func (api *API) CommitTransactions(ctx context.Context, resultChan chan []*passp
 				// if result is failed, update the cache map
 				if result.Error != nil || result.Transaction.Status == passport.TransactionFailed {
 					errChan := make(chan error)
+					api.Log.Debug().Msg("START UpdateUserCacheRemoveSups in CommitTransactions")
 					api.UpdateUserCacheRemoveSups(ctx, tx.To, tx.Amount, errChan)
+					api.Log.Debug().Msg("FINISH UpdateUserCacheRemoveSups in CommitTransactions")
 					err := <-errChan
 					if err != nil {
 						api.Log.Err(err).Msg(err.Error())
+						results = append(results, result.Transaction)
+						delete(heldTxList, txRef)
 						continue
 					}
+					api.Log.Debug().Msg("START UpdateUserCacheAddSups in CommitTransactions")
 					api.UpdateUserCacheAddSups(ctx, tx.From, tx.Amount)
+					api.Log.Debug().Msg("FINISH UpdateUserCacheAddSups in CommitTransactions")
+
 				}
 				results = append(results, result.Transaction)
 
@@ -145,6 +152,7 @@ func (api *API) CommitTransactions(ctx context.Context, resultChan chan []*passp
 				api.Log.Warn().Msgf("unable to find tx ref %s in held transactions", txRef)
 			}
 		}
-		resultChan <- results
+
 	})
+	resultChan <- results
 }
