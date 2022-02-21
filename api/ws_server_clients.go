@@ -53,16 +53,16 @@ func (ch *ServerClientControllerWS) Handler(ctx context.Context, hubc *hub.Clien
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
 	}
-
+	fmt.Println("here1")
 	if req.Payload.ClientToken == "" {
 		return terror.Error(fmt.Errorf("missing client auth token"))
 	}
-
+	fmt.Println("here2")
 	// TODO: move to a db table with client IDs and secrets when we have more games connecting
 	if req.Payload.ClientToken != ch.API.ClientToken {
 		return terror.Error(terror.ErrUnauthorised)
 	}
-
+	fmt.Println("here3")
 	// Remove any old supremacy connections
 	ch.API.ServerClients(func(serverClients ServerClientsList) {
 		if clients, ok := serverClients[SupremacyGameServer]; ok {
@@ -71,23 +71,24 @@ func (ch *ServerClientControllerWS) Handler(ctx context.Context, hubc *hub.Clien
 			}
 		}
 	})
-
+	fmt.Println("here4")
 	supremacyUser, err := db.UserIDFromUsername(ctx, ch.Conn, passport.SupremacyGameUsername)
 	if err != nil {
 		ch.API.Hub.Offline(hubc)
 		return terror.Error(err)
 	}
+	fmt.Println("here5")
 	// setting level and identifier
 	hubc.SetLevel(passport.ServerClientLevel)
 	hubc.SetIdentifier(supremacyUser.String())
 	hubc.LockClient = true // lock the client so it cannot be updated
-
+	fmt.Println("here6")
 	// TODO: get the matching server name
 	serverName := SupremacyGameServer
 
 	// add this connection to our server client map
 	ch.API.ServerClientOnline(serverName, hubc)
-
+	fmt.Println("here7")
 	reply(true)
 	ch.API.SendToServerClient(ctx, serverName, &ServerClientMessage{
 		Key:     Authed,
