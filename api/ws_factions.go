@@ -7,6 +7,7 @@ import (
 	"passport"
 	"passport/db"
 	"passport/helpers"
+	"time"
 
 	"github.com/ninja-software/log_helpers"
 
@@ -35,9 +36,11 @@ func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Fa
 
 	api.Command(HubKeyFactionAll, factionHub.FactionAllHandler)
 	api.SecureCommand(HubKeyFactionEnlist, factionHub.FactionEnlistHandler)
+	api.SecureCommand(HubKeyFactionChat, factionHub.FactionChatHandler)
 
 	api.SubscribeCommand(HubKeyFactionUpdatedSubscribe, factionHub.FactionUpdatedSubscribeHandler)
 	api.SubscribeCommand(HubKeyFactionStatUpdatedSubscribe, factionHub.FactionStatUpdatedSubscribeHandler)
+	api.SubscribeCommand(HubKeyFactionChatSubscribe, factionHub.FactionChatUpdatedSubscribeHandler)
 
 	return factionHub
 }
@@ -163,6 +166,59 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 	return nil
 }
 
+// FactionChatRequest sends chat message to specific faction.
+type FactionChatRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Message string `json:"message"`
+	} `json:"payload"`
+}
+
+// FactionChatSend contains chat message data to send.
+type FactionChatSend struct {
+	Message      string           `json:"message"`
+	FromUsername string           `json:"fromUsername"`
+	AvatarID     *passport.BlobID `json:"avatarID,omitempty"`
+	SentAt       time.Time        `json:"sentAt"`
+}
+
+// rootHub.SecureCommand(HubKeyFactionChat, factionHub.FactionChatHandler)
+const HubKeyFactionChat hub.HubCommandKey = "FACTION:CHAT"
+
+// FactionChatHandler sends chat message from user
+func (fc *FactionController) FactionChatHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &FactionChatRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	// get user
+	user, err := db.UserGet(ctx, fc.Conn, userID)
+	if err != nil {
+		return terror.Error(err)
+	}
+	if user.FactionID == nil || user.FactionID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput, "Require to join a faction to send message")
+	}
+
+	// broadcast message
+	fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID)), &FactionChatSend{
+		Message:      req.Payload.Message,
+		FromUsername: user.Username,
+		AvatarID:     user.AvatarID,
+		SentAt:       time.Now(),
+	})
+	reply(true)
+
+	return nil
+}
+
 // FactionUpdatedSubscribeRequest subscribe to faction updates
 type FactionUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
@@ -236,4 +292,29 @@ func (fc *FactionController) FactionStatUpdatedSubscribeHandler(ctx context.Cont
 	)
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionStatUpdatedSubscribe, req.Payload.FactionID)), nil
+}
+
+const HubKeyFactionChatSubscribe hub.HubCommandKey = "FACTION:CHAT:SUBSCRIBE"
+
+func (fc *FactionController) FactionChatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+
+	// get user in valid faction
+	userID := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrForbidden)
+	}
+	user, err := db.UserGet(ctx, fc.Conn, userID)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+	if user.FactionID == nil || user.FactionID.IsNil() {
+		return "", "", terror.Error(terror.ErrInvalidInput, "Require to join faction to receive")
+	}
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID)), nil
 }

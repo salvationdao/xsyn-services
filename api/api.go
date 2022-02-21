@@ -184,8 +184,9 @@ func NewAPI(
 			Conn:   conn,
 			Mailer: mailer,
 		},
-		Tokens:        api.Tokens,
-		Eip712Message: config.MetaMaskSignMessage,
+		Tokens:            api.Tokens,
+		Eip712Message:     config.MetaMaskSignMessage,
+		OnlyWalletConnect: config.OnlyWalletConnect,
 	})
 	if err != nil {
 		log.Fatal().Msgf("failed to init hub auther: %s", err.Error())

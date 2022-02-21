@@ -6,7 +6,6 @@ import (
 	"passport"
 	"passport/api"
 	"passport/db"
-	"time"
 
 	"github.com/ninja-software/sale/dispersions"
 	"github.com/ninja-software/terror/v2"
@@ -18,6 +17,7 @@ import (
 // Relies on the exported variable dispersions.go from the
 func (s *Seeder) EarlyContributors(ctx context.Context) error {
 	dispersionMap := dispersions.All()
+	i := 0
 	for k, v := range dispersionMap {
 		u := &passport.User{}
 		u.Username = k.Hex()
@@ -34,11 +34,12 @@ func (s *Seeder) EarlyContributors(ctx context.Context) error {
 				u.ID,
 				passport.XsynSaleUserID,
 				"Supremacy early contributor dispersion.",
-				passport.TransactionReference(fmt.Sprintf("supremacy|early_contributor|%d", time.Now().UnixNano())),
+				passport.TransactionReference(fmt.Sprintf("supremacy|early_contributor|%d", i)),
 			)
 			if err != nil {
 				return terror.Error(err)
 			}
+			i++
 		}
 	}
 

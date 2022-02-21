@@ -118,6 +118,7 @@ func main() {
 					&cli.StringFlag{Name: "discord_client_secret", Value: "123", EnvVars: []string{envPrefix + "_DISCORD_CLIENT_SECRET", "DISCORD_CLIENT_SECRET"}, Usage: "Discord client secret for verifying web account tokens sent with requests"},
 
 					&cli.StringFlag{Name: "gameserver_token", Value: "aG93cyBpdCBnb2luZyBtYWM=", EnvVars: []string{envPrefix + "_GAMESERVER_TOKEN"}, Usage: "Token to auth gameserver client"},
+					&cli.BoolFlag{Name: "only_wallet", Value: true, EnvVars: []string{envPrefix + "_ONLY_WALLET"}, Usage: "Set passport to only accept wallet logins"},
 
 					/****************************
 					 *		Bridge details		*
@@ -384,6 +385,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 			ETHChainID:        ETHChainID,
 			BSCRouterAddr:     common.HexToAddress(BSCRouterAddr),
 		},
+		OnlyWalletConnect: ctxCLI.Bool("only_wallet"),
 	}
 
 	pgxconn, err := pgxconnect(
