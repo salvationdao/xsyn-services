@@ -21,6 +21,7 @@ make serve / make serve-arelo
 ```
 
 ### envars
+export PASSPORT_MORALIS_KEY=
 
 Majority of these don't need to be set for dev, if you want google/facebook/metamask auth then the relative ones will
 need to be set.
