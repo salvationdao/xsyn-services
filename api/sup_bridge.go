@@ -665,12 +665,20 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 						}
 
 						supPrice := decimal.NewFromBigInt(supBigPrice, -18)
+						if supPrice == decimal.NewFromInt(0) {
+							cc.Log.Warn().Msg("new supPrice was 0, exiting loop")
+							continue
+						}
 
 						//gets how many bnb for 1 busd
 						bnbPrice, err := o.BNBUSDPrice()
 						if err != nil {
 							cc.Log.Err(err).Msg("failed to get bnb price")
 							time.Sleep(exchangeRateBackoff.Duration())
+							continue
+						}
+						if bnbPrice == decimal.NewFromInt(0) {
+							cc.Log.Warn().Msg("new bnbPrice was 0, exiting loop")
 							continue
 						}
 
@@ -990,6 +998,11 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 						if err != nil {
 							cc.Log.Err(err).Msg("Could not get ETH price")
 							time.Sleep(exchangeRateBackoff.Duration())
+							continue
+						}
+
+						if ethPrice == decimal.NewFromInt(0) {
+							cc.Log.Warn().Msg("new ethPrice was 0, exiting loop")
 							continue
 						}
 
