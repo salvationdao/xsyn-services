@@ -278,7 +278,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						From:                 passport.XsynSaleUserID,
 						Amount:               *xfer.Amount,
 						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
-						Description:          fmt.Sprintf("sup deposit on BSC %s", xfer.TxID.Hex()),
+						Description:          fmt.Sprintf("[DEPOSIT] SUPS on BSC %s", xfer.TxID.Hex()),
 					}
 
 					result := <-resultChan
