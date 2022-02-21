@@ -6,7 +6,6 @@ import (
 	"passport"
 	"passport/api"
 	"passport/db"
-	"time"
 
 	"github.com/ninja-software/sale/dispersions"
 	"github.com/ninja-software/terror/v2"
@@ -27,14 +26,14 @@ func (s *Seeder) EarlyContributors(ctx context.Context) error {
 		if err != nil {
 			return terror.Error(err)
 		}
-		for _, output := range v {
+		for i, output := range v {
 			amt := decimal.New(int64(output.Output), 18)
 			_, err = api.CreateTransactionEntry(s.TxConn,
 				*amt.BigInt(),
 				u.ID,
 				passport.XsynSaleUserID,
 				"Supremacy early contributor dispersion.",
-				passport.TransactionReference(fmt.Sprintf("supremacy|early_contributor|%d", time.Now().UnixNano())),
+				passport.TransactionReference(fmt.Sprintf("supremacy|early_contributor|%d", i)),
 			)
 			if err != nil {
 				return terror.Error(err)
