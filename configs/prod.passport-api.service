@@ -1,0 +1,15 @@
+[Unit]
+Description=passport server service
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+User=passport
+LimitNOFILE=100000000
+WorkingDirectory=/usr/share/ninja_syndicate/passport-api-online
+ExecStart=/usr/share/ninja_syndicate/passport-api-online/passport-api serve
+EnvironmentFile=/usr/share/ninja_syndicate/passport-api-online/init/passport-api.env
+
+[Install]
+WantedBy=multi-user.target
