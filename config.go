@@ -13,6 +13,7 @@ type Config struct {
 	GameserverHostURL   string
 	MetaMaskSignMessage string // The message to see in the metamask signup flow, needs to match frontend
 	BridgeParams        *BridgeParams
+	OnlyWalletConnect   bool
 }
 
 type BridgeParams struct {
