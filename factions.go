@@ -33,3 +33,39 @@ type FactionStat struct {
 	MVP           *User     `json:"mvp,omitempty"`
 	SupsVoted     string    `json:"supsVoted"`
 }
+
+var Factions = []*Faction{
+	{
+		ID:    RedMountainFactionID,
+		Label: "Red Mountain Offworld Mining Corporation",
+		Theme: &FactionTheme{
+			Primary:    "#C24242",
+			Secondary:  "#FFFFFF",
+			Background: "#120E0E",
+		},
+		// NOTE: change content
+		Description: "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
+	},
+	{
+		ID:    BostonCyberneticsFactionID,
+		Label: "Boston Cybernetics",
+		Theme: &FactionTheme{
+			Primary:    "#428EC1",
+			Secondary:  "#FFFFFF",
+			Background: "#080C12",
+		},
+		// NOTE: change content
+		Description: "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
+	},
+	{
+		ID:    ZaibatsuFactionID,
+		Label: "Zaibatsu Heavy Industries",
+		Theme: &FactionTheme{
+			Primary:    "#FFFFFF",
+			Secondary:  "#000000",
+			Background: "#0D0D0D",
+		},
+		// NOTE: change content
+		Description: "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
+	},
+}
