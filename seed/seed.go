@@ -44,7 +44,7 @@ func (s *Seeder) Run(isProd bool) error {
 	}
 
 	fmt.Println("Seeding factions")
-	factions, err = s.factions(ctx)
+	_, err = s.factions(ctx)
 	if err != nil {
 		return terror.Error(err, "seed factions")
 	}
@@ -175,44 +175,9 @@ func (s *Seeder) zaibatsuWarMachineAbilitySet(ctx context.Context, abilities []*
 	return nil
 }
 
-var factions = []*passport.Faction{
-	{
-		ID:    passport.RedMountainFactionID,
-		Label: "Red Mountain Offworld Mining Corporation",
-		Theme: &passport.FactionTheme{
-			Primary:    "#C24242",
-			Secondary:  "#FFFFFF",
-			Background: "#120E0E",
-		},
-		// NOTE: change content
-		Description: "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
-	},
-	{
-		ID:    passport.BostonCyberneticsFactionID,
-		Label: "Boston Cybernetics",
-		Theme: &passport.FactionTheme{
-			Primary:    "#428EC1",
-			Secondary:  "#FFFFFF",
-			Background: "#080C12",
-		},
-		// NOTE: change content
-		Description: "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
-	},
-	{
-		ID:    passport.ZaibatsuFactionID,
-		Label: "Zaibatsu Heavy Industries",
-		Theme: &passport.FactionTheme{
-			Primary:    "#FFFFFF",
-			Secondary:  "#000000",
-			Background: "#0D0D0D",
-		},
-		// NOTE: change content
-		Description: "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
-	},
-}
-
 func (s *Seeder) factions(ctx context.Context) ([]*passport.Faction, error) {
-	for _, faction := range factions {
+	factions := []*passport.Faction{}
+	for _, faction := range passport.Factions {
 		var err error
 		logoBlob := &passport.Blob{}
 		backgroundBlob := &passport.Blob{}
@@ -254,6 +219,8 @@ func (s *Seeder) factions(ctx context.Context) ([]*passport.Faction, error) {
 		if err != nil {
 			return nil, terror.Error(err)
 		}
+
+		factions = append(factions, faction)
 	}
 
 	// build faction mvp material view

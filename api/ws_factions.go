@@ -41,6 +41,7 @@ func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Fa
 	api.SubscribeCommand(HubKeyFactionUpdatedSubscribe, factionHub.FactionUpdatedSubscribeHandler)
 	api.SubscribeCommand(HubKeyFactionStatUpdatedSubscribe, factionHub.FactionStatUpdatedSubscribeHandler)
 	api.SubscribeCommand(HubKeyFactionChatSubscribe, factionHub.FactionChatUpdatedSubscribeHandler)
+	api.SubscribeCommand(HubKeyGlobalChatSubscribe, factionHub.GlobalChatUpdatedSubscribeHandler)
 
 	return factionHub
 }
@@ -170,16 +171,18 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 type FactionChatRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		Message string `json:"message"`
+		FactionID passport.FactionID `json:"factionID"`
+		Message   string             `json:"message"`
 	} `json:"payload"`
 }
 
 // FactionChatSend contains chat message data to send.
 type FactionChatSend struct {
-	Message      string           `json:"message"`
-	FromUsername string           `json:"fromUsername"`
-	AvatarID     *passport.BlobID `json:"avatarID,omitempty"`
-	SentAt       time.Time        `json:"sentAt"`
+	Message       string           `json:"message"`
+	FromUsername  string           `json:"fromUsername"`
+	FactionColour *string          `json:"factionColour"`
+	AvatarID      *passport.BlobID `json:"avatarID,omitempty"`
+	SentAt        time.Time        `json:"sentAt"`
 }
 
 // rootHub.SecureCommand(HubKeyFactionChat, factionHub.FactionChatHandler)
@@ -203,16 +206,47 @@ func (fc *FactionController) FactionChatHandler(ctx context.Context, hubc *hub.C
 	if err != nil {
 		return terror.Error(err)
 	}
-	if user.FactionID == nil || user.FactionID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "Require to join a faction to send message")
+
+	var factionColour *string
+	// get faction primary colour from faction
+	if user.FactionID != nil {
+		for _, faction := range passport.Factions {
+			if faction.ID == *user.FactionID {
+				factionColour = &faction.Theme.Primary
+				break
+			}
+		}
 	}
 
-	// broadcast message
-	fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID)), &FactionChatSend{
-		Message:      req.Payload.Message,
-		FromUsername: user.Username,
-		AvatarID:     user.AvatarID,
-		SentAt:       time.Now(),
+	// check if the faction id is provided
+	if !req.Payload.FactionID.IsNil() {
+		if user.FactionID == nil || user.FactionID.IsNil() {
+			return terror.Error(terror.ErrInvalidInput, "Require to join a faction to send message")
+		}
+
+		if *user.FactionID != req.Payload.FactionID {
+			return terror.Error(terror.ErrForbidden, "Users are not allow to join the faction chat which they are not belong to")
+		}
+
+		// send message
+		fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID)), &FactionChatSend{
+			Message:       req.Payload.Message,
+			FromUsername:  user.Username,
+			AvatarID:      user.AvatarID,
+			SentAt:        time.Now(),
+			FactionColour: factionColour,
+		})
+		reply(true)
+		return nil
+	}
+
+	// global message
+	fc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyGlobalChatSubscribe), &FactionChatSend{
+		Message:       req.Payload.Message,
+		FromUsername:  user.Username,
+		AvatarID:      user.AvatarID,
+		SentAt:        time.Now(),
+		FactionColour: factionColour,
 	})
 	reply(true)
 
@@ -292,6 +326,17 @@ func (fc *FactionController) FactionStatUpdatedSubscribeHandler(ctx context.Cont
 	)
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionStatUpdatedSubscribe, req.Payload.FactionID)), nil
+}
+
+const HubKeyGlobalChatSubscribe hub.HubCommandKey = "GLOBAL:CHAT:SUBSCRIBE"
+
+func (fc *FactionController) GlobalChatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+	return req.TransactionID, messagebus.BusKey(HubKeyGlobalChatSubscribe), nil
 }
 
 const HubKeyFactionChatSubscribe hub.HubCommandKey = "FACTION:CHAT:SUBSCRIBE"
