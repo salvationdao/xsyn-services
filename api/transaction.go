@@ -151,13 +151,8 @@ func (api *API) CommitTransactions(ctx context.Context, txRefs ...passport.Trans
 						delete(heldTxList, txRef)
 						continue
 					}
-					api.Log.Debug().Msg("START UpdateUserCacheAddSups in CommitTransactions")
-					api.UpdateUserCacheAddSups(ctx, tx.From, tx.Amount)
-					api.Log.Debug().Msg("`FINISH UpdateUserCacheAddSups in CommitTransactions")
-
 				}
 				results = append(results, result.Transaction)
-
 				// remove cached transaction after it is committed
 				delete(heldTxList, txRef)
 			} else {
