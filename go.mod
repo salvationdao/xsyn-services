@@ -26,7 +26,7 @@ require (
 	github.com/makiuchi-d/arelo v1.9.2
 	github.com/microcosm-cc/bluemonday v1.0.17
 	github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6
-	github.com/ninja-software/sale v0.0.5
+	github.com/ninja-software/sale v0.0.6
 	github.com/ninja-software/terror/v2 v2.0.7
 	github.com/ninja-syndicate/hub v1.5.1
 	github.com/ninja-syndicate/supremacy-bridge v0.1.26
