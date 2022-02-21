@@ -999,7 +999,7 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 						cc.updatePriceFunc(ethListener.Symbol, ethPrice)
 						cc.updatePriceFuncMu.Unlock()
 
-						time.Sleep(10 * time.Second)
+						time.Sleep(10 * time.Minute)
 					}
 				}
 			}()
