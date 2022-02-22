@@ -90,5 +90,5 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           prerelease: true
-          files: passport_api_${{env.GITVERSION}}.tar.gz
+          files: passport_api-${{env.GITVERSION}}.tar.gz
           generate_release_notes: true
