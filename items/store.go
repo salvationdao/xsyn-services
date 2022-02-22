@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"passport"
 	"passport/db"
 	"time"
@@ -150,4 +151,118 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 
 	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), storeItem)
 	return nil
+}
+
+// Purchase attempts to make a purchase for a given user ID and a given
+func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
+	supPrice decimal.Decimal, txChan chan<- *passport.NewTransaction, user passport.User, factionID passport.FactionID, externalURL string) (*uint64, error) {
+
+	// get all faction items marked as loot box
+	mechs, err := db.StoreItemListByFactionLootbox(ctx, conn, passport.FactionID(factionID))
+	if err != nil {
+		return nil, terror.Error(err, "failed to get loot box items")
+	}
+
+	if len(mechs) == 0 {
+		return nil, terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
+	}
+
+	chosenIdx := rand.Intn(len(mechs))
+	storeItem := mechs[chosenIdx]
+
+	// check available
+	if storeItem.AmountAvailable < 1 || storeItem.AmountSold >= storeItem.AmountAvailable {
+		return nil, terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
+	}
+
+	txID := uuid.Must(uuid.NewV4())
+	txRef := fmt.Sprintf("Lootbox %s %s ", storeItem.Name, txID)
+
+	// convert price to sups
+	asDecimal := decimal.New(int64(storeItem.UsdCentCost), 0).Div(supPrice).Ceil()
+	asSups := decimal.New(asDecimal.IntPart(), 18).BigInt()
+
+	resultChan := make(chan *passport.TransactionResult, 1)
+
+	txChan <- &passport.NewTransaction{
+		To:                   passport.XsynTreasuryUserID,
+		From:                 user.ID,
+		Amount:               *asSups,
+		TransactionReference: passport.TransactionReference(txRef),
+		Description:          "Lootbox prize.",
+		ResultChan:           resultChan,
+	}
+
+	result := <-resultChan
+
+	if result.Error != nil {
+		return nil, terror.Error(result.Error)
+	}
+
+	if result.Transaction.Status != passport.TransactionSuccess {
+		return nil, terror.Error(fmt.Errorf("lootbox failed: %s", result.Transaction.Reason), fmt.Sprintf("lootbox failed: %s.", result.Transaction.Reason))
+	}
+
+	// refund callback
+	refund := func(reason string) {
+		txChan <- &passport.NewTransaction{
+			To:                   user.ID,
+			From:                 passport.XsynTreasuryUserID,
+			Amount:               *asSups,
+			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
+			Description:          "Refund of lootbox",
+		}
+	}
+
+	// let's assign the item.
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		refund(err.Error())
+		return nil, terror.Error(err)
+	}
+
+	defer func(tx pgx.Tx, ctx context.Context) {
+		err := tx.Rollback(ctx)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			log.Err(err).Msg("error rolling back")
+		}
+	}(tx, ctx)
+
+	// create metadata object
+	newItem := &passport.XsynMetadata{
+		CollectionID: storeItem.CollectionID,
+		Description:  storeItem.Description,
+		Image:        storeItem.Image,
+		Attributes:   storeItem.Attributes,
+	}
+
+	// create item on metadata table
+	err = db.XsynMetadataInsert(ctx, conn, newItem, "test")
+	if err != nil {
+		refund(err.Error())
+		return nil, terror.Error(err)
+	}
+
+	// assign new item to user
+	err = db.XsynMetadataAssignUser(ctx, conn, newItem.TokenID, user.ID)
+	if err != nil {
+		refund(err.Error())
+		return nil, terror.Error(err)
+	}
+
+	// update item amounts
+	err = db.StoreItemPurchased(ctx, conn, storeItem)
+	if err != nil {
+		refund(err.Error())
+		return nil, terror.Error(err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		refund(err.Error())
+		return nil, terror.Error(err)
+	}
+
+	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), storeItem)
+	return &newItem.TokenID, nil
 }
