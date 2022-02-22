@@ -412,11 +412,15 @@ func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context
 		return terror.Error(fmt.Errorf("asset doesn't exist"), "Failed to get asset.")
 	}
 
+	frozenAt := time.Now()
+
 	err = db.XsynAssetFreeze(ctx, sc.Conn, req.Payload.AssetTokenID, userID)
 	if err != nil {
 		reply(false)
 		return terror.Error(err)
 	}
+
+	asset.FrozenAt = &frozenAt
 
 	go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.AssetTokenID)), asset)
 
@@ -469,6 +473,38 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 
 	for _, asset := range assets {
 		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
+	}
+
+	// auto release it after an hour
+	for _, asset := range assets {
+		go func(asset *passport.XsynMetadata) {
+			frozenAt := asset.FrozenAt
+			time.Sleep(3 * time.Hour)
+			// get asset from db
+			a, err := db.AssetGet(ctx, sc.Conn, asset.TokenID)
+			if err != nil {
+				sc.API.Log.Err(err).Msgf("Failed to get asset, token id: %d", asset.TokenID)
+				return
+			}
+
+			// check whether the frozen at has changed
+			if a.FrozenAt == nil || !frozenAt.Equal(*a.FrozenAt) {
+				// skip, if frozen at is changed
+				return
+			}
+
+			// otherwise release it
+			err = db.XsynAssetBulkRelease(ctx, sc.Conn, []*passport.WarMachineMetadata{
+				{
+					TokenID: a.TokenID,
+				},
+			}, userID)
+			if err != nil {
+				sc.API.Log.Err(err).Msgf("Failed to auto released, token id: %d", asset.TokenID)
+				return
+			}
+
+		}(asset)
 	}
 
 	reply(true)

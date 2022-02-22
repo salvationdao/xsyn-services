@@ -86,7 +86,6 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 	// listen on queuing war machine
 	api.SecureUserSubscribeCommand(HubKeyUserWarMachineQueuePositionSubscribe, userHub.WarMachineQueuePositionUpdatedSubscribeHandler)
 	api.SecureUserSubscribeCommand(HubKeyUserSupsSubscribe, userHub.UserSupsUpdatedSubscribeHandler)
-	api.SecureUserSubscribeCommand(HubKeyUserFactionSubscribe, userHub.UserFactionUpdatedSubscribeHandler)
 
 	api.SecureUserSubscribeCommand(HubKeyBlockConfirmation, userHub.BlockConfirmationHandler)
 
@@ -2255,55 +2254,6 @@ func (uc *UserController) UserStatUpdatedSubscribeHandler(ctx context.Context, c
 	)
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, client.Identifier())), nil
-}
-
-type UserFactionDetail struct {
-	RecruitID      string          `json:"recruitID"`
-	SupsEarned     passport.BigInt `json:"supsEarned"`
-	Rank           string          `json:"rank"`
-	SpectatedCount int64           `json:"spectatedCount"`
-
-	// faction detail
-	FactionID        string                 `json:"factionID"`
-	LogoBlobID       passport.BlobID        `json:"logoBlobID" db:"logo_blob_id"`
-	BackgroundBlobID passport.BlobID        `json:"backgroundBlobID" db:"background_blob_id"`
-	Theme            *passport.FactionTheme `json:"theme"`
-}
-
-const HubKeyUserFactionSubscribe hub.HubCommandKey = "USER:FACTION:SUBSCRIBE"
-
-func (uc *UserController) UserFactionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
-	}
-
-	userID := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
-	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrForbidden)
-	}
-
-	// get user faction
-	faction, err := db.FactionGetByUserID(ctx, uc.Conn, userID)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return "", "", terror.Error(err)
-	}
-
-	if faction != nil {
-		reply(&UserFactionDetail{
-			RecruitID:        "3000",
-			SupsEarned:       passport.BigInt{},
-			Rank:             "100",
-			SpectatedCount:   100,
-			FactionID:        faction.ID.String(),
-			Theme:            faction.Theme,
-			LogoBlobID:       faction.LogoBlobID,
-			BackgroundBlobID: faction.BackgroundBlobID,
-		})
-	}
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserFactionSubscribe, userID)), nil
 }
 
 const HubKeyUserWarMachineQueuePositionSubscribe hub.HubCommandKey = "USER:WAR:MACHINE:QUEUE:POSITION:SUBSCRIBE"
