@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"passport"
 	"passport/db"
+	"time"
 
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 
@@ -51,13 +52,19 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 
 	resultChan := make(chan *passport.TransactionResult, 1)
 
-	txChan <- &passport.NewTransaction{
+	select {
+	case txChan <- &passport.NewTransaction{
 		To:                   passport.XsynTreasuryUserID,
 		From:                 user.ID,
 		Amount:               *asSups,
 		TransactionReference: passport.TransactionReference(txRef),
 		Description:          "Purchase on Supremacy storefront.",
 		ResultChan:           resultChan,
+	}:
+
+	case <-time.After(10 * time.Second):
+		log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Purchase on Supremacy storefront.")
 	}
 
 	result := <-resultChan
@@ -72,12 +79,18 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 
 	// refund callback
 	refund := func(reason string) {
-		txChan <- &passport.NewTransaction{
+		select {
+		case txChan <- &passport.NewTransaction{
 			To:                   user.ID,
 			From:                 passport.XsynTreasuryUserID,
 			Amount:               *asSups,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
 			Description:          "Refund of purchase on Supremacy storefront.",
+		}:
+
+		case <-time.After(10 * time.Second):
+			log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Refund of purchase on Supremacy storefront.")
 		}
 	}
 

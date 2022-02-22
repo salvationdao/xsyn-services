@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -28,12 +29,17 @@ func (api *API) InitialiseTreasuryFundTicker() {
 
 		//treasuryTransfer := big.NewInt(0)
 		//treasuryTransfer.Add(treasuryTransfer, fund)
-
-		api.transaction <- &passport.NewTransaction{
+		select {
+		case api.transaction <- &passport.NewTransaction{
 			From:                 passport.XsynTreasuryUserID,
 			To:                   passport.SupremacySupPoolUserID,
 			Amount:               *fund,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("treasury|ticker|%s", time.Now())),
+		}:
+
+		case <-time.After(10 * time.Second):
+			api.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("treasury tick")
 		}
 
 		return http.StatusOK, nil
@@ -62,7 +68,8 @@ func (api *API) StartSupremacySupPool() {
 
 // SupremacySupPoolSet set current sup pool detail
 func (api *API) SupremacySupPoolSet(sups passport.BigInt) {
-	api.supremacySupsPool <- func(ssp *SupremacySupPool) {
+	select {
+	case api.supremacySupsPool <- func(ssp *SupremacySupPool) {
 		// initialise sup pool value
 		ssp.TotalSups = passport.BigInt{Int: *big.NewInt(0)}
 		ssp.TotalSups.Add(&ssp.TotalSups.Int, &sups.Int)
@@ -70,16 +77,27 @@ func (api *API) SupremacySupPoolSet(sups passport.BigInt) {
 		ssp.TrickleAmount = passport.BigInt{Int: *big.NewInt(0)}
 		ssp.TrickleAmount.Add(&ssp.TrickleAmount.Int, &sups.Int)
 		ssp.TrickleAmount.Div(&ssp.TrickleAmount.Int, big.NewInt(100))
+	}:
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Supremacy Sup Pool Set")
 	}
 }
 
 // SupremacySupPoolGetTrickleAmount return current trickle amount
 func (api *API) SupremacySupPoolGetTrickleAmount() passport.BigInt {
 	amountChan := make(chan passport.BigInt)
-	api.supremacySupsPool <- func(ssp *SupremacySupPool) {
+	select {
+	case api.supremacySupsPool <- func(ssp *SupremacySupPool) {
 		amountChan <- ssp.TrickleAmount
+	}:
+		return <-amountChan
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Supremacy Sup Pool Get Trickle Amount")
 	}
-	return <-amountChan
 }
 
 type ServerClientsList map[ServerClientName]map[*hub.Client]bool
@@ -133,10 +151,17 @@ func (api *API) ServerClientOffline(hubc *hub.Client) {
 func (api *API) ServerClients(fn ServerClientsFunc) {
 	var wg sync.WaitGroup
 	wg.Add(1)
-	api.serverClients <- func(serverClients ServerClientsList) {
+	select {
+	case api.serverClients <- func(serverClients ServerClientsList) {
 		fn(serverClients)
 		wg.Done()
+	}:
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Server Clients")
 	}
+
 	wg.Wait()
 }
 
@@ -178,7 +203,8 @@ type ServerClientMessage struct {
 
 func (api *API) SendToServerClient(ctx context.Context, name ServerClientName, msg *ServerClientMessage) {
 	api.Log.Debug().Msgf("sending message to server clients: %s", name)
-	api.serverClients <- func(servers ServerClientsList) {
+	select {
+	case api.serverClients <- func(servers ServerClientsList) {
 		gameClientMap, ok := servers[name]
 		if !ok {
 			api.Log.Debug().Msgf("no server clients for %s", name)
@@ -192,11 +218,18 @@ func (api *API) SendToServerClient(ctx context.Context, name ServerClientName, m
 
 			go sc.Send(payload)
 		}
+	}:
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Send To Server Client")
 	}
+
 }
 
 func (api *API) SendToAllServerClient(ctx context.Context, msg *ServerClientMessage) {
-	api.serverClients <- func(servers ServerClientsList) {
+	select {
+	case api.serverClients <- func(servers ServerClientsList) {
 		for gameName, scm := range servers {
 			for sc := range scm {
 				payload, err := json.Marshal(msg)
@@ -206,6 +239,11 @@ func (api *API) SendToAllServerClient(ctx context.Context, msg *ServerClientMess
 				go sc.Send(payload)
 			}
 		}
+	}:
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Send To All Server Client")
 	}
 }
 

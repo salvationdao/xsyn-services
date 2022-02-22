@@ -235,7 +235,14 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 	// send through transactions
 	for _, tx := range transactions {
 		tx.ResultChan = make(chan *passport.TransactionResult, 1)
-		sc.API.transaction <- tx
+		select {
+		case sc.API.transaction <- tx:
+
+		case <-time.After(10 * time.Second):
+			sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("transaction send")
+		}
+
 		result := <-tx.ResultChan
 
 		if result.Transaction != nil && result.Transaction.Status != passport.TransactionSuccess {
@@ -343,7 +350,14 @@ func (sc *SupremacyControllerWS) trickleFactory(key string, totalTick int, supsP
 		}
 
 		sc.poolLowPriorityLock()
-		sc.API.transaction <- transaction
+		select {
+		case sc.API.transaction <- transaction:
+
+		case <-time.After(10 * time.Second):
+			sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("transaction send")
+		}
+
 		result := <-transaction.ResultChan
 		if result.Error != nil {
 			// clean up
@@ -1154,7 +1168,14 @@ func (sc *SupremacyControllerWS) SupremacyPayAssetInsuranceHandler(ctx context.C
 		return terror.Error(terror.ErrInvalidInput, "Provided faction does not exist")
 	}
 
-	sc.API.transaction <- tx
+	select {
+	case sc.API.transaction <- tx:
+
+	case <-time.After(10 * time.Second):
+		sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("transaction send")
+	}
+
 	result := <-resultChan
 	if result.Transaction.Status != passport.TransactionSuccess {
 		return terror.Error(fmt.Errorf("transaction failed: %s", result.Transaction.Reason), fmt.Sprintf("Transaction failed: %s.", result.Transaction.Reason))
@@ -1206,7 +1227,13 @@ func (sc *SupremacyControllerWS) SupremacyRedeemFactionContractRewardHandler(ctx
 		return terror.Error(terror.ErrInvalidInput, "Provided faction does not exist")
 	}
 
-	sc.API.transaction <- tx
+	select {
+	case sc.API.transaction <- tx:
+
+	case <-time.After(10 * time.Second):
+		sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("transaction send")
+	}
 
 	//errChan := make(chan error, 10)
 	//sc.API.HoldTransaction(errChan, tx)
