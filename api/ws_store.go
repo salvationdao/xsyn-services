@@ -37,7 +37,7 @@ func NewStoreController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Stor
 	}
 
 	api.Command(HubKeyStoreList, storeHub.StoreListHandler)
-	api.Command(HubKeyLootbox, storeHub.PurchaseLootboxHandler)
+	// api.Command(HubKeyLootbox, storeHub.PurchaseLootboxHandler)
 
 	api.SecureCommand(HubKeyPurchaseItem, storeHub.PurchaseItemHandler)
 
