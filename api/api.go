@@ -82,7 +82,8 @@ type API struct {
 	// Queue Reward
 	TxConn *sql.DB
 
-	walletOnlyConnect bool
+	walletOnlyConnect    bool
+	storeItemExternalUrl string
 }
 
 // NewAPI registers routes
@@ -103,6 +104,7 @@ func NewAPI(
 	discordClientID string,
 	discordClientSecret string,
 	clientToken string,
+	externalUrl string,
 ) *API {
 	msgBus, cleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
 	api := &API{
@@ -126,7 +128,7 @@ func NewAPI(
 				Payload: nil,
 			},
 			AcceptOptions: &websocket.AcceptOptions{
-				InsecureSkipVerify: true, // TODO: set this depending on environment
+				InsecureSkipVerify: config.InsecureSkipVerifyCheck,
 				OriginPatterns:     []string{config.PassportWebHostURL, config.GameserverHostURL},
 			},
 			WebsocketReadLimit: 104857600,
@@ -156,7 +158,8 @@ func NewAPI(
 		// faction war machine contract
 		factionWarMachineContractMap: make(map[passport.FactionID]chan func(*WarMachineContract)),
 
-		walletOnlyConnect: config.OnlyWalletConnect,
+		walletOnlyConnect:    config.OnlyWalletConnect,
+		storeItemExternalUrl: externalUrl,
 	}
 
 	api.Routes.Use(middleware.RequestID)
