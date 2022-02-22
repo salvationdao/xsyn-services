@@ -89,6 +89,7 @@ func main() {
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
 
 					&cli.BoolFlag{Name: "is_testnet_blockchain", Value: false, EnvVars: []string{envPrefix + "_IS_TESTNET_BLOCKCHAIN"}, Usage: "Update state according to testnet"},
+					&cli.BoolFlag{Name: "run_blockchain_bridge", Value: false, EnvVars: []string{envPrefix + "_RUN_BLOCKCHAIN_BRIDGE"}, Usage: "Run the bridge to blockchain data"},
 
 					&cli.StringFlag{Name: "environment", Value: "development", DefaultText: "development", EnvVars: []string{envPrefix + "_ENVIRONMENT", "ENVIRONMENT"}, Usage: "This program environment (development, testing, training, staging, production), it sets the log levels"},
 					&cli.StringFlag{Name: "sentry_dsn_backend", Value: "", EnvVars: []string{envPrefix + "_SENTRY_DSN_BACKEND", "SENTRY_DSN_BACKEND"}, Usage: "Sends error to remote server. If set, it will send error."},
@@ -363,6 +364,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	BSCRouterAddr := ctxCLI.String("bsc_router_addr")
 
 	isTestnetBlockchain := ctxCLI.Bool("is_testnet_blockchain")
+	runBlockchainBridge := ctxCLI.Bool("run_blockchain_bridge")
 
 	mailDomain := ctxCLI.String("mail_domain")
 	mailAPIKey := ctxCLI.String("mail_apikey")
@@ -489,6 +491,6 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
-	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, googleClientID, mailer, apiAddr, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config, twitterAPIKey, twitterAPISecret, discordClientID, discordClientSecret, gameserverToken, externalURL, isTestnetBlockchain)
+	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, googleClientID, mailer, apiAddr, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config, twitterAPIKey, twitterAPISecret, discordClientID, discordClientSecret, gameserverToken, externalURL, isTestnetBlockchain, runBlockchainBridge)
 	return api.Run(ctx)
 }

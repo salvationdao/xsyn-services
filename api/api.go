@@ -106,6 +106,7 @@ func NewAPI(
 	clientToken string,
 	externalUrl string,
 	isTestnetBlockchain bool,
+	runBlockchainBridge bool,
 ) *API {
 	msgBus, cleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
 	api := &API{
@@ -204,8 +205,12 @@ func NewAPI(
 		log.Fatal().Msgf("failed to init hub auther: %s", err.Error())
 	}
 
-	// Runs the listeners for all the chain bridges
-	cc := RunChainListeners(log, api, config.BridgeParams, isTestnetBlockchain)
+	cc := &ChainClients{}
+	if runBlockchainBridge {
+		// Runs the listeners for all the chain bridges
+		cc = RunChainListeners(log, api, config.BridgeParams, isTestnetBlockchain)
+
+	}
 
 	api.Routes.Handle("/metrics", promhttp.Handler())
 	api.Routes.Route("/api", func(r chi.Router) {
@@ -221,8 +226,10 @@ func NewAPI(
 			r.Get("/asset/{token_id}", api.WithError(api.AssetGet))
 			r.Get("/auth/twitter", api.WithError(api.Auth.TwitterAuth))
 			r.Get("/dummy-sale", api.WithError(api.Dummysale))
-			r.Get("/check-eth-tx/{tx_id}", api.WithError(cc.CheckEthTx))
-			r.Get("/check-bsc-tx/{tx_id}", api.WithError(cc.CheckBscTx))
+			if runBlockchainBridge {
+				r.Get("/check-eth-tx/{tx_id}", api.WithError(cc.CheckEthTx))
+				r.Get("/check-bsc-tx/{tx_id}", api.WithError(cc.CheckBscTx))
+			}
 			r.Get("/whitelist/check", api.WithError(api.WhitelistOnlyWalletCheck))
 			r.Get("/faction-data", api.WithError(api.FactionGetData))
 		})
@@ -230,8 +237,9 @@ func NewAPI(
 		// See roothub.ServeHTTP for the setup of sentry on this route.
 		r.Handle("/ws", api.Hub)
 	})
-
-	_ = NewSupController(log, conn, api, cc)
+	if runBlockchainBridge {
+		_ = NewSupController(log, conn, api, cc)
+	}
 	_ = NewAssetController(log, conn, api)
 	_ = NewCollectionController(log, conn, api)
 	_ = NewServerClientController(log, conn, api)
