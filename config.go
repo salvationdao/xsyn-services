@@ -14,6 +14,7 @@ type Config struct {
 	MetaMaskSignMessage string // The message to see in the metamask signup flow, needs to match frontend
 	BridgeParams        *BridgeParams
 	OnlyWalletConnect   bool
+	WhitelistEndpoint   string
 }
 
 type BridgeParams struct {
