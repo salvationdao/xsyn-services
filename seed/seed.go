@@ -20,10 +20,11 @@ type Seeder struct {
 	Conn            *pgxpool.Pool
 	TxConn          *sql.DB
 	PassportHostUrl string
+	ExternalURL     string
 }
 
 // NewSeeder returns a new Seeder
-func NewSeeder(conn *pgxpool.Pool, txConn *sql.DB, passportHostUrl string) *Seeder {
+func NewSeeder(conn *pgxpool.Pool, txConn *sql.DB, passportHostUrl string, externalUrl string) *Seeder {
 	s := &Seeder{Conn: conn, TxConn: txConn, PassportHostUrl: passportHostUrl}
 	return s
 }
@@ -133,18 +134,6 @@ func (s *Seeder) Run(isProd bool) error {
 
 	}
 	fmt.Println("Seed initial state")
-
-	q := `INSERT INTO state (latest_eth_block,
-                             latest_bsc_block,
-							 eth_to_usd,
-							 bnb_to_usd,
-							 sup_to_usd)
-			VALUES(6402269, 16886589, 2000, 300, .12);`
-
-	_, err = s.Conn.Exec(ctx, q)
-	if err != nil {
-		return terror.Error(err, "unable to seed state")
-	}
 
 	fmt.Println("Seed complete")
 	return nil

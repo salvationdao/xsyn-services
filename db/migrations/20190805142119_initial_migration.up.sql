@@ -444,7 +444,7 @@ CREATE TABLE xsyn_metadata
     description         TEXT,
     external_url        TEXT,
     image               TEXT,
-    animation_url       TEXT,       
+    animation_url       TEXT,
     durability          INT                        NOT NULL DEFAULT 100,
     attributes          JSONB,
     additional_metadata JSONB,

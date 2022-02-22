@@ -88,6 +88,9 @@ func main() {
 					&cli.StringFlag{Name: "database_name", Value: "passport", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
 
+					&cli.BoolFlag{Name: "is_testnet_blockchain", Value: false, EnvVars: []string{envPrefix + "_IS_TESTNET_BLOCKCHAIN"}, Usage: "Update state according to testnet"},
+					&cli.BoolFlag{Name: "run_blockchain_bridge", Value: false, EnvVars: []string{envPrefix + "_RUN_BLOCKCHAIN_BRIDGE"}, Usage: "Run the bridge to blockchain data"},
+
 					&cli.StringFlag{Name: "environment", Value: "development", DefaultText: "development", EnvVars: []string{envPrefix + "_ENVIRONMENT", "ENVIRONMENT"}, Usage: "This program environment (development, testing, training, staging, production), it sets the log levels"},
 					&cli.StringFlag{Name: "sentry_dsn_backend", Value: "", EnvVars: []string{envPrefix + "_SENTRY_DSN_BACKEND", "SENTRY_DSN_BACKEND"}, Usage: "Sends error to remote server. If set, it will send error."},
 					&cli.StringFlag{Name: "sentry_server_name", Value: "dev-pc", EnvVars: []string{envPrefix + "_SENTRY_SERVER_NAME", "SENTRY_SERVER_NAME"}, Usage: "The machine name that this program is running on."},
@@ -189,7 +192,7 @@ func main() {
 					&cli.StringFlag{Name: "database_port", Value: "5432", EnvVars: []string{"PASSPORT_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
 					&cli.StringFlag{Name: "database_name", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{"PASSPORT_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
-					&cli.StringFlag{Name: "passport_web_host_url", Value: "http://localhost:8086", EnvVars: []string{envPrefix + "_HOST_URL_API"}, Usage: "The API Url where files are hosted"},
+					&cli.StringFlag{Name: "passport_web_host_url", Value: "http://localhost:8086", EnvVars: []string{"PASSPORT_WEB_HOST_URL"}, Usage: "The API Url where files are hosted"},
 					&cli.BoolFlag{Name: "database_prod", Value: false, EnvVars: []string{"PASSPORT_DB_PROD", "DB_PROD"}, Usage: "seed the database (prod)"},
 					&cli.StringFlag{Name: "environment", Value: "development", DefaultText: "development", EnvVars: []string{"PASSPORT_ENVIRONMENT", "ENVIRONMENT"}, Usage: "This program environment (development, testing, training, staging, production), it sets the log levels"},
 					&cli.BoolFlag{Name: "seed", EnvVars: []string{"PASSPORT_DB_SEED", "DB_SEED"}, Usage: "seed the database"},
@@ -231,7 +234,7 @@ func main() {
 						return terror.Panic(err)
 					}
 
-					seeder := seed.NewSeeder(pgxconn, txConn, passportWebHostUrl)
+					seeder := seed.NewSeeder(pgxconn, txConn, passportWebHostUrl, passportWebHostUrl)
 					return seeder.Run(databaseProd)
 				},
 			},
@@ -360,9 +363,17 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	ETHChainID := ctxCLI.Int64("eth_chain_id")
 	BSCRouterAddr := ctxCLI.String("bsc_router_addr")
 
+	isTestnetBlockchain := ctxCLI.Bool("is_testnet_blockchain")
+	runBlockchainBridge := ctxCLI.Bool("run_blockchain_bridge")
+
 	mailDomain := ctxCLI.String("mail_domain")
 	mailAPIKey := ctxCLI.String("mail_apikey")
 	mailSender := ctxCLI.String("mail_sender")
+	externalURL := ctxCLI.String("passport_web_host_url")
+	insecuritySkipVerify := false
+	if environment == "development" || environment == "testing" {
+		insecuritySkipVerify = true
+	}
 
 	config := &passport.Config{
 		CookieSecure:        ctxCLI.Bool("cookie_secure"),
@@ -390,8 +401,9 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 			ETHChainID:        ETHChainID,
 			BSCRouterAddr:     common.HexToAddress(BSCRouterAddr),
 		},
-		OnlyWalletConnect: ctxCLI.Bool("only_wallet"),
-		WhitelistEndpoint: ctxCLI.String("whitelist_check_endpoint"),
+		OnlyWalletConnect:       ctxCLI.Bool("only_wallet"),
+		WhitelistEndpoint:       ctxCLI.String("whitelist_check_endpoint"),
+		InsecureSkipVerifyCheck: insecuritySkipVerify,
 	}
 
 	pgxconn, err := pgxconnect(
@@ -479,6 +491,6 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
-	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, googleClientID, mailer, apiAddr, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config, twitterAPIKey, twitterAPISecret, discordClientID, discordClientSecret, gameserverToken)
+	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, googleClientID, mailer, apiAddr, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config, twitterAPIKey, twitterAPISecret, discordClientID, discordClientSecret, gameserverToken, externalURL, isTestnetBlockchain, runBlockchainBridge)
 	return api.Run(ctx)
 }

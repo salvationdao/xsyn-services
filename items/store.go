@@ -25,7 +25,7 @@ import (
 
 // Purchase attempts to make a purchase for a given user ID and a given
 func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
-	supPrice decimal.Decimal, txChan chan<- *passport.NewTransaction, user passport.User, storeItemID passport.StoreItemID) error {
+	supPrice decimal.Decimal, txChan chan<- *passport.NewTransaction, user passport.User, storeItemID passport.StoreItemID, externalUrl string) error {
 	storeItem, err := db.StoreItemGet(ctx, conn, storeItemID)
 	if err != nil {
 		return terror.Error(err)
@@ -112,13 +112,13 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 	newItem := &passport.XsynMetadata{
 		CollectionID: storeItem.CollectionID,
 		Description:  storeItem.Description,
-		ExternalUrl:  "TODO",
 		Image:        storeItem.Image,
 		Attributes:   storeItem.Attributes,
+		AnimationURL: storeItem.AnimationURL,
 	}
 
 	// create item on metadata table
-	err = db.XsynMetadataInsert(ctx, conn, newItem)
+	err = db.XsynMetadataInsert(ctx, conn, newItem, externalUrl)
 	if err != nil {
 		refund(err.Error())
 		return terror.Error(err)

@@ -21,25 +21,51 @@ func CollectionInsert(ctx context.Context, conn Conn, collection *passport.Colle
 }
 
 // XsynMetadataInsert inserts a new item metadata
-func XsynMetadataInsert(ctx context.Context, conn Conn, nft *passport.XsynMetadata) error {
-	q := `	INSERT INTO xsyn_metadata (token_id, name, collection_id, game_object, description, external_url, image, attributes, additional_metadata)
+func XsynMetadataInsert(ctx context.Context, conn Conn, nft *passport.XsynMetadata, externalUrl string) error {
+	q := `	INSERT INTO xsyn_metadata (token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata)
 			VALUES((SELECT nextval('token_id_seq')),$1, $2, $3, $4, $5, $6, $7, $8)
-			RETURNING token_id,  name, description, external_url, image, attributes, minted`
+			RETURNING token_id`
+	var tokenID int
 
-	err := pgxscan.Get(ctx, conn, nft, q,
-		nft.Name,
-		nft.CollectionID,
-		nft.GameObject,
-		nft.Description,
-		nft.ExternalUrl,
-		nft.Image,
-		nft.Attributes,
-		nft.AdditionalMetadata,
-	)
-
+	err := pgxscan.Get(ctx, conn, &tokenID, q, nft.Name, nft.CollectionID, nft.GameObject, nft.Description, nft.Image, nft.AnimationURL, nft.Attributes, nft.AdditionalMetadata)
 	if err != nil {
 		return terror.Error(err)
 	}
+	updateQ := `UPDATE xsyn_metadata 
+				SET external_url = $1 
+				WHERE token_id = $2`
+	_, err = conn.Exec(ctx, updateQ, fmt.Sprintf("%s/asset/%d", externalUrl, tokenID), tokenID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	result, err := XsynMetadataGet(ctx, conn, uint64(tokenID))
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// Ivan
+	nft.UserID = result.UserID
+	nft.Username = result.Username
+	nft.TokenID = result.TokenID
+	nft.Name = result.Name
+	nft.CollectionID = result.CollectionID
+	nft.Collection = result.Collection
+	nft.GameObject = result.GameObject
+	nft.Description = result.Description
+	nft.ExternalUrl = result.ExternalUrl
+	nft.Image = result.Image
+	nft.AnimationURL = result.AnimationURL
+	nft.Durability = result.Durability
+	nft.Attributes = result.Attributes
+	nft.AdditionalMetadata = result.AdditionalMetadata
+	nft.DeletedAt = result.DeletedAt
+	nft.FrozenAt = result.FrozenAt
+	nft.LockedByID = result.LockedByID
+	nft.MintingSignature = result.MintingSignature
+	nft.UpdatedAt = result.UpdatedAt
+	nft.CreatedAt = result.CreatedAt
+	nft.TxHistory = result.TxHistory
 
 	return nil
 }

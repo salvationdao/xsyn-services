@@ -29,7 +29,7 @@ require (
 	github.com/ninja-software/sale v0.0.7
 	github.com/ninja-software/terror/v2 v2.0.7
 	github.com/ninja-syndicate/hub v1.5.7
-	github.com/ninja-syndicate/supremacy-bridge v0.1.32
+	github.com/ninja-syndicate/supremacy-bridge v0.1.33
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/prometheus/client_golang v1.11.0

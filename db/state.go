@@ -9,9 +9,12 @@ import (
 )
 
 // StateGet gets the latest state
-func StateGet(ctx context.Context, conn Conn) (*passport.State, error) {
+func StateGet(ctx context.Context, isTestnetBlockchain bool, conn Conn) (*passport.State, error) {
 	state := &passport.State{}
-	q := `SELECT * FROM state`
+	q := `SELECT latest_eth_block, latest_bsc_block, eth_to_usd, bnb_to_usd, sup_to_usd FROM state`
+	if isTestnetBlockchain {
+		q = `SELECT latest_eth_block_testnet AS latest_eth_block, latest_bsc_block_testnet AS latest_bsc_block, eth_to_usd, bnb_to_usd, sup_to_usd FROM state`
+	}
 	err := pgxscan.Get(ctx, conn, state, q)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -20,9 +23,12 @@ func StateGet(ctx context.Context, conn Conn) (*passport.State, error) {
 }
 
 // UpdateLatestETHBlock updates the latest eth block checked
-func UpdateLatestETHBlock(ctx context.Context, conn Conn, latestBlock uint64) (*passport.State, error) {
+func UpdateLatestETHBlock(ctx context.Context, isTestnetBlockchain bool, conn Conn, latestBlock uint64) (*passport.State, error) {
 	state := &passport.State{}
 	q := `UPDATE state SET latest_eth_block = $1 RETURNING latest_eth_block, latest_bsc_block, eth_to_usd, bnb_to_usd, sup_to_usd`
+	if isTestnetBlockchain {
+		q = `UPDATE state SET latest_eth_block_testnet = $1 RETURNING latest_eth_block_testnet AS latest_eth_block, latest_bsc_block_testnet AS latest_bsc_block, eth_to_usd, bnb_to_usd, sup_to_usd`
+	}
 	err := pgxscan.Get(ctx, conn, state, q, latestBlock)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -31,9 +37,12 @@ func UpdateLatestETHBlock(ctx context.Context, conn Conn, latestBlock uint64) (*
 }
 
 // UpdateLatestBSCBlock updates the latest eth block checked
-func UpdateLatestBSCBlock(ctx context.Context, conn Conn, latestBlock uint64) (*passport.State, error) {
+func UpdateLatestBSCBlock(ctx context.Context, isTestnetBlockchain bool, conn Conn, latestBlock uint64) (*passport.State, error) {
 	state := &passport.State{}
 	q := `UPDATE state SET latest_bsc_block = $1 RETURNING latest_eth_block, latest_bsc_block, eth_to_usd, bnb_to_usd, sup_to_usd`
+	if isTestnetBlockchain {
+		q = `UPDATE state SET latest_bsc_block_testnet = $1 RETURNING latest_eth_block_testnet AS latest_eth_block, latest_bsc_block_testnet AS latest_bsc_block, eth_to_usd, bnb_to_usd, sup_to_usd`
+	}
 	err := pgxscan.Get(ctx, conn, state, q, latestBlock)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -42,9 +51,12 @@ func UpdateLatestBSCBlock(ctx context.Context, conn Conn, latestBlock uint64) (*
 }
 
 // UpdateExchangeRates updates the latest eth block checked
-func UpdateExchangeRates(ctx context.Context, conn Conn, exchangeRates *passport.State) (*passport.State, error) {
+func UpdateExchangeRates(ctx context.Context, isTestnetBlockchain bool, conn Conn, exchangeRates *passport.State) (*passport.State, error) {
 	state := &passport.State{}
 	q := `UPDATE state SET eth_to_usd = $1, bnb_to_usd = $2, sup_to_usd = $3 RETURNING latest_eth_block, latest_bsc_block, eth_to_usd, bnb_to_usd, sup_to_usd`
+	if isTestnetBlockchain {
+		q = `UPDATE state SET eth_to_usd = $1, bnb_to_usd = $2, sup_to_usd = $3 RETURNING latest_eth_block_testnet AS latest_eth_block, latest_bsc_block_testnet AS latest_bsc_block, eth_to_usd, bnb_to_usd, sup_to_usd`
+	}
 	err := pgxscan.Get(ctx, conn, state, q, exchangeRates.ETHtoUSD, exchangeRates.BNBtoUSD, exchangeRates.SUPtoUSD)
 	if err != nil {
 		return nil, terror.Error(err)
