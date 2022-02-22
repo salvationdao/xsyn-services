@@ -231,7 +231,7 @@ func main() {
 						return terror.Panic(err)
 					}
 
-					seeder := seed.NewSeeder(pgxconn, txConn, passportWebHostUrl)
+					seeder := seed.NewSeeder(pgxconn, txConn, passportWebHostUrl, passportWebHostUrl)
 					return seeder.Run(databaseProd)
 				},
 			},
@@ -363,6 +363,11 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	mailDomain := ctxCLI.String("mail_domain")
 	mailAPIKey := ctxCLI.String("mail_apikey")
 	mailSender := ctxCLI.String("mail_sender")
+	externalURL := ctxCLI.String("passport_web_host_url")
+	insecuritySkipVerify := false
+	if environment == "development" || environment == "testing" {
+		insecuritySkipVerify = true
+	}
 
 	config := &passport.Config{
 		CookieSecure:        ctxCLI.Bool("cookie_secure"),
@@ -390,8 +395,9 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 			ETHChainID:        ETHChainID,
 			BSCRouterAddr:     common.HexToAddress(BSCRouterAddr),
 		},
-		OnlyWalletConnect: ctxCLI.Bool("only_wallet"),
-		WhitelistEndpoint: ctxCLI.String("whitelist_check_endpoint"),
+		OnlyWalletConnect:       ctxCLI.Bool("only_wallet"),
+		WhitelistEndpoint:       ctxCLI.String("whitelist_check_endpoint"),
+		InsecureSkipVerifyCheck: insecuritySkipVerify,
 	}
 
 	pgxconn, err := pgxconnect(
@@ -479,6 +485,6 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
-	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, googleClientID, mailer, apiAddr, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config, twitterAPIKey, twitterAPISecret, discordClientID, discordClientSecret, gameserverToken)
+	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, googleClientID, mailer, apiAddr, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config, twitterAPIKey, twitterAPISecret, discordClientID, discordClientSecret, gameserverToken, externalURL)
 	return api.Run(ctx)
 }

@@ -727,7 +727,7 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 	}
 
 	for _, nft := range newNFT {
-		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
+		err := db.XsynMetadataInsert(ctx, s.Conn, nft, s.ExternalURL)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -1022,7 +1022,7 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 	}
 
 	for _, nft := range newNFT {
-		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
+		err := db.XsynMetadataInsert(ctx, s.Conn, nft, s.ExternalURL)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -1278,7 +1278,7 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 	}
 
 	for _, nft := range metadata {
-		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
+		err := db.XsynMetadataInsert(ctx, s.Conn, nft, s.ExternalURL)
 		if err != nil {
 			return terror.Error(err)
 		}
