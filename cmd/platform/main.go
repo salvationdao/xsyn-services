@@ -119,6 +119,7 @@ func main() {
 
 					&cli.StringFlag{Name: "gameserver_token", Value: "aG93cyBpdCBnb2luZyBtYWM=", EnvVars: []string{envPrefix + "_GAMESERVER_TOKEN"}, Usage: "Token to auth gameserver client"},
 					&cli.BoolFlag{Name: "only_wallet", Value: true, EnvVars: []string{envPrefix + "_ONLY_WALLET"}, Usage: "Set passport to only accept wallet logins"},
+					&cli.StringFlag{Name: "whitelist_check_endpoint", Value: "https://stories.supremacy.game", EnvVars: []string{envPrefix + "_WHITELIST_ENDPOINT"}, Usage: "Endpoint to check if user is whitelisted"},
 
 					/****************************
 					 *		Bridge details		*
@@ -390,6 +391,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 			BSCRouterAddr:     common.HexToAddress(BSCRouterAddr),
 		},
 		OnlyWalletConnect: ctxCLI.Bool("only_wallet"),
+		WhitelistEndpoint: ctxCLI.String("whitelist_check_endpoint"),
 	}
 
 	pgxconn, err := pgxconnect(
