@@ -26,6 +26,7 @@ Majority of these don't need to be set for dev, if you want google/facebook/meta
 need to be set.
 
 ```shell
+PASSPORT_MORALIS_KEY
 PASSPORT_ENVIRONMENT
 
 PASSPORT_DATABASE_USER
