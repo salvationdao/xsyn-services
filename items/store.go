@@ -199,7 +199,6 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	}
 
 	if result.Transaction.Status != passport.TransactionSuccess {
-		fmt.Println("bruh")
 		return nil, terror.Error(fmt.Errorf("lootbox failed: %s", result.Transaction.Reason), fmt.Sprintf("lootbox failed: %s.", result.Transaction.Reason))
 	}
 

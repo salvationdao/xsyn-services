@@ -288,7 +288,7 @@ func StoreList(
 	countQ := fmt.Sprintf(`--sql
 		SELECT COUNT(DISTINCT xsyn_store.id)
 		%s
-		WHERE xsyn_store.deleted_at %s
+		WHERE  xsyn_store.restriction != 'LOOTBOX' AND xsyn_store.deleted_at %s
 			%s
 			%s
 		`,
@@ -324,7 +324,7 @@ func StoreList(
 	// Get Paginated Result
 	q := fmt.Sprintf(
 		StoreGetQuery+`--sql
-		WHERE xsyn_store.deleted_at %s
+		WHERE xsyn_store.restriction != 'LOOTBOX' AND xsyn_store.deleted_at %s
 			%s
 			%s
 		%s
@@ -335,6 +335,11 @@ func StoreList(
 		orderBy,
 		limit,
 	)
+
+	fmt.Println("qqqqq")
+	fmt.Println("qqqqq")
+	fmt.Println("qqqqq")
+	fmt.Println("qqqqq", q)
 
 	result := make([]*passport.StoreItem, 0)
 	err = pgxscan.Select(ctx, conn, &result, q, args...)
