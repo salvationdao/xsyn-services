@@ -147,6 +147,7 @@ func (s *Seeder) SeedInitialStoreItems(ctx context.Context, passportURL string) 
 			AnimationURL:    "",
 			UsdCentCost:     200000,
 			AmountAvailable: 100000,
+			Restriction:     "LOOTBOX", // todo remove this shit
 			//SoldAfter: time,
 			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
 			Attributes: []*passport.Attribute{

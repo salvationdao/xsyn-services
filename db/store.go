@@ -104,8 +104,9 @@ func AddItemToStore(ctx context.Context, conn Conn, storeObject *passport.StoreI
                                       amount_sold,
                                       amount_available,
                                       sold_after,
-                                      sold_before)
-			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                                      sold_before,
+									  restriction)
+			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 			RETURNING id`
 
 	_, err := conn.Exec(ctx, q,
@@ -121,6 +122,7 @@ func AddItemToStore(ctx context.Context, conn Conn, storeObject *passport.StoreI
 		storeObject.AmountAvailable,
 		storeObject.SoldAfter,
 		storeObject.SoldAfter,
+		storeObject.Restriction,
 	)
 	if err != nil {
 		return terror.Error(err)
@@ -140,6 +142,19 @@ func StoreItemGet(ctx context.Context, conn Conn, storeItemID passport.StoreItem
 	}
 
 	return storeItem, nil
+}
+
+// StoreItemListByFactionLootbox list all items based on faction and if restriction is 'LOOTBOX'
+func StoreItemListByFactionLootbox(ctx context.Context, conn Conn, factionID passport.FactionID) ([]*passport.StoreItem, error) {
+	storeItems := []*passport.StoreItem{}
+	q := StoreGetQuery + "WHERE xsyn_store.faction_id = $1 AND xsyn_store.restriction = 'LOOTBOX' AND xsyn_store.amount_available > 0"
+
+	err := pgxscan.Select(ctx, conn, &storeItems, q, factionID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return storeItems, nil
 }
 
 // StoreItemPurchased bumps a store items amount sold up

@@ -37,6 +37,8 @@ func NewStoreController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Stor
 	}
 
 	api.Command(HubKeyStoreList, storeHub.StoreListHandler)
+	api.Command(HubKeyLootbox, storeHub.PurchaseLootboxHandler)
+
 	api.SecureCommand(HubKeyPurchaseItem, storeHub.PurchaseItemHandler)
 
 	api.SubscribeCommand(HubKeyStoreItemSubscribe, storeHub.StoreItemSubscribeHandler)
@@ -76,6 +78,52 @@ func (ctrlr *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *h
 	}
 
 	reply(true)
+	return nil
+}
+
+type PurchaseLootboxRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		FactionID passport.FactionID `json:"factionID"`
+	} `json:"payload"`
+}
+
+const HubKeyLootbox = hub.HubCommandKey("STORE:LOOTBOX")
+
+func (ctrlr *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &PurchaseLootboxRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// get user
+	uid, err := uuid.FromString(hubc.Identifier())
+	if err != nil {
+		return terror.Error(err)
+	}
+	user, err := db.UserGet(ctx, ctrlr.Conn, passport.UserID(uid))
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// get avil mechs
+	// avil > 1
+	// fire tx
+	// wait for tx result
+	// if fail return reason
+	// create refund func (if error below, run refund)
+	// do func to get the mech they win
+	// assign new metadata to user
+	// update store item amounts
+	// return token id
+
+	err = items.PurchaseLootbox(ctx, ctrlr.Conn, ctrlr.Log, ctrlr.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), ctrlr.API.transaction, *user, req.Payload.FactionID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// reply(chosenPrize)
 	return nil
 }
 
