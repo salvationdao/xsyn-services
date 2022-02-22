@@ -22,12 +22,12 @@ func CollectionInsert(ctx context.Context, conn Conn, collection *passport.Colle
 
 // XsynMetadataInsert inserts a new item metadata
 func XsynMetadataInsert(ctx context.Context, conn Conn, nft *passport.XsynMetadata, externalUrl string) error {
-	q := `	INSERT INTO xsyn_metadata (token_id, name, collection_id, game_object, description, image, attributes, additional_metadata)
-			VALUES((SELECT nextval('token_id_seq')),$1, $2, $3, $4, $5, $6, $7)
+	q := `	INSERT INTO xsyn_metadata (token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata)
+			VALUES((SELECT nextval('token_id_seq')),$1, $2, $3, $4, $5, $6, $7, $8)
 			RETURNING token_id`
 	var tokenID int
 
-	err := pgxscan.Get(ctx, conn, &tokenID, q, nft.Name, nft.CollectionID, nft.GameObject, nft.Description, nft.Image, nft.Attributes, nft.AdditionalMetadata)
+	err := pgxscan.Get(ctx, conn, &tokenID, q, nft.Name, nft.CollectionID, nft.GameObject, nft.Description, nft.Image, nft.AnimationURL, nft.Attributes, nft.AdditionalMetadata)
 	if err != nil {
 		return terror.Error(err)
 	}
