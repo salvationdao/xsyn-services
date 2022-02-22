@@ -107,7 +107,7 @@ func (ctrlr *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, hubc
 		return terror.Error(err)
 	}
 
-	tokenID, err := items.PurchaseLootbox(ctx, ctrlr.Conn, ctrlr.Log, ctrlr.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), ctrlr.API.transaction, *user, req.Payload.FactionID)
+	tokenID, err := items.PurchaseLootbox(ctx, ctrlr.Conn, ctrlr.Log, ctrlr.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), ctrlr.API.transaction, *user, req.Payload.FactionID, ctrlr.API.storeItemExternalUrl)
 	if err != nil {
 		return terror.Error(err)
 	}

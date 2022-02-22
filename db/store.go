@@ -336,11 +336,6 @@ func StoreList(
 		limit,
 	)
 
-	fmt.Println("qqqqq")
-	fmt.Println("qqqqq")
-	fmt.Println("qqqqq")
-	fmt.Println("qqqqq", q)
-
 	result := make([]*passport.StoreItem, 0)
 	err = pgxscan.Select(ctx, conn, &result, q, args...)
 	if err != nil {

@@ -155,7 +155,7 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 
 // Purchase attempts to make a purchase for a given user ID and a given
 func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
-	supPrice decimal.Decimal, txChan chan<- *passport.NewTransaction, user passport.User, factionID passport.FactionID) (*uint64, error) {
+	supPrice decimal.Decimal, txChan chan<- *passport.NewTransaction, user passport.User, factionID passport.FactionID, externalURL string) (*uint64, error) {
 
 	// get all faction items marked as loot box
 	mechs, err := db.StoreItemListByFactionLootbox(ctx, conn, passport.FactionID(factionID))
@@ -232,7 +232,6 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	newItem := &passport.XsynMetadata{
 		CollectionID: storeItem.CollectionID,
 		Description:  storeItem.Description,
-		ExternalUrl:  "TODO",
 		Image:        storeItem.Image,
 		Attributes:   storeItem.Attributes,
 	}
@@ -263,10 +262,6 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 		refund(err.Error())
 		return nil, terror.Error(err)
 	}
-
-	priceAsDecimal := decimal.New(int64(storeItem.UsdCentCost), 0).Div(supPrice).Ceil()
-	priceAsSups := decimal.New(priceAsDecimal.IntPart(), 18).BigInt()
-	storeItem.SupCost = priceAsSups.String()
 
 	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), storeItem)
 	return &newItem.TokenID, nil
