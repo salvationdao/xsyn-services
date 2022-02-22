@@ -1399,6 +1399,7 @@ func (cc *ChainClients) handleNFTTransfer(ctx context.Context) func(xfer *bridge
 					cc.Log.Err(err).Msgf("failed to add tx hash to array asset: %s, tx: %s", ev.TokenID.String(), ev.TxID.Hex())
 					return
 				}
+				return
 			}
 
 			cc.Log.Info().
