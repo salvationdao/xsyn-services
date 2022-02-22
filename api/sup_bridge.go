@@ -68,7 +68,7 @@ type ETHPriceResp struct {
 }
 
 func FetchETHPrice() (*ETHPriceResp, error) {
-	req, err := http.NewRequest("GET", "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd", nil)
+	req, err := http.NewRequest("GET", "https://pro-api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&x_cg_pro_api_key=CG-x41pKPSUCk9bqtb9j9uixce7", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func FetchETHPrice() (*ETHPriceResp, error) {
 }
 
 func FetchBNBPrice() (*BNBPriceResp, error) {
-	req, err := http.NewRequest("GET", "https://api.coingecko.com/api/v3/simple/price?ids=binancecoin&vs_currencies=usd", nil)
+	req, err := http.NewRequest("GET", "https://pro-api.coingecko.com/api/v3/simple/price?ids=binancecoin&vs_currencies=usd&x_cg_pro_api_key=CG-x41pKPSUCk9bqtb9j9uixce7", nil)
 	if err != nil {
 		return nil, err
 	}
