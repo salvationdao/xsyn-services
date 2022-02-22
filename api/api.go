@@ -131,7 +131,7 @@ func NewAPI(
 			},
 			AcceptOptions: &websocket.AcceptOptions{
 				InsecureSkipVerify: config.InsecureSkipVerifyCheck,
-				OriginPatterns:     []string{config.PassportWebHostURL, config.GameserverHostURL},
+				OriginPatterns:     []string{"*"},
 			},
 			WebsocketReadLimit: 104857600,
 		}),
@@ -167,7 +167,7 @@ func NewAPI(
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
 	api.Routes.Use(cors.New(cors.Options{
-		AllowedOrigins:   []string{config.PassportWebHostURL, config.GameserverHostURL, config.WhitelistEndpoint},
+		AllowedOrigins:   []string{"*"},
 		AllowCredentials: true,
 	}).Handler)
 
