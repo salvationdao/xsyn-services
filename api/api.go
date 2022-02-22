@@ -160,7 +160,8 @@ func NewAPI(
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
 	api.Routes.Use(cors.New(cors.Options{
-		AllowedOrigins: []string{config.PassportWebHostURL, config.GameserverHostURL},
+		AllowedOrigins:   []string{config.PassportWebHostURL, config.GameserverHostURL, config.WhitelistEndpoint},
+		AllowCredentials: true,
 	}).Handler)
 
 	var err error
@@ -188,9 +189,10 @@ func NewAPI(
 			Conn:   conn,
 			Mailer: mailer,
 		},
-		Tokens:            api.Tokens,
-		Eip712Message:     config.MetaMaskSignMessage,
-		OnlyWalletConnect: config.OnlyWalletConnect,
+		Tokens:                 api.Tokens,
+		Eip712Message:          config.MetaMaskSignMessage,
+		OnlyWalletConnect:      config.OnlyWalletConnect,
+		WhitelistCheckEndpoint: fmt.Sprintf("%s/api/whitelist", config.WhitelistEndpoint),
 	})
 	if err != nil {
 		log.Fatal().Msgf("failed to init hub auther: %s", err.Error())
