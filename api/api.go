@@ -140,7 +140,7 @@ func NewAPI(
 		// server clients
 		serverClients:       make(chan func(serverClients ServerClientsList)),
 		sendToServerClients: make(chan *ServerClientMessage),
-
+		//382
 		// user cache map
 		users: make(chan func(userList UserCacheMap)),
 
@@ -410,6 +410,9 @@ func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 	if asset == nil {
 		return http.StatusBadRequest, terror.Warn(err, "Asset doesn't exist")
 	}
+
+	// openseas object
+	//asset
 
 	// Encode result
 	err = json.NewEncoder(w).Encode(asset)

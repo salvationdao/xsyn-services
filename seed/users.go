@@ -1291,24 +1291,3 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 
 	return nil
 }
-
-func (s *Seeder) AndAssignNftToMember(ctx context.Context) error {
-	// get member user
-	member, err := db.UserByEmail(ctx, s.Conn, "member@example.com")
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	// get "Big War Machine" nft
-	nft, err := db.AssetGetByName(ctx, s.Conn, "Placeholder Brand Big War Machine")
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	// assign nft to member
-	err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.TokenID, member.ID)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}

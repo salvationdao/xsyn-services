@@ -54,6 +54,7 @@ const AssetGetQuery string = `
 SELECT 
 row_to_json(c) as collection,
 xsyn_metadata.token_id,
+xsyn_metadata.minted,
 xsyn_metadata.name,
 xsyn_metadata.description,
 xsyn_metadata.external_url,
@@ -250,17 +251,6 @@ func AssetGet(ctx context.Context, conn Conn, tokenID uint64) (*passport.XsynMet
 	err = pgxscan.Get(ctx, conn, asset, q, tokenID)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting asset from token ID.")
-	}
-	return asset, nil
-}
-
-// AssetGet returns a asset by given ID
-func AssetGetByName(ctx context.Context, conn Conn, name string) (*passport.XsynMetadata, error) {
-	asset := &passport.XsynMetadata{}
-	q := AssetGetQuery + `WHERE xsyn_metadata.name = $1`
-	err := pgxscan.Get(ctx, conn, asset, q, name)
-	if err != nil {
-		return nil, terror.Error(err, "Issue getting asset from name.")
 	}
 	return asset, nil
 }

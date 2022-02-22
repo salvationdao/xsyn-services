@@ -27,9 +27,9 @@
 # If your version/tag doesn't match, the script will exit with error.
 source /home/ubuntu/.profile # load GITHUB_PAT
 TOKEN=$GITHUB_PAT
-REPO="{{repo}}"
+REPO="ninja-syndicate/passport-server"
 VERSION=$1                       # tag name or the word "latest"
-FILE_PREFIX="{{release_prefix}}"
+FILE_PREFIX="passport-api"
 GITHUB="https://api.github.com"
 
 function release_curl() {

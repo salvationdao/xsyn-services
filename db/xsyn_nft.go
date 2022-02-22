@@ -24,7 +24,7 @@ func CollectionInsert(ctx context.Context, conn Conn, collection *passport.Colle
 func XsynMetadataInsert(ctx context.Context, conn Conn, nft *passport.XsynMetadata) error {
 	q := `	INSERT INTO xsyn_metadata (token_id, name, collection_id, game_object, description, external_url, image, attributes, additional_metadata)
 			VALUES((SELECT nextval('token_id_seq')),$1, $2, $3, $4, $5, $6, $7, $8)
-			RETURNING token_id,  name, description, external_url, image, attributes`
+			RETURNING token_id,  name, description, external_url, image, attributes, minted`
 
 	err := pgxscan.Get(ctx, conn, nft, q,
 		nft.Name,
@@ -65,7 +65,7 @@ func XsynMetadataAvailableGet(ctx context.Context, conn Conn, userID passport.Us
 	nft := &passport.XsynMetadata{}
 	q := `
 		SELECT
-			xnm.token_id, row_to_json(c) as collection, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes, xa.minting_signature
+			xnm.token_id, xnm.minted, row_to_json(c) as collection, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes, xa.minting_signature
 		FROM 
 			xsyn_metadata xnm
 		INNER JOIN
@@ -90,7 +90,7 @@ func XsynMetadataOwnerGet(ctx context.Context, conn Conn, userID passport.UserID
 	nft := &passport.XsynMetadata{}
 	q := `
 		SELECT
-			xnm.token_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes, xa.frozen_at, xa.locked_by_id, xa.minting_signature
+			xnm.token_id, xnm.minted, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes, xa.frozen_at, xa.locked_by_id, xa.minting_signature
 		FROM 
 			xsyn_metadata xnm
 		INNER JOIN
@@ -111,7 +111,7 @@ func XsynMetadataGet(ctx context.Context, conn Conn, nftTokenID uint64) (*passpo
 	nft := &passport.XsynMetadata{}
 	q := `
 		SELECT
-			xnm.token_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+			xnm.token_id, xnm.minted, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM 
 			xsyn_metadata xnm
 		WHERE
@@ -290,7 +290,7 @@ func XsynAssetBulkRelease(ctx context.Context, conn Conn, nfts []*passport.WarMa
 func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID, amount int) ([]*passport.XsynMetadata, error) {
 	nft := []*passport.XsynMetadata{}
 	q := `
-		SELECT xnm.token_id, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+		SELECT xnm.token_id, xnm.minted,, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM xsyn_metadata xnm
 				 INNER JOIN xsyn_assets xa ON xa.token_id = xnm.token_id
 		WHERE xa.user_id = $1
@@ -314,7 +314,7 @@ func AbilityAssetGet(ctx context.Context, conn Conn, abilityMetadata *passport.A
 	nft := &passport.XsynMetadata{}
 	q := `
 		SELECT 
-			xnm.token_id, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+			xnm.token_id, xnm.minted,, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM 
 			xsyn_metadata xnm
 		WHERE 
@@ -367,7 +367,7 @@ func WarMachineGetByUserID(ctx context.Context, conn Conn, userID passport.UserI
 	xms := []*passport.XsynMetadata{}
 
 	q := `
-		SELECT xm.token_id, xm.collection_id, xm.durability, xm.name, xm.description, xm.external_url, xm.image, xm.attributes, xa.minting_signature
+		SELECT xm.token_id, xm.minted, xm.collection_id, xm.durability, xm.name, xm.description, xm.external_url, xm.image, xm.attributes, xa.minting_signature
 		FROM xsyn_metadata xm
 		INNER JOIN xsyn_assets xa ON xa.token_id = xm.token_id AND xa.user_id = $1
 	`
@@ -465,6 +465,23 @@ func XsynAssetMintUnLock(ctx context.Context, conn Conn, userID passport.UserID)
 		WHERE user_id = $1`
 
 	_, err := conn.Exec(ctx, q, userID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+// XsynAssetMinted marked as a
+func XsynAssetMinted(ctx context.Context, conn Conn, tokenID uint64) error {
+	q := `
+		UPDATE 
+			xsyn_metadata
+		SET
+			minted = true
+		WHERE token_id = $1`
+
+	_, err := conn.Exec(ctx, q, tokenID)
 	if err != nil {
 		return terror.Error(err)
 	}

@@ -57,6 +57,13 @@ if [ ! -s "${DBFILE}" ]; then
     exit 2
 fi
 
+echo "Proceed with migrations? (y/N)"
+read PROCEED
+if [[ $var != "y" ]]; then exit 1; fi
+
+systemctl stop ${PACKAGE}
+$TARGET/migrate -database "postgres://postgres:${PGPASSWORD}@${PASSPORT_DATABASE_HOST}:${PASSPORT_DATABASE_PORT}/${PASSPORT_DATABASE_NAME}" -path $TARGET/migrations up
+
 ln -Tfsv $TARGET $(pwd)/${PACKAGE}_online
 
 # Ensure ownership
