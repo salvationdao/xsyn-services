@@ -3,11 +3,13 @@ package api
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"math/big"
 	"passport"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -37,7 +39,14 @@ func (api *API) HandleTransactions() {
 
 		transactionResult.Transaction = resultTx
 		if transaction.ResultChan != nil {
-			transaction.ResultChan <- transactionResult
+			select {
+			case transaction.ResultChan <- transactionResult:
+
+			case <-time.After(10 * time.Second):
+				api.Log.Err(errors.New("timeout on channel send exceeded"))
+				panic("sup purchase on BSC with BUSD ")
+			}
+
 		}
 	}
 }
@@ -79,10 +88,17 @@ func (api *API) HeldTransactions(fn func(heldTxList map[passport.TransactionRefe
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	api.heldTransactions <- func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
+	select {
+	case api.heldTransactions <- func(heldTxList map[passport.TransactionReference]*passport.NewTransaction) {
 		fn(heldTxList)
 		wg.Done()
+	}:
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Held Transactions")
 	}
+
 	wg.Wait()
 	if len(stuff) > 0 {
 		fmt.Printf("end %s\n", stuff[0])
@@ -138,7 +154,14 @@ func (api *API) CommitTransactions(ctx context.Context, txRefs ...passport.Trans
 		for _, txRef := range txRefs {
 			if tx, ok := heldTxList[txRef]; ok {
 				tx.ResultChan = make(chan *passport.TransactionResult)
-				api.transaction <- tx
+				select {
+				case api.transaction <- tx:
+
+				case <-time.After(10 * time.Second):
+					api.Log.Err(errors.New("timeout on channel send exceeded"))
+					panic("send through Transaction")
+				}
+
 				result := <-tx.ResultChan
 				// if result is failed, update the cache map
 				if result.Error != nil || result.Transaction.Status == passport.TransactionFailed {

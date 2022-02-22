@@ -89,6 +89,7 @@ LEFT JOIN (
 	SELECT id, label, theme, logo_blob_id as logoBlobID
 	FROM factions
 ) faction ON faction.id = xsyn_store.faction_id
+
 `
 
 // AddItemToStore added the object to the xsyn nft store table
@@ -298,7 +299,6 @@ func StoreList(
 	)
 
 	var totalRows int
-
 	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
 	if err != nil {
 		return 0, nil, terror.Error(err)

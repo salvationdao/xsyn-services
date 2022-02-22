@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"passport"
 	"passport/db"
+	"time"
 
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 
@@ -25,7 +26,7 @@ import (
 
 // Purchase attempts to make a purchase for a given user ID and a given
 func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
-	supPrice decimal.Decimal, txChan chan<- *passport.NewTransaction, user passport.User, storeItemID passport.StoreItemID) error {
+	supPrice decimal.Decimal, txChan chan<- *passport.NewTransaction, user passport.User, storeItemID passport.StoreItemID, externalUrl string) error {
 	storeItem, err := db.StoreItemGet(ctx, conn, storeItemID)
 	if err != nil {
 		return terror.Error(err)
@@ -52,13 +53,19 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 
 	resultChan := make(chan *passport.TransactionResult, 1)
 
-	txChan <- &passport.NewTransaction{
+	select {
+	case txChan <- &passport.NewTransaction{
 		To:                   passport.XsynTreasuryUserID,
 		From:                 user.ID,
 		Amount:               *asSups,
 		TransactionReference: passport.TransactionReference(txRef),
 		Description:          "Purchase on Supremacy storefront.",
 		ResultChan:           resultChan,
+	}:
+
+	case <-time.After(10 * time.Second):
+		log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Purchase on Supremacy storefront.")
 	}
 
 	result := <-resultChan
@@ -73,12 +80,18 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 
 	// refund callback
 	refund := func(reason string) {
-		txChan <- &passport.NewTransaction{
+		select {
+		case txChan <- &passport.NewTransaction{
 			To:                   user.ID,
 			From:                 passport.XsynTreasuryUserID,
 			Amount:               *asSups,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
 			Description:          "Refund of purchase on Supremacy storefront.",
+		}:
+
+		case <-time.After(10 * time.Second):
+			log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Refund of purchase on Supremacy storefront.")
 		}
 	}
 
@@ -100,13 +113,12 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 	newItem := &passport.XsynMetadata{
 		CollectionID: storeItem.CollectionID,
 		Description:  storeItem.Description,
-		ExternalUrl:  "TODO",
 		Image:        storeItem.Image,
 		Attributes:   storeItem.Attributes,
 	}
 
 	// create item on metadata table
-	err = db.XsynMetadataInsert(ctx, conn, newItem)
+	err = db.XsynMetadataInsert(ctx, conn, newItem, externalUrl)
 	if err != nil {
 		refund(err.Error())
 		return terror.Error(err)
@@ -142,16 +154,16 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 
 // Purchase attempts to make a purchase for a given user ID and a given
 func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
-	supPrice decimal.Decimal, txChan chan<- *passport.NewTransaction, user passport.User, factionID passport.FactionID) error {
+	supPrice decimal.Decimal, txChan chan<- *passport.NewTransaction, user passport.User, factionID passport.FactionID) (*uint64, error) {
 
 	// get all faction items marked as loot box
 	mechs, err := db.StoreItemListByFactionLootbox(ctx, conn, passport.FactionID(factionID))
 	if err != nil {
-		return terror.Error(err, "failed to get loot box items")
+		return nil, terror.Error(err, "failed to get loot box items")
 	}
 
 	if len(mechs) == 0 {
-		return terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
+		return nil, terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
 	}
 
 	chosenIdx := rand.Intn(len(mechs))
@@ -159,7 +171,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 
 	// check available
 	if storeItem.AmountAvailable < 1 || storeItem.AmountSold >= storeItem.AmountAvailable {
-		return terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
+		return nil, terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
 	}
 
 	txID := uuid.Must(uuid.NewV4())
@@ -183,11 +195,12 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	result := <-resultChan
 
 	if result.Error != nil {
-		return terror.Error(result.Error)
+		return nil, terror.Error(result.Error)
 	}
 
 	if result.Transaction.Status != passport.TransactionSuccess {
-		return terror.Error(fmt.Errorf("lootbox failed: %s", result.Transaction.Reason), fmt.Sprintf("lootbox failed: %s.", result.Transaction.Reason))
+		fmt.Println("bruh")
+		return nil, terror.Error(fmt.Errorf("lootbox failed: %s", result.Transaction.Reason), fmt.Sprintf("lootbox failed: %s.", result.Transaction.Reason))
 	}
 
 	// refund callback
@@ -205,7 +218,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	tx, err := conn.Begin(ctx)
 	if err != nil {
 		refund(err.Error())
-		return terror.Error(err)
+		return nil, terror.Error(err)
 	}
 
 	defer func(tx pgx.Tx, ctx context.Context) {
@@ -225,30 +238,30 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	}
 
 	// create item on metadata table
-	err = db.XsynMetadataInsert(ctx, conn, newItem)
+	err = db.XsynMetadataInsert(ctx, conn, newItem, "test")
 	if err != nil {
 		refund(err.Error())
-		return terror.Error(err)
+		return nil, terror.Error(err)
 	}
 
 	// assign new item to user
 	err = db.XsynMetadataAssignUser(ctx, conn, newItem.TokenID, user.ID)
 	if err != nil {
 		refund(err.Error())
-		return terror.Error(err)
+		return nil, terror.Error(err)
 	}
 
 	// update item amounts
 	err = db.StoreItemPurchased(ctx, conn, storeItem)
 	if err != nil {
 		refund(err.Error())
-		return terror.Error(err)
+		return nil, terror.Error(err)
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
 		refund(err.Error())
-		return terror.Error(err)
+		return nil, terror.Error(err)
 	}
 
 	priceAsDecimal := decimal.New(int64(storeItem.UsdCentCost), 0).Div(supPrice).Ceil()
@@ -256,5 +269,5 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	storeItem.SupCost = priceAsSups.String()
 
 	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), storeItem)
-	return nil
+	return &newItem.TokenID, nil
 }

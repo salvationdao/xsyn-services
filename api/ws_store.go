@@ -37,7 +37,7 @@ func NewStoreController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Stor
 	}
 
 	api.Command(HubKeyStoreList, storeHub.StoreListHandler)
-	// api.Command(HubKeyLootbox, storeHub.PurchaseLootboxHandler)
+	api.Command(HubKeyLootbox, storeHub.PurchaseLootboxHandler)
 
 	api.SecureCommand(HubKeyPurchaseItem, storeHub.PurchaseItemHandler)
 
@@ -72,7 +72,7 @@ func (ctrlr *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *h
 		return terror.Error(err)
 	}
 
-	err = items.Purchase(ctx, ctrlr.Conn, ctrlr.Log, ctrlr.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), ctrlr.API.transaction, *user, req.Payload.StoreItemID)
+	err = items.Purchase(ctx, ctrlr.Conn, ctrlr.Log, ctrlr.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), ctrlr.API.transaction, *user, req.Payload.StoreItemID, ctrlr.API.storeItemExternalUrl)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -107,23 +107,12 @@ func (ctrlr *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, hubc
 		return terror.Error(err)
 	}
 
-	// get avil mechs
-	// avil > 1
-	// fire tx
-	// wait for tx result
-	// if fail return reason
-	// create refund func (if error below, run refund)
-	// do func to get the mech they win
-	// assign new metadata to user
-	// update store item amounts
-	// return token id
-
-	err = items.PurchaseLootbox(ctx, ctrlr.Conn, ctrlr.Log, ctrlr.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), ctrlr.API.transaction, *user, req.Payload.FactionID)
+	tokenID, err := items.PurchaseLootbox(ctx, ctrlr.Conn, ctrlr.Log, ctrlr.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), ctrlr.API.transaction, *user, req.Payload.FactionID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	// reply(chosenPrize)
+	reply(tokenID)
 	return nil
 }
 

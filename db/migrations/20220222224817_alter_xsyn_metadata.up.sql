@@ -1,0 +1,1 @@
+ALTER TABLE xsyn_metadata ADD minted BOOLEAN DEFAULT false;

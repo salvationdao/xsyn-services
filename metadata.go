@@ -58,6 +58,7 @@ type StoreItem struct {
 // XsynMetadata holds xsyn nft metadata, the nfts main game data it stored here to show on opensea
 type XsynMetadata struct {
 	UserID             *UserID               `json:"userID" db:"user_id"`
+	Minted             bool                  `json:"minted" db:"minted"`
 	Username           *string               `json:"username" db:"username"`
 	TokenID            uint64                `json:"tokenID" db:"token_id"`
 	Name               string                `json:"name" db:"name"`
@@ -77,7 +78,7 @@ type XsynMetadata struct {
 	MintingSignature   string                `json:"mintingSignature" db:"minting_signature"`
 	UpdatedAt          time.Time             `json:"updatedAt" db:"updated_at"`
 	CreatedAt          time.Time             `json:"createdAt" db:"created_at"`
-	TxHistory          interface{}           `json:"txHistory" db:"tx_history"`
+	TxHistory          []string              `json:"txHistory" db:"tx_history"`
 }
 
 type AssetType string

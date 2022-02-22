@@ -43,8 +43,9 @@ var Factions = []*Faction{
 			Secondary:  "#FFFFFF",
 			Background: "#120E0E",
 		},
-		// NOTE: change content
-		Description: "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
+		Description: `Red Mountain is the leader in autonomous mining operations in the Supremacy era. It controls vast territories on Mars, as well as the entire continent formerly known as Australia on Earth. In addition to the production of War Machines, Red Mountain has an economy built on mining, space transportation and energy production. Its AI platforms are directed by REDNET and its leading human assistant is ChiefX. The main tiers of humans include Executives, Engineers and Mechanics. 
+
+		By enlisting in Red Mountain, you are joining the greatest interplanetary mining syndicate ever assembled.  `,
 	},
 	{
 		ID:    BostonCyberneticsFactionID,
@@ -54,8 +55,9 @@ var Factions = []*Faction{
 			Secondary:  "#FFFFFF",
 			Background: "#080C12",
 		},
-		// NOTE: change content
-		Description: "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
+		Description: `Boston Cybernetics is the major commercial leader within the Supremacy Era. It has expansive territories comprising 275 Districts located along the east coast of the former United States. In addition to the production of War Machines, its economy is built on finance, memory production and the exploration of asteroid belts. Boston Cybernetics AI platforms are directed by BOSSDAN and the human assistant is Patron-A. The three main tiers of humans include Patrons, CyRiders and Stackers. AIs include Synths and Rexeon Guards.
+
+		By enlisting in Boston Cybernetics, you are joining a financial and commercial superpower with plans for space colonization.`,
 	},
 	{
 		ID:    ZaibatsuFactionID,
@@ -65,7 +67,8 @@ var Factions = []*Faction{
 			Secondary:  "#000000",
 			Background: "#0D0D0D",
 		},
-		// NOTE: change content
-		Description: "The battles spill over to the Terran economy, where SUPS are used as the keys to economic power. Terra operates a complex and interconnected economy, where everything is in limited supply, but there is also unlimited demand. If fighting isn’t your thing, Citizens can choose to be resource barons, arms manufacturers, defense contractors, tech labs and much more, with our expanding tree of resources and items to be crafted.",
+		Description: `Zaibatsu is the industrial leader within the Supremacy era, with heavily populated territories dominated by neon city skyscrapers across the islands formerly known as Japan. In addition to the production of War Machines, Zaibatsu’s economy is built on production optimized by human and AI interaction, as well as the development of future cloud cities. Its AI platforms are directed by ZAIA and the leading human assistant is A1. The three main tiers of humans include APEXRs, KODRs and DENZRs. 
+
+		By enlisting in Zaibatsu, you are joining a powerhouse in city construction and industrial production.`,
 	},
 }

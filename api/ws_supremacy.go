@@ -235,7 +235,14 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 	// send through transactions
 	for _, tx := range transactions {
 		tx.ResultChan = make(chan *passport.TransactionResult, 1)
-		sc.API.transaction <- tx
+		select {
+		case sc.API.transaction <- tx:
+
+		case <-time.After(10 * time.Second):
+			sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("transaction send")
+		}
+
 		result := <-tx.ResultChan
 
 		if result.Transaction != nil && result.Transaction.Status != passport.TransactionSuccess {
@@ -343,7 +350,14 @@ func (sc *SupremacyControllerWS) trickleFactory(key string, totalTick int, supsP
 		}
 
 		sc.poolLowPriorityLock()
-		sc.API.transaction <- transaction
+		select {
+		case sc.API.transaction <- transaction:
+
+		case <-time.After(10 * time.Second):
+			sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("transaction send")
+		}
+
 		result := <-transaction.ResultChan
 		if result.Error != nil {
 			// clean up
@@ -412,11 +426,15 @@ func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context
 		return terror.Error(fmt.Errorf("asset doesn't exist"), "Failed to get asset.")
 	}
 
+	frozenAt := time.Now()
+
 	err = db.XsynAssetFreeze(ctx, sc.Conn, req.Payload.AssetTokenID, userID)
 	if err != nil {
 		reply(false)
 		return terror.Error(err)
 	}
+
+	asset.FrozenAt = &frozenAt
 
 	go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.AssetTokenID)), asset)
 
@@ -469,6 +487,38 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 
 	for _, asset := range assets {
 		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
+	}
+
+	// auto release it after an hour
+	for _, asset := range assets {
+		go func(asset *passport.XsynMetadata) {
+			frozenAt := asset.FrozenAt
+			time.Sleep(3 * time.Hour)
+			// get asset from db
+			a, err := db.AssetGet(ctx, sc.Conn, asset.TokenID)
+			if err != nil {
+				sc.API.Log.Err(err).Msgf("Failed to get asset, token id: %d", asset.TokenID)
+				return
+			}
+
+			// check whether the frozen at has changed
+			if a.FrozenAt == nil || !frozenAt.Equal(*a.FrozenAt) {
+				// skip, if frozen at is changed
+				return
+			}
+
+			// otherwise release it
+			err = db.XsynAssetBulkRelease(ctx, sc.Conn, []*passport.WarMachineMetadata{
+				{
+					TokenID: a.TokenID,
+				},
+			}, userID)
+			if err != nil {
+				sc.API.Log.Err(err).Msgf("Failed to auto released, token id: %d", asset.TokenID)
+				return
+			}
+
+		}(asset)
 	}
 
 	reply(true)
@@ -1118,7 +1168,14 @@ func (sc *SupremacyControllerWS) SupremacyPayAssetInsuranceHandler(ctx context.C
 		return terror.Error(terror.ErrInvalidInput, "Provided faction does not exist")
 	}
 
-	sc.API.transaction <- tx
+	select {
+	case sc.API.transaction <- tx:
+
+	case <-time.After(10 * time.Second):
+		sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("transaction send")
+	}
+
 	result := <-resultChan
 	if result.Transaction.Status != passport.TransactionSuccess {
 		return terror.Error(fmt.Errorf("transaction failed: %s", result.Transaction.Reason), fmt.Sprintf("Transaction failed: %s.", result.Transaction.Reason))
@@ -1170,7 +1227,13 @@ func (sc *SupremacyControllerWS) SupremacyRedeemFactionContractRewardHandler(ctx
 		return terror.Error(terror.ErrInvalidInput, "Provided faction does not exist")
 	}
 
-	sc.API.transaction <- tx
+	select {
+	case sc.API.transaction <- tx:
+
+	case <-time.After(10 * time.Second):
+		sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("transaction send")
+	}
 
 	//errChan := make(chan error, 10)
 	//sc.API.HoldTransaction(errChan, tx)
