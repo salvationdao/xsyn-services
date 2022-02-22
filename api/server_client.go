@@ -27,20 +27,37 @@ func (api *API) InitialiseTreasuryFundTicker() {
 			return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to convert 4000000000000000000 to big int"))
 		}
 
-		//treasuryTransfer := big.NewInt(0)
-		//treasuryTransfer.Add(treasuryTransfer, fund)
-		select {
-		case api.transaction <- &passport.NewTransaction{
+		tx := passport.NewTransaction{
 			From:                 passport.XsynTreasuryUserID,
 			To:                   passport.SupremacySupPoolUserID,
 			Amount:               *fund,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("treasury|ticker|%s", time.Now())),
-		}:
-
-		case <-time.After(10 * time.Second):
-			api.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("treasury tick")
 		}
+
+		// process user cache map
+		err := api.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Treasury insufficient fund")
+		}
+
+		api.transactionCache.Process(tx)
+
+		//treasuryTransfer := big.NewInt(0)
+		//treasuryTransfer.Add(treasuryTransfer, fund)
+
+		// TODO: manage user cache
+		// select {
+		// case api.transaction <- &passport.NewTransaction{
+		// 	From:                 passport.XsynTreasuryUserID,
+		// 	To:                   passport.SupremacySupPoolUserID,
+		// 	Amount:               *fund,
+		// 	TransactionReference: passport.TransactionReference(fmt.Sprintf("treasury|ticker|%s", time.Now())),
+		// }:
+
+		// case <-time.After(10 * time.Second):
+		// 	api.Log.Err(errors.New("timeout on channel send exceeded"))
+		// 	panic("treasury tick")
+		// }
 
 		return http.StatusOK, nil
 	})

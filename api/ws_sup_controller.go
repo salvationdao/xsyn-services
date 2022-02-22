@@ -108,50 +108,82 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 	txID := uuid.Must(uuid.NewV4())
 
 	txRef := fmt.Sprintf("sup|withdraw|%s", txID)
-	resultChan := make(chan *passport.TransactionResult, 1)
-	select {
-	case sc.API.transaction <- &passport.NewTransaction{
+
+	trans := passport.NewTransaction{
 		To:                   passport.OnChainUserID,
 		From:                 userID,
 		Amount:               *withdrawAmount,
 		TransactionReference: passport.TransactionReference(txRef),
 		Description:          "Withdraw of SUPS.",
-		ResultChan:           resultChan,
-	}:
-
-	case <-time.After(10 * time.Second):
-		sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Withdraw Sup Handler")
 	}
 
-	result := <-resultChan
-	if result.Error != nil {
-		return terror.Error(result.Error, "Withdraw failed: %s", result.Error.Error())
+	err = sc.API.userCacheMap.Process(trans.From, trans.To, trans.Amount)
+	if err != nil {
+		return terror.Error(err, "failed to process user fund")
 	}
-	if result.Transaction.Status != passport.TransactionSuccess {
-		return terror.Error(fmt.Errorf("withdraw failed: %s", result.Transaction.Reason), fmt.Sprintf("Withdraw failed: %s.", result.Transaction.Reason))
-	}
+
+	sc.API.transactionCache.Process(trans)
+
+	// TODO: handle user cache
+	// resultChan := make(chan *passport.TransactionResult, 1)
+	// select {
+	// case sc.API.transaction <- &passport.NewTransaction{
+	// 	To:                   passport.OnChainUserID,
+	// 	From:                 userID,
+	// 	Amount:               *withdrawAmount,
+	// 	TransactionReference: passport.TransactionReference(txRef),
+	// 	Description:          "Withdraw of SUPS.",
+	// 	ResultChan:           resultChan,
+	// }:
+
+	// case <-time.After(10 * time.Second):
+	// 	sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+	// 	panic("Withdraw Sup Handler")
+	// }
+
+	// result := <-resultChan
+	// if result.Error != nil {
+	// 	return terror.Error(result.Error, "Withdraw failed: %s", result.Error.Error())
+	// }
+	// if result.Transaction.Status != passport.TransactionSuccess {
+	// 	return terror.Error(fmt.Errorf("withdraw failed: %s", result.Transaction.Reason), fmt.Sprintf("Withdraw failed: %s.", result.Transaction.Reason))
+	// }
 	// refund callback
 	refund := func(reason string) {
-		select {
-		case sc.API.transaction <- &passport.NewTransaction{
+		trans := passport.NewTransaction{
 			To:                   userID,
 			From:                 passport.OnChainUserID,
 			Amount:               *withdrawAmount,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
 			Description:          "Refund of Withdraw of SUPS.",
-		}:
-
-		case <-time.After(10 * time.Second):
-			sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("Refund of Withdraw of SUPS.")
 		}
+
+		err = sc.API.userCacheMap.Process(trans.From, trans.To, trans.Amount)
+		if err != nil {
+			sc.API.Log.Err(errors.New("failed to process user fund"))
+			return
+		}
+
+		sc.API.transactionCache.Process(trans)
+		// select {
+		// case sc.API.transaction <- &passport.NewTransaction{
+		// 	To:                   userID,
+		// 	From:                 passport.OnChainUserID,
+		// 	Amount:               *withdrawAmount,
+		// 	TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
+		// 	Description:          "Refund of Withdraw of SUPS.",
+		// }:
+
+		// case <-time.After(10 * time.Second):
+		// 	sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+		// 	panic("Refund of Withdraw of SUPS.")
+		// }
 
 	}
 	tx, err := sc.cc.SUPS.Transfer(ctx, common.HexToAddress(user.PublicAddress.String), withdrawAmount)
 	if err != nil {
 		refund(err.Error())
-		return terror.Error(err, "Withdraw failed: %s", result.Error.Error())
+		return terror.Error(err, "Withdraw failed: %s", txID.String())
 	}
 	errChan := make(chan error)
 	attemptsChan := make(chan int)

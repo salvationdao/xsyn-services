@@ -56,7 +56,7 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 
 	// sup control
 	api.SupremacyCommand(HubKeySupremacyHoldSups, supremacyHub.SupremacyHoldSupsHandler)
-	api.SupremacyCommand(HubKeySupremacyCommitTransactions, supremacyHub.SupremacyCommitTransactionsHandler)
+	// api.SupremacyCommand(HubKeySupremacyCommitTransactions, supremacyHub.SupremacyCommitTransactionsHandler)
 	api.SupremacyCommand(HubKeySupremacyReleaseTransactions, supremacyHub.SupremacyReleaseTransactionsHandler)
 
 	api.SupremacyCommand(HubKeySupremacyTickerTick, supremacyHub.SupremacyTickerTickHandler)
@@ -146,7 +146,7 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 	if req.Payload.Amount.Cmp(big.NewInt(0)) < 0 {
 		return terror.Error(terror.ErrInvalidInput, "Sups amount can not be negative")
 	}
-	fmt.Printf("1 SupremacyHoldSupsHandler %s\n", req.TransactionID)
+	// fmt.Printf("1 SupremacyHoldSupsHandler %s\n", req.TransactionID)
 
 	tx := &passport.NewTransaction{
 		From:                 req.Payload.FromUserID,
@@ -159,12 +159,17 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 		tx.To = passport.SupremacyBattleUserID
 	}
 
-	err = sc.API.HoldTransaction(ctx, tx)
-	if err != nil {
-		return terror.Error(err)
-	}
-	fmt.Printf("2 SupremacyHoldSupsHandler %s\n", req.TransactionID)
-	reply(true)
+	txID := sc.API.transactionCache.Process(*tx)
+
+	tx.ID = txID
+	// TODO: handle user cache
+
+	// err = sc.API.HoldTransaction(ctx, tx)
+	// if err != nil {
+	// 	return terror.Error(err)
+	// }
+	// fmt.Printf("2 SupremacyHoldSupsHandler %s\n", req.TransactionID)
+	reply(tx)
 	return nil
 }
 
@@ -198,7 +203,7 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 		return nil
 	}
 
-	var transactions []*passport.NewTransaction
+	// var transactions []*passport.NewTransaction
 
 	// we take the whole balance of supremacy sup pool and give it to the users watching
 	// amounts depend on their multiplier
@@ -217,36 +222,21 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 			usersSups := big.NewInt(0)
 			usersSups = usersSups.Mul(onePointWorth, big.NewInt(int64(multiplier)))
 
-			transactions = append(transactions, &passport.NewTransaction{
+			tx := passport.NewTransaction{
 				From:                 passport.SupremacySupPoolUserID,
 				To:                   *user,
 				Amount:               *usersSups,
 				TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|ticker|%s|%s", *user, time.Now())),
-			})
+			}
+
+			err = sc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+			if err != nil {
+				return terror.Error(err, "failed to process user fund")
+			}
+
+			sc.API.transactionCache.Process(tx)
 
 			supPool = supPool.Sub(supPool, usersSups)
-		}
-	}
-
-	///////////////////////////
-	//  Insert Transactions  //
-	///////////////////////////
-
-	// send through transactions
-	for _, tx := range transactions {
-		tx.ResultChan = make(chan *passport.TransactionResult, 1)
-		select {
-		case sc.API.transaction <- tx:
-
-		case <-time.After(10 * time.Second):
-			sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("transaction send")
-		}
-
-		result := <-tx.ResultChan
-
-		if result.Transaction != nil && result.Transaction.Status != passport.TransactionSuccess {
-			sc.API.Log.Err(fmt.Errorf("transaction unsuccessful reason: %s", result.Transaction.Reason))
 		}
 	}
 
@@ -340,43 +330,60 @@ func (sc *SupremacyControllerWS) trickleFactory(key string, totalTick int, supsP
 	i := 0
 	for {
 		i++
-		resultChan := make(chan *passport.TransactionResult)
-		transaction := &passport.NewTransaction{
-			ResultChan:           resultChan,
+		// resultChan := make(chan *passport.TransactionResult)
+
+		// TODO: manage user cache
+		// transaction := &passport.NewTransaction{
+		// 	ResultChan:           resultChan,
+		// 	From:                 passport.SupremacyBattleUserID,
+		// 	To:                   passport.SupremacySupPoolUserID,
+		// 	Amount:               *supsPerTick,
+		// 	TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|battle_sups_spend_transfer|%s", time.Now())),
+		// }
+
+		sc.poolLowPriorityLock()
+		tx := passport.NewTransaction{
 			From:                 passport.SupremacyBattleUserID,
 			To:                   passport.SupremacySupPoolUserID,
 			Amount:               *supsPerTick,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|battle_sups_spend_transfer|%s", time.Now())),
 		}
 
-		sc.poolLowPriorityLock()
-		select {
-		case sc.API.transaction <- transaction:
-
-		case <-time.After(10 * time.Second):
-			sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("transaction send")
-		}
-
-		result := <-transaction.ResultChan
-		if result.Error != nil {
-			// clean up
-			delete(sc.TickerPoolCache.TricklingAmountMap, key)
-			sc.poolLowPriorityUnlock()
-
-			// log error
-			sc.Log.Err(result.Error).Int("tick", i).Msgf("battle sup trickler transfer failed")
+		// process user cache map
+		err := sc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+		if err != nil {
+			sc.Log.Err(err).Msg("insufficient fund")
 			return
 		}
-		if result.Transaction.Status == passport.TransactionFailed {
-			// clean up
-			delete(sc.TickerPoolCache.TricklingAmountMap, key)
-			sc.poolLowPriorityUnlock()
 
-			// log error
-			sc.Log.Err(fmt.Errorf(result.Transaction.Reason)).Int("tick", i).Msgf("battle sup trickler transfer failed")
-			return
-		}
+		sc.API.transactionCache.Process(tx)
+		// select {
+		// case sc.API.transaction <- transaction:
+
+		// case <-time.After(10 * time.Second):
+		// 	sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+		// 	panic("transaction send")
+		// }
+
+		// result := <-transaction.ResultChan
+		// if result.Error != nil {
+		// 	// clean up
+		// 	delete(sc.TickerPoolCache.TricklingAmountMap, key)
+		// 	sc.poolLowPriorityUnlock()
+
+		// 	// log error
+		// 	sc.Log.Err(result.Error).Int("tick", i).Msgf("battle sup trickler transfer failed")
+		// 	return
+		// }
+		// if result.Transaction.Status == passport.TransactionFailed {
+		// 	// clean up
+		// 	delete(sc.TickerPoolCache.TricklingAmountMap, key)
+		// 	sc.poolLowPriorityUnlock()
+
+		// 	// log error
+		// 	sc.Log.Err(fmt.Errorf(result.Transaction.Reason)).Int("tick", i).Msgf("battle sup trickler transfer failed")
+		// 	return
+		// }
 
 		// if the routine is not finished
 		if i < totalTick {
@@ -636,36 +643,38 @@ func (sc *SupremacyControllerWS) SupremacyWarMachineQueuePositionHandler(ctx con
 	return nil
 }
 
-// 	api.SupremacyCommand(HubKeySupremacyCommitTransactions, supremacyHub.SupremacyCommitTransactions)
-const HubKeySupremacyCommitTransactions = hub.HubCommandKey("SUPREMACY:COMMIT_TRANSACTIONS")
+// TODO: Remove transaction commit function in gameserver
 
-type SupremacyCommitTransactionsRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		TransactionReferences []passport.TransactionReference `json:"transactionReferences"`
-	} `json:"payload"`
-}
+// // 	api.SupremacyCommand(HubKeySupremacyCommitTransactions, supremacyHub.SupremacyCommitTransactions)
+// const HubKeySupremacyCommitTransactions = hub.HubCommandKey("SUPREMACY:COMMIT_TRANSACTIONS")
 
-func (sc *SupremacyControllerWS) SupremacyCommitTransactionsHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &SupremacyCommitTransactionsRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received")
-	}
-	sc.Log.Info().Msg("START SupremacyCommitTransactionsHandler")
-	results := sc.API.CommitTransactions(ctx, req.Payload.TransactionReferences...)
+// type SupremacyCommitTransactionsRequest struct {
+// 	*hub.HubCommandRequest
+// 	Payload struct {
+// 		TransactionReferences []passport.TransactionReference `json:"transactionReferences"`
+// 	} `json:"payload"`
+// }
 
-	sc.Log.Info().Msg("CLOSE SupremacyCommitTransactionsHandler")
-	reply(results)
-	return nil
-}
+// func (sc *SupremacyControllerWS) SupremacyCommitTransactionsHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+// 	req := &SupremacyCommitTransactionsRequest{}
+// 	err := json.Unmarshal(payload, req)
+// 	if err != nil {
+// 		return terror.Error(err, "Invalid request received")
+// 	}
+// 	sc.Log.Info().Msg("START SupremacyCommitTransactionsHandler")
+// 	results := sc.API.CommitTransactions(ctx, req.Payload.TransactionReferences...)
+
+// 	sc.Log.Info().Msg("CLOSE SupremacyCommitTransactionsHandler")
+// 	reply(results)
+// 	return nil
+// }
 
 const HubKeySupremacyReleaseTransactions = hub.HubCommandKey("SUPREMACY:RELEASE_TRANSACTIONS")
 
 type SupremacyReleaseTransactionsRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		TransactionReferences []passport.TransactionReference `json:"transactionReferences"`
+		Transactions []passport.NewTransaction `json:"transactions"`
 	} `json:"payload"`
 }
 
@@ -676,7 +685,15 @@ func (sc *SupremacyControllerWS) SupremacyReleaseTransactionsHandler(ctx context
 		return terror.Error(err, "Invalid request received")
 	}
 
-	sc.API.ReleaseHeldTransaction(ctx, req.Payload.TransactionReferences...)
+	// TODO: Change the logic of data passing
+	for _, tx := range req.Payload.Transactions {
+		err = sc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+		if err != nil {
+			sc.API.Log.Err(err).Msg("failed to process user sups fund")
+			continue
+		}
+		sc.API.transactionCache.Process(tx)
+	}
 
 	return nil
 }
@@ -1146,10 +1163,10 @@ func (sc *SupremacyControllerWS) SupremacyPayAssetInsuranceHandler(ctx context.C
 		return terror.Error(terror.ErrInvalidInput, "Sups amount can not be negative")
 	}
 
-	resultChan := make(chan *passport.TransactionResult)
+	// resultChan := make(chan *passport.TransactionResult)
 
 	tx := &passport.NewTransaction{
-		ResultChan:           resultChan,
+		// ResultChan:           resultChan,
 		From:                 req.Payload.UserID,
 		TransactionReference: req.Payload.TransactionReference,
 		Amount:               req.Payload.Amount.Int,
@@ -1168,18 +1185,12 @@ func (sc *SupremacyControllerWS) SupremacyPayAssetInsuranceHandler(ctx context.C
 		return terror.Error(terror.ErrInvalidInput, "Provided faction does not exist")
 	}
 
-	select {
-	case sc.API.transaction <- tx:
-
-	case <-time.After(10 * time.Second):
-		sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("transaction send")
+	err = sc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+	if err != nil {
+		return terror.Error(err, "failed to process user fund")
 	}
 
-	result := <-resultChan
-	if result.Transaction.Status != passport.TransactionSuccess {
-		return terror.Error(fmt.Errorf("transaction failed: %s", result.Transaction.Reason), fmt.Sprintf("Transaction failed: %s.", result.Transaction.Reason))
-	}
+	sc.API.transactionCache.Process(*tx)
 
 	reply(true)
 	return nil
@@ -1227,29 +1238,13 @@ func (sc *SupremacyControllerWS) SupremacyRedeemFactionContractRewardHandler(ctx
 		return terror.Error(terror.ErrInvalidInput, "Provided faction does not exist")
 	}
 
-	select {
-	case sc.API.transaction <- tx:
-
-	case <-time.After(10 * time.Second):
-		sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("transaction send")
+	// process user cache map
+	err = sc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+	if err != nil {
+		return terror.Error(err, "failed to process fund")
 	}
 
-	//errChan := make(chan error, 10)
-	//sc.API.HoldTransaction(errChan, tx)
-	//err = <-errChan
-	//if err != nil {
-	//	return terror.Error(err)
-	//}
-	//
-	//resultChan := make(chan []*passport.Transaction, 1)
-	//sc.API.CommitTransactions(resultChan, tx.TransactionReference)
-	//results := <-resultChan
-	//for _, result := range results {
-	//	if result == nil || result.Status == passport.TransactionFailed {
-	//		return terror.Error(fmt.Errorf("Transaction Failed"))
-	//	}
-	//}
+	sc.API.transactionCache.Process(*tx)
 
 	reply(true)
 	return nil
