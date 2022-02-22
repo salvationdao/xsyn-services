@@ -412,11 +412,15 @@ func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context
 		return terror.Error(fmt.Errorf("asset doesn't exist"), "Failed to get asset.")
 	}
 
+	frozenAt := time.Now()
+
 	err = db.XsynAssetFreeze(ctx, sc.Conn, req.Payload.AssetTokenID, userID)
 	if err != nil {
 		reply(false)
 		return terror.Error(err)
 	}
+
+	asset.FrozenAt = &frozenAt
 
 	go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.AssetTokenID)), asset)
 
