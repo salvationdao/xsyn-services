@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"passport/db"
 	"passport/email"
 	"strconv"
+	"time"
 
 	"github.com/ninja-software/log_helpers"
 
@@ -312,7 +314,13 @@ func (api *API) Dummysale(w http.ResponseWriter, r *http.Request) (int, error) {
 		Amount:               bigIntAmount,
 	}
 
-	api.transaction <- tx
+	select {
+	case api.transaction <- tx:
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("transaction send")
+	}
 
 	sups, err := db.UserBalance(ctx, api.Conn, passport.XsynSaleUserID)
 	if err != nil {
