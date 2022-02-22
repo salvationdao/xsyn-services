@@ -314,7 +314,7 @@ func AbilityAssetGet(ctx context.Context, conn Conn, abilityMetadata *passport.A
 	nft := &passport.XsynMetadata{}
 	q := `
 		SELECT 
-			xnm.token_id, xnm.minted,, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+			xnm.token_id, xnm.minted, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM 
 			xsyn_metadata xnm
 		WHERE 
