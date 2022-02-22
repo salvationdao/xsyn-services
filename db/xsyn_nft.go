@@ -290,7 +290,7 @@ func XsynAssetBulkRelease(ctx context.Context, conn Conn, nfts []*passport.WarMa
 func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID, amount int) ([]*passport.XsynMetadata, error) {
 	nft := []*passport.XsynMetadata{}
 	q := `
-		SELECT xnm.token_id, xnm.minted,, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+		SELECT xnm.token_id, xnm.minted, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM xsyn_metadata xnm
 				 INNER JOIN xsyn_assets xa ON xa.token_id = xnm.token_id
 		WHERE xa.user_id = $1

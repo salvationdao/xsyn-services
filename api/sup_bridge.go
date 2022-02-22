@@ -1118,6 +1118,10 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 					}
 
 					// check if asset has handled this tx already
+					if asset == nil {
+						cc.Log.Err(err).Msgf("failed to find asset, asset was nil: %s", event.TokenID.String())
+						return
+					}
 					for _, tx := range asset.TxHistory {
 						if tx == event.TxID.Hex() {
 							return
@@ -1156,6 +1160,10 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 					}
 
 					// check if asset has handled this tx already
+					if asset == nil {
+						cc.Log.Err(err).Msgf("failed to find asset, asset was nil: %s", event.TokenID.String())
+						return
+					}
 					for _, tx := range asset.TxHistory {
 						if tx == event.TxID.Hex() {
 							return
@@ -1477,6 +1485,7 @@ func (cc *ChainClients) handleNFTTransfer(ctx context.Context) func(xfer *bridge
 					cc.Log.Err(err).Msgf("failed to add tx hash to array asset: %s, tx: %s", ev.TokenID.String(), ev.TxID.Hex())
 					return
 				}
+				return
 			}
 
 			cc.Log.Info().

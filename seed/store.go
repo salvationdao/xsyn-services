@@ -17,6 +17,10 @@ import (
 
 var ZaibatsuDefaultWeapons = []*passport.Attribute{
 	{
+		TraitType: "Name",
+		Value:     "",
+	},
+	{
 		TraitType:   "Speed",
 		Value:       2500,
 		DisplayType: passport.Number,
@@ -60,6 +64,10 @@ var ZaibatsuDefaultWeapons = []*passport.Attribute{
 
 var RedMountainDefaultWeapons = []*passport.Attribute{
 	{
+		TraitType: "Name",
+		Value:     "",
+	},
+	{
 		TraitType:   "Speed",
 		Value:       1750,
 		DisplayType: passport.Number,
@@ -102,6 +110,10 @@ var RedMountainDefaultWeapons = []*passport.Attribute{
 }
 
 var BostonDefaultWeapons = []*passport.Attribute{
+	{
+		TraitType: "Name",
+		Value:     "",
+	},
 	{
 		TraitType:   "Speed",
 		Value:       2750,
