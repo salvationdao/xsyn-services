@@ -216,6 +216,7 @@ func NewAPI(
 			r.Get("/check-eth-tx/{tx_id}", api.WithError(cc.CheckEthTx))
 			r.Get("/check-bsc-tx/{tx_id}", api.WithError(cc.CheckBscTx))
 			r.Get("/whitelist/check", api.WithError(api.WhitelistOnlyWalletCheck))
+			r.Get("/faction-data", api.WithError(api.FactionGetData))
 		})
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
