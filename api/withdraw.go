@@ -144,6 +144,10 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, terror.Warn(err, "Asset doesn't exist")
 	}
 
+	if asset.Minted {
+		return http.StatusBadRequest, terror.Warn(err, "Asset already minted")
+	}
+
 	if asset.UserID != nil && *asset.UserID != user.ID {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("unable to validate ownership of asset"), "Unable to validate ownership of asset.")
 	}

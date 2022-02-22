@@ -283,7 +283,6 @@ func StoreList(
 	)
 
 	var totalRows int
-
 	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
 	if err != nil {
 		return 0, nil, terror.Error(err)

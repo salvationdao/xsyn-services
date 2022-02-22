@@ -17,6 +17,10 @@ import (
 
 var ZaibatsuDefaultWeapons = []*passport.Attribute{
 	{
+		TraitType: "Name",
+		Value:     "",
+	},
+	{
 		TraitType:   "Speed",
 		Value:       2500,
 		DisplayType: passport.Number,
@@ -59,6 +63,10 @@ var ZaibatsuDefaultWeapons = []*passport.Attribute{
 }
 
 var RedMountainDefaultWeapons = []*passport.Attribute{
+	{
+		TraitType: "Name",
+		Value:     "",
+	},
 	{
 		TraitType:   "Speed",
 		Value:       1750,
@@ -103,6 +111,10 @@ var RedMountainDefaultWeapons = []*passport.Attribute{
 
 var BostonDefaultWeapons = []*passport.Attribute{
 	{
+		TraitType: "Name",
+		Value:     "",
+	},
+	{
 		TraitType:   "Speed",
 		Value:       2750,
 		DisplayType: passport.Number,
@@ -138,736 +150,48 @@ func (s *Seeder) SeedInitialStoreItems(ctx context.Context, passportURL string) 
 	}
 
 	initialStoreItems := []*passport.StoreItem{
-		{
-			Name:            "",
-			FactionID:       passport.RedMountainFactionID,
-			CollectionID:    supremacyCollection.ID,
-			Description:     "Military",
-			Image:           "",
-			AnimationURL:    "",
-			UsdCentCost:     200000,
-			AmountAvailable: 100000,
-			//SoldAfter: time,
-			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
-			Attributes: []*passport.Attribute{
-
-				{
-					TraitType: "Brand",
-					Value:     "Red Mountain",
-				},
-				{
-					TraitType: "Model",
-					Value:     "Olympus Mons LY07",
-				},
-				{
-					TraitType: "SubModel",
-					Value:     "Military",
-				},
-				{
-					TraitType: "Rarity",
-					Value:     "Legendary",
-				},
-				{
-					TraitType: "Asset Type",
-					Value:     "War Machine",
-				},
-				{
-					TraitType:   "Max Structure Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Max Shield Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-			},
-		},
-		{
-			Name:            "",
-			FactionID:       passport.RedMountainFactionID,
-			CollectionID:    supremacyCollection.ID,
-			Description:     "Red",
-			Image:           "",
-			AnimationURL:    "",
-			UsdCentCost:     200000,
-			AmountAvailable: 100000,
-			//SoldAfter: time,
-			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
-			Attributes: []*passport.Attribute{
-
-				{
-					TraitType: "Brand",
-					Value:     "Red Mountain",
-				},
-				{
-					TraitType: "Model",
-					Value:     "Olympus Mons LY07",
-				},
-				{
-					TraitType: "SubModel",
-					Value:     "Red",
-				},
-				{
-					TraitType: "Rarity",
-					Value:     "Legendary",
-				},
-				{
-					TraitType: "Asset Type",
-					Value:     "War Machine",
-				},
-				{
-					TraitType:   "Max Structure Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Max Shield Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-			},
-		},
-		{
-			Name:            "",
-			FactionID:       passport.ZaibatsuFactionID,
-			CollectionID:    supremacyCollection.ID,
-			Description:     "Chalky Neon",
-			Image:           "",
-			AnimationURL:    "",
-			UsdCentCost:     200000,
-			AmountAvailable: 100000,
-			//SoldAfter: time,
-			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
-			Attributes: []*passport.Attribute{
-
-				{
-					TraitType: "Brand",
-					Value:     "Zaibatsu",
-				},
-				{
-					TraitType: "Model",
-					Value:     "Tenshi Mk1",
-				},
-				{
-					TraitType: "SubModel",
-					Value:     "Chalky Neon",
-				},
-				{
-					TraitType: "Rarity",
-					Value:     "Legendary",
-				},
-				{
-					TraitType: "Asset Type",
-					Value:     "War Machine",
-				},
-				{
-					TraitType:   "Max Structure Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Max Shield Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-			},
-		},
-		{
-			Name:            "",
-			FactionID:       passport.RedMountainFactionID,
-			CollectionID:    supremacyCollection.ID,
-			Description:     "Pink",
-			Image:           "",
-			AnimationURL:    "",
-			UsdCentCost:     200000,
-			AmountAvailable: 100000,
-			//SoldAfter: time,
-			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
-			Attributes: []*passport.Attribute{
-
-				{
-					TraitType: "Brand",
-					Value:     "Red Mountain",
-				},
-				{
-					TraitType: "Model",
-					Value:     "Olympic Mons LY07",
-				},
-				{
-					TraitType: "SubModel",
-					Value:     "Pink",
-				},
-				{
-					TraitType: "Rarity",
-					Value:     "Legendary",
-				},
-				{
-					TraitType: "Asset Type",
-					Value:     "War Machine",
-				},
-				{
-					TraitType:   "Max Structure Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Max Shield Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-			},
-		},
-		{
-			Name:            "",
-			FactionID:       passport.ZaibatsuFactionID,
-			CollectionID:    supremacyCollection.ID,
-			Description:     "Black",
-			Image:           "",
-			AnimationURL:    "",
-			UsdCentCost:     200000,
-			AmountAvailable: 100000,
-			//SoldAfter: time,
-			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
-			Attributes: []*passport.Attribute{
-
-				{
-					TraitType: "Brand",
-					Value:     "Zaibatsu",
-				},
-				{
-					TraitType: "Model",
-					Value:     "Tenshi Mk1",
-				},
-				{
-					TraitType: "SubModel",
-					Value:     "Black",
-				},
-				{
-					TraitType: "Rarity",
-					Value:     "Legendary",
-				},
-				{
-					TraitType: "Asset Type",
-					Value:     "War Machine",
-				},
-				{
-					TraitType:   "Max Structure Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Max Shield Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-			},
-		},
-		{
-			Name:            "",
-			FactionID:       passport.ZaibatsuFactionID,
-			CollectionID:    supremacyCollection.ID,
-			Description:     "Black Digital",
-			Image:           "",
-			AnimationURL:    "",
-			UsdCentCost:     200000,
-			AmountAvailable: 100000,
-			//SoldAfter: time,
-			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
-			Attributes: []*passport.Attribute{
-
-				{
-					TraitType: "Brand",
-					Value:     "Zaibatsu",
-				},
-				{
-					TraitType: "Model",
-					Value:     "Tenshi Mk1",
-				},
-				{
-					TraitType: "SubModel",
-					Value:     "Black Digital",
-				},
-				{
-					TraitType: "Rarity",
-					Value:     "Legendary",
-				},
-				{
-					TraitType: "Asset Type",
-					Value:     "War Machine",
-				},
-				{
-					TraitType:   "Max Structure Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Max Shield Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-			},
-		},
-		{
-			Name:            "",
-			FactionID:       passport.ZaibatsuFactionID,
-			CollectionID:    supremacyCollection.ID,
-			Description:     "Evangelion",
-			Image:           "",
-			AnimationURL:    "",
-			UsdCentCost:     200000,
-			AmountAvailable: 100000,
-			//SoldAfter: time,
-			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
-			Attributes: []*passport.Attribute{
-
-				{
-					TraitType: "Brand",
-					Value:     "Zaibatsu",
-				},
-				{
-					TraitType: "Model",
-					Value:     "Tenshi Mk1",
-				},
-				{
-					TraitType: "SubModel",
-					Value:     "Evangelion",
-				},
-				{
-					TraitType: "Rarity",
-					Value:     "Legendary",
-				},
-				{
-					TraitType: "Asset Type",
-					Value:     "War Machine",
-				},
-				{
-					TraitType:   "Max Structure Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Max Shield Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-			},
-		},
-		{
-			Name:            "",
-			FactionID:       passport.ZaibatsuFactionID,
-			CollectionID:    supremacyCollection.ID,
-			Description:     "Gundam",
-			Image:           "",
-			AnimationURL:    "",
-			UsdCentCost:     200000,
-			AmountAvailable: 100000,
-			//SoldAfter: time,
-			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
-			Attributes: []*passport.Attribute{
-
-				{
-					TraitType: "Brand",
-					Value:     "Zaibatsu",
-				},
-				{
-					TraitType: "Model",
-					Value:     "Tenshi Mk1",
-				},
-				{
-					TraitType: "SubModel",
-					Value:     "Gundam",
-				},
-				{
-					TraitType: "Rarity",
-					Value:     "Legendary",
-				},
-				{
-					TraitType: "Asset Type",
-					Value:     "War Machine",
-				},
-				{
-					TraitType:   "Max Structure Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Max Shield Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-			},
-		},
-		{
-			Name:            "",
-			FactionID:       passport.ZaibatsuFactionID,
-			CollectionID:    supremacyCollection.ID,
-			Description:     "Neo",
-			Image:           "",
-			AnimationURL:    "",
-			UsdCentCost:     200000,
-			AmountAvailable: 100000,
-			//SoldAfter: time,
-			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
-			Attributes: []*passport.Attribute{
-
-				{
-					TraitType: "Brand",
-					Value:     "Zaibatsu",
-				},
-				{
-					TraitType: "Model",
-					Value:     "Tenshi Mk1",
-				},
-				{
-					TraitType: "SubModel",
-					Value:     "Neo",
-				},
-				{
-					TraitType: "Rarity",
-					Value:     "Legendary",
-				},
-				{
-					TraitType: "Asset Type",
-					Value:     "War Machine",
-				},
-				{
-					TraitType:   "Max Structure Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Max Shield Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-			},
-		},
-		{
-			Name:            "",
-			FactionID:       passport.ZaibatsuFactionID,
-			CollectionID:    supremacyCollection.ID,
-			Description:     "White",
-			Image:           "",
-			AnimationURL:    "",
-			UsdCentCost:     200000,
-			AmountAvailable: 100000,
-			//SoldAfter: time,
-			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
-			Attributes: []*passport.Attribute{
-
-				{
-					TraitType: "Brand",
-					Value:     "Zaibatsu",
-				},
-				{
-					TraitType: "Model",
-					Value:     "Tenshi Mk1",
-				},
-				{
-					TraitType: "SubModel",
-					Value:     "White",
-				},
-				{
-					TraitType: "Rarity",
-					Value:     "Legendary",
-				},
-				{
-					TraitType: "Asset Type",
-					Value:     "War Machine",
-				},
-				{
-					TraitType:   "Max Structure Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Max Shield Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-			},
-		},
-		{
-			Name:            "",
-			FactionID:       passport.ZaibatsuFactionID,
-			CollectionID:    supremacyCollection.ID,
-			Description:     "White Digital",
-			Image:           "",
-			AnimationURL:    "",
-			UsdCentCost:     200000,
-			AmountAvailable: 100000,
-			SoldBefore:      time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
-			Attributes: []*passport.Attribute{
-
-				{
-					TraitType: "Brand",
-					Value:     "Zaibatsu",
-				},
-				{
-					TraitType: "Model",
-					Value:     "Tenshi Mk1",
-				},
-				{
-					TraitType: "SubModel",
-					Value:     "White Gold",
-				},
-				{
-					TraitType: "Rarity",
-					Value:     "Legendary",
-				},
-				{
-					TraitType: "Asset Type",
-					Value:     "War Machine",
-				},
-				{
-					TraitType:   "Max Structure Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Max Shield Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-			},
-		},
-
-		{
-			Name:            "",
-			FactionID:       passport.ZaibatsuFactionID,
-			CollectionID:    supremacyCollection.ID,
-			Description:     "White Gold Pattern",
-			Image:           "",
-			AnimationURL:    "",
-			UsdCentCost:     200000,
-			AmountAvailable: 100000,
-			//SoldAfter: time,
-			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
-			Attributes: []*passport.Attribute{
-
-				{
-					TraitType: "Brand",
-					Value:     "Zaibatsu",
-				},
-				{
-					TraitType: "Model",
-					Value:     "Tenshi Mk1",
-				},
-				{
-					TraitType: "SubModel",
-					Value:     "White Gold Pattern",
-				},
-				{
-					TraitType: "Rarity",
-					Value:     "Legendary",
-				},
-				{
-					TraitType: "Asset Type",
-					Value:     "War Machine",
-				},
-				{
-					TraitType:   "Max Structure Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Max Shield Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-			},
-		},
-		{
-			Name:            "",
-			FactionID:       passport.RedMountainFactionID,
-			CollectionID:    supremacyCollection.ID,
-			Description:     "Gold",
-			Image:           "",
-			AnimationURL:    "",
-			UsdCentCost:     200000,
-			AmountAvailable: 100000,
-			//SoldAfter: time,
-			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
-			Attributes: []*passport.Attribute{
-
-				{
-					TraitType: "Brand",
-					Value:     "Red Mountain",
-				},
-				{
-					TraitType: "Model",
-					Value:     "Olympus Mons LY07",
-				},
-				{
-					TraitType: "SubModel",
-					Value:     "Gold",
-				},
-				{
-					TraitType: "Rarity",
-					Value:     "Legendary",
-				},
-				{
-					TraitType: "Asset Type",
-					Value:     "War Machine",
-				},
-				{
-					TraitType:   "Max Structure Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Max Shield Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-			},
-		},
-		{
-			Name:            "",
-			FactionID:       passport.RedMountainFactionID,
-			CollectionID:    supremacyCollection.ID,
-			Description:     "Red Black",
-			Image:           "",
-			AnimationURL:    "",
-			UsdCentCost:     200000,
-			AmountAvailable: 100000,
-			//SoldAfter: time,
-			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
-			Attributes: []*passport.Attribute{
-
-				{
-					TraitType: "Brand",
-					Value:     "Red Mountain",
-				},
-				{
-					TraitType: "Model",
-					Value:     "Olympus Mons LY07",
-				},
-				{
-					TraitType: "SubModel",
-					Value:     "Red Black",
-				},
-				{
-					TraitType: "Rarity",
-					Value:     "Legendary",
-				},
-				{
-					TraitType: "Asset Type",
-					Value:     "War Machine",
-				},
-				{
-					TraitType:   "Max Structure Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Max Shield Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-			},
-		},
-		{
-			Name:            "",
-			FactionID:       passport.ZaibatsuFactionID,
-			CollectionID:    supremacyCollection.ID,
-			Description:     "Gold",
-			Image:           "",
-			AnimationURL:    "",
-			UsdCentCost:     200000,
-			AmountAvailable: 100000,
-			//SoldAfter: time,
-			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
-			Attributes: []*passport.Attribute{
-
-				{
-					TraitType: "Brand",
-					Value:     "Zaibatsu",
-				},
-				{
-					TraitType: "Model",
-					Value:     "Tenshi Mk1",
-				},
-				{
-					TraitType: "SubModel",
-					Value:     "Gold",
-				},
-				{
-					TraitType: "Rarity",
-					Value:     "Legendary",
-				},
-				{
-					TraitType: "Asset Type",
-					Value:     "War Machine",
-				},
-				{
-					TraitType:   "Max Structure Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Max Shield Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-			},
-		},
-		{
-			Name:            "",
-			FactionID:       passport.BostonCyberneticsFactionID,
-			CollectionID:    supremacyCollection.ID,
-			Description:     "Gold",
-			Image:           "",
-			AnimationURL:    "",
-			UsdCentCost:     200000,
-			AmountAvailable: 100000,
-			//SoldAfter: time,
-			SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC),
-			Attributes: []*passport.Attribute{
-
-				{
-					TraitType: "Brand",
-					Value:     "Boston Cybernetics",
-				},
-				{
-					TraitType: "Model",
-					Value:     "Law Enforcer X-1000",
-				},
-				{
-					TraitType: "SubModel",
-					Value:     "Gold",
-				},
-				{
-					TraitType: "Rarity",
-					Value:     "Legendary",
-				},
-				{
-					TraitType: "Asset Type",
-					Value:     "War Machine",
-				},
-				{
-					TraitType:   "Max Structure Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   "Max Shield Hit Points",
-					Value:       1000,
-					DisplayType: passport.Number,
-				},
-			},
-		},
-		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Crystal Blue", UsdCentCost: 100000, AmountAvailable: 100000, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Crystal Blue"}, {TraitType: "Rarity", Value: "Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
-		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Dark Blue Police", UsdCentCost: 100000, AmountAvailable: 100000, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Dark Blue Police"}, {TraitType: "Rarity", Value: "Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
-		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Dune", UsdCentCost: 100000, AmountAvailable: 100000, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Dune"}, {TraitType: "Rarity", Value: "Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
-		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Dynamic Yellow", UsdCentCost: 100000, AmountAvailable: 100000, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Dynamic Yellow"}, {TraitType: "Rarity", Value: "Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
-		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Molten", UsdCentCost: 100000, AmountAvailable: 100000, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Molten"}, {TraitType: "Rarity", Value: "Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
-		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Mystermech", UsdCentCost: 100000, AmountAvailable: 100000, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Mystermech"}, {TraitType: "Rarity", Value: "Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
-		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Nebula", UsdCentCost: 100000, AmountAvailable: 100000, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Nebula"}, {TraitType: "Rarity", Value: "Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
-		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Sleek", UsdCentCost: 100000, AmountAvailable: 100000, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Sleek"}, {TraitType: "Rarity", Value: "Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
-		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Vintage", UsdCentCost: 100000, AmountAvailable: 100000, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Vintage"}, {TraitType: "Rarity", Value: "Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
-		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "White Blue", UsdCentCost: 100000, AmountAvailable: 100000, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "White Blue"}, {TraitType: "Rarity", Value: "Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Crystal Blue", UsdCentCost: 100000, AmountAvailable: 20, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Crystal Blue"}, {TraitType: "Rarity", Value: "Guardian"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Rust Bucket", UsdCentCost: 100000, AmountAvailable: 500, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Rust Bucket"}, {TraitType: "Rarity", Value: "Mega"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Dune", UsdCentCost: 100000, AmountAvailable: 500, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Dune"}, {TraitType: "Rarity", Value: "Mega"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Dynamic Yellow", UsdCentCost: 100000, AmountAvailable: 300, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Dynamic Yellow"}, {TraitType: "Rarity", Value: "Rare"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Molten", UsdCentCost: 100000, AmountAvailable: 10, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Molten"}, {TraitType: "Rarity", Value: "Mythic"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Mystermech", UsdCentCost: 100000, AmountAvailable: 300, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Mystermech"}, {TraitType: "Rarity", Value: "Rare"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Nebula", UsdCentCost: 100000, AmountAvailable: 3, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Nebula"}, {TraitType: "Rarity", Value: "Deus ex"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Sleek", UsdCentCost: 100000, AmountAvailable: 400, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Sleek"}, {TraitType: "Rarity", Value: "Colossal"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Vintage", UsdCentCost: 100000, AmountAvailable: 500, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Vintage"}, {TraitType: "Rarity", Value: "Mega"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "White Blue", UsdCentCost: 100000, AmountAvailable: 100, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "White Blue"}, {TraitType: "Rarity", Value: "Elite Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "BioHazard", UsdCentCost: 100000, AmountAvailable: 40, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "BioHazard"}, {TraitType: "Rarity", Value: "Exotic"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Cyber", UsdCentCost: 100000, AmountAvailable: 400, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Cyber"}, {TraitType: "Rarity", Value: "Colossal"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Gold", UsdCentCost: 100000, AmountAvailable: 200, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Gold"}, {TraitType: "Rarity", Value: "Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.BostonCyberneticsFactionID, CollectionID: supremacyCollection.ID, Description: "Light Blue Police", UsdCentCost: 100000, AmountAvailable: 60, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Boston Cybernetics"}, {TraitType: "Model", Value: "Law Enforcer X-1000"}, {TraitType: "SubModel", Value: "Light Blue Police"}, {TraitType: "Rarity", Value: "Ultra Rare"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.RedMountainFactionID, CollectionID: supremacyCollection.ID, Description: "Vintage", UsdCentCost: 100000, AmountAvailable: 500, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Red Mountain"}, {TraitType: "Model", Value: "Olympus Mons LY07"}, {TraitType: "SubModel", Value: "Vintage"}, {TraitType: "Rarity", Value: "Mega"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.RedMountainFactionID, CollectionID: supremacyCollection.ID, Description: "Red White", UsdCentCost: 100000, AmountAvailable: 3, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Red Mountain"}, {TraitType: "Model", Value: "Olympus Mons LY07"}, {TraitType: "SubModel", Value: "Red White"}, {TraitType: "Rarity", Value: "Deus ex"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.RedMountainFactionID, CollectionID: supremacyCollection.ID, Description: "Red Hex", UsdCentCost: 100000, AmountAvailable: 300, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Red Mountain"}, {TraitType: "Model", Value: "Olympus Mons LY07"}, {TraitType: "SubModel", Value: "Red Hex"}, {TraitType: "Rarity", Value: "Rare"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.RedMountainFactionID, CollectionID: supremacyCollection.ID, Description: "Gold", UsdCentCost: 100000, AmountAvailable: 200, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Red Mountain"}, {TraitType: "Model", Value: "Olympus Mons LY07"}, {TraitType: "SubModel", Value: "Gold"}, {TraitType: "Rarity", Value: "Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.RedMountainFactionID, CollectionID: supremacyCollection.ID, Description: "Desert", UsdCentCost: 100000, AmountAvailable: 500, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Red Mountain"}, {TraitType: "Model", Value: "Olympus Mons LY07"}, {TraitType: "SubModel", Value: "Desert"}, {TraitType: "Rarity", Value: "Mega"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.RedMountainFactionID, CollectionID: supremacyCollection.ID, Description: "Navy", UsdCentCost: 100000, AmountAvailable: 500, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Red Mountain"}, {TraitType: "Model", Value: "Olympus Mons LY07"}, {TraitType: "SubModel", Value: "Navy"}, {TraitType: "Rarity", Value: "Mega"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.RedMountainFactionID, CollectionID: supremacyCollection.ID, Description: "Nautical", UsdCentCost: 100000, AmountAvailable: 60, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Red Mountain"}, {TraitType: "Model", Value: "Olympus Mons LY07"}, {TraitType: "SubModel", Value: "Nautical"}, {TraitType: "Rarity", Value: "Ultra Rare"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.RedMountainFactionID, CollectionID: supremacyCollection.ID, Description: "Military", UsdCentCost: 100000, AmountAvailable: 400, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Red Mountain"}, {TraitType: "Model", Value: "Olympus Mons LY07"}, {TraitType: "SubModel", Value: "Military"}, {TraitType: "Rarity", Value: "Colossal"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.RedMountainFactionID, CollectionID: supremacyCollection.ID, Description: "Irradiated", UsdCentCost: 100000, AmountAvailable: 10, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Red Mountain"}, {TraitType: "Model", Value: "Olympus Mons LY07"}, {TraitType: "SubModel", Value: "Irradiated"}, {TraitType: "Rarity", Value: "Mythic"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.RedMountainFactionID, CollectionID: supremacyCollection.ID, Description: "Eva", UsdCentCost: 100000, AmountAvailable: 40, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Red Mountain"}, {TraitType: "Model", Value: "Olympus Mons LY07"}, {TraitType: "SubModel", Value: "Eva"}, {TraitType: "Rarity", Value: "Exotic"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.RedMountainFactionID, CollectionID: supremacyCollection.ID, Description: "Beetle", UsdCentCost: 100000, AmountAvailable: 300, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Red Mountain"}, {TraitType: "Model", Value: "Olympus Mons LY07"}, {TraitType: "SubModel", Value: "Beetle"}, {TraitType: "Rarity", Value: "Rare"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.RedMountainFactionID, CollectionID: supremacyCollection.ID, Description: "Villain", UsdCentCost: 100000, AmountAvailable: 100, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Red Mountain"}, {TraitType: "Model", Value: "Olympus Mons LY07"}, {TraitType: "SubModel", Value: "Villain"}, {TraitType: "Rarity", Value: "Elite Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.RedMountainFactionID, CollectionID: supremacyCollection.ID, Description: "Green Yellow", UsdCentCost: 100000, AmountAvailable: 400, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Red Mountain"}, {TraitType: "Model", Value: "Olympus Mons LY07"}, {TraitType: "SubModel", Value: "Green Yellow"}, {TraitType: "Rarity", Value: "Colossal"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.RedMountainFactionID, CollectionID: supremacyCollection.ID, Description: "Red Blue", UsdCentCost: 100000, AmountAvailable: 20, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Red Mountain"}, {TraitType: "Model", Value: "Olympus Mons LY07"}, {TraitType: "SubModel", Value: "Red Blue"}, {TraitType: "Rarity", Value: "Guardian"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.ZaibatsuFactionID, CollectionID: supremacyCollection.ID, Description: "White Gold", UsdCentCost: 100000, AmountAvailable: 500, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Zaibatsu"}, {TraitType: "Model", Value: "Tenshi Mk1"}, {TraitType: "SubModel", Value: "White Gold"}, {TraitType: "Rarity", Value: "Mega"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.ZaibatsuFactionID, CollectionID: supremacyCollection.ID, Description: "Vector", UsdCentCost: 100000, AmountAvailable: 400, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Zaibatsu"}, {TraitType: "Model", Value: "Tenshi Mk1"}, {TraitType: "SubModel", Value: "Vector"}, {TraitType: "Rarity", Value: "Colossal"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.ZaibatsuFactionID, CollectionID: supremacyCollection.ID, Description: "Cherry Blossom", UsdCentCost: 100000, AmountAvailable: 300, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Zaibatsu"}, {TraitType: "Model", Value: "Tenshi Mk1"}, {TraitType: "SubModel", Value: "Cherry Blossom"}, {TraitType: "Rarity", Value: "Rare"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.ZaibatsuFactionID, CollectionID: supremacyCollection.ID, Description: "Warden", UsdCentCost: 100000, AmountAvailable: 300, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Zaibatsu"}, {TraitType: "Model", Value: "Tenshi Mk1"}, {TraitType: "SubModel", Value: "Warden"}, {TraitType: "Rarity", Value: "Rare"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.ZaibatsuFactionID, CollectionID: supremacyCollection.ID, Description: "Gundam", UsdCentCost: 100000, AmountAvailable: 60, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Zaibatsu"}, {TraitType: "Model", Value: "Tenshi Mk1"}, {TraitType: "SubModel", Value: "Gundam"}, {TraitType: "Rarity", Value: "Ultra Rare"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.ZaibatsuFactionID, CollectionID: supremacyCollection.ID, Description: "Gold Pattern", UsdCentCost: 100000, AmountAvailable: 400, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Zaibatsu"}, {TraitType: "Model", Value: "Tenshi Mk1"}, {TraitType: "SubModel", Value: "Gold Pattern"}, {TraitType: "Rarity", Value: "Colossal"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.ZaibatsuFactionID, CollectionID: supremacyCollection.ID, Description: "Evangelion", UsdCentCost: 100000, AmountAvailable: 20, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Zaibatsu"}, {TraitType: "Model", Value: "Tenshi Mk1"}, {TraitType: "SubModel", Value: "Evangelion"}, {TraitType: "Rarity", Value: "Guardian"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.ZaibatsuFactionID, CollectionID: supremacyCollection.ID, Description: "Chalky Neon", UsdCentCost: 100000, AmountAvailable: 3, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Zaibatsu"}, {TraitType: "Model", Value: "Tenshi Mk1"}, {TraitType: "SubModel", Value: "Chalky Neon"}, {TraitType: "Rarity", Value: "Deus ex"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.ZaibatsuFactionID, CollectionID: supremacyCollection.ID, Description: "Black Digi", UsdCentCost: 100000, AmountAvailable: 500, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Zaibatsu"}, {TraitType: "Model", Value: "Tenshi Mk1"}, {TraitType: "SubModel", Value: "Black Digi"}, {TraitType: "Rarity", Value: "Mega"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.ZaibatsuFactionID, CollectionID: supremacyCollection.ID, Description: "Purple Haze", UsdCentCost: 100000, AmountAvailable: 10, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Zaibatsu"}, {TraitType: "Model", Value: "Tenshi Mk1"}, {TraitType: "SubModel", Value: "Purple Haze"}, {TraitType: "Rarity", Value: "Mythic"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.ZaibatsuFactionID, CollectionID: supremacyCollection.ID, Description: "Destroyer", UsdCentCost: 100000, AmountAvailable: 40, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Zaibatsu"}, {TraitType: "Model", Value: "Tenshi Mk1"}, {TraitType: "SubModel", Value: "Destroyer"}, {TraitType: "Rarity", Value: "Exotic"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.ZaibatsuFactionID, CollectionID: supremacyCollection.ID, Description: "Static", UsdCentCost: 100000, AmountAvailable: 500, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Zaibatsu"}, {TraitType: "Model", Value: "Tenshi Mk1"}, {TraitType: "SubModel", Value: "Static"}, {TraitType: "Rarity", Value: "Mega"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.ZaibatsuFactionID, CollectionID: supremacyCollection.ID, Description: "White Neon", UsdCentCost: 100000, AmountAvailable: 100, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Zaibatsu"}, {TraitType: "Model", Value: "Tenshi Mk1"}, {TraitType: "SubModel", Value: "White Neon"}, {TraitType: "Rarity", Value: "Elite Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
+		{Name: "", FactionID: passport.ZaibatsuFactionID, CollectionID: supremacyCollection.ID, Description: "Gold", UsdCentCost: 100000, AmountAvailable: 200, SoldBefore: time.Date(2022, 03, 01, 0, 0, 0, 0, time.UTC), Attributes: []*passport.Attribute{{TraitType: "Brand", Value: "Zaibatsu"}, {TraitType: "Model", Value: "Tenshi Mk1"}, {TraitType: "SubModel", Value: "Gold"}, {TraitType: "Rarity", Value: "Legendary"}, {TraitType: "Asset Type", Value: "War Machine"}, {TraitType: "Max Structure Hit Points", Value: 1000, DisplayType: passport.Number}, {TraitType: "Max Shield Hit Points", Value: 1000, DisplayType: passport.Number}}},
 	}
 
 	for _, si := range initialStoreItems {
@@ -878,12 +202,14 @@ func (s *Seeder) SeedInitialStoreItems(ctx context.Context, passportURL string) 
 		image, err := s.storeImages(ctx, fmt.Sprintf("%s_%s_%s", brand, model, subModel))
 		if err != nil {
 			log.Warn().Str("Image", fmt.Sprintf("%s_%s_%s", brand, model, subModel)).Err(err).Msg("Couldn't find image")
+			return terror.Error(err)
 		} else {
 			si.Image = fmt.Sprintf("%s/api/files/%s", passportURL, image.ID.String())
 		}
 		webM, err := s.storeWebM(ctx, fmt.Sprintf("%s_%s_%s", brand, model, subModel))
 		if err != nil {
 			log.Warn().Str("WebM", fmt.Sprintf("%s_%s_%s", brand, model, subModel)).Err(err).Msg("Couldn't find webm")
+			return terror.Error(err)
 		} else {
 			si.AnimationURL = fmt.Sprintf("%s/api/files/%s", passportURL, webM.ID.String())
 		}

@@ -80,7 +80,8 @@ type API struct {
 	// Queue Reward
 	TxConn *sql.DB
 
-	walletOnlyConnect bool
+	walletOnlyConnect    bool
+	storeItemExternalUrl string
 }
 
 // NewAPI registers routes
@@ -101,6 +102,7 @@ func NewAPI(
 	discordClientID string,
 	discordClientSecret string,
 	clientToken string,
+	externalUrl string,
 ) *API {
 	msgBus, cleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
 	api := &API{
@@ -124,7 +126,7 @@ func NewAPI(
 				Payload: nil,
 			},
 			AcceptOptions: &websocket.AcceptOptions{
-				InsecureSkipVerify: true, // TODO: set this depending on environment
+				InsecureSkipVerify: config.InsecureSkipVerifyCheck,
 				OriginPatterns:     []string{config.PassportWebHostURL, config.GameserverHostURL},
 			},
 			WebsocketReadLimit: 104857600,
@@ -138,7 +140,7 @@ func NewAPI(
 		// server clients
 		serverClients:       make(chan func(serverClients ServerClientsList)),
 		sendToServerClients: make(chan *ServerClientMessage),
-
+		//382
 		// user cache map
 		users: make(chan func(userList UserCacheMap)),
 
@@ -154,13 +156,15 @@ func NewAPI(
 		// faction war machine contract
 		factionWarMachineContractMap: make(map[passport.FactionID]chan func(*WarMachineContract)),
 
-		walletOnlyConnect: config.OnlyWalletConnect,
+		walletOnlyConnect:    config.OnlyWalletConnect,
+		storeItemExternalUrl: externalUrl,
 	}
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
 	api.Routes.Use(cors.New(cors.Options{
-		AllowedOrigins: []string{config.PassportWebHostURL, config.GameserverHostURL},
+		AllowedOrigins:   []string{config.PassportWebHostURL, config.GameserverHostURL, config.WhitelistEndpoint},
+		AllowCredentials: true,
 	}).Handler)
 
 	var err error
@@ -188,9 +192,10 @@ func NewAPI(
 			Conn:   conn,
 			Mailer: mailer,
 		},
-		Tokens:            api.Tokens,
-		Eip712Message:     config.MetaMaskSignMessage,
-		OnlyWalletConnect: config.OnlyWalletConnect,
+		Tokens:                 api.Tokens,
+		Eip712Message:          config.MetaMaskSignMessage,
+		OnlyWalletConnect:      config.OnlyWalletConnect,
+		WhitelistCheckEndpoint: fmt.Sprintf("%s/api/whitelist", config.WhitelistEndpoint),
 	})
 	if err != nil {
 		log.Fatal().Msgf("failed to init hub auther: %s", err.Error())
@@ -216,6 +221,7 @@ func NewAPI(
 			r.Get("/check-eth-tx/{tx_id}", api.WithError(cc.CheckEthTx))
 			r.Get("/check-bsc-tx/{tx_id}", api.WithError(cc.CheckBscTx))
 			r.Get("/whitelist/check", api.WithError(api.WhitelistOnlyWalletCheck))
+			r.Get("/faction-data", api.WithError(api.FactionGetData))
 		})
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
@@ -399,6 +405,9 @@ func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 	if asset == nil {
 		return http.StatusBadRequest, terror.Warn(err, "Asset doesn't exist")
 	}
+
+	// openseas object
+	//asset
 
 	// Encode result
 	err = json.NewEncoder(w).Encode(asset)

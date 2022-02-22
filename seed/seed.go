@@ -20,10 +20,11 @@ type Seeder struct {
 	Conn            *pgxpool.Pool
 	TxConn          *sql.DB
 	PassportHostUrl string
+	ExternalURL     string
 }
 
 // NewSeeder returns a new Seeder
-func NewSeeder(conn *pgxpool.Pool, txConn *sql.DB, passportHostUrl string) *Seeder {
+func NewSeeder(conn *pgxpool.Pool, txConn *sql.DB, passportHostUrl string, externalUrl string) *Seeder {
 	s := &Seeder{Conn: conn, TxConn: txConn, PassportHostUrl: passportHostUrl}
 	return s
 }

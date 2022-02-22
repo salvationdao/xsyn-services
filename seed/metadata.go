@@ -290,7 +290,7 @@ func (s *Seeder) SeedWarMachine(ctx context.Context, weapons, abilities []*passp
 	}
 
 	for _, nft := range newNFTs {
-		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
+		err := db.XsynMetadataInsert(ctx, s.Conn, nft, s.ExternalURL)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
@@ -724,7 +724,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context, collection *passport.Collectio
 	}
 
 	for _, nft := range newNFT {
-		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
+		err := db.XsynMetadataInsert(ctx, s.Conn, nft, s.ExternalURL)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
@@ -1106,7 +1106,7 @@ func (s *Seeder) SeedUtility(ctx context.Context, collection *passport.Collectio
 	}
 
 	for _, nft := range newNFT {
-		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
+		err := db.XsynMetadataInsert(ctx, s.Conn, nft, s.ExternalURL)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
@@ -1160,7 +1160,7 @@ func (s *Seeder) SeedWarMachineAbility(ctx context.Context, collection *passport
 		},
 	}
 	for _, nft := range newNFT {
-		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
+		err := db.XsynMetadataInsert(ctx, s.Conn, nft, s.ExternalURL)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
