@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"passport"
@@ -35,10 +36,17 @@ func (api *API) UserCache(fn UserCacheFunc, stuff ...string) {
 	}
 	var wg sync.WaitGroup
 	wg.Add(1)
-	api.users <- func(userCacheList UserCacheMap) {
+	select {
+	case api.users <- func(userCacheList UserCacheMap) {
 		fn(userCacheList)
 		wg.Done()
+	}:
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("User Cache")
 	}
+
 	wg.Wait()
 	if len(stuff) > 0 {
 		fmt.Printf("users cache end %s\n", stuff[0])

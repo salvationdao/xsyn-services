@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -32,21 +33,89 @@ const BNBSymbol = "BNB"
 const BUSDSymbol = "BUSD"
 const USDCSymbol = "USDC"
 
-type ChainClients struct {
-	SUPS            *bridge.SUPS
-	EthClient       *ethclient.Client
-	BscClient       *ethclient.Client
-	Params          *passport.BridgeParams
-	API             *API
-	Log             *zerolog.Logger
-	updateStateFunc func(chainID int64, newBlock uint64)
+const ETHDecimals = 18
+const BNBDecimals = 18
+const SUPSDecimals = 18
 
+type ChainClients struct {
+	SUPS      *bridge.SUPS
+	EthClient *ethclient.Client
+	BscClient *ethclient.Client
+	Params    *passport.BridgeParams
+	API       *API
+	Log       *zerolog.Logger
+
+	updateStateFunc   func(chainID int64, newBlock uint64)
 	updatePriceFuncMu sync.Mutex
 	updatePriceFunc   func(symbol string, amount decimal.Decimal)
 }
 
-func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) *ChainClients {
-	log.Debug().Str("purchase_addr", p.PurchaseAddr.Hex()).Str("deposit_addr", p.DepositAddr.Hex()).Str("busd_addr", p.BusdAddr.Hex()).Str("usdc_addr", p.UsdcAddr.Hex()).Msg("addresses")
+type Prices struct {
+	ETH float64
+	BTC float64
+}
+
+type BNBPriceResp struct {
+	Binancecoin struct {
+		Usd float64 `json:"usd"`
+	} `json:"binancecoin"`
+}
+
+type ETHPriceResp struct {
+	Ethereum struct {
+		Usd float64 `json:"usd"`
+	} `json:"ethereum"`
+}
+
+func FetchETHPrice() (*ETHPriceResp, error) {
+	req, err := http.NewRequest("GET", "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("non 200 status code: %d", resp.StatusCode)
+	}
+	result := &ETHPriceResp{}
+	err = json.NewDecoder(resp.Body).Decode(result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+
+}
+
+func FetchBNBPrice() (*BNBPriceResp, error) {
+	req, err := http.NewRequest("GET", "https://api.coingecko.com/api/v3/simple/price?ids=binancecoin&vs_currencies=usd", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("non 200 status code: %d", resp.StatusCode)
+	}
+	result := &BNBPriceResp{}
+	err = json.NewDecoder(resp.Body).Decode(result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams, isTestnetBlockchain bool) *ChainClients {
+	log.Debug().Bool("is_testnet", isTestnetBlockchain).Str("purchase_addr", p.PurchaseAddr.Hex()).Str("deposit_addr", p.DepositAddr.Hex()).Str("busd_addr", p.BusdAddr.Hex()).Str("usdc_addr", p.UsdcAddr.Hex()).Msg("addresses")
 	ctx := context.Background()
 	cc := &ChainClients{
 		Params:            p,
@@ -60,14 +129,14 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) 
 		cc.Log.Debug().Int64("ChainID", chainID).Uint64("Block", newBlock).Msg("updating state")
 
 		if chainID == p.ETHChainID {
-			_, err := db.UpdateLatestETHBlock(ctx, cc.API.Conn, newBlock)
+			_, err := db.UpdateLatestETHBlock(ctx, isTestnetBlockchain, cc.API.Conn, newBlock)
 			if err != nil {
 				api.Log.Err(err).Msgf("failed to update latest eth block to %d", newBlock)
 			}
 		}
 
 		if chainID == p.BSCChainID {
-			_, err := db.UpdateLatestBSCBlock(ctx, cc.API.Conn, newBlock)
+			_, err := db.UpdateLatestBSCBlock(ctx, isTestnetBlockchain, cc.API.Conn, newBlock)
 			if err != nil {
 				api.Log.Err(err).Msgf("failed to update latest bsc block to %d", newBlock)
 			}
@@ -84,7 +153,7 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) 
 			cc.API.State.BNBtoUSD = amount
 		}
 
-		_, err := db.UpdateExchangeRates(ctx, cc.API.Conn, cc.API.State)
+		_, err := db.UpdateExchangeRates(ctx, isTestnetBlockchain, cc.API.Conn, cc.API.State)
 		if err != nil {
 			api.Log.Err(err).Msg("failed to update exchange rates")
 		}
@@ -104,7 +173,7 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams) 
 func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Transfer) {
 	fn := func(xfer *bridge.Transfer) {
 		if xfer.From.Hex() == cc.Params.OperatorAddr.Hex() || xfer.To.Hex() == cc.Params.OperatorAddr.Hex() {
-			amt := decimal.NewFromBigInt(xfer.Amount, -18)
+			amt := decimal.NewFromBigInt(xfer.Amount, int32(-1*xfer.Decimals))
 			cc.Log.Debug().
 				Str("txid", xfer.TxID.Hex()).
 				Str("from", xfer.From.Hex()).
@@ -128,7 +197,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 
 					cc.Log.Info().
 						Str("Chain", "BSC").
-						Str("SUPS", decimal.NewFromBigInt(supAmount, 0).Div(decimal.New(1, int32(18))).String()).
+						Str("SUPS", decimal.NewFromBigInt(supAmount, 0).Div(decimal.New(1, int32(SUPSDecimals))).String()).
 						Str("BUSD", decimal.NewFromBigInt(xfer.Amount, 0).Div(decimal.New(1, int32(xfer.Decimals))).String()).
 						Str("Buyer", xfer.From.Hex()).
 						Str("TxID", xfer.TxID.Hex()).
@@ -152,13 +221,19 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 
 					resultChan := make(chan *passport.TransactionResult)
 
-					cc.API.transaction <- &passport.NewTransaction{
+					select {
+					case cc.API.transaction <- &passport.NewTransaction{
 						ResultChan:           resultChan,
 						To:                   user.ID,
 						From:                 passport.XsynSaleUserID,
 						Amount:               *supAmount,
 						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("sup purchase on BSC with BUSD %s", xfer.TxID.Hex()),
+					}:
+
+					case <-time.After(10 * time.Second):
+						cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+						panic("sup purchase on BSC with BUSD ")
 					}
 
 					result := <-resultChan
@@ -174,13 +249,20 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 
 					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), result.Transaction.ID, xfer.Block, xfer.ChainID)
 					if err != nil {
-						cc.API.transaction <- &passport.NewTransaction{
+						select {
+						case cc.API.transaction <- &passport.NewTransaction{
 							To:                   passport.XsynSaleUserID,
 							From:                 user.ID,
 							Amount:               *supAmount,
 							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
 							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on BSC with BUSD %s", xfer.TxID.Hex()),
+						}:
+
+						case <-time.After(10 * time.Second):
+							cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+							panic("failed insert chan")
 						}
+
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
 					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
@@ -221,13 +303,19 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 
 					resultChan := make(chan *passport.TransactionResult)
 
-					cc.API.transaction <- &passport.NewTransaction{
+					select {
+					case cc.API.transaction <- &passport.NewTransaction{
 						ResultChan:           resultChan,
 						To:                   user.ID,
 						From:                 passport.XsynSaleUserID,
 						Amount:               *supAmount,
 						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("sup purchase on BSC with BNB %s", xfer.TxID.Hex()),
+					}:
+
+					case <-time.After(10 * time.Second):
+						cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+						panic("sup purchase on BSC with BNB")
 					}
 
 					result := <-resultChan
@@ -243,13 +331,20 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 
 					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), result.Transaction.ID, xfer.Block, xfer.ChainID)
 					if err != nil {
-						cc.API.transaction <- &passport.NewTransaction{
+						select {
+						case cc.API.transaction <- &passport.NewTransaction{
 							To:                   passport.XsynSaleUserID,
 							From:                 user.ID,
 							Amount:               *supAmount,
 							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
 							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on BSC with BNB %s", xfer.TxID.Hex()),
+						}:
+
+						case <-time.After(10 * time.Second):
+							cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+							panic("FAILED TO INSERT CHAIN CONFIRM ENTRY ")
 						}
+
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
 					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
@@ -283,13 +378,19 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 
 					resultChan := make(chan *passport.TransactionResult)
 
-					cc.API.transaction <- &passport.NewTransaction{
+					select {
+					case cc.API.transaction <- &passport.NewTransaction{
 						ResultChan:           resultChan,
 						To:                   user.ID,
 						From:                 passport.XsynSaleUserID,
 						Amount:               *xfer.Amount,
 						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("[DEPOSIT] SUPS on BSC %s", xfer.TxID.Hex()),
+					}:
+
+					case <-time.After(10 * time.Second):
+						cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+						panic("[DEPOSIT] SUPS on BSC")
 					}
 
 					result := <-resultChan
@@ -305,13 +406,20 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 
 					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), result.Transaction.ID, xfer.Block, xfer.ChainID)
 					if err != nil {
-						cc.API.transaction <- &passport.NewTransaction{
+						select {
+						case cc.API.transaction <- &passport.NewTransaction{
 							To:                   passport.XsynSaleUserID,
 							From:                 user.ID,
 							Amount:               *xfer.Amount,
 							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
 							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup deposit on BSC %s", xfer.TxID.Hex()),
+						}:
+
+						case <-time.After(10 * time.Second):
+							cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+							panic("FAILED TO INSERT CHAIN CONFIRM ENTRY")
 						}
+
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
 					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
@@ -345,13 +453,19 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 					resultChan := make(chan *passport.TransactionResult)
 
-					cc.API.transaction <- &passport.NewTransaction{
+					select {
+					case cc.API.transaction <- &passport.NewTransaction{
 						ResultChan:           resultChan,
 						From:                 user.ID,
 						To:                   passport.XsynTreasuryUserID,
 						Amount:               *xfer.Amount,
 						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("[SUPS] Withdraw on BSC to %s", xfer.To.Hex()),
+					}:
+
+					case <-time.After(10 * time.Second):
+						cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+						panic("[SUPS] Withdraw on BSC to")
 					}
 
 					result := <-resultChan
@@ -365,13 +479,20 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), result.Transaction.ID, xfer.Block, xfer.ChainID)
 					if err != nil {
-						cc.API.transaction <- &passport.NewTransaction{
+						select {
+						case cc.API.transaction <- &passport.NewTransaction{
 							To:                   user.ID,
 							From:                 passport.XsynTreasuryUserID,
 							Amount:               *xfer.Amount,
 							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
 							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - ssup withdraw on BSC to %s", xfer.TxID.Hex()),
+						}:
+
+						case <-time.After(10 * time.Second):
+							cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+							panic(fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - ssup withdraw on BSC to %s", xfer.TxID.Hex()))
 						}
+
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
 					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
@@ -413,13 +534,19 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 					resultChan := make(chan *passport.TransactionResult)
 
-					cc.API.transaction <- &passport.NewTransaction{
+					select {
+					case cc.API.transaction <- &passport.NewTransaction{
 						ResultChan:           resultChan,
 						To:                   user.ID,
 						From:                 passport.XsynSaleUserID,
 						Amount:               *supAmount,
 						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("sup purchase on Ethereum with USDC %s", xfer.TxID.Hex()),
+					}:
+
+					case <-time.After(10 * time.Second):
+						cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+						panic(fmt.Sprintf("sup purchase on Ethereum with USDC %s", xfer.TxID.Hex()))
 					}
 
 					result := <-resultChan
@@ -433,13 +560,20 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), result.Transaction.ID, xfer.Block, xfer.ChainID)
 					if err != nil {
-						cc.API.transaction <- &passport.NewTransaction{
+						select {
+						case cc.API.transaction <- &passport.NewTransaction{
 							To:                   passport.XsynSaleUserID,
 							From:                 user.ID,
 							Amount:               *supAmount,
 							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
 							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on Ethereum with USDC %s", xfer.TxID.Hex()),
+						}:
+
+						case <-time.After(10 * time.Second):
+							cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+							panic(fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on Ethereum with USDC %s", xfer.TxID.Hex()))
 						}
+
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
 					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
@@ -453,7 +587,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 
 					cc.Log.Info().
 						Str("Chain", "Ethereum").
-						Str("SUPS", decimal.NewFromBigInt(supAmount, 0).Div(decimal.New(1, int32(18))).String()).
+						Str("SUPS", decimal.NewFromBigInt(supAmount, 0).Div(decimal.New(1, int32(SUPSDecimals))).String()).
 						Str("ETH", decimal.NewFromBigInt(xfer.Amount, 0).Div(decimal.New(1, int32(xfer.Decimals))).String()).
 						Str("Buyer", xfer.From.Hex()).
 						Str("TxID", xfer.TxID.Hex()).
@@ -476,13 +610,19 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 					resultChan := make(chan *passport.TransactionResult)
 
-					cc.API.transaction <- &passport.NewTransaction{
+					select {
+					case cc.API.transaction <- &passport.NewTransaction{
 						ResultChan:           resultChan,
 						To:                   user.ID,
 						From:                 passport.XsynSaleUserID,
 						Amount:               *supAmount,
 						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("[SUPS] purchase on Ethereum with ETH %s", xfer.TxID.Hex()),
+					}:
+
+					case <-time.After(10 * time.Second):
+						cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+						panic(fmt.Sprintf("[SUPS] purchase on Ethereum with ETH %s", xfer.TxID.Hex()))
 					}
 
 					result := <-resultChan
@@ -498,13 +638,20 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 
 					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), result.Transaction.ID, xfer.Block, xfer.ChainID)
 					if err != nil {
-						cc.API.transaction <- &passport.NewTransaction{
+						select {
+						case cc.API.transaction <- &passport.NewTransaction{
 							To:                   passport.XsynSaleUserID,
 							From:                 user.ID,
 							Amount:               *supAmount,
 							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
 							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on Ethereum with ETH %s", xfer.TxID.Hex()),
+						}:
+
+						case <-time.After(10 * time.Second):
+							cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+							panic(fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on Ethereum with ETH %s", xfer.TxID.Hex()))
 						}
+
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
 					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
@@ -622,7 +769,7 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 				time.Sleep(b.Duration())
 				continue bscClientLoop
 			}
-			bnbListener := bridge.NewNativeListener(cc.BscClient, cc.Params.PurchaseAddr, "BNB", 18, cc.Params.BSCChainID, cc.handleTransfer(ctx))
+			bnbListener := bridge.NewNativeListener(cc.BscClient, cc.Params.PurchaseAddr, "BNB", BNBDecimals, cc.Params.BSCChainID, cc.handleTransfer(ctx))
 			supListener, err := bridge.NewERC20Listener(cc.Params.SupAddr, cc.Params.BSCChainID, cc.BscClient, cc.handleTransfer(ctx))
 			if err != nil {
 				cc.Log.Err(err).Msg("failed create listener for sups")
@@ -653,7 +800,6 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 				return
 			}
 
-			o := bridge.NewOracle(cc.Params.MoralisKey)
 			go func() {
 
 				exchangeRateBackoff := &backoff.Backoff{
@@ -668,14 +814,14 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 						return
 					default:
 						// gets how many sups for 1 busd
-						supBigPrice, err := supGetter.Price(decimal.New(1, int32(18)).BigInt())
+						supBigPrice, err := supGetter.Price(decimal.New(1, int32(SUPSDecimals)).BigInt())
 						if err != nil {
 							cc.Log.Err(err).Msg("failed to get sup to busd price")
 							time.Sleep(exchangeRateBackoff.Duration())
 							continue
 						}
 
-						supPrice := decimal.NewFromBigInt(supBigPrice, -18)
+						supPrice := decimal.NewFromBigInt(supBigPrice, -1*SUPSDecimals)
 						if supPrice == decimal.NewFromInt(0) {
 							cc.Log.Warn().Msg("new supPrice was 0, exiting loop")
 							continue
@@ -702,23 +848,20 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 					case <-ctx.Done():
 						return
 					default:
-
-						//gets how many bnb for 1 busd
-						bnbPrice, err := o.BNBUSDPrice()
+						result, err := FetchBNBPrice()
 						if err != nil {
 							cc.Log.Err(err).Msg("failed to get bnb price")
 							time.Sleep(exchangeRateBackoff.Duration())
 							continue
 						}
-						if bnbPrice == decimal.NewFromInt(0) {
-							cc.Log.Warn().Msg("new bnbPrice was 0, exiting loop")
+						if result.Binancecoin.Usd == 0 {
+							cc.Log.Err(err).Msg("BNB price returned 0")
 							continue
 						}
-
 						exchangeRateBackoff.Reset()
 
 						cc.updatePriceFuncMu.Lock()
-						cc.updatePriceFunc(bnbListener.Symbol, bnbPrice)
+						cc.updatePriceFunc(bnbListener.Symbol, decimal.NewFromFloat(result.Binancecoin.Usd))
 						cc.updatePriceFuncMu.Unlock()
 
 						time.Sleep(10 * time.Minute)
@@ -981,7 +1124,7 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 
 			usdcListener, err := bridge.NewERC20Listener(cc.Params.UsdcAddr, cc.Params.ETHChainID, cc.EthClient, cc.handleTransfer(ctx))
 			if err != nil {
-				cc.Log.Err(err).Msg("failed create listener for usdc")
+				cc.Log.Err(err).Str("addr", cc.Params.UsdcAddr.Hex()).Int64("chain_id", cc.Params.ETHChainID).Msg("failed create listener for usdc")
 				cancel()
 				time.Sleep(b.Duration())
 				continue ethClientLoop
@@ -994,8 +1137,8 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 				cc.EthClient,
 				cc.Params.ETHChainID,
 				cc.handleNFTTransfer(ctx),
-				func(*bridge.NFTStakeEvent) {},
-				func(*bridge.NFTUnstakeEvent) {},
+				func(event *bridge.NFTStakeEvent) {},
+				func(event *bridge.NFTUnstakeEvent) {},
 				func(*bridge.NFTLockEvent) {},
 				func(*bridge.NFTUnlockEvent) {},
 				func(*bridge.NFTRemapEvent) {},
@@ -1006,10 +1149,120 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 				time.Sleep(b.Duration())
 				continue ethClientLoop
 			}
+
+			nftStakingListener, err := bridge.NewERC721Listener(
+				cc.Params.EthNftStakingAddr,
+				cc.EthClient,
+				cc.Params.ETHChainID,
+				func(event *bridge.NFTTransferEvent) {},
+				func(event *bridge.NFTStakeEvent) {
+					cc.Log.Info().Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msg("nft stake")
+
+					// user from wallet address
+					var user *passport.User
+					var err error
+					user, err = db.UserByPublicAddress(ctx, cc.API.Conn, event.Owner.Hex())
+					if err != nil {
+						if errors.Is(err, pgx.ErrNoRows) {
+							user = &passport.User{Username: event.Owner.Hex(), PublicAddress: passport.NewString(event.Owner.Hex()), RoleID: passport.UserRoleMemberID}
+							err = db.UserCreate(ctx, cc.API.Conn, user)
+							if err != nil {
+								cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("issue creating new user and unable to find a user")
+								return
+							}
+						}
+						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("issue finding user to assign token")
+						return
+					}
+
+					// get asset
+					asset, err := db.AssetGet(ctx, cc.API.Conn, event.TokenID.Uint64())
+					if err != nil {
+						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to transfer")
+						return
+					}
+
+					// check if asset has handled this tx already
+					if asset == nil {
+						cc.Log.Err(err).Msgf("failed to find asset, asset was nil: %s", event.TokenID.String())
+						return
+					}
+					for _, tx := range asset.TxHistory {
+						if tx == event.TxID.Hex() {
+							return
+						}
+					}
+
+					// check asset is owned by on chain user
+					if asset.UserID == nil || asset.UserID.IsNil() ||
+						*asset.UserID != passport.OnChainUserID {
+						cc.Log.Err(fmt.Errorf("not owned by on chain user")).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("asset is not owned by the on chain user")
+						return
+					}
+
+					//func AssetTransfer(ctx context.Context, conn Conn, tokenID uint64, oldUserID, newUserID passport.UserID, txHash string) error {
+					err = db.AssetTransfer(ctx, cc.API.Conn, asset.TokenID, passport.OnChainUserID, user.ID, event.TxID.Hex())
+					if err != nil {
+						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("failed to transfer asset")
+						return
+					}
+
+					// TODO: remove this and update asset transfer to return updated asset instead
+					asset, err = db.AssetGet(ctx, cc.API.Conn, event.TokenID.Uint64())
+					if err != nil {
+						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to transfer")
+						return
+					}
+					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
+				},
+				func(event *bridge.NFTUnstakeEvent) {
+					cc.Log.Info().Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msg("nft unstake")
+					// get asset
+					asset, err := db.AssetGet(ctx, cc.API.Conn, event.TokenID.Uint64())
+					if err != nil {
+						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to remove")
+						return
+					}
+
+					// check if asset has handled this tx already
+					if asset == nil {
+						cc.Log.Err(err).Msgf("failed to find asset, asset was nil: %s", event.TokenID.String())
+						return
+					}
+					for _, tx := range asset.TxHistory {
+						if tx == event.TxID.Hex() {
+							return
+						}
+					}
+
+					// remove the asset from user
+					err = db.AssetTransfer(ctx, cc.API.Conn, asset.TokenID, *asset.UserID, passport.OnChainUserID, event.TxID.Hex())
+					if err != nil {
+						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("failed to transfer asset")
+						return
+					}
+
+					// TODO: remove this and update asset transfer to return updated asset instead
+					asset, err = db.AssetGet(ctx, cc.API.Conn, event.TokenID.Uint64())
+					if err != nil {
+						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to transfer")
+						return
+					}
+					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
+				},
+				func(*bridge.NFTLockEvent) {},
+				func(*bridge.NFTUnlockEvent) {},
+				func(*bridge.NFTRemapEvent) {},
+			)
+			if err != nil {
+				cc.Log.Err(err).Msg("failed create listener for eth staking nft")
+				cancel()
+				time.Sleep(b.Duration())
+				continue ethClientLoop
+			}
+
 			// TODO use real deposit address
 			blockEth := bridge.NewHeadListener(cc.EthClient, cc.Params.ETHChainID, cc.handleBlock(ctx, ethClient, cc.Params.ETHChainID))
-
-			o := bridge.NewOracle(cc.Params.MoralisKey)
 
 			go func() {
 				exchangeRateBackoff := &backoff.Backoff{
@@ -1023,26 +1276,25 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 				default:
 
 					for {
-						// //gets how many eth for 1 busd
-						ethPrice, err := o.ETHUSDPrice()
+
+						result, err := FetchETHPrice()
 						if err != nil {
-							cc.Log.Err(err).Msg("Could not get ETH price")
+							cc.Log.Err(err).Msg("failed to get ETH price")
 							time.Sleep(exchangeRateBackoff.Duration())
 							continue
 						}
-
-						if ethPrice == decimal.NewFromInt(0) {
-							cc.Log.Warn().Msg("new ethPrice was 0, exiting loop")
+						if result.Ethereum.Usd == 0 {
+							cc.Log.Err(err).Msg("ETH price returned 0")
 							continue
 						}
 
 						exchangeRateBackoff.Reset()
 
 						cc.updatePriceFuncMu.Lock()
-						cc.updatePriceFunc(ethListener.Symbol, ethPrice)
+						cc.updatePriceFunc(ethListener.Symbol, decimal.NewFromFloat(result.Ethereum.Usd))
 						cc.updatePriceFuncMu.Unlock()
 
-						time.Sleep(10 * time.Minute)
+						time.Sleep(10 * time.Second)
 					}
 				}
 			}()
@@ -1088,6 +1340,14 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 							return
 						}
 					}()
+					go func() {
+						err := nftStakingListener.Replay(ctx, int(cc.API.State.LatestEthBlock), int(currentETHBlock))
+						if err != nil {
+							cc.Log.Err(err).Msg("failed to replay staking for NFT")
+							errChan <- err
+							return
+						}
+					}()
 					cc.updateStateFunc(cc.Params.ETHChainID, currentETHBlock)
 				}
 			}()
@@ -1117,10 +1377,27 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 					case <-ctx.Done():
 						return
 					default:
-						cc.Log.Info().Str("sym", "NFT").Msg("Start listener")
+						cc.Log.Info().Str("sym", "NFT").Str("type", "Mint/Transfer").Msg("Start listener")
 						err := nftListener.Listen(ctx)
 						if err != nil {
 							cc.Log.Err(err).Msg("error listening to eth nft")
+							errChan <- err
+							return
+						}
+					}
+				}
+			}()
+			// nft staking listener
+			go func() {
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					default:
+						cc.Log.Info().Str("sym", "NFT").Str("type", "Staking").Msg("Start listener")
+						err := nftStakingListener.Listen(ctx)
+						if err != nil {
+							cc.Log.Err(err).Msg("error listening to eth nft staking")
 							errChan <- err
 							return
 						}
@@ -1242,14 +1519,25 @@ func (cc *ChainClients) CheckBscTx(w http.ResponseWriter, r *http.Request) (int,
 func (cc *ChainClients) handleNFTTransfer(ctx context.Context) func(xfer *bridge.NFTTransferEvent) {
 	fn := func(ev *bridge.NFTTransferEvent) {
 		func() {
+			if ev.From.Hex() == cc.Params.EthNftStakingAddr.Hex() || ev.To.Hex() == cc.Params.EthNftStakingAddr.Hex() {
+				return
+			}
+
 			asset, err := db.AssetGet(ctx, cc.API.Conn, ev.TokenID.Uint64())
 			if err != nil {
 				cc.Log.Err(err).Msgf("issue getting asset: %s", ev.TokenID.String())
 				return
 			}
 			if asset == nil {
-				cc.Log.Err(err).Msgf("failed to find asset: %s", ev.TokenID.String())
+				cc.Log.Err(err).Msgf("failed to find asset, asset was nil: %s", ev.TokenID.String())
 				return
+			}
+
+			// check if asset has handled this tx already
+			for _, tx := range asset.TxHistory {
+				if tx == ev.TxID.Hex() {
+					return
+				}
 			}
 
 			// if asset owner is passport.onchainuser then it is an external transfer, so just store the tx hash
@@ -1259,6 +1547,7 @@ func (cc *ChainClients) handleNFTTransfer(ctx context.Context) func(xfer *bridge
 					cc.Log.Err(err).Msgf("failed to add tx hash to array asset: %s, tx: %s", ev.TokenID.String(), ev.TxID.Hex())
 					return
 				}
+				return
 			}
 
 			cc.Log.Info().
@@ -1321,14 +1610,21 @@ func (cc *ChainClients) handleNFTTransfer(ctx context.Context) func(xfer *bridge
 			}
 		}()
 
+		// mark as minted
+		err := db.XsynAssetMinted(ctx, cc.API.Conn, ev.TokenID.Uint64())
+		if err != nil {
+			cc.Log.Err(err).Msgf("failed to find asset to mark minted: %s", ev.TokenID.String())
+			return
+		}
+
 		// get updated asset
 		asset, err := db.AssetGet(ctx, cc.API.Conn, ev.TokenID.Uint64())
 		if err != nil {
-			cc.Log.Err(err).Msgf("failed to find asset: %s", ev.TokenID.String())
+			cc.Log.Err(err).Msgf("failed to find asset to reply: %s", ev.TokenID.String())
 			return
 		}
 		if asset == nil {
-			cc.Log.Err(err).Msgf("failed to find asset: %s", ev.TokenID.String())
+			cc.Log.Err(err).Msgf("failed to find asset its nil?: %s", ev.TokenID.String())
 			return
 		}
 		go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, ev.TokenID.String())), asset)

@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"passport"
 	"passport/db"
+	"time"
 
 	"github.com/ninja-software/log_helpers"
 
@@ -160,17 +161,24 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	warMachineMetadata := &passport.WarMachineMetadata{
-		OwnedByID: userID,
+		OwnedByID:      userID,
+		ContractReward: *big.NewInt(0),
 	}
 
 	// get current faction contract reward
 	contractRewardChan := make(chan big.Int)
 	if _, ok := ac.API.factionWarMachineContractMap[*user.FactionID]; ok {
-		ac.API.factionWarMachineContractMap[*user.FactionID] <- func(wmc *WarMachineContract) {
+		select {
+		case ac.API.factionWarMachineContractMap[*user.FactionID] <- func(wmc *WarMachineContract) {
 			contractRewardChan <- wmc.CurrentReward
+		}:
+
+		case <-time.After(10 * time.Second):
+			ac.API.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("User Cache")
 		}
+		warMachineMetadata.ContractReward = <-contractRewardChan
 	}
-	warMachineMetadata.ContractReward = <-contractRewardChan
 
 	// parse metadata
 	for _, att := range asset.Attributes {
@@ -406,8 +414,14 @@ func (ac *AssetController) AssetQueueContractRewardSubscriber(ctx context.Contex
 	}
 
 	if _, ok := ac.API.factionWarMachineContractMap[faction.ID]; ok {
-		ac.API.factionWarMachineContractMap[faction.ID] <- func(wmc *WarMachineContract) {
+		select {
+		case ac.API.factionWarMachineContractMap[faction.ID] <- func(wmc *WarMachineContract) {
 			reply(wmc.CurrentReward.String())
+		}:
+
+		case <-time.After(10 * time.Second):
+			ac.API.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Asset Queue Contract Reward Subscriber")
 		}
 	}
 

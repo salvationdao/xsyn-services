@@ -13,6 +13,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/ninja-syndicate/supremacy-bridge/bridge"
 	"github.com/rs/zerolog"
 )
 
@@ -33,6 +34,7 @@ func NewCollectionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) 
 
 	// collection list
 	api.Command(HubKeyCollectionList, collectionHub.CollectionsList)
+	api.Command(HubKeyWalletCollectionList, collectionHub.WalletCollectionsList)
 
 	// collection subscribe
 	api.SubscribeCommand(HubKeyCollectionSubscribe, collectionHub.CollectionUpdatedSubscribeHandler)
@@ -60,6 +62,10 @@ type CollectionsUpdatedSubscribeRequest struct {
 type CollectionListResponse struct {
 	Records []*passport.Collection `json:"records"`
 	Total   int                    `json:"total"`
+}
+
+type WalletCollectionListResponse struct {
+	NFTOwners []*bridge.NFTOwner
 }
 
 const HubKeyCollectionList hub.HubCommandKey = "COLLECTION:LIST"
@@ -96,6 +102,25 @@ func (ctrlr *CollectionController) CollectionsList(ctx context.Context, hubc *hu
 		Records: collections,
 	}
 
+	reply(resp)
+	return nil
+
+}
+
+const HubKeyWalletCollectionList hub.HubCommandKey = "COLLECTION:WALLET:LIST"
+
+func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+
+	o := bridge.NewOracle(ctrlr.API.BridgeParams.MoralisKey)
+
+	walletCollections, err := o.NFTOwners(ctrlr.API.BridgeParams.EthNftAddr, "goerli")
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	resp := &WalletCollectionListResponse{
+		NFTOwners: walletCollections.Result,
+	}
 	reply(resp)
 	return nil
 

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"passport"
@@ -108,14 +109,21 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 
 	txRef := fmt.Sprintf("sup|withdraw|%s", txID)
 	resultChan := make(chan *passport.TransactionResult, 1)
-	sc.API.transaction <- &passport.NewTransaction{
+	select {
+	case sc.API.transaction <- &passport.NewTransaction{
 		To:                   passport.OnChainUserID,
 		From:                 userID,
 		Amount:               *withdrawAmount,
 		TransactionReference: passport.TransactionReference(txRef),
 		Description:          "Withdraw of SUPS.",
 		ResultChan:           resultChan,
+	}:
+
+	case <-time.After(10 * time.Second):
+		sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Withdraw Sup Handler")
 	}
+
 	result := <-resultChan
 	if result.Error != nil {
 		return terror.Error(result.Error, "Withdraw failed: %s", result.Error.Error())
@@ -125,13 +133,20 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 	}
 	// refund callback
 	refund := func(reason string) {
-		sc.API.transaction <- &passport.NewTransaction{
+		select {
+		case sc.API.transaction <- &passport.NewTransaction{
 			To:                   userID,
 			From:                 passport.OnChainUserID,
 			Amount:               *withdrawAmount,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
 			Description:          "Refund of Withdraw of SUPS.",
+		}:
+
+		case <-time.After(10 * time.Second):
+			sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Refund of Withdraw of SUPS.")
 		}
+
 	}
 	tx, err := sc.cc.SUPS.Transfer(ctx, common.HexToAddress(user.PublicAddress.String), withdrawAmount)
 	if err != nil {
@@ -150,26 +165,60 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 			// get tx
 			rawTx, isPending, err := sc.cc.BscClient.TransactionByHash(ctx, tx.Hash())
 			if err != nil {
-				attemptsChan <- attempts
+				select {
+				case attemptsChan <- attempts:
+
+				case <-time.After(10 * time.Second):
+					sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+					panic("attempt")
+				}
+
 				continue
 			}
 
 			if isPending {
-				attemptsChan <- attempts
+
+				select {
+				case attemptsChan <- attempts:
+
+				case <-time.After(10 * time.Second):
+					sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+					panic("attempt")
+				}
 				continue
 			}
 			// if not pending get the tx receipt and check it status
 			txReceipt, err := sc.cc.BscClient.TransactionReceipt(ctx, rawTx.Hash())
 			if err != nil {
-				attemptsChan <- attempts
+				select {
+				case attemptsChan <- attempts:
+
+				case <-time.After(10 * time.Second):
+					sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+					panic("attempt")
+				}
 				continue
 			}
 
 			if txReceipt.Status == 0 {
-				errChan <- fmt.Errorf("transaction recepit status == 0")
+				select {
+				case errChan <- fmt.Errorf("transaction recepit status == 0"):
+
+				case <-time.After(10 * time.Second):
+					sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+					panic("transaction recepit status == 0")
+				}
+
 				return
 			}
-			errChan <- nil
+
+			select {
+			case errChan <- nil:
+
+			case <-time.After(10 * time.Second):
+				sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+				panic("err chan nil")
+			}
 			return
 		}
 	}()

@@ -20,10 +20,11 @@ type Seeder struct {
 	Conn            *pgxpool.Pool
 	TxConn          *sql.DB
 	PassportHostUrl string
+	ExternalURL     string
 }
 
 // NewSeeder returns a new Seeder
-func NewSeeder(conn *pgxpool.Pool, txConn *sql.DB, passportHostUrl string) *Seeder {
+func NewSeeder(conn *pgxpool.Pool, txConn *sql.DB, passportHostUrl string, externalUrl string) *Seeder {
 	s := &Seeder{Conn: conn, TxConn: txConn, PassportHostUrl: passportHostUrl}
 	return s
 }
@@ -110,7 +111,7 @@ func (s *Seeder) Run(isProd bool) error {
 
 	if !isProd {
 		fmt.Println("Seeding xsyn item metadata")
-		_, abilities, _, _, err := s.SeedItemMetadata(ctx)
+		_, _, _, _, err := s.SeedItemMetadata(ctx)
 		if err != nil {
 			return terror.Error(err, "seed nfts failed")
 		}
@@ -125,55 +126,43 @@ func (s *Seeder) Run(isProd bool) error {
 		// }
 
 		// seed ability to zaibatsu war machines
-		fmt.Println("Seeding assign ability to war machine")
-		err = s.zaibatsuWarMachineAbilitySet(ctx, abilities)
-		if err != nil {
-			return terror.Error(err, "unable to seed zaibatsu abilities")
-		}
+		// fmt.Println("Seeding assign ability to war machine")
+		// err = s.zaibatsuWarMachineAbilitySet(ctx, abilities)
+		// if err != nil {
+		// 	return terror.Error(err, "unable to seed zaibatsu abilities")
+		// }
 
 	}
 	fmt.Println("Seed initial state")
-
-	q := `INSERT INTO state (latest_eth_block,
-                             latest_bsc_block,
-							 eth_to_usd,
-							 bnb_to_usd,
-							 sup_to_usd)
-			VALUES(6402269, 16886589, 2000, 300, .12);`
-
-	_, err = s.Conn.Exec(ctx, q)
-	if err != nil {
-		return terror.Error(err, "unable to seed state")
-	}
 
 	fmt.Println("Seed complete")
 	return nil
 }
 
-func (s *Seeder) zaibatsuWarMachineAbilitySet(ctx context.Context, abilities []*passport.XsynMetadata) error {
-	// get Zaibatsu war machines
-	warMachines, err := db.WarMachineGetByUserID(ctx, s.Conn, passport.SupremacyZaibatsuUserID)
-	if err != nil {
-		return terror.Error(err)
-	}
+// func (s *Seeder) zaibatsuWarMachineAbilitySet(ctx context.Context, abilities []*passport.XsynMetadata) error {
+// 	// get Zaibatsu war machines
+// 	warMachines, err := db.WarMachineGetByUserID(ctx, s.Conn, passport.SupremacyZaibatsuUserID)
+// 	if err != nil {
+// 		return terror.Error(err)
+// 	}
 
-	for _, wm := range warMachines {
-		abilityMetadata := &passport.AbilityMetadata{}
-		passport.ParseAbilityMetadata(abilities[0], abilityMetadata)
+// 	for _, wm := range warMachines {
+// 		abilityMetadata := &passport.AbilityMetadata{}
+// 		passport.ParseAbilityMetadata(abilities[0], abilityMetadata)
 
-		err := db.WarMachineAbilitySet(ctx, s.Conn, wm.TokenID, abilityMetadata.TokenID, passport.WarMachineAttFieldAbility01)
-		if err != nil {
-			return terror.Error(err)
-		}
+// 		err := db.WarMachineAbilitySet(ctx, s.Conn, wm.TokenID, abilityMetadata.TokenID, passport.WarMachineAttFieldAbility01)
+// 		if err != nil {
+// 			return terror.Error(err)
+// 		}
 
-		err = db.WarMachineAbilityCostUpsert(ctx, s.Conn, wm.TokenID, abilityMetadata.TokenID, abilityMetadata.SupsCost)
-		if err != nil {
-			return terror.Error(err)
-		}
-	}
+// 		err = db.WarMachineAbilityCostUpsert(ctx, s.Conn, wm.TokenID, abilityMetadata.TokenID, abilityMetadata.SupsCost)
+// 		if err != nil {
+// 			return terror.Error(err)
+// 		}
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func (s *Seeder) factions(ctx context.Context) ([]*passport.Faction, error) {
 	factions := []*passport.Faction{}
