@@ -479,7 +479,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 			// get asset from db
 			a, err := db.AssetGet(ctx, sc.Conn, asset.TokenID)
 			if err != nil {
-				sc.API.Log.Err(err).Msg("Failed to get asset to auto released")
+				sc.API.Log.Err(err).Msgf("Failed to get asset, token id: %d", asset.TokenID)
 				return
 			}
 
@@ -490,11 +490,15 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 			}
 
 			// otherwise release it
-			db.XsynAssetBulkRelease(ctx, sc.Conn, []*passport.WarMachineMetadata{
+			err = db.XsynAssetBulkRelease(ctx, sc.Conn, []*passport.WarMachineMetadata{
 				{
 					TokenID: a.TokenID,
 				},
 			}, userID)
+			if err != nil {
+				sc.API.Log.Err(err).Msgf("Failed to auto released, token id: %d", asset.TokenID)
+				return
+			}
 
 		}(asset)
 	}
