@@ -42,6 +42,9 @@ func (api *API) ClientLogout(ctx context.Context, client *hub.Client, clients hu
 	}
 	userID := passport.UserID(userUUID)
 
+	// broadcast logout to gamebar
+	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyGamebarUserSubscribe, client.SessionID)), nil)
+
 	// remove offline user to our user cache
 	go api.RemoveUserFromCache(userID)
 
