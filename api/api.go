@@ -162,7 +162,8 @@ func NewAPI(
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
 	api.Routes.Use(cors.New(cors.Options{
-		AllowedOrigins: []string{config.PassportWebHostURL, config.GameserverHostURL},
+		AllowedOrigins:   []string{config.PassportWebHostURL, config.GameserverHostURL, config.WhitelistEndpoint},
+		AllowCredentials: true,
 	}).Handler)
 
 	var err error
@@ -190,9 +191,10 @@ func NewAPI(
 			Conn:   conn,
 			Mailer: mailer,
 		},
-		Tokens:            api.Tokens,
-		Eip712Message:     config.MetaMaskSignMessage,
-		OnlyWalletConnect: config.OnlyWalletConnect,
+		Tokens:                 api.Tokens,
+		Eip712Message:          config.MetaMaskSignMessage,
+		OnlyWalletConnect:      config.OnlyWalletConnect,
+		WhitelistCheckEndpoint: fmt.Sprintf("%s/api/whitelist", config.WhitelistEndpoint),
 	})
 	if err != nil {
 		log.Fatal().Msgf("failed to init hub auther: %s", err.Error())
@@ -218,6 +220,7 @@ func NewAPI(
 			r.Get("/check-eth-tx/{tx_id}", api.WithError(cc.CheckEthTx))
 			r.Get("/check-bsc-tx/{tx_id}", api.WithError(cc.CheckBscTx))
 			r.Get("/whitelist/check", api.WithError(api.WhitelistOnlyWalletCheck))
+			r.Get("/faction-data", api.WithError(api.FactionGetData))
 		})
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
