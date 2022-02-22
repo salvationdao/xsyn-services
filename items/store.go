@@ -114,6 +114,7 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 		Description:  storeItem.Description,
 		Image:        storeItem.Image,
 		Attributes:   storeItem.Attributes,
+		AnimationURL: storeItem.AnimationURL,
 	}
 
 	// create item on metadata table
