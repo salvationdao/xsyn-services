@@ -74,8 +74,8 @@ jobs:
 
       - name: Tar Gzip
         run: |
-          mv deploy passport_api_${{env.GITVERSION}}
-          tar czf passport_api_${{env.GITVERSION}}.tar.gz passport_api-${{env.GITVERSION}}
+          mv deploy passport_api-${{env.GITVERSION}}
+          tar czf passport_api-${{env.GITVERSION}}.tar.gz passport_api-${{env.GITVERSION}}
 
       - name: Release
         uses: softprops/action-gh-release@v1
