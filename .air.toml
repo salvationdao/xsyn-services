@@ -6,7 +6,7 @@ cmd = "./bin/golangci-lint run && go build -o ./tmp/main ./cmd/platform"
 bin = "tmp/main"
 full_bin = "APP_ENV=dev APP_USER=air ./tmp/main serve"
 include_ext = ["go", "tpl", "tmpl", "html"]
-exclude_dir = ["assets", "tmp", "vendor", "web/node_modules"]
+exclude_dir = ["assets", "tmp", "vendor", "web/node_modules", "templates"]
 include_dir = []
 exclude_file = []
 log = "air.log"

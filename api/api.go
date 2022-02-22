@@ -105,6 +105,7 @@ func NewAPI(
 	discordClientSecret string,
 	clientToken string,
 	externalUrl string,
+	isTestnetBlockchain bool,
 ) *API {
 	msgBus, cleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
 	api := &API{
@@ -204,7 +205,7 @@ func NewAPI(
 	}
 
 	// Runs the listeners for all the chain bridges
-	cc := RunChainListeners(log, api, config.BridgeParams)
+	cc := RunChainListeners(log, api, config.BridgeParams, isTestnetBlockchain)
 
 	api.Routes.Handle("/metrics", promhttp.Handler())
 	api.Routes.Route("/api", func(r chi.Router) {
@@ -260,7 +261,7 @@ func NewAPI(
 	api.Hub.Events.AddEventHandler(hub.EventOffline, api.ClientOffline)
 
 	ctx := context.TODO()
-	api.State, err = db.StateGet(ctx, api.Conn)
+	api.State, err = db.StateGet(ctx, isTestnetBlockchain, api.Conn)
 	if err != nil {
 		log.Fatal().Msgf("failed to init state object")
 	}
