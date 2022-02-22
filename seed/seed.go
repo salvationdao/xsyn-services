@@ -2,145 +2,370 @@ package seed
 
 import (
 	"context"
+	"crypto/md5"
+	"database/sql"
+	"encoding/hex"
 	"fmt"
+	"os"
 	"passport"
 	"passport/db"
 
-	"github.com/gofrs/uuid"
 	"github.com/gosimple/slug"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
 	"syreclabs.com/go/faker"
 )
 
-// ID constants to keep cookies constant between re-seeds (so you don't have to keep logging back in)
-var (
-	userSuperAdminID = passport.UserID(uuid.Must(uuid.FromString("88a825b9-dae2-40dd-9848-73db7870c9d5")))
-	userAdminID      = passport.UserID(uuid.Must(uuid.FromString("639cb314-50c5-4a27-bd9f-f85bcd16fc3e")))
-	userMemberID     = passport.UserID(uuid.Must(uuid.FromString("ce4363e1-f522-45a3-93a1-216974304e75")))
-)
-
-// MaxMembersPerOrganisation is the default amount of member users per organisation (also includes non-organisation users)
-const MaxMembersPerOrganisation = 40
-
-// MaxTestUsers is the default amount of user for the test organisation account (first organisation has X reserved test users)
-const MaxTestUsers = 3
-
 type Seeder struct {
-	Conn *pgxpool.Pool
+	Conn            *pgxpool.Pool
+	TxConn          *sql.DB
+	PassportHostUrl string
 }
 
 // NewSeeder returns a new Seeder
-func NewSeeder(conn *pgxpool.Pool) *Seeder {
-	s := &Seeder{conn}
+func NewSeeder(conn *pgxpool.Pool, txConn *sql.DB, passportHostUrl string) *Seeder {
+	s := &Seeder{Conn: conn, TxConn: txConn, PassportHostUrl: passportHostUrl}
 	return s
 }
 
 // Run for database spinup
 func (s *Seeder) Run(isProd bool) error {
 	ctx := context.Background()
+	fmt.Println("Seeding collections")
+	_, err := s.SeedCollections(ctx)
+	if err != nil {
+		return terror.Error(err, "seed collections failed")
+	}
 
-	//fmt.Println("Seeding roles")
-	//err := s.Roles(ctx)
-	//if err != nil {
-	//	return terror.Error(err, "seed roles failed")
-	//}
+	fmt.Println("Seeding roles")
+	err = s.Roles(ctx)
+	if err != nil {
+		return terror.Error(err, "seed roles failed")
+	}
 
+	fmt.Println("Seeding factions")
+	_, err = s.factions(ctx)
+	if err != nil {
+		return terror.Error(err, "seed factions")
+	}
+
+	fmt.Println("Seeding Off world / On chain User")
+	_, err = s.ETHChainUser(ctx)
+	if err != nil {
+		return terror.Error(err, "seed users failed")
+	}
+
+	fmt.Println("Seeding Treasury User")
+	_, err = s.XsynTreasuryUser(ctx)
+	if err != nil {
+		return terror.Error(err, "seed users failed")
+	}
+
+	fmt.Println("Seeding XSYN Sale Treasury User")
+	_, err = s.XsynSaleUser(ctx)
+	if err != nil {
+		return terror.Error(err, "seed users failed")
+	}
+
+	fmt.Println("Seeding Supremacy User")
+	_, err = s.SupremacyUser(ctx)
+	if err != nil {
+		return terror.Error(err, "seed users failed")
+	}
+
+	fmt.Println("Seeding Supremacy Battle User")
+	_, err = s.SupremacyBattleUser(ctx)
+	if err != nil {
+		return terror.Error(err, "seed users failed")
+	}
+
+	fmt.Println("Seeding Supremacy Sups Pool User")
+	_, err = s.SupremacySupPoolUser(ctx)
+	if err != nil {
+		return terror.Error(err, "seed users failed")
+	}
+
+	fmt.Println("Seeding Supremacy Faction User")
+	_, err = s.SupremacyFactionUsers(ctx)
+	if err != nil {
+		return terror.Error(err, "seed users failed")
+	}
+
+	fmt.Println("Seeding Early Contributors")
+	err = s.EarlyContributors(ctx)
+	if err != nil {
+		return terror.Error(err, "seed early contributors failed")
+	}
 	//fmt.Println("Seeding organisations")
 	//organisations, err := s.Organisations(ctx)
 	//if err != nil {
 	//	return terror.Error(err, "seed organisations failed")
 	//}
 
+	fmt.Println("Seeding initial store items")
+	err = s.SeedInitialStoreItems(ctx, s.PassportHostUrl)
+	if err != nil {
+		return terror.Error(err, "seed users failed")
+	}
+
 	if !isProd {
-		fmt.Println("Seeding nsyn NFTs")
-		_, _, _, err := s.SeedNFTS(ctx)
+		fmt.Println("Seeding xsyn item metadata")
+		_, abilities, _, _, err := s.SeedItemMetadata(ctx)
 		if err != nil {
 			return terror.Error(err, "seed nfts failed")
 		}
-
 		fmt.Println("Seeding users")
 		err = s.Users(ctx, nil)
 		if err != nil {
 			return terror.Error(err, "seed users failed")
 		}
+		// err = s.AndAssignNftToMember(ctx)
+		// if err != nil {
+		// 	return terror.Error(err, "seed users failed")
+		// }
+
+		// seed ability to zaibatsu war machines
+		fmt.Println("Seeding assign ability to war machine")
+		err = s.zaibatsuWarMachineAbilitySet(ctx, abilities)
+		if err != nil {
+			return terror.Error(err, "unable to seed zaibatsu abilities")
+		}
 
 	}
+	fmt.Println("Seed initial state")
 
-	//fmt.Println("Seeding products")
-	//err = s.Products(ctx)
-	//if err != nil {
-	//	return terror.Error(err, "seed products failed")
-	//}
+	q := `INSERT INTO state (latest_eth_block,
+                             latest_bsc_block,
+							 eth_to_usd,
+							 bnb_to_usd,
+							 sup_to_usd)
+			VALUES(6402269, 16886589, 2000, 300, .12);`
+
+	_, err = s.Conn.Exec(ctx, q)
+	if err != nil {
+		return terror.Error(err, "unable to seed state")
+	}
 
 	fmt.Println("Seed complete")
 	return nil
 }
 
-// Roles for database spinup
-func (s *Seeder) Roles(ctx context.Context) error {
-	// Super Admin
-	allPerms := []string{}
-	for _, perm := range passport.AllPerm {
-		allPerms = append(allPerms, string(perm))
-	}
-	superAdminRole := &passport.Role{
-		ID:          passport.UserRoleSuperAdminID,
-		Name:        "Super Admin",
-		Permissions: allPerms,
-		Tier:        1,
-	}
-	err := db.RoleCreateReserved(ctx, s.Conn, superAdminRole)
+func (s *Seeder) zaibatsuWarMachineAbilitySet(ctx context.Context, abilities []*passport.XsynMetadata) error {
+	// get Zaibatsu war machines
+	warMachines, err := db.WarMachineGetByUserID(ctx, s.Conn, passport.SupremacyZaibatsuUserID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	// Admin
-	adminRole := &passport.Role{
-		ID:   passport.UserRoleAdminID,
-		Name: "Admin",
-		Permissions: []string{
-			// Users
-			string(passport.PermUserList),
-			string(passport.PermUserCreate),
-			string(passport.PermUserRead),
-			string(passport.PermUserUpdate),
-			string(passport.PermUserArchive),
-			string(passport.PermUserUnarchive),
-			// Organisations
-			string(passport.PermOrganisationList),
-			string(passport.PermOrganisationCreate),
-			string(passport.PermOrganisationRead),
-			string(passport.PermOrganisationUpdate),
-			string(passport.PermOrganisationArchive),
-			string(passport.PermOrganisationUnarchive),
-			// Products
-			string(passport.PermProductList),
-			string(passport.PermProductCreate),
-			string(passport.PermProductRead),
-			string(passport.PermProductUpdate),
-			string(passport.PermProductArchive),
-			string(passport.PermProductUnarchive),
-			// Other
-			string(passport.PermAdminPortal),
-			string(passport.PermUserActivityList),
-		},
-		Tier: 2,
+	for _, wm := range warMachines {
+		abilityMetadata := &passport.AbilityMetadata{}
+		passport.ParseAbilityMetadata(abilities[0], abilityMetadata)
+
+		err := db.WarMachineAbilitySet(ctx, s.Conn, wm.TokenID, abilityMetadata.TokenID, passport.WarMachineAttFieldAbility01)
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		err = db.WarMachineAbilityCostUpsert(ctx, s.Conn, wm.TokenID, abilityMetadata.TokenID, abilityMetadata.SupsCost)
+		if err != nil {
+			return terror.Error(err)
+		}
 	}
-	err = db.RoleCreateReserved(ctx, s.Conn, adminRole)
+
+	return nil
+}
+
+func (s *Seeder) factions(ctx context.Context) ([]*passport.Faction, error) {
+	factions := []*passport.Faction{}
+	for _, faction := range passport.Factions {
+		var err error
+		logoBlob := &passport.Blob{}
+		backgroundBlob := &passport.Blob{}
+
+		switch faction.Label {
+		case "Red Mountain Offworld Mining Corporation":
+			logoBlob, err = s.factionLogo(ctx, "red_mountain_logo")
+			if err != nil {
+				return nil, terror.Error(err)
+			}
+			backgroundBlob, err = s.factionBackground(ctx, "red_mountain_bg")
+			if err != nil {
+				return nil, terror.Error(err)
+			}
+		case "Boston Cybernetics":
+			logoBlob, err = s.factionLogo(ctx, "boston_cybernetics_logo")
+			if err != nil {
+				return nil, terror.Error(err)
+			}
+			backgroundBlob, err = s.factionBackground(ctx, "boston_cybernetics_bg")
+			if err != nil {
+				return nil, terror.Error(err)
+			}
+		case "Zaibatsu Heavy Industries":
+			logoBlob, err = s.factionLogo(ctx, "zaibatsu_logo")
+			if err != nil {
+				return nil, terror.Error(err)
+			}
+			backgroundBlob, err = s.factionBackground(ctx, "zaibatsu_bg")
+			if err != nil {
+				return nil, terror.Error(err)
+			}
+		}
+
+		faction.LogoBlobID = logoBlob.ID
+		faction.BackgroundBlobID = backgroundBlob.ID
+
+		err = db.FactionCreate(ctx, s.Conn, faction)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+
+		factions = append(factions, faction)
+	}
+
+	// build faction mvp material view
+	err := db.FactionMvpMaterialisedViewCreate(ctx, s.Conn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return factions, nil
+}
+
+func (s *Seeder) factionLogo(ctx context.Context, filename string) (*passport.Blob, error) {
+	// get read file from asset
+	factionLogo, err := os.ReadFile(fmt.Sprintf("./asset/%s.svg", filename))
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	// Get hash
+	hasher := md5.New()
+	_, err = hasher.Write(factionLogo)
+	if err != nil {
+		return nil, terror.Error(err, "hash error")
+	}
+	hashResult := hasher.Sum(nil)
+	hash := hex.EncodeToString(hashResult)
+
+	blob := &passport.Blob{
+		FileName:      filename,
+		MimeType:      "image/svg+xml",
+		Extension:     "svg",
+		FileSizeBytes: int64(len(factionLogo)),
+		File:          factionLogo,
+		Hash:          &hash,
+		Public:        true,
+	}
+
+	// insert blob
+	err = db.BlobInsert(ctx, s.Conn, blob)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return blob, nil
+}
+
+func (s *Seeder) factionBackground(ctx context.Context, filename string) (*passport.Blob, error) {
+	// get read file from asset
+	factionLogo, err := os.ReadFile(fmt.Sprintf("./asset/%s.webp", filename))
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	// Get hash
+	hasher := md5.New()
+	_, err = hasher.Write(factionLogo)
+	if err != nil {
+		return nil, terror.Error(err, "hash error")
+	}
+	hashResult := hasher.Sum(nil)
+	hash := hex.EncodeToString(hashResult)
+
+	blob := &passport.Blob{
+		FileName:      filename,
+		MimeType:      "image/webp",
+		Extension:     "webp",
+		FileSizeBytes: int64(len(factionLogo)),
+		File:          factionLogo,
+		Hash:          &hash,
+		Public:        true,
+	}
+
+	// insert blob
+	err = db.BlobInsert(ctx, s.Conn, blob)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return blob, nil
+}
+
+// Roles for database spin-up
+func (s *Seeder) Roles(ctx context.Context) error {
+
+	var allPerms []string
+	for _, perm := range passport.AllPerm {
+		allPerms = append(allPerms, string(perm))
+	}
+	// Off world/OnChain Account role
+	offWorldRole := &passport.Role{
+		ID:          passport.UserRoleOffChain,
+		Name:        "Off World Role",
+		Permissions: allPerms,
+		Tier:        1,
+	}
+	err := db.RoleCreateReserved(ctx, s.Conn, offWorldRole)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// Xsyn Treasury Account role
+	xsynTreasuryRole := &passport.Role{
+		ID:          passport.UserRoleXsynTreasury,
+		Name:        "Xsyn Treasury",
+		Permissions: allPerms,
+		Tier:        1,
+	}
+	err = db.RoleCreateReserved(ctx, s.Conn, xsynTreasuryRole)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	xsynSaleTreasuryRole := &passport.Role{
+		ID:          passport.UserRoleXsynSaleTreasury,
+		Name:        "Xsyn Sale Treasury",
+		Permissions: allPerms,
+		Tier:        1,
+	}
+	err = db.RoleCreateReserved(ctx, s.Conn, xsynSaleTreasuryRole)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// Game Treasury Account role
+	gameTreasuryRole := &passport.Role{
+		ID:          passport.UserRoleGameAccount,
+		Name:        "Game Treasury",
+		Permissions: allPerms,
+		Tier:        1,
+	}
+	err = db.RoleCreateReserved(ctx, s.Conn, gameTreasuryRole)
 	if err != nil {
 		return terror.Error(err)
 	}
 
 	// Member
 	memberRole := &passport.Role{
-		ID:   passport.UserRoleMemberID,
-		Name: "Member",
+		ID:          passport.UserRoleMemberID,
+		Name:        "Member",
 		Permissions: []string{
-			string(passport.PermUserRead),
-			string(passport.PermOrganisationRead),
-			string(passport.PermProductList),
-			string(passport.PermProductRead),
+			// TODO: possible add perms?
+			//string(passport.PermUserRead),
+			//string(passport.PermOrganisationRead),
+			//string(passport.PermProductList),
+			//string(passport.PermProductRead),
 		},
 		Tier: 3,
 	}

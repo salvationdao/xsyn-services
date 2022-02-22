@@ -23,9 +23,7 @@ type Mailer struct {
 	// Email address that the system sends from
 	SystemAddress string
 	// AdminHostURL used for links
-	AdminHostURL string
-	// PublicHostURL used for links
-	PublicHostURL string
+	PassportWebHostURL string
 
 	// Handlebars Email Templates
 	Templates map[string]*raymond.Template
@@ -34,12 +32,11 @@ type Mailer struct {
 // NewMailer returns a new Mailer controller
 func NewMailer(domain string, apiKey string, systemAddress string, config *passport.Config, log *zerolog.Logger) (*Mailer, error) {
 	mailer := &Mailer{
-		MailGun:       mailgun.NewMailgun(domain, apiKey),
-		Log:           log,
-		SystemAddress: systemAddress,
-		AdminHostURL:  config.AdminHostURL,
-		PublicHostURL: config.PublicHostURL,
-		Templates:     map[string]*raymond.Template{},
+		MailGun:            mailgun.NewMailgun(domain, apiKey),
+		Log:                log,
+		SystemAddress:      systemAddress,
+		PassportWebHostURL: config.PassportWebHostURL,
+		Templates:          map[string]*raymond.Template{},
 	}
 
 	// Handlebar template helpers
@@ -99,6 +96,7 @@ func ParseTemplate(fileName string) (*raymond.Template, error) {
 
 // SendEmail sends a templated email via smtp. attachments must be the full file path
 func (m *Mailer) SendEmail(
+	ctx context.Context,
 	to string,
 	subject string,
 	template string,
@@ -132,7 +130,7 @@ func (m *Mailer) SendEmail(
 	}
 
 	// Send Email
-	emailCtx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	emailCtx, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 	_, _, err = m.MailGun.Send(emailCtx, message)
 	if err != nil {

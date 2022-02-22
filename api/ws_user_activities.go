@@ -1,15 +1,18 @@
 package api
 
 import (
-	"passport"
-	"passport/db"
-	"passport/log_helpers"
 	"context"
 	"encoding/json"
+	"errors"
+	"passport"
+	"passport/db"
 
+	"github.com/ninja-software/log_helpers"
+
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/hub/v2"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 )
@@ -55,7 +58,7 @@ type UserActivityListRequest struct {
 // UserActivityListResponse is the response from the userActivity update request
 type UserActivityListResponse struct {
 	Records []*passport.UserActivity `json:"records"`
-	Total   int                         `json:"total"`
+	Total   int                      `json:"total"`
 }
 
 // UserActivityListHandler lists userActivities with pagination
@@ -104,13 +107,13 @@ const HubKeyUserActivityCreate hub.HubCommandKey = "USER_ACTIVITY:CREATE"
 // UserActivityPayload used for create requests
 type UserActivityPayload struct {
 	UserID     passport.UserID     `json:"userID"`
-	Action     string                 `json:"action"`
-	ObjectID   *string                `json:"objectID"`
-	ObjectSlug *string                `json:"objectSlug"`
-	ObjectName *string                `json:"objectName"`
+	Action     string              `json:"action"`
+	ObjectID   *string             `json:"objectID"`
+	ObjectSlug *string             `json:"objectSlug"`
+	ObjectName *string             `json:"objectName"`
 	ObjectType passport.ObjectType `json:"objectType"`
-	OldData    null.JSON              `json:"old_data"`
-	NewData    null.JSON              `json:"new_data"`
+	OldData    null.JSON           `json:"old_data"`
+	NewData    null.JSON           `json:"new_data"`
 }
 
 // UserActivityCreateRequest requests a create userActivity
@@ -142,7 +145,12 @@ func (hub *UserActivityController) UserActivityCreateHandler(ctx context.Context
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	defer tx.Rollback(ctx)
+	defer func(tx pgx.Tx, ctx context.Context) {
+		err := tx.Rollback(ctx)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			hub.Log.Err(err).Msg("error rolling back")
+		}
+	}(tx, ctx)
 
 	err = db.UserActivityCreate(
 		ctx,

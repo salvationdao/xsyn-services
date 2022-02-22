@@ -3,10 +3,26 @@ package db
 import (
 	"context"
 	"fmt"
+	"passport"
+
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
-	"passport"
 )
+
+func UserHasPassword(ctx context.Context, conn Conn, user *passport.User) (*bool, error) {
+	count := 0
+	q := `
+		SELECT COUNT(*)
+		FROM password_hashes
+		WHERE user_id = $1
+	`
+	err := pgxscan.Get(ctx, conn, &count, q, user.ID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	hasPassword := count > 0
+	return &hasPassword, nil
+}
 
 // HashByUserID returns a user's password hash
 func HashByUserID(ctx context.Context, conn Conn, userID passport.UserID) (string, error) {

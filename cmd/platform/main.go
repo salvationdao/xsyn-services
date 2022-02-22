@@ -1,18 +1,21 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"net/url"
+	"passport"
 	"passport/api"
 	"passport/db"
 	"passport/email"
-	"passport/log_helpers"
 	"passport/seed"
 	"time"
 
-	"passport"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ninja-software/log_helpers"
 
-	"github.com/getsentry/sentry-go"
+	_ "github.com/lib/pq" //postgres drivers for initialization
+
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
@@ -28,14 +31,17 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-// Version build Version
-const Version = "v0.1.0"
+// Variable passed in at compile time using `-ldflags`
+var (
+	Version          string // -X main.Version=$(git describe --tags --abbrev=0)
+	GitHash          string // -X main.GitHash=$(git rev-parse HEAD)
+	GitBranch        string // -X main.GitBranch=$(git rev-parse --abbrev-ref HEAD)
+	BuildDate        string // -X main.BuildDate=$(date -u +%Y%m%d%H%M%S)
+	UnCommittedFiles string // -X main.UnCommittedFiles=$(git status --porcelain | wc -l)"
+)
 
-// passed in using
-//   ```sh
-//   go build -ldflags "-X main.SentryVersion=" main.go
-//   ```
-var SentryVersion string
+const SentryReleasePrefix = "ninja_syndicate-passport_api"
+const envPrefix = "PASSPORT"
 
 func main() {
 	app := &cli.App{
@@ -50,44 +56,112 @@ func main() {
 		Flags: []cli.Flag{},
 		Commands: []*cli.Command{
 			{
+				// This is not using the built in version so ansible can more easily read the version
+				Name: "version",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{Name: "full", Usage: "Prints full version and build info", Value: false},
+				},
+				Action: func(c *cli.Context) error {
+					if c.Bool("full") {
+						fmt.Printf("Version=%s\n", Version)
+						fmt.Printf("Commit=%s\n", GitHash)
+						fmt.Printf("Branch=%s\n", GitBranch)
+						fmt.Printf("BuildDate=%s\n", BuildDate)
+						fmt.Printf("WorkingCopyState=%s uncommitted\n", UnCommittedFiles)
+						return nil
+					}
+					fmt.Printf("%s-\n", Version)
+					return nil
+				},
+			},
+			{
 				Name:    "serve",
 				Aliases: []string{"s"},
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "database_user", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
-					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{"PASSPORT_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
-					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{"PASSPORT_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
-					&cli.StringFlag{Name: "database_port", Value: "5432", EnvVars: []string{"PASSPORT_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
-					&cli.StringFlag{Name: "database_name", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
-					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{"PASSPORT_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+					&cli.StringFlag{Name: "database_tx_user", Value: "passport_tx", EnvVars: []string{"PASSPORT_DATABASE_TX_USER", "DATABASE_TX_USER"}, Usage: "The database transaction user"},
+					&cli.StringFlag{Name: "database_tx_pass", Value: "dev-tx", EnvVars: []string{"PASSPORT_DATABASE_TX_PASS", "DATABASE_TX_PASS"}, Usage: "The database transaction pass"},
 
-					&cli.StringFlag{Name: "environment", Value: "development", DefaultText: "development", EnvVars: []string{"PASSPORT_ENVIRONMENT", "ENVIRONMENT"}, Usage: "This program environment (development, testing, training, staging, production), it sets the log levels"},
-					&cli.StringFlag{Name: "sentry_dsn_backend", Value: "", EnvVars: []string{"PASSPORT_SENTRY_DSN_BACKEND", "SENTRY_DSN_BACKEND"}, Usage: "Sends error to remote server. If set, it will send error."},
-					&cli.StringFlag{Name: "sentry_server_name", Value: "dev-pc", EnvVars: []string{"PASSPORT_SENTRY_SERVER_NAME", "SENTRY_SERVER_NAME"}, Usage: "The machine name that this program is running on."},
-					&cli.Float64Flag{Name: "sentry_sample_rate", Value: 1, EnvVars: []string{"PASSPORT_SENTRY_SAMPLE_RATE", "SENTRY_SAMPLE_RATE"}, Usage: "The percentage of trace sample to collect (0.0-1)"},
+					&cli.StringFlag{Name: "database_user", Value: "passport", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
+					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
+					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
+					&cli.StringFlag{Name: "database_port", Value: "5432", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
+					&cli.StringFlag{Name: "database_name", Value: "passport", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
+					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
 
-					&cli.StringFlag{Name: "host_url_public", Value: "http://localhost:5003", EnvVars: []string{"PASSPORT_HOST_URL_PUBLIC_FRONTEND", "HOST_URL_PUBLIC_FRONTEND"}, Usage: "The Public Site URL used for CORS and links (eg: in the mailer)"},
+					&cli.StringFlag{Name: "environment", Value: "development", DefaultText: "development", EnvVars: []string{envPrefix + "_ENVIRONMENT", "ENVIRONMENT"}, Usage: "This program environment (development, testing, training, staging, production), it sets the log levels"},
+					&cli.StringFlag{Name: "sentry_dsn_backend", Value: "", EnvVars: []string{envPrefix + "_SENTRY_DSN_BACKEND", "SENTRY_DSN_BACKEND"}, Usage: "Sends error to remote server. If set, it will send error."},
+					&cli.StringFlag{Name: "sentry_server_name", Value: "dev-pc", EnvVars: []string{envPrefix + "_SENTRY_SERVER_NAME", "SENTRY_SERVER_NAME"}, Usage: "The machine name that this program is running on."},
+					&cli.Float64Flag{Name: "sentry_sample_rate", Value: 1, EnvVars: []string{envPrefix + "_SENTRY_SAMPLE_RATE", "SENTRY_SAMPLE_RATE"}, Usage: "The percentage of trace sample to collect (0.0-1)"},
+					&cli.StringFlag{Name: "log_level", Value: "DebugLevel", EnvVars: []string{envPrefix + "_LOG_LEVEL"}, Usage: "Set the log level for zerolog (Options: PanicLevel, FatalLevel, ErrorLevel, WarnLevel, InfoLevel, DebugLevel, TraceLevel"},
 
-					&cli.StringFlag{Name: "api_addr", Value: ":8086", EnvVars: []string{"PASSPORT_API_ADDR", "API_ADDR"}, Usage: "host:port to run the API"},
-					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{"PASSPORT_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
-					&cli.StringFlag{Name: "google_client_id", Value: "593683501366-gk7ab1nnskc1tft14bk8ebsja1bce24v.apps.googleusercontent.com", EnvVars: []string{"PASSPORT_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google Client ID for OAuth functionaility."},
+					&cli.StringFlag{Name: "passport_web_host_url", Value: "http://localhost:5003", EnvVars: []string{envPrefix + "_HOST_URL_FRONTEND"}, Usage: "The Public Site URL used for CORS and links (eg: in the mailer)"},
+					&cli.StringFlag{Name: "gameserver_web_host_url", Value: "http://localhost:8084", EnvVars: []string{"GAMESERVER_HOST_URL"}, Usage: "The host for the gameserver, to allow it to connect"},
 
-					&cli.StringFlag{Name: "mail_domain", Value: "njs.dev", EnvVars: []string{"PASSPORT_MAIL_DOMAIN", "MAIL_DOMAIN"}, Usage: "Domain used for MailGun"},
-					&cli.StringFlag{Name: "mail_apikey", Value: "", EnvVars: []string{"PASSPORT_MAIL_APIKEY", "MAIL_APIKEY"}, Usage: "MailGun API key"},
-					&cli.StringFlag{Name: "mail_sender", Value: "Ninja Software <noreply@njs.dev>", EnvVars: []string{"PASSPORT_MAIL_SENDER", "MAIL_SENDER"}, Usage: "Default address emails are sent from"},
+					&cli.StringFlag{Name: "api_addr", Value: ":8086", EnvVars: []string{envPrefix + "_API_ADDR", "API_ADDR"}, Usage: "host:port to run the API"},
+					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{envPrefix + "_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
+					&cli.StringFlag{Name: "google_client_id", Value: "467953368642-8cobg822tej2i50ncfg4ge1pm4c5v033.apps.googleusercontent.com", EnvVars: []string{envPrefix + "_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google Client ID for OAuth functionaility."},
 
-					&cli.BoolFlag{Name: "jwt_encrypt", Value: true, EnvVars: []string{"PASSPORT_JWT_ENCRYPT", "JWT_ENCRYPT"}, Usage: "set if to encrypt jwt tokens or not"},
-					&cli.StringFlag{Name: "jwt_encrypt_key", Value: "ITF1vauAxvJlF0PLNY9btOO9ZzbUmc6X", EnvVars: []string{"PASSPORT_JWT_KEY", "JWT_KEY"}, Usage: "supports key sizes of 16, 24 or 32 bytes"},
-					&cli.IntFlag{Name: "jwt_expiry_days", Value: 1, EnvVars: []string{"PASSPORT_JWT_EXPIRY_DAYS", "JWT_EXPIRY_DAYS"}, Usage: "expiry days for auth tokens"},
-					&cli.StringFlag{Name: "metamask_sign_message", Value: "", EnvVars: []string{"PASSPORT_METAMASK_SIGN_MESSAGE", "METAMASK_SIGN_MESSAGE"}, Usage: "message to show in metamask key sign flow, needs to match frontend"},
+					&cli.StringFlag{Name: "mail_domain", Value: "njs.dev", EnvVars: []string{envPrefix + "_MAIL_DOMAIN", "MAIL_DOMAIN"}, Usage: "Domain used for MailGun"},
+					&cli.StringFlag{Name: "mail_apikey", Value: "", EnvVars: []string{envPrefix + "_MAIL_APIKEY", "MAIL_APIKEY"}, Usage: "MailGun API key"},
+					&cli.StringFlag{Name: "mail_sender", Value: "Ninja Software <noreply@njs.dev>", EnvVars: []string{envPrefix + "_MAIL_SENDER", "MAIL_SENDER"}, Usage: "Default address emails are sent from"},
+
+					&cli.BoolFlag{Name: "jwt_encrypt", Value: true, EnvVars: []string{envPrefix + "_JWT_ENCRYPT", "JWT_ENCRYPT"}, Usage: "set if to encrypt jwt tokens or not"},
+					&cli.StringFlag{Name: "jwt_encrypt_key", Value: "ITF1vauAxvJlF0PLNY9btOO9ZzbUmc6X", EnvVars: []string{envPrefix + "_JWT_KEY", "JWT_KEY"}, Usage: "supports key sizes of 16, 24 or 32 bytes"},
+					&cli.IntFlag{Name: "jwt_expiry_days", Value: 1, EnvVars: []string{envPrefix + "_JWT_EXPIRY_DAYS", "JWT_EXPIRY_DAYS"}, Usage: "expiry days for auth tokens"},
+					&cli.StringFlag{Name: "metamask_sign_message", Value: "", EnvVars: []string{envPrefix + "_METAMASK_SIGN_MESSAGE", "METAMASK_SIGN_MESSAGE"}, Usage: "message to show in metamask key sign flow, needs to match frontend"},
+
+					&cli.StringFlag{Name: "twitch_client_id", Value: "123", EnvVars: []string{envPrefix + "_TWITCH_CLIENT_ID", "TWITCH_CLIENT_ID"}, Usage: "Twitch client ID for verifying web account tokens sent with requests"},
+					&cli.StringFlag{Name: "twitch_client_secret", Value: "123", EnvVars: []string{envPrefix + "_TWITCH_CLIENT_SECRET", "TWITCH_CLIENT_SECRET"}, Usage: "Twitch client secret for verifying web account tokens sent with requests"},
+					&cli.StringFlag{Name: "twitter_api_key", Value: "123", EnvVars: []string{envPrefix + "_TWITTER_API_KEY", "TWITTER_API_KEY"}, Usage: "Twitter API key for requests used in the OAuth 1.0a flow"},
+					&cli.StringFlag{Name: "twitter_api_secret", Value: "123", EnvVars: []string{envPrefix + "_TWITTER_API_SECRET", "TWITTER_API_SECRET"}, Usage: "Twitter API key for requests used in the OAuth 1.0a flow"},
+					&cli.StringFlag{Name: "discord_client_id", Value: "123", EnvVars: []string{envPrefix + "_DISCORD_CLIENT_ID", "DISCORD_CLIENT_ID"}, Usage: "Discord client ID for verifying web account tokens sent with requests"},
+					&cli.StringFlag{Name: "discord_client_secret", Value: "123", EnvVars: []string{envPrefix + "_DISCORD_CLIENT_SECRET", "DISCORD_CLIENT_SECRET"}, Usage: "Discord client secret for verifying web account tokens sent with requests"},
+
+					&cli.StringFlag{Name: "gameserver_token", Value: "aG93cyBpdCBnb2luZyBtYWM=", EnvVars: []string{envPrefix + "_GAMESERVER_TOKEN"}, Usage: "Token to auth gameserver client"},
+					&cli.BoolFlag{Name: "only_wallet", Value: true, EnvVars: []string{envPrefix + "_ONLY_WALLET"}, Usage: "Set passport to only accept wallet logins"},
+
+					/****************************
+					 *		Bridge details		*
+					 ***************************/
+					// ETH
+					&cli.StringFlag{Name: "usdc_addr", Value: "0x8BB4eC208CDDE7761ac7f3346deBb9C931f80A33", EnvVars: []string{envPrefix + "_USDC_CONTRACT_ADDR"}, Usage: "USDC contract address"},
+
+					// BSC
+					&cli.StringFlag{Name: "busd_addr", Value: "0xeAf33Ba4AcA3fE3110EAddD7D4cf0897121583D0", EnvVars: []string{envPrefix + "_BUSD_CONTRACT_ADDR"}, Usage: "BUSD contract address"},
+					&cli.StringFlag{Name: "sup_addr", Value: "0x5e8b6999B44E011F485028bf1AF0aF601F845304", EnvVars: []string{envPrefix + "_SUP_CONTRACT_ADDR"}, Usage: "SUP contract address"},
+
+					// wallet/contract addresses
+					&cli.StringFlag{Name: "operator_addr", Value: "0xc01c2f6DD7cCd2B9F8DB9aa1Da9933edaBc5079E", EnvVars: []string{envPrefix + "_OPERATOR_WALLET_ADDR"}, Usage: "Wallet address for administration"},
+					&cli.StringFlag{Name: "signer_private_key", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing (usually operator)"},
+					&cli.StringFlag{Name: "purchase_addr", Value: "0x5591eBC09A89A8B11D9644eC1455e294Fd3BAbB5", EnvVars: []string{envPrefix + "_PURCHASE_WALLET_ADDR"}, Usage: "Wallet address to receive payments and deposits"},
+
+					&cli.StringFlag{Name: "withdraw_addr", Value: "0x9DAcEA338E4DDd856B152Ce553C7540DF920Bb15", EnvVars: []string{envPrefix + "_WITHDRAW_CONTRACT_ADDR"}, Usage: "Withdraw contract address"},
+					&cli.StringFlag{Name: "eth_nft_addr", Value: "0x0B921c2014ab181B7f2109Ae56DEd3534ff0a156", EnvVars: []string{envPrefix + "_NFT_CONTRACT_ADDR"}, Usage: "NFT contract address for minting"},
+					&cli.StringFlag{Name: "eth_nft_staking_addr", Value: "0xE3a14f901FaeabdE7d9ea4138cf2533dB67646e3", EnvVars: []string{envPrefix + "_NFT_STAKING_CONTRACT_ADDR"}, Usage: "NFT staking contract address for locking"},
+
+					// chain id
+					&cli.Int64Flag{Name: "bsc_chain_id", Value: 97, EnvVars: []string{envPrefix + "_BSC_CHAIN_ID"}, Usage: "BSC Chain ID"},
+					&cli.Int64Flag{Name: "eth_chain_id", Value: 5, EnvVars: []string{envPrefix + "_ETH_CHAIN_ID"}, Usage: "ETH Chain ID"},
+
+					// node address
+					&cli.StringFlag{Name: "bsc_node_addr", Value: "wss://speedy-nodes-nyc.moralis.io/1375aa321ac8ac6cfba6aa9c/bsc/testnet/ws", EnvVars: []string{envPrefix + "_BSC_WS_NODE_URL"}, Usage: "Binance WS node URL"},
+					&cli.StringFlag{Name: "eth_node_addr", Value: "wss://speedy-nodes-nyc.moralis.io/1375aa321ac8ac6cfba6aa9c/eth/goerli/ws", EnvVars: []string{envPrefix + "_ETH_WS_NODE_URL"}, Usage: "Ethereum WS node URL"},
+
+					//router address for exchange rates
+					&cli.StringFlag{Name: "bsc_router_addr", Value: "0x9ac64cc6e4415144c455bd8e4837fea55603e5c3", EnvVars: []string{envPrefix + "_BSC_ROUTER_ADDR"}, Usage: "BSC Router address"},
+
+					//moralis key- set in env vars
+					&cli.StringFlag{Name: "moralis_key", Value: "", EnvVars: []string{envPrefix + "_MORALIS_KEY"}, Usage: "Key to connect to moralis API"},
 				},
 
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
 					ctx, cancel := context.WithCancel(c.Context)
 					environment := c.String("environment")
-					log := log_helpers.LoggerInitZero(environment)
+					level := c.String("log_level")
+					log := log_helpers.LoggerInitZero(environment, level)
 					log.Info().Msg("zerolog initialised")
-					log.Level(zerolog.DebugLevel)
+
 					g := &run.Group{}
 					// Listen for os.interrupt
 					g.Add(run.SignalHandler(ctx, os.Interrupt))
@@ -98,33 +172,39 @@ func main() {
 					if errors.Is(err, run.SignalError{Signal: os.Interrupt}) {
 						err = terror.Warn(err)
 					}
-					log_helpers.TerrorEcho(sentry.CurrentHub(), err, log)
+					log_helpers.TerrorEcho(ctx, err, log)
 					return nil
 				},
 			},
 			{
 				Name: "db",
 				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "database_tx_user", Value: "passport_tx", EnvVars: []string{"PASSPORT_DATABASE_TX_USER", "DATABASE_TX_USER"}, Usage: "The database transaction user"},
+					&cli.StringFlag{Name: "database_tx_pass", Value: "dev-tx", EnvVars: []string{"PASSPORT_DATABASE_TX_PASS", "DATABASE_TX_PASS"}, Usage: "The database transaction pass"},
+
 					&cli.StringFlag{Name: "database_user", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
 					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{"PASSPORT_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
 					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{"PASSPORT_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
 					&cli.StringFlag{Name: "database_port", Value: "5432", EnvVars: []string{"PASSPORT_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
 					&cli.StringFlag{Name: "database_name", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{"PASSPORT_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+					&cli.StringFlag{Name: "passport_web_host_url", Value: "http://localhost:8086", EnvVars: []string{envPrefix + "_HOST_URL_API"}, Usage: "The API Url where files are hosted"},
 					&cli.BoolFlag{Name: "database_prod", Value: false, EnvVars: []string{"PASSPORT_DB_PROD", "DB_PROD"}, Usage: "seed the database (prod)"},
 					&cli.StringFlag{Name: "environment", Value: "development", DefaultText: "development", EnvVars: []string{"PASSPORT_ENVIRONMENT", "ENVIRONMENT"}, Usage: "This program environment (development, testing, training, staging, production), it sets the log levels"},
-
 					&cli.BoolFlag{Name: "seed", EnvVars: []string{"PASSPORT_DB_SEED", "DB_SEED"}, Usage: "seed the database"},
 				},
 				Usage: "seed the database",
 				Action: func(c *cli.Context) error {
 					databaseUser := c.String("database_user")
 					databasePass := c.String("database_pass")
+					databaseTxUser := c.String("database_tx_user")
+					databaseTxPass := c.String("database_tx_pass")
 					databaseHost := c.String("database_host")
 					databasePort := c.String("database_port")
 					databaseName := c.String("database_name")
 					databaseAppName := c.String("database_application_name")
 					databaseProd := c.Bool("database_prod")
+					passportWebHostUrl := c.String("passport_web_host_url")
 
 					pgxconn, err := pgxconnect(
 						databaseUser,
@@ -139,7 +219,18 @@ func main() {
 						return terror.Error(err)
 					}
 
-					seeder := seed.NewSeeder(pgxconn)
+					txConn, err := txConnect(
+						databaseTxUser,
+						databaseTxPass,
+						databaseHost,
+						databasePort,
+						databaseName,
+					)
+					if err != nil {
+						return terror.Panic(err)
+					}
+
+					seeder := seed.NewSeeder(pgxconn, txConn, passportWebHostUrl)
 					return seeder.Run(databaseProd)
 				},
 			},
@@ -149,6 +240,7 @@ func main() {
 	err := app.Run(os.Args)
 	if err != nil {
 		terror.Echo(err)
+		os.Exit(1) // so ci knows it no good
 	}
 }
 
@@ -181,6 +273,7 @@ func pgxconnect(
 		return nil, terror.Panic(err, "could not initialise database")
 	}
 	poolConfig.ConnConfig.LogLevel = pgx.LogLevelTrace
+	poolConfig.MaxConns = 95
 
 	ctx := context.Background()
 	conn, err := pgxpool.ConnectConfig(ctx, poolConfig)
@@ -191,12 +284,40 @@ func pgxconnect(
 	return conn, nil
 }
 
+func txConnect(
+	databaseTxUser string,
+	databaseTxPass string,
+	databaseHost string,
+	databasePort string,
+	databaseName string,
+) (*sql.DB, error) {
+	params := url.Values{}
+	params.Add("sslmode", "disable")
+
+	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
+		databaseTxUser,
+		databaseTxPass,
+		databaseHost,
+		databasePort,
+		databaseName,
+		params.Encode(),
+	)
+
+	conn, err := sql.Open("postgres", connString)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return conn, nil
+}
+
 func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) error {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
 	sentryTraceRate := ctxCLI.Float64("sentry_sample_rate")
-	err := log_helpers.SentryInit(sentryDSNBackend, sentryServerName, SentryVersion, environment, sentryTraceRate, log)
+	sentryRelease := fmt.Sprintf("%s@%s", SentryReleasePrefix, Version)
+	err := log_helpers.SentryInit(sentryDSNBackend, sentryServerName, sentryRelease, environment, sentryTraceRate, log)
 	switch errors.Unwrap(err) {
 	case log_helpers.ErrSentryInitEnvironment:
 		return terror.Error(err, fmt.Sprintf("got environment %s", environment))
@@ -215,10 +336,28 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	apiAddr := ctxCLI.String("api_addr")
 	databaseUser := ctxCLI.String("database_user")
 	databasePass := ctxCLI.String("database_pass")
+	databaseTxUser := ctxCLI.String("database_tx_user")
+	databaseTxPass := ctxCLI.String("database_tx_pass")
 	databaseHost := ctxCLI.String("database_host")
 	databasePort := ctxCLI.String("database_port")
 	databaseName := ctxCLI.String("database_name")
 	databaseAppName := ctxCLI.String("database_application_name")
+
+	MoralisKey := ctxCLI.String("moralis_key")
+	UsdcAddr := ctxCLI.String("usdc_addr")
+	BusdAddr := ctxCLI.String("busd_addr")
+	SupAddr := ctxCLI.String("sup_addr")
+	PurchaseAddr := ctxCLI.String("purchase_addr")
+	WithdrawAddr := ctxCLI.String("withdraw_addr")
+	EthNftAddr := ctxCLI.String("eth_nft_addr")
+	EthNftStakingAddr := ctxCLI.String("eth_nft_staking_addr")
+	OperatorAddr := ctxCLI.String("operator_addr")
+	SignerPrivateKey := ctxCLI.String("signer_private_key")
+	BscNodeAddr := ctxCLI.String("bsc_node_addr")
+	EthNodeAddr := ctxCLI.String("eth_node_addr")
+	BSCChainID := ctxCLI.Int64("bsc_chain_id")
+	ETHChainID := ctxCLI.Int64("eth_chain_id")
+	BSCRouterAddr := ctxCLI.String("bsc_router_addr")
 
 	mailDomain := ctxCLI.String("mail_domain")
 	mailAPIKey := ctxCLI.String("mail_apikey")
@@ -226,13 +365,31 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	config := &passport.Config{
 		CookieSecure:        ctxCLI.Bool("cookie_secure"),
-		AdminHostURL:        ctxCLI.String("host_url_admin"),
-		PublicHostURL:       ctxCLI.String("host_url_public"),
-		MobileHostURL:       ctxCLI.String("host_url_mobile"),
+		PassportWebHostURL:  ctxCLI.String("passport_web_host_url"),
+		GameserverHostURL:   ctxCLI.String("gameserver_web_host_url"),
 		EncryptTokens:       ctxCLI.Bool("jwt_encrypt"),
 		EncryptTokensKey:    ctxCLI.String("jwt_encrypt_key"),
 		TokenExpirationDays: ctxCLI.Int("jwt_expiry_days"),
 		MetaMaskSignMessage: ctxCLI.String("metamask_sign_message"),
+		BridgeParams: &passport.BridgeParams{
+			MoralisKey:   MoralisKey,
+			OperatorAddr: common.HexToAddress(OperatorAddr),
+			UsdcAddr:     common.HexToAddress(UsdcAddr),
+			BusdAddr:     common.HexToAddress(BusdAddr),
+			SupAddr:      common.HexToAddress(SupAddr),
+			PurchaseAddr: common.HexToAddress(PurchaseAddr),
+			WithdrawAddr: common.HexToAddress(WithdrawAddr),
+
+			EthNftAddr:        common.HexToAddress(EthNftAddr),
+			EthNftStakingAddr: common.HexToAddress(EthNftStakingAddr),
+			SignerPrivateKey:  SignerPrivateKey,
+			BscNodeAddr:       BscNodeAddr,
+			EthNodeAddr:       EthNodeAddr,
+			BSCChainID:        BSCChainID,
+			ETHChainID:        ETHChainID,
+			BSCRouterAddr:     common.HexToAddress(BSCRouterAddr),
+		},
+		OnlyWalletConnect: ctxCLI.Bool("only_wallet"),
 	}
 
 	pgxconn, err := pgxconnect(
@@ -248,6 +405,17 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		return terror.Panic(err)
 	}
 
+	txConn, err := txConnect(
+		databaseTxUser,
+		databaseTxPass,
+		databaseHost,
+		databasePort,
+		databaseName,
+	)
+	if err != nil {
+		return terror.Panic(err)
+	}
+
 	count := 0
 	err = db.IsSchemaDirty(ctx, pgxconn, &count)
 	if err != nil {
@@ -255,6 +423,46 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	}
 	if count > 0 {
 		return terror.Error(api.ErrCheckDBDirty)
+	}
+
+	gameserverToken := ctxCLI.String("gameserver_token")
+	if gameserverToken == "" {
+		return terror.Panic(fmt.Errorf("missing gameserver auth token"))
+	}
+
+	googleClientID := ctxCLI.String("google_client_id")
+	if googleClientID == "" {
+		return terror.Panic(fmt.Errorf("missing google client id"))
+	}
+
+	twitchClientID := ctxCLI.String("twitch_client_id")
+	if twitchClientID == "" {
+		return terror.Panic(fmt.Errorf("no twitch client id"))
+	}
+
+	twitchClientSecret := ctxCLI.String("twitch_client_secret")
+	if twitchClientSecret == "" {
+		return terror.Panic(fmt.Errorf("no twitch client secret"))
+	}
+
+	twitterAPIKey := ctxCLI.String("twitter_api_key")
+	if twitterAPIKey == "" {
+		return terror.Panic(fmt.Errorf("no twitter api key"))
+	}
+
+	twitterAPISecret := ctxCLI.String("twitter_api_secret")
+	if twitterAPISecret == "" {
+		return terror.Panic(fmt.Errorf("no twitter api secret"))
+	}
+
+	discordClientID := ctxCLI.String("discord_client_id")
+	if discordClientID == "" {
+		return terror.Panic(fmt.Errorf("no discord client id"))
+	}
+
+	discordClientSecret := ctxCLI.String("discord_client_secret")
+	if discordClientSecret == "" {
+		return terror.Panic(fmt.Errorf("no discord client secret"))
 	}
 
 	// Mailer
@@ -269,6 +477,6 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
-	api := api.NewAPI(log, cancelOnPanic, pgxconn, ctxCLI.String("google_client_id"), mailer, apiAddr, HTMLSanitizePolicy, config)
+	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, googleClientID, mailer, apiAddr, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config, twitterAPIKey, twitterAPISecret, discordClientID, discordClientSecret, gameserverToken)
 	return api.Run(ctx)
 }

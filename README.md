@@ -1,5 +1,16 @@
 # passport-server
 
+[![Staging Deployment](https://github.com/ninja-syndicate/passport-server/actions/workflows/deploy-staging.yml/badge.svg)](https://github.com/ninja-syndicate/passport-server/actions/workflows/deploy-staging.yml)
+
+[CD Docs](.github/workflows/README.md)
+
+### Setup to use private repo
+
+```bash
+git config --global --add url."git@github.com:".insteadOf "https://github.com/"
+export GOPRIVATE="github.com/ninja-software/*,github.com/ninja-syndicate/*"
+```
+
 ### spinup
 
 Windows spinup may have issues
@@ -15,6 +26,7 @@ Majority of these don't need to be set for dev, if you want google/facebook/meta
 need to be set.
 
 ```shell
+PASSPORT_MORALIS_KEY
 PASSPORT_ENVIRONMENT
 
 PASSPORT_DATABASE_USER
@@ -43,4 +55,6 @@ PASSPORT_JWT_EXPIRY_DAYS
 
 PASSPORT_GOOGLE_CLIENT_ID
 PASSPORT_METAMASK_SIGN_MESSAGE
+PASSPORT_TWITCH_CLIENT_ID
+PASSPORT_TWITCH_CLIENT_SECRET
 ```

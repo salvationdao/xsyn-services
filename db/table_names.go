@@ -9,6 +9,7 @@ var TableNames = struct {
 	UserOrganisations string
 	Users             string
 	Products          string
+	Factions          string
 }{
 	Blobs:             "blobs",
 	IssuedTokens:      "issued_tokens",
@@ -18,4 +19,5 @@ var TableNames = struct {
 	UserOrganisations: "user_organisations",
 	Users:             "users",
 	Products:          "products",
+	Factions:          "factions",
 }

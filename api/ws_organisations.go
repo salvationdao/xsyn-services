@@ -1,16 +1,17 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
 	"passport"
 	"passport/db"
 	"passport/helpers"
-	"passport/log_helpers"
-	"context"
-	"encoding/json"
+
+	"github.com/ninja-software/log_helpers"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/hub/v2"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub"
 	"github.com/rs/zerolog"
 )
 
@@ -59,7 +60,7 @@ type OrganisationListRequest struct {
 // OrganisationListResponse is the response from the organisation list request
 type OrganisationListResponse struct {
 	Records []*passport.Organisation `json:"records"`
-	Total   int                         `json:"total"`
+	Total   int                      `json:"total"`
 }
 
 // ListHandler lists organisations with pagination
@@ -109,7 +110,7 @@ const HubKeyOrganisationGet hub.HubCommandKey = "ORGANISATION:GET"
 type OrganisationGetRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		Slug string                     `json:"slug"`
+		Slug string                  `json:"slug"`
 		ID   passport.OrganisationID `json:"id"`
 	} `json:"payload"`
 }

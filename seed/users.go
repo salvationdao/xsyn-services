@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"passport"
+	"passport/api"
 	"passport/crypto"
 	"passport/db"
 
@@ -19,52 +21,20 @@ func (s *Seeder) Users(ctx context.Context, organisations []*passport.Organisati
 	// Seed Random Users (use constant ids for first 4 users)
 	randomUsers, err := s.RandomUsers(
 		ctx,
-		MaxMembersPerOrganisation,
+		10,
 		passport.UserRoleMemberID,
-		nil,
-		userSuperAdminID, userAdminID, userMemberID,
-	)
+		nil)
 	if err != nil {
 		return terror.Error(err, "generate random users")
 	}
 	if len(randomUsers) == 0 {
 		return terror.Error(terror.ErrWrongLength, "Random Users return wrong length")
 	}
-	userIndex := 0
 
 	passwordHash := crypto.HashPassword("NinjaDojo_!")
 
-	fmt.Println(" - set superadmin user")
-	user := randomUsers[userIndex]
-	user.Email = passport.NewString("superadmin@example.com")
-	user.RoleID = passport.UserRoleSuperAdminID
-	err = db.UserUpdate(ctx, s.Conn, user)
-	if err != nil {
-		return terror.Error(err)
-	}
-	err = db.AuthSetPasswordHash(ctx, s.Conn, user.ID, passwordHash)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	userIndex++
-
-	fmt.Println(" - set admin user")
-	user = randomUsers[userIndex]
-	user.Email = passport.NewString("admin@example.com")
-	user.RoleID = passport.UserRoleAdminID
-	err = db.UserUpdate(ctx, s.Conn, user)
-	if err != nil {
-		return terror.Error(err)
-	}
-	err = db.AuthSetPasswordHash(ctx, s.Conn, user.ID, passwordHash)
-	if err != nil {
-		return terror.Error(err)
-	}
-	userIndex++
-
-	fmt.Println(" - set member user")
-	user = randomUsers[userIndex]
+	fmt.Println(" - set member user 1")
+	user := randomUsers[0]
 	user.Email = passport.NewString("member@example.com")
 	user.RoleID = passport.UserRoleMemberID
 	err = db.UserUpdate(ctx, s.Conn, user)
@@ -75,8 +45,6 @@ func (s *Seeder) Users(ctx context.Context, organisations []*passport.Organisati
 	if err != nil {
 		return terror.Error(err)
 	}
-	userIndex++
-
 	return nil
 }
 
@@ -175,4 +143,1172 @@ func (s *Seeder) RandomUsers(
 	}
 
 	return users, nil
+}
+
+func (s *Seeder) ETHChainUser(ctx context.Context) (*passport.User, error) {
+	// Create user
+	u := &passport.User{
+		ID:       passport.OnChainUserID,
+		Username: passport.OnChainUsername,
+		RoleID:   passport.UserRoleOffChain,
+		Verified: true,
+	}
+
+	// Insert
+	err := db.InsertSystemUser(ctx, s.Conn, u)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return u, nil
+}
+
+func (s *Seeder) XsynTreasuryUser(ctx context.Context) (*passport.User, error) {
+	// Create user
+	u := &passport.User{
+		ID:       passport.XsynTreasuryUserID,
+		Username: passport.XsynTreasuryUsername,
+		RoleID:   passport.UserRoleXsynTreasury,
+		Verified: true,
+	}
+
+	// Insert
+	err := db.InsertSystemUser(ctx, s.Conn, u)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	// add 300mil
+	amount, ok := big.NewInt(0).SetString("300000000000000000000000000", 0)
+	if !ok {
+		return nil, terror.Error(fmt.Errorf("invalid string for big int"))
+
+	}
+
+	// create treasury opening balance (30mil sups)
+	_, err = api.CreateTransactionEntry(s.TxConn,
+		*amount,
+		u.ID,
+		passport.OnChainUserID,
+		"Initial supply seed.",
+		"Initial supply seed.",
+	)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return u, nil
+}
+
+func (s *Seeder) SupremacyUser(ctx context.Context) (*passport.User, error) {
+	// Create user
+	u := &passport.User{
+		ID:       passport.SupremacyGameUserID,
+		Username: passport.SupremacyGameUsername,
+		RoleID:   passport.UserRoleGameAccount,
+		Verified: true,
+	}
+
+	// Insert
+	err := db.InsertSystemUser(ctx, s.Conn, u)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	// add 12mil
+	amount, ok := big.NewInt(0).SetString("12000000000000000000000000", 0)
+	if !ok {
+		return nil, terror.Error(fmt.Errorf("invalid string for big int"))
+
+	}
+
+	_, err = api.CreateTransactionEntry(s.TxConn,
+		*amount,
+		u.ID,
+		passport.XsynTreasuryUserID,
+		"",
+		"",
+	)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return u, nil
+}
+
+func (s *Seeder) XsynSaleUser(ctx context.Context) (*passport.User, error) {
+	// Create user
+	u := &passport.User{
+		ID:       passport.XsynSaleUserID,
+		Username: passport.XsynSaleUsername,
+		RoleID:   passport.UserRoleXsynSaleTreasury,
+		Verified: true,
+	}
+
+	// Insert
+	err := db.InsertSystemUser(ctx, s.Conn, u)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	amount, ok := big.NewInt(0).SetString("217000000000000000000000000", 0)
+	if !ok {
+		return nil, terror.Error(fmt.Errorf("invalid string for big int"))
+
+	}
+
+	// create xsynSaleUser balance of 217M from the xsynTreasuryUser
+	_, err = api.CreateTransactionEntry(s.TxConn,
+		*amount,
+		u.ID,
+		passport.XsynTreasuryUserID,
+		"Initial supremacy supply seed.",
+		"Initial supremacy supply seed.",
+	)
+	if err != nil {
+		return nil, terror.Error(err)
+
+	}
+	return u, nil
+}
+
+func (s *Seeder) SupremacyBattleUser(ctx context.Context) (*passport.User, error) {
+	// Create user
+	u := &passport.User{
+		ID:       passport.SupremacyBattleUserID,
+		Username: passport.SupremacyBattleUsername,
+		RoleID:   passport.UserRoleGameAccount,
+		Verified: true,
+	}
+
+	// Insert
+	err := db.InsertSystemUser(ctx, s.Conn, u)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return u, nil
+}
+
+func (s *Seeder) SupremacySupPoolUser(ctx context.Context) (*passport.User, error) {
+	// Create user
+	u := &passport.User{
+		ID:       passport.SupremacySupPoolUserID,
+		Username: passport.SupremacySupPoolUsername,
+		RoleID:   passport.UserRoleGameAccount,
+		Verified: true,
+	}
+
+	// Insert
+	err := db.InsertSystemUser(ctx, s.Conn, u)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return u, nil
+}
+
+func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, error) {
+	// add 1mil
+	amount, ok := big.NewInt(0).SetString("1000000000000000000000000", 0)
+	if !ok {
+		return nil, terror.Error(fmt.Errorf("invalid string for big int"))
+
+	}
+
+	supremacyCollection, err := db.CollectionGet(ctx, s.Conn, "Supremacy")
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	// Create user
+	u := &passport.User{
+		ID:        passport.SupremacyZaibatsuUserID,
+		Username:  passport.SupremacyZaibatsuUsername,
+		RoleID:    passport.UserRoleGameAccount,
+		Verified:  true,
+		FactionID: &passport.ZaibatsuFactionID,
+	}
+
+	// Insert
+	err = db.InsertSystemUser(ctx, s.Conn, u)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	_, err = api.CreateTransactionEntry(s.TxConn,
+		*amount,
+		u.ID,
+		passport.XsynTreasuryUserID,
+		"Initial supremacy Zaibatsu supply seed.",
+		"Initial supremacy Zaibatsu supply seed.",
+	)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	// Create user
+	u = &passport.User{
+		ID:        passport.SupremacyBostonCyberneticsUserID,
+		Username:  passport.SupremacyBostonCyberneticsUsername,
+		RoleID:    passport.UserRoleGameAccount,
+		Verified:  true,
+		FactionID: &passport.BostonCyberneticsFactionID,
+	}
+
+	// Insert
+	err = db.InsertSystemUser(ctx, s.Conn, u)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	_, err = api.CreateTransactionEntry(s.TxConn,
+		*amount,
+		u.ID,
+		passport.XsynTreasuryUserID,
+		"Initial supremacy BostonCybernetics supply seed.",
+		"Initial supremacy BostonCybernetics supply seed.",
+	)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	// Create user
+	u = &passport.User{
+		ID:        passport.SupremacyRedMountainUserID,
+		Username:  passport.SupremacyRedMountainUsername,
+		RoleID:    passport.UserRoleGameAccount,
+		Verified:  true,
+		FactionID: &passport.RedMountainFactionID,
+	}
+
+	// Insert
+	err = db.InsertSystemUser(ctx, s.Conn, u)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	_, err = api.CreateTransactionEntry(s.TxConn,
+		*amount,
+		u.ID,
+		passport.XsynTreasuryUserID,
+		"Initial supremacy RedMountain supply seed.",
+		"Initial supremacy RedMountain supply seed.",
+	)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	err = s.SeedAndAssignZaibatsu(ctx, supremacyCollection)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	err = s.SeedAndAssignRedMountain(ctx, supremacyCollection)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	err = s.SeedAndAssignBoston(ctx, supremacyCollection)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return u, nil
+}
+
+func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport.Collection) error {
+	newNFT := []*passport.XsynMetadata{
+		{
+			CollectionID:       collection.ID,
+			Name:               "",
+			Description:        "",
+			ExternalUrl:        "",
+			Image:              "",
+			AdditionalMetadata: nil,
+			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Zaibatsu",
+				},
+				{
+					TraitType: "Model",
+					Value:     "WREX",
+				},
+				{
+					TraitType: "Skin",
+					Value:     "Black",
+				},
+				{
+					TraitType: "Name",
+					Value:     "Alex",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
+				{
+					TraitType: "Asset Type",
+					Value:     "War Machine",
+				},
+				{
+					TraitType:   "Max Structure Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Max Shield Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Speed",
+					Value:       2500,
+					DisplayType: passport.Number,
+				},
+				//{
+				//	TraitType:   "Power Grid",
+				//	Value:       170,
+				//	DisplayType: passport.Number,
+				//},
+				//{
+				//	TraitType:   "CPU",
+				//	Value:       100,
+				//	DisplayType: passport.Number,
+				//},
+				{
+					TraitType:   "Weapon Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Turret Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Utility Slots",
+					Value:       1,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType: "Weapon One",
+					Value:     "Sniper Rifle",
+				},
+				{
+					TraitType: "Weapon Two",
+					Value:     "Laser Sword",
+				},
+				{
+					TraitType: "Turret One",
+					Value:     "Rocket Pod",
+				},
+				{
+					TraitType: "Turret Two",
+					Value:     "Rocket Pod",
+				},
+				{
+					TraitType: "Utility One",
+					Value:     "Shield",
+				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
+				},
+			},
+		},
+		{
+			CollectionID:       collection.ID,
+			Name:               "",
+			Description:        "",
+			ExternalUrl:        "",
+			Image:              "",
+			AdditionalMetadata: nil,
+			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Zaibatsu",
+				},
+				{
+					TraitType: "Model",
+					Value:     "WREX",
+				},
+				{
+					TraitType: "Skin",
+					Value:     "Black",
+				},
+				{
+					TraitType: "Name",
+					Value:     "John",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
+				{
+					TraitType: "Asset Type",
+					Value:     "War Machine",
+				},
+				{
+					TraitType:   "Max Structure Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Max Shield Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Speed",
+					Value:       2500,
+					DisplayType: passport.Number,
+				},
+				//{
+				//	TraitType:   "Power Grid",
+				//	Value:       170,
+				//	DisplayType: passport.Number,
+				//},
+				//{
+				//	TraitType:   "CPU",
+				//	Value:       100,
+				//	DisplayType: passport.Number,
+				//},
+				{
+					TraitType:   "Weapon Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Turret Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Utility Slots",
+					Value:       1,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType: "Weapon One",
+					Value:     "Sniper Rifle",
+				},
+				{
+					TraitType: "Weapon Two",
+					Value:     "Laser Sword",
+				},
+				{
+					TraitType: "Turret One",
+					Value:     "Rocket Pod",
+				},
+				{
+					TraitType: "Turret Two",
+					Value:     "Rocket Pod",
+				},
+				{
+					TraitType: "Utility One",
+					Value:     "Shield",
+				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
+				},
+			},
+		},
+		{
+			CollectionID:       collection.ID,
+			Name:               "",
+			Description:        "",
+			ExternalUrl:        "",
+			Image:              "",
+			AdditionalMetadata: nil,
+			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Zaibatsu",
+				},
+				{
+					TraitType: "Model",
+					Value:     "WREX",
+				},
+				{
+					TraitType: "Skin",
+					Value:     "Black",
+				},
+				{
+					TraitType: "Name",
+					Value:     "Mac",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
+				{
+					TraitType: "Asset Type",
+					Value:     "War Machine",
+				},
+				{
+					TraitType:   "Max Structure Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Max Shield Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Speed",
+					Value:       2500,
+					DisplayType: passport.Number,
+				},
+				//{
+				//	TraitType:   "Power Grid",
+				//	Value:       170,
+				//	DisplayType: passport.Number,
+				//},
+				//{
+				//	TraitType:   "CPU",
+				//	Value:       100,
+				//	DisplayType: passport.Number,
+				//},
+				{
+					TraitType:   "Weapon Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Turret Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Utility Slots",
+					Value:       1,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType: "Weapon One",
+					Value:     "Sniper Rifle",
+				},
+				{
+					TraitType: "Weapon Two",
+					Value:     "Laser Sword",
+				},
+				{
+					TraitType: "Turret One",
+					Value:     "Rocket Pod",
+				},
+				{
+					TraitType: "Turret Two",
+					Value:     "Rocket Pod",
+				},
+				{
+					TraitType: "Utility One",
+					Value:     "Shield",
+				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
+				},
+			},
+		},
+	}
+
+	for _, nft := range newNFT {
+		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.TokenID, passport.SupremacyZaibatsuUserID)
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
+
+	return nil
+}
+
+func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passport.Collection) error {
+	newNFT := []*passport.XsynMetadata{
+		{
+			CollectionID:       collection.ID,
+			Name:               "",
+			Description:        "",
+			ExternalUrl:        "",
+			Image:              "",
+			AdditionalMetadata: nil,
+			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Red Mountain",
+				},
+				{
+					TraitType: "Model",
+					Value:     "BXSD",
+				},
+				{
+					TraitType: "Skin",
+					Value:     "Red_Steel",
+				},
+				{
+					TraitType: "Name",
+					Value:     "Vinnie",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
+				{
+					TraitType: "Asset Type",
+					Value:     "War Machine",
+				},
+				{
+					TraitType:   "Max Structure Hit Points",
+					Value:       1500,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Max Shield Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Speed",
+					Value:       1750,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Weapon Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Turret Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Utility Slots",
+					Value:       1,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType: "Weapon One",
+					Value:     "Auto Cannon",
+				},
+				{
+					TraitType: "Weapon Two",
+					Value:     "Auto Cannon",
+				},
+				{
+					TraitType: "Turret One",
+					Value:     "Rocket Pod",
+				},
+				{
+					TraitType: "Turret Two",
+					Value:     "Rocket Pod",
+				},
+				{
+					TraitType: "Utility One",
+					Value:     "Shield",
+				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
+				},
+			},
+		},
+		{
+			CollectionID:       collection.ID,
+			Name:               "Olympus Mons LY07 B",
+			Description:        "",
+			ExternalUrl:        "",
+			Image:              "",
+			AdditionalMetadata: nil,
+			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Red Mountain",
+				},
+				{
+					TraitType: "Model",
+					Value:     "BXSD",
+				},
+				{
+					TraitType: "Skin",
+					Value:     "Pink",
+				},
+				{
+					TraitType: "Name",
+					Value:     "Owen",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
+				{
+					TraitType: "Asset Type",
+					Value:     "War Machine",
+				},
+				{
+					TraitType:   "Max Structure Hit Points",
+					Value:       1500,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Max Shield Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Speed",
+					Value:       1750,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Weapon Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Turret Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Utility Slots",
+					Value:       1,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType: "Weapon One",
+					Value:     "Auto Cannon",
+				},
+				{
+					TraitType: "Weapon Two",
+					Value:     "Auto Cannon",
+				},
+				{
+					TraitType: "Turret One",
+					Value:     "Rocket Pod",
+				},
+				{
+					TraitType: "Turret Two",
+					Value:     "Rocket Pod",
+				},
+				{
+					TraitType: "Utility One",
+					Value:     "Shield",
+				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
+				},
+			},
+		},
+		{
+			CollectionID:       collection.ID,
+			Name:               "Olympus Mons LY07 B",
+			Description:        "",
+			ExternalUrl:        "",
+			Image:              "",
+			AdditionalMetadata: nil,
+			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Red Mountain",
+				},
+				{
+					TraitType: "Model",
+					Value:     "BXSD",
+				},
+				{
+					TraitType: "Skin",
+					Value:     "Pink",
+				},
+				{
+					TraitType: "Name",
+					Value:     "James",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
+				{
+					TraitType: "Asset Type",
+					Value:     "War Machine",
+				},
+				{
+					TraitType:   "Max Structure Hit Points",
+					Value:       1500,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Max Shield Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Speed",
+					Value:       1750,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Weapon Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Turret Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Utility Slots",
+					Value:       1,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType: "Weapon One",
+					Value:     "Auto Cannon",
+				},
+				{
+					TraitType: "Weapon Two",
+					Value:     "Auto Cannon",
+				},
+				{
+					TraitType: "Turret One",
+					Value:     "Rocket Pod",
+				},
+				{
+					TraitType: "Turret Two",
+					Value:     "Rocket Pod",
+				},
+				{
+					TraitType: "Utility One",
+					Value:     "Shield",
+				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
+				},
+			},
+		},
+	}
+
+	for _, nft := range newNFT {
+		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.TokenID, passport.SupremacyRedMountainUserID)
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
+
+	return nil
+}
+
+func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.Collection) error {
+	metadata := []*passport.XsynMetadata{
+		{
+			CollectionID:       collection.ID,
+			Name:               "",
+			Description:        "",
+			ExternalUrl:        "",
+			Image:              "",
+			AdditionalMetadata: nil,
+			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Boston Cybernetics",
+				},
+				{
+					TraitType: "Model",
+					Value:     "XFVS",
+				},
+				{
+					TraitType: "Skin",
+					Value:     "BlueWhite",
+				},
+				{
+					TraitType: "Name",
+					Value:     "Darren",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
+				{
+					TraitType: "Asset Type",
+					Value:     "War Machine",
+				},
+				{
+					TraitType:   "Max Structure Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Max Shield Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Speed",
+					Value:       2750,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Weapon Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Utility Slots",
+					Value:       1,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType: "Weapon One",
+					Value:     "Plasma Rifle",
+				},
+				{
+					TraitType: "Weapon Two",
+					Value:     "Sword",
+				},
+				{
+					TraitType: "Utility One",
+					Value:     "Shield",
+				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
+				},
+			},
+		},
+		{
+			CollectionID:       collection.ID,
+			Name:               "Law Enforcer X-1000 B",
+			Description:        "",
+			ExternalUrl:        "",
+			Image:              "",
+			AdditionalMetadata: nil,
+			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Boston Cybernetics",
+				},
+				{
+					TraitType: "Model",
+					Value:     "XFVS",
+				},
+				{
+					TraitType: "Skin",
+					Value:     "Police_DarkBlue",
+				},
+				{
+					TraitType: "Name",
+					Value:     "Yong",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
+				{
+					TraitType: "Asset Type",
+					Value:     "War Machine",
+				},
+				{
+					TraitType:   "Max Structure Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Max Shield Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Speed",
+					Value:       2750,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Weapon Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Utility Slots",
+					Value:       1,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType: "Weapon One",
+					Value:     "Plasma Rifle",
+				},
+				{
+					TraitType: "Weapon Two",
+					Value:     "Sword",
+				},
+				{
+					TraitType: "Utility One",
+					Value:     "Shield",
+				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
+				},
+			},
+		},
+		{
+			CollectionID:       collection.ID,
+			Name:               "Law Enforcer X-1000 B",
+			Description:        "",
+			ExternalUrl:        "",
+			Image:              "",
+			AdditionalMetadata: nil,
+			Attributes: []*passport.Attribute{
+				{
+					TraitType: "Brand",
+					Value:     "Boston Cybernetics",
+				},
+				{
+					TraitType: "Model",
+					Value:     "XFVS",
+				},
+				{
+					TraitType: "Skin",
+					Value:     "Police_DarkBlue",
+				},
+				{
+					TraitType: "Name",
+					Value:     "Corey",
+				},
+				//{
+				//	TraitType: "SubModel",
+				//	Value:     "Neon",
+				//},
+				{
+					TraitType: "Asset Type",
+					Value:     "War Machine",
+				},
+				{
+					TraitType:   "Max Structure Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Max Shield Hit Points",
+					Value:       1000,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Speed",
+					Value:       2750,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Weapon Hardpoints",
+					Value:       2,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType:   "Utility Slots",
+					Value:       1,
+					DisplayType: passport.Number,
+				},
+				{
+					TraitType: "Weapon One",
+					Value:     "Plasma Rifle",
+				},
+				{
+					TraitType: "Weapon Two",
+					Value:     "Sword",
+				},
+				{
+					TraitType: "Utility One",
+					Value:     "Shield",
+				},
+				{
+					TraitType: "Ability One",
+					Value:     "none",
+				},
+				{
+					TraitType: "Ability Two",
+					Value:     "none",
+				},
+			},
+		},
+	}
+
+	for _, nft := range metadata {
+		err := db.XsynMetadataInsert(ctx, s.Conn, nft)
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.TokenID, passport.SupremacyBostonCyberneticsUserID)
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
+
+	return nil
+}
+
+func (s *Seeder) AndAssignNftToMember(ctx context.Context) error {
+	// get member user
+	member, err := db.UserByEmail(ctx, s.Conn, "member@example.com")
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// get "Big War Machine" nft
+	nft, err := db.AssetGetByName(ctx, s.Conn, "Placeholder Brand Big War Machine")
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// assign nft to member
+	err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.TokenID, member.ID)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
 }

@@ -1,8 +1,9 @@
 package email
 
 import (
-	"passport"
+	"context"
 	"fmt"
+	"passport"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -22,8 +23,9 @@ type User struct {
 }
 
 // SendBasicEmail sends a plain text email with the basic template
-func (m *Mailer) SendBasicEmail(to string, subject string, message string, attachments ...passport.Blob) error {
+func (m *Mailer) SendBasicEmail(ctx context.Context, to string, subject string, message string, attachments ...passport.Blob) error {
 	err := m.SendEmail(
+		ctx,
 		to,
 		subject,
 		"basic",
@@ -42,12 +44,12 @@ func (m *Mailer) SendBasicEmail(to string, subject string, message string, attac
 }
 
 // SendForgotPasswordEmail sends an email with the forgot_password template
-func (m *Mailer) SendForgotPasswordEmail(user *User, token string) error {
-	hostURL := m.PublicHostURL
+func (m *Mailer) SendForgotPasswordEmail(ctx context.Context, user *User, token string) error {
+	hostURL := m.PassportWebHostURL
 	if user.IsAdmin {
-		hostURL = m.AdminHostURL
+		hostURL = m.PassportWebHostURL
 	}
-	err := m.SendEmail(
+	err := m.SendEmail(ctx,
 		user.Email,
 		"Forgot Password",
 		"forgot_password",
@@ -67,12 +69,12 @@ func (m *Mailer) SendForgotPasswordEmail(user *User, token string) error {
 }
 
 // SendVerificationEmail sends an email with the confirm_email template
-func (m *Mailer) SendVerificationEmail(user *User, token string, newAccount bool) error {
-	hostURL := m.PublicHostURL
+func (m *Mailer) SendVerificationEmail(ctx context.Context, user *User, token string, newAccount bool) error {
+	hostURL := m.PassportWebHostURL
 	if user.IsAdmin {
-		hostURL = m.AdminHostURL
+		hostURL = m.PassportWebHostURL
 	}
-	err := m.SendEmail(
+	err := m.SendEmail(ctx,
 		user.Email,
 		"Verify Email",
 		"confirm_email",

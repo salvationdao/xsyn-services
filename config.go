@@ -1,12 +1,36 @@
 package passport
 
+import (
+	"github.com/ethereum/go-ethereum/common"
+)
+
 type Config struct {
 	CookieSecure        bool
 	EncryptTokens       bool
 	EncryptTokensKey    string
 	TokenExpirationDays int
-	AdminHostURL        string // The Admin Site URL used for CORS and links (eg: in the mailer)
-	PublicHostURL       string // The Public Site URL used for CORS and links (eg: in the mailer)
-	MobileHostURL       string // The Mobiel Site (flutter web) URL used for CORS
+	PassportWebHostURL  string
+	GameserverHostURL   string
 	MetaMaskSignMessage string // The message to see in the metamask signup flow, needs to match frontend
+	BridgeParams        *BridgeParams
+	OnlyWalletConnect   bool
+}
+
+type BridgeParams struct {
+	OperatorAddr      common.Address
+	MoralisKey        string
+	UsdcAddr          common.Address
+	BusdAddr          common.Address
+	SupAddr           common.Address
+	DepositAddr       common.Address
+	PurchaseAddr      common.Address
+	WithdrawAddr      common.Address
+	SignerPrivateKey  string
+	EthNftAddr        common.Address
+	EthNftStakingAddr common.Address
+	BscNodeAddr       string
+	EthNodeAddr       string
+	BSCChainID        int64
+	ETHChainID        int64
+	BSCRouterAddr     common.Address
 }

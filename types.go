@@ -2,9 +2,12 @@ package passport
 
 import (
 	"database/sql/driver"
-	"github.com/volatiletech/null/v8"
+	"fmt"
+	"math/big"
 
 	"github.com/gofrs/uuid"
+	"github.com/jackc/pgtype"
+	"github.com/volatiletech/null/v8"
 )
 
 // BlobID aliases uuid.UUID.
@@ -487,4 +490,237 @@ func (id *ProductID) Scan(src interface{}) error {
 // NewString returns a null.String with valid set to false if string == ""
 func NewString(s string) null.String {
 	return null.NewString(s, s != "")
+}
+
+// FactionID aliases uuid.UUID.
+// Doing this prevents situations where you use FactionID where it doesn't belong.
+type FactionID uuid.UUID
+
+// IsNil returns true for a nil uuid.
+func (id FactionID) IsNil() bool {
+	return id == FactionID{}
+}
+
+// String aliases UUID.String which returns a canonical RFC-4122 string representation of the UUID.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.String.
+func (id FactionID) String() string {
+	return uuid.UUID(id).String()
+}
+
+// MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaler interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.MarshalText.
+func (id FactionID) MarshalText() ([]byte, error) {
+	return uuid.UUID(id).MarshalText()
+}
+
+// UnmarshalText aliases UUID.UnmarshalText which implements the encoding.TextUnmarshaler interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.UnmarshalText.
+func (id *FactionID) UnmarshalText(text []byte) error {
+	// Convert to uuid.UUID
+	uid := uuid.UUID(*id)
+	// Unmarshal as uuid.UUID
+	err := uid.UnmarshalText(text)
+	// Convert back to original type
+	*id = FactionID(uid)
+	// Retrun error
+	return err
+}
+
+// Value aliases UUID.Value which implements the driver.Valuer interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Value.
+func (id FactionID) Value() (driver.Value, error) {
+	return uuid.UUID(id).Value()
+}
+
+// Scan implements the sql.Scanner interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Scan.
+func (id *FactionID) Scan(src interface{}) error {
+	// Convert to uuid.UUID
+	uid := uuid.UUID(*id)
+	// Unmarshal as uuid.UUID
+	err := uid.Scan(src)
+	// Convert back to original type
+	*id = FactionID(uid)
+	// Retrun error
+	return err
+}
+
+// CollectionID aliases uuid.UUID.
+// Doing this prevents situations where you use CollectionID where it doesn't belong.
+type CollectionID uuid.UUID
+
+// IsNil returns true for a nil uuid.
+func (id CollectionID) IsNil() bool {
+	return id == CollectionID{}
+}
+
+// String aliases UUID.String which returns a canonical RFC-4122 string representation of the UUID.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.String.
+func (id CollectionID) String() string {
+	return uuid.UUID(id).String()
+}
+
+// MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaler interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.MarshalText.
+func (id CollectionID) MarshalText() ([]byte, error) {
+	return uuid.UUID(id).MarshalText()
+}
+
+// UnmarshalText aliases UUID.UnmarshalText which implements the encoding.TextUnmarshaler interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.UnmarshalText.
+func (id *CollectionID) UnmarshalText(text []byte) error {
+	// Convert to uuid.UUID
+	uid := uuid.UUID(*id)
+	// Unmarshal as uuid.UUID
+	err := uid.UnmarshalText(text)
+	// Convert back to original type
+	*id = CollectionID(uid)
+	// Retrun error
+	return err
+}
+
+// Value aliases UUID.Value which implements the driver.Valuer interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Value.
+func (id CollectionID) Value() (driver.Value, error) {
+	return uuid.UUID(id).Value()
+}
+
+// Scan implements the sql.Scanner interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Scan.
+func (id *CollectionID) Scan(src interface{}) error {
+	// Convert to uuid.UUID
+	uid := uuid.UUID(*id)
+	// Unmarshal as uuid.UUID
+	err := uid.Scan(src)
+	// Convert back to original type
+	*id = CollectionID(uid)
+	// Retrun error
+	return err
+}
+
+// BigInt aliases big.Int
+// We do this, so we can create .scan methods.
+type BigInt struct {
+	pgtype.Numeric ` db:"sups"`
+	big.Int        `json:"sups"`
+	calculated     bool
+}
+
+func (b *BigInt) Value() (driver.Value, error) {
+	if b != nil {
+		if !b.calculated {
+			b.calc()
+		}
+		return b.String(), nil
+	}
+	return nil, nil
+}
+
+// calc calculates the big.int from the pgtype.Numeric
+func (b *BigInt) calc() {
+	if b.Numeric.Exp == 0 {
+		b.Int = *b.Numeric.Int
+		b.calculated = true
+		return
+	}
+
+	final := big.Int{}
+	b.Int = *b.Numeric.Int
+
+	final.Exp(
+		big.NewInt(10),
+		big.NewInt(int64(b.Numeric.Exp)),
+		&big.Int{},
+	)
+
+	b.Int.Mul(&b.Int, &final)
+	b.calculated = true
+}
+
+func (b *BigInt) String() string {
+	if !b.calculated {
+		b.calc()
+	}
+	return b.Int.String()
+}
+
+func (b *BigInt) Init() {
+	if b.calculated {
+		return
+	}
+	b.calc()
+}
+
+// MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaller interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.MarshalText.
+func (b BigInt) MarshalText() ([]byte, error) {
+	return []byte(b.String()), nil
+}
+
+func (b *BigInt) UnmarshalJSON(text []byte) error {
+	if text == nil {
+		*b = BigInt{}
+		b.calculated = true
+		return nil
+	}
+
+	_, ok := b.Int.SetString(string(text), 10)
+	if !ok {
+		return fmt.Errorf("invalid number %s", string(text))
+	}
+	b.calculated = true
+	return nil
+}
+
+// StoreItemID aliases uuid.UUID.
+// Doing this prevents situations where you use StoreItemID where it doesn't belong.
+type StoreItemID uuid.UUID
+
+// IsNil returns true for a nil uuid.
+func (id StoreItemID) IsNil() bool {
+	return id == StoreItemID{}
+}
+
+// String aliases UUID.String which returns a canonical RFC-4122 string representation of the UUID.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.String.
+func (id StoreItemID) String() string {
+	return uuid.UUID(id).String()
+}
+
+// MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaler interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.MarshalText.
+func (id StoreItemID) MarshalText() ([]byte, error) {
+	return uuid.UUID(id).MarshalText()
+}
+
+// UnmarshalText aliases UUID.UnmarshalText which implements the encoding.TextUnmarshaler interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.UnmarshalText.
+func (id *StoreItemID) UnmarshalText(text []byte) error {
+	// Convert to uuid.UUID
+	uid := uuid.UUID(*id)
+	// Unmarshal as uuid.UUID
+	err := uid.UnmarshalText(text)
+	// Convert back to original type
+	*id = StoreItemID(uid)
+	// Retrun error
+	return err
+}
+
+// Value aliases UUID.Value which implements the driver.Valuer interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Value.
+func (id StoreItemID) Value() (driver.Value, error) {
+	return uuid.UUID(id).Value()
+}
+
+// Scan implements the sql.Scanner interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Scan.
+func (id *StoreItemID) Scan(src interface{}) error {
+	// Convert to uuid.UUID
+	uid := uuid.UUID(*id)
+	// Unmarshal as uuid.UUID
+	err := uid.Scan(src)
+	// Convert back to original type
+	*id = StoreItemID(uid)
+	// Retrun error
+	return err
 }

@@ -14,8 +14,8 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/lestrrat-go/jwx/jwt/openid"
-	"github.com/ninja-software/hub/v2/ext/auth"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub/ext/auth"
 )
 
 type ErrorMessage string
@@ -38,16 +38,15 @@ type ErrorObject struct {
 }
 
 // WithError handles error responses.
-func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) http.HandlerFunc {
+func (api *API) WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) http.HandlerFunc {
 	// TODO: Ask about sentry ideas?
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		contents, _ := ioutil.ReadAll(r.Body)
 
 		r.Body = ioutil.NopCloser(bytes.NewReader(contents))
-
+		defer r.Body.Close()
 		code, err := next(w, r)
 		if err != nil {
-			terror.Echo(err)
 
 			errObj := &ErrorObject{
 				Message:   err.Error(),
@@ -57,6 +56,13 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) h
 			var bErr *terror.TError
 			if errors.As(err, &bErr) {
 				errObj.Message = bErr.Message
+
+				switch bErr.Level {
+				case terror.ErrLevelWarn:
+					api.Log.Warn().Err(err).Msg("rest error")
+				default:
+					api.Log.Err(err).Msg("rest error")
+				}
 
 				// set generic messages if friendly message not set making genric messages overrideable
 				if bErr.Error() == bErr.Message {
@@ -81,6 +87,8 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) h
 						errObj.Message = InputError.String()
 					}
 				}
+			} else {
+				api.Log.Err(err).Msg("rest error")
 			}
 
 			jsonErr, err := json.Marshal(errObj)
