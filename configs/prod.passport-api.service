@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 Restart=always
-User=passport
+User=passport-api
 LimitNOFILE=100000000
 WorkingDirectory=/usr/share/ninja_syndicate/passport-api_online
 ExecStart=/usr/share/ninja_syndicate/passport-api_online/passport-api serve
