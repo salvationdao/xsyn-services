@@ -1,11 +1,13 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"time"
+	"fmt"
+	"github.com/shopspring/decimal"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type Transfer struct {
@@ -112,7 +114,7 @@ type Transfer struct {
 	} `json:"user"`
 }
 
-func (api *API)EthTransactionWebhook(w http.ResponseWriter, r *http.Request) (int, error) {
+func (cc *ChainClients) TransactionWebhook(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &Transfer{}
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(req)
@@ -120,35 +122,37 @@ func (api *API)EthTransactionWebhook(w http.ResponseWriter, r *http.Request) (in
 		return http.StatusBadRequest, terror.Error(err)
 	}
 
-	//type Transfer struct {
-	//	Block    uint64
-	//	ChainID  int64
-	//	Contract common.Address
-	//	Symbol   string
-	//	Decimals int
-	//	TxID     common.Hash
-	//	From     common.Address
-	//	To       common.Address
-	//	Amount   *big.Int
-	//}
+	chain := ""
 
-	txfer := &bridge.Transfer{
-		Block: req.BlockNumber,
-		ChainID: ,
-		Contract: ,
-		Symbol: ,
-		Decimals: ,
-		TxID: ,
-		From: ,
-		To: ,
-		Amount: ,
+
+	if req.Object.ClassName == "EthTransactions" {
+		chain = "eth"
 	}
-}
 
 
-	func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Transfer) {
+	if req.Object.ClassName == "BscTransactions" {
+		chain = "bsc"
+	}
 
+	if chain == "" {
+		cc.Log.Err(terror.Error(fmt.Errorf("invalid chain classname %s %s", chain, req.Object.ClassName))).Msg("")
+		return http.StatusOK, nil
+	}
 
+	record, err := GetNativeTX(common.HexToHash(req.Object.Hash), chain)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Missing Tx.")
+	}
+
+	cc.Log.Info().
+		Str("Symbol", record.Symbol).
+		Str("Amount", decimal.NewFromBigInt(record.Amount, 0).Div(decimal.New(1, int32(record.Decimals))).String()).
+		Str("TxID", record.TxID.String()).
+		Str("From", record.From.String()).
+		Str("To", record.To.String()).
+		Msg("running eth tx checker")
+	fn := cc.handleTransfer(r.Context())
+	fn(record)
 
 	return http.StatusOK, nil
 }
