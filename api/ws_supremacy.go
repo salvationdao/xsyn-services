@@ -33,6 +33,13 @@ type SupremacyControllerWS struct {
 		dataMx             sync.Mutex
 		TricklingAmountMap map[string]*big.Int
 	}
+
+	txs *transactions
+}
+
+type transactions struct {
+	Txes []passport.NewTransaction
+	txMx sync.Mutex
 }
 
 // NewSupremacyController creates the supremacy hub
@@ -51,6 +58,9 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 			nextAccessMx:       sync.Mutex{},
 			dataMx:             sync.Mutex{},
 			TricklingAmountMap: make(map[string]*big.Int),
+		},
+		txs: &transactions{
+			Txes: []passport.NewTransaction{},
 		},
 	}
 
@@ -155,6 +165,8 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 		Amount:               req.Payload.Amount.Int,
 	}
 
+	fmt.Println(req.Payload.Amount.String())
+
 	if req.Payload.IsBattleVote {
 		tx.To = passport.SupremacyBattleUserID
 	}
@@ -176,15 +188,20 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 
 	tx.ID = txID
 
+	fmt.Println(tx.Amount, "TX AMOUNT")
+
 	// for refund
-	txReverse := passport.NewTransaction{
+	sc.txs.txMx.Lock()
+	sc.txs.Txes = append(sc.txs.Txes, passport.NewTransaction{
+		ID:                   txID,
 		From:                 tx.To,
 		To:                   tx.From,
 		Amount:               tx.Amount,
 		TransactionReference: passport.TransactionReference(fmt.Sprintf("refund|sups vote|%s", txID)),
-	}
+	})
+	sc.txs.txMx.Unlock()
 
-	reply(txReverse)
+	reply(txID)
 	return nil
 }
 
@@ -681,7 +698,7 @@ const HubKeySupremacyReleaseTransactions = hub.HubCommandKey("SUPREMACY:RELEASE_
 type SupremacyReleaseTransactionsRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		Transactions []passport.NewTransaction `json:"transactions"`
+		TxIDs []string `json:"txIDs"`
 	} `json:"payload"`
 }
 
@@ -692,23 +709,32 @@ func (sc *SupremacyControllerWS) SupremacyReleaseTransactionsHandler(ctx context
 		return terror.Error(err, "Invalid request received")
 	}
 
-	for _, tx := range req.Payload.Transactions {
-		nfb, ntb, err := sc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
-		if err != nil {
-			sc.API.Log.Err(err).Msg("failed to process user sups fund")
-			continue
-		}
+	sc.txs.txMx.Lock()
+	defer sc.txs.txMx.Unlock()
+	for _, txID := range req.Payload.TxIDs {
+		for _, tx := range sc.txs.Txes {
+			if txID != tx.ID {
+				continue
+			}
+			nfb, ntb, err := sc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
+			if err != nil {
+				sc.API.Log.Err(err).Msg("failed to process user sups fund")
+				continue
+			}
 
-		if !tx.From.IsSystemUser() {
-			go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
-		}
+			if !tx.From.IsSystemUser() {
+				go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+			}
 
-		if !tx.To.IsSystemUser() {
-			go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
-		}
+			if !tx.To.IsSystemUser() {
+				go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
+			}
 
-		sc.API.transactionCache.Process(tx)
+			sc.API.transactionCache.Process(tx)
+		}
 	}
+
+	sc.txs.Txes = []passport.NewTransaction{}
 
 	return nil
 }
