@@ -86,7 +86,13 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 		return terror.Error(fmt.Errorf("user not found"), "User not found")
 	}
 
-
+	gc.API.transactionCache.Process(passport.NewTransaction{
+		To:                   user.ID,
+		From:                 passport.XsynSaleUserID,
+		Amount:               *big.NewInt(100000),
+		TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
+		Description:          "Give away for testing",
+	})
 
 	oneSups := big.NewInt(1000000000000000000)
 
