@@ -72,7 +72,7 @@ func (ctrlr *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *h
 		return terror.Error(err)
 	}
 
-	err = items.Purchase(ctx, ctrlr.Conn, ctrlr.Log, ctrlr.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), ctrlr.API.transaction, *user, req.Payload.StoreItemID, ctrlr.API.storeItemExternalUrl)
+	err = items.Purchase(ctx, ctrlr.Conn, ctrlr.Log, ctrlr.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), ctrlr.API.userCacheMap.Process, ctrlr.API.transactionCache.Process, *user, req.Payload.StoreItemID, ctrlr.API.storeItemExternalUrl)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -107,7 +107,7 @@ func (ctrlr *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, hubc
 		return terror.Error(err)
 	}
 
-	tokenID, err := items.PurchaseLootbox(ctx, ctrlr.Conn, ctrlr.Log, ctrlr.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), ctrlr.API.transaction, *user, req.Payload.FactionID, ctrlr.API.storeItemExternalUrl)
+	tokenID, err := items.PurchaseLootbox(ctx, ctrlr.Conn, ctrlr.Log, ctrlr.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), ctrlr.API.userCacheMap.Process, ctrlr.API.transactionCache.Process, *user, req.Payload.FactionID, ctrlr.API.storeItemExternalUrl)
 	if err != nil {
 		return terror.Error(err)
 	}

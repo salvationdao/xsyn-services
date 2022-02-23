@@ -14,6 +14,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
 
 // InitialiseTreasuryFundTicker for every game server
@@ -27,20 +28,46 @@ func (api *API) InitialiseTreasuryFundTicker() {
 			return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to convert 4000000000000000000 to big int"))
 		}
 
-		//treasuryTransfer := big.NewInt(0)
-		//treasuryTransfer.Add(treasuryTransfer, fund)
-		select {
-		case api.transaction <- &passport.NewTransaction{
+		tx := passport.NewTransaction{
 			From:                 passport.XsynTreasuryUserID,
 			To:                   passport.SupremacySupPoolUserID,
 			Amount:               *fund,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("treasury|ticker|%s", time.Now())),
-		}:
-
-		case <-time.After(10 * time.Second):
-			api.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("treasury tick")
 		}
+
+		// process user cache map
+		fromBalance, toBalance, err := api.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Treasury insufficient fund")
+		}
+		ctx := context.Background()
+
+		if !tx.From.IsSystemUser() {
+			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), fromBalance.String())
+		}
+
+		if !tx.To.IsSystemUser() {
+			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), toBalance.String())
+		}
+
+		api.transactionCache.Process(tx)
+
+		//treasuryTransfer := big.NewInt(0)
+		//treasuryTransfer.Add(treasuryTransfer, fund)
+
+		// TODO: manage user cache
+		// select {
+		// case api.transaction <- &passport.NewTransaction{
+		// 	From:                 passport.XsynTreasuryUserID,
+		// 	To:                   passport.SupremacySupPoolUserID,
+		// 	Amount:               *fund,
+		// 	TransactionReference: passport.TransactionReference(fmt.Sprintf("treasury|ticker|%s", time.Now())),
+		// }:
+
+		// case <-time.After(10 * time.Second):
+		// 	api.Log.Err(errors.New("timeout on channel send exceeded"))
+		// 	panic("treasury tick")
+		// }
 
 		return http.StatusOK, nil
 	})
