@@ -656,7 +656,6 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 							return
 						}
 					}
-					fmt.Println("here4")
 					// resultChan := make(chan *passport.TransactionResult)
 					tx := passport.NewTransaction{
 						// ResultChan:           resultChan,
@@ -686,7 +685,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 
 					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), txID, xfer.Block, xfer.ChainID)
 					if err != nil {
-						fmt.Println(err)
+						cc.Log.Err(err).Msg("rolling transaction back")
 						tx := passport.NewTransaction{
 							To:                   passport.XsynSaleUserID,
 							From:                 user.ID,
@@ -714,7 +713,6 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
 					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
-
 				}
 			}
 		}

@@ -26,7 +26,7 @@ type Transaction struct {
 
 type ChainConfirmations struct {
 	Tx                 string     `json:"tx" db:"tx"`
-	TxID               int64      `json:"txID" db:"tx_id"`
+	TxID               string      `json:"txID" db:"tx_id"`
 	Block              uint64     `json:"block" db:"block"`
 	ChainID            uint64     `json:"chainID" db:"chain_id"`
 	ConfirmedAt        *time.Time `json:"confirmedAt" db:"confirmed_at"`
