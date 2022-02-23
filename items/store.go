@@ -25,7 +25,7 @@ import (
 
 // Purchase attempts to make a purchase for a given user ID and a given
 func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
-	supPrice decimal.Decimal, ucmProcess func(fromID, toID passport.UserID, amount big.Int) error, txProcess func(t passport.NewTransaction) string, user passport.User, storeItemID passport.StoreItemID, externalUrl string) error {
+	supPrice decimal.Decimal, ucmProcess func(fromID, toID string, amount big.Int) (*big.Int, *big.Int, error), txProcess func(t passport.NewTransaction) string, user passport.User, storeItemID passport.StoreItemID, externalUrl string) error {
 	storeItem, err := db.StoreItemGet(ctx, conn, storeItemID)
 	if err != nil {
 		return terror.Error(err)
@@ -59,10 +59,13 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 		Description:          "Purchase on Supremacy storefront.",
 	}
 
-	err = ucmProcess(trans.From, trans.To, trans.Amount)
+	nfb, ntb, err := ucmProcess(trans.From.String(), trans.To.String(), trans.Amount)
 	if err != nil {
 		return terror.Error(err, "failed to process user sups")
 	}
+
+	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
+	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.To)), ntb.String())
 
 	txProcess(trans)
 	// select {
@@ -100,11 +103,14 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 			Description:          "Refund of purchase on Supremacy storefront.",
 		}
 
-		err = ucmProcess(trans.From, trans.To, trans.Amount)
+		nfb, ntb, err := ucmProcess(trans.From.String(), trans.To.String(), trans.Amount)
 		if err != nil {
 			log.Err(errors.New("failed to process user sups"))
 			return
 		}
+
+		go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
+		go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.To)), ntb.String())
 
 		txProcess(trans)
 		// select {

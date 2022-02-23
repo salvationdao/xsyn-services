@@ -14,6 +14,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
 
 // InitialiseTreasuryFundTicker for every game server
@@ -35,9 +36,18 @@ func (api *API) InitialiseTreasuryFundTicker() {
 		}
 
 		// process user cache map
-		err := api.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+		fromBalance, toBalance, err := api.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err, "Treasury insufficient fund")
+		}
+		ctx := context.Background()
+
+		if !tx.From.IsSystemUser() {
+			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), fromBalance.String())
+		}
+
+		if !tx.To.IsSystemUser() {
+			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), toBalance.String())
 		}
 
 		api.transactionCache.Process(tx)

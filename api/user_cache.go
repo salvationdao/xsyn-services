@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"math/big"
-	"passport"
 	"passport/db"
 	"sync"
 
@@ -33,56 +32,60 @@ func (ucm *UserCacheMap) Initialise() error {
 	}
 
 	for _, b := range balances {
-		ucm.Store(b.ID.String(), b.Sups)
+		ucm.Store(b.ID.String(), b.Sups.Int)
 	}
 
 	return nil
 }
 
-func (ucm *UserCacheMap) Process(fromID passport.UserID, toID passport.UserID, amount big.Int) error {
+func (ucm *UserCacheMap) Process(fromID string, toID string, amount big.Int) (*big.Int, *big.Int, error) {
 	// load balance first
 	fromBalance, err := ucm.Get(fromID)
 	if err != nil {
-		return terror.Error(err, "failed to read debit balance")
+		return nil, nil, terror.Error(err, "failed to read debit balance")
 	}
+
 	toBalance, err := ucm.Get(toID)
 	if err != nil {
-		return terror.Error(err, "failed to read credit balance")
+		return nil, nil, terror.Error(err, "failed to read credit balance")
 	}
 
 	// do subtract
-	removedFund := big.NewInt(0)
-	removedFund.Add(removedFund, &fromBalance.Int)
-	removedFund.Sub(removedFund, &amount)
-	if removedFund.Cmp(big.NewInt(0)) < 0 {
-		return terror.Error(err, "no enough fund")
+	newFromBalance := big.NewInt(0)
+	newFromBalance = newFromBalance.Add(newFromBalance, &fromBalance)
+	newFromBalance = newFromBalance.Sub(newFromBalance, &amount)
+	if newFromBalance.Cmp(big.NewInt(0)) < 0 {
+		return nil, nil, terror.Error(err, "no enough fund")
 	}
 
 	// do add
-	addedFund := big.NewInt(0)
-	addedFund.Add(addedFund, &toBalance.Int)
-	addedFund.Add(addedFund, &amount)
+	newToBalance := big.NewInt(0)
+	newToBalance = newToBalance.Add(newToBalance, &toBalance)
+	newToBalance = newToBalance.Add(newToBalance, &amount)
+	if newToBalance.Cmp(big.NewInt(0)) < 0 {
+		return nil, nil, terror.Error(err, "no enough fund")
+	}
 
 	// store back to the map
-	ucm.Store(fromID, &passport.BigInt{Int: *removedFund})
-	ucm.Store(toID, &passport.BigInt{Int: *addedFund})
+	ucm.Store(fromID, *newFromBalance)
+	ucm.Store(toID, *newToBalance)
 
-	return nil
+	return newFromBalance, newToBalance, nil
 }
 
-func (ucm *UserCacheMap) Get(id passport.UserID) (*passport.BigInt, error) {
-	result, ok := ucm.Load(id.String())
+func (ucm *UserCacheMap) Get(id string) (big.Int, error) {
+	result, ok := ucm.Load(id)
 	if ok {
-		return result.(*passport.BigInt), nil
+		return result.(big.Int), nil
 	}
 
 	balance, err := db.UserBalance(context.Background(), ucm.conn, id)
 	if err != nil {
-		return balance, err
+		return balance.Int, err
 	}
 
-	ucm.Store(id.String(), balance)
-	return balance, err
+	ucm.Store(id, balance.Int)
+	return balance.Int, err
 }
 
 type UserCacheFunc func(userCacheList UserCacheMap)

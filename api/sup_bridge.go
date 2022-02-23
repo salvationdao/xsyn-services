@@ -160,12 +160,20 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 
 					// process user cache map
-					err = cc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+					nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 					if err != nil {
 						cc.Log.Err(err).Msg("insufficient fund")
 						return
 					}
 					// resultChan := make(chan *passport.TransactionResult)
+
+					if !tx.From.IsSystemUser() {
+						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+					}
+
+					if !tx.To.IsSystemUser() {
+						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
+					}
 
 					// process transaction
 					transactonID := cc.API.transactionCache.Process(tx)
@@ -208,10 +216,18 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on BSC with BUSD %s", xfer.TxID.Hex()),
 						}
 
-						err = cc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+						nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 						if err != nil {
 							cc.Log.Err(err).Msg("insufficient fund")
 							return
+						}
+
+						if !tx.From.IsSystemUser() {
+							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+						}
+
+						if !tx.To.IsSystemUser() {
+							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 						}
 
 						cc.API.transactionCache.Process(tx)
@@ -281,10 +297,18 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 
 					// process user cache map
-					err = cc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+					nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 					if err != nil {
 						cc.Log.Err(err).Msg("insufficient fund")
 						return
+					}
+
+					if !tx.From.IsSystemUser() {
+						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+					}
+
+					if !tx.To.IsSystemUser() {
+						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 					}
 
 					txID := cc.API.transactionCache.Process(tx)
@@ -328,10 +352,18 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						}
 
 						// process user cache map
-						err = cc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+						nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 						if err != nil {
 							cc.Log.Err(err).Msg("insufficient fund")
 							return
+						}
+
+						if !tx.From.IsSystemUser() {
+							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+						}
+
+						if !tx.To.IsSystemUser() {
+							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 						}
 
 						cc.API.transactionCache.Process(tx)
@@ -393,10 +425,18 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 
 					// process user cache map
-					err = cc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+					nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 					if err != nil {
 						cc.Log.Err(err).Msg("insufficient fund")
 						return
+					}
+
+					if !tx.From.IsSystemUser() {
+						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+					}
+
+					if !tx.To.IsSystemUser() {
+						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 					}
 
 					txID := cc.API.transactionCache.Process(tx)
@@ -439,10 +479,18 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						}
 
 						// process user cache map
-						err = cc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+						nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 						if err != nil {
 							cc.Log.Err(err).Msg("insufficient fund")
 							return
+						}
+
+						if !tx.From.IsSystemUser() {
+							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+						}
+
+						if !tx.To.IsSystemUser() {
+							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 						}
 
 						cc.API.transactionCache.Process(tx)
@@ -504,10 +552,18 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 
 					// process user cache map
-					err = cc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+					nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 					if err != nil {
 						cc.Log.Err(err).Msg("insufficient fund")
 						return
+					}
+
+					if !tx.From.IsSystemUser() {
+						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+					}
+
+					if !tx.To.IsSystemUser() {
+						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 					}
 
 					txID := cc.API.transactionCache.Process(tx)
@@ -548,10 +604,18 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						}
 
 						// process user cache map
-						err = cc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+						nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 						if err != nil {
 							cc.Log.Err(err).Msg("insufficient fund")
 							return
+						}
+
+						if !tx.From.IsSystemUser() {
+							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+						}
+
+						if !tx.To.IsSystemUser() {
+							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 						}
 
 						cc.API.transactionCache.Process(tx)
@@ -621,10 +685,18 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 
 					// process user cache map
-					err = cc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+					nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 					if err != nil {
 						cc.Log.Err(err).Msg("insufficient fund")
 						return
+					}
+
+					if !tx.From.IsSystemUser() {
+						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+					}
+
+					if !tx.To.IsSystemUser() {
+						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 					}
 
 					txID := cc.API.transactionCache.Process(tx)
@@ -665,10 +737,18 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						}
 
 						// process user cache map
-						err = cc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+						nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 						if err != nil {
 							cc.Log.Err(err).Msg("insufficient fund")
 							return
+						}
+
+						if !tx.From.IsSystemUser() {
+							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+						}
+
+						if !tx.To.IsSystemUser() {
+							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 						}
 
 						cc.API.transactionCache.Process(tx)
@@ -733,10 +813,18 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 
 					// process user cache map
-					err = cc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+					nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 					if err != nil {
 						cc.Log.Err(err).Msg("insufficient fund")
 						return
+					}
+
+					if !tx.From.IsSystemUser() {
+						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+					}
+
+					if !tx.To.IsSystemUser() {
+						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 					}
 
 					txID := cc.API.transactionCache.Process(tx)
@@ -780,10 +868,18 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						}
 
 						// process user cache map
-						err = cc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+						nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 						if err != nil {
 							cc.Log.Err(err).Msg("insufficient fund")
 							return
+						}
+
+						if !tx.From.IsSystemUser() {
+							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+						}
+
+						if !tx.To.IsSystemUser() {
+							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 						}
 
 						cc.API.transactionCache.Process(tx)
@@ -1117,10 +1213,18 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 							}
 
 							// process user cache map
-							err = cc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+							nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 							if err != nil {
 								cc.Log.Err(err).Msg("insufficient fund")
 								return
+							}
+
+							if !tx.From.IsSystemUser() {
+								go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+							}
+
+							if !tx.To.IsSystemUser() {
+								go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 							}
 
 							cc.API.transactionCache.Process(tx)

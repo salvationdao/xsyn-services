@@ -17,6 +17,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog"
@@ -117,9 +118,16 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 		Description:          "Withdraw of SUPS.",
 	}
 
-	err = sc.API.userCacheMap.Process(trans.From, trans.To, trans.Amount)
+	nfb, ntb, err := sc.API.userCacheMap.Process(trans.From.String(), trans.To.String(), trans.Amount)
 	if err != nil {
 		return terror.Error(err, "failed to process user fund")
+	}
+
+	if !trans.From.IsSystemUser() {
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, trans.From)), nfb.String())
+	}
+	if !trans.To.IsSystemUser() {
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, trans.To)), ntb.String())
 	}
 
 	sc.API.transactionCache.Process(trans)
@@ -158,10 +166,17 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 			Description:          "Refund of Withdraw of SUPS.",
 		}
 
-		err = sc.API.userCacheMap.Process(trans.From, trans.To, trans.Amount)
+		nfb, ntb, err := sc.API.userCacheMap.Process(trans.From.String(), trans.To.String(), trans.Amount)
 		if err != nil {
 			sc.API.Log.Err(errors.New("failed to process user fund"))
 			return
+		}
+
+		if !trans.From.IsSystemUser() {
+			go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, trans.From)), nfb.String())
+		}
+		if !trans.To.IsSystemUser() {
+			go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, trans.To)), ntb.String())
 		}
 
 		sc.API.transactionCache.Process(trans)

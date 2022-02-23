@@ -47,10 +47,13 @@ func UserBalances(ctx context.Context, conn Conn) ([]*passport.UserBalance, erro
 	balances := []*passport.UserBalance{}
 
 	for rows.Next() {
-		var balance *passport.UserBalance
+		balance := &passport.UserBalance{
+			ID:   passport.UserID{},
+			Sups: &passport.BigInt{},
+		}
 		err := rows.Scan(
 			&balance.ID,
-			&balance.Sups,
+			balance.Sups,
 		)
 		if err != nil {
 			return balances, terror.Error(err)
@@ -62,7 +65,7 @@ func UserBalances(ctx context.Context, conn Conn) ([]*passport.UserBalance, erro
 	return balances, nil
 }
 
-func UserBalance(ctx context.Context, conn Conn, userID passport.UserID) (*passport.BigInt, error) {
+func UserBalance(ctx context.Context, conn Conn, userID string) (*passport.BigInt, error) {
 	var wrap struct {
 		Sups passport.BigInt `db:"sups"`
 	}

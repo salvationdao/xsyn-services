@@ -49,6 +49,7 @@ func (tc *TransactionCache) commit() {
 	for _, tx := range ctrans {
 		_, err := CreateTransactionEntry(
 			tc.conn,
+			tx.ID,
 			tx.Amount,
 			tx.To,
 			tx.From,
@@ -119,19 +120,20 @@ func (tc *TransactionCache) Process(t passport.NewTransaction) string {
 // }
 
 // CreateTransactionEntry adds an entry to the transaction entry table
-func CreateTransactionEntry(conn *sql.DB, amount big.Int, to, from passport.UserID, description string, txRef passport.TransactionReference) (*passport.Transaction, error) {
+func CreateTransactionEntry(conn *sql.DB, id string, amount big.Int, to, from passport.UserID, description string, txRef passport.TransactionReference) (*passport.Transaction, error) {
 	result := &passport.Transaction{
+		ID:                   id,
 		Description:          description,
 		TransactionReference: string(txRef),
 		Amount:               passport.BigInt{Int: amount},
 		Credit:               to,
 		Debit:                from,
 	}
-	q := `INSERT INTO transactions(description, transaction_reference, amount, credit, debit)
-				VALUES($1, $2, $3, $4, $5)
+	q := `INSERT INTO transactions(id ,description, transaction_reference, amount, credit, debit)
+				VALUES($1, $2, $3, $4, $5, $6)
 				RETURNING id, status, reason;`
 
-	err := conn.QueryRow(q, description, txRef, amount.String(), to, from).Scan(&result.ID, &result.Status, &result.Reason)
+	err := conn.QueryRow(q, id, description, txRef, amount.String(), to, from).Scan(&result.ID, &result.Status, &result.Reason)
 	if err != nil {
 		return nil, terror.Error(err)
 	}

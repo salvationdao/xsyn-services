@@ -159,6 +159,19 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 		tx.To = passport.SupremacyBattleUserID
 	}
 
+	nfb, ntb, err := sc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
+	if err != nil {
+		return terror.Error(err, "failed to process sups")
+	}
+
+	if !tx.From.IsSystemUser() {
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+	}
+
+	if !tx.To.IsSystemUser() {
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
+	}
+
 	txID := sc.API.transactionCache.Process(*tx)
 
 	tx.ID = txID
@@ -208,7 +221,7 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 	// we take the whole balance of supremacy sup pool and give it to the users watching
 	// amounts depend on their multiplier
 	// the supremacy sup pool user gets sups trickled into it from the last battle and 4 every 5 seconds
-	supsForTick, err := db.UserBalance(ctx, sc.Conn, passport.SupremacySupPoolUserID)
+	supsForTick, err := db.UserBalance(ctx, sc.Conn, passport.SupremacySupPoolUserID.String())
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -229,9 +242,17 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 				TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|ticker|%s|%s", *user, time.Now())),
 			}
 
-			err = sc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+			nfb, ntb, err := sc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 			if err != nil {
 				return terror.Error(err, "failed to process user fund")
+			}
+
+			if !tx.From.IsSystemUser() {
+				go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+			}
+
+			if !tx.To.IsSystemUser() {
+				go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 			}
 
 			sc.API.transactionCache.Process(tx)
@@ -257,7 +278,7 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 	sc.poolHighPriorityLock()
 
 	// get current battle user sups
-	battleUser, err := db.UserBalance(ctx, sc.Conn, passport.SupremacyBattleUserID)
+	battleUser, err := db.UserBalance(ctx, sc.Conn, passport.SupremacyBattleUserID.String())
 	if err != nil {
 		sc.poolHighPriorityUnlock()
 		return terror.Error(err, "failed to get battle user balance from db")
@@ -350,10 +371,20 @@ func (sc *SupremacyControllerWS) trickleFactory(key string, totalTick int, supsP
 		}
 
 		// process user cache map
-		err := sc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+		nfb, ntb, err := sc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 		if err != nil {
 			sc.Log.Err(err).Msg("insufficient fund")
 			return
+		}
+
+		ctx := context.Background()
+
+		if !tx.From.IsSystemUser() {
+			go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+		}
+
+		if !tx.To.IsSystemUser() {
+			go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 		}
 
 		sc.API.transactionCache.Process(tx)
@@ -643,32 +674,6 @@ func (sc *SupremacyControllerWS) SupremacyWarMachineQueuePositionHandler(ctx con
 	return nil
 }
 
-// TODO: Remove transaction commit function in gameserver
-
-// // 	api.SupremacyCommand(HubKeySupremacyCommitTransactions, supremacyHub.SupremacyCommitTransactions)
-// const HubKeySupremacyCommitTransactions = hub.HubCommandKey("SUPREMACY:COMMIT_TRANSACTIONS")
-
-// type SupremacyCommitTransactionsRequest struct {
-// 	*hub.HubCommandRequest
-// 	Payload struct {
-// 		TransactionReferences []passport.TransactionReference `json:"transactionReferences"`
-// 	} `json:"payload"`
-// }
-
-// func (sc *SupremacyControllerWS) SupremacyCommitTransactionsHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-// 	req := &SupremacyCommitTransactionsRequest{}
-// 	err := json.Unmarshal(payload, req)
-// 	if err != nil {
-// 		return terror.Error(err, "Invalid request received")
-// 	}
-// 	sc.Log.Info().Msg("START SupremacyCommitTransactionsHandler")
-// 	results := sc.API.CommitTransactions(ctx, req.Payload.TransactionReferences...)
-
-// 	sc.Log.Info().Msg("CLOSE SupremacyCommitTransactionsHandler")
-// 	reply(results)
-// 	return nil
-// }
-
 const HubKeySupremacyReleaseTransactions = hub.HubCommandKey("SUPREMACY:RELEASE_TRANSACTIONS")
 
 type SupremacyReleaseTransactionsRequest struct {
@@ -687,11 +692,20 @@ func (sc *SupremacyControllerWS) SupremacyReleaseTransactionsHandler(ctx context
 
 	// TODO: Change the logic of data passing
 	for _, tx := range req.Payload.Transactions {
-		err = sc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+		nfb, ntb, err := sc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 		if err != nil {
 			sc.API.Log.Err(err).Msg("failed to process user sups fund")
 			continue
 		}
+
+		if !tx.From.IsSystemUser() {
+			go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+		}
+
+		if !tx.To.IsSystemUser() {
+			go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
+		}
+
 		sc.API.transactionCache.Process(tx)
 	}
 
@@ -708,12 +722,12 @@ func (sc *SupremacyControllerWS) SupremacyGetSpoilOfWarHandler(ctx context.Conte
 		return terror.Error(err, "Invalid request received")
 	}
 	// get current sup pool user sups
-	supsPoolUser, err := db.UserBalance(ctx, sc.Conn, passport.SupremacySupPoolUserID)
+	supsPoolUser, err := db.UserBalance(ctx, sc.Conn, passport.SupremacySupPoolUserID.String())
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	battleUser, err := db.UserBalance(ctx, sc.Conn, passport.SupremacyBattleUserID)
+	battleUser, err := db.UserBalance(ctx, sc.Conn, passport.SupremacyBattleUserID.String())
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -1185,9 +1199,17 @@ func (sc *SupremacyControllerWS) SupremacyPayAssetInsuranceHandler(ctx context.C
 		return terror.Error(terror.ErrInvalidInput, "Provided faction does not exist")
 	}
 
-	err = sc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+	nfb, ntb, err := sc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 	if err != nil {
 		return terror.Error(err, "failed to process user fund")
+	}
+
+	if !tx.From.IsSystemUser() {
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+	}
+
+	if !tx.To.IsSystemUser() {
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 	}
 
 	sc.API.transactionCache.Process(*tx)
@@ -1239,9 +1261,17 @@ func (sc *SupremacyControllerWS) SupremacyRedeemFactionContractRewardHandler(ctx
 	}
 
 	// process user cache map
-	err = sc.API.userCacheMap.Process(tx.From, tx.To, tx.Amount)
+	nfb, ntb, err := sc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 	if err != nil {
 		return terror.Error(err, "failed to process fund")
+	}
+
+	if !tx.From.IsSystemUser() {
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+	}
+
+	if !tx.To.IsSystemUser() {
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 	}
 
 	sc.API.transactionCache.Process(*tx)

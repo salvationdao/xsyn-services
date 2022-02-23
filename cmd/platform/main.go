@@ -487,10 +487,13 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	// initialise user cache map
 	ucm := api.NewUserCacheMap(pgxconn)
-	ucm.Initialise()
+	err = ucm.Initialise()
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
-	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, googleClientID, mailer, apiAddr, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config, twitterAPIKey, twitterAPISecret, discordClientID, discordClientSecret, gameserverToken, externalURL, tc)
+	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, googleClientID, mailer, apiAddr, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config, twitterAPIKey, twitterAPISecret, discordClientID, discordClientSecret, gameserverToken, externalURL, tc, ucm)
 	return api.Run(ctx)
 }
