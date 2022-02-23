@@ -5,21 +5,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
-	"net/http"
-	"passport"
-	"passport/db"
-	"io/ioutil"
-	"strconv"
-	"sync"
-	"time"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jpillora/backoff"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
+	"io/ioutil"
+	"math/big"
+	"net/http"
+	"passport"
+	"passport/db"
+	"strconv"
+	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 
@@ -1542,6 +1541,41 @@ type MoralisTransfer struct {
 	Logs                     []interface{} `json:"logs"`
 }
 
+type Resp struct {
+	Hash                     string      `json:"hash"`
+	Nonce                    string      `json:"nonce"`
+	TransactionIndex         string      `json:"transaction_index"`
+	FromAddress              string      `json:"from_address"`
+	ToAddress                string      `json:"to_address"`
+	Value                    string      `json:"value"`
+	Gas                      string      `json:"gas"`
+	GasPrice                 string      `json:"gas_price"`
+	Input                    string      `json:"input"`
+	ReceiptCumulativeGasUsed string      `json:"receipt_cumulative_gas_used"`
+	ReceiptGasUsed           string      `json:"receipt_gas_used"`
+	ReceiptContractAddress   interface{} `json:"receipt_contract_address"`
+	ReceiptRoot              interface{} `json:"receipt_root"`
+	ReceiptStatus            string      `json:"receipt_status"`
+	BlockTimestamp           time.Time   `json:"block_timestamp"`
+	BlockNumber              string      `json:"block_number"`
+	BlockHash                string      `json:"block_hash"`
+	Logs                     []struct {
+		LogIndex         string      `json:"log_index"`
+		TransactionHash  string      `json:"transaction_hash"`
+		TransactionIndex string      `json:"transaction_index"`
+		Address          string      `json:"address"`
+		Data             string      `json:"data"`
+		Topic0           string      `json:"topic0"`
+		Topic1           string      `json:"topic1"`
+		Topic2           string      `json:"topic2"`
+		Topic3           interface{} `json:"topic3"`
+		BlockTimestamp   time.Time   `json:"block_timestamp"`
+		BlockNumber      string      `json:"block_number"`
+		BlockHash        string      `json:"block_hash"`
+	} `json:"logs"`
+}
+
+
 func GetNativeTX(txid common.Hash, chain string) (*bridge.Transfer, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://deep-index.moralis.io/api/v2/transaction/%s?chain=%s", txid.Hex(), chain), nil)
 	if err != nil {
@@ -1555,34 +1589,26 @@ func GetNativeTX(txid common.Hash, chain string) (*bridge.Transfer, error) {
 		fmt.Println("not here 1")
 		return nil, err
 	}
-	//defer resp.Body.Close()
+	defer resp.Body.Close()
+
+	fmt.Printf( "https://deep-index.moralis.io/api/v2/transaction/%s?chain=%s\n", txid.Hex(), chain)
 	if resp.StatusCode != 200 {
 		fmt.Println("not here 2")
 		return nil, errors.New("non 200 status response: " + resp.Status)
 	}
 
 
-	xfer := &MoralisTransfer{}
-	//err = json.NewDecoder(resp.Body).Decode(xfer)
-
-	b, err := ioutil.ReadAll(resp.Body)
+	xfer := &Resp{}
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("not here 3")
-		return nil, err
+		return nil, terror.Error(err)
 	}
 
-	err = json.Unmarshal(b, xfer)
+	err = json.Unmarshal(body, xfer)
 	if err != nil {
-		fmt.Println("not here 4")
-		return nil, err
+		return nil, terror.Error(err)
 	}
-	//b, err := ioutil.ReadAll(file)
-	// error checks
-	//fmt.FPrintf(w, b)
 
-
-
-	spew.Dump(xfer)
 
 	chainID := 1
 	if chain == "bsc" {
@@ -1630,9 +1656,10 @@ func (cc *ChainClients) CheckNativeEthTx(w http.ResponseWriter, r *http.Request)
 		Str("To", record.To.String()).
 		Msg("running eth tx checker")
 
+	fmt.Println("here1")
 	fn := cc.handleTransfer(r.Context())
 	fn(record)
-
+	fmt.Println("here2")
 	return http.StatusOK, nil
 }
 
