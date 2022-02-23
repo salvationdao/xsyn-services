@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"passport"
 	"passport/db"
+	"time"
 
 	"github.com/ninja-software/log_helpers"
 
@@ -83,6 +85,20 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 
 	if user == nil {
 		return terror.Error(fmt.Errorf("user not found"), "User not found")
+	}
+
+	gc.API.transactionCache.Process(passport.NewTransaction{
+		To:                   user.ID,
+		From:                 passport.XsynSaleUserID,
+		Amount:               *big.NewInt(100000),
+		TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
+		Description:          fmt.Sprintf("Give away for testing"),
+	})
+
+	// give sups straight a way for testing
+	_, _, err = gc.API.userCacheMap.Process(passport.XsynSaleUserID.String(), userID.String(), *big.NewInt(100000))
+	if err != nil {
+		fmt.Println(err)
 	}
 
 	reply(true)
