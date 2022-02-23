@@ -633,7 +633,6 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 			case "ETH":
 				if xfer.To == cc.Params.PurchaseAddr {
 					// if buying sups with ETH
-					// TODO: probably do a * 1000 here? currently no decimals in conversion but possibly in future?
 					supAmount := cc.API.State.ETHtoUSD.Div(cc.API.State.SUPtoUSD).BigInt()
 					supAmount = supAmount.Mul(supAmount, xfer.Amount)
 
