@@ -6,7 +6,6 @@ import (
 	"strings"
 	"unicode"
 
-	goaway "github.com/TwiN/go-away"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 )
@@ -82,10 +81,10 @@ func IsValidUsername(username string) error {
 	// Cannot contain more than 15 characters
 	// Cannot conain profanity
 	// Can only contain the following symbols: _-~
-	hasDisallowedSymbol := false
-	if UsernameRegExp.Match([]byte(username)) {
-		hasDisallowedSymbol = true
-	}
+	// hasDisallowedSymbol := false
+	// if UsernameRegExp.Match([]byte(username)) {
+	// 	hasDisallowedSymbol = true
+	// }
 
 	err := fmt.Errorf("username does not meet requirements")
 	if len(username) < 3 {
@@ -97,12 +96,12 @@ func IsValidUsername(username string) error {
 	if strings.TrimSpace(username) == "" {
 		return terror.Error(err, "Invalid username. Your username cannot be empty.")
 	}
-	if hasDisallowedSymbol {
-		return terror.Error(err, "Invalid username. Your username contains a disallowed symbol.")
-	}
-	if goaway.IsProfane(username) {
-		return terror.Error(err, "Invalid username. Your username contains profanity.")
-	}
+	// if hasDisallowedSymbol {
+	// 	return terror.Error(err, "Invalid username. Your username contains a disallowed symbol.")
+	// }
+	// if goaway.IsProfane(username) {
+	// return terror.Error(err, "Invalid username. Your username contains profanity.")
+	// }
 
 	return nil
 }
