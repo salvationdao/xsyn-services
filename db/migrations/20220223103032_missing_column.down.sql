@@ -1,0 +1,1 @@
+ALTER TABLE xsyn_store DROP COLUMN restriction;
