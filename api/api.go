@@ -229,6 +229,7 @@ func NewAPI(
 			r.Get("/dummy-sale", api.WithError(api.Dummysale))
 			if runBlockchainBridge {
 				r.Get("/check-eth-tx/{tx_id}", api.WithError(cc.CheckEthTx))
+				r.Get("/check-eth-native-tx/{tx_id}", api.WithError(cc.CheckNativeEthTx))
 				r.Get("/check-bsc-tx/{tx_id}", api.WithError(cc.CheckBscTx))
 			}
 			r.Get("/whitelist/check", api.WithError(api.WhitelistOnlyWalletCheck))
