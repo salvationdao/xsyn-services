@@ -44,6 +44,10 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 		return terror.Error(fmt.Errorf("user is wrong faction"), "You cannot buy items for another faction")
 	}
 
+	if storeItem.Restriction == "WHITELIST" || storeItem.Restriction == "LOOTBOX" {
+		return terror.Error(fmt.Errorf("cannot purchase whitelist item or lootbox"), "Item currently not available.")
+	}
+
 	txID := uuid.Must(uuid.NewV4())
 	txRef := fmt.Sprintf("PURCHASE OF %s %s", storeItem.Name, txID)
 

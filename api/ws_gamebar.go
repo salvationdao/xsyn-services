@@ -8,7 +8,6 @@ import (
 	"math/big"
 	"passport"
 	"passport/db"
-	"time"
 
 	"github.com/ninja-software/log_helpers"
 

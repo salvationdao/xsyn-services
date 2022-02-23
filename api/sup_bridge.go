@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"passport"
 	"passport/db"
+	"io/ioutil"
+	"strconv"
 	"sync"
 	"time"
-
+	"github.com/davecgh/go-spew/spew"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
@@ -173,7 +175,7 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams, 
 func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Transfer) {
 	fn := func(xfer *bridge.Transfer) {
 		if xfer.From.Hex() == cc.Params.OperatorAddr.Hex() || xfer.To.Hex() == cc.Params.OperatorAddr.Hex() {
-			amt := decimal.NewFromBigInt(xfer.Amount, int32(-1*xfer.Decimals))
+				amt := decimal.NewFromBigInt(xfer.Amount, int32(-1*xfer.Decimals))
 			cc.Log.Debug().
 				Str("txid", xfer.TxID.Hex()).
 				Str("from", xfer.From.Hex()).
@@ -183,7 +185,9 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 				Msg("operator tx detected. Skipping...")
 			return
 		}
+
 		chainID := xfer.ChainID
+
 		switch chainID {
 		case cc.Params.BSCChainID:
 			switch xfer.Symbol {
@@ -1514,6 +1518,122 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 		}
 	}()
 
+}
+
+type MoralisTransfer struct {
+	Hash                     string        `json:"hash"`
+	Nonce                    string        `json:"nonce"`
+	TransactionIndex         string        `json:"transaction_index"`
+	FromAddress              string        `json:"from_address"`
+	ToAddress                string        `json:"to_address"`
+	Value                    string        `json:"value"`
+	Gas                      string        `json:"gas"`
+	GasPrice                 string        `json:"gas_price"`
+	Input                    string        `json:"input"`
+	ReceiptCumulativeGasUsed string        `json:"receipt_cumulative_gas_used"`
+	ReceiptGasUsed           string        `json:"receipt_gas_used"`
+	ReceiptContractAddress   interface{}   `json:"receipt_contract_address"`
+	ReceiptRoot              interface{}   `json:"receipt_root"`
+	ReceiptStatus            string        `json:"receipt_status"`
+	BlockTimestamp           time.Time     `json:"block_timestamp"`
+	BlockNumber              string        `json:"block_number"`
+	BlockHash                string        `json:"block_hash"`
+	TransferIndex            []int         `json:"transfer_index"`
+	Logs                     []interface{} `json:"logs"`
+}
+
+func GetNativeTX(txid common.Hash, chain string) (*bridge.Transfer, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://deep-index.moralis.io/api/v2/transaction/%s?chain=%s", txid.Hex(), chain), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("X-Api-Key", "oijl9YX0BIopm9fRitAYhMWuJOrqr7CE1xl5FIO9XncEdOx5CvxkwMOKm2bv4s0p")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Println("not here 1")
+		return nil, err
+	}
+	//defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		fmt.Println("not here 2")
+		return nil, errors.New("non 200 status response: " + resp.Status)
+	}
+
+
+	xfer := &MoralisTransfer{}
+	//err = json.NewDecoder(resp.Body).Decode(xfer)
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("not here 3")
+		return nil, err
+	}
+
+	err = json.Unmarshal(b, xfer)
+	if err != nil {
+		fmt.Println("not here 4")
+		return nil, err
+	}
+	//b, err := ioutil.ReadAll(file)
+	// error checks
+	//fmt.FPrintf(w, b)
+
+
+
+	spew.Dump(xfer)
+
+	chainID := 1
+	if chain == "bsc" {
+		chainID = 56
+	}
+	symbol := "ETH"
+	if chain == "bsc" {
+		symbol = "BNB"
+	}
+	blockNumber, err := strconv.Atoi(xfer.BlockNumber)
+	if err != nil {
+		return nil, err
+	}
+	amt, err := decimal.NewFromString(xfer.Value)
+	if err != nil {
+		return nil, err
+	}
+	result := &bridge.Transfer{
+		Block:    uint64(blockNumber),
+		ChainID:  int64(chainID),
+		Symbol:   symbol,
+		Decimals: 18,
+		TxID:     txid,
+		From:     common.HexToAddress(xfer.FromAddress),
+		To:       common.HexToAddress(xfer.ToAddress),
+		Amount:   amt.BigInt(),
+	}
+	return result, nil
+}
+
+func (cc *ChainClients) CheckNativeEthTx(w http.ResponseWriter, r *http.Request) (int, error) {
+	txID := chi.URLParam(r, "tx_id")
+	if txID == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing tx id"), "Missing Tx.")
+	}
+	record, err := GetNativeTX(common.HexToHash(txID), "eth")
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err)
+	}
+	cc.API.Log.Info().
+		Str("Symbol", record.Symbol).
+		Str("Amount", decimal.NewFromBigInt(record.Amount, 0).Div(decimal.New(1, int32(record.Decimals))).String()).
+		Str("TxID", record.TxID.String()).
+		Str("From", record.From.String()).
+		Str("To", record.To.String()).
+		Msg("running eth tx checker")
+
+	fn := cc.handleTransfer(r.Context())
+	fn(record)
+
+	return http.StatusOK, nil
 }
 
 func (cc *ChainClients) CheckEthTx(w http.ResponseWriter, r *http.Request) (int, error) {
