@@ -721,19 +721,20 @@ func (sc *SupremacyControllerWS) SupremacyGetSpoilOfWarHandler(ctx context.Conte
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
 	}
+
 	// get current sup pool user sups
-	supsPoolUser, err := db.UserBalance(ctx, sc.Conn, passport.SupremacySupPoolUserID.String())
+	supsPoolUser, err := sc.API.userCacheMap.Get(passport.SupremacySupPoolUserID.String())
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	battleUser, err := db.UserBalance(ctx, sc.Conn, passport.SupremacyBattleUserID.String())
+	battleUser, err := sc.API.userCacheMap.Get(passport.SupremacyBattleUserID.String())
 	if err != nil {
 		return terror.Error(err)
 	}
 
 	result := big.NewInt(0)
-	result.Add(&supsPoolUser.Int, &battleUser.Int)
+	result.Add(&supsPoolUser, &battleUser)
 
 	reply(result.String())
 	return nil
