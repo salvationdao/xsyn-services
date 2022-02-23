@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/supremacy-bridge/bridge"
@@ -101,27 +102,33 @@ func (cc *ChainClients) TransactionWebhook(w http.ResponseWriter, r *http.Reques
 		return http.StatusBadRequest, terror.Error(err)
 	}
 
-	chainID := cc.Params.ETHChainID
+	fmt.Println("1")
+
+	//chainID := cc.Params.ETHChainID
+	fmt.Println(cc.Params)
+	fmt.Println(cc.Params.BSCChainID)
 	symbol := "ETH"
 	if req.Object.ClassName == "BscTransactions" {
-		chainID = cc.Params.BSCChainID
+		//chainID = cc.Params.BSCChainID
 		symbol = "BNB"
 	}
-
+	fmt.Println("2")
 	amount, ok := big.NewInt(0).SetString(req.Object.Value, 10)
 	if !ok {
-
+		fmt.Println("3")
+		return http.StatusBadRequest, terror.Error(err)
 	}
 
+	fmt.Println("4")
 	record := &bridge.Transfer{
 		TxID: common.HexToHash(req.Object.Hash),
 		From: common.HexToAddress(req.Object.FromAddress),
 		To: common.HexToAddress(req.Object.ToAddress),
 		Amount: amount,
-		ChainID: chainID,
+		//ChainID: chainID,
 		Symbol: symbol,
 	}
-
+	fmt.Println("5")
 	cc.Log.Info().
 		Str("Symbol", record.Symbol).
 		Str("Amount", decimal.NewFromBigInt(record.Amount, 0).Div(decimal.New(1, int32(record.Decimals))).String()).
