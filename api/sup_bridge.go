@@ -184,7 +184,6 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 				Msg("operator tx detected. Skipping...")
 			return
 		}
-
 		chainID := xfer.ChainID
 
 		switch chainID {
@@ -635,7 +634,6 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					// if buying sups with ETH
 					supAmount := cc.API.State.ETHtoUSD.Div(cc.API.State.SUPtoUSD).BigInt()
 					supAmount = supAmount.Mul(supAmount, xfer.Amount)
-
 					cc.Log.Info().
 						Str("Chain", "Ethereum").
 						Str("SUPS", decimal.NewFromBigInt(supAmount, 0).Div(decimal.New(1, int32(SUPSDecimals))).String()).
@@ -643,7 +641,6 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						Str("Buyer", xfer.From.Hex()).
 						Str("TxID", xfer.TxID.Hex()).
 						Msg("purchase")
-
 					user, err := db.UserByPublicAddress(ctx, cc.API.Conn, xfer.From.Hex())
 					if err != nil {
 						// if error is no rows, create user!
@@ -659,6 +656,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 							return
 						}
 					}
+					fmt.Println("here4")
 					// resultChan := make(chan *passport.TransactionResult)
 					tx := passport.NewTransaction{
 						// ResultChan:           resultChan,
@@ -688,7 +686,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 
 					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), txID, xfer.Block, xfer.ChainID)
 					if err != nil {
-
+						fmt.Println(err)
 						tx := passport.NewTransaction{
 							To:                   passport.XsynSaleUserID,
 							From:                 user.ID,
@@ -1655,10 +1653,8 @@ func (cc *ChainClients) CheckNativeEthTx(w http.ResponseWriter, r *http.Request)
 		Str("To", record.To.String()).
 		Msg("running eth tx checker")
 
-	fmt.Println("here1")
 	fn := cc.handleTransfer(r.Context())
 	fn(record)
-	fmt.Println("here2")
 	return http.StatusOK, nil
 }
 

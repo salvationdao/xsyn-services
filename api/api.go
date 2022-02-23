@@ -216,6 +216,8 @@ func NewAPI(
 
 	cc := &ChainClients{
 		Params: api.BridgeParams,
+		Log: log_helpers.NamedLogger(log, "chain clients"),
+		API: api,
 	}
 	if runBlockchainBridge {
 		// Runs the listeners for all the chain bridges
