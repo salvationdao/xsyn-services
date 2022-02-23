@@ -137,7 +137,7 @@ func main() {
 					// wallet/contract addresses
 					&cli.StringFlag{Name: "operator_addr", Value: "0xc01c2f6DD7cCd2B9F8DB9aa1Da9933edaBc5079E", EnvVars: []string{envPrefix + "_OPERATOR_WALLET_ADDR"}, Usage: "Wallet address for administration"},
 					&cli.StringFlag{Name: "signer_private_key", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing (usually operator)"},
-					&cli.StringFlag{Name: "purchase_addr", Value: "0x7D6439fDF9B096b29b77afa28b3083c0a329c7fE", EnvVars: []string{envPrefix + "_PURCHASE_WALLET_ADDR"}, Usage: "Wallet address to receive payments and deposits"},
+					&cli.StringFlag{Name: "purchase_addr", Value: "0x52b38626D3167e5357FE7348624352B7062fE271", EnvVars: []string{envPrefix + "_PURCHASE_WALLET_ADDR"}, Usage: "Wallet address to receive payments and deposits"},
 
 					&cli.StringFlag{Name: "withdraw_addr", Value: "0x9DAcEA338E4DDd856B152Ce553C7540DF920Bb15", EnvVars: []string{envPrefix + "_WITHDRAW_CONTRACT_ADDR"}, Usage: "Withdraw contract address"},
 
@@ -150,7 +150,7 @@ func main() {
 
 					// node address
 					&cli.StringFlag{Name: "bsc_node_addr", Value: "wss://speedy-nodes-nyc.moralis.io/6bc5ccfe2d00f7a5ae0ba00a/bsc/testnet/ws", EnvVars: []string{envPrefix + "_BSC_WS_NODE_URL"}, Usage: "Binance WS node URL"},
-					&cli.StringFlag{Name: "eth_node_addr", Value: "wss://speedy-nodes-nyc.moralis.io/6bc5ccfe2d00f7a5ae0ba00a/eth/goerli/ws", EnvVars: []string{envPrefix + "_ETH_WS_NODE_URL"}, Usage: "Ethereum WS node URL"},
+					&cli.StringFlag{Name: "eth_node_addr", Value: "wss://sparkling-polished-glade.quiknode.pro/a68ec6502e56dd3292f33c276c81cc6360877e58/", EnvVars: []string{envPrefix + "_ETH_WS_NODE_URL"}, Usage: "Ethereum WS node URL"},
 					//router address for exchange rates
 					&cli.StringFlag{Name: "bsc_router_addr", Value: "0x9ac64cc6e4415144c455bd8e4837fea55603e5c3", EnvVars: []string{envPrefix + "_BSC_ROUTER_ADDR"}, Usage: "BSC Router address"},
 
@@ -365,7 +365,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	isTestnetBlockchain := ctxCLI.Bool("is_testnet_blockchain")
 	runBlockchainBridge := ctxCLI.Bool("run_blockchain_bridge")
-
+	fmt.Println("RUN", runBlockchainBridge)
 	mailDomain := ctxCLI.String("mail_domain")
 	mailAPIKey := ctxCLI.String("mail_apikey")
 	mailSender := ctxCLI.String("mail_sender")
