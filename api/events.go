@@ -23,30 +23,30 @@ func (api *API) ClientOffline(ctx context.Context, client *hub.Client, clients h
 	}
 
 	// since they can go offline without logging out check the client identifier
-	if client.Identifier() != "" {
-		userUUID, err := uuid.FromString(client.Identifier())
-		if err != nil {
-			api.Log.Err(err).Msgf("failed to get user uuid on logout for %s", client.Identifier())
-		}
-		userID := passport.UserID(userUUID)
+	// if client.Identifier() != "" {
+	// userUUID, err := uuid.FromString(client.Identifier())
+	// if err != nil {
+	// 	api.Log.Err(err).Msgf("failed to get user uuid on logout for %s", client.Identifier())
+	// }
+	// userID := passport.UserID(userUUID)
 
-		// remove offline user to our user cache
-		go api.RemoveUserFromCache(userID)
-	}
+	// remove offline user to our user cache
+	// go api.RemoveUserFromCache(userID)
+	// }
 }
 
 func (api *API) ClientLogout(ctx context.Context, client *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
-	userUUID, err := uuid.FromString(client.Identifier())
-	if err != nil {
-		api.Log.Err(err).Msgf("failed to get user uuid on logout for %s", client.Identifier())
-	}
-	userID := passport.UserID(userUUID)
+	// userUUID, err := uuid.FromString(client.Identifier())
+	// if err != nil {
+	// 	api.Log.Err(err).Msgf("failed to get user uuid on logout for %s", client.Identifier())
+	// }
+	// userID := passport.UserID(userUUID)
 
 	// broadcast logout to gamebar
 	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyGamebarUserSubscribe, client.SessionID)), nil)
 
 	// remove offline user to our user cache
-	go api.RemoveUserFromCache(userID)
+	// go api.RemoveUserFromCache(userID)
 
 	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, client.Identifier())), false)
 	api.MessageBus.Unsub("", client, "")
@@ -94,7 +94,7 @@ func (api *API) ClientAuth(ctx context.Context, client *hub.Client, clients hub.
 	client.SetPermissions(user.Role.Permissions)
 
 	// add online user to our user cache
-	go api.InsertUserToCache(ctx, user)
+	// go api.InsertUserToCache(ctx, user)
 
 	// broadcast user online status
 	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, user.ID.String())), true)
