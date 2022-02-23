@@ -59,10 +59,10 @@ fi
 
 echo "Proceed with migrations? (y/N)"
 read PROCEED
-if [[ $var != "y" ]]; then exit 1; fi
+if [[ $PROCEED != "y" ]]; then exit 1; fi
 
 systemctl stop ${PACKAGE}
-$TARGET/migrate -database "postgres://postgres:${PGPASSWORD}@${PASSPORT_DATABASE_HOST}:${PASSPORT_DATABASE_PORT}/${PASSPORT_DATABASE_NAME}" -path $TARGET/migrations up
+$TARGET/migrate -database "postgres://${PASSPORT_DATABASE_USER}:${PASSPORT_DATABASE_PASS}@${PASSPORT_DATABASE_HOST}:${PASSPORT_DATABASE_PORT}/${PASSPORT_DATABASE_NAME}" -path $TARGET/migrations up
 
 ln -Tfsv $TARGET $(pwd)/${PACKAGE}_online
 

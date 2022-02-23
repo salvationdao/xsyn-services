@@ -392,7 +392,10 @@ CREATE TABLE xsyn_store
     sold_before         TIMESTAMPTZ NOT NULL             DEFAULT '2999-01-01',
     deleted_at          TIMESTAMPTZ,
     created_at          TIMESTAMPTZ NOT NULL             DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ NOT NULL             DEFAULT NOW()
+    updated_at          TIMESTAMPTZ NOT NULL             DEFAULT NOW(),
+    restriction TEXT NOT NULL NOT NULL CHECK (restriction IN ('', 'WHTIELIST', 'LOOTBOX' )) DEFAULT '',
+    white_listed_addresses TEXT[]
+
 );
 
 -- for xsyn_store text search
@@ -444,7 +447,7 @@ CREATE TABLE xsyn_metadata
     description         TEXT,
     external_url        TEXT,
     image               TEXT,
-    animation_url       TEXT,       
+    animation_url       TEXT,
     durability          INT                        NOT NULL DEFAULT 100,
     attributes          JSONB,
     additional_metadata JSONB,
