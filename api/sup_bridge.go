@@ -5,6 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-chi/chi/v5"
+	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4"
+	"github.com/jpillora/backoff"
+	"github.com/ninja-software/terror/v2"
+	"github.com/rs/zerolog"
+	"io/ioutil"
 	"math/big"
 	"net/http"
 	"passport"
@@ -12,13 +19,6 @@ import (
 	"strconv"
 	"sync"
 	"time"
-
-	"github.com/go-chi/chi/v5"
-	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx/v4"
-	"github.com/jpillora/backoff"
-	"github.com/ninja-software/terror/v2"
-	"github.com/rs/zerolog"
 
 	"github.com/ethereum/go-ethereum/common"
 
@@ -174,7 +174,7 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams, 
 func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Transfer) {
 	fn := func(xfer *bridge.Transfer) {
 		if xfer.From.Hex() == cc.Params.OperatorAddr.Hex() || xfer.To.Hex() == cc.Params.OperatorAddr.Hex() {
-			amt := decimal.NewFromBigInt(xfer.Amount, int32(-1*xfer.Decimals))
+				amt := decimal.NewFromBigInt(xfer.Amount, int32(-1*xfer.Decimals))
 			cc.Log.Debug().
 				Str("txid", xfer.TxID.Hex()).
 				Str("from", xfer.From.Hex()).
@@ -185,6 +185,7 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 			return
 		}
 		chainID := xfer.ChainID
+
 		switch chainID {
 		case cc.Params.BSCChainID:
 			switch xfer.Symbol {
@@ -248,34 +249,6 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					// process transaction
 					transactonID := cc.API.transactionCache.Process(tx)
 
-					// TODO: manage user cache
-
-					// select {
-					// case cc.API.transaction <- &passport.NewTransaction{
-					// 	ResultChan:           resultChan,
-					// 	To:                   user.ID,
-					// 	From:                 passport.XsynSaleUserID,
-					// 	Amount:               *supAmount,
-					// 	TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
-					// 	Description:          fmt.Sprintf("sup purchase on BSC with BUSD %s", xfer.TxID.Hex()),
-					// }:
-
-					// case <-time.After(10 * time.Second):
-					// 	cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-					// 	panic("sup purchase on BSC with BUSD ")
-					// }
-
-					// result := <-resultChan
-
-					// if result.Error != nil {
-					// 	return // believe error logs already
-					// }
-
-					// if result.Transaction.Status != passport.TransactionSuccess {
-					// 	cc.Log.Err(fmt.Errorf("transaction unsuccessful reason: %s", result.Transaction.Reason))
-					// 	return
-					// }
-
 					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), transactonID, xfer.Block, xfer.ChainID)
 					if err != nil {
 						tx := passport.NewTransaction{
@@ -301,22 +274,6 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						}
 
 						cc.API.transactionCache.Process(tx)
-
-						// TODO: manage user cache
-
-						// select {
-						// case cc.API.transaction <- &passport.NewTransaction{
-						// 	To:                   passport.XsynSaleUserID,
-						// 	From:                 user.ID,
-						// 	Amount:               *supAmount,
-						// 	TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
-						// 	Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on BSC with BUSD %s", xfer.TxID.Hex()),
-						// }:
-
-						// case <-time.After(10 * time.Second):
-						// 	cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-						// 	panic("failed insert chan")
-						// }
 
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
@@ -383,34 +340,6 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 
 					txID := cc.API.transactionCache.Process(tx)
 
-					// TODO: manage user cache
-
-					// select {
-					// case cc.API.transaction <- &passport.NewTransaction{
-					// 	ResultChan:           resultChan,
-					// 	To:                   user.ID,
-					// 	From:                 passport.XsynSaleUserID,
-					// 	Amount:               *supAmount,
-					// 	TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
-					// 	Description:          fmt.Sprintf("sup purchase on BSC with BNB %s", xfer.TxID.Hex()),
-					// }:
-
-					// case <-time.After(10 * time.Second):
-					// 	cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-					// 	panic("sup purchase on BSC with BNB")
-					// }
-
-					// result := <-resultChan
-
-					// if result.Error != nil {
-					// 	return // believe error logs already
-					// }
-
-					// if result.Transaction.Status != passport.TransactionSuccess {
-					// 	cc.Log.Err(fmt.Errorf("transaction unsuccessful reason: %s", result.Transaction.Reason))
-					// 	return
-					// }
-
 					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), txID, xfer.Block, xfer.ChainID)
 					if err != nil {
 						tx := passport.NewTransaction{
@@ -437,21 +366,6 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						}
 
 						cc.API.transactionCache.Process(tx)
-
-						// TODO: manage user cache
-						// select {
-						// case cc.API.transaction <- &passport.NewTransaction{
-						// 	To:                   passport.XsynSaleUserID,
-						// 	From:                 user.ID,
-						// 	Amount:               *supAmount,
-						// 	TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
-						// 	Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on BSC with BNB %s", xfer.TxID.Hex()),
-						// }:
-
-						// case <-time.After(10 * time.Second):
-						// 	cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-						// 	panic("FAILED TO INSERT CHAIN CONFIRM ENTRY ")
-						// }
 
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
@@ -510,34 +424,6 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 
 					txID := cc.API.transactionCache.Process(tx)
-
-					// TODO: manage user cache
-					// select {
-					// case cc.API.transaction <- &passport.NewTransaction{
-					// 	ResultChan:           resultChan,
-					// 	To:                   user.ID,
-					// 	From:                 passport.XsynSaleUserID,
-					// 	Amount:               *xfer.Amount,
-					// 	TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
-					// 	Description:          fmt.Sprintf("[DEPOSIT] SUPS on BSC %s", xfer.TxID.Hex()),
-					// }:
-
-					// case <-time.After(10 * time.Second):
-					// 	cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-					// 	panic("[DEPOSIT] SUPS on BSC")
-					// }
-
-					// result := <-resultChan
-
-					// if result.Error != nil {
-					// 	return // believe error logs already
-					// }
-
-					// if result.Transaction.Status != passport.TransactionSuccess {
-					// 	cc.Log.Err(fmt.Errorf("transaction unsuccessful reason: %s", result.Transaction.Reason))
-					// 	return
-					// }
-
 					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), txID, xfer.Block, xfer.ChainID)
 					if err != nil {
 						tx := passport.NewTransaction{
@@ -564,22 +450,6 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						}
 
 						cc.API.transactionCache.Process(tx)
-
-						// TODO: manage user cache
-						// select {
-						// case cc.API.transaction <- &passport.NewTransaction{
-						// 	To:                   passport.XsynSaleUserID,
-						// 	From:                 user.ID,
-						// 	Amount:               *xfer.Amount,
-						// 	TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
-						// 	Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup deposit on BSC %s", xfer.TxID.Hex()),
-						// }:
-
-						// case <-time.After(10 * time.Second):
-						// 	cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-						// 	panic("FAILED TO INSERT CHAIN CONFIRM ENTRY")
-						// }
-
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
 					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
@@ -638,31 +508,6 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 
 					txID := cc.API.transactionCache.Process(tx)
 
-					// TODO: manage user cache
-					// select {
-					// case cc.API.transaction <- &passport.NewTransaction{
-					// 	ResultChan:           resultChan,
-					// 	From:                 user.ID,
-					// 	To:                   passport.XsynTreasuryUserID,
-					// 	Amount:               *xfer.Amount,
-					// 	TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
-					// 	Description:          fmt.Sprintf("[SUPS] Withdraw on BSC to %s", xfer.To.Hex()),
-					// }:
-
-					// case <-time.After(10 * time.Second):
-					// 	cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-					// 	panic("[SUPS] Withdraw on BSC to")
-					// }
-
-					// result := <-resultChan
-					// if result.Error != nil {
-					// 	return // believe error logs already
-					// }
-
-					// if result.Transaction.Status != passport.TransactionSuccess {
-					// 	cc.Log.Err(fmt.Errorf("transaction unsuccessful reason: %s", result.Transaction.Reason))
-					// 	return
-					// }
 					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), txID, xfer.Block, xfer.ChainID)
 					if err != nil {
 						tx := passport.NewTransaction{
@@ -689,22 +534,6 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						}
 
 						cc.API.transactionCache.Process(tx)
-
-						// TODO: manage user cache
-						// select {
-						// case cc.API.transaction <- &passport.NewTransaction{
-						// 	To:                   user.ID,
-						// 	From:                 passport.XsynTreasuryUserID,
-						// 	Amount:               *xfer.Amount,
-						// 	TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
-						// 	Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - ssup withdraw on BSC to %s", xfer.TxID.Hex()),
-						// }:
-
-						// case <-time.After(10 * time.Second):
-						// 	cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-						// 	panic(fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - ssup withdraw on BSC to %s", xfer.TxID.Hex()))
-						// }
-
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
 					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
@@ -770,32 +599,6 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 
 					txID := cc.API.transactionCache.Process(tx)
-
-					// TODO: manage user cache
-					// select {
-					// case cc.API.transaction <- &passport.NewTransaction{
-					// 	ResultChan:           resultChan,
-					// 	To:                   user.ID,
-					// 	From:                 passport.XsynSaleUserID,
-					// 	Amount:               *supAmount,
-					// 	TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
-					// 	Description:          fmt.Sprintf("sup purchase on Ethereum with USDC %s", xfer.TxID.Hex()),
-					// }:
-
-					// case <-time.After(10 * time.Second):
-					// 	cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-					// 	panic(fmt.Sprintf("sup purchase on Ethereum with USDC %s", xfer.TxID.Hex()))
-					// }
-
-					// result := <-resultChan
-					// if result.Error != nil {
-					// 	return // believe error logs already
-					// }
-
-					// if result.Transaction.Status != passport.TransactionSuccess {
-					// 	cc.Log.Err(fmt.Errorf("transaction unsuccessful reason: %s", result.Transaction.Reason))
-					// 	return
-					// }
 					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), txID, xfer.Block, xfer.ChainID)
 					if err != nil {
 						tx := passport.NewTransaction{
@@ -822,22 +625,6 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						}
 
 						cc.API.transactionCache.Process(tx)
-
-						// TODO: manage user cache
-						// select {
-						// case cc.API.transaction <- &passport.NewTransaction{
-						// 	To:                   passport.XsynSaleUserID,
-						// 	From:                 user.ID,
-						// 	Amount:               *supAmount,
-						// 	TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
-						// 	Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on Ethereum with USDC %s", xfer.TxID.Hex()),
-						// }:
-
-						// case <-time.After(10 * time.Second):
-						// 	cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-						// 	panic(fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on Ethereum with USDC %s", xfer.TxID.Hex()))
-						// }
-
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
 					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
@@ -845,10 +632,8 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 			case "ETH":
 				if xfer.To == cc.Params.PurchaseAddr {
 					// if buying sups with ETH
-					// TODO: probably do a * 1000 here? currently no decimals in conversion but possibly in future?
 					supAmount := cc.API.State.ETHtoUSD.Div(cc.API.State.SUPtoUSD).BigInt()
 					supAmount = supAmount.Mul(supAmount, xfer.Amount)
-
 					cc.Log.Info().
 						Str("Chain", "Ethereum").
 						Str("SUPS", decimal.NewFromBigInt(supAmount, 0).Div(decimal.New(1, int32(SUPSDecimals))).String()).
@@ -856,7 +641,6 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						Str("Buyer", xfer.From.Hex()).
 						Str("TxID", xfer.TxID.Hex()).
 						Msg("purchase")
-
 					user, err := db.UserByPublicAddress(ctx, cc.API.Conn, xfer.From.Hex())
 					if err != nil {
 						// if error is no rows, create user!
@@ -899,36 +683,9 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 
 					txID := cc.API.transactionCache.Process(tx)
 
-					// TODO: mange user cache
-					// select {
-					// case cc.API.transaction <- &passport.NewTransaction{
-					// 	ResultChan:           resultChan,
-					// 	To:                   user.ID,
-					// 	From:                 passport.XsynSaleUserID,
-					// 	Amount:               *supAmount,
-					// 	TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
-					// 	Description:          fmt.Sprintf("[SUPS] purchase on Ethereum with ETH %s", xfer.TxID.Hex()),
-					// }:
-
-					// case <-time.After(10 * time.Second):
-					// 	cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-					// 	panic(fmt.Sprintf("[SUPS] purchase on Ethereum with ETH %s", xfer.TxID.Hex()))
-					// }
-
-					// result := <-resultChan
-
-					// if result.Error != nil {
-					// 	return // believe error logs already
-					// }
-
-					// if result.Transaction.Status != passport.TransactionSuccess {
-					// 	cc.Log.Err(fmt.Errorf("transaction unsuccessful reason: %s", result.Transaction.Reason))
-					// 	return
-					// }
-
 					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), txID, xfer.Block, xfer.ChainID)
 					if err != nil {
-
+						cc.Log.Err(err).Msg("rolling transaction back")
 						tx := passport.NewTransaction{
 							To:                   passport.XsynSaleUserID,
 							From:                 user.ID,
@@ -953,26 +710,9 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						}
 
 						cc.API.transactionCache.Process(tx)
-
-						// TODO: manage user cache
-						// select {
-						// case cc.API.transaction <- &passport.NewTransaction{
-						// 	To:                   passport.XsynSaleUserID,
-						// 	From:                 user.ID,
-						// 	Amount:               *supAmount,
-						// 	TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
-						// 	Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on Ethereum with ETH %s", xfer.TxID.Hex()),
-						// }:
-
-						// case <-time.After(10 * time.Second):
-						// 	cc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-						// 	panic(fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on Ethereum with ETH %s", xfer.TxID.Hex()))
-						// }
-
 						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
 					}
 					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
-
 				}
 			}
 		}
@@ -1295,27 +1035,6 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 
 							cc.API.transactionCache.Process(tx)
 
-							// TODO: manage user cache
-
-							// cc.API.transaction <- &passport.NewTransaction{
-							// 	ResultChan:           resultChan,
-							// 	To:                   passport.OnChainUserID,
-							// 	From:                 user.ID,
-							// 	Amount:               *withdraw.Amount,
-							// 	TransactionReference: passport.TransactionReference(fmt.Sprintf("%s:%s:%d:%s", withdraw.To, withdraw.Amount.String(), withdraw.Block, txID.String())),
-							// 	Description:          "sup withdraw on bsc",
-							// }
-
-							// result := <-resultChan
-
-							// if result.Error != nil {
-							// 	return // believe error logs already
-							// }
-
-							// if result.Transaction.Status != passport.TransactionSuccess {
-							// 	cc.Log.Err(fmt.Errorf("transaction unsuccessful reason: %s", result.Transaction.Reason))
-							// 	return
-							// }
 						})
 						err = listener.Listen(ctx)
 						if err != nil {
@@ -1817,6 +1536,41 @@ type MoralisTransfer struct {
 	Logs                     []interface{} `json:"logs"`
 }
 
+type Resp struct {
+	Hash                     string      `json:"hash"`
+	Nonce                    string      `json:"nonce"`
+	TransactionIndex         string      `json:"transaction_index"`
+	FromAddress              string      `json:"from_address"`
+	ToAddress                string      `json:"to_address"`
+	Value                    string      `json:"value"`
+	Gas                      string      `json:"gas"`
+	GasPrice                 string      `json:"gas_price"`
+	Input                    string      `json:"input"`
+	ReceiptCumulativeGasUsed string      `json:"receipt_cumulative_gas_used"`
+	ReceiptGasUsed           string      `json:"receipt_gas_used"`
+	ReceiptContractAddress   interface{} `json:"receipt_contract_address"`
+	ReceiptRoot              interface{} `json:"receipt_root"`
+	ReceiptStatus            string      `json:"receipt_status"`
+	BlockTimestamp           time.Time   `json:"block_timestamp"`
+	BlockNumber              string      `json:"block_number"`
+	BlockHash                string      `json:"block_hash"`
+	Logs                     []struct {
+		LogIndex         string      `json:"log_index"`
+		TransactionHash  string      `json:"transaction_hash"`
+		TransactionIndex string      `json:"transaction_index"`
+		Address          string      `json:"address"`
+		Data             string      `json:"data"`
+		Topic0           string      `json:"topic0"`
+		Topic1           string      `json:"topic1"`
+		Topic2           string      `json:"topic2"`
+		Topic3           interface{} `json:"topic3"`
+		BlockTimestamp   time.Time   `json:"block_timestamp"`
+		BlockNumber      string      `json:"block_number"`
+		BlockHash        string      `json:"block_hash"`
+	} `json:"logs"`
+}
+
+
 func GetNativeTX(txid common.Hash, chain string) (*bridge.Transfer, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://deep-index.moralis.io/api/v2/transaction/%s?chain=%s", txid.Hex(), chain), nil)
 	if err != nil {
@@ -1827,17 +1581,29 @@ func GetNativeTX(txid common.Hash, chain string) (*bridge.Transfer, error) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		fmt.Println("not here 1")
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	fmt.Printf( "https://deep-index.moralis.io/api/v2/transaction/%s?chain=%s\n", txid.Hex(), chain)
 	if resp.StatusCode != 200 {
+		fmt.Println("not here 2")
 		return nil, errors.New("non 200 status response: " + resp.Status)
 	}
-	xfer := &MoralisTransfer{}
-	err = json.NewDecoder(resp.Body).Decode(xfer)
+
+
+	xfer := &Resp{}
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, terror.Error(err)
 	}
+
+	err = json.Unmarshal(body, xfer)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
 
 	chainID := 1
 	if chain == "bsc" {
@@ -1874,8 +1640,8 @@ func (cc *ChainClients) CheckNativeEthTx(w http.ResponseWriter, r *http.Request)
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing tx id"), "Missing Tx.")
 	}
 	record, err := GetNativeTX(common.HexToHash(txID), "eth")
-	if txID == "" {
-		return http.StatusBadRequest, terror.Error(err, "Missing Tx.")
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err)
 	}
 	cc.API.Log.Info().
 		Str("Symbol", record.Symbol).
@@ -1884,11 +1650,10 @@ func (cc *ChainClients) CheckNativeEthTx(w http.ResponseWriter, r *http.Request)
 		Str("From", record.From.String()).
 		Str("To", record.To.String()).
 		Msg("running eth tx checker")
+
 	fn := cc.handleTransfer(r.Context())
 	fn(record)
-
 	return http.StatusOK, nil
-
 }
 
 func (cc *ChainClients) CheckEthTx(w http.ResponseWriter, r *http.Request) (int, error) {

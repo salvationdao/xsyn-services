@@ -32,27 +32,28 @@ const (
 
 // StoreItem holds data for a nft that is listed on the marketplace
 type StoreItem struct {
-	ID                 StoreItemID         `json:"ID" db:"id"`
-	Name               string              `json:"name" db:"name"`
-	Restriction        string              `json:"restriction" db:"restriction"`
-	FactionID          FactionID           `json:"factionID" db:"faction_id"`
-	Faction            *Faction            `json:"faction" db:"faction"`
-	CollectionID       CollectionID        `json:"collectionID" db:"collection_id"`
-	Collection         Collection          `json:"collection" db:"collection"`
-	Description        string              `json:"description" db:"description"`
-	Image              string              `json:"image" db:"image"`
-	AnimationURL       string              `json:"animation_url" db:"animation_url"`
-	Attributes         []*Attribute        `json:"attributes" db:"attributes"`
-	AdditionalMetadata *AdditionalMetadata `json:"additionalMetadata" db:"additional_metadata"`
-	UsdCentCost        int                 `json:"usdCentCost" db:"usd_cent_cost"`
-	AmountSold         int                 `json:"amountSold" db:"amount_sold"`
-	AmountAvailable    int                 `json:"amountAvailable" db:"amount_available"`
-	SoldAfter          time.Time           `json:"soldAfter" db:"sold_after"`
-	SoldBefore         time.Time           `json:"soldBefore" db:"sold_before"`
-	DeletedAt          *time.Time          `json:"deletedAt" db:"deleted_at"`
-	CreatedAt          time.Time           `json:"createdAt" db:"created_at"`
-	UpdatedAt          time.Time           `json:"updatedAt" db:"updated_at"`
-	SupCost            string              `json:"supCost"`
+	ID                   StoreItemID         `json:"ID" db:"id"`
+	Name                 string              `json:"name" db:"name"`
+	WhitelistedAddresses []string            `json:"whiteListedAddresses" db:"white_listed_addresses"`
+	Restriction          string              `json:"restriction" db:"restriction"`
+	FactionID            FactionID           `json:"factionID" db:"faction_id"`
+	Faction              *Faction            `json:"faction" db:"faction"`
+	CollectionID         CollectionID        `json:"collectionID" db:"collection_id"`
+	Collection           Collection          `json:"collection" db:"collection"`
+	Description          string              `json:"description" db:"description"`
+	Image                string              `json:"image" db:"image"`
+	AnimationURL         string              `json:"animation_url" db:"animation_url"`
+	Attributes           []*Attribute        `json:"attributes" db:"attributes"`
+	AdditionalMetadata   *AdditionalMetadata `json:"additionalMetadata" db:"additional_metadata"`
+	UsdCentCost          int                 `json:"usdCentCost" db:"usd_cent_cost"`
+	AmountSold           int                 `json:"amountSold" db:"amount_sold"`
+	AmountAvailable      int                 `json:"amountAvailable" db:"amount_available"`
+	SoldAfter            time.Time           `json:"soldAfter" db:"sold_after"`
+	SoldBefore           time.Time           `json:"soldBefore" db:"sold_before"`
+	DeletedAt            *time.Time          `json:"deletedAt" db:"deleted_at"`
+	CreatedAt            time.Time           `json:"createdAt" db:"created_at"`
+	UpdatedAt            time.Time           `json:"updatedAt" db:"updated_at"`
+	SupCost              string              `json:"supCost"`
 }
 
 // XsynMetadata holds xsyn nft metadata, the nfts main game data it stored here to show on opensea

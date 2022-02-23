@@ -66,7 +66,6 @@ func (api *API) InitialiseTreasuryFundTicker() {
 
 		// case <-time.After(10 * time.Second):
 		// 	api.Log.Err(errors.New("timeout on channel send exceeded"))
-		// 	panic("treasury tick")
 		// }
 
 		return http.StatusOK, nil
@@ -95,8 +94,7 @@ func (api *API) StartSupremacySupPool() {
 
 // SupremacySupPoolSet set current sup pool detail
 func (api *API) SupremacySupPoolSet(sups passport.BigInt) {
-	select {
-	case api.supremacySupsPool <- func(ssp *SupremacySupPool) {
+	api.supremacySupsPool <- func(ssp *SupremacySupPool) {
 		// initialise sup pool value
 		ssp.TotalSups = passport.BigInt{Int: *big.NewInt(0)}
 		ssp.TotalSups.Add(&ssp.TotalSups.Int, &sups.Int)
@@ -104,27 +102,20 @@ func (api *API) SupremacySupPoolSet(sups passport.BigInt) {
 		ssp.TrickleAmount = passport.BigInt{Int: *big.NewInt(0)}
 		ssp.TrickleAmount.Add(&ssp.TrickleAmount.Int, &sups.Int)
 		ssp.TrickleAmount.Div(&ssp.TrickleAmount.Int, big.NewInt(100))
-	}:
-
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Supremacy Sup Pool Set")
 	}
 }
 
 // SupremacySupPoolGetTrickleAmount return current trickle amount
 func (api *API) SupremacySupPoolGetTrickleAmount() passport.BigInt {
-	amountChan := make(chan passport.BigInt)
-	select {
-	case api.supremacySupsPool <- func(ssp *SupremacySupPool) {
-		amountChan <- ssp.TrickleAmount
-	}:
-		return <-amountChan
-
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Supremacy Sup Pool Get Trickle Amount")
+	amount := passport.BigInt{}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	api.supremacySupsPool <- func(ssp *SupremacySupPool) {
+		defer wg.Done()
+		amount = ssp.TrickleAmount
 	}
+	wg.Wait()
+	return amount
 }
 
 type ServerClientsList map[ServerClientName]map[*hub.Client]bool
@@ -176,20 +167,9 @@ func (api *API) ServerClientOffline(hubc *hub.Client) {
 
 // ServerClients accepts a function that loops over the server clients map
 func (api *API) ServerClients(fn ServerClientsFunc) {
-	var wg sync.WaitGroup
-	wg.Add(1)
-	select {
-	case api.serverClients <- func(serverClients ServerClientsList) {
+	api.serverClients <- func(serverClients ServerClientsList) {
 		fn(serverClients)
-		wg.Done()
-	}:
-
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Server Clients")
 	}
-
-	wg.Wait()
 }
 
 type ServerClientName string
@@ -249,7 +229,6 @@ func (api *API) SendToServerClient(ctx context.Context, name ServerClientName, m
 
 	case <-time.After(10 * time.Second):
 		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Send To Server Client")
 	}
 
 }
@@ -270,7 +249,6 @@ func (api *API) SendToAllServerClient(ctx context.Context, msg *ServerClientMess
 
 	case <-time.After(10 * time.Second):
 		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Send To All Server Client")
 	}
 }
 

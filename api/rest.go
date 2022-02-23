@@ -43,11 +43,12 @@ func (api *API) WithError(next func(w http.ResponseWriter, r *http.Request) (int
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		contents, _ := ioutil.ReadAll(r.Body)
 
+
 		r.Body = ioutil.NopCloser(bytes.NewReader(contents))
 		defer r.Body.Close()
 		code, err := next(w, r)
 		if err != nil {
-
+			terror.Echo(err)
 			errObj := &ErrorObject{
 				Message:   err.Error(),
 				ErrorCode: fmt.Sprintf("%d", code),
