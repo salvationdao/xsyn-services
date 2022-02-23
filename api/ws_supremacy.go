@@ -175,14 +175,16 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 	txID := sc.API.transactionCache.Process(*tx)
 
 	tx.ID = txID
-	// TODO: handle user cache
 
-	// err = sc.API.HoldTransaction(ctx, tx)
-	// if err != nil {
-	// 	return terror.Error(err)
-	// }
-	// fmt.Printf("2 SupremacyHoldSupsHandler %s\n", req.TransactionID)
-	reply(tx)
+	// for refund
+	txReverse := passport.NewTransaction{
+		From:                 tx.To,
+		To:                   tx.From,
+		Amount:               tx.Amount,
+		TransactionReference: passport.TransactionReference(fmt.Sprintf("refund|sups vote|%s", txID)),
+	}
+
+	reply(txReverse)
 	return nil
 }
 
@@ -690,7 +692,6 @@ func (sc *SupremacyControllerWS) SupremacyReleaseTransactionsHandler(ctx context
 		return terror.Error(err, "Invalid request received")
 	}
 
-	// TODO: Change the logic of data passing
 	for _, tx := range req.Payload.Transactions {
 		nfb, ntb, err := sc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
 		if err != nil {
@@ -734,7 +735,8 @@ func (sc *SupremacyControllerWS) SupremacyGetSpoilOfWarHandler(ctx context.Conte
 	}
 
 	result := big.NewInt(0)
-	result.Add(&supsPoolUser, &battleUser)
+	result.Add(result, &supsPoolUser)
+	result.Add(result, &battleUser)
 
 	reply(result.String())
 	return nil

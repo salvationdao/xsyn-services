@@ -44,7 +44,6 @@ type NewTransaction struct {
 	Amount               big.Int              `json:"amount" db:"amount"`
 	TransactionReference TransactionReference `json:"transactionReference" db:"transaction_reference"`
 	Description          string               `json:"description" db:"description"`
-	// ResultChan           chan *TransactionResult
 }
 
 type TransactionResult struct {

@@ -52,16 +52,16 @@ func (ucm *UserCacheMap) Process(fromID string, toID string, amount big.Int) (*b
 
 	// do subtract
 	newFromBalance := big.NewInt(0)
-	newFromBalance = newFromBalance.Add(newFromBalance, &fromBalance)
-	newFromBalance = newFromBalance.Sub(newFromBalance, &amount)
+	newFromBalance.Add(newFromBalance, &fromBalance)
+	newFromBalance.Sub(newFromBalance, &amount)
 	if newFromBalance.Cmp(big.NewInt(0)) < 0 {
 		return nil, nil, terror.Error(err, "no enough fund")
 	}
 
 	// do add
 	newToBalance := big.NewInt(0)
-	newToBalance = newToBalance.Add(newToBalance, &toBalance)
-	newToBalance = newToBalance.Add(newToBalance, &amount)
+	newToBalance.Add(newToBalance, &toBalance)
+	newToBalance.Add(newToBalance, &amount)
 	if newToBalance.Cmp(big.NewInt(0)) < 0 {
 		return nil, nil, terror.Error(err, "no enough fund")
 	}
