@@ -4,15 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"math/big"
 	"net/http"
 	"passport"
 	"passport/db"
 	"passport/email"
 	"strconv"
-	"time"
 
 	"github.com/ninja-software/log_helpers"
 
@@ -210,7 +207,6 @@ func NewAPI(
 	if runBlockchainBridge {
 		// Runs the listeners for all the chain bridges
 		cc = RunChainListeners(log, api, config.BridgeParams, isTestnetBlockchain)
-
 	}
 
 	api.Routes.Handle("/metrics", promhttp.Handler())
@@ -226,12 +222,13 @@ func NewAPI(
 			r.Get("/mint-nft/{address}/{nonce}/{tokenID}", api.WithError(api.MintAsset))
 			r.Get("/asset/{token_id}", api.WithError(api.AssetGet))
 			r.Get("/auth/twitter", api.WithError(api.Auth.TwitterAuth))
-			r.Get("/dummy-sale", api.WithError(api.Dummysale))
-			if runBlockchainBridge {
-				r.Get("/check-eth-tx/{tx_id}", api.WithError(cc.CheckEthTx))
-				r.Get("/check-eth-native-tx/{tx_id}", api.WithError(cc.CheckNativeEthTx))
-				r.Get("/check-bsc-tx/{tx_id}", api.WithError(cc.CheckBscTx))
-			}
+			//r.Get("/dummy-sale", api.WithError(api.Dummysale))
+
+			r.Post("/eth-transaction-webhook", api.WithError(cc.TransactionWebhook))
+			r.Get("/check-eth-tx/{tx_id}", api.WithError(cc.CheckEthTx))
+			r.Get("/check-eth-native-tx/{tx_id}", api.WithError(cc.CheckNativeEthTx))
+			r.Get("/check-bsc-tx/{tx_id}", api.WithError(cc.CheckBscTx))
+
 			r.Get("/whitelist/check", api.WithError(api.WhitelistOnlyWalletCheck))
 			r.Get("/faction-data", api.WithError(api.FactionGetData))
 		})
@@ -309,39 +306,40 @@ func NewAPI(
 	return api
 }
 
-//test function for remaining supply
-func (api *API) Dummysale(w http.ResponseWriter, r *http.Request) (int, error) {
-	// get amount from get url
-	ctx := context.Background()
-	amount := r.URL.Query().Get("amount")
 
-	bigIntAmount := big.Int{}
-	bigIntAmount.SetString(amount, 10)
-
-	tx := &passport.NewTransaction{
-		From:                 passport.XsynSaleUserID,
-		To:                   passport.SupremacyGameUserID,
-		TransactionReference: "test sale",
-		Amount:               bigIntAmount,
-	}
-
-	select {
-	case api.transaction <- tx:
-
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("transaction send")
-	}
-
-	sups, err := db.UserBalance(ctx, api.Conn, passport.XsynSaleUserID)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSRemainingSubscribe), sups.String())
-
-	return http.StatusAccepted, nil
-}
+////test function for remaining supply
+//func (api *API) Dummysale(w http.ResponseWriter, r *http.Request) (int, error) {
+//	// get amount from get url
+//	ctx := context.Background()
+//	amount := r.URL.Query().Get("amount")
+//
+//	bigIntAmount := big.Int{}
+//	bigIntAmount.SetString(amount, 10)
+//
+//	tx := &passport.NewTransaction{
+//		From:                 passport.XsynSaleUserID,
+//		To:                   passport.SupremacyGameUserID,
+//		TransactionReference: "test sale",
+//		Amount:               bigIntAmount,
+//	}
+//
+//	select {
+//	case api.transaction <- tx:
+//
+//	case <-time.After(10 * time.Second):
+//		api.Log.Err(errors.New("timeout on channel send exceeded"))
+//		panic("transaction send")
+//	}
+//
+//	sups, err := db.UserBalance(ctx, api.Conn, passport.XsynSaleUserID)
+//	if err != nil {
+//		return http.StatusInternalServerError, terror.Error(err)
+//	}
+//
+//	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSRemainingSubscribe), sups.String())
+//
+//	return http.StatusAccepted, nil
+//}
 
 // Run the API service
 func (api *API) Run(ctx context.Context) error {
