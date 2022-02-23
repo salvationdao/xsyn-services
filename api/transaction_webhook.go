@@ -2,13 +2,15 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/supremacy-bridge/bridge"
+	"github.com/shopspring/decimal"
+	"math/big"
 	"net/http"
 	"time"
-	"fmt"
-	"github.com/shopspring/decimal"
-	"github.com/ninja-software/terror/v2"
-	"github.com/ethereum/go-ethereum/common"
 )
+
 
 type Transfer struct {
 	TriggerName string `json:"triggerName"`
@@ -16,29 +18,17 @@ type Transfer struct {
 		FromAddress    string    `json:"from_address"`
 		Hash           string    `json:"hash"`
 		ToAddress      string    `json:"to_address"`
-		CreatedAt      time.Time `json:"createdAt"`
 		BlockHash      string    `json:"block_hash"`
 		BlockNumber    uint64       `json:"block_number"`
-		BlockTimestamp struct {
-			Type string    `json:"__type"`
-			Iso  time.Time `json:"iso"`
-		} `json:"block_timestamp"`
 		Confirmed bool `json:"confirmed"`
 		Decimal   struct {
 			Type  string `json:"__type"`
 			Value string `json:"value"`
 		} `json:"decimal"`
-		Gas                      int       `json:"gas"`
-		GasPrice                 int64     `json:"gas_price"`
 		Input                    string    `json:"input"`
-		Nonce                    int       `json:"nonce"`
-		ReceiptCumulativeGasUsed int       `json:"receipt_cumulative_gas_used"`
-		ReceiptGasUsed           int       `json:"receipt_gas_used"`
 		ReceiptStatus            int       `json:"receipt_status"`
 		TransactionIndex         int       `json:"transaction_index"`
 		Value                    string    `json:"value"`
-		UpdatedAt                time.Time `json:"updatedAt"`
-		ObjectID                 string    `json:"objectId"`
 		ClassName                string    `json:"className"`
 	} `json:"object"`
 	Master bool `json:"master"`
@@ -51,16 +41,6 @@ type Transfer struct {
 		} `json:"options"`
 		AppID string `json:"appId"`
 	} `json:"log"`
-	Headers struct {
-		Accept              string `json:"accept"`
-		ContentType         string `json:"content-type"`
-		XParseApplicationID string `json:"x-parse-application-id"`
-		XParseSessionToken  string `json:"x-parse-session-token"`
-		UserAgent           string `json:"user-agent"`
-		ContentLength       string `json:"content-length"`
-		Host                string `json:"host"`
-		Connection          string `json:"connection"`
-	} `json:"headers"`
 	IP       string `json:"ip"`
 	Original struct {
 		FromAddress    string    `json:"from_address"`
@@ -122,28 +102,26 @@ func (cc *ChainClients) TransactionWebhook(w http.ResponseWriter, r *http.Reques
 		return http.StatusBadRequest, terror.Error(err)
 	}
 
-	chain := ""
 
-
-	if req.Object.ClassName == "EthTransactions" {
-		chain = "eth"
-	}
-
-
+	chainID := cc.Params.ETHChainID
+	symbol := "ETH"
 	if req.Object.ClassName == "BscTransactions" {
-		chain = "bsc"
+		chainID = cc.Params.BSCChainID
+		symbol = "BNB"
+	}
+	amount, ok := big.NewInt(0).SetString(req.Object.Value, 10)
+	if !ok {
+		return http.StatusBadRequest, terror.Error(err)
 	}
 
-	if chain == "" {
-		cc.Log.Err(terror.Error(fmt.Errorf("invalid chain classname %s %s", chain, req.Object.ClassName))).Msg("")
-		return http.StatusOK, nil
+	record := &bridge.Transfer{
+		TxID: common.HexToHash(req.Object.Hash),
+		From: common.HexToAddress(req.Object.FromAddress),
+		To: common.HexToAddress(req.Object.ToAddress),
+		Amount: amount,
+		ChainID: chainID,
+		Symbol: symbol,
 	}
-
-	record, err := GetNativeTX(common.HexToHash(req.Object.Hash), chain)
-	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Missing Tx.")
-	}
-
 	cc.Log.Info().
 		Str("Symbol", record.Symbol).
 		Str("Amount", decimal.NewFromBigInt(record.Amount, 0).Div(decimal.New(1, int32(record.Decimals))).String()).

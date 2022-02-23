@@ -214,7 +214,11 @@ func NewAPI(
 		log.Fatal().Msgf("failed to init hub auther: %s", err.Error())
 	}
 
-	cc := &ChainClients{}
+	cc := &ChainClients{
+		Params: api.BridgeParams,
+		Log: log_helpers.NamedLogger(log, "chain clients"),
+		API: api,
+	}
 	if runBlockchainBridge {
 		// Runs the listeners for all the chain bridges
 		cc = RunChainListeners(log, api, config.BridgeParams, isTestnetBlockchain)

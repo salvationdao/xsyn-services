@@ -128,34 +128,34 @@ func main() {
 					 *		Bridge details		*
 					 ***************************/
 					// ETH
-					&cli.StringFlag{Name: "usdc_addr", Value: "0x8BB4eC208CDDE7761ac7f3346deBb9C931f80A33", EnvVars: []string{envPrefix + "_USDC_CONTRACT_ADDR"}, Usage: "USDC contract address"},
+					&cli.StringFlag{Name: "usdc_addr", Value: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", EnvVars: []string{envPrefix + "_USDC_CONTRACT_ADDR"}, Usage: "USDC contract address"},
 
 					// BSC
-					&cli.StringFlag{Name: "busd_addr", Value: "0xeAf33Ba4AcA3fE3110EAddD7D4cf0897121583D0", EnvVars: []string{envPrefix + "_BUSD_CONTRACT_ADDR"}, Usage: "BUSD contract address"},
-					&cli.StringFlag{Name: "sup_addr", Value: "0x5e8b6999B44E011F485028bf1AF0aF601F845304", EnvVars: []string{envPrefix + "_SUP_CONTRACT_ADDR"}, Usage: "SUP contract address"},
+					&cli.StringFlag{Name: "busd_addr", Value: "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56", EnvVars: []string{envPrefix + "_BUSD_CONTRACT_ADDR"}, Usage: "BUSD contract address"},
+					&cli.StringFlag{Name: "sup_addr", Value: "0xc99cFaA8f5D9BD9050182f29b83cc9888C5846C4", EnvVars: []string{envPrefix + "_SUP_CONTRACT_ADDR"}, Usage: "SUP contract address"},
 
 					// wallet/contract addresses
-					&cli.StringFlag{Name: "operator_addr", Value: "0xc01c2f6DD7cCd2B9F8DB9aa1Da9933edaBc5079E", EnvVars: []string{envPrefix + "_OPERATOR_WALLET_ADDR"}, Usage: "Wallet address for administration"},
-					&cli.StringFlag{Name: "signer_private_key", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing (usually operator)"},
+					&cli.StringFlag{Name: "operator_addr", Value: "0xeCfB1f31F012Db0bf6720610301F23F064c567f9", EnvVars: []string{envPrefix + "_OPERATOR_WALLET_ADDR"}, Usage: "Wallet address for administration"},
+					&cli.StringFlag{Name: "signer_private_key", Value: "0x127f840bfc72f80e3fb0e35271da610c84bceeaa70c6db0f12e97d037391c633", EnvVars: []string{envPrefix + "_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing (usually operator)"},
 					&cli.StringFlag{Name: "purchase_addr", Value: "0x52b38626D3167e5357FE7348624352B7062fE271", EnvVars: []string{envPrefix + "_PURCHASE_WALLET_ADDR"}, Usage: "Wallet address to receive payments and deposits"},
 
-					&cli.StringFlag{Name: "withdraw_addr", Value: "0x9DAcEA338E4DDd856B152Ce553C7540DF920Bb15", EnvVars: []string{envPrefix + "_WITHDRAW_CONTRACT_ADDR"}, Usage: "Withdraw contract address"},
+					&cli.StringFlag{Name: "withdraw_addr", Value: "0x6476dB7cFfeeBf7Cc47Ed8D4996d1D60608AAf95", EnvVars: []string{envPrefix + "_WITHDRAW_CONTRACT_ADDR"}, Usage: "Withdraw contract address"},
 
-					&cli.StringFlag{Name: "eth_nft_addr", Value: "0xC1ce98F52E771Bd82938c4Cb6CCaA40Dc2B3258D", EnvVars: []string{envPrefix + "_NFT_CONTRACT_ADDR"}, Usage: "NFT contract address for minting"},
-					&cli.StringFlag{Name: "eth_nft_staking_addr", Value: "0xceED4Db9234e7374fe3132a2610c31275712685C", EnvVars: []string{envPrefix + "_NFT_STAKING_CONTRACT_ADDR"}, Usage: "NFT staking contract address for locking"},
+					&cli.StringFlag{Name: "eth_nft_addr", Value: "0x24447528deb67F492Af4AF7fb3Afb89476e0bCfD", EnvVars: []string{envPrefix + "_NFT_CONTRACT_ADDR"}, Usage: "NFT contract address for minting"},
+					&cli.StringFlag{Name: "eth_nft_staking_addr", Value: "0xaD0ABD755cD93cad2fe2f1CAeb9257Eb791e2059", EnvVars: []string{envPrefix + "_NFT_STAKING_CONTRACT_ADDR"}, Usage: "NFT staking contract address for locking"},
 
 					// chain id
-					&cli.Int64Flag{Name: "bsc_chain_id", Value: 97, EnvVars: []string{envPrefix + "_BSC_CHAIN_ID"}, Usage: "BSC Chain ID"},
-					&cli.Int64Flag{Name: "eth_chain_id", Value: 5, EnvVars: []string{envPrefix + "_ETH_CHAIN_ID"}, Usage: "ETH Chain ID"},
+					&cli.Int64Flag{Name: "bsc_chain_id", Value: 56, EnvVars: []string{envPrefix + "_BSC_CHAIN_ID"}, Usage: "BSC Chain ID"},
+					&cli.Int64Flag{Name: "eth_chain_id", Value: 1, EnvVars: []string{envPrefix + "_ETH_CHAIN_ID"}, Usage: "ETH Chain ID"},
 
 					// node address
-					&cli.StringFlag{Name: "bsc_node_addr", Value: "wss://speedy-nodes-nyc.moralis.io/6bc5ccfe2d00f7a5ae0ba00a/bsc/testnet/ws", EnvVars: []string{envPrefix + "_BSC_WS_NODE_URL"}, Usage: "Binance WS node URL"},
+					&cli.StringFlag{Name: "bsc_node_addr", Value: "wss://thrumming-misty-bush.bsc.quiknode.pro/f08252fc1f9a373108c84dad3c9ab46868781b24/", EnvVars: []string{envPrefix + "_BSC_WS_NODE_URL"}, Usage: "Binance WS node URL"},
 					&cli.StringFlag{Name: "eth_node_addr", Value: "wss://sparkling-polished-glade.quiknode.pro/a68ec6502e56dd3292f33c276c81cc6360877e58/", EnvVars: []string{envPrefix + "_ETH_WS_NODE_URL"}, Usage: "Ethereum WS node URL"},
 					//router address for exchange rates
-					&cli.StringFlag{Name: "bsc_router_addr", Value: "0x9ac64cc6e4415144c455bd8e4837fea55603e5c3", EnvVars: []string{envPrefix + "_BSC_ROUTER_ADDR"}, Usage: "BSC Router address"},
+					&cli.StringFlag{Name: "bsc_router_addr", Value: "0x10ED43C718714eb63d5aA57B78B54704E256024E", EnvVars: []string{envPrefix + "_BSC_ROUTER_ADDR"}, Usage: "BSC Router address"},
 
 					//moralis key- set in env vars
-					&cli.StringFlag{Name: "moralis_key", Value: "91Xp2ke5eOVMavAsqdOoiXN4lg0n0AieW5kTJoupdyQBhL2k9XvMQtFPSA4opX2s", EnvVars: []string{envPrefix + "_MORALIS_KEY"}, Usage: "Key to connect to moralis API"},
+					&cli.StringFlag{Name: "moralis_key", Value: "oijl9YX0BIopm9fRitAYhMWuJOrqr7CE1xl5FIO9XncEdOx5CvxkwMOKm2bv4s0p", EnvVars: []string{envPrefix + "_MORALIS_KEY"}, Usage: "Key to connect to moralis API"},
 				},
 
 				Usage: "run server",

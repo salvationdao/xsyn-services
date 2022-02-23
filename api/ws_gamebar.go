@@ -95,15 +95,13 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 		Description:          "Give away for testing",
 	})
 
-	oneSups := big.NewInt(1000000000000000000)
-
-	oneSups.Mul(oneSups, big.NewInt(100000))
-
-	// give sups straight a way for testing
-	_, _, err = gc.API.userCacheMap.Process(passport.XsynSaleUserID.String(), userID.String(), *oneSups)
-	if err != nil {
-		fmt.Println(err)
-	}
+	// oneSups := big.NewInt(1000000000000000000)
+	// oneSups.Mul(oneSups, big.NewInt(100000))
+	// // give sups straight a way for testing
+	// _, _, err = gc.API.userCacheMap.Process(passport.XsynSaleUserID.String(), userID.String(), *oneSups)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
 
 	reply(true)
 
