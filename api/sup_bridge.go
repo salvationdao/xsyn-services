@@ -1450,6 +1450,35 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 
 }
 
+func (cc *ChainClients) CheckNativeEthTx(w http.ResponseWriter, r *http.Request) (int, error) {
+	//// Get token id
+	//txID := chi.URLParam(r, "tx_id")
+	//if txID == "" {
+	//	return http.StatusBadRequest, terror.Error(fmt.Errorf("missing tx id"), "Missing Tx.")
+	//}
+	//
+	//if cc.EthClient == nil {
+	//	return http.StatusInternalServerError, terror.Error(fmt.Errorf("eth client is nil"), "Issue accessing ETH node, please try again or contact support.")
+	//}
+	//
+	//record, _, err := bridge.GetTransfer(r.Context(), cc.EthClient, cc.Params.ETHChainID, common.HexToHash(txID))
+	//if err != nil {
+	//	return http.StatusInternalServerError, terror.Error(err, fmt.Sprintf("Issue finding transaction: %s on chain: %d", txID, cc.Params.ETHChainID))
+	//}
+	//
+	//cc.API.Log.Info().
+	//	Str("Symbol", record.Symbol).
+	//	Str("Amount", decimal.NewFromBigInt(record.Amount, 0).Div(decimal.New(1, int32(record.Decimals))).String()).
+	//	Str("TxID", record.TxID.String()).
+	//	Str("From", record.From.String()).
+	//	Str("To", record.To.String()).
+	//	Msg("running eth tx checker")
+	//fn := cc.handleTransfer(r.Context())
+	//fn(record)
+
+	return http.StatusOK, nil
+}
+
 func (cc *ChainClients) CheckEthTx(w http.ResponseWriter, r *http.Request) (int, error) {
 	// Get token id
 	txID := chi.URLParam(r, "tx_id")

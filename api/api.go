@@ -227,10 +227,10 @@ func NewAPI(
 			r.Get("/asset/{token_id}", api.WithError(api.AssetGet))
 			r.Get("/auth/twitter", api.WithError(api.Auth.TwitterAuth))
 			r.Get("/dummy-sale", api.WithError(api.Dummysale))
-			if runBlockchainBridge {
-				r.Get("/check-eth-tx/{tx_id}", api.WithError(cc.CheckEthTx))
-				r.Get("/check-bsc-tx/{tx_id}", api.WithError(cc.CheckBscTx))
-			}
+			r.Get("/check-eth-tx/{tx_id}", api.WithError(cc.CheckEthTx))
+			r.Get("/check-native-eth-tx/{tx_id}", api.WithError(cc.CheckEthTx))
+			r.Get("/check-bsc-tx/{tx_id}", api.WithError(cc.CheckBscTx))
+			r.Post("/eth-transaction-webhook", api.WithError(api.EthTransactionWebhook))
 			r.Get("/whitelist/check", api.WithError(api.WhitelistOnlyWalletCheck))
 			r.Get("/faction-data", api.WithError(api.FactionGetData))
 		})
@@ -307,6 +307,7 @@ func NewAPI(
 
 	return api
 }
+
 
 //test function for remaining supply
 func (api *API) Dummysale(w http.ResponseWriter, r *http.Request) (int, error) {
