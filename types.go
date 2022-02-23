@@ -724,3 +724,8 @@ func (id *StoreItemID) Scan(src interface{}) error {
 	// Retrun error
 	return err
 }
+
+type UserBalance struct {
+	ID   UserID  `db:"id"`
+	Sups *BigInt `db:"sups"`
+}

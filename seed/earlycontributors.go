@@ -6,7 +6,9 @@ import (
 	"passport"
 	"passport/api"
 	"passport/db"
+	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/sale/dispersions"
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
@@ -28,8 +30,10 @@ func (s *Seeder) EarlyContributors(ctx context.Context) error {
 			return terror.Error(err)
 		}
 		for _, output := range v {
+			txID := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
 			amt := decimal.New(int64(output.Output), 18)
 			_, err = api.CreateTransactionEntry(s.TxConn,
+				txID,
 				*amt.BigInt(),
 				u.ID,
 				passport.XsynSaleUserID,

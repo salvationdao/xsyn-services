@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/ory/dockertest/v3/docker"
 
@@ -232,6 +233,7 @@ func BenchmarkTransactions(b *testing.B) {
 			transaction := <-transactionChannel
 
 			_, err := api.CreateTransactionEntry(txConn,
+				fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 				transaction.Amount,
 				transaction.To,
 				transaction.From,

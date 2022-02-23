@@ -63,7 +63,7 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
 	}
 
-	userSups, err := db.UserBalance(r.Context(), api.Conn, user.ID)
+	userSups, err := db.UserBalance(r.Context(), api.Conn, user.ID.String())
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get users SUP balance.")
 	}

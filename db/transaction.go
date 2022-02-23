@@ -36,7 +36,36 @@ func TransactionGetList(ctx context.Context, conn Conn, transactionList []string
 	return transactions, nil
 }
 
-func UserBalance(ctx context.Context, conn Conn, userID passport.UserID) (*passport.BigInt, error) {
+func UserBalances(ctx context.Context, conn Conn) ([]*passport.UserBalance, error) {
+	q := `SELECT id, sups FROM users`
+
+	rows, err := conn.Query(ctx, q)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	balances := []*passport.UserBalance{}
+
+	for rows.Next() {
+		balance := &passport.UserBalance{
+			ID:   passport.UserID{},
+			Sups: &passport.BigInt{},
+		}
+		err := rows.Scan(
+			&balance.ID,
+			balance.Sups,
+		)
+		if err != nil {
+			return balances, terror.Error(err)
+		}
+		balance.Sups.Init()
+		balances = append(balances, balance)
+	}
+
+	return balances, nil
+}
+
+func UserBalance(ctx context.Context, conn Conn, userID string) (*passport.BigInt, error) {
 	var wrap struct {
 		Sups passport.BigInt `db:"sups"`
 	}
@@ -226,9 +255,9 @@ func UpdateConfirmationAmount(ctx context.Context, conn Conn, tx string, confirm
 }
 
 // CreateChainConfirmationEntry creates a chain confirmation record
-func CreateChainConfirmationEntry(ctx context.Context, conn Conn, tx string, txRef int64, block uint64, chainID int64) (*passport.ChainConfirmations, error) {
+func CreateChainConfirmationEntry(ctx context.Context, conn Conn, tx string, txRef string, block uint64, chainID int64) (*passport.ChainConfirmations, error) {
 	conf := &passport.ChainConfirmations{}
-
+	//
 	q := `INSERT INTO chain_confirmations (tx, tx_id, block, chain_id)
 			VALUES($1, $2, $3, $4)
 			RETURNING 	tx,

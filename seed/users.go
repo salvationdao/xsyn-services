@@ -10,6 +10,7 @@ import (
 	"passport/api"
 	"passport/crypto"
 	"passport/db"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -185,8 +186,11 @@ func (s *Seeder) XsynTreasuryUser(ctx context.Context) (*passport.User, error) {
 
 	}
 
+	txID := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
+
 	// create treasury opening balance (30mil sups)
 	_, err = api.CreateTransactionEntry(s.TxConn,
+		txID,
 		*amount,
 		u.ID,
 		passport.OnChainUserID,
@@ -223,6 +227,7 @@ func (s *Seeder) SupremacyUser(ctx context.Context) (*passport.User, error) {
 	}
 
 	_, err = api.CreateTransactionEntry(s.TxConn,
+		fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		*amount,
 		u.ID,
 		passport.XsynTreasuryUserID,
@@ -258,6 +263,7 @@ func (s *Seeder) XsynSaleUser(ctx context.Context) (*passport.User, error) {
 
 	// create xsynSaleUser balance of 217M from the xsynTreasuryUser
 	_, err = api.CreateTransactionEntry(s.TxConn,
+		fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		*amount,
 		u.ID,
 		passport.XsynTreasuryUserID,
@@ -336,6 +342,7 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 	}
 
 	_, err = api.CreateTransactionEntry(s.TxConn,
+		fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		*amount,
 		u.ID,
 		passport.XsynTreasuryUserID,
@@ -362,6 +369,7 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 	}
 
 	_, err = api.CreateTransactionEntry(s.TxConn,
+		fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		*amount,
 		u.ID,
 		passport.XsynTreasuryUserID,
@@ -388,6 +396,7 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 	}
 
 	_, err = api.CreateTransactionEntry(s.TxConn,
+		fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		*amount,
 		u.ID,
 		passport.XsynTreasuryUserID,

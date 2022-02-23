@@ -4,15 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"math/big"
 	"net/http"
 	"passport"
 	"passport/db"
 	"passport/email"
 	"strconv"
-	"time"
 
 	"github.com/ninja-software/log_helpers"
 
@@ -65,9 +62,14 @@ type API struct {
 	sendToServerClients chan *ServerClientMessage
 
 	//tx stuff
-	transaction      chan *passport.NewTransaction
-	heldTransactions chan func(heldTxList map[passport.TransactionReference]*passport.NewTransaction)
 
+	// transaction      chan *passport.NewTransaction
+	// heldTransactions chan func(heldTxList map[passport.TransactionReference]*passport.NewTransaction)
+	transactionCache *TransactionCache
+	userCacheMap     *UserCacheMap
+
+	// userSupsRWMx     sync.RWMutex
+	// userSupsCacheMap map[passport.UserID]*UserCache
 	// treasury ticker map
 	treasuryTickerMap map[ServerClientName]*tickle.Tickle
 
@@ -80,7 +82,7 @@ type API struct {
 	standardAssetRepairCenter    chan func(RepairQueue)
 
 	// Queue Reward
-	TxConn *sql.DB
+	// TxConn *sql.DB
 
 	walletOnlyConnect    bool
 	storeItemExternalUrl string
@@ -105,6 +107,8 @@ func NewAPI(
 	discordClientSecret string,
 	clientToken string,
 	externalUrl string,
+	tc *TransactionCache,
+	ucm *UserCacheMap,
 	isTestnetBlockchain bool,
 	runBlockchainBridge bool,
 ) *API {
@@ -149,9 +153,13 @@ func NewAPI(
 		users: make(chan func(userList UserCacheMap)),
 
 		// object to hold transaction stuff
-		TxConn:           txConn,
-		transaction:      make(chan *passport.NewTransaction),
-		heldTransactions: make(chan func(heldTxList map[passport.TransactionReference]*passport.NewTransaction)),
+		// TxConn: txConn,
+		transactionCache: tc,
+		userCacheMap:     ucm,
+		// userSupsCacheMap: map[passport.UserID]*UserCache{},
+
+		// transaction:      make(chan *passport.NewTransaction),
+		// heldTransactions: make(chan func(heldTxList map[passport.TransactionReference]*passport.NewTransaction)),
 
 		// treasury ticker map
 		treasuryTickerMap: make(map[ServerClientName]*tickle.Tickle),
@@ -226,7 +234,7 @@ func NewAPI(
 			r.Get("/mint-nft/{address}/{nonce}/{tokenID}", api.WithError(api.MintAsset))
 			r.Get("/asset/{token_id}", api.WithError(api.AssetGet))
 			r.Get("/auth/twitter", api.WithError(api.Auth.TwitterAuth))
-			r.Get("/dummy-sale", api.WithError(api.Dummysale))
+			// r.Get("/dummy-sale", api.WithError(api.Dummysale))
 			if runBlockchainBridge {
 				r.Get("/check-eth-tx/{tx_id}", api.WithError(cc.CheckEthTx))
 				r.Get("/check-bsc-tx/{tx_id}", api.WithError(cc.CheckBscTx))
@@ -279,14 +287,14 @@ func NewAPI(
 	go api.HandleServerClients()
 
 	// Run the transaction channel listeners
-	go api.HandleTransactions()
-	go api.HandleHeldTransactions()
+	// go api.HandleTransactions()
+	// go api.HandleHeldTransactions()
 
 	// Run the listener for the db user update event
 	go api.DBListenForUserUpdateEvent()
 
 	// Run the listener for the user cache
-	go api.HandleUserCache()
+	// go api.HandleUserCache()
 
 	// Initialise treasury fund ticker
 	go api.InitialiseTreasuryFundTicker()
@@ -308,39 +316,39 @@ func NewAPI(
 	return api
 }
 
-//test function for remaining supply
-func (api *API) Dummysale(w http.ResponseWriter, r *http.Request) (int, error) {
-	// get amount from get url
-	ctx := context.Background()
-	amount := r.URL.Query().Get("amount")
+// //test function for remaining supply
+// func (api *API) Dummysale(w http.ResponseWriter, r *http.Request) (int, error) {
+// 	// get amount from get url
+// 	ctx := context.Background()
+// 	amount := r.URL.Query().Get("amount")
 
-	bigIntAmount := big.Int{}
-	bigIntAmount.SetString(amount, 10)
+// 	bigIntAmount := big.Int{}
+// 	bigIntAmount.SetString(amount, 10)
 
-	tx := &passport.NewTransaction{
-		From:                 passport.XsynSaleUserID,
-		To:                   passport.SupremacyGameUserID,
-		TransactionReference: "test sale",
-		Amount:               bigIntAmount,
-	}
+// 	tx := &passport.NewTransaction{
+// 		From:                 passport.XsynSaleUserID,
+// 		To:                   passport.SupremacyGameUserID,
+// 		TransactionReference: "test sale",
+// 		Amount:               bigIntAmount,
+// 	}
 
-	select {
-	case api.transaction <- tx:
+// 	select {
+// 	case api.transaction <- tx:
 
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("transaction send")
-	}
+// 	case <-time.After(10 * time.Second):
+// 		api.Log.Err(errors.New("timeout on channel send exceeded"))
+// 		panic("transaction send")
+// 	}
 
-	sups, err := db.UserBalance(ctx, api.Conn, passport.XsynSaleUserID)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
+// 	sups, err := db.UserBalance(ctx, api.Conn, passport.XsynSaleUserID)
+// 	if err != nil {
+// 		return http.StatusInternalServerError, terror.Error(err)
+// 	}
 
-	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSRemainingSubscribe), sups.String())
+// 	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSRemainingSubscribe), sups.String())
 
-	return http.StatusAccepted, nil
-}
+// 	return http.StatusAccepted, nil
+// }
 
 // Run the API service
 func (api *API) Run(ctx context.Context) error {
