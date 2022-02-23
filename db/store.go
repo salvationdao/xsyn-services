@@ -288,7 +288,7 @@ func StoreList(
 	countQ := fmt.Sprintf(`--sql
 		SELECT COUNT(DISTINCT xsyn_store.id)
 		%s
-		WHERE  xsyn_store.restriction != 'LOOTBOX' AND xsyn_store.deleted_at %s
+		WHERE (xsyn_store.restriction != 'LOOTBOX' AND xsyn_store.restriction != 'WHITELIST') AND xsyn_store.deleted_at %s
 			%s
 			%s
 		`,

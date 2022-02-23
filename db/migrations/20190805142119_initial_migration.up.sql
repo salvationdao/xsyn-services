@@ -393,7 +393,6 @@ CREATE TABLE xsyn_store
     deleted_at          TIMESTAMPTZ,
     created_at          TIMESTAMPTZ NOT NULL             DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL             DEFAULT NOW(),
-    white_listed_addresses TEXT[]
 
 );
 
