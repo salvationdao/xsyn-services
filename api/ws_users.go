@@ -2192,13 +2192,13 @@ func (uc *UserController) UserSupsUpdatedSubscribeHandler(ctx context.Context, c
 		return "", "", terror.Error(terror.ErrForbidden)
 	}
 
-	user, err := db.UserGet(ctx, uc.Conn, userID)
+	sups, err := uc.API.userCacheMap.Get(client.Identifier())
 	// get current on world sups
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
 
-	reply(user.Sups.String())
+	reply(sups.String())
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, userID)), nil
 }
 
