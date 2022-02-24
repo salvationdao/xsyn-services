@@ -2381,7 +2381,7 @@ func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, client *
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
 
-	sups, err := db.UserBalance(ctx, uc.API.Conn, passport.XsynSaleUserID.String())
+	sups, err := uc.API.userCacheMap.Get(passport.XsynSaleUserID.String())
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
