@@ -22,14 +22,16 @@ type CollectionController struct {
 	Conn *pgxpool.Pool
 	Log  *zerolog.Logger
 	API  *API
+	isTestnetwork bool
 }
 
 // NewCollectionController creates the collection hub
-func NewCollectionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *CollectionController {
+func NewCollectionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, isTestnetwork bool) *CollectionController {
 	collectionHub := &CollectionController{
 		Conn: conn,
 		Log:  log_helpers.NamedLogger(log, "collection_hub"),
 		API:  api,
+		isTestnetwork:isTestnetwork,
 	}
 
 	// collection list
@@ -113,7 +115,12 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hu
 
 	o := bridge.NewOracle(ctrlr.API.BridgeParams.MoralisKey)
 
-	walletCollections, err := o.NFTOwners(ctrlr.API.BridgeParams.EthNftAddr, "goerli")
+	network := bridge.NetworkGoerli
+	if !ctrlr.isTestnetwork {
+		network = bridge.NetworkEth
+	}
+
+	walletCollections, err := o.NFTOwners(ctrlr.API.BridgeParams.EthNftAddr, network)
 
 	if err != nil {
 		return terror.Error(err)
