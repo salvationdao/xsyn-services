@@ -66,7 +66,6 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 
 	// sup control
 	api.SupremacyCommand(HubKeySupremacyHoldSups, supremacyHub.SupremacyHoldSupsHandler)
-	// api.SupremacyCommand(HubKeySupremacyCommitTransactions, supremacyHub.SupremacyCommitTransactionsHandler)
 	api.SupremacyCommand(HubKeySupremacyReleaseTransactions, supremacyHub.SupremacyReleaseTransactionsHandler)
 
 	api.SupremacyCommand(HubKeySupremacyTickerTick, supremacyHub.SupremacyTickerTickHandler)
@@ -208,7 +207,43 @@ type SupremacyTickerTickRequest struct {
 	} `json:"payload"`
 }
 
+func (sc *SupremacyControllerWS) SupremacyFeed() {
+	fund := big.NewInt(0)
+	fund, ok := fund.SetString("4000000000000000000", 10)
+	if !ok {
+		sc.Log.Err(errors.New("setting string not ok on fund big int")).Msg("too many strings")
+		return
+	}
+
+	tx := &passport.NewTransaction{
+		From:                 passport.XsynTreasuryUserID,
+		To:                   passport.SupremacySupPoolUserID,
+		Amount:               *fund,
+		TransactionReference: passport.TransactionReference(fmt.Sprintf("treasury|ticker|%s", time.Now())),
+	}
+
+	// process user cache map
+	fromBalance, toBalance, _, err := sc.API.userCacheMap.Process(tx)
+	if err != nil {
+		sc.Log.Err(errors.New("setting string not ok on fund big int")).Msg("too many strings")
+		return
+	}
+
+	ctx := context.Background()
+
+	if !tx.From.IsSystemUser() {
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), fromBalance.String())
+	}
+
+	if !tx.To.IsSystemUser() {
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), toBalance.String())
+	}
+}
+
 func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	// make treasury send game server user moneys
+	sc.SupremacyFeed()
+
 	req := &SupremacyTickerTickRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -233,12 +268,12 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 	// we take the whole balance of supremacy sup pool and give it to the users watching
 	// amounts depend on their multiplier
 	// the supremacy sup pool user gets sups trickled into it from the last battle and 4 every 5 seconds
-	supsForTick, err := db.UserBalance(ctx, sc.Conn, passport.SupremacySupPoolUserID.String())
+	supsForTick, err := sc.API.userCacheMap.Get(passport.SupremacySupPoolUserID.String())
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	supPool := &supsForTick.Int
+	supPool := &supsForTick
 	onePointWorth := big.NewInt(0)
 	onePointWorth = onePointWorth.Div(supPool, big.NewInt(int64(totalPoints)))
 	// loop again to create all transactions
@@ -288,7 +323,7 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 	sc.poolHighPriorityLock()
 
 	// get current battle user sups
-	battleUser, err := db.UserBalance(ctx, sc.Conn, passport.SupremacyBattleUserID.String())
+	battleUser, err := sc.API.userCacheMap.Get(passport.SupremacyBattleUserID.String())
 	if err != nil {
 		sc.poolHighPriorityUnlock()
 		return terror.Error(err, "failed to get battle user balance from db")
@@ -296,7 +331,7 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 
 	// calc trickling sups for current round
 	supsForTrickle := big.NewInt(0)
-	supsForTrickle.Add(supsForTrickle, &battleUser.Int)
+	supsForTrickle.Add(supsForTrickle, &battleUser)
 
 	// subtrack the sups that is trickling at the moment
 	for _, tricklingSups := range sc.TickerPoolCache.TricklingAmountMap {

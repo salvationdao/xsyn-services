@@ -21,7 +21,6 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 
@@ -62,16 +61,8 @@ type API struct {
 	sendToServerClients chan *ServerClientMessage
 
 	//tx stuff
-
-	// transaction      chan *passport.NewTransaction
-	// heldTransactions chan func(heldTxList map[passport.TransactionReference]*passport.NewTransaction)
 	transactionCache *TransactionCache
 	userCacheMap     *UserCacheMap
-
-	// userSupsRWMx     sync.RWMutex
-	// userSupsCacheMap map[passport.UserID]*UserCache
-	// treasury ticker map
-	treasuryTickerMap map[ServerClientName]*tickle.Tickle
 
 	// Supremacy Sups Pool
 	supremacySupsPool chan func(*SupremacySupPool)
@@ -80,9 +71,6 @@ type API struct {
 	factionWarMachineContractMap map[passport.FactionID]chan func(*WarMachineContract)
 	fastAssetRepairCenter        chan func(RepairQueue)
 	standardAssetRepairCenter    chan func(RepairQueue)
-
-	// Queue Reward
-	// TxConn *sql.DB
 
 	walletOnlyConnect    bool
 	storeItemExternalUrl string
@@ -162,7 +150,6 @@ func NewAPI(
 		// heldTransactions: make(chan func(heldTxList map[passport.TransactionReference]*passport.NewTransaction)),
 
 		// treasury ticker map
-		treasuryTickerMap: make(map[ServerClientName]*tickle.Tickle),
 		supremacySupsPool: make(chan func(*SupremacySupPool)),
 
 		// faction war machine contract
@@ -283,9 +270,6 @@ func NewAPI(
 
 	// Run the listener for the user cache
 	// go api.HandleUserCache()
-
-	// Initialise treasury fund ticker
-	go api.InitialiseTreasuryFundTicker()
 
 	// Initial supremacy sup pool
 	go api.StartSupremacySupPool()
