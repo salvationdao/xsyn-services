@@ -12,12 +12,10 @@ import (
 	"net/http"
 	"os"
 	"passport"
-	"passport/api"
 	"passport/db"
 	"testing"
 	"time"
 
-	"github.com/gofrs/uuid"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/ory/dockertest/v3/docker"
 
@@ -226,29 +224,4 @@ func BenchmarkTransactions(b *testing.B) {
 			}(outI)
 		}
 	}()
-
-	b.Run("process transactions", func(t *testing.B) {
-		count := 2000 // this many transactions
-		for {
-			transaction := <-transactionChannel
-
-			_, err := api.CreateTransactionEntry(txConn,
-				fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
-				transaction.Amount,
-				transaction.To,
-				transaction.From,
-				"",
-				transaction.TransactionReference,
-			)
-			if err != nil {
-				b.Log(err.Error())
-				b.Fatal()
-			}
-
-			count--
-			if count == 0 {
-				return
-			}
-		}
-	})
 }

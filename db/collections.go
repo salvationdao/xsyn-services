@@ -14,6 +14,7 @@ const CollectionGetQuery string = `
 SELECT 
 DISTINCT collections.name,
 collections.id,
+collections.slug,
 collections.deleted_at,
 collections.updated_at,
 collections.created_at
@@ -50,12 +51,12 @@ func (cc CollectionColumn) IsValid() error {
 	return terror.Error(fmt.Errorf("invalid collection column type"))
 }
 
-// CollectionGet returns a collection by name
-func CollectionGet(ctx context.Context, conn Conn, name string) (*passport.Collection, error) {
+// CollectionGet returns a collection by slug
+func CollectionGet(ctx context.Context, conn Conn, slug string) (*passport.Collection, error) {
 	collection := &passport.Collection{}
-	q := CollectionGetQuery + `WHERE collections.name = $1`
+	q := CollectionGetQuery + `WHERE collections.slug = $1`
 
-	err := pgxscan.Get(ctx, conn, collection, q, name)
+	err := pgxscan.Get(ctx, conn, collection, q, slug)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting collection.")
 	}

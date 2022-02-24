@@ -22,14 +22,16 @@ type CollectionController struct {
 	Conn *pgxpool.Pool
 	Log  *zerolog.Logger
 	API  *API
+	isTestnetwork bool
 }
 
 // NewCollectionController creates the collection hub
-func NewCollectionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *CollectionController {
+func NewCollectionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, isTestnetwork bool) *CollectionController {
 	collectionHub := &CollectionController{
 		Conn: conn,
 		Log:  log_helpers.NamedLogger(log, "collection_hub"),
 		API:  api,
+		isTestnetwork:isTestnetwork,
 	}
 
 	// collection list
@@ -113,7 +115,13 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hu
 
 	o := bridge.NewOracle(ctrlr.API.BridgeParams.MoralisKey)
 
-	walletCollections, err := o.NFTOwners(ctrlr.API.BridgeParams.EthNftAddr, "goerli")
+	network := bridge.NetworkGoerli
+	if !ctrlr.isTestnetwork {
+		network = bridge.NetworkEth
+	}
+
+	walletCollections, err := o.NFTOwners(ctrlr.API.BridgeParams.EthNftAddr, network)
+
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -130,7 +138,7 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hu
 type CollectionUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		Name string `json:"name"`
+		Slug string `json:"slug"`
 	} `json:"payload"`
 }
 
@@ -144,7 +152,7 @@ func (ctrlr *CollectionController) CollectionUpdatedSubscribeHandler(ctx context
 		return req.TransactionID, "", terror.Error(err)
 	}
 
-	collection, err := db.CollectionGet(ctx, ctrlr.Conn, req.Payload.Name)
+	collection, err := db.CollectionGet(ctx, ctrlr.Conn, req.Payload.Slug)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
 	}

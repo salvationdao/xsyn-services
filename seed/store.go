@@ -144,7 +144,7 @@ var BostonDefaultWeapons = []*passport.Attribute{
 }
 
 func (s *Seeder) SeedInitialStoreItems(ctx context.Context, passportURL string) error {
-	supremacyCollection, err := db.CollectionGet(ctx, s.Conn, "Supremacy")
+	supremacyCollection, err := db.CollectionGet(ctx, s.Conn, "supremacy")
 	if err != nil {
 		return terror.Error(err)
 	}

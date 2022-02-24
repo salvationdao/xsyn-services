@@ -2,13 +2,28 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"passport"
 	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
+	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 )
+
+func TransactionExists(ctx context.Context, conn Conn, txhash string) (bool, error) {
+	q := "SELECT count(id) FROM transactions WHERE transaction_reference = $1"
+	var count int
+	err := pgxscan.Get(ctx, conn, &count, q, txhash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
 
 // TransactionGetList returns list of transactions from a list of transaction references
 func TransactionGetList(ctx context.Context, conn Conn, transactionList []string) ([]*passport.Transaction, error) {
@@ -255,9 +270,8 @@ func UpdateConfirmationAmount(ctx context.Context, conn Conn, tx string, confirm
 }
 
 // CreateChainConfirmationEntry creates a chain confirmation record
-func CreateChainConfirmationEntry(ctx context.Context, conn Conn, tx string, txRef string, block uint64, chainID int64) (*passport.ChainConfirmations, error) {
+func CreateChainConfirmationEntry(ctx context.Context, conn Conn, tx string, txID string, block uint64, chainID int64) (*passport.ChainConfirmations, error) {
 	conf := &passport.ChainConfirmations{}
-	//
 	q := `INSERT INTO chain_confirmations (tx, tx_id, block, chain_id)
 			VALUES($1, $2, $3, $4)
 			RETURNING 	tx,
@@ -268,7 +282,7 @@ func CreateChainConfirmationEntry(ctx context.Context, conn Conn, tx string, txR
 						confirmation_amount`
 
 	err := pgxscan.Get(ctx, conn, conf, q,
-		tx, txRef, block, chainID)
+		tx, txID, block, chainID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}

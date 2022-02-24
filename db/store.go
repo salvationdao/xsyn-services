@@ -148,7 +148,7 @@ func StoreItemGet(ctx context.Context, conn Conn, storeItemID passport.StoreItem
 // StoreItemListByFactionLootbox list all items based on faction and if restriction is 'LOOTBOX'
 func StoreItemListByFactionLootbox(ctx context.Context, conn Conn, factionID passport.FactionID) ([]*passport.StoreItem, error) {
 	storeItems := []*passport.StoreItem{}
-	q := StoreGetQuery + "WHERE xsyn_store.faction_id = $1 AND xsyn_store.restriction = 'LOOTBOX' AND xsyn_store.amount_available > 0"
+	q := StoreGetQuery + "WHERE xsyn_store.faction_id = $1 AND xsyn_store.restriction = 'LOOTBOX' AND (xsyn_store.amount_available - xsyn_store.amount_sold) > 0"
 
 	err := pgxscan.Select(ctx, conn, &storeItems, q, factionID)
 	if err != nil {
@@ -324,7 +324,7 @@ func StoreList(
 	// Get Paginated Result
 	q := fmt.Sprintf(
 		StoreGetQuery+`--sql
-		WHERE xsyn_store.restriction != 'LOOTBOX' AND xsyn_store.deleted_at %s
+		WHERE xsyn_store.restriction != 'LOOTBOX' AND xsyn_store.restriction != 'WHITELIST' AND xsyn_store.deleted_at %s
 			%s
 			%s
 		%s

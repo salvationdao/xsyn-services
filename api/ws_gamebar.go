@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"os"
 	"passport"
 	"passport/db"
 	"time"
@@ -87,21 +88,17 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 		return terror.Error(fmt.Errorf("user not found"), "User not found")
 	}
 
-	gc.API.transactionCache.Process(passport.NewTransaction{
-		To:                   user.ID,
-		From:                 passport.XsynSaleUserID,
-		Amount:               *big.NewInt(100000),
-		TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
-		Description:          "Give away for testing",
-	})
-
-	// oneSups := big.NewInt(1000000000000000000)
-	// oneSups.Mul(oneSups, big.NewInt(100000))
-	// // give sups straight a way for testing
-	// _, _, err = gc.API.userCacheMap.Process(passport.XsynSaleUserID.String(), userID.String(), *oneSups)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
+	if os.Getenv("PASSPORT_ENVIRONMENT") == "development" {
+		oneSups := big.NewInt(1000000000000000000)
+		oneSups.Mul(oneSups, big.NewInt(100000))
+		gc.API.transactionCache.Process(&passport.NewTransaction{
+			To:                   user.ID,
+			From:                 passport.XsynSaleUserID,
+			Amount:               *oneSups,
+			TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
+			Description:          "Give away for testing",
+		})
+	}
 
 	reply(true)
 

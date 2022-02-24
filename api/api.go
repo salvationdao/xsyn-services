@@ -172,6 +172,8 @@ func NewAPI(
 		storeItemExternalUrl: externalUrl,
 	}
 
+	cc := NewChainClients(log, api, config.BridgeParams, isTestnetBlockchain, runBlockchainBridge)
+
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
 	api.Routes.Use(middleware.Logger)
@@ -214,16 +216,6 @@ func NewAPI(
 		log.Fatal().Msgf("failed to init hub auther: %s", err.Error())
 	}
 
-	cc := &ChainClients{
-		Params: api.BridgeParams,
-		Log: log_helpers.NamedLogger(log, "chain clients"),
-		API: api,
-	}
-	if runBlockchainBridge {
-		// Runs the listeners for all the chain bridges
-		cc = RunChainListeners(log, api, config.BridgeParams, isTestnetBlockchain)
-	}
-
 	api.Routes.Handle("/metrics", promhttp.Handler())
 	api.Routes.Route("/api", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
@@ -237,12 +229,6 @@ func NewAPI(
 			r.Get("/mint-nft/{address}/{nonce}/{tokenID}", api.WithError(api.MintAsset))
 			r.Get("/asset/{token_id}", api.WithError(api.AssetGet))
 			r.Get("/auth/twitter", api.WithError(api.Auth.TwitterAuth))
-			//r.Get("/dummy-sale", api.WithError(api.Dummysale))
-
-			r.Post("/eth-transaction-webhook", api.WithError(cc.TransactionWebhook))
-			r.Get("/check-eth-tx/{tx_id}", api.WithError(cc.CheckEthTx))
-			r.Get("/check-eth-native-tx/{tx_id}", api.WithError(cc.CheckNativeEthTx))
-			r.Get("/check-bsc-tx/{tx_id}", api.WithError(cc.CheckBscTx))
 
 			r.Get("/whitelist/check", api.WithError(api.WhitelistOnlyWalletCheck))
 			r.Get("/faction-data", api.WithError(api.FactionGetData))
@@ -255,7 +241,7 @@ func NewAPI(
 		_ = NewSupController(log, conn, api, cc)
 	}
 	_ = NewAssetController(log, conn, api)
-	_ = NewCollectionController(log, conn, api)
+	_ = NewCollectionController(log, conn, api, isTestnetBlockchain)
 	_ = NewServerClientController(log, conn, api)
 	_ = NewCheckController(log, conn, api)
 	_ = NewUserActivityController(log, conn, api)
@@ -295,9 +281,6 @@ func NewAPI(
 	// go api.HandleTransactions()
 	// go api.HandleHeldTransactions()
 
-	// Run the listener for the db user update event
-	go api.DBListenForUserUpdateEvent()
-
 	// Run the listener for the user cache
 	// go api.HandleUserCache()
 
@@ -320,7 +303,6 @@ func NewAPI(
 
 	return api
 }
-
 
 ////test function for remaining supply
 //func (api *API) Dummysale(w http.ResponseWriter, r *http.Request) (int, error) {

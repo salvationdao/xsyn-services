@@ -28,7 +28,7 @@ require (
 	github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6
 	github.com/ninja-software/sale v0.0.7
 	github.com/ninja-software/terror/v2 v2.0.7
-	github.com/ninja-syndicate/hub v1.5.9
+	github.com/ninja-syndicate/hub v1.5.10
 	github.com/ninja-syndicate/supremacy-bridge v0.1.37
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
@@ -104,7 +104,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/creack/pty v1.1.11 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/davecgh/go-spew v1.1.1
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.0-20210816181553-5444fa50b93d // indirect
 	github.com/ethereum/go-ethereum v1.10.16
 	github.com/fatih/color v1.10.0 // indirect
