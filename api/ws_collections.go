@@ -131,7 +131,7 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hu
 type CollectionUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		Name string `json:"name"`
+		Slug string `json:"slug"`
 	} `json:"payload"`
 }
 
@@ -145,7 +145,7 @@ func (ctrlr *CollectionController) CollectionUpdatedSubscribeHandler(ctx context
 		return req.TransactionID, "", terror.Error(err)
 	}
 
-	collection, err := db.CollectionGet(ctx, ctrlr.Conn, req.Payload.Name)
+	collection, err := db.CollectionGet(ctx, ctrlr.Conn, req.Payload.Slug)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
 	}

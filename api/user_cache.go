@@ -42,12 +42,12 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 	// load balance first
 	fromBalance, err := ucm.Get(nt.From.String())
 	if err != nil {
-		return nil, nil, TransactionFailed, terror.Error(err, "failed to read debit balance")
+		return nil, nil, TransactionFailed, terror.Error(err, "Failed to read debit balance. Please contact support if this problem persists.")
 	}
 
 	toBalance, err := ucm.Get(nt.To.String())
 	if err != nil {
-		return nil, nil, TransactionFailed, terror.Error(err, "failed to read credit balance")
+		return nil, nil, TransactionFailed, terror.Error(err, "Failed to read credit balance. Please contact support if this problem persists.")
 	}
 
 	// do subtract
@@ -55,7 +55,7 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 	newFromBalance.Add(newFromBalance, &fromBalance)
 	newFromBalance.Sub(newFromBalance, &nt.Amount)
 	if newFromBalance.Cmp(big.NewInt(0)) < 0 {
-		return nil, nil, TransactionFailed, terror.Error(errors.New("not enough funds"), "no enough fund")
+		return nil, nil, TransactionFailed, terror.Error(errors.New("not enough funds"), "Not enough funds.")
 	}
 
 	// do add
@@ -63,7 +63,7 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 	newToBalance.Add(newToBalance, &toBalance)
 	newToBalance.Add(newToBalance, &nt.Amount)
 	if newToBalance.Cmp(big.NewInt(0)) < 0 {
-		return nil, nil, TransactionFailed, terror.Error(errors.New("not enough funds"), "no enough fund")
+		return nil, nil, TransactionFailed, terror.Error(errors.New("not enough funds"), "Not enough funds.")
 	}
 
 	// store back to the map

@@ -154,7 +154,7 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 
 // PurchaseLootbox attempts to make a purchase for a given user ID and a given
 func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
-	 ucmProcess func(*passport.NewTransaction) (*big.Int, *big.Int, string, error), user passport.User, factionID passport.FactionID, externalURL string) (*uint64, error) {
+	ucmProcess func(*passport.NewTransaction) (*big.Int, *big.Int, string, error), user passport.User, factionID passport.FactionID, externalURL string) (*uint64, error) {
 
 	// get all faction items marked as loot box
 	mechs, err := db.StoreItemListByFactionLootbox(ctx, conn, factionID)
@@ -164,7 +164,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 
 	mechIDPool := []*passport.StoreItemID{}
 	for _, m := range mechs {
-		for i := 0; i < m.AmountAvailable - m.AmountSold; i ++ {
+		for i := 0; i < m.AmountAvailable-m.AmountSold; i++ {
 			mechIDPool = append(mechIDPool, &m.ID)
 		}
 	}
@@ -205,7 +205,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	// process user cache map
 	nfb, ntb, _, err := ucmProcess(trans)
 	if err != nil {
-		return nil, terror.Error(err, "Failed finished payment process, try again or contact support.")
+		return nil, terror.Error(err)
 	}
 
 	if !trans.From.IsSystemUser() {
@@ -221,7 +221,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 		trans := &passport.NewTransaction{
 			To:                   user.ID,
 			From:                 passport.XsynTreasuryUserID,
-			Amount:              price,
+			Amount:               price,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
 			Description:          "Refund of purchase on Supremacy storefront.",
 		}
