@@ -324,7 +324,7 @@ func StoreList(
 	// Get Paginated Result
 	q := fmt.Sprintf(
 		StoreGetQuery+`--sql
-		WHERE xsyn_store.restriction != 'LOOTBOX' AND xsyn_store.deleted_at %s
+		WHERE xsyn_store.restriction != 'LOOTBOX' AND xsyn_store.restriction != 'WHITELIST' AND xsyn_store.deleted_at %s
 			%s
 			%s
 		%s
