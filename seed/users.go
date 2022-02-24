@@ -186,6 +186,7 @@ func (s *Seeder) XsynTreasuryUser(ctx context.Context) (*passport.User, error) {
 	}
 
 	s.TransactionCache.Process(&passport.NewTransaction{
+		Safe:                 true,
 		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		From:                 passport.OnChainUserID,
 		To:                   u.ID,
@@ -218,14 +219,15 @@ func (s *Seeder) SupremacyUser(ctx context.Context) (*passport.User, error) {
 		return nil, terror.Error(fmt.Errorf("invalid string for big int"))
 
 	}
-
+	id := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
 	s.TransactionCache.Process(&passport.NewTransaction{
-		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
+		Safe:                 true,
+		ID:                   id,
 		From:                 passport.XsynTreasuryUserID,
 		To:                   u.ID,
 		Amount:               *amount,
 		Description:          "",
-		TransactionReference: passport.TransactionReference(""),
+		TransactionReference: passport.TransactionReference(id),
 	})
 
 	return u, nil
@@ -253,13 +255,15 @@ func (s *Seeder) XsynSaleUser(ctx context.Context) (*passport.User, error) {
 	}
 
 	// create xsynSaleUser balance of 217M from the xsynTreasuryUser
+	id := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
 	s.TransactionCache.Process(&passport.NewTransaction{
-		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
+		Safe:                 true,
+		ID:                   id,
 		From:                 passport.XsynTreasuryUserID,
 		To:                   u.ID,
 		Amount:               *amount,
 		Description:          "",
-		TransactionReference: passport.TransactionReference(""),
+		TransactionReference: passport.TransactionReference(id),
 	})
 
 	return u, nil
@@ -330,6 +334,7 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 	}
 
 	s.TransactionCache.Process(&passport.NewTransaction{
+		Safe:                 true,
 		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		From:                 passport.XsynTreasuryUserID,
 		To:                   u.ID,
@@ -354,6 +359,7 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 	}
 
 	s.TransactionCache.Process(&passport.NewTransaction{
+		Safe:                 true,
 		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		From:                 passport.XsynTreasuryUserID,
 		To:                   u.ID,
@@ -378,6 +384,7 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 	}
 
 	s.TransactionCache.Process(&passport.NewTransaction{
+		Safe:                 true,
 		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		From:                 passport.XsynTreasuryUserID,
 		Amount:               *amount,

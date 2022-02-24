@@ -10,6 +10,16 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
+func TransactionExists(ctx context.Context, conn Conn, txhash string) (bool, error) {
+	q := "SELECT id FROM transactions WHERE transaction_reference = $1"
+	var count int
+	err := pgxscan.Get(ctx, conn, &count, q, txhash)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 // TransactionGetList returns list of transactions from a list of transaction references
 func TransactionGetList(ctx context.Context, conn Conn, transactionList []string) ([]*passport.Transaction, error) {
 	var transactions []*passport.Transaction

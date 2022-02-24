@@ -410,6 +410,17 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 	skipped := 0
 	for _, r := range records1 {
 		ctx := context.Background()
+
+		exists, err := db.TransactionExists(ctx, conn, r.TxHash)
+		if err != nil {
+			skipped++
+			continue
+		}
+		if exists {
+			skipped++
+			continue
+		}
+
 		user, err := payments.CreateOrGetUser(ctx, conn, r.FromAddress)
 		if err != nil {
 			return err
@@ -420,7 +431,6 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 			continue
 		}
 		if err != nil && !strings.Contains(err.Error(), "duplicate key") {
-			fmt.Println(r.Value, r.JSON.Value)
 			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("store record")
 			continue
 		}

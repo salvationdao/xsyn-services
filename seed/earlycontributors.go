@@ -2,6 +2,7 @@ package seed
 
 import (
 	"context"
+	"fmt"
 	"passport"
 	"passport/db"
 
@@ -33,7 +34,7 @@ func (s *Seeder) EarlyContributors(ctx context.Context) error {
 				From:                 passport.XsynSaleUserID,
 				To:                   u.ID,
 				Description:          "Supremacy early contributor dispersion.",
-				TransactionReference: "Supremacy early contributor dispersion.",
+				TransactionReference: passport.TransactionReference(fmt.Sprintf("Supremacy early contributor dispersion #%04d", i)),
 				Safe:                 true,
 			}
 

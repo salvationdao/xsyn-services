@@ -115,7 +115,7 @@ func StoreRecord(ctx context.Context, toUser *passport.User, ucm *api.UserCacheM
 	msg := fmt.Sprintf("purchased %s SUPS for %s [%s]", output.Shift(-1*api.SUPSDecimals).StringFixed(4), input.Shift(-1*int32(tokenDecimals)).StringFixed(4), strings.ToUpper(record.Symbol))
 
 	trans := &passport.NewTransaction{
-		To:                   passport.OnChainUserID,
+		To:                   toUser.ID,
 		From:                 passport.XsynSaleUserID,
 		Amount:               *output.BigInt(),
 		TransactionReference: passport.TransactionReference(record.TxHash),
@@ -125,7 +125,7 @@ func StoreRecord(ctx context.Context, toUser *passport.User, ucm *api.UserCacheM
 
 	_, _, _, err = ucm.Process(trans)
 	if err != nil {
-		return fmt.Errorf("create tx entry for tx %s: %w", record.FromAddress, err)
+		return fmt.Errorf("create tx entry for tx %s: %w", record.TxHash, err)
 	}
 	return nil
 }

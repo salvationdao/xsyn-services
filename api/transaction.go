@@ -7,22 +7,36 @@ import (
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
+	"go.uber.org/atomic"
 )
 
 type TransactionCache struct {
 	sync.RWMutex
 	conn         *sql.DB
+	locked       atomic.Bool
 	log          *zerolog.Logger
 	transactions []*passport.NewTransaction
+}
+
+func (tc *TransactionCache) Lock() {
+	tc.locked.Store(true)
+	tc.RWMutex.Lock()
+}
+
+func (tc *TransactionCache) Unlock() {
+	tc.locked.Store(false)
+	tc.RWMutex.Unlock()
 }
 
 func NewTransactionCache(conn *sql.DB, log *zerolog.Logger) *TransactionCache {
 	tc := &TransactionCache{
 		sync.RWMutex{},
 		conn,
+		*atomic.NewBool(false),
 		log,
 		[]*passport.NewTransaction{},
 	}
@@ -32,7 +46,9 @@ func NewTransactionCache(conn *sql.DB, log *zerolog.Logger) *TransactionCache {
 	go func() {
 		for {
 			<-ticker.C
-			tc.commit()
+			if !tc.locked.Load() {
+				tc.commit()
+			}
 		}
 	}()
 
@@ -52,8 +68,9 @@ func (tc *TransactionCache) commit() {
 			tx.TransactionReference,
 		)
 		if err != nil {
-			tc.log.Err(err)
+			tc.log.Err(err).Str("tx_ref", string(tx.TransactionReference)).Msg("create tx")
 			if !tx.Safe {
+				spew.Dump(ctrans)
 				tc.Lock() //grind to a halt if transactions fail to save to database
 			}
 			return
@@ -76,7 +93,6 @@ func (tc *TransactionCache) Process(t *passport.NewTransaction) string {
 		}
 	}()
 	tc.transactions = append(tc.transactions, t)
-
 	return t.ID
 }
 
