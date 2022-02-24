@@ -457,7 +457,7 @@ func (cc *ChainClients)runGoBNBPriceListener(ctx context.Context) {
 				exchangeRateBackoff.Reset()
 
 				cc.updatePriceFuncMu.Lock()
-				cc.updatePriceFunc(ETHSymbol, decimal.NewFromFloat(result.Binancecoin.Usd))
+				cc.updatePriceFunc(BNBSymbol, decimal.NewFromFloat(result.Binancecoin.Usd))
 				cc.updatePriceFuncMu.Unlock()
 
 				time.Sleep(10 * time.Second)
