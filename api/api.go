@@ -99,8 +99,10 @@ func NewAPI(
 	ucm *UserCacheMap,
 	isTestnetBlockchain bool,
 	runBlockchainBridge bool,
+	msgBus *messagebus.MessageBus,
+	msgBusCleanUpFunc hub.ClientOfflineFn,
 ) *API {
-	msgBus, cleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
+
 	api := &API{
 		SupUSD:       decimal.New(12, -2),
 		BridgeParams: config.BridgeParams,
@@ -114,7 +116,7 @@ func NewAPI(
 		},
 		MessageBus: msgBus,
 		Hub: hub.New(&hub.Config{
-			ClientOfflineFn: cleanUpFunc,
+			ClientOfflineFn: msgBusCleanUpFunc,
 			Log:             zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
 			Tracer:          SentryTracer.New(),
 			WelcomeMsg: &hub.WelcomeMsg{

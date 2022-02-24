@@ -11,19 +11,22 @@ import (
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
 
 type UserCacheMap struct {
 	sync.Map
 	conn             *pgxpool.Pool
 	TransactionCache *TransactionCache
+	MessageBus       *messagebus.MessageBus
 }
 
-func NewUserCacheMap(conn *pgxpool.Pool, tc *TransactionCache) (*UserCacheMap, error) {
+func NewUserCacheMap(conn *pgxpool.Pool, tc *TransactionCache, msgBus *messagebus.MessageBus) (*UserCacheMap, error) {
 	ucm := &UserCacheMap{
 		sync.Map{},
 		conn,
 		tc,
+		msgBus,
 	}
 	balances, err := db.UserBalances(context.Background(), ucm.conn)
 
@@ -74,6 +77,10 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 	ucm.Store(nt.To.String(), *newToBalance)
 
 	transactonID := ucm.TransactionCache.Process(nt)
+
+	ctx := context.Background()
+	go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, nt.To)), newToBalance.String())
+	go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, nt.From)), newFromBalance.String())
 
 	return newFromBalance, newToBalance, transactonID, nil
 }
