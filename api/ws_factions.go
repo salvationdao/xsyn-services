@@ -179,7 +179,7 @@ type FactionChatRequest struct {
 // ChatMessageSend contains chat message data to send.
 type ChatMessageSend struct {
 	Message       string           `json:"message"`
-	FromUserID    passport.UserID  `json:"userID"`
+	FromUserID    passport.UserID  `json:"fromUserID"`
 	FromUsername  string           `json:"fromUsername"`
 	FactionColour *string          `json:"factionColour,omitempty"`
 	AvatarID      *passport.BlobID `json:"avatarID,omitempty"`
