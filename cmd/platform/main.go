@@ -135,8 +135,8 @@ func main() {
 					&cli.StringFlag{Name: "sup_addr", Value: "0xc99cFaA8f5D9BD9050182f29b83cc9888C5846C4", EnvVars: []string{envPrefix + "_SUP_CONTRACT_ADDR"}, Usage: "SUP contract address"},
 
 					// wallet/contract addresses
-					&cli.StringFlag{Name: "operator_addr", Value: "0xeCfB1f31F012Db0bf6720610301F23F064c567f9", EnvVars: []string{envPrefix + "_OPERATOR_WALLET_ADDR"}, Usage: "Wallet address for administration"},
-					&cli.StringFlag{Name: "signer_private_key", Value: "0x127f840bfc72f80e3fb0e35271da610c84bceeaa70c6db0f12e97d037391c633", EnvVars: []string{envPrefix + "_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing (usually operator)"},
+					&cli.StringFlag{Name: "operator_addr", Value: "0xc01c2f6DD7cCd2B9F8DB9aa1Da9933edaBc5079E", EnvVars: []string{envPrefix + "_OPERATOR_WALLET_ADDR"}, Usage: "Wallet address for administration"},
+					&cli.StringFlag{Name: "signer_private_key", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing (usually operator)"},
 					&cli.StringFlag{Name: "purchase_addr", Value: "0x52b38626D3167e5357FE7348624352B7062fE271", EnvVars: []string{envPrefix + "_PURCHASE_WALLET_ADDR"}, Usage: "Wallet address to receive payments and deposits"},
 
 					&cli.StringFlag{Name: "withdraw_addr", Value: "0x6476dB7cFfeeBf7Cc47Ed8D4996d1D60608AAf95", EnvVars: []string{envPrefix + "_WITHDRAW_CONTRACT_ADDR"}, Usage: "Withdraw contract address"},
