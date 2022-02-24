@@ -169,24 +169,6 @@ func main() {
 					log := log_helpers.LoggerInitZero(environment, level)
 					log.Info().Msg("zerolog initialised")
 
-					enablePurchaseSubscription := c.Bool("enable_purchase_subscription")
-					if enablePurchaseSubscription {
-						err := SyncFunc(c, log)
-						if err != nil {
-							log.Error().Err(err).Msg("sync")
-						}
-
-						go func() {
-							t := time.NewTicker(20 * time.Second)
-							for range t.C {
-								err := SyncFunc(c, log)
-								if err != nil {
-									log.Error().Err(err).Msg("sync")
-								}
-							}
-						}()
-					}
-
 					g := &run.Group{}
 					// Listen for os.interrupt
 					g.Add(run.SignalHandler(ctx, os.Interrupt))
@@ -389,7 +371,7 @@ func SyncFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		}
 		z = z.Add(d)
 	}
-	log.Info().Str("sym", "BNB").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+	log.Info().Int("records", len(records1)).Str("sym", "BNB").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
 
 	records2, err := payments.BUSD(3)
 	if err != nil {
@@ -413,7 +395,7 @@ func SyncFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		}
 		z = z.Add(d)
 	}
-	log.Info().Str("sym", "BUSD").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+	log.Info().Int("records", len(records2)).Str("sym", "BUSD").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
 
 	records3, err := payments.ETH(3)
 	if err != nil {
@@ -433,7 +415,7 @@ func SyncFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		}
 		z = z.Add(d)
 	}
-	log.Info().Str("sym", "ETH").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+	log.Info().Int("records", len(records3)).Str("sym", "ETH").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
 	records4, err := payments.USDC(3)
 	if err != nil {
 		return err
@@ -452,7 +434,7 @@ func SyncFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		}
 		z = z.Add(d)
 	}
-	log.Info().Str("sym", "USDC").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+	log.Info().Int("records", len(records4)).Str("sym", "USDC").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
 
 	records1 = append(records1, records2...)
 	records1 = append(records1, records3...)
@@ -524,6 +506,8 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	BSCChainID := ctxCLI.Int64("bsc_chain_id")
 	ETHChainID := ctxCLI.Int64("eth_chain_id")
 	BSCRouterAddr := ctxCLI.String("bsc_router_addr")
+
+	enablePurchaseSubscription := c.Bool("enable_purchase_subscription")
 
 	isTestnetBlockchain := ctxCLI.Bool("is_testnet_blockchain")
 	runBlockchainBridge := ctxCLI.Bool("run_blockchain_bridge")
@@ -652,6 +636,23 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	tc := api.NewTransactionCache(txConn, log)
+
+	if enablePurchaseSubscription {
+		err := SyncFunc(c, log)
+		if err != nil {
+			log.Error().Err(err).Msg("sync")
+		}
+
+		go func() {
+			t := time.NewTicker(20 * time.Second)
+			for range t.C {
+				err := SyncFunc(c, log)
+				if err != nil {
+					log.Error().Err(err).Msg("sync")
+				}
+			}
+		}()
+	}
 
 	// initialise user cache map
 	ucm := api.NewUserCacheMap(pgxconn)
