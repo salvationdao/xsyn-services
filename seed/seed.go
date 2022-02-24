@@ -30,7 +30,7 @@ type Seeder struct {
 
 // NewSeeder returns a new Seeder
 func NewSeeder(conn *pgxpool.Pool, txConn *sql.DB, passportHostUrl string, externalUrl string) *Seeder {
-	log := log_helpers.LoggerInitZero("seed", "")
+	log := log_helpers.LoggerInitZero("seed", "DebugLevel")
 	tc := api.NewTransactionCache(txConn, log)
 	s := &Seeder{Conn: conn, TxConn: txConn, TransactionCache: tc, PassportHostUrl: passportHostUrl}
 	return s
