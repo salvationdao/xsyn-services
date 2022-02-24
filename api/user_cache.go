@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"math/big"
 	"passport"
 	"passport/db"
@@ -54,7 +55,7 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 	newFromBalance.Add(newFromBalance, &fromBalance)
 	newFromBalance.Sub(newFromBalance, &nt.Amount)
 	if newFromBalance.Cmp(big.NewInt(0)) < 0 {
-		return nil, nil, TransactionFailed, terror.Error(err, "no enough fund")
+		return nil, nil, TransactionFailed, terror.Error(errors.New("not enough funds"), "no enough fund")
 	}
 
 	// do add
@@ -62,7 +63,7 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 	newToBalance.Add(newToBalance, &toBalance)
 	newToBalance.Add(newToBalance, &nt.Amount)
 	if newToBalance.Cmp(big.NewInt(0)) < 0 {
-		return nil, nil, TransactionFailed, terror.Error(err, "no enough fund")
+		return nil, nil, TransactionFailed, terror.Error(errors.New("not enough funds"), "no enough fund")
 	}
 
 	// store back to the map

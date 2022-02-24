@@ -186,13 +186,13 @@ func (s *Seeder) XsynTreasuryUser(ctx context.Context) (*passport.User, error) {
 	}
 
 	s.TransactionCache.Process(&passport.NewTransaction{
+		Safe:                 true,
 		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		From:                 passport.OnChainUserID,
 		To:                   u.ID,
 		Amount:               *amount,
 		Description:          "Initial supply seed.",
 		TransactionReference: passport.TransactionReference("Initial supply seed."),
-		Safe:                 true,
 	})
 
 	return u, nil
@@ -219,15 +219,15 @@ func (s *Seeder) SupremacyUser(ctx context.Context) (*passport.User, error) {
 		return nil, terror.Error(fmt.Errorf("invalid string for big int"))
 
 	}
-
+	id := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
 	s.TransactionCache.Process(&passport.NewTransaction{
-		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
+		Safe:                 true,
+		ID:                   id,
 		From:                 passport.XsynTreasuryUserID,
 		To:                   u.ID,
 		Amount:               *amount,
 		Description:          "",
-		TransactionReference: passport.TransactionReference(""),
-		Safe:                 true,
+		TransactionReference: passport.TransactionReference(id),
 	})
 
 	return u, nil
@@ -255,14 +255,15 @@ func (s *Seeder) XsynSaleUser(ctx context.Context) (*passport.User, error) {
 	}
 
 	// create xsynSaleUser balance of 217M from the xsynTreasuryUser
+	id := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
 	s.TransactionCache.Process(&passport.NewTransaction{
-		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
+		Safe:                 true,
+		ID:                   id,
 		From:                 passport.XsynTreasuryUserID,
 		To:                   u.ID,
 		Amount:               *amount,
 		Description:          "",
-		TransactionReference: passport.TransactionReference(""),
-		Safe:                 true,
+		TransactionReference: passport.TransactionReference(id),
 	})
 
 	return u, nil
@@ -333,13 +334,13 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 	}
 
 	s.TransactionCache.Process(&passport.NewTransaction{
+		Safe:                 true,
 		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		From:                 passport.XsynTreasuryUserID,
 		To:                   u.ID,
 		Amount:               *amount,
 		Description:          "Initial supremacy Zaibatsu supply seed.",
 		TransactionReference: passport.TransactionReference("Initial supremacy Zaibatsu supply seed."),
-		Safe:                 true,
 	})
 
 	// Create user
@@ -358,13 +359,13 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 	}
 
 	s.TransactionCache.Process(&passport.NewTransaction{
+		Safe:                 true,
 		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		From:                 passport.XsynTreasuryUserID,
 		To:                   u.ID,
 		Amount:               *amount,
 		Description:          "Initial supremacy BostonCybernetics supply seed.",
 		TransactionReference: passport.TransactionReference("Initial supremacy BostonCybernetics supply seed."),
-		Safe:                 true,
 	})
 
 	// Create user
@@ -383,13 +384,13 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 	}
 
 	s.TransactionCache.Process(&passport.NewTransaction{
+		Safe:                 true,
 		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		From:                 passport.XsynTreasuryUserID,
 		Amount:               *amount,
 		To:                   u.ID,
 		Description:          "Initial supremacy RedMountain supply seed.",
 		TransactionReference: passport.TransactionReference("Initial supremacy RedMountain supply seed."),
-		Safe:                 true,
 	})
 
 	err = s.SeedAndAssignZaibatsu(ctx, supremacyCollection)
