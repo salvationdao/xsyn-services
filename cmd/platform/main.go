@@ -8,11 +8,15 @@ import (
 	"passport/api"
 	"passport/db"
 	"passport/email"
+	"passport/payments"
 	"passport/seed"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ninja-software/log_helpers"
+	"github.com/oklog/run"
+	"github.com/shopspring/decimal"
 
 	_ "github.com/lib/pq" //postgres drivers for initialization
 
@@ -27,7 +31,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/oklog/run"
 	"github.com/urfave/cli/v2"
 )
 
@@ -153,7 +156,7 @@ func main() {
 					&cli.StringFlag{Name: "eth_node_addr", Value: "wss://sparkling-polished-glade.quiknode.pro/a68ec6502e56dd3292f33c276c81cc6360877e58/", EnvVars: []string{envPrefix + "_ETH_WS_NODE_URL"}, Usage: "Ethereum WS node URL"},
 					//router address for exchange rates
 					&cli.StringFlag{Name: "bsc_router_addr", Value: "0x10ED43C718714eb63d5aA57B78B54704E256024E", EnvVars: []string{envPrefix + "_BSC_ROUTER_ADDR"}, Usage: "BSC Router address"},
-
+					&cli.BoolFlag{Name: "enable_purchase_subscription", Value: false, EnvVars: []string{envPrefix + "_ENABLE_PURCHASE_SUBSCRIPTION"}, Usage: "Scrape payments every 20 seconds"},
 					//moralis key- set in env vars
 					&cli.StringFlag{Name: "moralis_key", Value: "oijl9YX0BIopm9fRitAYhMWuJOrqr7CE1xl5FIO9XncEdOx5CvxkwMOKm2bv4s0p", EnvVars: []string{envPrefix + "_MORALIS_KEY"}, Usage: "Key to connect to moralis API"},
 				},
@@ -165,6 +168,24 @@ func main() {
 					level := c.String("log_level")
 					log := log_helpers.LoggerInitZero(environment, level)
 					log.Info().Msg("zerolog initialised")
+
+					enablePurchaseSubscription := c.Bool("enable_purchase_subscription")
+					if enablePurchaseSubscription {
+						err := SyncFunc(c, log)
+						if err != nil {
+							log.Error().Err(err).Msg("sync")
+						}
+
+						go func() {
+							t := time.NewTicker(20 * time.Second)
+							for range t.C {
+								err := SyncFunc(c, log)
+								if err != nil {
+									log.Error().Err(err).Msg("sync")
+								}
+							}
+						}()
+					}
 
 					g := &run.Group{}
 					// Listen for os.interrupt
@@ -314,7 +335,148 @@ func txConnect(
 
 	return conn, nil
 }
+func SyncFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
+	databaseUser := ctxCLI.String("database_user")
+	databasePass := ctxCLI.String("database_pass")
+	databaseHost := ctxCLI.String("database_host")
+	databasePort := ctxCLI.String("database_port")
+	databaseName := ctxCLI.String("database_name")
+	databaseAppName := ctxCLI.String("database_application_name")
 
+	databaseTxUser := ctxCLI.String("database_tx_user")
+	databaseTxPass := ctxCLI.String("database_tx_pass")
+
+	conn, err := pgxconnect(
+		databaseUser,
+		databasePass,
+		databaseHost,
+		databasePort,
+		databaseName,
+		databaseAppName,
+		Version,
+	)
+	if err != nil {
+		return err
+	}
+
+	txConn, err := txConnect(
+		databaseTxUser,
+		databaseTxPass,
+		databaseHost,
+		databasePort,
+		databaseName,
+	)
+	if err != nil {
+		return err
+	}
+
+	records1, err := payments.BNB(3)
+	if err != nil {
+		return err
+	}
+
+	z := decimal.Zero
+	totalSupsSold := decimal.Zero
+	for _, r := range records1 {
+		sups, err := decimal.NewFromString(r.Sups)
+		if err != nil {
+			return err
+		}
+		totalSupsSold = totalSupsSold.Add(sups)
+		d, err := decimal.NewFromString(r.Value)
+		if err != nil {
+			log.Error().Err(err).Msg("parse decimal from string")
+		}
+		z = z.Add(d)
+	}
+	log.Info().Str("sym", "BNB").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+
+	records2, err := payments.BUSD(3)
+	if err != nil {
+		return err
+	}
+
+	z = decimal.Zero
+	totalSupsSold = decimal.Zero
+	for _, r := range records2 {
+		sups, err := decimal.NewFromString(r.Sups)
+		if err != nil {
+			return err
+		}
+		totalSupsSold = totalSupsSold.Add(sups)
+		d, err := decimal.NewFromString(r.Value)
+		if err != nil {
+			log.Error().Err(err).Msg("parse decimal from string")
+		}
+		if d.GreaterThan(decimal.NewFromInt(500000)) {
+			fmt.Println("BIG!", d.String(), r.TxHash)
+		}
+		z = z.Add(d)
+	}
+	log.Info().Str("sym", "BUSD").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+
+	records3, err := payments.ETH(3)
+	if err != nil {
+		return err
+	}
+	totalSupsSold = decimal.Zero
+	z = decimal.Zero
+	for _, r := range records3 {
+		sups, err := decimal.NewFromString(r.Sups)
+		if err != nil {
+			return err
+		}
+		totalSupsSold = totalSupsSold.Add(sups)
+		d, err := decimal.NewFromString(r.Value)
+		if err != nil {
+			log.Error().Err(err).Msg("parse decimal from string")
+		}
+		z = z.Add(d)
+	}
+	log.Info().Str("sym", "ETH").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+	records4, err := payments.USDC(3)
+	if err != nil {
+		return err
+	}
+	totalSupsSold = decimal.Zero
+	z = decimal.Zero
+	for _, r := range records4 {
+		sups, err := decimal.NewFromString(r.Sups)
+		if err != nil {
+			return err
+		}
+		totalSupsSold = totalSupsSold.Add(sups)
+		d, err := decimal.NewFromString(r.Value)
+		if err != nil {
+			log.Error().Err(err).Msg("parse decimal from string")
+		}
+		z = z.Add(d)
+	}
+	log.Info().Str("sym", "USDC").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+
+	records1 = append(records1, records2...)
+	records1 = append(records1, records3...)
+	records1 = append(records1, records4...)
+	log.Info().Int("records", len(records1)).Msg("Syncing payments...")
+	successful := 0
+	skipped := 0
+	for _, r := range records1 {
+		ctx := context.Background()
+		err = payments.StoreRecord(ctx, conn, txConn, r)
+		if err != nil && strings.Contains(err.Error(), "duplicate key") {
+			skipped++
+			continue
+		}
+		if err != nil && !strings.Contains(err.Error(), "duplicate key") {
+			fmt.Println(r.Value, r.JSON.Value)
+			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("store record")
+			continue
+		}
+		successful++
+	}
+	log.Info().Int("skipped", skipped).Int("successful", successful).Int("failed", len(records1)-successful).Msg("Synced payments.")
+	return nil
+}
 func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) error {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
@@ -501,5 +663,6 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
 	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, googleClientID, mailer, apiAddr, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config, twitterAPIKey, twitterAPISecret, discordClientID, discordClientSecret, gameserverToken, externalURL, tc, ucm, isTestnetBlockchain, runBlockchainBridge)
+
 	return api.Run(ctx)
 }
