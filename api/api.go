@@ -101,6 +101,7 @@ func NewAPI(
 	runBlockchainBridge bool,
 	msgBus *messagebus.MessageBus,
 	msgBusCleanUpFunc hub.ClientOfflineFn,
+	enablePurchaseSubscription bool,
 ) *API {
 
 	api := &API{
@@ -161,7 +162,7 @@ func NewAPI(
 		storeItemExternalUrl: externalUrl,
 	}
 
-	cc := NewChainClients(log, api, config.BridgeParams, isTestnetBlockchain, runBlockchainBridge)
+	cc := NewChainClients(log, api, config.BridgeParams, isTestnetBlockchain, runBlockchainBridge, enablePurchaseSubscription)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)

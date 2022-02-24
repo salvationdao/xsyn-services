@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ninja-software/terror/v2"
 	"net/http"
 	"passport"
 	"passport/db"
 	"sync"
 	"time"
+
+	"github.com/ninja-software/terror/v2"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jpillora/backoff"
@@ -35,12 +36,12 @@ const SUPSDecimals = 18
 type ChainClients struct {
 	isTestnetBlockchain bool
 	runBlockchainBridge bool
-	SUPS      *bridge.SUPS
-	EthClient *ethclient.Client
-	BscClient *ethclient.Client
-	Params    *passport.BridgeParams
-	API       *API
-	Log       *zerolog.Logger
+	SUPS                *bridge.SUPS
+	EthClient           *ethclient.Client
+	BscClient           *ethclient.Client
+	Params              *passport.BridgeParams
+	API                 *API
+	Log                 *zerolog.Logger
 
 	updatePriceFuncMu sync.Mutex
 	updatePriceFunc   func(symbol string, amount decimal.Decimal)
@@ -62,67 +63,69 @@ type ETHPriceResp struct {
 		Usd float64 `json:"usd"`
 	} `json:"ethereum"`
 }
+type CoinbaseResp struct {
+	Data struct {
+		Currency string `json:"currency"`
+		Rates    struct {
+			Usd string `json:"USD"`
+		} `json:"rates"`
+	} `json:"data"`
+}
 
-func FetchETHPrice() (*ETHPriceResp, error) {
-	req, err := http.NewRequest("GET", "https://pro-api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&x_cg_pro_api_key=CG-x41pKPSUCk9bqtb9j9uixce7", nil)
+func fetchPrice(symbol string) (decimal.Decimal, error) {
+	// use ETH or BNB for symbol
+	req, err := http.NewRequest("GET", fmt.Sprintf(`https://api.coinbase.com/v2/exchange-rates?currency=%s`, symbol), nil)
 	if err != nil {
-		return nil, err
+		return decimal.Zero, err
 	}
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, err
+		return decimal.Zero, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("non 200 status code: %d", resp.StatusCode)
+		return decimal.Zero, fmt.Errorf("non 200 status code: %d", resp.StatusCode)
 	}
-	result := &ETHPriceResp{}
+	result := &CoinbaseResp{}
 	err = json.NewDecoder(resp.Body).Decode(result)
 	if err != nil {
-		return nil, err
+		return decimal.Zero, err
 	}
-	return result, nil
 
+	dec, err := decimal.NewFromString(result.Data.Rates.Usd)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	if dec.Equal(decimal.Zero) {
+		return decimal.Zero, errors.New("0 price returned")
+	}
+	return dec, nil
+}
+func FetchETHPrice() (decimal.Decimal, error) {
+	return fetchPrice("ETH")
 }
 
-func FetchBNBPrice() (*BNBPriceResp, error) {
-	req, err := http.NewRequest("GET", "https://pro-api.coingecko.com/api/v3/simple/price?ids=binancecoin&vs_currencies=usd&x_cg_pro_api_key=CG-x41pKPSUCk9bqtb9j9uixce7", nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("non 200 status code: %d", resp.StatusCode)
-	}
-	result := &BNBPriceResp{}
-	err = json.NewDecoder(resp.Body).Decode(result)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
+func FetchBNBPrice() (decimal.Decimal, error) {
+	return fetchPrice("BNB")
 }
 
-
-func NewChainClients(log *zerolog.Logger, api *API, p *passport.BridgeParams, isTestnetBlockchain bool, runBlockchainBridge bool)  (*ChainClients) {
+func NewChainClients(log *zerolog.Logger, api *API, p *passport.BridgeParams, isTestnetBlockchain bool, runBlockchainBridge bool, enablePurchaseSubscription bool) *ChainClients {
 	cc := &ChainClients{
-		Params:            p,
-		API:               api,
-		Log:               log,
-		updatePriceFuncMu: sync.Mutex{},
+		Params:              p,
+		API:                 api,
+		Log:                 log,
+		updatePriceFuncMu:   sync.Mutex{},
 		isTestnetBlockchain: isTestnetBlockchain,
 		runBlockchainBridge: runBlockchainBridge,
 	}
 	ctx := context.Background()
 
 	cc.updatePriceFunc = func(symbol string, amount decimal.Decimal) {
+		if !enablePurchaseSubscription {
+			return
+		}
 		switch symbol {
 		//case "SUPS":
 		//	cc.API.State.SUPtoUSD = amount
@@ -140,7 +143,7 @@ func NewChainClients(log *zerolog.Logger, api *API, p *passport.BridgeParams, is
 			Str(symbol, amount.String()).
 			Msg("update rate")
 
-		go api.MessageBus.Send(ctx,  messagebus.BusKey(HubKeySUPSExchangeRates), cc.API.State)
+		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSExchangeRates), cc.API.State)
 	}
 
 	if runBlockchainBridge {
@@ -342,7 +345,6 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 				continue ethClientLoop
 			}
 
-
 			// nft mint listener
 			go func() {
 				for {
@@ -389,7 +391,7 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 	}()
 }
 
-func (cc *ChainClients)runGoETHPriceListener(ctx context.Context) {
+func (cc *ChainClients) runGoETHPriceListener(ctx context.Context) {
 
 	// ETH price listener
 	go func() {
@@ -411,15 +413,10 @@ func (cc *ChainClients)runGoETHPriceListener(ctx context.Context) {
 					time.Sleep(exchangeRateBackoff.Duration())
 					continue
 				}
-				if result.Ethereum.Usd == 0 {
-					cc.Log.Err(err).Msg("ETH price returned 0")
-					continue
-				}
-
 				exchangeRateBackoff.Reset()
 
 				cc.updatePriceFuncMu.Lock()
-				cc.updatePriceFunc(ETHSymbol, decimal.NewFromFloat(result.Ethereum.Usd))
+				cc.updatePriceFunc(ETHSymbol, result)
 				cc.updatePriceFuncMu.Unlock()
 
 				time.Sleep(10 * time.Second)
@@ -428,7 +425,7 @@ func (cc *ChainClients)runGoETHPriceListener(ctx context.Context) {
 	}()
 }
 
-func (cc *ChainClients)runGoBNBPriceListener(ctx context.Context) {
+func (cc *ChainClients) runGoBNBPriceListener(ctx context.Context) {
 	// BNB price listener
 	go func() {
 		exchangeRateBackoff := &backoff.Backoff{
@@ -449,15 +446,10 @@ func (cc *ChainClients)runGoBNBPriceListener(ctx context.Context) {
 					time.Sleep(exchangeRateBackoff.Duration())
 					continue
 				}
-				if result.Binancecoin.Usd == 0 {
-					cc.Log.Err(err).Msg("BNB price returned 0")
-					continue
-				}
-
 				exchangeRateBackoff.Reset()
 
 				cc.updatePriceFuncMu.Lock()
-				cc.updatePriceFunc(BNBSymbol, decimal.NewFromFloat(result.Binancecoin.Usd))
+				cc.updatePriceFunc(BNBSymbol, result)
 				cc.updatePriceFuncMu.Unlock()
 
 				time.Sleep(10 * time.Second)
@@ -465,8 +457,6 @@ func (cc *ChainClients)runGoBNBPriceListener(ctx context.Context) {
 		}
 	}()
 }
-
-
 
 func (cc *ChainClients) handleNFTTransfer(ctx context.Context) func(xfer *bridge.NFTTransferEvent) {
 	fn := func(ev *bridge.NFTTransferEvent) {
@@ -594,4 +584,3 @@ func pingFunc(ctx context.Context, client *ethclient.Client) error {
 	}
 	return nil
 }
-
