@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"net/http"
 	"passport"
-	"passport/api"
 	"passport/crypto"
 	"passport/db"
 	"time"
@@ -186,20 +185,14 @@ func (s *Seeder) XsynTreasuryUser(ctx context.Context) (*passport.User, error) {
 
 	}
 
-	txID := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
-
-	// create treasury opening balance (30mil sups)
-	_, err = api.CreateTransactionEntry(s.TxConn,
-		txID,
-		*amount,
-		u.ID,
-		passport.OnChainUserID,
-		"Initial supply seed.",
-		"Initial supply seed.",
-	)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
+	s.TransactionCache.Process(&passport.NewTransaction{
+		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
+		From:                 passport.OnChainUserID,
+		To:                   u.ID,
+		Amount:               *amount,
+		Description:          "Initial supply seed.",
+		TransactionReference: passport.TransactionReference("Initial supply seed."),
+	})
 
 	return u, nil
 }
@@ -226,17 +219,15 @@ func (s *Seeder) SupremacyUser(ctx context.Context) (*passport.User, error) {
 
 	}
 
-	_, err = api.CreateTransactionEntry(s.TxConn,
-		fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
-		*amount,
-		u.ID,
-		passport.XsynTreasuryUserID,
-		"",
-		"",
-	)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
+	s.TransactionCache.Process(&passport.NewTransaction{
+		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
+		From:                 passport.XsynTreasuryUserID,
+		To:                   u.ID,
+		Amount:               *amount,
+		Description:          "",
+		TransactionReference: passport.TransactionReference(""),
+	})
+
 	return u, nil
 }
 
@@ -262,18 +253,15 @@ func (s *Seeder) XsynSaleUser(ctx context.Context) (*passport.User, error) {
 	}
 
 	// create xsynSaleUser balance of 217M from the xsynTreasuryUser
-	_, err = api.CreateTransactionEntry(s.TxConn,
-		fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
-		*amount,
-		u.ID,
-		passport.XsynTreasuryUserID,
-		"Initial supremacy supply seed.",
-		"Initial supremacy supply seed.",
-	)
-	if err != nil {
-		return nil, terror.Error(err)
+	s.TransactionCache.Process(&passport.NewTransaction{
+		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
+		From:                 passport.XsynTreasuryUserID,
+		To:                   u.ID,
+		Amount:               *amount,
+		Description:          "",
+		TransactionReference: passport.TransactionReference(""),
+	})
 
-	}
 	return u, nil
 }
 
@@ -341,17 +329,14 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		return nil, terror.Error(err)
 	}
 
-	_, err = api.CreateTransactionEntry(s.TxConn,
-		fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
-		*amount,
-		u.ID,
-		passport.XsynTreasuryUserID,
-		"Initial supremacy Zaibatsu supply seed.",
-		"Initial supremacy Zaibatsu supply seed.",
-	)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
+	s.TransactionCache.Process(&passport.NewTransaction{
+		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
+		From:                 passport.XsynTreasuryUserID,
+		To:                   u.ID,
+		Amount:               *amount,
+		Description:          "Initial supremacy Zaibatsu supply seed.",
+		TransactionReference: passport.TransactionReference("Initial supremacy Zaibatsu supply seed."),
+	})
 
 	// Create user
 	u = &passport.User{
@@ -368,17 +353,14 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		return nil, terror.Error(err)
 	}
 
-	_, err = api.CreateTransactionEntry(s.TxConn,
-		fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
-		*amount,
-		u.ID,
-		passport.XsynTreasuryUserID,
-		"Initial supremacy BostonCybernetics supply seed.",
-		"Initial supremacy BostonCybernetics supply seed.",
-	)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
+	s.TransactionCache.Process(&passport.NewTransaction{
+		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
+		From:                 passport.XsynTreasuryUserID,
+		To:                   u.ID,
+		Amount:               *amount,
+		Description:          "Initial supremacy BostonCybernetics supply seed.",
+		TransactionReference: passport.TransactionReference("Initial supremacy BostonCybernetics supply seed."),
+	})
 
 	// Create user
 	u = &passport.User{
@@ -395,17 +377,14 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		return nil, terror.Error(err)
 	}
 
-	_, err = api.CreateTransactionEntry(s.TxConn,
-		fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
-		*amount,
-		u.ID,
-		passport.XsynTreasuryUserID,
-		"Initial supremacy RedMountain supply seed.",
-		"Initial supremacy RedMountain supply seed.",
-	)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
+	s.TransactionCache.Process(&passport.NewTransaction{
+		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
+		From:                 passport.XsynTreasuryUserID,
+		Amount:               *amount,
+		To:                   u.ID,
+		Description:          "Initial supremacy RedMountain supply seed.",
+		TransactionReference: passport.TransactionReference("Initial supremacy RedMountain supply seed."),
+	})
 
 	err = s.SeedAndAssignZaibatsu(ctx, supremacyCollection)
 	if err != nil {

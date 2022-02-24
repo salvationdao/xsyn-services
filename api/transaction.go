@@ -3,7 +3,6 @@ package api
 import (
 	"database/sql"
 	"fmt"
-	"math/big"
 	"passport"
 	"sync"
 	"time"
@@ -17,7 +16,7 @@ type TransactionCache struct {
 	sync.RWMutex
 	conn         *sql.DB
 	log          *zerolog.Logger
-	transactions []passport.NewTransaction
+	transactions []*passport.NewTransaction
 }
 
 func NewTransactionCache(conn *sql.DB, log *zerolog.Logger) *TransactionCache {
@@ -25,10 +24,10 @@ func NewTransactionCache(conn *sql.DB, log *zerolog.Logger) *TransactionCache {
 		sync.RWMutex{},
 		conn,
 		log,
-		[]passport.NewTransaction{},
+		[]*passport.NewTransaction{},
 	}
 
-	ticker := time.NewTicker(500 * time.Millisecond)
+	ticker := time.NewTicker(10 * time.Second)
 
 	go func() {
 		for {
@@ -42,33 +41,41 @@ func NewTransactionCache(conn *sql.DB, log *zerolog.Logger) *TransactionCache {
 
 func (tc *TransactionCache) commit() {
 	tc.Lock()
-	ctrans := make([]passport.NewTransaction, len(tc.transactions))
+	ctrans := make([]*passport.NewTransaction, len(tc.transactions))
 	copy(ctrans, tc.transactions)
-	tc.transactions = []passport.NewTransaction{}
+	tc.transactions = []*passport.NewTransaction{}
 	tc.Unlock()
 	for _, tx := range ctrans {
-		_, err := CreateTransactionEntry(
+		err := CreateTransactionEntry(
 			tc.conn,
-			tx.ID,
-			tx.Amount,
-			tx.To,
-			tx.From,
-			tx.Description,
+			tx,
 			tx.TransactionReference,
 		)
 		if err != nil {
 			tc.log.Err(err)
-			tc.Lock() //grind to a halt if transactions fail to save to database
+			if !tx.Safe {
+				tc.Lock() //grind to a halt if transactions fail to save to database
+			}
 			return
 		}
 	}
 }
 
-func (tc *TransactionCache) Process(t passport.NewTransaction) string {
+func (tc *TransactionCache) Process(t *passport.NewTransaction) string {
+	if t.Processed {
+		return t.ID
+	}
 	t.ID = fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
+	t.CreatedAt = time.Now()
+	t.Processed = true
 	tc.Lock()
+	defer func() {
+		tc.Unlock()
+		if t.Safe {
+			tc.commit()
+		}
+	}()
 	tc.transactions = append(tc.transactions, t)
-	tc.Unlock()
 
 	return t.ID
 }
@@ -120,25 +127,16 @@ func (tc *TransactionCache) Process(t passport.NewTransaction) string {
 // }
 
 // CreateTransactionEntry adds an entry to the transaction entry table
-func CreateTransactionEntry(conn *sql.DB, id string, amount big.Int, to, from passport.UserID, description string, txRef passport.TransactionReference) (*passport.Transaction, error) {
-	result := &passport.Transaction{
-		ID:                   id,
-		Description:          description,
-		TransactionReference: string(txRef),
-		Amount:               passport.BigInt{Int: amount},
-		Credit:               to,
-		Debit:                from,
-	}
-	q := `INSERT INTO transactions(id ,description, transaction_reference, amount, credit, debit)
-				VALUES($1, $2, $3, $4, $5, $6)
-				RETURNING id, status, reason;`
+func CreateTransactionEntry(conn *sql.DB, nt *passport.NewTransaction, txRef passport.TransactionReference) error {
+	q := `INSERT INTO transactions(id ,description, transaction_reference, amount, credit, debit, created_at)
+				VALUES($1, $2, $3, $4, $5, $6, $7);`
 
-	err := conn.QueryRow(q, id, description, txRef, amount.String(), to, from).Scan(&result.ID, &result.Status, &result.Reason)
+	_, err := conn.Exec(q, nt.ID, nt.Description, txRef, nt.Amount.String(), nt.To, nt.From, nt.CreatedAt)
 	if err != nil {
-		return nil, terror.Error(err)
+		return terror.Error(err)
 	}
 
-	return result, nil
+	return nil
 }
 
 // // HandleHeldTransactions is where the held transactions live

@@ -26,7 +26,7 @@ type Transaction struct {
 
 type ChainConfirmations struct {
 	Tx                 string     `json:"tx" db:"tx"`
-	TxID               string      `json:"txID" db:"tx_id"`
+	TxID               string     `json:"txID" db:"tx_id"`
 	Block              uint64     `json:"block" db:"block"`
 	ChainID            uint64     `json:"chainID" db:"chain_id"`
 	ConfirmedAt        *time.Time `json:"confirmedAt" db:"confirmed_at"`
@@ -44,6 +44,9 @@ type NewTransaction struct {
 	Amount               big.Int              `json:"amount" db:"amount"`
 	TransactionReference TransactionReference `json:"transactionReference" db:"transaction_reference"`
 	Description          string               `json:"description" db:"description"`
+	Safe                 bool                 `json:"safe" db:"-"`
+	Processed            bool                 `json:"processed" db:"-"`
+	CreatedAt            time.Time            `json:"created_at" db:"created_at"`
 }
 
 type TransactionResult struct {
