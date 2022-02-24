@@ -33,7 +33,7 @@ func (s *Seeder) EarlyContributors(ctx context.Context) error {
 				From:                 passport.XsynSaleUserID,
 				To:                   u.ID,
 				Description:          "Supremacy early contributor dispersion.",
-				TransactionReference: "Supremacy early contributor dispersion.",
+				TransactionReference: passport.TransactionReference("Supremacy early contributor dispersion."),
 				Safe:                 true,
 			}
 

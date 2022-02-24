@@ -192,6 +192,7 @@ func (s *Seeder) XsynTreasuryUser(ctx context.Context) (*passport.User, error) {
 		Amount:               *amount,
 		Description:          "Initial supply seed.",
 		TransactionReference: passport.TransactionReference("Initial supply seed."),
+		Safe:                 true,
 	})
 
 	return u, nil
@@ -226,6 +227,7 @@ func (s *Seeder) SupremacyUser(ctx context.Context) (*passport.User, error) {
 		Amount:               *amount,
 		Description:          "",
 		TransactionReference: passport.TransactionReference(""),
+		Safe:                 true,
 	})
 
 	return u, nil
@@ -260,6 +262,7 @@ func (s *Seeder) XsynSaleUser(ctx context.Context) (*passport.User, error) {
 		Amount:               *amount,
 		Description:          "",
 		TransactionReference: passport.TransactionReference(""),
+		Safe:                 true,
 	})
 
 	return u, nil
@@ -336,6 +339,7 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		Amount:               *amount,
 		Description:          "Initial supremacy Zaibatsu supply seed.",
 		TransactionReference: passport.TransactionReference("Initial supremacy Zaibatsu supply seed."),
+		Safe:                 true,
 	})
 
 	// Create user
@@ -360,6 +364,7 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		Amount:               *amount,
 		Description:          "Initial supremacy BostonCybernetics supply seed.",
 		TransactionReference: passport.TransactionReference("Initial supremacy BostonCybernetics supply seed."),
+		Safe:                 true,
 	})
 
 	// Create user
@@ -384,6 +389,7 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		To:                   u.ID,
 		Description:          "Initial supremacy RedMountain supply seed.",
 		TransactionReference: passport.TransactionReference("Initial supremacy RedMountain supply seed."),
+		Safe:                 true,
 	})
 
 	err = s.SeedAndAssignZaibatsu(ctx, supremacyCollection)
