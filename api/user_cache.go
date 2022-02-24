@@ -86,7 +86,7 @@ func (ucm *UserCacheMap) Get(id string) (big.Int, error) {
 
 	balance, err := db.UserBalance(context.Background(), ucm.conn, id)
 	if err != nil {
-		return big.Int{}, err
+		return *big.NewInt(0), err
 	}
 
 	ucm.Store(id, balance.Int)
