@@ -241,7 +241,7 @@ func NewAPI(
 		_ = NewSupController(log, conn, api, cc)
 	}
 	_ = NewAssetController(log, conn, api)
-	_ = NewCollectionController(log, conn, api)
+	_ = NewCollectionController(log, conn, api, isTestnetBlockchain)
 	_ = NewServerClientController(log, conn, api)
 	_ = NewCheckController(log, conn, api)
 	_ = NewUserActivityController(log, conn, api)
