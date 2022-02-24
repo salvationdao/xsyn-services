@@ -114,6 +114,7 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hu
 	o := bridge.NewOracle(ctrlr.API.BridgeParams.MoralisKey)
 
 	walletCollections, err := o.NFTOwners(ctrlr.API.BridgeParams.EthNftAddr, "goerli")
+
 	if err != nil {
 		return terror.Error(err)
 	}

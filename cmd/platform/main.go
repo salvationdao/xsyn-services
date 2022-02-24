@@ -8,11 +8,15 @@ import (
 	"passport/api"
 	"passport/db"
 	"passport/email"
+	"passport/payments"
 	"passport/seed"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ninja-software/log_helpers"
+	"github.com/oklog/run"
+	"github.com/shopspring/decimal"
 
 	_ "github.com/lib/pq" //postgres drivers for initialization
 
@@ -27,7 +31,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/oklog/run"
 	"github.com/urfave/cli/v2"
 )
 
@@ -152,8 +155,8 @@ func main() {
 					&cli.StringFlag{Name: "bsc_node_addr", Value: "wss://speedy-nodes-nyc.moralis.io/6bc5ccfe2d00f7a5ae0ba00a/bsc/testnet/ws", EnvVars: []string{envPrefix + "_BSC_WS_NODE_URL"}, Usage: "Binance WS node URL"},
 					&cli.StringFlag{Name: "eth_node_addr", Value: "wss://sparkling-polished-glade.quiknode.pro/a68ec6502e56dd3292f33c276c81cc6360877e58/", EnvVars: []string{envPrefix + "_ETH_WS_NODE_URL"}, Usage: "Ethereum WS node URL"},
 					//router address for exchange rates
-					&cli.StringFlag{Name: "bsc_router_addr", Value: "0x9ac64cc6e4415144c455bd8e4837fea55603e5c3", EnvVars: []string{envPrefix + "_BSC_ROUTER_ADDR"}, Usage: "BSC Router address"},
-
+					&cli.StringFlag{Name: "bsc_router_addr", Value: "0x10ED43C718714eb63d5aA57B78B54704E256024E", EnvVars: []string{envPrefix + "_BSC_ROUTER_ADDR"}, Usage: "BSC Router address"},
+					&cli.BoolFlag{Name: "enable_purchase_subscription", Value: false, EnvVars: []string{envPrefix + "_ENABLE_PURCHASE_SUBSCRIPTION"}, Usage: "Scrape payments every 20 seconds"},
 					//moralis key- set in env vars
 					&cli.StringFlag{Name: "moralis_key", Value: "91Xp2ke5eOVMavAsqdOoiXN4lg0n0AieW5kTJoupdyQBhL2k9XvMQtFPSA4opX2s", EnvVars: []string{envPrefix + "_MORALIS_KEY"}, Usage: "Key to connect to moralis API"},
 				},
@@ -314,7 +317,133 @@ func txConnect(
 
 	return conn, nil
 }
+func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) error {
+	records1, err := payments.BNB(3)
+	if err != nil {
+		return err
+	}
 
+	z := decimal.Zero
+	totalSupsSold := decimal.Zero
+	for _, r := range records1 {
+		sups, err := decimal.NewFromString(r.Sups)
+		if err != nil {
+			return err
+		}
+		totalSupsSold = totalSupsSold.Add(sups)
+		d, err := decimal.NewFromString(r.Value)
+		if err != nil {
+			log.Error().Err(err).Msg("parse decimal from string")
+		}
+		z = z.Add(d)
+	}
+	log.Info().Int("records", len(records1)).Str("sym", "BNB").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+
+	records2, err := payments.BUSD(3)
+	if err != nil {
+		return err
+	}
+
+	z = decimal.Zero
+	totalSupsSold = decimal.Zero
+	for _, r := range records2 {
+		sups, err := decimal.NewFromString(r.Sups)
+		if err != nil {
+			return err
+		}
+		totalSupsSold = totalSupsSold.Add(sups)
+		d, err := decimal.NewFromString(r.Value)
+		if err != nil {
+			log.Error().Err(err).Msg("parse decimal from string")
+		}
+		if d.GreaterThan(decimal.NewFromInt(500000)) {
+			fmt.Println("BIG!", d.String(), r.TxHash)
+		}
+		z = z.Add(d)
+	}
+	log.Info().Int("records", len(records2)).Str("sym", "BUSD").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+
+	records3, err := payments.ETH(3)
+	if err != nil {
+		return err
+	}
+	totalSupsSold = decimal.Zero
+	z = decimal.Zero
+	for _, r := range records3 {
+		sups, err := decimal.NewFromString(r.Sups)
+		if err != nil {
+			return err
+		}
+		totalSupsSold = totalSupsSold.Add(sups)
+		d, err := decimal.NewFromString(r.Value)
+		if err != nil {
+			log.Error().Err(err).Msg("parse decimal from string")
+		}
+		z = z.Add(d)
+	}
+	log.Info().Int("records", len(records3)).Str("sym", "ETH").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+	records4, err := payments.USDC(3)
+	if err != nil {
+		return err
+	}
+	totalSupsSold = decimal.Zero
+	z = decimal.Zero
+	for _, r := range records4 {
+		sups, err := decimal.NewFromString(r.Sups)
+		if err != nil {
+			return err
+		}
+		totalSupsSold = totalSupsSold.Add(sups)
+		d, err := decimal.NewFromString(r.Value)
+		if err != nil {
+			log.Error().Err(err).Msg("parse decimal from string")
+		}
+		z = z.Add(d)
+	}
+	log.Info().Int("records", len(records4)).Str("sym", "USDC").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+
+	records1 = append(records1, records2...)
+	records1 = append(records1, records3...)
+	records1 = append(records1, records4...)
+	log.Info().Int("records", len(records1)).Msg("Syncing payments...")
+	successful := 0
+	skipped := 0
+	failed := 0
+	for _, r := range records1 {
+		ctx := context.Background()
+
+		exists, err := db.TransactionExists(ctx, conn, r.TxHash)
+		if err != nil {
+			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("store record")
+			failed++
+			continue
+		}
+		if exists {
+			skipped++
+			continue
+		}
+
+		user, err := payments.CreateOrGetUser(ctx, conn, r.FromAddress)
+		if err != nil {
+			failed++
+			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("store record")
+			continue
+		}
+		err = payments.StoreRecord(ctx, user, ucm, r)
+		if err != nil && strings.Contains(err.Error(), "duplicate key") {
+			skipped++
+			continue
+		}
+		if err != nil && !strings.Contains(err.Error(), "duplicate key") {
+			failed++
+			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("store record")
+			continue
+		}
+		successful++
+	}
+	log.Info().Int("skipped", skipped).Int("successful", successful).Int("failed", failed).Msg("Synced payments.")
+	return nil
+}
 func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) error {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
@@ -362,6 +491,8 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	BSCChainID := ctxCLI.Int64("bsc_chain_id")
 	ETHChainID := ctxCLI.Int64("eth_chain_id")
 	BSCRouterAddr := ctxCLI.String("bsc_router_addr")
+
+	enablePurchaseSubscription := ctxCLI.Bool("enable_purchase_subscription")
 
 	isTestnetBlockchain := ctxCLI.Bool("is_testnet_blockchain")
 	runBlockchainBridge := ctxCLI.Bool("run_blockchain_bridge")
@@ -492,14 +623,29 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	tc := api.NewTransactionCache(txConn, log)
 
 	// initialise user cache map
-	ucm := api.NewUserCacheMap(pgxconn)
-	err = ucm.Initialise()
+	ucm, err := api.NewUserCacheMap(pgxconn, tc)
 	if err != nil {
 		return terror.Error(err)
 	}
+	if enablePurchaseSubscription {
+		err := SyncFunc(ucm, pgxconn, log)
+		if err != nil {
+			log.Error().Err(err).Msg("sync")
+		}
 
+		go func() {
+			t := time.NewTicker(20 * time.Second)
+			for range t.C {
+				err := SyncFunc(ucm, pgxconn, log)
+				if err != nil {
+					log.Error().Err(err).Msg("sync")
+				}
+			}
+		}()
+	}
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
 	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, googleClientID, mailer, apiAddr, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config, twitterAPIKey, twitterAPISecret, discordClientID, discordClientSecret, gameserverToken, externalURL, tc, ucm, isTestnetBlockchain, runBlockchainBridge)
+
 	return api.Run(ctx)
 }

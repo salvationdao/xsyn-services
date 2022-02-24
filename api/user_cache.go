@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"errors"
 	"math/big"
+	"passport"
 	"passport/db"
 	"sync"
 
@@ -12,65 +14,65 @@ import (
 
 type UserCacheMap struct {
 	sync.Map
-	conn *pgxpool.Pool
+	conn             *pgxpool.Pool
+	TransactionCache *TransactionCache
 }
 
-func NewUserCacheMap(conn *pgxpool.Pool) *UserCacheMap {
+func NewUserCacheMap(conn *pgxpool.Pool, tc *TransactionCache) (*UserCacheMap, error) {
 	ucm := &UserCacheMap{
 		sync.Map{},
 		conn,
+		tc,
 	}
-
-	return ucm
-}
-
-func (ucm *UserCacheMap) Initialise() error {
 	balances, err := db.UserBalances(context.Background(), ucm.conn)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, b := range balances {
 		ucm.Store(b.ID.String(), b.Sups.Int)
 	}
-
-	return nil
+	return ucm, nil
 }
 
-func (ucm *UserCacheMap) Process(fromID string, toID string, amount big.Int) (*big.Int, *big.Int, error) {
+var TransactionFailed = "TRANSACTION_FAILED"
+
+func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.Int, string, error) {
 	// load balance first
-	fromBalance, err := ucm.Get(fromID)
+	fromBalance, err := ucm.Get(nt.From.String())
 	if err != nil {
-		return nil, nil, terror.Error(err, "failed to read debit balance")
+		return nil, nil, TransactionFailed, terror.Error(err, "failed to read debit balance")
 	}
 
-	toBalance, err := ucm.Get(toID)
+	toBalance, err := ucm.Get(nt.To.String())
 	if err != nil {
-		return nil, nil, terror.Error(err, "failed to read credit balance")
+		return nil, nil, TransactionFailed, terror.Error(err, "failed to read credit balance")
 	}
 
 	// do subtract
 	newFromBalance := big.NewInt(0)
 	newFromBalance.Add(newFromBalance, &fromBalance)
-	newFromBalance.Sub(newFromBalance, &amount)
+	newFromBalance.Sub(newFromBalance, &nt.Amount)
 	if newFromBalance.Cmp(big.NewInt(0)) < 0 {
-		return nil, nil, terror.Error(err, "no enough fund")
+		return nil, nil, TransactionFailed, terror.Error(errors.New("not enough funds"), "no enough fund")
 	}
 
 	// do add
 	newToBalance := big.NewInt(0)
 	newToBalance.Add(newToBalance, &toBalance)
-	newToBalance.Add(newToBalance, &amount)
+	newToBalance.Add(newToBalance, &nt.Amount)
 	if newToBalance.Cmp(big.NewInt(0)) < 0 {
-		return nil, nil, terror.Error(err, "no enough fund")
+		return nil, nil, TransactionFailed, terror.Error(errors.New("not enough funds"), "no enough fund")
 	}
 
 	// store back to the map
-	ucm.Store(fromID, *newFromBalance)
-	ucm.Store(toID, *newToBalance)
+	ucm.Store(nt.From.String(), *newFromBalance)
+	ucm.Store(nt.To.String(), *newToBalance)
 
-	return newFromBalance, newToBalance, nil
+	transactonID := ucm.TransactionCache.Process(nt)
+
+	return newFromBalance, newToBalance, transactonID, nil
 }
 
 func (ucm *UserCacheMap) Get(id string) (big.Int, error) {
