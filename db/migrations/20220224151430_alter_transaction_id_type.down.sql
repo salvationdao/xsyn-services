@@ -1,0 +1,2 @@
+ALTER TABLE transactions
+    ALTER COLUMN id TYPE UUID;
