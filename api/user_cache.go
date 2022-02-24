@@ -79,8 +79,12 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 	transactonID := ucm.TransactionCache.Process(nt)
 
 	ctx := context.Background()
-	go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, nt.To)), newToBalance.String())
-	go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, nt.From)), newFromBalance.String())
+	if !nt.From.IsSystemUser() {
+		go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, nt.From)), newFromBalance.String())
+	}
+	if !nt.To.IsSystemUser() {
+		go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, nt.To)), newToBalance.String())
+	}
 
 	return newFromBalance, newToBalance, transactonID, nil
 }
