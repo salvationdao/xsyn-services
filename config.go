@@ -16,7 +16,6 @@ type Config struct {
 	OnlyWalletConnect       bool
 	WhitelistEndpoint       string
 	InsecureSkipVerifyCheck bool
-	CORSAllowedOrigins      []string
 }
 
 type BridgeParams struct {
