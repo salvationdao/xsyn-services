@@ -15,6 +15,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ninja-software/log_helpers"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/oklog/run"
 	"github.com/shopspring/decimal"
 
@@ -92,7 +93,7 @@ func main() {
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
 
 					&cli.BoolFlag{Name: "is_testnet_blockchain", Value: false, EnvVars: []string{envPrefix + "_IS_TESTNET_BLOCKCHAIN"}, Usage: "Update state according to testnet"},
-					&cli.BoolFlag{Name: "run_blockchain_bridge", Value: false, EnvVars: []string{envPrefix + "_RUN_BLOCKCHAIN_BRIDGE"}, Usage: "Run the bridge to blockchain data"},
+					&cli.BoolFlag{Name: "run_blockchain_bridge", Value: true, EnvVars: []string{envPrefix + "_RUN_BLOCKCHAIN_BRIDGE"}, Usage: "Run the bridge to blockchain data"},
 
 					&cli.StringFlag{Name: "environment", Value: "development", DefaultText: "development", EnvVars: []string{envPrefix + "_ENVIRONMENT", "ENVIRONMENT"}, Usage: "This program environment (development, testing, training, staging, production), it sets the log levels"},
 					&cli.StringFlag{Name: "sentry_dsn_backend", Value: "", EnvVars: []string{envPrefix + "_SENTRY_DSN_BACKEND", "SENTRY_DSN_BACKEND"}, Usage: "Sends error to remote server. If set, it will send error."},
@@ -440,6 +441,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 			continue
 		}
 		successful++
+
 	}
 	log.Info().Int("skipped", skipped).Int("successful", successful).Int("failed", failed).Msg("Synced payments.")
 	return nil
@@ -622,11 +624,14 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	tc := api.NewTransactionCache(txConn, log)
 
+	msgBus, msgBusCleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
+
 	// initialise user cache map
-	ucm, err := api.NewUserCacheMap(pgxconn, tc)
+	ucm, err := api.NewUserCacheMap(pgxconn, tc, msgBus)
 	if err != nil {
 		return terror.Error(err)
 	}
+
 	if enablePurchaseSubscription {
 		err := SyncFunc(ucm, pgxconn, log)
 		if err != nil {
@@ -645,7 +650,30 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	}
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
-	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, googleClientID, mailer, apiAddr, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config, twitterAPIKey, twitterAPISecret, discordClientID, discordClientSecret, gameserverToken, externalURL, tc, ucm, isTestnetBlockchain, runBlockchainBridge)
+	api := api.NewAPI(log,
+		cancelOnPanic,
+		pgxconn,
+		txConn,
+		googleClientID,
+		mailer,
+		apiAddr,
+		twitchClientID,
+		twitchClientSecret,
+		HTMLSanitizePolicy,
+		config,
+		twitterAPIKey,
+		twitterAPISecret,
+		discordClientID,
+		discordClientSecret,
+		gameserverToken,
+		externalURL,
+		tc,
+		ucm,
+		isTestnetBlockchain,
+		runBlockchainBridge,
+		msgBus,
+		msgBusCleanUpFunc,
+	)
 
 	return api.Run(ctx)
 }
