@@ -1,0 +1,1 @@
+update xsyn_store set usd_cent_cost = 100 where attributes @> '[{"trait_type": "Rarity"}]' and attributes @> '[{"value": "Mega"}]';
