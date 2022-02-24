@@ -216,8 +216,8 @@ func NewAPI(
 
 	cc := &ChainClients{
 		Params: api.BridgeParams,
-		Log: log_helpers.NamedLogger(log, "chain clients"),
-		API: api,
+		Log:    log_helpers.NamedLogger(log, "chain clients"),
+		API:    api,
 	}
 	if runBlockchainBridge {
 		// Runs the listeners for all the chain bridges
@@ -295,9 +295,6 @@ func NewAPI(
 	// go api.HandleTransactions()
 	// go api.HandleHeldTransactions()
 
-	// Run the listener for the db user update event
-	go api.DBListenForUserUpdateEvent()
-
 	// Run the listener for the user cache
 	// go api.HandleUserCache()
 
@@ -320,7 +317,6 @@ func NewAPI(
 
 	return api
 }
-
 
 ////test function for remaining supply
 //func (api *API) Dummysale(w http.ResponseWriter, r *http.Request) (int, error) {

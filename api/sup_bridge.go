@@ -5,12 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx/v4"
-	"github.com/jpillora/backoff"
-	"github.com/ninja-software/terror/v2"
-	"github.com/rs/zerolog"
 	"io/ioutil"
 	"math/big"
 	"net/http"
@@ -19,6 +13,13 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4"
+	"github.com/jpillora/backoff"
+	"github.com/ninja-software/terror/v2"
+	"github.com/rs/zerolog"
 
 	"github.com/ethereum/go-ethereum/common"
 
@@ -174,7 +175,7 @@ func RunChainListeners(log *zerolog.Logger, api *API, p *passport.BridgeParams, 
 func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Transfer) {
 	fn := func(xfer *bridge.Transfer) {
 		if xfer.From.Hex() == cc.Params.OperatorAddr.Hex() || xfer.To.Hex() == cc.Params.OperatorAddr.Hex() {
-				amt := decimal.NewFromBigInt(xfer.Amount, int32(-1*xfer.Decimals))
+			amt := decimal.NewFromBigInt(xfer.Amount, int32(-1*xfer.Decimals))
 			cc.Log.Debug().
 				Str("txid", xfer.TxID.Hex()).
 				Str("from", xfer.From.Hex()).
@@ -221,63 +222,22 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						}
 					}
 
-					tx := passport.NewTransaction{
+					tx := &passport.NewTransaction{
 						// ResultChan:           resultChan,
 						To:                   user.ID,
 						From:                 passport.XsynSaleUserID,
 						Amount:               *supAmount,
 						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("sup purchase on BSC with BUSD %s", xfer.TxID.Hex()),
+						Safe:                 true,
 					}
 
 					// process user cache map
-					nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
+					_, _, _, err = cc.API.userCacheMap.Process(tx)
 					if err != nil {
 						cc.Log.Err(err).Msg("insufficient fund")
 						return
 					}
-					// resultChan := make(chan *passport.TransactionResult)
-
-					if !tx.From.IsSystemUser() {
-						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
-					}
-
-					if !tx.To.IsSystemUser() {
-						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
-					}
-
-					// process transaction
-					transactonID := cc.API.transactionCache.Process(tx)
-
-					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), transactonID, xfer.Block, xfer.ChainID)
-					if err != nil {
-						tx := passport.NewTransaction{
-							To:                   passport.XsynSaleUserID,
-							From:                 user.ID,
-							Amount:               *supAmount,
-							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
-							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on BSC with BUSD %s", xfer.TxID.Hex()),
-						}
-
-						nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
-						if err != nil {
-							cc.Log.Err(err).Msg("insufficient fund")
-							return
-						}
-
-						if !tx.From.IsSystemUser() {
-							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
-						}
-
-						if !tx.To.IsSystemUser() {
-							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
-						}
-
-						cc.API.transactionCache.Process(tx)
-
-						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
-					}
-					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
 				}
 			case "BNB":
 				if xfer.To == cc.Params.PurchaseAddr {
@@ -314,62 +274,23 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 
 					// resultChan := make(chan *passport.TransactionResult)
-					tx := passport.NewTransaction{
+					tx := &passport.NewTransaction{
 						// ResultChan:           resultChan,
 						To:                   user.ID,
 						From:                 passport.XsynSaleUserID,
 						Amount:               *supAmount,
 						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("sup purchase on BSC with BNB %s", xfer.TxID.Hex()),
+						Safe:                 true,
 					}
 
 					// process user cache map
-					nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
+					_, _, _, err = cc.API.userCacheMap.Process(tx)
 					if err != nil {
 						cc.Log.Err(err).Msg("insufficient fund")
 						return
 					}
 
-					if !tx.From.IsSystemUser() {
-						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
-					}
-
-					if !tx.To.IsSystemUser() {
-						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
-					}
-
-					txID := cc.API.transactionCache.Process(tx)
-
-					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), txID, xfer.Block, xfer.ChainID)
-					if err != nil {
-						tx := passport.NewTransaction{
-							To:                   passport.XsynSaleUserID,
-							From:                 user.ID,
-							Amount:               *supAmount,
-							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
-							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on BSC with BNB %s", xfer.TxID.Hex()),
-						}
-
-						// process user cache map
-						nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
-						if err != nil {
-							cc.Log.Err(err).Msg("insufficient fund")
-							return
-						}
-
-						if !tx.From.IsSystemUser() {
-							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
-						}
-
-						if !tx.To.IsSystemUser() {
-							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
-						}
-
-						cc.API.transactionCache.Process(tx)
-
-						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
-					}
-					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
 				}
 			case "SUPS":
 				if xfer.To == cc.Params.PurchaseAddr {
@@ -399,60 +320,22 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 					}
 
 					// resultChan := make(chan *passport.TransactionResult)
-					tx := passport.NewTransaction{
+					tx := &passport.NewTransaction{
 						// ResultChan:           resultChan,
 						To:                   user.ID,
 						From:                 passport.XsynSaleUserID,
 						Amount:               *xfer.Amount,
 						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("[DEPOSIT] SUPS on BSC %s", xfer.TxID.Hex()),
+						Safe:                 true,
 					}
 
 					// process user cache map
-					nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
+					_, _, _, err = cc.API.userCacheMap.Process(tx)
 					if err != nil {
 						cc.Log.Err(err).Msg("insufficient fund")
 						return
 					}
-
-					if !tx.From.IsSystemUser() {
-						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
-					}
-
-					if !tx.To.IsSystemUser() {
-						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
-					}
-
-					txID := cc.API.transactionCache.Process(tx)
-					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), txID, xfer.Block, xfer.ChainID)
-					if err != nil {
-						tx := passport.NewTransaction{
-							To:                   passport.XsynSaleUserID,
-							From:                 user.ID,
-							Amount:               *xfer.Amount,
-							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
-							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup deposit on BSC %s", xfer.TxID.Hex()),
-						}
-
-						// process user cache map
-						nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
-						if err != nil {
-							cc.Log.Err(err).Msg("insufficient fund")
-							return
-						}
-
-						if !tx.From.IsSystemUser() {
-							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
-						}
-
-						if !tx.To.IsSystemUser() {
-							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
-						}
-
-						cc.API.transactionCache.Process(tx)
-						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
-					}
-					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
 				}
 
 				if xfer.From == cc.Params.WithdrawAddr {
@@ -482,62 +365,22 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						}
 					}
 					// resultChan := make(chan *passport.TransactionResult)
-					tx := passport.NewTransaction{
+					tx := &passport.NewTransaction{
 						// ResultChan:           resultChan,
 						From:                 user.ID,
 						To:                   passport.XsynTreasuryUserID,
 						Amount:               *xfer.Amount,
 						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("[SUPS] Withdraw on BSC to %s", xfer.To.Hex()),
+						Safe:                 true,
 					}
 
 					// process user cache map
-					nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
+					_, _, _, err = cc.API.userCacheMap.Process(tx)
 					if err != nil {
 						cc.Log.Err(err).Msg("insufficient fund")
 						return
 					}
-
-					if !tx.From.IsSystemUser() {
-						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
-					}
-
-					if !tx.To.IsSystemUser() {
-						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
-					}
-
-					txID := cc.API.transactionCache.Process(tx)
-
-					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), txID, xfer.Block, xfer.ChainID)
-					if err != nil {
-						tx := passport.NewTransaction{
-							To:                   user.ID,
-							From:                 passport.XsynTreasuryUserID,
-							Amount:               *xfer.Amount,
-							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
-							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - ssup withdraw on BSC to %s", xfer.TxID.Hex()),
-						}
-
-						// process user cache map
-						nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
-						if err != nil {
-							cc.Log.Err(err).Msg("insufficient fund")
-							return
-						}
-
-						if !tx.From.IsSystemUser() {
-							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
-						}
-
-						if !tx.To.IsSystemUser() {
-							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
-						}
-
-						cc.API.transactionCache.Process(tx)
-						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
-					}
-					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
-
 				}
 			}
 
@@ -574,60 +417,22 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						}
 					}
 					// resultChan := make(chan *passport.TransactionResult)
-					tx := passport.NewTransaction{
+					tx := &passport.NewTransaction{
 						// ResultChan:           resultChan,
 						To:                   user.ID,
 						From:                 passport.XsynSaleUserID,
 						Amount:               *supAmount,
 						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("sup purchase on Ethereum with USDC %s", xfer.TxID.Hex()),
+						Safe:                 true,
 					}
 
 					// process user cache map
-					nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
+					_, _, _, err = cc.API.userCacheMap.Process(tx)
 					if err != nil {
 						cc.Log.Err(err).Msg("insufficient fund")
 						return
 					}
-
-					if !tx.From.IsSystemUser() {
-						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
-					}
-
-					if !tx.To.IsSystemUser() {
-						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
-					}
-
-					txID := cc.API.transactionCache.Process(tx)
-					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), txID, xfer.Block, xfer.ChainID)
-					if err != nil {
-						tx := passport.NewTransaction{
-							To:                   passport.XsynSaleUserID,
-							From:                 user.ID,
-							Amount:               *supAmount,
-							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
-							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on Ethereum with USDC %s", xfer.TxID.Hex()),
-						}
-
-						// process user cache map
-						nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
-						if err != nil {
-							cc.Log.Err(err).Msg("insufficient fund")
-							return
-						}
-
-						if !tx.From.IsSystemUser() {
-							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
-						}
-
-						if !tx.To.IsSystemUser() {
-							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
-						}
-
-						cc.API.transactionCache.Process(tx)
-						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
-					}
-					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
 				}
 			case "ETH":
 				if xfer.To == cc.Params.PurchaseAddr {
@@ -657,62 +462,22 @@ func (cc *ChainClients) handleTransfer(ctx context.Context) func(xfer *bridge.Tr
 						}
 					}
 					// resultChan := make(chan *passport.TransactionResult)
-					tx := passport.NewTransaction{
+					tx := &passport.NewTransaction{
 						// ResultChan:           resultChan,
 						To:                   user.ID,
 						From:                 passport.XsynSaleUserID,
 						Amount:               *supAmount,
 						TransactionReference: passport.TransactionReference(xfer.TxID.Hex()),
 						Description:          fmt.Sprintf("[SUPS] purchase on Ethereum with ETH %s", xfer.TxID.Hex()),
+						Safe:                 true,
 					}
 
 					// process user cache map
-					nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
+					_, _, _, err = cc.API.userCacheMap.Process(tx)
 					if err != nil {
 						cc.Log.Err(err).Msg("insufficient fund")
 						return
 					}
-
-					if !tx.From.IsSystemUser() {
-						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
-					}
-
-					if !tx.To.IsSystemUser() {
-						go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
-					}
-
-					txID := cc.API.transactionCache.Process(tx)
-
-					conf, err := db.CreateChainConfirmationEntry(ctx, cc.API.Conn, xfer.TxID.Hex(), txID, xfer.Block, xfer.ChainID)
-					if err != nil {
-						cc.Log.Err(err).Msg("rolling transaction back")
-						tx := passport.NewTransaction{
-							To:                   passport.XsynSaleUserID,
-							From:                 user.ID,
-							Amount:               *supAmount,
-							TransactionReference: passport.TransactionReference(fmt.Sprintf("%s %s", xfer.TxID.Hex(), "FAILED TO INSERT CHAIN CONFIRM ENTRY")),
-							Description:          fmt.Sprintf("FAILED TO INSERT CHAIN CONFIRM ENTRY - Revert - sup purchase on Ethereum with ETH %s", xfer.TxID.Hex()),
-						}
-
-						// process user cache map
-						nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
-						if err != nil {
-							cc.Log.Err(err).Msg("insufficient fund")
-							return
-						}
-
-						if !tx.From.IsSystemUser() {
-							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
-						}
-
-						if !tx.To.IsSystemUser() {
-							go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
-						}
-
-						cc.API.transactionCache.Process(tx)
-						cc.Log.Err(err).Msg("failed to insert chain confirmation entry")
-					}
-					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), conf)
 				}
 			}
 		}
@@ -1009,32 +774,22 @@ func (cc *ChainClients) runBSCBridgeListener(ctx context.Context) {
 
 							// resultChan := make(chan *passport.TransactionResult)
 
-							tx := passport.NewTransaction{
+							tx := &passport.NewTransaction{
 								// ResultChan:           resultChan,
 								To:                   passport.OnChainUserID,
 								From:                 user.ID,
 								Amount:               *withdraw.Amount,
 								TransactionReference: passport.TransactionReference(fmt.Sprintf("%s:%s:%d:%s", withdraw.To, withdraw.Amount.String(), withdraw.Block, txID.String())),
 								Description:          "sup withdraw on bsc",
+								Safe:                 true,
 							}
 
 							// process user cache map
-							nfb, ntb, err := cc.API.userCacheMap.Process(tx.From.String(), tx.To.String(), tx.Amount)
+							_, _, _, err = cc.API.userCacheMap.Process(tx)
 							if err != nil {
 								cc.Log.Err(err).Msg("insufficient fund")
 								return
 							}
-
-							if !tx.From.IsSystemUser() {
-								go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
-							}
-
-							if !tx.To.IsSystemUser() {
-								go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
-							}
-
-							cc.API.transactionCache.Process(tx)
-
 						})
 						err = listener.Listen(ctx)
 						if err != nil {
@@ -1570,7 +1325,6 @@ type Resp struct {
 	} `json:"logs"`
 }
 
-
 func GetNativeTX(txid common.Hash, chain string) (*bridge.Transfer, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://deep-index.moralis.io/api/v2/transaction/%s?chain=%s", txid.Hex(), chain), nil)
 	if err != nil {
@@ -1586,12 +1340,11 @@ func GetNativeTX(txid common.Hash, chain string) (*bridge.Transfer, error) {
 	}
 	defer resp.Body.Close()
 
-	fmt.Printf( "https://deep-index.moralis.io/api/v2/transaction/%s?chain=%s\n", txid.Hex(), chain)
+	fmt.Printf("https://deep-index.moralis.io/api/v2/transaction/%s?chain=%s\n", txid.Hex(), chain)
 	if resp.StatusCode != 200 {
 		fmt.Println("not here 2")
 		return nil, errors.New("non 200 status response: " + resp.Status)
 	}
-
 
 	xfer := &Resp{}
 	body, err := ioutil.ReadAll(resp.Body)
@@ -1603,7 +1356,6 @@ func GetNativeTX(txid common.Hash, chain string) (*bridge.Transfer, error) {
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-
 
 	chainID := 1
 	if chain == "bsc" {
