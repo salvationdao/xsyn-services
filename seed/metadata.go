@@ -9,7 +9,7 @@ import (
 )
 
 func (s *Seeder) SeedItemMetadata(ctx context.Context) (warMachines, abilities, weapons, utility []*passport.XsynMetadata, error error) {
-	supremacyCollection, err := db.CollectionGet(ctx, s.Conn, "Supremacy")
+	supremacyCollection, err := db.CollectionGet(ctx, s.Conn, "supremacy")
 	if err != nil {
 		return nil, nil, nil, nil, terror.Error(err)
 	}

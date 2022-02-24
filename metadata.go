@@ -8,6 +8,7 @@ import (
 type Collection struct {
 	ID        CollectionID `json:"id"`
 	Name      string       `json:"name"`
+	Slug      string       `json:"slug"`
 	ImageURL  string       `json:"imageURL"`
 	DeletedAt *time.Time   `json:"deleted_at" db:"deleted_at"`
 	UpdatedAt time.Time    `json:"updated_at" db:"updated_at"`

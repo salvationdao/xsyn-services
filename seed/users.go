@@ -313,7 +313,7 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 
 	}
 
-	supremacyCollection, err := db.CollectionGet(ctx, s.Conn, "Supremacy")
+	supremacyCollection, err := db.CollectionGet(ctx, s.Conn, "supremacy")
 	if err != nil {
 		return nil, terror.Error(err)
 	}
