@@ -178,7 +178,7 @@ func NewAPI(
 	api.Routes.Use(middleware.RealIP)
 	api.Routes.Use(middleware.Logger)
 	api.Routes.Use(cors.New(cors.Options{
-		AllowedOrigins:   []string{config.GameserverHostURL, config.PassportWebHostURL},
+		AllowedOrigins:   []string{"*"},
 		AllowCredentials: true,
 	}).Handler)
 
