@@ -8,24 +8,31 @@ import (
 	"fmt"
 	"os"
 	"passport"
+	"passport/api"
 	"passport/db"
 
 	"github.com/gosimple/slug"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
+	"github.com/rs/zerolog"
 	"syreclabs.com/go/faker"
 )
 
 type Seeder struct {
-	Conn            *pgxpool.Pool
-	TxConn          *sql.DB
-	PassportHostUrl string
-	ExternalURL     string
+	Conn             *pgxpool.Pool
+	TxConn           *sql.DB
+	TransactionCache *api.TransactionCache
+	Log              *zerolog.Logger
+	PassportHostUrl  string
+	ExternalURL      string
 }
 
 // NewSeeder returns a new Seeder
 func NewSeeder(conn *pgxpool.Pool, txConn *sql.DB, passportHostUrl string, externalUrl string) *Seeder {
-	s := &Seeder{Conn: conn, TxConn: txConn, PassportHostUrl: passportHostUrl}
+	log := log_helpers.LoggerInitZero("seed", "")
+	tc := api.NewTransactionCache(txConn, log)
+	s := &Seeder{Conn: conn, TxConn: txConn, TransactionCache: tc, PassportHostUrl: passportHostUrl}
 	return s
 }
 

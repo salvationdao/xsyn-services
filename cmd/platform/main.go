@@ -655,8 +655,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	}
 
 	// initialise user cache map
-	ucm := api.NewUserCacheMap(pgxconn)
-	err = ucm.Initialise()
+	ucm, err := api.NewUserCacheMap(pgxconn, tc)
 	if err != nil {
 		return terror.Error(err)
 	}

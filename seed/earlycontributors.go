@@ -2,13 +2,9 @@ package seed
 
 import (
 	"context"
-	"fmt"
 	"passport"
-	"passport/api"
 	"passport/db"
-	"time"
 
-	"github.com/gofrs/uuid"
 	"github.com/ninja-software/sale/dispersions"
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
@@ -30,19 +26,18 @@ func (s *Seeder) EarlyContributors(ctx context.Context) error {
 			return terror.Error(err)
 		}
 		for _, output := range v {
-			txID := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
 			amt := decimal.New(int64(output.Output), 18)
-			_, err = api.CreateTransactionEntry(s.TxConn,
-				txID,
-				*amt.BigInt(),
-				u.ID,
-				passport.XsynSaleUserID,
-				"Supremacy early contributor dispersion.",
-				passport.TransactionReference(fmt.Sprintf("supremacy|early_contributor|%d", i)),
-			)
-			if err != nil {
-				return terror.Error(err)
+
+			nt := &passport.NewTransaction{
+				Amount:               *amt.BigInt(),
+				From:                 passport.XsynSaleUserID,
+				To:                   u.ID,
+				Description:          "Supremacy early contributor dispersion.",
+				TransactionReference: "Supremacy early contributor dispersion.",
+				Safe:                 true,
 			}
+
+			s.TransactionCache.Process(nt)
 			i++
 		}
 	}
