@@ -408,12 +408,14 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 	log.Info().Int("records", len(records1)).Msg("Syncing payments...")
 	successful := 0
 	skipped := 0
+	failed := 0
 	for _, r := range records1 {
 		ctx := context.Background()
 
 		exists, err := db.TransactionExists(ctx, conn, r.TxHash)
 		if err != nil {
-			skipped++
+			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("store record")
+			failed++
 			continue
 		}
 		if exists {
@@ -423,7 +425,9 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 
 		user, err := payments.CreateOrGetUser(ctx, conn, r.FromAddress)
 		if err != nil {
-			return err
+			failed++
+			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("store record")
+			continue
 		}
 		err = payments.StoreRecord(ctx, user, ucm, r)
 		if err != nil && strings.Contains(err.Error(), "duplicate key") {
@@ -431,12 +435,13 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 			continue
 		}
 		if err != nil && !strings.Contains(err.Error(), "duplicate key") {
+			failed++
 			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("store record")
 			continue
 		}
 		successful++
 	}
-	log.Info().Int("skipped", skipped).Int("successful", successful).Int("failed", len(records1)-successful).Msg("Synced payments.")
+	log.Info().Int("skipped", skipped).Int("successful", successful).Int("failed", failed).Msg("Synced payments.")
 	return nil
 }
 func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) error {
