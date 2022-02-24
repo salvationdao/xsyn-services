@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"passport"
 	"passport/db"
+	"time"
 
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 
@@ -49,7 +50,7 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 	}
 
 	txID := uuid.Must(uuid.NewV4())
-	txRef := fmt.Sprintf("PURCHASE OF %s %s", storeItem.Name, txID)
+	txRef := fmt.Sprintf("PURCHASE OF %s %s %d", storeItem.Name, txID, time.Now().UnixNano())
 
 	// convert price to sups
 	asDecimal := decimal.New(int64(storeItem.UsdCentCost), 0).Div(supPrice).Ceil()
@@ -151,51 +152,61 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 	return nil
 }
 
-// Purchase attempts to make a purchase for a given user ID and a given
+// PurchaseLootbox attempts to make a purchase for a given user ID and a given
 func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
-	supPrice decimal.Decimal, ucmProcess func(*passport.NewTransaction) (*big.Int, *big.Int, string, error), user passport.User, factionID passport.FactionID, externalURL string) (*uint64, error) {
+	 ucmProcess func(*passport.NewTransaction) (*big.Int, *big.Int, string, error), user passport.User, factionID passport.FactionID, externalURL string) (*uint64, error) {
 
 	// get all faction items marked as loot box
-	mechs, err := db.StoreItemListByFactionLootbox(ctx, conn, passport.FactionID(factionID))
+	mechs, err := db.StoreItemListByFactionLootbox(ctx, conn, factionID)
 	if err != nil {
 		return nil, terror.Error(err, "failed to get loot box items")
+	}
+
+	mechIDPool := []*passport.StoreItemID{}
+	for _, m := range mechs {
+		for i := 0; i < m.AmountAvailable - m.AmountSold; i ++ {
+			mechIDPool = append(mechIDPool, &m.ID)
+		}
 	}
 
 	if len(mechs) == 0 {
 		return nil, terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
 	}
 
-	chosenIdx := rand.Intn(len(mechs))
-	storeItem := mechs[chosenIdx]
+	chosenIdx := rand.Intn(len(mechIDPool))
+	var storeItem *passport.StoreItem
 
-	// check available
-	if storeItem.AmountAvailable < 1 || storeItem.AmountSold >= storeItem.AmountAvailable {
-		return nil, terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
+	for _, m := range mechs {
+		if m.ID == *mechIDPool[chosenIdx] {
+			storeItem = m
+			continue
+		}
+	}
+
+	if storeItem == nil {
+		return nil, terror.Error(fmt.Errorf("store item nil"), "Internal error, contact support or try again.")
 	}
 
 	txID := uuid.Must(uuid.NewV4())
-	txRef := fmt.Sprintf("Lootbox %s %s ", storeItem.Name, txID)
-
-	// convert price to sups
-	asDecimal := decimal.New(int64(storeItem.UsdCentCost), 0).Div(supPrice).Ceil()
-	asSups := decimal.New(asDecimal.IntPart(), 18).BigInt()
+	txRef := fmt.Sprintf("Lootbox %s %s %d", storeItem.Name, txID, time.Now().UnixNano())
 
 	// resultChan := make(chan *passport.TransactionResult, 1)
+
+	price := *decimal.New(2500, 18).BigInt()
 
 	trans := &passport.NewTransaction{
 		To:                   passport.XsynTreasuryUserID,
 		From:                 user.ID,
-		Amount:               *asSups,
+		Amount:               price,
 		TransactionReference: passport.TransactionReference(txRef),
-		Description:          "Lootbox prize.",
-		// ResultChan:           resultChan,
+		Description:          "Mystery Create purchase.",
 	}
+
 	// process user cache map
 	nfb, ntb, _, err := ucmProcess(trans)
 	if err != nil {
-		return nil, terror.Error(err, "Failed to transfer the fund")
+		return nil, terror.Error(err, "Failed finished payment process, try again or contact support.")
 	}
-	// resultChan := make(chan *passport.TransactionResult)
 
 	if !trans.From.IsSystemUser() {
 		go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
@@ -210,7 +221,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 		trans := &passport.NewTransaction{
 			To:                   user.ID,
 			From:                 passport.XsynTreasuryUserID,
-			Amount:               *asSups,
+			Amount:              price,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
 			Description:          "Refund of purchase on Supremacy storefront.",
 		}
@@ -249,7 +260,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	}
 
 	// create item on metadata table
-	err = db.XsynMetadataInsert(ctx, conn, newItem, "test")
+	err = db.XsynMetadataInsert(ctx, conn, newItem, externalURL)
 	if err != nil {
 		refund(err.Error())
 		return nil, terror.Error(err)
