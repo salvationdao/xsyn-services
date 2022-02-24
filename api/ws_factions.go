@@ -179,6 +179,7 @@ type FactionChatRequest struct {
 // ChatMessageSend contains chat message data to send.
 type ChatMessageSend struct {
 	Message       string           `json:"message"`
+	FromUserID    passport.UserID  `json:"fromUserID"`
 	FromUsername  string           `json:"fromUsername"`
 	FactionColour *string          `json:"factionColour,omitempty"`
 	AvatarID      *passport.BlobID `json:"avatarID,omitempty"`
@@ -231,6 +232,7 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 		// send message
 		fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID)), &ChatMessageSend{
 			Message:       req.Payload.Message,
+			FromUserID:    user.ID,
 			FromUsername:  user.Username,
 			AvatarID:      user.AvatarID,
 			SentAt:        time.Now(),
@@ -243,6 +245,7 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 	// global message
 	fc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyGlobalChatSubscribe), &ChatMessageSend{
 		Message:       req.Payload.Message,
+		FromUserID:    user.ID,
 		FromUsername:  user.Username,
 		AvatarID:      user.AvatarID,
 		SentAt:        time.Now(),
