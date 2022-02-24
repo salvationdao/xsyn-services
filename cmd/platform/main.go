@@ -317,41 +317,7 @@ func txConnect(
 
 	return conn, nil
 }
-func SyncFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
-	databaseUser := ctxCLI.String("database_user")
-	databasePass := ctxCLI.String("database_pass")
-	databaseHost := ctxCLI.String("database_host")
-	databasePort := ctxCLI.String("database_port")
-	databaseName := ctxCLI.String("database_name")
-	databaseAppName := ctxCLI.String("database_application_name")
-
-	databaseTxUser := ctxCLI.String("database_tx_user")
-	databaseTxPass := ctxCLI.String("database_tx_pass")
-
-	conn, err := pgxconnect(
-		databaseUser,
-		databasePass,
-		databaseHost,
-		databasePort,
-		databaseName,
-		databaseAppName,
-		Version,
-	)
-	if err != nil {
-		return err
-	}
-
-	txConn, err := txConnect(
-		databaseTxUser,
-		databaseTxPass,
-		databaseHost,
-		databasePort,
-		databaseName,
-	)
-	if err != nil {
-		return err
-	}
-
+func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) error {
 	records1, err := payments.BNB(3)
 	if err != nil {
 		return err
@@ -444,7 +410,11 @@ func SyncFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	skipped := 0
 	for _, r := range records1 {
 		ctx := context.Background()
-		err = payments.StoreRecord(ctx, conn, txConn, r)
+		user, err := payments.CreateOrGetUser(ctx, conn, r.FromAddress)
+		if err != nil {
+			return err
+		}
+		err = payments.StoreRecord(ctx, user, ucm, r)
 		if err != nil && strings.Contains(err.Error(), "duplicate key") {
 			skipped++
 			continue
@@ -507,7 +477,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	ETHChainID := ctxCLI.Int64("eth_chain_id")
 	BSCRouterAddr := ctxCLI.String("bsc_router_addr")
 
-	enablePurchaseSubscription := c.Bool("enable_purchase_subscription")
+	enablePurchaseSubscription := ctxCLI.Bool("enable_purchase_subscription")
 
 	isTestnetBlockchain := ctxCLI.Bool("is_testnet_blockchain")
 	runBlockchainBridge := ctxCLI.Bool("run_blockchain_bridge")
@@ -637,8 +607,13 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	tc := api.NewTransactionCache(txConn, log)
 
+	// initialise user cache map
+	ucm, err := api.NewUserCacheMap(pgxconn, tc)
+	if err != nil {
+		return terror.Error(err)
+	}
 	if enablePurchaseSubscription {
-		err := SyncFunc(c, log)
+		err := SyncFunc(ucm, pgxconn, log)
 		if err != nil {
 			log.Error().Err(err).Msg("sync")
 		}
@@ -646,20 +621,13 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		go func() {
 			t := time.NewTicker(20 * time.Second)
 			for range t.C {
-				err := SyncFunc(c, log)
+				err := SyncFunc(ucm, pgxconn, log)
 				if err != nil {
 					log.Error().Err(err).Msg("sync")
 				}
 			}
 		}()
 	}
-
-	// initialise user cache map
-	ucm, err := api.NewUserCacheMap(pgxconn, tc)
-	if err != nil {
-		return terror.Error(err)
-	}
-
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
 	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, googleClientID, mailer, apiAddr, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config, twitterAPIKey, twitterAPISecret, discordClientID, discordClientSecret, gameserverToken, externalURL, tc, ucm, isTestnetBlockchain, runBlockchainBridge)

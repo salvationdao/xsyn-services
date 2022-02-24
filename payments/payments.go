@@ -2,7 +2,6 @@ package payments
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,7 +15,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
@@ -109,25 +107,23 @@ func ProcessValues(sups string, inputValue string, inputDecimalStr string) (deci
 	return bigInputAmt, bigOutputAmt, tokenDecimal, nil
 }
 
-func StoreRecord(ctx context.Context, conn *pgxpool.Pool, txConn *sql.DB, record *Record) error {
-	user, err := CreateOrGetUser(ctx, conn, record.FromAddress)
-	if err != nil {
-		return err
-	}
+func StoreRecord(ctx context.Context, toUser *passport.User, ucm *api.UserCacheMap, record *Record) error {
 	input, output, tokenDecimals, err := ProcessValues(record.Sups, record.Value, record.JSON.TokenDecimal)
 	if err != nil {
 		return err
 	}
 	msg := fmt.Sprintf("purchased %s SUPS for %s [%s]", output.Shift(-1*api.SUPSDecimals).StringFixed(4), input.Shift(-1*int32(tokenDecimals)).StringFixed(4), strings.ToUpper(record.Symbol))
-	_, err = api.CreateTransactionEntry(
-		txConn,
-		uuid.Must(uuid.NewV4()).String(),
-		*output.BigInt(),
-		user.ID,
-		passport.XsynSaleUserID,
-		msg,
-		passport.TransactionReference(record.TxHash),
-	)
+
+	trans := &passport.NewTransaction{
+		To:                   passport.OnChainUserID,
+		From:                 passport.XsynSaleUserID,
+		Amount:               *output.BigInt(),
+		TransactionReference: passport.TransactionReference(record.TxHash),
+		Description:          msg,
+		Safe:                 true,
+	}
+
+	_, _, _, err = ucm.Process(trans)
 	if err != nil {
 		return fmt.Errorf("create tx entry for tx %s: %w", record.FromAddress, err)
 	}
