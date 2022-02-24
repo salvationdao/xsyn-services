@@ -261,7 +261,7 @@ func AssetUpdate(ctx context.Context, conn Conn, tokenID uint64, newName string)
 
 	// profanity check
 	if goaway.IsProfane(newName) {
-		return terror.Error(fmt.Errorf("invalid asset name: cannot contain profanity"), "invalid asset name: cannot contain profanity")
+		return terror.Error(fmt.Errorf("invalid asset name: cannot contain profanity"), "Asset name cannot contain any profanity.")
 	}
 
 	nameAvailable, err := AssetNameAvailable(ctx, conn, newName, tokenID)
@@ -269,7 +269,7 @@ func AssetUpdate(ctx context.Context, conn Conn, tokenID uint64, newName string)
 		return terror.Error(err)
 	}
 	if !nameAvailable {
-		return terror.Error(fmt.Errorf("name is taken: %s", newName), fmt.Sprintf("Name is taken: %s", newName))
+		return terror.Error(fmt.Errorf("name is taken: %s", newName), fmt.Sprintf("The name %s has already been taken.", newName))
 	}
 
 	// sql to update a 'Name' entry in the attributes column

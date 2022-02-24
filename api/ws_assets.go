@@ -455,12 +455,12 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 		return terror.Error(err)
 	}
 	if asset == nil {
-		return terror.Error(fmt.Errorf("asset doesn't exist"))
+		return terror.Error(fmt.Errorf("asset doesn't exist"), "This asset does not exist.")
 	}
 
 	// check if user owns asset
 	if *asset.UserID != *req.Payload.UserID {
-		return terror.Error(err, "Must own Asset to update it's name")
+		return terror.Error(err, "Must own Asset to update it's name.")
 	}
 
 	// check if war machine
@@ -481,7 +481,7 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 	// update asset name
 	err = db.AssetUpdate(ctx, ac.Conn, asset.TokenID, req.Payload.Name)
 	if err != nil {
-		return terror.Error(err, "Failed to update Asset name")
+		return terror.Error(err)
 	}
 
 	// get asset
@@ -490,7 +490,7 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 		return terror.Error(err)
 	}
 	if asset == nil {
-		return terror.Error(fmt.Errorf("asset doesn't exist"))
+		return terror.Error(fmt.Errorf("asset doesn't exist"), "This asset does not exist.")
 	}
 
 	go ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.TokenID)), asset)
