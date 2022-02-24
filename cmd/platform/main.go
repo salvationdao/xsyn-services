@@ -127,6 +127,8 @@ func main() {
 					&cli.BoolFlag{Name: "only_wallet", Value: true, EnvVars: []string{envPrefix + "_ONLY_WALLET"}, Usage: "Set passport to only accept wallet logins"},
 					&cli.StringFlag{Name: "whitelist_check_endpoint", Value: "https://stories.supremacy.game", EnvVars: []string{envPrefix + "_WHITELIST_ENDPOINT"}, Usage: "Endpoint to check if user is whitelisted"},
 
+					&cli.StringFlag{Name: "cors_allowed_origins", Value: "*", EnvVars: []string{envPrefix + "_CORS_ALLOWED_ORIGINS"}, Usage: "List of allowed origin hostnames for CORS (comma separated)."},
+
 					/****************************
 					 *		Bridge details		*
 					 ***************************/
@@ -508,6 +510,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	config := &passport.Config{
 		CookieSecure:        ctxCLI.Bool("cookie_secure"),
+		CORSAllowedOrigins:  strings.Split(ctxCLI.String("cors_allowed_origins"), ","),
 		PassportWebHostURL:  ctxCLI.String("passport_web_host_url"),
 		GameserverHostURL:   ctxCLI.String("gameserver_web_host_url"),
 		EncryptTokens:       ctxCLI.Bool("jwt_encrypt"),
