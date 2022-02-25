@@ -408,7 +408,6 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 		{
 			CollectionID:       collection.ID,
 			Name:               "",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -510,7 +509,6 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 		{
 			CollectionID:       collection.ID,
 			Name:               "",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -612,7 +610,6 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 		{
 			CollectionID:       collection.ID,
 			Name:               "",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -733,7 +730,6 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 		{
 			CollectionID:       collection.ID,
 			Name:               "",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -825,7 +821,6 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 		{
 			CollectionID:       collection.ID,
 			Name:               "Olympus Mons LY07 B",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -917,7 +912,6 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 		{
 			CollectionID:       collection.ID,
 			Name:               "Olympus Mons LY07 B",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -1028,7 +1022,6 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 		{
 			CollectionID:       collection.ID,
 			Name:               "",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -1107,7 +1100,6 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 		{
 			CollectionID:       collection.ID,
 			Name:               "Law Enforcer X-1000 B",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -1186,7 +1178,6 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 		{
 			CollectionID:       collection.ID,
 			Name:               "Law Enforcer X-1000 B",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,

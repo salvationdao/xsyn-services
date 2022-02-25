@@ -24,11 +24,6 @@ func (s *Seeder) SeedItemMetadata(ctx context.Context) (warMachines, abilities, 
 		return nil, nil, nil, nil, terror.Error(err)
 	}
 
-	abilities, err = s.SeedWarMachineAbility(ctx, supremacyCollection)
-	if err != nil {
-		return nil, nil, nil, nil, terror.Error(err)
-	}
-
 	warMachines, err = s.SeedWarMachine(ctx, weapons, abilities, supremacyCollection)
 	if err != nil {
 		return nil, nil, nil, nil, terror.Error(err)
@@ -38,12 +33,14 @@ func (s *Seeder) SeedItemMetadata(ctx context.Context) (warMachines, abilities, 
 }
 
 func (s *Seeder) SeedWarMachine(ctx context.Context, weapons, abilities []*passport.XsynMetadata, collection *passport.Collection) ([]*passport.XsynMetadata, error) {
+	des := "A big ass War Machine - links to attached nfts"
+
 	newNFTs := []*passport.XsynMetadata{
 		{
 			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "",
-			Description:        "A big ass War Machine - links to attached nfts",
+			Description:        &des,
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -137,7 +134,7 @@ func (s *Seeder) SeedWarMachine(ctx context.Context, weapons, abilities []*passp
 		{
 			CollectionID: collection.ID,
 			Name:         "Medium War Machine",
-			Description:  "Average size War Machine - links to attached nfts",
+			Description:  &des,
 			ExternalUrl:  "",
 			Image:        "",
 			Attributes: []*passport.Attribute{
@@ -217,7 +214,7 @@ func (s *Seeder) SeedWarMachine(ctx context.Context, weapons, abilities []*passp
 		{
 			CollectionID: collection.ID,
 			Name:         "Small War Machine",
-			Description:  "A iddy biddy tiny War Machine - links to attached nfts",
+			Description:  &des,
 			ExternalUrl:  "",
 			Image:        "",
 			Attributes: []*passport.Attribute{
@@ -300,13 +297,18 @@ func (s *Seeder) SeedWarMachine(ctx context.Context, weapons, abilities []*passp
 }
 
 func (s *Seeder) SeedWeapons(ctx context.Context, collection *passport.Collection) ([]*passport.XsynMetadata, error) {
+	pulseRifleDes := "A rifle that shoots pulses"
+	autoCannonDes := "A cannon that shoots projectiles"
+	rocketLauncherDes := "A shoulder weapon that fires rockets"
+	rapidRocketLauncherDes := "A shoulder weapon that fires rockets quickly"
+
 	newNFT := []*passport.XsynMetadata{
 		// pulse rifles
 		{
 			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Pulse Rifle",
-			Description:        "A rifle that shoots pulses",
+			Description:        &pulseRifleDes,
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -353,7 +355,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context, collection *passport.Collectio
 			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Pulse Rifle",
-			Description:        "A rifle that shoots pulses",
+			Description:        &pulseRifleDes,
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -401,7 +403,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context, collection *passport.Collectio
 			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Auto Cannon",
-			Description:        "A cannon that shoots projectiles",
+			Description:        &autoCannonDes,
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -458,7 +460,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context, collection *passport.Collectio
 			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Auto Cannon",
-			Description:        "A cannon that shoots projectiles",
+			Description:        &autoCannonDes,
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -516,7 +518,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context, collection *passport.Collectio
 			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Rocket Launcher",
-			Description:        "A shoulder weapon that fires rockets",
+			Description:        &rocketLauncherDes,
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -563,7 +565,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context, collection *passport.Collectio
 			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Rocket Launcher",
-			Description:        "A shoulder weapon that fires rockets",
+			Description:        &rocketLauncherDes,
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -611,7 +613,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context, collection *passport.Collectio
 			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Rapid Rocket Launcher",
-			Description:        "A shoulder weapon that fires rockets quickly",
+			Description:        &rapidRocketLauncherDes,
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -668,7 +670,7 @@ func (s *Seeder) SeedWeapons(ctx context.Context, collection *passport.Collectio
 			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Rapid Rocket Launcher",
-			Description:        "A shoulder weapon that fires rockets quickly",
+			Description:        &rapidRocketLauncherDes,
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -734,13 +736,17 @@ func (s *Seeder) SeedWeapons(ctx context.Context, collection *passport.Collectio
 }
 
 func (s *Seeder) SeedUtility(ctx context.Context, collection *passport.Collection) ([]*passport.XsynMetadata, error) {
+	largeShieldDesc := "A large Shield"
+	mediumShieldDesc := "A Medium shield"
+	smallShieldDesc := "A small shield"
+
 	newNFT := []*passport.XsynMetadata{
 		// large shield
 		{
 			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Large Shield",
-			Description:        "A large shield",
+			Description:        &largeShieldDesc,
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -788,7 +794,7 @@ func (s *Seeder) SeedUtility(ctx context.Context, collection *passport.Collectio
 			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Large Shield",
-			Description:        "A large shield",
+			Description:        &largeShieldDesc,
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -837,7 +843,7 @@ func (s *Seeder) SeedUtility(ctx context.Context, collection *passport.Collectio
 			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Medium Shield",
-			Description:        "A Medium shield",
+			Description:        &mediumShieldDesc,
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -885,7 +891,7 @@ func (s *Seeder) SeedUtility(ctx context.Context, collection *passport.Collectio
 			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Medium Shield",
-			Description:        "A Medium shield",
+			Description:        &mediumShieldDesc,
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -934,7 +940,7 @@ func (s *Seeder) SeedUtility(ctx context.Context, collection *passport.Collectio
 			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Small Shield",
-			Description:        "A small shield",
+			Description:        &smallShieldDesc,
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -982,7 +988,7 @@ func (s *Seeder) SeedUtility(ctx context.Context, collection *passport.Collectio
 			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Small Shield",
-			Description:        "A small shield",
+			Description:        &smallShieldDesc,
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -1031,7 +1037,7 @@ func (s *Seeder) SeedUtility(ctx context.Context, collection *passport.Collectio
 			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Medium Shield",
-			Description:        "A Medium shield",
+			Description:        &mediumShieldDesc,
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -1069,7 +1075,7 @@ func (s *Seeder) SeedUtility(ctx context.Context, collection *passport.Collectio
 			CollectionID:       collection.ID,
 			GameObject:         nil,
 			Name:               "Medium Shield",
-			Description:        "A Medium shield",
+			Description:        &mediumShieldDesc,
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -1105,60 +1111,6 @@ func (s *Seeder) SeedUtility(ctx context.Context, collection *passport.Collectio
 		},
 	}
 
-	for _, nft := range newNFT {
-		err := db.XsynMetadataInsert(ctx, s.Conn, nft, s.ExternalURL)
-		if err != nil {
-			return nil, terror.Error(err)
-		}
-	}
-
-	return newNFT, nil
-}
-
-func (s *Seeder) SeedWarMachineAbility(ctx context.Context, collection *passport.Collection) ([]*passport.XsynMetadata, error) {
-	newNFT := []*passport.XsynMetadata{
-		{
-			CollectionID:       collection.ID,
-			GameObject:         nil,
-			Name:               "Overload",
-			Description:        "Boost war machine's stat",
-			ExternalUrl:        "",
-			Image:              "",
-			AdditionalMetadata: nil,
-			Attributes: []*passport.Attribute{
-				{
-					TraitType: "Name",
-					Value:     "Overload",
-				},
-				{
-					TraitType: "Asset Type",
-					Value:     "Ability",
-				},
-				{
-					TraitType: string(passport.AbilityAttFieldAbilityCost),
-					Value:     "100000000000000000000",
-				},
-				{
-					TraitType: string(passport.AbilityAttFieldAbilityID),
-					Value:     11,
-				},
-				{
-					TraitType: string(passport.AbilityAttFieldRequiredSlot),
-					Value:     "Ability",
-				},
-				{
-					TraitType:   string(passport.AbilityAttFieldRequiredPowerGrid),
-					Value:       50,
-					DisplayType: passport.Number,
-				},
-				{
-					TraitType:   string(passport.AbilityAttFieldRequiredCPU),
-					Value:       20,
-					DisplayType: passport.Number,
-				},
-			},
-		},
-	}
 	for _, nft := range newNFT {
 		err := db.XsynMetadataInsert(ctx, s.Conn, nft, s.ExternalURL)
 		if err != nil {

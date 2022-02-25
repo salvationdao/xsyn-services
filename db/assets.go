@@ -65,6 +65,7 @@ xsyn_metadata.attributes,
 xsyn_metadata.deleted_at,
 xsyn_metadata.updated_at,
 xsyn_metadata.created_at,
+xsyn_metadata.hash,
 xsyn_assets.user_id,
 xsyn_assets.frozen_at,
 xsyn_assets.locked_by_id,
@@ -242,6 +243,11 @@ func AssetGet(ctx context.Context, conn Conn, hash string) (*passport.XsynMetada
 	count := 0
 
 	q := fmt.Sprintf(`SELECT count(*) %s WHERE xsyn_metadata.hash = $1`, AssetGetQueryFrom)
+	fmt.Println()
+	fmt.Println()
+	fmt.Println(q)
+	fmt.Println(hash)
+	fmt.Println()
 	err := pgxscan.Get(ctx, conn, &count, q, hash)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting asset from hash.")

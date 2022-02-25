@@ -70,7 +70,7 @@ type XsynMetadata struct {
 	CollectionID       CollectionID          `json:"collectionID" db:"collection_id"`
 	Collection         Collection            `json:"collection" db:"collection"`
 	GameObject         interface{}           `json:"game_object" db:"game_object"`
-	Description        string                `json:"description" db:"description"`
+	Description        *string               `json:"description,omitempty" db:"description,omitempty"`
 	ExternalUrl        string                `json:"external_url" db:"external_url"`
 	Image              string                `json:"image" db:"image"`
 	AnimationURL       string                `json:"animation_url" db:"animation_url"`
@@ -114,7 +114,7 @@ type WarMachineMetadata struct {
 	Hash            string             `json:"hash"`
 	OwnedByID       UserID             `json:"ownedByID"`
 	Name            string             `json:"name"`
-	Description     string             `json:"description"`
+	Description     *string            `json:"description,omitempty"`
 	ExternalUrl     string             `json:"externalUrl"`
 	Image           string             `json:"image"`
 	Model           string             `json:"model"`
@@ -216,16 +216,17 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 }
 
 type AbilityMetadata struct {
-	TokenID           uint64 `json:"tokenID"`
-	Name              string `json:"name"`
-	Description       string `json:"description"`
-	ExternalUrl       string `json:"externalUrl"`
-	Image             string `json:"image"`
-	SupsCost          string `json:"supsCost"`
-	GameClientID      int    `json:"gameClientID"`
-	RequiredSlot      string `json:"requiredSlot"`
-	RequiredPowerGrid int    `json:"requiredPowerGrid"`
-	RequiredCPU       int    `json:"requiredCPU"`
+	Hash              string  `json:"hash"`
+	TokenID           uint64  `json:"tokenID"`
+	Name              string  `json:"name"`
+	Description       *string `json:"description"`
+	ExternalUrl       string  `json:"externalUrl"`
+	Image             string  `json:"image"`
+	SupsCost          string  `json:"supsCost"`
+	GameClientID      int     `json:"gameClientID"`
+	RequiredSlot      string  `json:"requiredSlot"`
+	RequiredPowerGrid int     `json:"requiredPowerGrid"`
+	RequiredCPU       int     `json:"requiredCPU"`
 }
 
 type AbilityAttField string
