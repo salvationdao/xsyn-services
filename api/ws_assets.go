@@ -272,14 +272,15 @@ func (ac *AssetController) PayAssetInsuranceHandler(ctx context.Context, hubc *h
 	}
 
 	// fire request to server client
+	fmt.Println(metadata.Hash)
 	ac.API.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: AssetInsurancePay,
 		Payload: struct {
-			FactionID    passport.FactionID `json:"factionID"`
-			AssetTokenID string             `json:"assetTokenID"`
+			FactionID passport.FactionID `json:"factionID"`
+			AssetHash string             `json:"assetHash"`
 		}{
-			FactionID:    *user.FactionID,
-			AssetTokenID: metadata.Hash,
+			FactionID: *user.FactionID,
+			AssetHash: metadata.Hash,
 		},
 	})
 

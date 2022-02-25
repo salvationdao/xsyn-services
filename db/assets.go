@@ -160,7 +160,7 @@ func AssetList(
 	if len(includedAssetHashes) > 0 {
 		cond := "("
 		for i, assetHash := range includedAssetHashes {
-			cond += assetHash
+			cond += "'" + assetHash + "'"
 			if i < len(includedAssetHashes)-1 {
 				cond += ","
 				continue
@@ -168,7 +168,7 @@ func AssetList(
 
 			cond += ")"
 		}
-		filterConditionsString += fmt.Sprintf(" AND xsyn_metadata.external_token_id  IN %v", cond)
+		filterConditionsString += fmt.Sprintf(" AND xsyn_metadata.hash  IN %v", cond)
 	}
 
 	archiveCondition := "IS NULL"
