@@ -8,7 +8,6 @@ import (
 	"passport/db"
 	"strconv"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ninja-software/log_helpers"
 
@@ -159,9 +158,11 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hu
 	// get all collections
 	collections := []*passport.Collection{}
 	_, err = db.CollectionsList(ctx, ctrlr.Conn, &collections, "", false, nil, 0, 100, "", db.SortByDirAsc)
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	// for each collection get all nfts
-	nfts := make([]*bridge.NFTOwner, 0)
 	assets := make([]*passport.XsynMetadata, 0)
 	for _, c := range collections {
 		walletCollections, err := o.NFTOwners(common.HexToAddress(c.MintContract), network)
@@ -174,9 +175,6 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hu
 			// get metadata
 			// if asset is owned by user anbd matches filter, add to result
 			if nft.OwnerOf == user.PublicAddress.String {
-				nfts = append(nfts, nft)
-				spew.Dump(nft.TokenID)
-				spew.Dump(nft.TokenAddress)
 				tokenID, err := strconv.ParseInt(nft.TokenID, 10, 64)
 				if err != nil {
 					return terror.Error(err)
@@ -203,7 +201,9 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hu
 		req.Payload.SortBy,
 		req.Payload.SortDir,
 	)
-
+	if err != nil {
+		return terror.Error(err)
+	}
 	assetHashes := make([]string, 0)
 	for _, s := range filtered {
 		assetHashes = append(assetHashes, s.Hash)
