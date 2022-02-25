@@ -308,7 +308,7 @@ func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID
 	q := `
 		SELECT xnm.hash, xnm.minted, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM xsyn_metadata xnm
-	 	INNER JOIN xsyn_assets xa ON xa.token_id = xnm.token_id and xnm.collection_id = xa.collection_id
+	 	INNER JOIN xsyn_assets xa ON xa.metadata_hash = xnm.hash and xnm.collection_id = xa.collection_id
 		WHERE xa.user_id = $1
 		AND xnm.attributes @> '[{"value": "War Machine", "trait_type": "Asset Type"}]'
 		LIMIT $2
