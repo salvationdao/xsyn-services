@@ -1042,7 +1042,6 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 
 			warMachines = append(warMachines, warMachineMetadata)
 		}
-
 	case passport.BostonCyberneticsFactionID:
 		faction, err := db.FactionGet(ctx, sc.Conn, passport.BostonCyberneticsFactionID)
 		if err != nil {
