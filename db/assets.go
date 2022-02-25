@@ -47,7 +47,7 @@ func (ic AssetColumn) IsValid() error {
 		AssetColumnCreatedAt:
 		return nil
 	}
-	return terror.Error(fmt.Errorf("invalid asset column type"))
+	return terror.Error(fmt.Errorf("invalid asset column type %s", ic))
 }
 
 const AssetGetQuery string = `
@@ -77,7 +77,7 @@ u.username
 
 const AssetGetQueryFrom = `
 FROM xsyn_metadata 
-LEFT OUTER JOIN xsyn_assets ON xsyn_metadata.external_token_id = xsyn_assets.external_token_id
+LEFT OUTER JOIN xsyn_assets ON xsyn_metadata.external_token_id = xsyn_assets.external_token_id and xsyn_metadata.collection_id = xsyn_assets.collection_id
 INNER JOIN (
 	SELECT  id,
 			name,
@@ -201,7 +201,6 @@ func AssetList(
 	)
 
 	var totalRows int
-
 	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
 	if err != nil {
 		return 0, nil, terror.Error(err)

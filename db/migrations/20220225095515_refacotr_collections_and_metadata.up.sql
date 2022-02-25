@@ -33,7 +33,7 @@ DELETE FROM xsyn_metadata; -- CLEAR XSYN_METADATA
 ALTER TABLE xsyn_metadata DROP CONSTRAINT xsyn_metadata_collection_id_fkey; -- drop metadata PK
 ALTER TABLE xsyn_assets DROP COLUMN token_id; -- drop this before xsyn_metadata id column
 ALTER TABLE xsyn_metadata DROP COLUMN token_id; -- id column
-ALTER TABLE xsyn_metadata ADD COLUMN hash TEXT PRIMARY KEY; -- add new PK column (will be hash of collectio + token id)
+ALTER TABLE xsyn_metadata ADD COLUMN hash TEXT PRIMARY KEY UNIQUE; -- add new PK column (will be hash of collectio + token id)
 ALTER TABLE xsyn_metadata ADD COLUMN external_token_id NUMERIC(78, 0); -- add new token id column
 ALTER TABLE xsyn_metadata ADD CONSTRAINT xsyn_metadata_token_collection_unique UNIQUE(external_token_id, collection_id);
 
@@ -83,5 +83,12 @@ INSERT INTO public.xsyn_metadata (hash, external_token_id, collection_id, extern
 INSERT INTO public.xsyn_metadata (hash, external_token_id, collection_id, external_url, image, animation_url, attributes) VALUES ('D16aRep0Zo', 8,  '9cdf55aa-217b-4821-aa77-bc8555195f23',  'https://passport.xsyn.io/asset/D16aRep0Zo', '', '', '[{"value": "Boston Cybernetics", "trait_type": "Brand"}, {"value": "XFVS", "trait_type": "Model"}, {"value": "Police_DarkBlue", "trait_type": "Skin"}, {"value": "Yong", "trait_type": "Name"}, {"value": "War Machine", "trait_type": "Asset Type"}, {"value": 1000, "trait_type": "Max Structure Hit Points", "display_type": "number"}, {"value": 1000, "trait_type": "Max Shield Hit Points", "display_type": "number"}, {"value": 2750, "trait_type": "Speed", "display_type": "number"}, {"value": 2, "trait_type": "Weapon Hardpoints", "display_type": "number"}, {"value": 1, "trait_type": "Utility Slots", "display_type": "number"}, {"value": "Plasma Rifle", "trait_type": "Weapon One"}, {"value": "Sword", "trait_type": "Weapon Two"}, {"value": "Shield", "trait_type": "Utility One"}]');
 INSERT INTO public.xsyn_metadata (hash, external_token_id, collection_id, external_url, image, animation_url, attributes) VALUES ('4Q1p8dpqwX', 9, '9cdf55aa-217b-4821-aa77-bc8555195f23',   'https://passport.xsyn.io/asset/4Q1p8dpqwX', '', '', '[{"value": "Boston Cybernetics", "trait_type": "Brand"}, {"value": "XFVS", "trait_type": "Model"}, {"value": "Police_DarkBlue", "trait_type": "Skin"}, {"value": "Corey", "trait_type": "Name"}, {"value": "War Machine", "trait_type": "Asset Type"}, {"value": 1000, "trait_type": "Max Structure Hit Points", "display_type": "number"}, {"value": 1000, "trait_type": "Max Shield Hit Points", "display_type": "number"}, {"value": 2750, "trait_type": "Speed", "display_type": "number"}, {"value": 2, "trait_type": "Weapon Hardpoints", "display_type": "number"}, {"value": 1, "trait_type": "Utility Slots", "display_type": "number"}, {"value": "Plasma Rifle", "trait_type": "Weapon One"}, {"value": "Sword", "trait_type": "Weapon Two"}, {"value": "Shield", "trait_type": "Utility One"}]');
 
+update xsyn_store set usd_cent_cost = 100 where attributes @> '[{"trait_type": "Rarity"}]' and attributes @> '[{"value": "Mega"}]';
 
 UPDATE xsyn_store SET restriction = 'WHITELIST' WHERE description = 'Gold';
+
+
+update xsyn_store set collection_id = (SELECT id from collections c where c.name = 'Supremacy Genesis')
+where attributes @> '[{"trait_type": "Rarity"}]' and attributes @> '[{"value": "Mega"}]';
+
+ALTER TABLE users ADD COLUMN metadata JSONB DEFAULT '';
