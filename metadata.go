@@ -176,7 +176,17 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 		case string(WarMachineAttName):
 			warMachineMetadata.Name = att.Value.(string)
 		case string(WarMachineAttModel):
-			warMachineMetadata.Model = att.Value.(string)
+			switch att.Value.(string) {
+			case "Law Enforcer X-1000":
+				warMachineMetadata.Model = "XFVS"
+			case "Olympus Mons LY07":
+				warMachineMetadata.Model = "BXSD"
+			case "Tenshi Mk1":
+				warMachineMetadata.Model = "WREX"
+			default:
+				warMachineMetadata.Model = att.Value.(string)
+			}
+
 		case string(WarMachineAttSubModel):
 			switch att.Value.(string) {
 			case "Crystal Blue":
@@ -257,9 +267,10 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 				warMachineMetadata.Skin = "Neon"
 			case "Gold":
 				warMachineMetadata.Skin = "Gold"
+			default:
+				warMachineMetadata.Skin = att.Value.(string)
 			}
 
-			warMachineMetadata.Skin = att.Value.(string)
 		case string(WarMachineAttFieldMaxHitPoint):
 			warMachineMetadata.MaxHealth = int(att.Value.(float64))
 			warMachineMetadata.Health = int(att.Value.(float64))
