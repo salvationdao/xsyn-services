@@ -110,7 +110,7 @@ func XsynMetadataOwnerGet(ctx context.Context, conn Conn, userID passport.UserID
 			xsyn_metadata xnm
 		INNER JOIN
 			xsyn_assets xa ON xa.metadata_hash = xnm.hash
-		WHERE xa.user_id = $1 AND xa.hash = $2
+		WHERE xa.user_id = $1 AND xa.metadata_hash = $2
 	`
 	err := pgxscan.Get(ctx, conn, nft, q,
 		userID,

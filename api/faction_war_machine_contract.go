@@ -87,8 +87,8 @@ func (api *API) startRepairTicker(rt RepairType) {
 			}
 
 			assetHashes := []string{}
-			for tokenID := range rq {
-				assetHashes = append(assetHashes, tokenID)
+			for hash := range rq {
+				assetHashes = append(assetHashes, hash)
 			}
 
 			nfts, err := db.XsynAssetDurabilityBulkIncrement(context.Background(), api.Conn, assetHashes)
