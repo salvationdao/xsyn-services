@@ -313,8 +313,8 @@ type AssetsUpdatedSubscribeRequest struct {
 
 // AssetListResponse is the response from get asset list
 type AssetListResponse struct {
-	Total    int      `json:"total"`
-	TokenIDs []uint64 `json:"tokenIDs"`
+	Total       int      `json:"total"`
+	AssetHashes []string `json:"assetHashes"`
 }
 
 const HubKeyAssetList hub.HubCommandKey = "ASSET:LIST"
@@ -348,14 +348,14 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Clien
 		return terror.Error(err)
 	}
 
-	tokenIDs := make([]uint64, 0)
+	assetHashes := make([]string, 0)
 	for _, s := range assets {
-		tokenIDs = append(tokenIDs, s.ExternalTokenID)
+		assetHashes = append(assetHashes, s.Hash)
 	}
 
 	resp := &AssetListResponse{
 		total,
-		tokenIDs,
+		assetHashes,
 	}
 
 	reply(resp)
