@@ -1025,13 +1025,12 @@ func (uc *UserController) OnlineStatusSubscribeHandler(ctx context.Context, hubc
 
 	// get current online status
 	online := false
-	uc.API.Hub.Clients(func(clients hub.ClientsList) {
-		for cl := range clients {
-			if cl.Identifier() == userID.String() {
-				online = true
-				break
-			}
+	uc.API.Hub.Clients(func(sessionID hub.SessionID, cl *hub.Client) bool {
+		if cl.Identifier() == userID.String() {
+			online = true
+			return false
 		}
+		return true
 	})
 
 	reply(online)

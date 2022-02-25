@@ -252,9 +252,9 @@ func NewAPI(
 	_ = NewStoreController(log, conn, api)
 
 	//api.Hub.Events.AddEventHandler(hub.EventOnline, api.ClientOnline)
-	api.Hub.Events.AddEventHandler(auth.EventLogin, api.ClientAuth)
-	api.Hub.Events.AddEventHandler(auth.EventLogout, api.ClientLogout)
-	api.Hub.Events.AddEventHandler(hub.EventOffline, api.ClientOffline)
+	api.Hub.Events.AddEventHandler(auth.EventLogin, api.ClientAuth, func(err error) {})
+	api.Hub.Events.AddEventHandler(auth.EventLogout, api.ClientLogout, func(err error) {})
+	api.Hub.Events.AddEventHandler(hub.EventOffline, api.ClientOffline, func(err error) {})
 
 	ctx := context.TODO()
 	api.State, err = db.StateGet(ctx, isTestnetBlockchain, api.Conn)
