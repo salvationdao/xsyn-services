@@ -131,14 +131,6 @@ func (s *Seeder) RandomUsers(
 			return nil, terror.Error(err)
 		}
 
-		// Set Organisation
-		//if org != nil {
-		//	err = db.UserSetOrganisations(ctx, s.Conn, u.ID, org.ID)
-		//	if err != nil {
-		//		return nil, terror.Error(err)
-		//	}
-		//}
-
 		users = append(users, u)
 	}
 

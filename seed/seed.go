@@ -104,11 +104,6 @@ func (s *Seeder) Run(isProd bool) error {
 	if err != nil {
 		return terror.Error(err, "seed early contributors failed")
 	}
-	//fmt.Println("Seeding organisations")
-	//organisations, err := s.Organisations(ctx)
-	//if err != nil {
-	//	return terror.Error(err, "seed organisations failed")
-	//}
 
 	fmt.Println("Seeding initial store items")
 	err = s.SeedInitialStoreItems(ctx, s.PassportHostUrl)
@@ -127,49 +122,12 @@ func (s *Seeder) Run(isProd bool) error {
 		if err != nil {
 			return terror.Error(err, "seed users failed")
 		}
-		// err = s.AndAssignNftToMember(ctx)
-		// if err != nil {
-		// 	return terror.Error(err, "seed users failed")
-		// }
-
-		// seed ability to zaibatsu war machines
-		// fmt.Println("Seeding assign ability to war machine")
-		// err = s.zaibatsuWarMachineAbilitySet(ctx, abilities)
-		// if err != nil {
-		// 	return terror.Error(err, "unable to seed zaibatsu abilities")
-		// }
-
 	}
 	fmt.Println("Seed initial state")
 
 	fmt.Println("Seed complete")
 	return nil
 }
-
-// func (s *Seeder) zaibatsuWarMachineAbilitySet(ctx context.Context, abilities []*passport.XsynMetadata) error {
-// 	// get Zaibatsu war machines
-// 	warMachines, err := db.WarMachineGetByUserID(ctx, s.Conn, passport.SupremacyZaibatsuUserID)
-// 	if err != nil {
-// 		return terror.Error(err)
-// 	}
-
-// 	for _, wm := range warMachines {
-// 		abilityMetadata := &passport.AbilityMetadata{}
-// 		passport.ParseAbilityMetadata(abilities[0], abilityMetadata)
-
-// 		err := db.WarMachineAbilitySet(ctx, s.Conn, wm.ExternalTokenID, abilityMetadata.ExternalTokenID, passport.WarMachineAttFieldAbility01)
-// 		if err != nil {
-// 			return terror.Error(err)
-// 		}
-
-// 		err = db.WarMachineAbilityCostUpsert(ctx, s.Conn, wm.ExternalTokenID, abilityMetadata.ExternalTokenID, abilityMetadata.SupsCost)
-// 		if err != nil {
-// 			return terror.Error(err)
-// 		}
-// 	}
-
-// 	return nil
-// }
 
 func (s *Seeder) factions(ctx context.Context) ([]*passport.Faction, error) {
 	factions := []*passport.Faction{}
