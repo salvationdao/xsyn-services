@@ -510,8 +510,16 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 		return terror.Error(fmt.Errorf("asset doesn't exist"), "This asset does not exist.")
 	}
 
+	// get user
+	uid, err := uuid.FromString(hubc.Identifier())
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	userID := passport.UserID(uid)
+
 	// check if user owns asset
-	if *asset.UserID != *req.Payload.UserID {
+	if *asset.UserID != userID {
 		return terror.Error(err, "Must own Asset to update it's name.")
 	}
 

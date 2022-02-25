@@ -116,16 +116,15 @@ func (sc *SupremacyControllerWS) SupremacyUserConnectionUpgradeHandler(ctx conte
 		return terror.Error(err, "Invalid request received")
 	}
 
-	sc.API.Hub.Clients(func(clients hub.ClientsList) {
-		for cl := range clients {
-			if cl.SessionID == req.Payload.SessionID {
-				cl.SetLevel(2)
+	cl, ok := sc.API.Hub.Client(req.Payload.SessionID)
 
-				sc.API.Log.Info().Msgf("Hub client %s has been upgraded to level 2 client", cl.SessionID)
-				break
-			}
-		}
-	})
+	if !ok {
+		return nil
+	}
+
+	cl.SetLevel(2)
+
+	sc.API.Log.Info().Msgf("Hub client %s has been upgraded to level 2 client", cl.SessionID)
 
 	reply(true)
 
