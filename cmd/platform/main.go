@@ -356,9 +356,6 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 		if err != nil {
 			log.Error().Err(err).Msg("parse decimal from string")
 		}
-		if d.GreaterThan(decimal.NewFromInt(500000)) {
-			fmt.Println("BIG!", d.String(), r.TxHash)
-		}
 		z = z.Add(d)
 	}
 	log.Info().Int("records", len(records2)).Str("sym", "BUSD").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
@@ -496,7 +493,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	isTestnetBlockchain := ctxCLI.Bool("is_testnet_blockchain")
 	runBlockchainBridge := ctxCLI.Bool("run_blockchain_bridge")
-	fmt.Println("RUN", runBlockchainBridge)
+
 	mailDomain := ctxCLI.String("mail_domain")
 	mailAPIKey := ctxCLI.String("mail_apikey")
 	mailSender := ctxCLI.String("mail_sender")
