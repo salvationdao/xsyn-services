@@ -2,13 +2,11 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
 	"passport"
 	"passport/db"
-	"time"
 
 	"github.com/ninja-software/log_helpers"
 
@@ -170,8 +168,7 @@ func (api *API) recalculateContractReward(ctx context.Context, factionID passpor
 	}
 
 	if _, ok := api.factionWarMachineContractMap[factionID]; ok {
-		select {
-		case api.factionWarMachineContractMap[factionID] <- func(wmc *WarMachineContract) {
+		api.factionWarMachineContractMap[factionID] <- func(wmc *WarMachineContract) {
 			// reduce reward price when greater than 10
 			if queueNumber >= 10 {
 				wmc.CurrentReward.Mul(&wmc.CurrentReward, big.NewInt(99))
@@ -193,11 +190,6 @@ func (api *API) recalculateContractReward(ctx context.Context, factionID passpor
 
 			// broadcast the latest reward
 			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetQueueContractReward, factionID)), wmc.CurrentReward.String())
-		}:
-
-		case <-time.After(10 * time.Second):
-			api.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("recalculate Contract Reward")
 		}
 	}
 }

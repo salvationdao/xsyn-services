@@ -171,60 +171,27 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 			// get tx
 			rawTx, isPending, err := sc.cc.BscClient.TransactionByHash(ctx, tx.Hash())
 			if err != nil {
-				select {
-				case attemptsChan <- attempts:
-
-				case <-time.After(10 * time.Second):
-					sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-					panic("attempt")
-				}
-
+				attemptsChan <- attempts
 				continue
 			}
 
 			if isPending {
-
-				select {
-				case attemptsChan <- attempts:
-
-				case <-time.After(10 * time.Second):
-					sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-					panic("attempt")
-				}
+				attemptsChan <- attempts
 				continue
 			}
 			// if not pending get the tx receipt and check it status
 			txReceipt, err := sc.cc.BscClient.TransactionReceipt(ctx, rawTx.Hash())
 			if err != nil {
-				select {
-				case attemptsChan <- attempts:
-
-				case <-time.After(10 * time.Second):
-					sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-					panic("attempt")
-				}
+				attemptsChan <- attempts
 				continue
 			}
 
 			if txReceipt.Status == 0 {
-				select {
-				case errChan <- fmt.Errorf("transaction recepit status == 0"):
-
-				case <-time.After(10 * time.Second):
-					sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-					panic("transaction recepit status == 0")
-				}
-
+				errChan <- fmt.Errorf("transaction recepit status == 0")
 				return
 			}
 
-			select {
-			case errChan <- nil:
-
-			case <-time.After(10 * time.Second):
-				sc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-				panic("err chan nil")
-			}
+			errChan <- nil
 			return
 		}
 	}()
