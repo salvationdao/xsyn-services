@@ -392,10 +392,10 @@ func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("invalid token id"), "Invalid Token ID")
 	}
 
-	// Convert token id from string to uint64
+	// Convert token id from string to int
 	_tokenID, err := strconv.ParseUint(string(tokenID), 10, 64)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed converting string token id to uint64")
+		return http.StatusInternalServerError, terror.Error(err, "Failed converting string token id to int")
 	}
 
 	// Get asset via token id

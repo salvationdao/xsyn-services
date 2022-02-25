@@ -157,12 +157,12 @@ func (s *Seeder) Run(isProd bool) error {
 // 		abilityMetadata := &passport.AbilityMetadata{}
 // 		passport.ParseAbilityMetadata(abilities[0], abilityMetadata)
 
-// 		err := db.WarMachineAbilitySet(ctx, s.Conn, wm.TokenID, abilityMetadata.TokenID, passport.WarMachineAttFieldAbility01)
+// 		err := db.WarMachineAbilitySet(ctx, s.Conn, wm.ExternalTokenID, abilityMetadata.ExternalTokenID, passport.WarMachineAttFieldAbility01)
 // 		if err != nil {
 // 			return terror.Error(err)
 // 		}
 
-// 		err = db.WarMachineAbilityCostUpsert(ctx, s.Conn, wm.TokenID, abilityMetadata.TokenID, abilityMetadata.SupsCost)
+// 		err = db.WarMachineAbilityCostUpsert(ctx, s.Conn, wm.ExternalTokenID, abilityMetadata.ExternalTokenID, abilityMetadata.SupsCost)
 // 		if err != nil {
 // 			return terror.Error(err)
 // 		}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"passport"
+	"passport/helpers"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
@@ -22,36 +23,52 @@ func CollectionInsert(ctx context.Context, conn Conn, collection *passport.Colle
 
 // XsynMetadataInsert inserts a new item metadata
 func XsynMetadataInsert(ctx context.Context, conn Conn, item *passport.XsynMetadata, externalUrl string) error {
-	q := `	INSERT INTO xsyn_metadata (token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata)
-			VALUES((SELECT nextval('token_id_seq')),$1, $2, $3, $4, $5, $6, $7, $8)
-			RETURNING token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata`
-
-	err := pgxscan.Get(ctx, conn, item, q, item.Name, item.CollectionID, item.GameObject, item.Description, item.Image, item.AnimationURL, item.Attributes, item.AdditionalMetadata)
-	if err != nil {
-		return terror.Error(err)
-	}
-	updateQ := `UPDATE xsyn_metadata 
-				SET external_url = $1 
-				WHERE token_id = $2
-				RETURNING external_url`
-	err = pgxscan.Get(ctx, conn, item, updateQ , fmt.Sprintf("%s/asset/%d", externalUrl, item.TokenID), item.TokenID)
+	// generate token id
+	q := `SELECT count(*) from xsyn_metadata WHERE collection_id = $1`
+	err := pgxscan.Get(ctx, conn, &item.ExternalTokenID, q, item.CollectionID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
+	// generate hash
+	// TODO: get this to handle uint64
+	item.Hash, err = helpers.GenerateMetadataHashID(item.CollectionID.String(), int(item.ExternalTokenID), false)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	q = `	INSERT INTO xsyn_metadata (hash, external_token_id, name, collection_id, game_object, description, image, animation_url, attributes, additional_metadata, external_url)
+			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			RETURNING hash, external_token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata, external_url`
+
+	err = pgxscan.Get(ctx, conn, item, q,
+		item.Hash,
+		item.ExternalTokenID,
+		item.Name,
+		item.CollectionID,
+		item.GameObject,
+		item.Description,
+		item.Image,
+		item.AnimationURL,
+		item.Attributes,
+		item.AdditionalMetadata,
+		fmt.Sprintf("%s/asset/%s", externalUrl, item.Hash))
+	if err != nil {
+		return terror.Error(err)
+	}
 	return nil
 }
 
 // XsynMetadataAssignUser assign a nft metadata to a user
-func XsynMetadataAssignUser(ctx context.Context, conn Conn, nftTokenID uint64, userID passport.UserID) error {
+func XsynMetadataAssignUser(ctx context.Context, conn Conn, metadataHash string, userID passport.UserID) error {
 	q := `
 		INSERT INTO 
-			xsyn_assets (token_id, user_id)
+			xsyn_assets (metadata_hash, user_id)
 		VALUES
 			($1, $2);
 	`
 
-	_, err := conn.Exec(ctx, q, nftTokenID, userID)
+	_, err := conn.Exec(ctx, q, metadataHash, userID)
 	if err != nil {
 		return terror.Error(err)
 	}

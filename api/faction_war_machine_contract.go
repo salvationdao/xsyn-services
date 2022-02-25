@@ -116,7 +116,7 @@ func (api *API) startRepairTicker(rt RepairType) {
 			// remove war machine which is completely repaired
 			for _, nft := range nfts {
 				if nft.Durability == 100 {
-					delete(rq, nft.TokenID)
+					delete(rq, nft.ExternalTokenID)
 				}
 			}
 			errChan <- nil

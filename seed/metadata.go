@@ -102,7 +102,7 @@ func (s *Seeder) SeedWarMachine(ctx context.Context, weapons, abilities []*passp
 				{
 					TraitType: "Weapon One",
 					Value:     "none",
-					TokenID:   weapons[0].TokenID,
+					TokenID:   weapons[0].ExternalTokenID,
 				},
 				{
 					TraitType: "Weapon Two",

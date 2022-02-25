@@ -286,7 +286,7 @@ func (ac *AssetController) PayAssetInsuranceHandler(ctx context.Context, hubc *h
 			AssetTokenID uint64             `json:"assetTokenID"`
 		}{
 			FactionID:    *user.FactionID,
-			AssetTokenID: metadata.TokenID,
+			AssetTokenID: metadata.ExternalTokenID,
 		},
 	})
 
@@ -351,7 +351,7 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Clien
 
 	tokenIDs := make([]uint64, 0)
 	for _, s := range assets {
-		tokenIDs = append(tokenIDs, s.TokenID)
+		tokenIDs = append(tokenIDs, s.ExternalTokenID)
 	}
 
 	resp := &AssetListResponse{
@@ -390,7 +390,7 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hub
 	}
 
 	reply(asset)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), nil
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), nil
 }
 
 const HubKeyAssetQueueContractReward hub.HubCommandKey = "ASSET:QUEUE:CONTRACT:REWARD"
@@ -479,7 +479,7 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 	}
 
 	// update asset name
-	err = db.AssetUpdate(ctx, ac.Conn, asset.TokenID, req.Payload.Name)
+	err = db.AssetUpdate(ctx, ac.Conn, asset.ExternalTokenID, req.Payload.Name)
 	if err != nil {
 		return terror.Error(err)
 	}

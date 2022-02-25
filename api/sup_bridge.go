@@ -284,8 +284,8 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 						return
 					}
 
-					//func AssetTransfer(ctx context.Context, conn Conn, tokenID uint64, oldUserID, newUserID passport.UserID, txHash string) error {
-					err = db.AssetTransfer(ctx, cc.API.Conn, asset.TokenID, passport.OnChainUserID, user.ID, event.TxID.Hex())
+					//func AssetTransfer(ctx context.Context, conn Conn, tokenID int, oldUserID, newUserID passport.UserID, txHash string) error {
+					err = db.AssetTransfer(ctx, cc.API.Conn, asset.ExternalTokenID, passport.OnChainUserID, user.ID, event.TxID.Hex())
 					if err != nil {
 						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("failed to transfer asset")
 						return
@@ -297,7 +297,7 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to transfer")
 						return
 					}
-					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
+					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), asset)
 				},
 				func(event *bridge.NFTUnstakeEvent) {
 					cc.Log.Info().Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msg("nft unstake")
@@ -320,7 +320,7 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 					}
 
 					// remove the asset from user
-					err = db.AssetTransfer(ctx, cc.API.Conn, asset.TokenID, *asset.UserID, passport.OnChainUserID, event.TxID.Hex())
+					err = db.AssetTransfer(ctx, cc.API.Conn, asset.ExternalTokenID, *asset.UserID, passport.OnChainUserID, event.TxID.Hex())
 					if err != nil {
 						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("failed to transfer asset")
 						return
@@ -332,7 +332,7 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to transfer")
 						return
 					}
-					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
+					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), asset)
 				},
 				func(*bridge.NFTLockEvent) {},
 				func(*bridge.NFTUnlockEvent) {},

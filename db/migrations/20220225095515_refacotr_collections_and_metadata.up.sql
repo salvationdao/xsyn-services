@@ -38,7 +38,7 @@ DELETE FROM xsyn_metadata; -- CLEAR XSYN_METADATA
 
 -- update xsyn metadata table
 ALTER TABLE xsyn_metadata DROP CONSTRAINT xsyn_metadata_collection_id_fkey; -- drop metadata PK
-ALTER TABLE xsyn_assets DROP COLUMN token_id; -- id column
+ALTER TABLE xsyn_assets DROP COLUMN token_id; -- drop this before xsyn_metadata id column
 ALTER TABLE xsyn_metadata DROP COLUMN token_id; -- id column
 ALTER TABLE xsyn_metadata ADD COLUMN hash TEXT PRIMARY KEY; -- add new PK column (will be hash of collectio + token id)
 ALTER TABLE xsyn_metadata ADD COLUMN external_token_id NUMERIC(78, 0); -- add new token id column

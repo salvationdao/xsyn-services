@@ -540,7 +540,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 	}
 
 	for _, asset := range assets {
-		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), asset)
 	}
 
 	// auto release it after an hour
@@ -549,9 +549,9 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 			frozenAt := asset.FrozenAt
 			time.Sleep(3 * time.Hour)
 			// get asset from db
-			a, err := db.AssetGet(ctx, sc.Conn, asset.TokenID)
+			a, err := db.AssetGet(ctx, sc.Conn, asset.ExternalTokenID)
 			if err != nil {
-				sc.API.Log.Err(err).Msgf("Failed to get asset, token id: %d", asset.TokenID)
+				sc.API.Log.Err(err).Msgf("Failed to get asset, token id: %d", asset.ExternalTokenID)
 				return
 			}
 
@@ -564,11 +564,11 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 			// otherwise release it
 			err = db.XsynAssetBulkRelease(ctx, sc.Conn, []*passport.WarMachineMetadata{
 				{
-					TokenID: a.TokenID,
+					TokenID: a.ExternalTokenID,
 				},
 			}, userID)
 			if err != nil {
-				sc.API.Log.Err(err).Msgf("Failed to auto released, token id: %d", asset.TokenID)
+				sc.API.Log.Err(err).Msgf("Failed to auto released, token id: %d", asset.ExternalTokenID)
 				return
 			}
 
@@ -649,7 +649,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetReleaseHandler(ctx context.Contex
 	}
 
 	for _, asset := range assets {
-		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), asset)
 	}
 
 	return nil

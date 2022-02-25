@@ -246,11 +246,11 @@ func main() {
 				},
 			},
 			{
-				Name: "shortcodes",
+				Name:  "shortcodes",
 				Usage: "print shortcodes",
 				Action: func(c *cli.Context) error {
-					for i:= 0; i<9;i++{
-						helpers.GenerateMetadataHashID("9cdf55aa-217b-4821-aa77-bc8555195f23", i, true)
+					for i := 0; i < 9; i++ {
+						_, _ = helpers.GenerateMetadataHashID("9cdf55aa-217b-4821-aa77-bc8555195f23", i, true)
 					}
 
 					return nil

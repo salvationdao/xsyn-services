@@ -59,10 +59,11 @@ type StoreItem struct {
 
 // XsynMetadata holds xsyn nft metadata, the nfts main game data it stored here to show on opensea
 type XsynMetadata struct {
+	Hash               string                `json:"hash" db:"hash"`
 	UserID             *UserID               `json:"userID" db:"user_id"`
 	Minted             bool                  `json:"minted" db:"minted"`
 	Username           *string               `json:"username" db:"username"`
-	TokenID            uint64                `json:"tokenID" db:"token_id"`
+	ExternalTokenID    uint64                `json:"externalTokenID" db:"external_token_id"`
 	Name               string                `json:"name" db:"name"`
 	CollectionID       CollectionID          `json:"collectionID" db:"collection_id"`
 	Collection         Collection            `json:"collection" db:"collection"`
@@ -160,7 +161,7 @@ const (
 
 // ParseWarMachineMetadata convert json attribute to proper struct
 func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMachineMetadata) {
-	warMachineMetadata.TokenID = metadata.TokenID
+	warMachineMetadata.TokenID = metadata.ExternalTokenID
 	warMachineMetadata.Name = metadata.Name
 	warMachineMetadata.Description = metadata.Description
 	warMachineMetadata.ExternalUrl = metadata.ExternalUrl
@@ -204,7 +205,7 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 				continue
 			}
 			warMachineMetadata.Abilities = append(warMachineMetadata.Abilities, &AbilityMetadata{
-				TokenID: uint64(att.TokenID),
+				TokenID: att.TokenID,
 			})
 		}
 
@@ -237,7 +238,7 @@ const (
 
 // ParseAbilityMetadata convert json attribute to proper struct
 func ParseAbilityMetadata(metadata *XsynMetadata, abilityMetadata *AbilityMetadata) {
-	abilityMetadata.TokenID = metadata.TokenID
+	abilityMetadata.TokenID = metadata.ExternalTokenID
 	abilityMetadata.Name = metadata.Name
 	abilityMetadata.Description = metadata.Description
 	abilityMetadata.ExternalUrl = metadata.ExternalUrl
