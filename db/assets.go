@@ -70,6 +70,7 @@ xsyn_assets.user_id,
 xsyn_assets.frozen_at,
 xsyn_assets.locked_by_id,
 xsyn_assets.tx_history,
+xsyn_assets.signature_expiry,
 COALESCE(xsyn_assets.minting_signature, '') as minting_signature,
 u.username
 ` + AssetGetQueryFrom
@@ -272,8 +273,8 @@ func AssetGet(ctx context.Context, conn Conn, hash string) (*passport.XsynMetada
 	return asset, nil
 }
 
-// AssetGetFromContractAndID returns asset by given ID and contract
-func AssetGetFromContractAndID(ctx context.Context, conn Conn, mintContractAddress string, externalTokenID uint64) (*passport.XsynMetadata, error) {
+// AssetGetFromMintContractAndID returns asset by given ID and contract
+func AssetGetFromMintContractAndID(ctx context.Context, conn Conn, mintContractAddress string, externalTokenID uint64) (*passport.XsynMetadata, error) {
 	asset := &passport.XsynMetadata{}
 	count := 0
 

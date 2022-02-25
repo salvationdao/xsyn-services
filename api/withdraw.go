@@ -147,7 +147,7 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get collection.")
 	}
 
-	asset, err := db.AssetGetFromContractAndID(r.Context(), api.Conn, collection.MintContract, tokenIDuint64)
+	asset, err := db.AssetGetFromMintContractAndID(r.Context(), api.Conn, collection.MintContract, tokenIDuint64)
 	if err != nil {
 		fmt.Println("1")
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
@@ -178,13 +178,7 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	//  sign it
 	expiry := time.Now().Add(5 * time.Minute)
 	signer := bridge.NewSigner(api.BridgeParams.SignerPrivateKey)
-	fmt.Println()
-	fmt.Println(common.HexToAddress(address))
-	fmt.Println(common.HexToAddress(collection.MintContract))
-	fmt.Println(tokenAsBigInt.String())
-	fmt.Println(nonceBigInt.String())
-	fmt.Println(big.NewInt(expiry.Unix()).String())
-	fmt.Println()
+
 	_, messageSig, err := signer.GenerateSignatureWithExpiryAndCollection(common.HexToAddress(address), common.HexToAddress(collection.MintContract), tokenAsBigInt, nonceBigInt, big.NewInt(expiry.Unix()))
 	if err != nil {
 		fmt.Println("6")
@@ -192,13 +186,13 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	}
 
 	// mint lock asset
-	err = db.XsynAssetMintLock(r.Context(), api.Conn, asset.Hash, hexutil.Encode(messageSig))
+	err = db.XsynAssetMintLock(r.Context(), api.Conn, asset.Hash, hexutil.Encode(messageSig), big.NewInt(expiry.Unix()).String())
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to generate signature, please try again.")
 	}
 
 	// get updated asset
-	asset, err = db.AssetGetFromContractAndID(r.Context(), api.Conn, collection.MintContract, tokenIDuint64)
+	asset, err = db.AssetGetFromMintContractAndID(r.Context(), api.Conn, collection.MintContract, tokenIDuint64)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
 

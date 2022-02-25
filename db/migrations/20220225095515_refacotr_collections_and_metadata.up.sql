@@ -43,6 +43,7 @@ ALTER TABLE xsyn_metadata ADD CONSTRAINT xsyn_metadata_token_collection_unique U
 ALTER TABLE xsyn_assets ADD COLUMN external_token_id NUMERIC(78, 0); -- add new token id column
 ALTER TABLE xsyn_assets ADD COLUMN collection_id UUID REFERENCES collections (id); -- add FK to collections
 ALTER TABLE xsyn_assets ADD COLUMN metadata_hash TEXT PRIMARY KEY REFERENCES xsyn_metadata(hash);
+ALTER TABLE xsyn_assets ADD COLUMN signature_expiry TEXT DEFAULT '';
 
 -- remake func
 CREATE OR REPLACE FUNCTION updateXsyn_metadataKeywords()
@@ -69,7 +70,6 @@ $updateXsyn_metadataKeywords$
 LANGUAGE plpgsql;
 
 -- add fk contraincts to asset table
-
 
 
 -- add default mechs metadata to the Supremacy AI collection
