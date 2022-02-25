@@ -295,7 +295,7 @@ func AssetGetFromMintContractAndID(ctx context.Context, conn Conn, mintContractA
 	asset := &passport.XsynMetadata{}
 	count := 0
 
-	q := fmt.Sprintf(`SELECT count(*) %s WHERE c."mintContract" = $1 and xsyn_metadata.external_token_id = $2`, AssetGetQueryFrom)
+	q := fmt.Sprintf(`SELECT count(*) %s WHERE LOWER(c."mintContract") = LOWER($1) and xsyn_metadata.external_token_id = $2`, AssetGetQueryFrom)
 
 	err := pgxscan.Get(ctx, conn, &count, q, mintContractAddress, externalTokenID)
 	if err != nil {
@@ -306,7 +306,7 @@ func AssetGetFromMintContractAndID(ctx context.Context, conn Conn, mintContractA
 		return nil, nil
 	}
 
-	q = fmt.Sprintf(`%s WHERE c."mintContract" = $1 and xsyn_metadata.external_token_id = $2`, AssetGetQuery)
+	q = fmt.Sprintf(`%s WHERE  LOWER(c."mintContract") =  LOWER($1) and xsyn_metadata.external_token_id = $2`, AssetGetQuery)
 	err = pgxscan.Get(ctx, conn, asset, q, mintContractAddress, externalTokenID)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting asset from contract address and token id.")
