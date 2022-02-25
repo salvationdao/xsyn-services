@@ -627,7 +627,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	tc := api.NewTransactionCache(txConn, log)
 
-	msgBus, msgBusCleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
+	msgBus := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
 
 	// initialise user cache map
 	ucm, err := api.NewUserCacheMap(pgxconn, tc, msgBus)
@@ -675,7 +675,6 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		isTestnetBlockchain,
 		runBlockchainBridge,
 		msgBus,
-		msgBusCleanUpFunc,
 		enablePurchaseSubscription,
 	)
 

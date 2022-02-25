@@ -102,7 +102,6 @@ func NewAPI(
 	isTestnetBlockchain bool,
 	runBlockchainBridge bool,
 	msgBus *messagebus.MessageBus,
-	msgBusCleanUpFunc hub.ClientOfflineFn,
 	enablePurchaseSubscription bool,
 ) *API {
 
@@ -119,9 +118,11 @@ func NewAPI(
 		},
 		MessageBus: msgBus,
 		Hub: hub.New(&hub.Config{
-			ClientOfflineFn: msgBusCleanUpFunc,
-			Log:             zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
-			Tracer:          SentryTracer.New(),
+			ClientOfflineFn: func(client *hub.Client) {
+				msgBus.UnsubAll(client)
+			},
+			Log:    zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
+			Tracer: SentryTracer.New(),
 			WelcomeMsg: &hub.WelcomeMsg{
 				Key:     "WELCOME",
 				Payload: nil,
