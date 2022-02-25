@@ -216,7 +216,7 @@ func NewAPI(
 			r.Get("/get-nonce", api.WithError(api.Auth.GetNonce))
 			r.Get("/withdraw/{address}/{nonce}/{amount}", api.WithError(api.WithdrawSups))
 			r.Get("/mint-nft/{address}/{nonce}/{tokenID}", api.WithError(api.MintAsset))
-			r.Get("/asset/{token_id}", api.WithError(api.AssetGet))
+			r.Get("/asset/{hash}", api.WithError(api.AssetGet))
 			r.Get("/auth/twitter", api.WithError(api.Auth.TwitterAuth))
 
 			r.Get("/whitelist/check", api.WithError(api.WhitelistOnlyWalletCheck))
@@ -388,8 +388,10 @@ func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 	// Get token id
 	hash := chi.URLParam(r, "hash")
 	if hash == "" {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("invalid token id"), "Invalid Token ID")
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("invalid asset hash"), "Invalid Asset Hash.")
 	}
+
+	fmt.Println(hash)
 
 	// Get asset via token id
 	asset, err := db.AssetGet(r.Context(), api.Conn, hash)
@@ -397,7 +399,7 @@ func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset")
 	}
 	if asset == nil {
-		return http.StatusBadRequest, terror.Warn(err, "Asset doesn't exist")
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("asset is nil"), "Asset doesn't exist")
 	}
 
 	// openseas object
