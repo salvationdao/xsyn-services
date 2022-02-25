@@ -21,7 +21,6 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 
@@ -62,16 +61,8 @@ type API struct {
 	sendToServerClients chan *ServerClientMessage
 
 	//tx stuff
-
-	// transaction      chan *passport.NewTransaction
-	// heldTransactions chan func(heldTxList map[passport.TransactionReference]*passport.NewTransaction)
 	transactionCache *TransactionCache
 	userCacheMap     *UserCacheMap
-
-	// userSupsRWMx     sync.RWMutex
-	// userSupsCacheMap map[passport.UserID]*UserCache
-	// treasury ticker map
-	treasuryTickerMap map[ServerClientName]*tickle.Tickle
 
 	// Supremacy Sups Pool
 	supremacySupsPool chan func(*SupremacySupPool)
@@ -80,9 +71,6 @@ type API struct {
 	factionWarMachineContractMap map[passport.FactionID]chan func(*WarMachineContract)
 	fastAssetRepairCenter        chan func(RepairQueue)
 	standardAssetRepairCenter    chan func(RepairQueue)
-
-	// Queue Reward
-	// TxConn *sql.DB
 
 	walletOnlyConnect    bool
 	storeItemExternalUrl string
@@ -111,8 +99,11 @@ func NewAPI(
 	ucm *UserCacheMap,
 	isTestnetBlockchain bool,
 	runBlockchainBridge bool,
+	msgBus *messagebus.MessageBus,
+	msgBusCleanUpFunc hub.ClientOfflineFn,
+	enablePurchaseSubscription bool,
 ) *API {
-	msgBus, cleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
+
 	api := &API{
 		SupUSD:       decimal.New(12, -2),
 		BridgeParams: config.BridgeParams,
@@ -126,7 +117,7 @@ func NewAPI(
 		},
 		MessageBus: msgBus,
 		Hub: hub.New(&hub.Config{
-			ClientOfflineFn: cleanUpFunc,
+			ClientOfflineFn: msgBusCleanUpFunc,
 			Log:             zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
 			Tracer:          SentryTracer.New(),
 			WelcomeMsg: &hub.WelcomeMsg{
@@ -162,7 +153,6 @@ func NewAPI(
 		// heldTransactions: make(chan func(heldTxList map[passport.TransactionReference]*passport.NewTransaction)),
 
 		// treasury ticker map
-		treasuryTickerMap: make(map[ServerClientName]*tickle.Tickle),
 		supremacySupsPool: make(chan func(*SupremacySupPool)),
 
 		// faction war machine contract
@@ -172,13 +162,13 @@ func NewAPI(
 		storeItemExternalUrl: externalUrl,
 	}
 
-	cc := NewChainClients(log, api, config.BridgeParams, isTestnetBlockchain, runBlockchainBridge)
+	cc := NewChainClients(log, api, config.BridgeParams, isTestnetBlockchain, runBlockchainBridge, enablePurchaseSubscription)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
 	api.Routes.Use(middleware.Logger)
 	api.Routes.Use(cors.New(cors.Options{
-		AllowedOrigins:   []string{config.GameserverHostURL, config.PassportWebHostURL},
+		AllowedOrigins:   []string{"*"},
 		AllowCredentials: true,
 	}).Handler)
 
@@ -241,7 +231,7 @@ func NewAPI(
 		_ = NewSupController(log, conn, api, cc)
 	}
 	_ = NewAssetController(log, conn, api)
-	_ = NewCollectionController(log, conn, api)
+	_ = NewCollectionController(log, conn, api, isTestnetBlockchain)
 	_ = NewServerClientController(log, conn, api)
 	_ = NewCheckController(log, conn, api)
 	_ = NewUserActivityController(log, conn, api)
@@ -283,9 +273,6 @@ func NewAPI(
 
 	// Run the listener for the user cache
 	// go api.HandleUserCache()
-
-	// Initialise treasury fund ticker
-	go api.InitialiseTreasuryFundTicker()
 
 	// Initial supremacy sup pool
 	go api.StartSupremacySupPool()

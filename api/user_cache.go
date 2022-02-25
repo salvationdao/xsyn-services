@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"passport"
 	"passport/db"
@@ -10,19 +11,22 @@ import (
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
 
 type UserCacheMap struct {
 	sync.Map
 	conn             *pgxpool.Pool
 	TransactionCache *TransactionCache
+	MessageBus       *messagebus.MessageBus
 }
 
-func NewUserCacheMap(conn *pgxpool.Pool, tc *TransactionCache) (*UserCacheMap, error) {
+func NewUserCacheMap(conn *pgxpool.Pool, tc *TransactionCache, msgBus *messagebus.MessageBus) (*UserCacheMap, error) {
 	ucm := &UserCacheMap{
 		sync.Map{},
 		conn,
 		tc,
+		msgBus,
 	}
 	balances, err := db.UserBalances(context.Background(), ucm.conn)
 
@@ -55,6 +59,8 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 	newFromBalance.Add(newFromBalance, &fromBalance)
 	newFromBalance.Sub(newFromBalance, &nt.Amount)
 	if newFromBalance.Cmp(big.NewInt(0)) < 0 {
+		fromamt, _ := ucm.Get(nt.From.String())
+		fmt.Println(fromamt.Int64(), nt.Amount)
 		return nil, nil, TransactionFailed, terror.Error(errors.New("not enough funds"), "Not enough funds.")
 	}
 
@@ -71,6 +77,14 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 	ucm.Store(nt.To.String(), *newToBalance)
 
 	transactonID := ucm.TransactionCache.Process(nt)
+
+	ctx := context.Background()
+	if !nt.From.IsSystemUser() {
+		go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, nt.From)), newFromBalance.String())
+	}
+	if !nt.To.IsSystemUser() {
+		go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, nt.To)), newToBalance.String())
+	}
 
 	return newFromBalance, newToBalance, transactonID, nil
 }
