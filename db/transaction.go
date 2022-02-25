@@ -12,6 +12,80 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
+type TransactionColumn string
+
+const (
+	TransactionColumnID           TransactionColumn = "id"
+	TransactionColumnTokenID      TransactionColumn = "token_id"
+	TransactionColumnUserID       TransactionColumn = "user_id"
+	TransactionColumnUsername     TransactionColumn = "username"
+	TransactionColumnCollectionID TransactionColumn = "collection_id"
+	TransactionColumnName         TransactionColumn = "name"
+	TransactionColumnDescription  TransactionColumn = "description"
+	TransactionColumnExternalUrl  TransactionColumn = "external_url"
+	TransactionColumnImage        TransactionColumn = "image"
+	TransactionColumnAttributes   TransactionColumn = "attributes"
+
+	TransactionColumnDeletedAt TransactionColumn = "deleted_at"
+	TransactionColumnUpdatedAt TransactionColumn = "updated_at"
+	TransactionColumnCreatedAt TransactionColumn = "created_at"
+)
+
+func (ic TransactionColumn) IsValid() error {
+	switch ic {
+	case TransactionColumnID,
+		TransactionColumnTokenID,
+		TransactionColumnUserID,
+		TransactionColumnUsername,
+		TransactionColumnCollectionID,
+		TransactionColumnName,
+		TransactionColumnDescription,
+		TransactionColumnExternalUrl,
+		TransactionColumnImage,
+		TransactionColumnAttributes,
+		TransactionColumnDeletedAt,
+		TransactionColumnUpdatedAt,
+		TransactionColumnCreatedAt:
+		return nil
+	}
+	return terror.Error(fmt.Errorf("invalid asset column type"))
+}
+
+const TransactionGetQuery string = `
+SELECT 
+row_to_json(t) as to,
+row_to_json(f) as from,
+transactions.id,
+transactions.description,
+transactions.transaction_reference,
+transactions.amount,
+transactions.status,
+transactions.reason,
+transactions.created_at
+` + TransactionGetQueryFrom
+
+const TransactionGetQueryFrom = `
+FROM transactions 
+INNER JOIN users t ON transactions.credit = t.id
+INNER JOIN users f ON transactions.debit = f.id
+`
+
+// TransactionList gets a list of assets depending on the filters
+// func TransactionList(
+// 	ctx context.Context,
+// 	conn Conn,
+// 	search string,
+// 	archived bool,
+// 	includedTokenIDs []uint64,
+// 	filter *ListFilterRequest,
+// 	offset int,
+// 	pageSize int,
+// 	sortBy AssetColumn,
+// 	sortDir SortByDir,
+// ) (int, []*passport.Transaction, error) {
+
+// }
+
 func TransactionExists(ctx context.Context, conn Conn, txhash string) (bool, error) {
 	q := "SELECT count(id) FROM transactions WHERE transaction_reference = $1"
 	var count int
