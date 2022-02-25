@@ -79,15 +79,15 @@ func XsynMetadataAssignUser(ctx context.Context, conn Conn, metadataHash string,
 }
 
 // XsynMetadataAvailableGet return a available nft for joining the battle queue
-func XsynMetadataAvailableGet(ctx context.Context, conn Conn, userID passport.UserID, nftTokenID uint64) (*passport.XsynMetadata, error) {
+func XsynMetadataAvailableGet(ctx context.Context, conn Conn, userID passport.UserID, hash string) (*passport.XsynMetadata, error) {
 	nft := &passport.XsynMetadata{}
 	q := `
 		SELECT
-			xnm.token_id, xnm.minted, row_to_json(c) as collection, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes, xa.minting_signature
+			xnm.hash, xnm.minted, row_to_json(c) as collection, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes, xa.minting_signature
 		FROM 
 			xsyn_metadata xnm
 		INNER JOIN
-			xsyn_assets xa ON xa.token_id = xnm.token_id AND xa.user_id = $1 AND xa.token_id = $2 AND xa.frozen_at ISNULL
+			xsyn_assets xa ON xa.metadata_hash = xnm.hash AND xa.user_id = $1 AND xa.metadata_hash = $2 AND xa.frozen_at ISNULL
 		INNER JOIN
 			collections c on c.id = xnm.collection_id
 		WHERE
@@ -95,7 +95,7 @@ func XsynMetadataAvailableGet(ctx context.Context, conn Conn, userID passport.Us
 	`
 	err := pgxscan.Get(ctx, conn, nft, q,
 		userID,
-		nftTokenID,
+		hash,
 	)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -108,11 +108,11 @@ func XsynMetadataOwnerGet(ctx context.Context, conn Conn, userID passport.UserID
 	nft := &passport.XsynMetadata{}
 	q := `
 		SELECT
-			xnm.token_id, xnm.minted, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes, xa.frozen_at, xa.locked_by_id, xa.minting_signature
+			xnm.hash, xnm.minted, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes, xa.frozen_at, xa.locked_by_id, xa.minting_signature
 		FROM 
 			xsyn_metadata xnm
 		INNER JOIN
-			xsyn_assets xa ON xa.hash = xnm.hash
+			xsyn_assets xa ON xa.metadata_hash = xnm.hash
 		WHERE xa.user_id = $1 AND xa.hash = $2
 	`
 	err := pgxscan.Get(ctx, conn, nft, q,
@@ -126,18 +126,18 @@ func XsynMetadataOwnerGet(ctx context.Context, conn Conn, userID passport.UserID
 }
 
 // XsynMetadataGet return metadata from token id
-func XsynMetadataGet(ctx context.Context, conn Conn, nftTokenID uint64) (*passport.XsynMetadata, error) {
+func XsynMetadataGet(ctx context.Context, conn Conn, hash string) (*passport.XsynMetadata, error) {
 	nft := &passport.XsynMetadata{}
 	q := `
 		SELECT
-			xnm.token_id, xnm.minted, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+			xnm.hash, xnm.minted, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM 
 			xsyn_metadata xnm
 		WHERE
-			xnm.token_id = $1
+			xnm.hash = $1
 	`
 	err := pgxscan.Get(ctx, conn, nft, q,
-		nftTokenID,
+		hash,
 	)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -197,7 +197,7 @@ func XsynAssetDurabilityBulkIncrement(ctx context.Context, conn Conn, assetHashe
 		q += ")"
 	}
 
-	q += " RETURNING token_id, durability;"
+	q += " RETURNING hash, durability;"
 
 	err := pgxscan.Select(ctx, conn, &nfts, q)
 	if err != nil {
@@ -227,16 +227,16 @@ func XsynAssetFreeze(ctx context.Context, conn Conn, assetHash string, userID pa
 }
 
 // XsynAssetUnfreezeableCheck check whether the asset is unfreezeable
-func XsynAssetUnfreezeableCheck(ctx context.Context, conn Conn, nftTokenID uint64, userID passport.UserID) error {
+func XsynAssetUnfreezeableCheck(ctx context.Context, conn Conn, metadataHash string, userID passport.UserID) error {
 	q := `
 		SELECT 
 			1 
 		FROM 
 			xsyn_assets
 		WHERE
-			token_id = $1 AND user_id = $2 AND frozen_at NOTNULL AND locked_by_id ISNULL;
+		metadata_hash = $1 AND user_id = $2 AND frozen_at NOTNULL AND locked_by_id ISNULL;
 	`
-	_, err := conn.Exec(ctx, q, nftTokenID, userID)
+	_, err := conn.Exec(ctx, q, metadataHash, userID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -309,9 +309,9 @@ func XsynAssetBulkRelease(ctx context.Context, conn Conn, nfts []*passport.WarMa
 func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID, amount int) ([]*passport.XsynMetadata, error) {
 	nft := []*passport.XsynMetadata{}
 	q := `
-		SELECT xnm.token_id, xnm.minted, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+		SELECT xnm.hash, xnm.minted, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM xsyn_metadata xnm
-				 INNER JOIN xsyn_assets xa ON xa.token_id = xnm.token_id
+		INNER JOIN xsyn_assets xa ON xa.metadata_hash = xnm.hash
 		WHERE xa.user_id = $1
 		AND xnm.attributes @> '[{"value": "War Machine", "trait_type": "Asset Type"}]'
 		LIMIT $2
@@ -332,14 +332,14 @@ func AbilityAssetGet(ctx context.Context, conn Conn, abilityMetadata *passport.A
 	nft := &passport.XsynMetadata{}
 	q := `
 		SELECT 
-			xnm.token_id, xnm.minted, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+			xnm.hash, xnm.minted, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM 
 			xsyn_metadata xnm
 		WHERE 
-			xnm.token_id = $1 AND 
+			xnm.hash = $1 AND 
 			xnm.attributes @> '[{"value": "Ability", "trait_type": "Asset Type"}]';
 	`
-	err := pgxscan.Get(ctx, conn, nft, q, abilityMetadata.TokenID)
+	err := pgxscan.Get(ctx, conn, nft, q, abilityMetadata.Hash)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -355,9 +355,9 @@ func WarMachineGetByUserID(ctx context.Context, conn Conn, userID passport.UserI
 	xms := []*passport.XsynMetadata{}
 
 	q := `
-		SELECT xm.token_id, xm.minted, xm.collection_id, xm.durability, xm.name, xm.description, xm.external_url, xm.image, xm.attributes, xa.minting_signature
+		SELECT xm.hash, xm.minted, xm.collection_id, xm.durability, xm.name, xm.description, xm.external_url, xm.image, xm.attributes, xa.minting_signature
 		FROM xsyn_metadata xm
-		INNER JOIN xsyn_assets xa ON xa.token_id = xm.token_id AND xa.user_id = $1
+		INNER JOIN xsyn_assets xa ON xa.metadata_hash = xm.hash AND xa.user_id = $1
 	`
 	err := pgxscan.Select(ctx, conn, &xms, q, userID)
 	if err != nil {
@@ -386,27 +386,6 @@ func WarMachineAbilityCostGet(ctx context.Context, conn Conn, warMachineTokenID,
 	}
 
 	return supsCost, nil
-}
-
-// WarMachineAbilityCostUpsert Upsert the sups cost of a war machine ability
-func WarMachineAbilityCostUpsert(ctx context.Context, conn Conn, warMachineTokenID, abilityTokenID uint64, supsCost string) error {
-	q := `
-		INSERT INTO 
-			war_machine_ability_sups_cost (war_machine_token_id, ability_token_id, sups_cost)
-		VALUES
-			($1, $2, $3)
-		ON CONFLICT
-			(war_machine_token_id, ability_token_id)
-		DO UPDATE SET
-			sups_cost = $3
-	`
-
-	_, err := conn.Exec(ctx, q, warMachineTokenID, abilityTokenID, supsCost)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
 }
 
 // XsynAssetLock locks a asset

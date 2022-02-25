@@ -112,7 +112,7 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 	// create metadata object
 	newItem := &passport.XsynMetadata{
 		CollectionID: storeItem.CollectionID,
-		Description:  storeItem.Description,
+		Description:  &storeItem.Description,
 		Image:        storeItem.Image,
 		Attributes:   storeItem.Attributes,
 		AnimationURL: storeItem.AnimationURL,
@@ -256,7 +256,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	// create metadata object
 	newItem := &passport.XsynMetadata{
 		CollectionID: storeItem.CollectionID,
-		Description:  storeItem.Description,
+		Description:  &storeItem.Description,
 		Image:        storeItem.Image,
 		Attributes:   storeItem.Attributes,
 		AnimationURL: storeItem.AnimationURL,

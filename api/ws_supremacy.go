@@ -89,7 +89,6 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	api.SupremacyCommand(HubKeySupremacyRedeemFactionContractReward, supremacyHub.SupremacyRedeemFactionContractRewardHandler)
 
 	// sups contribute
-	api.SupremacyCommand(HubKeySupremacyAbilityTargetPriceUpdate, supremacyHub.SupremacyAbilityTargetPriceUpdate)
 	api.SupremacyCommand(HubKeySupremacyTopSupsContruteUser, supremacyHub.SupremacyTopSupsContributeUser)
 	api.SupremacyCommand(HubKeySupremacyUsersGet, supremacyHub.SupremacyUsersGet)
 
@@ -761,33 +760,6 @@ func (sc *SupremacyControllerWS) SupremacyGetSpoilOfWarHandler(ctx context.Conte
 	result.Add(result, &battleUser)
 
 	reply(result.String())
-	return nil
-}
-
-type SupremacyAbilityTargetPriceUpdateRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		AbilityTokenID    uint64 `json:"abilityTokenID"`
-		WarMachineTokenID uint64 `json:"warMachineTokenID"`
-		SupsCost          string `json:"supsCost"`
-	} `json:"payload"`
-}
-
-const HubKeySupremacyAbilityTargetPriceUpdate = hub.HubCommandKey("SUPREMACY:ABILITY:TARGET:PRICE:UPDATE")
-
-func (sc *SupremacyControllerWS) SupremacyAbilityTargetPriceUpdate(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &SupremacyAbilityTargetPriceUpdateRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received")
-	}
-
-	// store new sups cost
-	err = db.WarMachineAbilityCostUpsert(ctx, sc.Conn, req.Payload.WarMachineTokenID, req.Payload.AbilityTokenID, req.Payload.SupsCost)
-	if err != nil {
-		return terror.Error(err)
-	}
-
 	return nil
 }
 
