@@ -103,6 +103,7 @@ func fetchPrice(symbol string) (decimal.Decimal, error) {
 	}
 	return dec, nil
 }
+
 func FetchETHPrice() (decimal.Decimal, error) {
 	return fetchPrice("ETH")
 }
