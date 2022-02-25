@@ -244,7 +244,7 @@ func NewAPI(
 		ClientID:     discordClientID,
 		ClientSecret: discordClientSecret,
 	})
-
+	_ = NewTransactionController(log, conn, api)
 	_ = NewFactionController(log, conn, api)
 	_ = NewOrganisationController(log, conn, api)
 	_ = NewRoleController(log, conn, api)
