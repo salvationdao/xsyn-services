@@ -82,10 +82,10 @@ func (tc *TransactionCache) Process(t *passport.NewTransaction) string {
 
 // CreateTransactionEntry adds an entry to the transaction entry table
 func CreateTransactionEntry(conn *sql.DB, nt *passport.NewTransaction, txRef passport.TransactionReference) error {
-	q := `INSERT INTO transactions(id ,description, transaction_reference, amount, credit, debit, created_at)
+	q := `INSERT INTO transactions(id ,description, transaction_reference, amount, credit, debit, group_id , created_at)
 				VALUES($1, $2, $3, $4, $5, $6, $7);`
 
-	_, err := conn.Exec(q, nt.ID, nt.Description, txRef, nt.Amount.String(), nt.To, nt.From, nt.CreatedAt)
+	_, err := conn.Exec(q, nt.ID, nt.Description, txRef, nt.Amount.String(), nt.To, nt.From, nt.GroupID, nt.CreatedAt)
 	if err != nil {
 		return terror.Error(err)
 	}
