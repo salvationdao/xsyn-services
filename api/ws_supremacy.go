@@ -250,12 +250,32 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 		return terror.Error(err, "Invalid request received")
 	}
 
+	// sups guard
+	// kick users off the list, if they don't have any sups
+	newUserMap := make(map[int][]*passport.UserID)
+	for multiplier, userIDs := range req.Payload.UserMap {
+		newList := []*passport.UserID{}
+
+		for _, userID := range userIDs {
+			amount, err := sc.API.userCacheMap.Get(userID.String())
+			if err != nil || amount.BitLen() == 0 {
+				// kick user out
+				continue
+			}
+			newList = append(newList, userID)
+		}
+
+		if len(newList) > 0 {
+			newUserMap[multiplier] = newList
+		}
+	}
+
 	//  to avoid working in floats, a 100% multiplier is 100 points, a 25% is 25 points
 	// This will give us what we need to divide the pool by and then times by to give the user the correct share of the pool
 
 	totalPoints := 0
 	// loop once to get total point count
-	for multiplier, users := range req.Payload.UserMap {
+	for multiplier, users := range newUserMap {
 		totalPoints = totalPoints + (multiplier * len(users))
 	}
 
@@ -277,7 +297,7 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 	onePointWorth := big.NewInt(0)
 	onePointWorth = onePointWorth.Div(supPool, big.NewInt(int64(totalPoints)))
 	// loop again to create all transactions
-	for multiplier, users := range req.Payload.UserMap {
+	for multiplier, users := range newUserMap {
 		for _, user := range users {
 			usersSups := big.NewInt(0)
 			usersSups = usersSups.Mul(onePointWorth, big.NewInt(int64(multiplier)))
