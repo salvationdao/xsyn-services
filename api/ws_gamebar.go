@@ -91,13 +91,14 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 	if os.Getenv("PASSPORT_ENVIRONMENT") == "development" {
 		oneSups := big.NewInt(1000000000000000000)
 		oneSups.Mul(oneSups, big.NewInt(100000))
-		gc.API.transactionCache.Process(&passport.NewTransaction{
+		gc.API.userCacheMap.Process(&passport.NewTransaction{
 			To:                   user.ID,
 			From:                 passport.XsynSaleUserID,
 			Amount:               *oneSups,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
 			Description:          "Give away for testing",
 		})
+
 	}
 
 	reply(true)
