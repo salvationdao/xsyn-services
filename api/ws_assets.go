@@ -272,7 +272,6 @@ func (ac *AssetController) PayAssetInsuranceHandler(ctx context.Context, hubc *h
 	}
 
 	// fire request to server client
-	fmt.Println(metadata.Hash)
 	ac.API.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: AssetInsurancePay,
 		Payload: struct {

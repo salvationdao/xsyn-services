@@ -135,7 +135,6 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 	// update item amounts
 	err = db.StoreItemPurchased(ctx, conn, storeItem)
 	if err != nil {
-		fmt.Println("here33")
 		refund(err.Error())
 		return terror.Error(err)
 	}

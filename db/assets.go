@@ -200,10 +200,6 @@ func AssetList(
 		searchCondition,
 	)
 
-	fmt.Println()
-	fmt.Println(countQ)
-	fmt.Println(args...)
-	fmt.Println()
 	var totalRows int
 	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
 	if err != nil {
@@ -243,10 +239,6 @@ func AssetList(
 	)
 
 	result := make([]*passport.XsynMetadata, 0)
-	fmt.Println()
-	fmt.Println(q)
-	fmt.Println(args...)
-	fmt.Println()
 	err = pgxscan.Select(ctx, conn, &result, q, args...)
 	if err != nil {
 		return 0, nil, terror.Error(err)
@@ -271,10 +263,7 @@ func AssetGet(ctx context.Context, conn Conn, hash string) (*passport.XsynMetada
 	}
 
 	q = AssetGetQuery + `WHERE xsyn_metadata.hash = $1`
-	fmt.Println()
-	fmt.Println(q)
-	fmt.Println(hash)
-	fmt.Println()
+
 	err = pgxscan.Get(ctx, conn, asset, q, hash)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting asset from hash.")
