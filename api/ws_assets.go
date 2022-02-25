@@ -40,6 +40,7 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 
 	// asset subscribe
 	api.SubscribeCommand(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)
+	api.SecureUserSubscribeCommand(HubKeyAssetSubscribe, assetHub.AssetDurabilityUpdatedSubscribeHandler)
 
 	// asset set name
 	api.SecureCommand(HubKeyAssetUpdateName, assetHub.AssetUpdateNameHandler)
@@ -275,10 +276,10 @@ func (ac *AssetController) PayAssetInsuranceHandler(ctx context.Context, hubc *h
 		Key: AssetInsurancePay,
 		Payload: struct {
 			FactionID    passport.FactionID `json:"factionID"`
-			AssetTokenID uint64             `json:"assetTokenID"`
+			AssetTokenID string             `json:"assetTokenID"`
 		}{
 			FactionID:    *user.FactionID,
-			AssetTokenID: metadata.ExternalTokenID,
+			AssetTokenID: metadata.Hash,
 		},
 	})
 
@@ -383,6 +384,72 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hub
 
 	reply(asset)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), nil
+}
+
+const HubKeyAssetDurabilitySubscribe hub.HubCommandKey = "ASSET:DURABILITY:SUBSCRIBE"
+
+type DurabilityResponse struct {
+	Durability int64      `json:"durability"`
+	RepairType RepairType `json:"repairType"`
+}
+
+func (ac *AssetController) AssetDurabilityUpdatedSubscribeHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &AssetUpdatedSubscribeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err)
+	}
+
+	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
+	if userID.IsNil() {
+		return req.TransactionID, "", terror.Error(err)
+	}
+
+	// get asset durability from db
+	durability, err := db.AssetDurabilityGet(ctx, ac.Conn, userID, req.Payload.AssetHash)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err)
+	}
+
+	// if durability less that 100
+	if durability < 100 {
+		// find the war machine in repair center
+		check := &struct {
+			isFound bool
+		}{
+			isFound: false,
+		}
+		ac.API.fastAssetRepairCenter <- func(rq RepairQueue) {
+			if _, ok := rq[req.Payload.AssetHash]; ok {
+				reply(&DurabilityResponse{
+					Durability: durability,
+					RepairType: RepairTypeFast,
+				})
+				check.isFound = true
+				return
+			}
+			check.isFound = false
+		}
+
+		if !check.isFound {
+			ac.API.standardAssetRepairCenter <- func(rq RepairQueue) {
+				if _, ok := rq[req.Payload.AssetHash]; ok {
+					reply(&DurabilityResponse{
+						Durability: durability,
+						RepairType: RepairTypeStandard,
+					})
+					return
+				}
+			}
+		}
+	} else {
+		reply(&DurabilityResponse{
+			Durability: durability,
+			RepairType: "",
+		})
+	}
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetDurabilitySubscribe, req.Payload.AssetHash)), nil
 }
 
 const HubKeyAssetQueueContractReward hub.HubCommandKey = "ASSET:QUEUE:CONTRACT:REWARD"

@@ -405,9 +405,7 @@ func (cc *ChainClients) runGoETHPriceListener(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		default:
-
 			for {
-
 				result, err := FetchETHPrice()
 				if err != nil {
 					cc.Log.Err(err).Msg("failed to get ETH price")
