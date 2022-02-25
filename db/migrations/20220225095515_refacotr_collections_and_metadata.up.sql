@@ -91,4 +91,4 @@ UPDATE xsyn_store SET restriction = 'WHITELIST' WHERE description = 'Gold';
 update xsyn_store set collection_id = (SELECT id from collections c where c.name = 'Supremacy Genesis')
 where attributes @> '[{"trait_type": "Rarity"}]' and attributes @> '[{"value": "Mega"}]';
 
-ALTER TABLE users ADD COLUMN metadata JSONB DEFAULT '';
+ALTER TABLE users ADD COLUMN metadata JSONB DEFAULT '{}';
