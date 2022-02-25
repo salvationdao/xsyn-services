@@ -42,6 +42,7 @@ func NewStoreController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Stor
 	api.SecureCommand(HubKeyPurchaseItem, storeHub.PurchaseItemHandler)
 
 	api.SubscribeCommand(HubKeyStoreItemSubscribe, storeHub.StoreItemSubscribeHandler)
+	api.SubscribeCommand(HubKeyAvailableItemAmountSubscribe, storeHub.AvailableItemAmountSubscribeHandler)
 
 	return storeHub
 }
@@ -55,7 +56,7 @@ type PurchaseRequest struct {
 	} `json:"payload"`
 }
 
-func (ctrlr *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &PurchaseRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -67,17 +68,28 @@ func (ctrlr *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *h
 	if err != nil {
 		return terror.Error(err)
 	}
-	user, err := db.UserGet(ctx, ctrlr.Conn, passport.UserID(uid))
+	user, err := db.UserGet(ctx, sc.Conn, passport.UserID(uid))
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	err = items.Purchase(ctx, ctrlr.Conn, ctrlr.Log, ctrlr.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), ctrlr.API.userCacheMap.Process, *user, req.Payload.StoreItemID, ctrlr.API.storeItemExternalUrl)
+	err = items.Purchase(ctx, sc.Conn, sc.Log, sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), sc.API.userCacheMap.Process, *user, req.Payload.StoreItemID, sc.API.storeItemExternalUrl)
 	if err != nil {
 		return terror.Error(err)
 	}
 
 	reply(true)
+
+	// broadcast available mech amount
+	go func() {
+		fsa, err := db.AssetSaleAvailable(ctx, sc.Conn)
+		if err != nil {
+			sc.API.Log.Err(err)
+			return
+		}
+		sc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyAvailableItemAmountSubscribe), fsa)
+	}()
+
 	return nil
 }
 
@@ -90,7 +102,7 @@ type PurchaseLootboxRequest struct {
 
 const HubKeyLootbox = hub.HubCommandKey("STORE:LOOTBOX")
 
-func (ctrlr *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (sc *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &PurchaseLootboxRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -102,17 +114,28 @@ func (ctrlr *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, hubc
 	if err != nil {
 		return terror.Error(err)
 	}
-	user, err := db.UserGet(ctx, ctrlr.Conn, passport.UserID(uid))
+	user, err := db.UserGet(ctx, sc.Conn, passport.UserID(uid))
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	tokenID, err := items.PurchaseLootbox(ctx, ctrlr.Conn, ctrlr.Log, ctrlr.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), ctrlr.API.userCacheMap.Process, *user, req.Payload.FactionID, ctrlr.API.storeItemExternalUrl)
+	tokenID, err := items.PurchaseLootbox(ctx, sc.Conn, sc.Log, sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), sc.API.userCacheMap.Process, *user, req.Payload.FactionID, sc.API.storeItemExternalUrl)
 	if err != nil {
 		return terror.Error(err)
 	}
 
 	reply(tokenID)
+
+	// broadcast available mech amount
+	go func() {
+		fsa, err := db.AssetSaleAvailable(ctx, sc.Conn)
+		if err != nil {
+			sc.API.Log.Err(err)
+			return
+		}
+		sc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyAvailableItemAmountSubscribe), fsa)
+	}()
+
 	return nil
 }
 
@@ -140,7 +163,7 @@ type StoreListResponse struct {
 	StoreItemIDs []*passport.StoreItemID `json:"storeItemIDs"`
 }
 
-func (ctrlr *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &StoreListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -153,7 +176,7 @@ func (ctrlr *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.
 	}
 
 	total, storeItems, err := db.StoreList(
-		ctx, ctrlr.Conn,
+		ctx, sc.Conn,
 		req.Payload.Search,
 		req.Payload.Archived,
 		req.Payload.IncludedStoreItemIDs,
@@ -189,14 +212,14 @@ type StoreItemSubscribeRequest struct {
 	} `json:"payload"`
 }
 
-func (ctrlr *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (sc *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &StoreItemSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
 
-	item, err := db.StoreItemGet(ctx, ctrlr.Conn, req.Payload.StoreItemID)
+	item, err := db.StoreItemGet(ctx, sc.Conn, req.Payload.StoreItemID)
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
@@ -216,7 +239,7 @@ func (ctrlr *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, c
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
-	user, err := db.UserGet(ctx, ctrlr.Conn, passport.UserID(uid))
+	user, err := db.UserGet(ctx, sc.Conn, passport.UserID(uid))
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
@@ -229,11 +252,30 @@ func (ctrlr *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, c
 		return "", "", terror.Warn(fmt.Errorf("user has wrong faction, need %s, got %s", item.FactionID, user.FactionID), "You do not belong to the correct faction.")
 	}
 
-	supsAsCents := ctrlr.API.SupUSD.Mul(decimal.New(100, 0))
+	supsAsCents := sc.API.SupUSD.Mul(decimal.New(100, 0))
 	priceAsCents := decimal.New(int64(item.UsdCentCost), 0)
 	priceAsSups := priceAsCents.Div(supsAsCents)
 	item.SupCost = priceAsSups.Mul(decimal.New(1, 18)).BigInt().String()
 
 	reply(item)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyStoreItemSubscribe, item.ID)), nil
+}
+
+const HubKeyAvailableItemAmountSubscribe hub.HubCommandKey = "AVAILABLE:ITEM:AMOUNT"
+
+func (sc *StoreControllerWS) AvailableItemAmountSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+
+	fsa, err := db.AssetSaleAvailable(ctx, sc.Conn)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	reply(fsa)
+
+	return req.TransactionID, messagebus.BusKey(HubKeyAvailableItemAmountSubscribe), nil
 }

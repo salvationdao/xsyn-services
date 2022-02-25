@@ -434,3 +434,23 @@ func AssetTransferOnChain(ctx context.Context, conn Conn, tokenID uint64, txHash
 
 	return nil
 }
+
+// AssetSaleAvailable return the total of available war machine in each faction
+func AssetSaleAvailable(ctx context.Context, conn Conn) ([]*passport.FactionSaleAvailable, error) {
+	result := []*passport.FactionSaleAvailable{}
+	q := `
+	select f.id , f."label",f.logo_blob_id, f.theme, f2.amount_available from factions f  
+		left join lateral(
+			select (sum(xs.amount_available) - sum(xs.amount_sold)) as amount_available from xsyn_store xs 
+			where xs.faction_id = f.id
+			group by xs.faction_id 
+		)f2 on true 
+	`
+
+	err := pgxscan.Select(ctx, conn, &result, q)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return result, nil
+}

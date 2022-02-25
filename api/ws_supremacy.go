@@ -635,8 +635,6 @@ func (sc *SupremacyControllerWS) SupremacyAssetReleaseHandler(ctx context.Contex
 
 	err = db.XsynAssetBulkRelease(ctx, tx, req.Payload.ReleasedAssets, userID)
 	if err != nil {
-
-		fmt.Println("here11111111111111111111111111111111111111111111111111111111111111111")
 		return terror.Error(err)
 	}
 
@@ -667,7 +665,6 @@ func (sc *SupremacyControllerWS) SupremacyAssetReleaseHandler(ctx context.Contex
 		"", false, assetHashes, nil, nil, 0, len(assetHashes), "", "",
 	)
 	if err != nil {
-		fmt.Println("22222222222222222222222222222222222222222222222222222222")
 		return terror.Error(err)
 	}
 
