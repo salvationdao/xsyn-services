@@ -183,6 +183,7 @@ type ChatMessageSend struct {
 	MessageColor      string           `json:"messageColor"`
 	FromUserID        passport.UserID  `json:"fromUserID"`
 	FromUsername      string           `json:"fromUsername"`
+	FactionColour     *string          `json:"factionColour,omitempty"`
 	FactionLogoBlobID *passport.BlobID `json:"factionLogoBlobID,omitempty"`
 	AvatarID          *passport.BlobID `json:"avatarID,omitempty"`
 	SentAt            time.Time        `json:"sentAt"`
@@ -211,12 +212,14 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 	}
 
 	var (
+		factionColour     *string
 		factionLogoBlobID *passport.BlobID
 	)
 	// get faction primary colour from faction
 	if user.FactionID != nil {
 		for _, faction := range passport.Factions {
 			if faction.ID == *user.FactionID {
+				factionColour = &faction.Theme.Primary
 				factionLogoBlobID = &faction.LogoBlobID
 				break
 			}
@@ -241,6 +244,7 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 			FromUsername:      user.Username,
 			AvatarID:          user.AvatarID,
 			SentAt:            time.Now(),
+			FactionColour:     factionColour,
 			FactionLogoBlobID: factionLogoBlobID,
 		})
 		reply(true)
@@ -255,6 +259,7 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 		FromUsername:      user.Username,
 		AvatarID:          user.AvatarID,
 		SentAt:            time.Now(),
+		FactionColour:     factionColour,
 		FactionLogoBlobID: factionLogoBlobID,
 	})
 	reply(true)
