@@ -4,12 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"passport"
 	"passport/db"
 	"passport/email"
+	"strconv"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ninja-software/log_helpers"
 
 	SentryTracer "github.com/ninja-syndicate/hub/ext/sentry"
@@ -212,6 +215,7 @@ func NewAPI(
 			r.Get("/withdraw/{address}/{nonce}/{amount}", api.WithError(api.WithdrawSups))
 			r.Get("/mint-nft/{address}/{nonce}/{collectionSlug}/{externalTokenID}", api.WithError(api.MintAsset))
 			r.Get("/asset/{hash}", api.WithError(api.AssetGet))
+			r.Get("/asset/{collection_address}/{token_id}", api.WithError(api.AssetGetByCollectionAndTokenID))
 			r.Get("/auth/twitter", api.WithError(api.Auth.TwitterAuth))
 
 			r.Get("/whitelist/check", api.WithError(api.WhitelistOnlyWalletCheck))
@@ -356,6 +360,38 @@ func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 
 	// openseas object
 	//asset
+
+	// Encode result
+	err = json.NewEncoder(w).Encode(asset)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to encode JSON")
+	}
+
+	return http.StatusOK, nil
+}
+
+// AssetGet grabs asset's metadata via token id
+func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Request) (int, error) {
+	collectionAddress := chi.URLParam(r, "collection_address")
+	if collectionAddress == "" {
+		return http.StatusBadRequest, terror.Warn(errors.New("collection_address not provided in URL"), "metadata")
+	}
+	tokenIDStr := chi.URLParam(r, "token_id")
+	if tokenIDStr == "" {
+		return http.StatusBadRequest, terror.Warn(errors.New("token_id not provided in URL"), "metadata")
+	}
+	tokenID, err := strconv.Atoi(tokenIDStr)
+	if err != nil {
+		return http.StatusBadRequest, terror.Warn(err, "get asset from db")
+	}
+	asset, err := db.AssetGetFromMintContractAndID(r.Context(), api.Conn, string(common.HexToAddress(collectionAddress).Hex()), uint64(tokenID))
+	if err != nil {
+		return http.StatusBadRequest, terror.Warn(err, "get asset from db")
+	}
+	// Get asset via token id
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset")
+	}
 
 	// Encode result
 	err = json.NewEncoder(w).Encode(asset)
