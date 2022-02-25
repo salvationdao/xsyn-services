@@ -143,13 +143,8 @@ func NewAPI(
 		users: make(chan func(userList UserCacheMap)),
 
 		// object to hold transaction stuff
-		// TxConn: txConn,
 		transactionCache: tc,
 		userCacheMap:     ucm,
-		// userSupsCacheMap: map[passport.UserID]*UserCache{},
-
-		// transaction:      make(chan *passport.NewTransaction),
-		// heldTransactions: make(chan func(heldTxList map[passport.TransactionReference]*passport.NewTransaction)),
 
 		// treasury ticker map
 		supremacySupsPool: make(chan func(*SupremacySupPool)),
@@ -265,13 +260,6 @@ func NewAPI(
 
 	// Run the server client channel listener
 	go api.HandleServerClients()
-
-	// Run the transaction channel listeners
-	// go api.HandleTransactions()
-	// go api.HandleHeldTransactions()
-
-	// Run the listener for the user cache
-	// go api.HandleUserCache()
 
 	// Initial supremacy sup pool
 	go api.StartSupremacySupPool()

@@ -3,11 +3,9 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"math/big"
 	"passport"
 	"sync"
-	"time"
 
 	"github.com/ninja-syndicate/hub"
 )
@@ -128,8 +126,7 @@ type ServerClientMessage struct {
 
 func (api *API) SendToServerClient(ctx context.Context, name ServerClientName, msg *ServerClientMessage) {
 	api.Log.Debug().Msgf("sending message to server clients: %s", name)
-	select {
-	case api.serverClients <- func(servers ServerClientsList) {
+	api.serverClients <- func(servers ServerClientsList) {
 		gameClientMap, ok := servers[name]
 		if !ok {
 			api.Log.Debug().Msgf("no server clients for %s", name)
@@ -143,17 +140,12 @@ func (api *API) SendToServerClient(ctx context.Context, name ServerClientName, m
 
 			go sc.Send(payload)
 		}
-	}:
-
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
 	}
 
 }
 
 func (api *API) SendToAllServerClient(ctx context.Context, msg *ServerClientMessage) {
-	select {
-	case api.serverClients <- func(servers ServerClientsList) {
+	api.serverClients <- func(servers ServerClientsList) {
 		for gameName, scm := range servers {
 			for sc := range scm {
 				payload, err := json.Marshal(msg)
@@ -163,10 +155,6 @@ func (api *API) SendToAllServerClient(ctx context.Context, msg *ServerClientMess
 				go sc.Send(payload)
 			}
 		}
-	}:
-
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
 	}
 }
 

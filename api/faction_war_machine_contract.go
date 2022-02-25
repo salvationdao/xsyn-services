@@ -2,13 +2,11 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
 	"passport"
 	"passport/db"
-	"time"
 
 	"github.com/ninja-software/log_helpers"
 
@@ -53,27 +51,14 @@ const (
 func (api *API) RegisterRepairCenter(rt RepairType, assetHash string) {
 	switch rt {
 	case RepairTypeFast:
-		select {
-		case api.fastAssetRepairCenter <- func(rq RepairQueue) {
+		api.fastAssetRepairCenter <- func(rq RepairQueue) {
 			rq[assetHash] = true
-		}:
-
-		case <-time.After(10 * time.Second):
-			api.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("Fast repair")
 		}
 
 	case RepairTypeStandard:
-		select {
-		case api.standardAssetRepairCenter <- func(rq RepairQueue) {
+		api.standardAssetRepairCenter <- func(rq RepairQueue) {
 			rq[assetHash] = true
-		}:
-
-		case <-time.After(10 * time.Second):
-			api.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("standard repair")
 		}
-
 	}
 }
 
@@ -95,8 +80,7 @@ func (api *API) startRepairTicker(rt RepairType) {
 	// build tickle
 	assetRepairCenter := tickle.New(TraceTitle, float64(tickSecond), func() (int, error) {
 		errChan := make(chan error)
-		select {
-		case repairCenter <- func(rq RepairQueue) {
+		repairCenter <- func(rq RepairQueue) {
 			if len(rq) == 0 {
 				errChan <- nil
 				return
@@ -120,11 +104,6 @@ func (api *API) startRepairTicker(rt RepairType) {
 				}
 			}
 			errChan <- nil
-		}:
-
-		case <-time.After(10 * time.Second):
-			api.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("Asset Repair Center")
 		}
 
 		err := <-errChan
@@ -189,8 +168,7 @@ func (api *API) recalculateContractReward(ctx context.Context, factionID passpor
 	}
 
 	if _, ok := api.factionWarMachineContractMap[factionID]; ok {
-		select {
-		case api.factionWarMachineContractMap[factionID] <- func(wmc *WarMachineContract) {
+		api.factionWarMachineContractMap[factionID] <- func(wmc *WarMachineContract) {
 			// reduce reward price when greater than 10
 			if queueNumber >= 10 {
 				wmc.CurrentReward.Mul(&wmc.CurrentReward, big.NewInt(99))
@@ -212,11 +190,6 @@ func (api *API) recalculateContractReward(ctx context.Context, factionID passpor
 
 			// broadcast the latest reward
 			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetQueueContractReward, factionID)), wmc.CurrentReward.String())
-		}:
-
-		case <-time.After(10 * time.Second):
-			api.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("recalculate Contract Reward")
 		}
 	}
 }
