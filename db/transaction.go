@@ -12,6 +12,71 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
+type TransactionColumn string
+
+const (
+	TransactionColumnID                   TransactionColumn = "id"
+	TransactionColumnDescription          TransactionColumn = "description"
+	TransactionColumnTransactionReference TransactionColumn = "transaction_reference"
+	TransactionColumnAmount               TransactionColumn = "amount"
+	TransactionColumnCredit               TransactionColumn = "credit"
+	TransactionColumnDebit                TransactionColumn = "debit"
+	TransactionColumnStatus               TransactionColumn = "status"
+	TransactionColumnReason               TransactionColumn = "reason"
+	TransactionColumnCreatedAt            TransactionColumn = "created_at"
+)
+
+func (ic TransactionColumn) IsValid() error {
+	switch ic {
+	case TransactionColumnID,
+		TransactionColumnDescription,
+		TransactionColumnTransactionReference,
+		TransactionColumnAmount,
+		TransactionColumnCredit,
+		TransactionColumnDebit,
+		TransactionColumnStatus,
+		TransactionColumnReason,
+		TransactionColumnCreatedAt:
+		return nil
+	}
+	return terror.Error(fmt.Errorf("invalid transaction column type"))
+}
+
+const TransactionGetQuery string = `
+SELECT 
+row_to_json(t) as to,
+row_to_json(f) as from,
+transactions.id,
+transactions.description,
+transactions.transaction_reference,
+transactions.amount,
+transactions.status,
+transactions.reason,
+transactions.created_at
+` + TransactionGetQueryFrom
+
+const TransactionGetQueryFrom = `
+FROM transactions 
+INNER JOIN users t ON transactions.credit = t.id
+INNER JOIN users f ON transactions.debit = f.id
+`
+
+// TransactionList gets a list of assets depending on the filters
+// func TransactionList(
+// 	ctx context.Context,
+// 	conn Conn,
+// 	search string,
+// 	archived bool,
+// 	includedTokenIDs []uint64,
+// 	filter *ListFilterRequest,
+// 	offset int,
+// 	pageSize int,
+// 	sortBy AssetColumn,
+// 	sortDir SortByDir,
+// ) (int, []*passport.Transaction, error) {
+
+// }
+
 func TransactionExists(ctx context.Context, conn Conn, txhash string) (bool, error) {
 	q := "SELECT count(id) FROM transactions WHERE transaction_reference = $1"
 	var count int
