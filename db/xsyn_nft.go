@@ -27,6 +27,7 @@ func XsynMetadataInsert(ctx context.Context, conn Conn, item *passport.XsynMetad
 	q := `SELECT count(*) from xsyn_metadata WHERE collection_id = $1`
 	err := pgxscan.Get(ctx, conn, &item.ExternalTokenID, q, item.CollectionID)
 	if err != nil {
+		fmt.Println("here1")
 		return terror.Error(err)
 	}
 
@@ -34,6 +35,7 @@ func XsynMetadataInsert(ctx context.Context, conn Conn, item *passport.XsynMetad
 	// TODO: get this to handle uint64
 	item.Hash, err = helpers.GenerateMetadataHashID(item.CollectionID.String(), int(item.ExternalTokenID), false)
 	if err != nil {
+		fmt.Println("here2")
 		return terror.Error(err)
 	}
 
@@ -54,21 +56,22 @@ func XsynMetadataInsert(ctx context.Context, conn Conn, item *passport.XsynMetad
 		item.AdditionalMetadata,
 		fmt.Sprintf("%s/asset/%s", externalUrl, item.Hash))
 	if err != nil {
+		fmt.Println("here3")
 		return terror.Error(err)
 	}
 	return nil
 }
 
 // XsynMetadataAssignUser assign a nft metadata to a user
-func XsynMetadataAssignUser(ctx context.Context, conn Conn, metadataHash string, userID passport.UserID) error {
+func XsynMetadataAssignUser(ctx context.Context, conn Conn, metadataHash string, userID passport.UserID, collectionID passport.CollectionID, externalTokenID uint64) error {
 	q := `
 		INSERT INTO 
-			xsyn_assets (metadata_hash, user_id)
+			xsyn_assets (metadata_hash, user_id, collection_id, external_token_id)
 		VALUES
-			($1, $2);
+			($1, $2, $3, $4);
 	`
 
-	_, err := conn.Exec(ctx, q, metadataHash, userID)
+	_, err := conn.Exec(ctx, q, metadataHash, userID, collectionID, externalTokenID)
 	if err != nil {
 		return terror.Error(err)
 	}

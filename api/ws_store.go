@@ -229,9 +229,10 @@ func (ctrlr *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, c
 		return "", "", terror.Warn(fmt.Errorf("user has wrong faction, need %s, got %s", item.FactionID, user.FactionID), "You do not belong to the correct faction.")
 	}
 
-	priceAsDecimal := decimal.New(int64(item.UsdCentCost), 0).Div(ctrlr.API.SupUSD).Ceil()
-	priceAsSups := decimal.New(priceAsDecimal.IntPart(), 18).BigInt()
-	item.SupCost = priceAsSups.String()
+	supsAsCents := ctrlr.API.SupUSD.Mul(decimal.New(100, 0))
+	priceAsCents := decimal.New(int64(item.UsdCentCost), 0)
+	priceAsSups := priceAsCents.Div(supsAsCents)
+	item.SupCost = priceAsSups.Mul(decimal.New(1, 18)).BigInt().String()
 
 	reply(item)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyStoreItemSubscribe, item.ID)), nil

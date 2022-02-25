@@ -727,7 +727,7 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 			return terror.Error(err)
 		}
 
-		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.Hash, passport.SupremacyZaibatsuUserID)
+		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.Hash, passport.SupremacyZaibatsuUserID, nft.CollectionID, nft.ExternalTokenID)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -1022,7 +1022,7 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 			return terror.Error(err)
 		}
 
-		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.Hash, passport.SupremacyRedMountainUserID)
+		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.Hash, passport.SupremacyRedMountainUserID, nft.CollectionID, nft.ExternalTokenID)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -1278,7 +1278,7 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 			return terror.Error(err)
 		}
 
-		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.Hash, passport.SupremacyBostonCyberneticsUserID)
+		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.Hash, passport.SupremacyBostonCyberneticsUserID, nft.CollectionID, nft.ExternalTokenID)
 		if err != nil {
 			return terror.Error(err)
 		}
