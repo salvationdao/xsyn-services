@@ -40,7 +40,7 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 
 	// asset subscribe
 	api.SubscribeCommand(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)
-	api.SecureUserSubscribeCommand(HubKeyAssetSubscribe, assetHub.AssetDurabilityUpdatedSubscribeHandler)
+	api.SecureUserSubscribeCommand(HubKeyAssetDurabilitySubscribe, assetHub.AssetDurabilityUpdatedSubscribeHandler)
 
 	// asset set name
 	api.SecureCommand(HubKeyAssetUpdateName, assetHub.AssetUpdateNameHandler)
