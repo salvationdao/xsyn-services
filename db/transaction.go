@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"passport"
+	"strings"
 	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
@@ -24,6 +25,7 @@ const (
 	TransactionColumnStatus               TransactionColumn = "status"
 	TransactionColumnReason               TransactionColumn = "reason"
 	TransactionColumnCreatedAt            TransactionColumn = "created_at"
+	TransactionColumnGroupID              TransactionColumn = "group_id"
 )
 
 func (ic TransactionColumn) IsValid() error {
@@ -36,7 +38,8 @@ func (ic TransactionColumn) IsValid() error {
 		TransactionColumnDebit,
 		TransactionColumnStatus,
 		TransactionColumnReason,
-		TransactionColumnCreatedAt:
+		TransactionColumnCreatedAt,
+		TransactionColumnGroupID:
 		return nil
 	}
 	return terror.Error(fmt.Errorf("invalid transaction column type"))
@@ -50,9 +53,12 @@ transactions.id,
 transactions.description,
 transactions.transaction_reference,
 transactions.amount,
+transactions.credit,
+transactions.debit,
 transactions.status,
 transactions.reason,
-transactions.created_at
+transactions.created_at,
+transactions.group_id
 ` + TransactionGetQueryFrom
 
 const TransactionGetQueryFrom = `
@@ -61,21 +67,130 @@ INNER JOIN users t ON transactions.credit = t.id
 INNER JOIN users f ON transactions.debit = f.id
 `
 
-// TransactionList gets a list of assets depending on the filters
-// func TransactionList(
-// 	ctx context.Context,
-// 	conn Conn,
-// 	search string,
-// 	archived bool,
-// 	includedTokenIDs []uint64,
-// 	filter *ListFilterRequest,
-// 	offset int,
-// 	pageSize int,
-// 	sortBy AssetColumn,
-// 	sortDir SortByDir,
-// ) (int, []*passport.Transaction, error) {
+// TransactionList gets a list of Transactions depending on the filters
+func TransactionList(
+	ctx context.Context,
+	conn Conn,
+	userID *passport.UserID, // if user id is provided, returns transactions that only matter to this user
+	search string,
+	filter *ListFilterRequest,
+	offset int,
+	pageSize int,
+	sortBy TransactionColumn,
+	sortDir SortByDir,
+) (int, []*passport.Transaction, error) {
 
-// }
+	// Prepare Filters
+	var args []interface{}
+
+	filterConditionsString := ""
+	argIndex := 0
+	if filter != nil {
+		filterConditions := []string{}
+		for _, f := range filter.Items {
+			column := TransactionColumn(f.ColumnField)
+			err := column.IsValid()
+			if err != nil {
+				return 0, nil, terror.Error(err)
+			}
+
+			argIndex += 1
+			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, argIndex)
+			if condition != "" {
+				filterConditions = append(filterConditions, condition)
+				args = append(args, value)
+			}
+		}
+		if len(filterConditions) > 0 {
+			filterConditionsString = " AND (" + strings.Join(filterConditions, " "+string(filter.LinkOperator)+" ") + ")"
+		}
+	}
+
+	if userID != nil {
+		args = append(args, userID)
+		filterConditionsString += fmt.Sprintf(" AND (credit = $%[1]d OR debit = $%[1]d) ", len(args))
+	}
+
+	searchCondition := ""
+	if search != "" {
+		xsearch := ParseQueryText(search, true)
+		if len(xsearch) > 0 {
+			args = append(args, xsearch)
+			searchCondition = fmt.Sprintf(" AND transactions.description @@ to_tsquery($%d)", len(args))
+		}
+	}
+
+	// Get Total Found
+	countQ := fmt.Sprintf(`--sql
+		SELECT COUNT(DISTINCT transactions.id)
+		%s
+		WHERE transactions.id IS NOT NULL
+			%s
+			%s
+		`,
+		TransactionGetQueryFrom,
+		filterConditionsString,
+		searchCondition,
+	)
+
+	var totalRows int
+
+	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
+	if err != nil {
+		return 0, nil, terror.Error(err)
+	}
+	if totalRows == 0 {
+		return 0, make([]*passport.Transaction, 0), nil
+	}
+
+	// Order and Limit
+	orderBy := " ORDER BY created_at desc"
+	if sortBy != "" {
+		err := sortBy.IsValid()
+		if err != nil {
+			return 0, nil, terror.Error(err)
+		}
+		orderBy = fmt.Sprintf(" ORDER BY %s %s", sortBy, sortDir)
+	}
+	limit := ""
+	if pageSize > 0 {
+		limit = fmt.Sprintf(" LIMIT %d OFFSET %d", pageSize, offset)
+	}
+
+	// Get Paginated Result
+	q := fmt.Sprintf(
+		TransactionGetQuery+`--sql
+		WHERE transactions.id IS NOT NULL
+			%s
+			%s
+		%s
+		%s`,
+		filterConditionsString,
+		searchCondition,
+		orderBy,
+		limit,
+	)
+
+	result := make([]*passport.Transaction, 0)
+	err = pgxscan.Select(ctx, conn, &result, q, args...)
+	if err != nil {
+		return 0, nil, terror.Error(err)
+	}
+	return totalRows, result, nil
+}
+
+// TransactionGet get store item by id
+func TransactionGet(ctx context.Context, conn Conn, transactionID string) (*passport.Transaction, error) {
+	transaction := &passport.Transaction{}
+	q := TransactionGetQuery + "WHERE transactions.id = $1"
+
+	err := pgxscan.Get(ctx, conn, transaction, q, transactionID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return transaction, nil
+}
 
 func TransactionExists(ctx context.Context, conn Conn, txhash string) (bool, error) {
 	q := "SELECT count(id) FROM transactions WHERE transaction_reference = $1"
