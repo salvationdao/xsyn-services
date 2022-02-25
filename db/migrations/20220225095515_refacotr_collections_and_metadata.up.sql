@@ -1,10 +1,3 @@
--- Add external_token_id to xsyn_metadata (not automatically serial, manually set, checked and incremented)
--- Add external_token_id, collection_id to xsyn_assets
-
--- Add testnet contracts to seed
---  Run the migrations
-
-
 
 --  update collections
 ALTER TABLE collections ADD COLUMN mint_contract TEXT DEFAULT ''; -- Collection table should have contract address to mint against

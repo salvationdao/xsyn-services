@@ -17,9 +17,10 @@ collections.id,
 collections.slug,
 collections.deleted_at,
 collections.updated_at,
-collections.created_at
+collections.created_at,
+collections.mint_contract,
+collections.stake_contract
 ` + CollectionGetQueryFrom
-
 
 // TODO: this query should be purely for collections, not assets and metadata
 const CollectionGetQueryFrom = `
@@ -157,6 +158,7 @@ func CollectionsList(
 	q := fmt.Sprintf(
 		CollectionGetQuery+`--sql
 		WHERE collections.deleted_at %s
+		AND collections.name NOT LIKE 'Supremacy AI'
 			%s
 			%s
 		%s

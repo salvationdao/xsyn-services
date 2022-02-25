@@ -12,8 +12,8 @@ import (
 
 // CollectionInsert inserts a new collection
 func CollectionInsert(ctx context.Context, conn Conn, collection *passport.Collection) error {
-	q := `INSERT INTO collections (name) VALUES($1)`
-	_, err := conn.Exec(ctx, q, collection.Name)
+	q := `INSERT INTO collections (name, mint_contract, stake_contract) VALUES($1, $2, $3)`
+	_, err := conn.Exec(ctx, q, collection.Name, collection.MintContract, collection.StakeContract)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -27,7 +27,6 @@ func XsynMetadataInsert(ctx context.Context, conn Conn, item *passport.XsynMetad
 	q := `SELECT count(*) from xsyn_metadata WHERE collection_id = $1`
 	err := pgxscan.Get(ctx, conn, &item.ExternalTokenID, q, item.CollectionID)
 	if err != nil {
-		fmt.Println("here1")
 		return terror.Error(err)
 	}
 
@@ -35,7 +34,6 @@ func XsynMetadataInsert(ctx context.Context, conn Conn, item *passport.XsynMetad
 	// TODO: get this to handle uint64
 	item.Hash, err = helpers.GenerateMetadataHashID(item.CollectionID.String(), int(item.ExternalTokenID), false)
 	if err != nil {
-		fmt.Println("here2")
 		return terror.Error(err)
 	}
 
@@ -56,7 +54,6 @@ func XsynMetadataInsert(ctx context.Context, conn Conn, item *passport.XsynMetad
 		item.AdditionalMetadata,
 		fmt.Sprintf("%s/asset/%s", externalUrl, item.Hash))
 	if err != nil {
-		fmt.Println("here3")
 		return terror.Error(err)
 	}
 	return nil
@@ -406,15 +403,15 @@ func XsynAssetLock(ctx context.Context, conn Conn, assetHash string, userID pass
 }
 
 // XsynAssetMintLock sets minting_signature of an asset
-func XsynAssetMintLock(ctx context.Context, conn Conn, tokenID uint64, sig string) error {
+func XsynAssetMintLock(ctx context.Context, conn Conn, assetHash string, sig string) error {
 	q := `
 		UPDATE 
 			xsyn_assets
 		SET
 			minting_signature = $1
-		WHERE token_id = $2`
+		WHERE metadata_hash = $2`
 
-	_, err := conn.Exec(ctx, q, sig, tokenID)
+	_, err := conn.Exec(ctx, q, sig, assetHash)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -440,15 +437,15 @@ func XsynAssetMintUnLock(ctx context.Context, conn Conn, userID passport.UserID)
 }
 
 // XsynAssetMinted marked as a
-func XsynAssetMinted(ctx context.Context, conn Conn, tokenID uint64) error {
+func XsynAssetMinted(ctx context.Context, conn Conn, assetHash string) error {
 	q := `
 		UPDATE 
 			xsyn_metadata
 		SET
 			minted = true
-		WHERE token_id = $1`
+		WHERE metadata_hash = $1`
 
-	_, err := conn.Exec(ctx, q, tokenID)
+	_, err := conn.Exec(ctx, q, assetHash)
 	if err != nil {
 		return terror.Error(err)
 	}

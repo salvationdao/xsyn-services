@@ -22,7 +22,7 @@ import (
 // WithdrawSups
 // Flow to withdraw sups
 // get nonce from withdraw contract
-// send nonce, amount and user wallet addr to server
+// send nonce, amount and user wallet addr to server,
 // server validates they have enough sups
 // server generates a sig and returns it
 // submit that sig to withdraw contract withdrawSups func
@@ -112,9 +112,9 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing nonce"), "Missing nonce.")
 	}
 
-	tokenID := chi.URLParam(r, "tokenID")
+	tokenID := chi.URLParam(r, "externalTokenID")
 	if tokenID == "" {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing amount"), "Missing amount.")
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing tokenID"), "Missing tokenID.")
 	}
 
 	collectionSlug := chi.URLParam(r, "collectionSlug")
@@ -127,7 +127,7 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to convert token id.")
 	}
 
-	toAddress := common.HexToAddress(address)
+	//toAddress := common.HexToAddress(address)
 
 	nonceBigInt := new(big.Int)
 	_, ok := nonceBigInt.SetString(nonce, 10)
@@ -173,13 +173,13 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	//  sign it
 	expiry := time.Now().Add(5 * time.Minute)
 	signer := bridge.NewSigner(api.BridgeParams.SignerPrivateKey)
-	_, messageSig, err := signer.GenerateSignatureWithExpiry(toAddress, tokenAsBigInt, nonceBigInt, big.NewInt(expiry.Unix()))
+	_, messageSig, err := signer.GenerateSignatureWithExpiryAndCollection(common.HexToAddress(address), common.HexToAddress(collection.MintContract), tokenAsBigInt, nonceBigInt, big.NewInt(expiry.Unix()))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to create withdraw signature, please try again or contact support.")
 	}
 
 	// mint lock asset
-	err = db.XsynAssetMintLock(r.Context(), api.Conn, tokenIDuint64, hexutil.Encode(messageSig))
+	err = db.XsynAssetMintLock(r.Context(), api.Conn, asset.Hash, hexutil.Encode(messageSig))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to generate signature, please try again.")
 	}
