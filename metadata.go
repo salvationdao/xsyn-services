@@ -6,13 +6,15 @@ import (
 )
 
 type Collection struct {
-	ID        CollectionID `json:"id"`
-	Name      string       `json:"name"`
-	Slug      string       `json:"slug"`
-	ImageURL  string       `json:"imageURL"`
-	DeletedAt *time.Time   `json:"deleted_at" db:"deleted_at"`
-	UpdatedAt time.Time    `json:"updated_at" db:"updated_at"`
-	CreatedAt time.Time    `json:"created_at" db:"created_at"`
+	ID            CollectionID `json:"id"`
+	Name          string       `json:"name"`
+	Slug          string       `json:"slug"`
+	ImageURL      string       `json:"imageURL"`
+	DeletedAt     *time.Time   `json:"deleted_at" db:"deleted_at"`
+	UpdatedAt     time.Time    `json:"updated_at" db:"updated_at"`
+	CreatedAt     time.Time    `json:"created_at" db:"created_at"`
+	MintContract  string       `json:"mintContract" db:"mint_contract"`
+	StakeContract string       `json:"stakeContract" db:"stake_contract"`
 }
 
 type Attribute struct {
@@ -109,7 +111,7 @@ type AdditionalMetadata struct {
 }
 
 type WarMachineMetadata struct {
-	TokenID         uint64             `json:"tokenID"`
+	Hash            string             `json:"hash"`
 	OwnedByID       UserID             `json:"ownedByID"`
 	Name            string             `json:"name"`
 	Description     string             `json:"description"`
@@ -161,7 +163,7 @@ const (
 
 // ParseWarMachineMetadata convert json attribute to proper struct
 func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMachineMetadata) {
-	warMachineMetadata.TokenID = metadata.ExternalTokenID
+	warMachineMetadata.Hash = metadata.Hash
 	warMachineMetadata.Name = metadata.Name
 	warMachineMetadata.Description = metadata.Description
 	warMachineMetadata.ExternalUrl = metadata.ExternalUrl

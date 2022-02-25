@@ -9,7 +9,6 @@ import (
 	"passport"
 	"passport/db"
 	"passport/email"
-	"strconv"
 
 	"github.com/ninja-software/log_helpers"
 
@@ -387,19 +386,13 @@ func (api *API) RecordUserActivity(
 // AssetGet grabs asset's metadata via token id
 func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 	// Get token id
-	tokenID := chi.URLParam(r, "token_id")
-	if tokenID == "" {
+	hash := chi.URLParam(r, "hash")
+	if hash == "" {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("invalid token id"), "Invalid Token ID")
 	}
 
-	// Convert token id from string to int
-	_tokenID, err := strconv.ParseUint(string(tokenID), 10, 64)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed converting string token id to int")
-	}
-
 	// Get asset via token id
-	asset, err := db.AssetGet(r.Context(), api.Conn, _tokenID)
+	asset, err := db.AssetGet(r.Context(), api.Conn, hash)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset")
 	}

@@ -117,6 +117,11 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing amount"), "Missing amount.")
 	}
 
+	collectionSlug := chi.URLParam(r, "collectionSlug")
+	if collectionSlug == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing collection slug"), "Missing Collection slug.")
+	}
+
 	tokenIDuint64, err := strconv.ParseUint(tokenID, 10, 64)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to convert token id.")
@@ -136,7 +141,13 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
 	}
 
-	asset, err := db.AssetGet(r.Context(), api.Conn, tokenIDuint64)
+	// get collection details
+	collection, err := db.CollectionGet(r.Context(), api.Conn, collectionSlug)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get collection.")
+	}
+
+	asset, err := db.AssetGetFromContractAndID(r.Context(), api.Conn, collection.MintContract, tokenIDuint64)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
 	}
@@ -174,7 +185,7 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	}
 
 	// get updated asset
-	asset, err = db.AssetGet(r.Context(), api.Conn, tokenIDuint64)
+	asset, err = db.AssetGetFromContractAndID(r.Context(), api.Conn, collection.MintContract, tokenIDuint64)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
 

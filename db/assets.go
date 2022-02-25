@@ -86,7 +86,7 @@ func AssetList(
 	conn Conn,
 	search string,
 	archived bool,
-	includedTokenIDs []uint64,
+	includedAssetHashes []string,
 	filter *ListFilterRequest,
 	attributeFilter *AttributeFilterRequest,
 	offset int,
@@ -147,11 +147,11 @@ func AssetList(
 	}
 
 	// select specific assets via tokenIDs
-	if len(includedTokenIDs) > 0 {
+	if len(includedAssetHashes) > 0 {
 		cond := "("
-		for i, nftTokenID := range includedTokenIDs {
-			cond += fmt.Sprintf("%d", nftTokenID)
-			if i < len(includedTokenIDs)-1 {
+		for i, assetHash := range includedAssetHashes {
+			cond += assetHash
+			if i < len(includedAssetHashes)-1 {
 				cond += ","
 				continue
 			}
@@ -237,25 +237,49 @@ func AssetList(
 }
 
 // AssetGet returns a asset by given ID
-func AssetGet(ctx context.Context, conn Conn, tokenID uint64) (*passport.XsynMetadata, error) {
+func AssetGet(ctx context.Context, conn Conn, hash string) (*passport.XsynMetadata, error) {
 	asset := &passport.XsynMetadata{}
 	count := 0
 
-	q := fmt.Sprintf(`SELECT count(*) %s WHERE xsyn_metadata.external_token_id = $1`, AssetGetQueryFrom)
-	err := pgxscan.Get(ctx, conn, &count, q, tokenID)
+	q := fmt.Sprintf(`SELECT count(*) %s WHERE xsyn_metadata.hash = $1`, AssetGetQueryFrom)
+	err := pgxscan.Get(ctx, conn, &count, q, hash)
 	if err != nil {
-		return nil, terror.Error(err, "Issue getting asset from token ID.")
+		return nil, terror.Error(err, "Issue getting asset from hash.")
 	}
 
 	if count == 0 {
 		return nil, nil
 	}
 
-	q = AssetGetQuery + `WHERE xsyn_metadata.external_token_id = $1`
+	q = AssetGetQuery + `WHERE xsyn_metadata.hash = $1`
 
-	err = pgxscan.Get(ctx, conn, asset, q, tokenID)
+	err = pgxscan.Get(ctx, conn, asset, q, hash)
 	if err != nil {
-		return nil, terror.Error(err, "Issue getting asset from token ID.")
+		return nil, terror.Error(err, "Issue getting asset from hash.")
+	}
+	return asset, nil
+}
+
+// AssetGetFromContractAndID returns asset by given ID and contract
+func AssetGetFromContractAndID(ctx context.Context, conn Conn, mintContractAddress string, externalTokenID uint64) (*passport.XsynMetadata, error) {
+	asset := &passport.XsynMetadata{}
+	count := 0
+
+	q := fmt.Sprintf(`SELECT count(*) %s WHERE xsyn_metadata.mint_contract = $1 and xsyn_metadata.external_token_id = $2`, AssetGetQueryFrom)
+	err := pgxscan.Get(ctx, conn, &count, q, mintContractAddress, externalTokenID)
+	if err != nil {
+		return nil, terror.Error(err, "Issue getting asset from contract address and token id.")
+	}
+
+	if count == 0 {
+		return nil, nil
+	}
+
+	q = AssetGetQuery + ` WHERE xsyn_metadata.mint_contract = $1 and xsyn_metadata.external_token_id = $2`
+
+	err = pgxscan.Get(ctx, conn, asset, q, mintContractAddress, externalTokenID)
+	if err != nil {
+		return nil, terror.Error(err, "Issue getting asset from contract address and token id.")
 	}
 	return asset, nil
 }

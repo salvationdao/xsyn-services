@@ -57,7 +57,7 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 type AssetQueueRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AssetTokenID uint64 `json:"assetTokenID"`
+		AssetHash string `json:"assetHash"`
 	} `json:"payload"`
 }
 
@@ -87,7 +87,7 @@ func (ac *AssetController) LeaveQueueHandler(ctx context.Context, hubc *hub.Clie
 		return terror.Error(terror.ErrInvalidInput, "User need to join a faction")
 	}
 
-	metadata, err := db.XsynMetadataOwnerGet(ctx, ac.Conn, userID, req.Payload.AssetTokenID)
+	metadata, err := db.XsynMetadataOwnerGet(ctx, ac.Conn, userID, req.Payload.AssetHash)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -97,7 +97,7 @@ func (ac *AssetController) LeaveQueueHandler(ctx context.Context, hubc *hub.Clie
 	}
 
 	warMachineMetadata := &passport.WarMachineMetadata{
-		TokenID:   req.Payload.AssetTokenID,
+		Hash:      req.Payload.AssetHash,
 		OwnedByID: userID,
 		FactionID: *user.FactionID,
 	}
@@ -144,7 +144,7 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	// check user own this asset, and it has not joined the queue yet
-	asset, err := db.AssetGet(ctx, ac.Conn, req.Payload.AssetTokenID)
+	asset, err := db.AssetGet(ctx, ac.Conn, req.Payload.AssetHash)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -193,26 +193,26 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 		case string(passport.Utility):
 		}
 	}
-
-	if len(warMachineMetadata.Abilities) > 0 {
-		// get abilities asset
-		for _, abilityMetadata := range warMachineMetadata.Abilities {
-			err := db.AbilityAssetGet(ctx, ac.Conn, abilityMetadata)
-			if err != nil {
-				return terror.Error(err)
-			}
-			if asset == nil {
-				return terror.Error(fmt.Errorf("asset doesn't exist"))
-			}
-
-			supsCost, err := db.WarMachineAbilityCostGet(ctx, ac.Conn, warMachineMetadata.TokenID, abilityMetadata.TokenID)
-			if err != nil {
-				return terror.Error(err)
-			}
-
-			abilityMetadata.SupsCost = supsCost
-		}
-	}
+	// TODO: commented out by vinnie 25/02/2022, no mech specific abilities exist yet
+	//if len(warMachineMetadata.Abilities) > 0 {
+	// get abilities asset
+	//for _, abilityMetadata := range warMachineMetadata.Abilities {
+	//	err := db.AbilityAssetGet(ctx, ac.Conn, abilityMetadata)
+	//	if err != nil {
+	//		return terror.Error(err)
+	//	}
+	//	if asset == nil {
+	//		return terror.Error(fmt.Errorf("asset doesn't exist"))
+	//	}
+	//
+	//	supsCost, err := db.WarMachineAbilityCostGet(ctx, ac.Conn, warMachineMetadata.Hash, abilityMetadata.TokenID)
+	//	if err != nil {
+	//		return terror.Error(err)
+	//	}
+	//
+	//	abilityMetadata.SupsCost = supsCost
+	//}
+	//}
 
 	// assign faction id
 	warMachineMetadata.FactionID = *user.FactionID
@@ -231,11 +231,10 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	return nil
 }
 
-// AssetsUpdatedSubscribeRequest requests holds the filter for user list
 type AssetsInsurancePayRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AssetTokenID uint64 `json:"assetTokenID"`
+		AssetHash string `json:"assetHash"`
 	} `json:"payload"`
 }
 
@@ -265,7 +264,7 @@ func (ac *AssetController) PayAssetInsuranceHandler(ctx context.Context, hubc *h
 	}
 
 	// check user own this asset and it has not joined the queue yet
-	metadata, err := db.XsynMetadataOwnerGet(ctx, ac.Conn, userID, req.Payload.AssetTokenID)
+	metadata, err := db.XsynMetadataOwnerGet(ctx, ac.Conn, userID, req.Payload.AssetHash)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -298,17 +297,17 @@ func (ac *AssetController) PayAssetInsuranceHandler(ctx context.Context, hubc *h
 type AssetsUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID           passport.UserID            `json:"user_id"`
-		SortDir          db.SortByDir               `json:"sortDir"`
-		SortBy           db.AssetColumn             `json:"sortBy"`
-		IncludedTokenIDs []uint64                   `json:"includedTokenIDs"`
-		Filter           *db.ListFilterRequest      `json:"filter,omitempty"`
-		AttributeFilter  *db.AttributeFilterRequest `json:"attributeFilter,omitempty"`
-		AssetType        string                     `json:"assetType"`
-		Archived         bool                       `json:"archived"`
-		Search           string                     `json:"search"`
-		PageSize         int                        `json:"pageSize"`
-		Page             int                        `json:"page"`
+		UserID              passport.UserID            `json:"user_id"`
+		SortDir             db.SortByDir               `json:"sortDir"`
+		SortBy              db.AssetColumn             `json:"sortBy"`
+		IncludedAssetHashes []string                   `json:"includedAssetHashes"`
+		Filter              *db.ListFilterRequest      `json:"filter,omitempty"`
+		AttributeFilter     *db.AttributeFilterRequest `json:"attributeFilter,omitempty"`
+		AssetType           string                     `json:"assetType"`
+		Archived            bool                       `json:"archived"`
+		Search              string                     `json:"search"`
+		PageSize            int                        `json:"pageSize"`
+		Page                int                        `json:"page"`
 	} `json:"payload"`
 }
 
@@ -337,7 +336,7 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Clien
 		ctx, ac.Conn,
 		req.Payload.Search,
 		req.Payload.Archived,
-		req.Payload.IncludedTokenIDs,
+		req.Payload.IncludedAssetHashes,
 		req.Payload.Filter,
 		req.Payload.AttributeFilter,
 		offset,
@@ -367,7 +366,7 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Clien
 type AssetUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		TokenID uint64 `json:"tokenID"`
+		AssetHash string `json:"assetHash"`
 	} `json:"payload"`
 }
 
@@ -381,7 +380,7 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hub
 		return req.TransactionID, "", terror.Error(err)
 	}
 
-	asset, err := db.AssetGet(ctx, ac.Conn, req.Payload.TokenID)
+	asset, err := db.AssetGet(ctx, ac.Conn, req.Payload.AssetHash)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
 	}
@@ -432,16 +431,15 @@ func (ac *AssetController) AssetQueueContractRewardSubscriber(ctx context.Contex
 type AssetSetNameRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		TokenID uint64           `json:"tokenID"`
-		UserID  *passport.UserID `json:"userID"`
-		Name    string           `json:"name"`
+		AssetHash string           `json:"assetHash"`
+		UserID    *passport.UserID `json:"userID"`
+		Name      string           `json:"name"`
 	} `json:"payload"`
 }
 
 // 	rootHub.SecureCommand(HubKeyAssetUpdateName, AssetController.AssetUpdateNameHandler)
 const HubKeyAssetUpdateName hub.HubCommandKey = "ASSET:UPDATE:NAME"
 
-// AssetSetName update's name of an asset
 func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &AssetSetNameRequest{}
 	err := json.Unmarshal(payload, req)
@@ -450,7 +448,7 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 	}
 
 	// get asset
-	asset, err := db.AssetGet(ctx, ac.Conn, req.Payload.TokenID)
+	asset, err := db.AssetGet(ctx, ac.Conn, req.Payload.AssetHash)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -485,7 +483,7 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 	}
 
 	// get asset
-	asset, err = db.AssetGet(ctx, ac.Conn, req.Payload.TokenID)
+	asset, err = db.AssetGet(ctx, ac.Conn, req.Payload.AssetHash)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -493,7 +491,7 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 		return terror.Error(fmt.Errorf("asset doesn't exist"), "This asset does not exist.")
 	}
 
-	go ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.TokenID)), asset)
+	go ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.AssetHash)), asset)
 
 	ac.API.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: AssetUpdated,

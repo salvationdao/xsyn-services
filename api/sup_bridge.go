@@ -260,7 +260,7 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 					}
 
 					// get asset
-					asset, err := db.AssetGet(ctx, cc.API.Conn, event.TokenID.Uint64())
+					asset, err := db.AssetGetFromContractAndID(ctx, cc.API.Conn, event.Contract.Hex(), event.TokenID.Uint64())
 					if err != nil {
 						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to transfer")
 						return
@@ -292,7 +292,7 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 					}
 
 					// TODO: remove this and update asset transfer to return updated asset instead
-					asset, err = db.AssetGet(ctx, cc.API.Conn, event.TokenID.Uint64())
+					asset, err = db.AssetGetFromContractAndID(ctx, cc.API.Conn, event.Contract.Hex(), event.TokenID.Uint64())
 					if err != nil {
 						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to transfer")
 						return
@@ -302,7 +302,7 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 				func(event *bridge.NFTUnstakeEvent) {
 					cc.Log.Info().Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msg("nft unstake")
 					// get asset
-					asset, err := db.AssetGet(ctx, cc.API.Conn, event.TokenID.Uint64())
+					asset, err := db.AssetGetFromContractAndID(ctx, cc.API.Conn, event.Contract.Hex(), event.TokenID.Uint64())
 					if err != nil {
 						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to remove")
 						return
@@ -327,7 +327,7 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 					}
 
 					// TODO: remove this and update asset transfer to return updated asset instead (optimization)
-					asset, err = db.AssetGet(ctx, cc.API.Conn, event.TokenID.Uint64())
+					asset, err = db.AssetGetFromContractAndID(ctx, cc.API.Conn, event.Contract.Hex(), event.TokenID.Uint64())
 					if err != nil {
 						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to transfer")
 						return
@@ -465,7 +465,7 @@ func (cc *ChainClients) handleNFTTransfer(ctx context.Context) func(xfer *bridge
 				return
 			}
 
-			asset, err := db.AssetGet(ctx, cc.API.Conn, ev.TokenID.Uint64())
+			asset, err := db.AssetGetFromContractAndID(ctx, cc.API.Conn, ev.Contract.Hex(), ev.TokenID.Uint64())
 			if err != nil {
 				cc.Log.Err(err).Msgf("issue getting asset: %s", ev.TokenID.String())
 				return
@@ -504,13 +504,16 @@ func (cc *ChainClients) handleNFTTransfer(ctx context.Context) func(xfer *bridge
 			if err != nil {
 				cc.Log.Err(err).Msgf("issue finding user from public address: %s, locking and freezing asset token id %s", ev.To.Hex(), ev.TokenID.String())
 				// if issue transferring asset, LOCK IT!
-				err := db.XsynAssetLock(ctx, cc.API.Conn, ev.TokenID.Uint64(), passport.XsynTreasuryUserID)
+				err := db.XsynAssetLock(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
 				if err != nil {
 					cc.Log.Err(err).Msgf("FAILED TO LOCK ASSET token id: %s", ev.TokenID.String())
+					return
 				}
-				err = db.XsynAssetFreeze(ctx, cc.API.Conn, ev.TokenID.Uint64(), passport.XsynTreasuryUserID)
+
+				err = db.XsynAssetFreeze(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
 				if err != nil {
 					cc.Log.Err(err).Msgf("FAILED TO FREEZE ASSET token id: %s", ev.TokenID.String())
+					return
 				}
 				return
 			}
@@ -525,11 +528,11 @@ func (cc *ChainClients) handleNFTTransfer(ctx context.Context) func(xfer *bridge
 			if asset.UserID == nil || *asset.UserID != user.ID {
 				cc.Log.Err(err).Msgf("this wallet address doesn't own this asset, locking and freezing asset token id %s", ev.TokenID.String())
 				// if issue transferring asset, LOCK IT!
-				err := db.XsynAssetLock(ctx, cc.API.Conn, ev.TokenID.Uint64(), passport.XsynTreasuryUserID)
+				err := db.XsynAssetLock(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
 				if err != nil {
 					cc.Log.Err(err).Msgf("FAILED TO LOCK ASSET token id: %s", ev.TokenID.String())
 				}
-				err = db.XsynAssetFreeze(ctx, cc.API.Conn, ev.TokenID.Uint64(), passport.XsynTreasuryUserID)
+				err = db.XsynAssetFreeze(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
 				if err != nil {
 					cc.Log.Err(err).Msgf("FAILED TO FREEZE ASSET token id: %s", ev.TokenID.String())
 				}
@@ -540,11 +543,11 @@ func (cc *ChainClients) handleNFTTransfer(ctx context.Context) func(xfer *bridge
 			if err != nil {
 				cc.Log.Err(err).Msgf("issue transferring asset token id: %s, locking and freezing it", ev.TokenID.String())
 				// if issue transferring asset, LOCK IT!
-				err := db.XsynAssetLock(ctx, cc.API.Conn, ev.TokenID.Uint64(), passport.XsynTreasuryUserID)
+				err := db.XsynAssetLock(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
 				if err != nil {
 					cc.Log.Err(err).Msgf("FAILED TO LOCK ASSET token id: %s", ev.TokenID.String())
 				}
-				err = db.XsynAssetFreeze(ctx, cc.API.Conn, ev.TokenID.Uint64(), passport.XsynTreasuryUserID)
+				err = db.XsynAssetFreeze(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
 				if err != nil {
 					cc.Log.Err(err).Msgf("FAILED TO FREEZE ASSET token id: %s", ev.TokenID.String())
 				}
@@ -560,7 +563,7 @@ func (cc *ChainClients) handleNFTTransfer(ctx context.Context) func(xfer *bridge
 		}
 
 		// get updated asset
-		asset, err := db.AssetGet(ctx, cc.API.Conn, ev.TokenID.Uint64())
+		asset, err := db.AssetGetFromContractAndID(ctx, cc.API.Conn, ev.Contract.Hex(), ev.TokenID.Uint64())
 		if err != nil {
 			cc.Log.Err(err).Msgf("failed to find asset to reply: %s", ev.TokenID.String())
 			return
