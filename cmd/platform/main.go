@@ -8,6 +8,7 @@ import (
 	"passport/api"
 	"passport/db"
 	"passport/email"
+	"passport/helpers"
 	"passport/payments"
 	"passport/seed"
 	"strings"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ninja-software/log_helpers"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/oklog/run"
 	"github.com/shopspring/decimal"
 
@@ -92,7 +94,7 @@ func main() {
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
 
 					&cli.BoolFlag{Name: "is_testnet_blockchain", Value: false, EnvVars: []string{envPrefix + "_IS_TESTNET_BLOCKCHAIN"}, Usage: "Update state according to testnet"},
-					&cli.BoolFlag{Name: "run_blockchain_bridge", Value: false, EnvVars: []string{envPrefix + "_RUN_BLOCKCHAIN_BRIDGE"}, Usage: "Run the bridge to blockchain data"},
+					&cli.BoolFlag{Name: "run_blockchain_bridge", Value: true, EnvVars: []string{envPrefix + "_RUN_BLOCKCHAIN_BRIDGE"}, Usage: "Run the bridge to blockchain data"},
 
 					&cli.StringFlag{Name: "environment", Value: "development", DefaultText: "development", EnvVars: []string{envPrefix + "_ENVIRONMENT", "ENVIRONMENT"}, Usage: "This program environment (development, testing, training, staging, production), it sets the log levels"},
 					&cli.StringFlag{Name: "sentry_dsn_backend", Value: "", EnvVars: []string{envPrefix + "_SENTRY_DSN_BACKEND", "SENTRY_DSN_BACKEND"}, Usage: "Sends error to remote server. If set, it will send error."},
@@ -144,19 +146,18 @@ func main() {
 
 					&cli.StringFlag{Name: "withdraw_addr", Value: "0x9DAcEA338E4DDd856B152Ce553C7540DF920Bb15", EnvVars: []string{envPrefix + "_WITHDRAW_CONTRACT_ADDR"}, Usage: "Withdraw contract address"},
 
-					&cli.StringFlag{Name: "eth_nft_addr", Value: "0xC1ce98F52E771Bd82938c4Cb6CCaA40Dc2B3258D", EnvVars: []string{envPrefix + "_NFT_CONTRACT_ADDR"}, Usage: "NFT contract address for minting"},
-					&cli.StringFlag{Name: "eth_nft_staking_addr", Value: "0xceED4Db9234e7374fe3132a2610c31275712685C", EnvVars: []string{envPrefix + "_NFT_STAKING_CONTRACT_ADDR"}, Usage: "NFT staking contract address for locking"},
-
 					// chain id
 					&cli.Int64Flag{Name: "bsc_chain_id", Value: 97, EnvVars: []string{envPrefix + "_BSC_CHAIN_ID"}, Usage: "BSC Chain ID"},
 					&cli.Int64Flag{Name: "eth_chain_id", Value: 5, EnvVars: []string{envPrefix + "_ETH_CHAIN_ID"}, Usage: "ETH Chain ID"},
 
 					// node address
 					&cli.StringFlag{Name: "bsc_node_addr", Value: "wss://speedy-nodes-nyc.moralis.io/6bc5ccfe2d00f7a5ae0ba00a/bsc/testnet/ws", EnvVars: []string{envPrefix + "_BSC_WS_NODE_URL"}, Usage: "Binance WS node URL"},
-					&cli.StringFlag{Name: "eth_node_addr", Value: "wss://sparkling-polished-glade.quiknode.pro/a68ec6502e56dd3292f33c276c81cc6360877e58/", EnvVars: []string{envPrefix + "_ETH_WS_NODE_URL"}, Usage: "Ethereum WS node URL"},
+					&cli.StringFlag{Name: "eth_node_addr", Value: "wss://speedy-nodes-nyc.moralis.io/6bc5ccfe2d00f7a5ae0ba00a/eth/goerli/ws", EnvVars: []string{envPrefix + "_ETH_WS_NODE_URL"}, Usage: "Ethereum WS node URL"},
 					//router address for exchange rates
 					&cli.StringFlag{Name: "bsc_router_addr", Value: "0x10ED43C718714eb63d5aA57B78B54704E256024E", EnvVars: []string{envPrefix + "_BSC_ROUTER_ADDR"}, Usage: "BSC Router address"},
-					&cli.BoolFlag{Name: "enable_purchase_subscription", Value: false, EnvVars: []string{envPrefix + "_ENABLE_PURCHASE_SUBSCRIPTION"}, Usage: "Scrape payments every 20 seconds"},
+					&cli.BoolFlag{Name: "enable_purchase_subscription", Value: false, EnvVars: []string{envPrefix + "_ENABLE_PURCHASE_SUBSCRIPTION"}, Usage: "Poll payments and price"},
+					//moralis key- set in env vars
+					//moralis key- set in env vars
 					//moralis key- set in env vars
 					&cli.StringFlag{Name: "moralis_key", Value: "91Xp2ke5eOVMavAsqdOoiXN4lg0n0AieW5kTJoupdyQBhL2k9XvMQtFPSA4opX2s", EnvVars: []string{envPrefix + "_MORALIS_KEY"}, Usage: "Key to connect to moralis API"},
 				},
@@ -239,6 +240,17 @@ func main() {
 
 					seeder := seed.NewSeeder(pgxconn, txConn, passportWebHostUrl, passportWebHostUrl)
 					return seeder.Run(databaseProd)
+				},
+			},
+			{
+				Name:  "shortcodes",
+				Usage: "print shortcodes",
+				Action: func(c *cli.Context) error {
+					for i := 0; i < 9; i++ {
+						_, _ = helpers.GenerateMetadataHashID("9cdf55aa-217b-4821-aa77-bc8555195f23", i, true)
+					}
+
+					return nil
 				},
 			},
 		},
@@ -356,9 +368,6 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 		if err != nil {
 			log.Error().Err(err).Msg("parse decimal from string")
 		}
-		if d.GreaterThan(decimal.NewFromInt(500000)) {
-			fmt.Println("BIG!", d.String(), r.TxHash)
-		}
 		z = z.Add(d)
 	}
 	log.Info().Int("records", len(records2)).Str("sym", "BUSD").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
@@ -440,6 +449,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 			continue
 		}
 		successful++
+
 	}
 	log.Info().Int("skipped", skipped).Int("successful", successful).Int("failed", failed).Msg("Synced payments.")
 	return nil
@@ -482,8 +492,6 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	SupAddr := ctxCLI.String("sup_addr")
 	PurchaseAddr := ctxCLI.String("purchase_addr")
 	WithdrawAddr := ctxCLI.String("withdraw_addr")
-	EthNftAddr := ctxCLI.String("eth_nft_addr")
-	EthNftStakingAddr := ctxCLI.String("eth_nft_staking_addr")
 	OperatorAddr := ctxCLI.String("operator_addr")
 	SignerPrivateKey := ctxCLI.String("signer_private_key")
 	BscNodeAddr := ctxCLI.String("bsc_node_addr")
@@ -496,7 +504,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	isTestnetBlockchain := ctxCLI.Bool("is_testnet_blockchain")
 	runBlockchainBridge := ctxCLI.Bool("run_blockchain_bridge")
-	fmt.Println("RUN", runBlockchainBridge)
+
 	mailDomain := ctxCLI.String("mail_domain")
 	mailAPIKey := ctxCLI.String("mail_apikey")
 	mailSender := ctxCLI.String("mail_sender")
@@ -515,22 +523,19 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		TokenExpirationDays: ctxCLI.Int("jwt_expiry_days"),
 		MetaMaskSignMessage: ctxCLI.String("metamask_sign_message"),
 		BridgeParams: &passport.BridgeParams{
-			MoralisKey:   MoralisKey,
-			OperatorAddr: common.HexToAddress(OperatorAddr),
-			UsdcAddr:     common.HexToAddress(UsdcAddr),
-			BusdAddr:     common.HexToAddress(BusdAddr),
-			SupAddr:      common.HexToAddress(SupAddr),
-			PurchaseAddr: common.HexToAddress(PurchaseAddr),
-			WithdrawAddr: common.HexToAddress(WithdrawAddr),
-
-			EthNftAddr:        common.HexToAddress(EthNftAddr),
-			EthNftStakingAddr: common.HexToAddress(EthNftStakingAddr),
-			SignerPrivateKey:  SignerPrivateKey,
-			BscNodeAddr:       BscNodeAddr,
-			EthNodeAddr:       EthNodeAddr,
-			BSCChainID:        BSCChainID,
-			ETHChainID:        ETHChainID,
-			BSCRouterAddr:     common.HexToAddress(BSCRouterAddr),
+			MoralisKey:       MoralisKey,
+			OperatorAddr:     common.HexToAddress(OperatorAddr),
+			UsdcAddr:         common.HexToAddress(UsdcAddr),
+			BusdAddr:         common.HexToAddress(BusdAddr),
+			SupAddr:          common.HexToAddress(SupAddr),
+			PurchaseAddr:     common.HexToAddress(PurchaseAddr),
+			WithdrawAddr:     common.HexToAddress(WithdrawAddr),
+			SignerPrivateKey: SignerPrivateKey,
+			BscNodeAddr:      BscNodeAddr,
+			EthNodeAddr:      EthNodeAddr,
+			BSCChainID:       BSCChainID,
+			ETHChainID:       ETHChainID,
+			BSCRouterAddr:    common.HexToAddress(BSCRouterAddr),
 		},
 		OnlyWalletConnect:       ctxCLI.Bool("only_wallet"),
 		WhitelistEndpoint:       ctxCLI.String("whitelist_check_endpoint"),
@@ -622,11 +627,14 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	tc := api.NewTransactionCache(txConn, log)
 
+	msgBus, msgBusCleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
+
 	// initialise user cache map
-	ucm, err := api.NewUserCacheMap(pgxconn, tc)
+	ucm, err := api.NewUserCacheMap(pgxconn, tc, msgBus)
 	if err != nil {
 		return terror.Error(err)
 	}
+
 	if enablePurchaseSubscription {
 		err := SyncFunc(ucm, pgxconn, log)
 		if err != nil {
@@ -645,7 +653,31 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	}
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
-	api := api.NewAPI(log, cancelOnPanic, pgxconn, txConn, googleClientID, mailer, apiAddr, twitchClientID, twitchClientSecret, HTMLSanitizePolicy, config, twitterAPIKey, twitterAPISecret, discordClientID, discordClientSecret, gameserverToken, externalURL, tc, ucm, isTestnetBlockchain, runBlockchainBridge)
+	api := api.NewAPI(log,
+		cancelOnPanic,
+		pgxconn,
+		txConn,
+		googleClientID,
+		mailer,
+		apiAddr,
+		twitchClientID,
+		twitchClientSecret,
+		HTMLSanitizePolicy,
+		config,
+		twitterAPIKey,
+		twitterAPISecret,
+		discordClientID,
+		discordClientSecret,
+		gameserverToken,
+		externalURL,
+		tc,
+		ucm,
+		isTestnetBlockchain,
+		runBlockchainBridge,
+		msgBus,
+		msgBusCleanUpFunc,
+		enablePurchaseSubscription,
+	)
 
 	return api.Run(ctx)
 }

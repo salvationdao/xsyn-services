@@ -221,11 +221,15 @@ func StoreList(
 				return 0, nil, terror.Error(err)
 			}
 
-			argIndex += 1
+			if f.OperatorValue != OperatorValueTypeIsNull && f.OperatorValue != OperatorValueTypeIsNotNull {
+				argIndex += 1
+			}
 			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, argIndex)
 			if condition != "" {
 				filterConditions = append(filterConditions, condition)
-				args = append(args, value)
+				if f.OperatorValue != OperatorValueTypeIsNull && f.OperatorValue != OperatorValueTypeIsNotNull {
+					args = append(args, value)
+				}
 			}
 		}
 		if len(filterConditions) > 0 {
@@ -324,7 +328,7 @@ func StoreList(
 	// Get Paginated Result
 	q := fmt.Sprintf(
 		StoreGetQuery+`--sql
-		WHERE xsyn_store.restriction != 'LOOTBOX' AND xsyn_store.deleted_at %s
+		WHERE xsyn_store.restriction != 'LOOTBOX' AND xsyn_store.restriction != 'WHITELIST' AND xsyn_store.deleted_at %s
 			%s
 			%s
 		%s

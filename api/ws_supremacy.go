@@ -65,8 +65,7 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	}
 
 	// sup control
-	api.SupremacyCommand(HubKeySupremacyHoldSups, supremacyHub.SupremacyHoldSupsHandler)
-	// api.SupremacyCommand(HubKeySupremacyCommitTransactions, supremacyHub.SupremacyCommitTransactionsHandler)
+	api.SupremacyCommand(HubKeySupremacySpendSups, supremacyHub.SupremacySpendSupsHandler)
 	api.SupremacyCommand(HubKeySupremacyReleaseTransactions, supremacyHub.SupremacyReleaseTransactionsHandler)
 
 	api.SupremacyCommand(HubKeySupremacyTickerTick, supremacyHub.SupremacyTickerTickHandler)
@@ -90,7 +89,6 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	api.SupremacyCommand(HubKeySupremacyRedeemFactionContractReward, supremacyHub.SupremacyRedeemFactionContractRewardHandler)
 
 	// sups contribute
-	api.SupremacyCommand(HubKeySupremacyAbilityTargetPriceUpdate, supremacyHub.SupremacyAbilityTargetPriceUpdate)
 	api.SupremacyCommand(HubKeySupremacyTopSupsContruteUser, supremacyHub.SupremacyTopSupsContributeUser)
 	api.SupremacyCommand(HubKeySupremacyUsersGet, supremacyHub.SupremacyUsersGet)
 
@@ -134,7 +132,7 @@ func (sc *SupremacyControllerWS) SupremacyUserConnectionUpgradeHandler(ctx conte
 	return nil
 }
 
-const HubKeySupremacyHoldSups = hub.HubCommandKey("SUPREMACY:HOLD_SUPS")
+const HubKeySupremacySpendSups = hub.HubCommandKey("SUPREMACY:HOLD_SUPS")
 
 type SupremacyHoldSupsRequest struct {
 	*hub.HubCommandRequest
@@ -142,11 +140,11 @@ type SupremacyHoldSupsRequest struct {
 		Amount               passport.BigInt               `json:"amount"`
 		FromUserID           passport.UserID               `json:"userID"`
 		TransactionReference passport.TransactionReference `json:"transactionReference"`
-		IsBattleVote         bool                          `json:"isBattleVote"`
+		GroupID              string                        `json:"groupID"`
 	} `json:"payload"`
 }
 
-func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (sc *SupremacyControllerWS) SupremacySpendSupsHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &SupremacyHoldSupsRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -156,7 +154,6 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 	if req.Payload.Amount.Cmp(big.NewInt(0)) < 0 {
 		return terror.Error(terror.ErrInvalidInput, "Sups amount can not be negative")
 	}
-	// fmt.Printf("1 SupremacyHoldSupsHandler %s\n", req.TransactionID)
 
 	tx := &passport.NewTransaction{
 		From:                 req.Payload.FromUserID,
@@ -165,10 +162,9 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 		Amount:               req.Payload.Amount.Int,
 	}
 
-	fmt.Println(req.Payload.Amount.String())
-
-	if req.Payload.IsBattleVote {
+	if req.Payload.GroupID != "" {
 		tx.To = passport.SupremacyBattleUserID
+		tx.GroupID = &req.Payload.GroupID
 	}
 
 	nfb, ntb, txID, err := sc.API.userCacheMap.Process(tx)
@@ -185,8 +181,6 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 	}
 
 	tx.ID = txID
-
-	fmt.Println(tx.Amount, "TX AMOUNT")
 
 	// for refund
 	sc.txs.txMx.Lock()
@@ -213,11 +207,67 @@ type SupremacyTickerTickRequest struct {
 	} `json:"payload"`
 }
 
+func (sc *SupremacyControllerWS) SupremacyFeed() {
+	fund := big.NewInt(0)
+	fund, ok := fund.SetString("4000000000000000000", 10)
+	if !ok {
+		sc.Log.Err(errors.New("setting string not ok on fund big int")).Msg("too many strings")
+		return
+	}
+
+	tx := &passport.NewTransaction{
+		From:                 passport.XsynTreasuryUserID,
+		To:                   passport.SupremacySupPoolUserID,
+		Amount:               *fund,
+		TransactionReference: passport.TransactionReference(fmt.Sprintf("treasury|ticker|%s", time.Now())),
+	}
+
+	// process user cache map
+	fromBalance, toBalance, _, err := sc.API.userCacheMap.Process(tx)
+	if err != nil {
+		sc.Log.Err(err).Msg(err.Error())
+		return
+	}
+
+	ctx := context.Background()
+
+	if !tx.From.IsSystemUser() {
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), fromBalance.String())
+	}
+
+	if !tx.To.IsSystemUser() {
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), toBalance.String())
+	}
+}
+
 func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	// make treasury send game server user moneys
+	sc.SupremacyFeed()
+
 	req := &SupremacyTickerTickRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
+	}
+
+	// sups guard
+	// kick users off the list, if they don't have any sups
+	newUserMap := make(map[int][]*passport.UserID)
+	for multiplier, userIDs := range req.Payload.UserMap {
+		newList := []*passport.UserID{}
+
+		for _, userID := range userIDs {
+			amount, err := sc.API.userCacheMap.Get(userID.String())
+			if err != nil || amount.BitLen() == 0 {
+				// kick user out
+				continue
+			}
+			newList = append(newList, userID)
+		}
+
+		if len(newList) > 0 {
+			newUserMap[multiplier] = newList
+		}
 	}
 
 	//  to avoid working in floats, a 100% multiplier is 100 points, a 25% is 25 points
@@ -225,7 +275,7 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 
 	totalPoints := 0
 	// loop once to get total point count
-	for multiplier, users := range req.Payload.UserMap {
+	for multiplier, users := range newUserMap {
 		totalPoints = totalPoints + (multiplier * len(users))
 	}
 
@@ -238,16 +288,16 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 	// we take the whole balance of supremacy sup pool and give it to the users watching
 	// amounts depend on their multiplier
 	// the supremacy sup pool user gets sups trickled into it from the last battle and 4 every 5 seconds
-	supsForTick, err := db.UserBalance(ctx, sc.Conn, passport.SupremacySupPoolUserID.String())
+	supsForTick, err := sc.API.userCacheMap.Get(passport.SupremacySupPoolUserID.String())
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	supPool := &supsForTick.Int
+	supPool := &supsForTick
 	onePointWorth := big.NewInt(0)
 	onePointWorth = onePointWorth.Div(supPool, big.NewInt(int64(totalPoints)))
 	// loop again to create all transactions
-	for multiplier, users := range req.Payload.UserMap {
+	for multiplier, users := range newUserMap {
 		for _, user := range users {
 			usersSups := big.NewInt(0)
 			usersSups = usersSups.Mul(onePointWorth, big.NewInt(int64(multiplier)))
@@ -293,7 +343,7 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 	sc.poolHighPriorityLock()
 
 	// get current battle user sups
-	battleUser, err := db.UserBalance(ctx, sc.Conn, passport.SupremacyBattleUserID.String())
+	battleUser, err := sc.API.userCacheMap.Get(passport.SupremacyBattleUserID.String())
 	if err != nil {
 		sc.poolHighPriorityUnlock()
 		return terror.Error(err, "failed to get battle user balance from db")
@@ -301,7 +351,7 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 
 	// calc trickling sups for current round
 	supsForTrickle := big.NewInt(0)
-	supsForTrickle.Add(supsForTrickle, &battleUser.Int)
+	supsForTrickle.Add(supsForTrickle, &battleUser)
 
 	// subtrack the sups that is trickling at the moment
 	for _, tricklingSups := range sc.TickerPoolCache.TricklingAmountMap {
@@ -422,7 +472,7 @@ func (sc *SupremacyControllerWS) trickleFactory(key string, totalTick int, supsP
 type SupremacyAssetFreezeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AssetTokenID uint64 `json:"assetTokenID"`
+		AssetHash string `json:"assetHash"`
 	} `json:"payload"`
 }
 
@@ -441,7 +491,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	asset, err := db.AssetGet(ctx, sc.Conn, req.Payload.AssetTokenID)
+	asset, err := db.AssetGet(ctx, sc.Conn, req.Payload.AssetHash)
 	if err != nil {
 		reply(false)
 		return terror.Error(err)
@@ -452,7 +502,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context
 
 	frozenAt := time.Now()
 
-	err = db.XsynAssetFreeze(ctx, sc.Conn, req.Payload.AssetTokenID, userID)
+	err = db.XsynAssetFreeze(ctx, sc.Conn, req.Payload.AssetHash, userID)
 	if err != nil {
 		reply(false)
 		return terror.Error(err)
@@ -460,7 +510,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context
 
 	asset.FrozenAt = &frozenAt
 
-	go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.AssetTokenID)), asset)
+	go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.AssetHash)), asset)
 
 	sc.API.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: AssetUpdated,
@@ -478,7 +528,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetFreezeHandler(ctx context.Context
 type SupremacyAssetLockRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AssetTokenIDs []uint64 `json:"assetTokenIDs"`
+		AssetHashes []string `json:"assetHashes"`
 	} `json:"payload"`
 }
 
@@ -496,21 +546,21 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	err = db.XsynAssetBulkLock(ctx, sc.Conn, req.Payload.AssetTokenIDs, userID)
+	err = db.XsynAssetBulkLock(ctx, sc.Conn, req.Payload.AssetHashes, userID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
 	_, assets, err := db.AssetList(
 		ctx, sc.Conn,
-		"", false, req.Payload.AssetTokenIDs, nil, nil, 0, len(req.Payload.AssetTokenIDs), "", "",
+		"", false, req.Payload.AssetHashes, nil, nil, 0, len(req.Payload.AssetHashes), "", "",
 	)
 	if err != nil {
 		return terror.Error(err)
 	}
 
 	for _, asset := range assets {
-		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), asset)
 	}
 
 	// auto release it after an hour
@@ -519,9 +569,9 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 			frozenAt := asset.FrozenAt
 			time.Sleep(3 * time.Hour)
 			// get asset from db
-			a, err := db.AssetGet(ctx, sc.Conn, asset.TokenID)
+			a, err := db.AssetGet(ctx, sc.Conn, asset.Hash)
 			if err != nil {
-				sc.API.Log.Err(err).Msgf("Failed to get asset, token id: %d", asset.TokenID)
+				sc.API.Log.Err(err).Msgf("Failed to get asset, token id: %d", asset.ExternalTokenID)
 				return
 			}
 
@@ -534,11 +584,11 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 			// otherwise release it
 			err = db.XsynAssetBulkRelease(ctx, sc.Conn, []*passport.WarMachineMetadata{
 				{
-					TokenID: a.TokenID,
+					Hash: a.Hash,
 				},
 			}, userID)
 			if err != nil {
-				sc.API.Log.Err(err).Msgf("Failed to auto released, token id: %d", asset.TokenID)
+				sc.API.Log.Err(err).Msgf("Failed to auto released, token id: %d", asset.ExternalTokenID)
 				return
 			}
 
@@ -598,28 +648,28 @@ func (sc *SupremacyControllerWS) SupremacyAssetReleaseHandler(ctx context.Contex
 		return terror.Error(err)
 	}
 
-	tokenIDs := []uint64{}
+	assetHashes := []string{}
 	for _, ra := range req.Payload.ReleasedAssets {
-		tokenIDs = append(tokenIDs, ra.TokenID)
+		assetHashes = append(assetHashes, ra.Hash)
 		if ra.Durability < 100 {
 			if ra.IsInsured {
-				sc.API.RegisterRepairCenter(RepairTypeFast, ra.TokenID)
+				sc.API.RegisterRepairCenter(RepairTypeFast, ra.Hash)
 			} else {
-				sc.API.RegisterRepairCenter(RepairTypeStandard, ra.TokenID)
+				sc.API.RegisterRepairCenter(RepairTypeStandard, ra.Hash)
 			}
 		}
 	}
 
 	_, assets, err := db.AssetList(
 		ctx, sc.Conn,
-		"", false, tokenIDs, nil, nil, 0, len(tokenIDs), "", "",
+		"", false, assetHashes, nil, nil, 0, len(assetHashes), "", "",
 	)
 	if err != nil {
 		return terror.Error(err)
 	}
 
 	for _, asset := range assets {
-		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), asset)
 	}
 
 	return nil
@@ -730,33 +780,6 @@ func (sc *SupremacyControllerWS) SupremacyGetSpoilOfWarHandler(ctx context.Conte
 	result.Add(result, &battleUser)
 
 	reply(result.String())
-	return nil
-}
-
-type SupremacyAbilityTargetPriceUpdateRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		AbilityTokenID    uint64 `json:"abilityTokenID"`
-		WarMachineTokenID uint64 `json:"warMachineTokenID"`
-		SupsCost          string `json:"supsCost"`
-	} `json:"payload"`
-}
-
-const HubKeySupremacyAbilityTargetPriceUpdate = hub.HubCommandKey("SUPREMACY:ABILITY:TARGET:PRICE:UPDATE")
-
-func (sc *SupremacyControllerWS) SupremacyAbilityTargetPriceUpdate(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &SupremacyAbilityTargetPriceUpdateRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received")
-	}
-
-	// store new sups cost
-	err = db.WarMachineAbilityCostUpsert(ctx, sc.Conn, req.Payload.WarMachineTokenID, req.Payload.AbilityTokenID, req.Payload.SupsCost)
-	if err != nil {
-		return terror.Error(err)
-	}
-
 	return nil
 }
 
@@ -1023,22 +1046,23 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 			warMachineMetadata.FactionID = passport.RedMountainFactionID
 			warMachineMetadata.Faction = faction
 
+			// TODO: commented out by vinnie, see other todos
 			// parse war machine abilities
-			if len(warMachineMetadata.Abilities) > 0 {
-				for _, abilityMetadata := range warMachineMetadata.Abilities {
-					err := db.AbilityAssetGet(ctx, sc.Conn, abilityMetadata)
-					if err != nil {
-						return terror.Error(err)
-					}
-
-					supsCost, err := db.WarMachineAbilityCostGet(ctx, sc.Conn, warMachineMetadata.TokenID, abilityMetadata.TokenID)
-					if err != nil {
-						return terror.Error(err)
-					}
-
-					abilityMetadata.SupsCost = supsCost
-				}
-			}
+			//if len(warMachineMetadata.Abilities) > 0 {
+			//for _, abilityMetadata := range warMachineMetadata.Abilities {
+			//	err := db.AbilityAssetGet(ctx, sc.Conn, abilityMetadata)
+			//	if err != nil {
+			//		return terror.Error(err)
+			//	}
+			//
+			//	supsCost, err := db.WarMachineAbilityCostGet(ctx, sc.Conn, warMachineMetadata.Hash, abilityMetadata.TokenID)
+			//	if err != nil {
+			//		return terror.Error(err)
+			//	}
+			//
+			//	abilityMetadata.SupsCost = supsCost
+			//}
+			//}
 
 			warMachines = append(warMachines, warMachineMetadata)
 		}
@@ -1059,22 +1083,24 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 			warMachineMetadata.FactionID = passport.BostonCyberneticsFactionID
 			warMachineMetadata.Faction = faction
 
+			// TODO: ocmmented out by vinnie 25/02/22 not in yet
+
 			// parse war machine abilities
-			if len(warMachineMetadata.Abilities) > 0 {
-				for _, abilityMetadata := range warMachineMetadata.Abilities {
-					err := db.AbilityAssetGet(ctx, sc.Conn, abilityMetadata)
-					if err != nil {
-						return terror.Error(err)
-					}
-
-					supsCost, err := db.WarMachineAbilityCostGet(ctx, sc.Conn, warMachineMetadata.TokenID, abilityMetadata.TokenID)
-					if err != nil {
-						return terror.Error(err)
-					}
-
-					abilityMetadata.SupsCost = supsCost
-				}
-			}
+			//if len(warMachineMetadata.Abilities) > 0 {
+			//for _, abilityMetadata := range warMachineMetadata.Abilities {
+			//	err := db.AbilityAssetGet(ctx, sc.Conn, abilityMetadata)
+			//	if err != nil {
+			//		return terror.Error(err)
+			//	}
+			//
+			//	supsCost, err := db.WarMachineAbilityCostGet(ctx, sc.Conn, warMachineMetadata.Hash, abilityMetadata.TokenID)
+			//	if err != nil {
+			//		return terror.Error(err)
+			//	}
+			//
+			//	abilityMetadata.SupsCost = supsCost
+			//}
+			//}
 
 			warMachines = append(warMachines, warMachineMetadata)
 		}
@@ -1095,22 +1121,24 @@ func (sc *SupremacyControllerWS) SupremacyDefaultWarMachinesHandler(ctx context.
 			warMachineMetadata.FactionID = passport.ZaibatsuFactionID
 			warMachineMetadata.Faction = faction
 
+			// TODO: commented out by vinnie 25/05/2022 mechs dont have addable abilities yet
+
 			// parse war machine abilities
-			if len(warMachineMetadata.Abilities) > 0 {
-				for _, abilityMetadata := range warMachineMetadata.Abilities {
-					err := db.AbilityAssetGet(ctx, sc.Conn, abilityMetadata)
-					if err != nil {
-						return terror.Error(err)
-					}
-
-					supsCost, err := db.WarMachineAbilityCostGet(ctx, sc.Conn, warMachineMetadata.TokenID, abilityMetadata.TokenID)
-					if err != nil {
-						return terror.Error(err)
-					}
-
-					abilityMetadata.SupsCost = supsCost
-				}
-			}
+			//if len(warMachineMetadata.Abilities) > 0 {
+			//for _, abilityMetadata := range warMachineMetadata.Abilities {
+			//	err := db.AbilityAssetGet(ctx, sc.Conn, abilityMetadata)
+			//	if err != nil {
+			//		return terror.Error(err)
+			//	}
+			//
+			//	supsCost, err := db.WarMachineAbilityCostGet(ctx, sc.Conn, warMachineMetadata.Hash, abilityMetadata.TokenID)
+			//	if err != nil {
+			//		return terror.Error(err)
+			//	}
+			//
+			//	abilityMetadata.SupsCost = supsCost
+			//}
+			//}
 			warMachines = append(warMachines, warMachineMetadata)
 		}
 	}
@@ -1228,8 +1256,6 @@ func (sc *SupremacyControllerWS) SupremacyRedeemFactionContractRewardHandler(ctx
 		return terror.Error(err, "Invalid request received")
 	}
 
-	fmt.Println(req.Payload.Amount)
-	fmt.Println()
 	if req.Payload.Amount.Cmp(big.NewInt(0)) <= 0 {
 		return terror.Error(terror.ErrInvalidInput, "Sups amount can not be negative")
 	}

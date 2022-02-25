@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"passport"
@@ -11,6 +12,7 @@ import (
 	"passport/email"
 	"strconv"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ninja-software/log_helpers"
 
 	SentryTracer "github.com/ninja-syndicate/hub/ext/sentry"
@@ -21,7 +23,6 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 
@@ -62,16 +63,8 @@ type API struct {
 	sendToServerClients chan *ServerClientMessage
 
 	//tx stuff
-
-	// transaction      chan *passport.NewTransaction
-	// heldTransactions chan func(heldTxList map[passport.TransactionReference]*passport.NewTransaction)
 	transactionCache *TransactionCache
 	userCacheMap     *UserCacheMap
-
-	// userSupsRWMx     sync.RWMutex
-	// userSupsCacheMap map[passport.UserID]*UserCache
-	// treasury ticker map
-	treasuryTickerMap map[ServerClientName]*tickle.Tickle
 
 	// Supremacy Sups Pool
 	supremacySupsPool chan func(*SupremacySupPool)
@@ -80,9 +73,6 @@ type API struct {
 	factionWarMachineContractMap map[passport.FactionID]chan func(*WarMachineContract)
 	fastAssetRepairCenter        chan func(RepairQueue)
 	standardAssetRepairCenter    chan func(RepairQueue)
-
-	// Queue Reward
-	// TxConn *sql.DB
 
 	walletOnlyConnect    bool
 	storeItemExternalUrl string
@@ -111,8 +101,11 @@ func NewAPI(
 	ucm *UserCacheMap,
 	isTestnetBlockchain bool,
 	runBlockchainBridge bool,
+	msgBus *messagebus.MessageBus,
+	msgBusCleanUpFunc hub.ClientOfflineFn,
+	enablePurchaseSubscription bool,
 ) *API {
-	msgBus, cleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
+
 	api := &API{
 		SupUSD:       decimal.New(12, -2),
 		BridgeParams: config.BridgeParams,
@@ -126,7 +119,7 @@ func NewAPI(
 		},
 		MessageBus: msgBus,
 		Hub: hub.New(&hub.Config{
-			ClientOfflineFn: cleanUpFunc,
+			ClientOfflineFn: msgBusCleanUpFunc,
 			Log:             zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
 			Tracer:          SentryTracer.New(),
 			WelcomeMsg: &hub.WelcomeMsg{
@@ -153,16 +146,10 @@ func NewAPI(
 		users: make(chan func(userList UserCacheMap)),
 
 		// object to hold transaction stuff
-		// TxConn: txConn,
 		transactionCache: tc,
 		userCacheMap:     ucm,
-		// userSupsCacheMap: map[passport.UserID]*UserCache{},
-
-		// transaction:      make(chan *passport.NewTransaction),
-		// heldTransactions: make(chan func(heldTxList map[passport.TransactionReference]*passport.NewTransaction)),
 
 		// treasury ticker map
-		treasuryTickerMap: make(map[ServerClientName]*tickle.Tickle),
 		supremacySupsPool: make(chan func(*SupremacySupPool)),
 
 		// faction war machine contract
@@ -172,7 +159,7 @@ func NewAPI(
 		storeItemExternalUrl: externalUrl,
 	}
 
-	cc := NewChainClients(log, api, config.BridgeParams, isTestnetBlockchain, runBlockchainBridge)
+	cc := NewChainClients(log, api, config.BridgeParams, isTestnetBlockchain, runBlockchainBridge, enablePurchaseSubscription)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -226,8 +213,9 @@ func NewAPI(
 			r.Get("/verify", api.WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", api.WithError(api.Auth.GetNonce))
 			r.Get("/withdraw/{address}/{nonce}/{amount}", api.WithError(api.WithdrawSups))
-			r.Get("/mint-nft/{address}/{nonce}/{tokenID}", api.WithError(api.MintAsset))
-			r.Get("/asset/{token_id}", api.WithError(api.AssetGet))
+			r.Get("/mint-nft/{address}/{nonce}/{collectionSlug}/{externalTokenID}", api.WithError(api.MintAsset))
+			r.Get("/asset/{hash}", api.WithError(api.AssetGet))
+			r.Get("/asset/{collection_address}/{token_id}", api.WithError(api.AssetGetByCollectionAndTokenID))
 			r.Get("/auth/twitter", api.WithError(api.Auth.TwitterAuth))
 
 			r.Get("/whitelist/check", api.WithError(api.WhitelistOnlyWalletCheck))
@@ -241,7 +229,7 @@ func NewAPI(
 		_ = NewSupController(log, conn, api, cc)
 	}
 	_ = NewAssetController(log, conn, api)
-	_ = NewCollectionController(log, conn, api)
+	_ = NewCollectionController(log, conn, api, isTestnetBlockchain)
 	_ = NewServerClientController(log, conn, api)
 	_ = NewCheckController(log, conn, api)
 	_ = NewUserActivityController(log, conn, api)
@@ -254,7 +242,7 @@ func NewAPI(
 		ClientID:     discordClientID,
 		ClientSecret: discordClientSecret,
 	})
-
+	_ = NewTransactionController(log, conn, api)
 	_ = NewFactionController(log, conn, api)
 	_ = NewOrganisationController(log, conn, api)
 	_ = NewRoleController(log, conn, api)
@@ -277,16 +265,6 @@ func NewAPI(
 	// Run the server client channel listener
 	go api.HandleServerClients()
 
-	// Run the transaction channel listeners
-	// go api.HandleTransactions()
-	// go api.HandleHeldTransactions()
-
-	// Run the listener for the user cache
-	// go api.HandleUserCache()
-
-	// Initialise treasury fund ticker
-	go api.InitialiseTreasuryFundTicker()
-
 	// Initial supremacy sup pool
 	go api.StartSupremacySupPool()
 
@@ -303,40 +281,6 @@ func NewAPI(
 
 	return api
 }
-
-////test function for remaining supply
-//func (api *API) Dummysale(w http.ResponseWriter, r *http.Request) (int, error) {
-//	// get amount from get url
-//	ctx := context.Background()
-//	amount := r.URL.Query().Get("amount")
-//
-//	bigIntAmount := big.Int{}
-//	bigIntAmount.SetString(amount, 10)
-//
-//	tx := &passport.NewTransaction{
-//		From:                 passport.XsynSaleUserID,
-//		To:                   passport.SupremacyGameUserID,
-//		TransactionReference: "test sale",
-//		Amount:               bigIntAmount,
-//	}
-//
-//	select {
-//	case api.transaction <- tx:
-//
-//	case <-time.After(10 * time.Second):
-//		api.Log.Err(errors.New("timeout on channel send exceeded"))
-//		panic("transaction send")
-//	}
-//
-//	sups, err := db.UserBalance(ctx, api.Conn, passport.XsynSaleUserID)
-//	if err != nil {
-//		return http.StatusInternalServerError, terror.Error(err)
-//	}
-//
-//	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSRemainingSubscribe), sups.String())
-//
-//	return http.StatusAccepted, nil
-//}
 
 // Run the API service
 func (api *API) Run(ctx context.Context) error {
@@ -400,28 +344,54 @@ func (api *API) RecordUserActivity(
 // AssetGet grabs asset's metadata via token id
 func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 	// Get token id
-	tokenID := chi.URLParam(r, "token_id")
-	if tokenID == "" {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("invalid token id"), "Invalid Token ID")
-	}
-
-	// Convert token id from string to uint64
-	_tokenID, err := strconv.ParseUint(string(tokenID), 10, 64)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed converting string token id to uint64")
+	hash := chi.URLParam(r, "hash")
+	if hash == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("invalid asset hash"), "Invalid Asset Hash.")
 	}
 
 	// Get asset via token id
-	asset, err := db.AssetGet(r.Context(), api.Conn, _tokenID)
+	asset, err := db.AssetGet(r.Context(), api.Conn, hash)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset")
 	}
 	if asset == nil {
-		return http.StatusBadRequest, terror.Warn(err, "Asset doesn't exist")
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("asset is nil"), "Asset doesn't exist")
 	}
 
 	// openseas object
 	//asset
+
+	// Encode result
+	err = json.NewEncoder(w).Encode(asset)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to encode JSON")
+	}
+
+	return http.StatusOK, nil
+}
+
+// AssetGet grabs asset's metadata via token id
+func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Request) (int, error) {
+	collectionAddress := chi.URLParam(r, "collection_address")
+	if collectionAddress == "" {
+		return http.StatusBadRequest, terror.Warn(errors.New("collection_address not provided in URL"), "metadata")
+	}
+	tokenIDStr := chi.URLParam(r, "token_id")
+	if tokenIDStr == "" {
+		return http.StatusBadRequest, terror.Warn(errors.New("token_id not provided in URL"), "metadata")
+	}
+	tokenID, err := strconv.Atoi(tokenIDStr)
+	if err != nil {
+		return http.StatusBadRequest, terror.Warn(err, "get asset from db")
+	}
+	asset, err := db.AssetGetFromMintContractAndID(r.Context(), api.Conn, string(common.HexToAddress(collectionAddress).Hex()), uint64(tokenID))
+	if err != nil {
+		return http.StatusBadRequest, terror.Warn(err, "get asset from db")
+	}
+	// Get asset via token id
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset")
+	}
 
 	// Encode result
 	err = json.NewEncoder(w).Encode(asset)

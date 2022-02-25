@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
 # gh-dl-release! It works!
-# 
+#
 # Adapted from
 #  https://gist.github.com/maxim/6e15aa45ba010ab030c4
-# 
+#
 # This script downloads an asset from latest or specific Github release of a
 # private repo. Feel free to extract more of the variables into command line
 # parameters.

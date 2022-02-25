@@ -69,17 +69,24 @@ type User struct {
 	Organisation                     *Organisation `json:"organisation" db:"organisation"`
 	AvatarID                         *BlobID       `json:"avatarID" db:"avatar_id"`
 	Sups                             BigInt
-	Online                           bool        `json:"online"`
-	TwoFactorAuthenticationActivated bool        `json:"twoFactorAuthenticationActivated" db:"two_factor_authentication_activated"`
-	TwoFactorAuthenticationSecret    string      `json:"twoFactorAuthenticationSecret" db:"two_factor_authentication_secret"`
-	TwoFactorAuthenticationIsSet     bool        `json:"twoFactorAuthenticationIsSet" db:"two_factor_authentication_is_set"`
-	HasRecoveryCode                  bool        `json:"hasRecoveryCode" db:"has_recovery_code"`
-	Pass2FA                          bool        `json:"pass2FA"`
-	Nonce                            null.String `json:"-" db:"nonce"`
-	PublicAddress                    null.String `json:"publicAddress,omitempty" db:"public_address"`
-	CreatedAt                        time.Time   `json:"createdAt" db:"created_at"`
-	UpdatedAt                        time.Time   `json:"updatedAt" db:"updated_at"`
-	DeletedAt                        *time.Time  `json:"deletedAt" db:"deleted_at"`
+	Online                           bool         `json:"online"`
+	TwoFactorAuthenticationActivated bool         `json:"twoFactorAuthenticationActivated" db:"two_factor_authentication_activated"`
+	TwoFactorAuthenticationSecret    string       `json:"twoFactorAuthenticationSecret" db:"two_factor_authentication_secret"`
+	TwoFactorAuthenticationIsSet     bool         `json:"twoFactorAuthenticationIsSet" db:"two_factor_authentication_is_set"`
+	HasRecoveryCode                  bool         `json:"hasRecoveryCode" db:"has_recovery_code"`
+	Pass2FA                          bool         `json:"pass2FA"`
+	Nonce                            null.String  `json:"-" db:"nonce"`
+	PublicAddress                    null.String  `json:"publicAddress,omitempty" db:"public_address"`
+	CreatedAt                        time.Time    `json:"createdAt" db:"created_at"`
+	UpdatedAt                        time.Time    `json:"updatedAt" db:"updated_at"`
+	DeletedAt                        *time.Time   `json:"deletedAt" db:"deleted_at"`
+	Metadata                         UserMetadata `json:"metadata" db:"metadata"`
+}
+
+type UserMetadata struct {
+	BoughtStarterWarmachines int  `json:"boughtStarterWarmachines"`
+	BoughtLootboxes          int  `json:"boughtLootboxes"`
+	WatchedVideo             bool `json:"watchedVideo"`
 }
 
 // IsAdmin is needed for the hub interface, no admins here!

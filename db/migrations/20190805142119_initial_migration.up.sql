@@ -480,6 +480,7 @@ BEGIN
 END;
 $updateXsyn_metadataKeywords$
     LANGUAGE plpgsql;
+
 CREATE TRIGGER updateXsyn_metadataKeywords
     AFTER INSERT OR UPDATE
     ON xsyn_metadata
@@ -566,7 +567,7 @@ CREATE TABLE xsyn_assets
 
  CREATE TABLE transactions
 (
-    id                    TEXT PRIMARY KEY,
+    id                    BIGINT PRIMARY KEY,
     description           TEXT        NOT NULL                                                  DEFAULT '',
     transaction_reference TEXT UNIQUE NOT NULL                                                  DEFAULT '',
     amount                NUMERIC(28) NOT NULL CHECK (amount > 0.0),
@@ -651,7 +652,7 @@ EXECUTE PROCEDURE check_balances();
 CREATE TABLE chain_confirmations
 (
     tx           TEXT PRIMARY KEY,
-    tx_id        TEXT REFERENCES transactions (id),
+    tx_id        BIGINT REFERENCES transactions (id),
     block        NUMERIC(78, 0) NOT NULL,
     chain_id     NUMERIC(78, 0) NOT NULL,
     confirmed_at TIMESTAMPTZ,
@@ -672,33 +673,33 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO passport_tx;
 /***********************************************************
  *                User listen trigger                      *
  ***********************************************************/
--- --
--- CREATE OR REPLACE FUNCTION user_update_event() RETURNS TRIGGER AS
--- $noifyevent$
--- DECLARE
---     data JSON;
--- BEGIN
---     -- Convert the old or new row to JSON, based on the kind of action.
---     -- Action = DELETE?             -> OLD row
---     -- Action = INSERT or UPDATE?   -> NEW row
---     IF (TG_OP = 'DELETE') THEN
---         data = ROW_TO_JSON(OLD);
---     ELSE
---         data = ROW_TO_JSON(NEW);
---     END IF;
+--
+CREATE OR REPLACE FUNCTION user_update_event() RETURNS TRIGGER AS
+$noifyevent$
+DECLARE
+    data JSON;
+BEGIN
+    -- Convert the old or new row to JSON, based on the kind of action.
+    -- Action = DELETE?             -> OLD row
+    -- Action = INSERT or UPDATE?   -> NEW row
+    IF (TG_OP = 'DELETE') THEN
+        data = ROW_TO_JSON(OLD);
+    ELSE
+        data = ROW_TO_JSON(NEW);
+    END IF;
 
---     -- Execute pg_notify(channel, notification)
---     PERFORM pg_notify('user_update_event', data::TEXT);
+    -- Execute pg_notify(channel, notification)
+    PERFORM pg_notify('user_update_event', data::TEXT);
 
---     -- Result is ignored since this is an AFTER trigger
---     RETURN NULL;
--- END
--- $noifyevent$ LANGUAGE plpgsql;
+    -- Result is ignored since this is an AFTER trigger
+    RETURN NULL;
+END
+$noifyevent$ LANGUAGE plpgsql;
 
--- CREATE TRIGGER user_notify_event
---     AFTER INSERT OR UPDATE OR DELETE
---     ON users
---     FOR EACH ROW
--- EXECUTE PROCEDURE user_update_event();
+CREATE TRIGGER user_notify_event
+    AFTER INSERT OR UPDATE OR DELETE
+    ON users
+    FOR EACH ROW
+EXECUTE PROCEDURE user_update_event();
 
 COMMIT;

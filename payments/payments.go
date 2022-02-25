@@ -130,8 +130,16 @@ func StoreRecord(ctx context.Context, toUser *passport.User, ucm *api.UserCacheM
 	return nil
 }
 
-func get(sym Symbol) ([]*Record, error) {
-	resp, err := http.Get(fmt.Sprintf("http://139.180.182.245:3001/api/%s", sym))
+func get(sym Symbol, latestBlock int) ([]*Record, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://139.180.182.245:3001/api/%s", sym), nil)
+	if err != nil {
+		return nil, err
+	}
+	q := req.URL.Query()
+	q.Add("since_block", strconv.Itoa(latestBlock))
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -151,88 +159,119 @@ func get(sym Symbol) ([]*Record, error) {
 	return result, nil
 }
 
-func enoughConfirmations(requiredConfirmations int, receivedConfirms string) bool {
-	confirms, err := decimal.NewFromString(receivedConfirms)
-	if err != nil {
-		fmt.Println("process confirms:", err)
-		return false
-	}
-
-	if confirms.LessThan(decimal.NewFromInt(int64(requiredConfirmations))) {
-		return false
-	}
-
-	return true
-}
-
-func BNB(requiredConfirmations int) ([]*Record, error) {
-	records, err := get(BNBSymbol)
-	if err != nil {
-		return nil, err
-	}
-	results := []*Record{}
-	for _, record := range records {
-		if !enoughConfirmations(requiredConfirmations, record.JSON.Confirmations) {
-			continue
-		}
-		results = append(results, record)
-	}
-	return results, nil
-}
+var LastBUSDBlock = 0
 
 func BUSD(requiredConfirmations int) ([]*Record, error) {
 	contractAddr := "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56"
-	records, err := get(BUSDSymbol)
+	records, err := get(BUSDSymbol, LastBUSDBlock)
 	if err != nil {
 		return nil, err
 	}
 
 	results := []*Record{}
+	latestBlock := 0
 	for _, record := range records {
-		if !enoughConfirmations(requiredConfirmations, record.JSON.Confirmations) {
-			continue
-		}
 		if common.HexToAddress(record.JSON.ContractAddress).Hex() != common.HexToAddress(contractAddr).Hex() {
 			continue
 		}
+		blockNumber, err := strconv.Atoi(record.JSON.BlockNumber)
+		if err != nil {
+			fmt.Println("avant_scraper: could not parse blocknumber")
+			continue
+		}
+		if blockNumber > latestBlock {
+			latestBlock = blockNumber
+		}
 		results = append(results, record)
 	}
+	if latestBlock > LastBUSDBlock {
+		LastBUSDBlock = latestBlock
+	}
+
 	return results, nil
 }
+
+var LastUSDCBlock = 0
 
 func USDC(requiredConfirmations int) ([]*Record, error) {
 	contractAddr := "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
 
-	records, err := get(USDCSymbol)
+	records, err := get(USDCSymbol, LastUSDCBlock)
 	if err != nil {
 		return nil, err
 	}
 
 	results := []*Record{}
+	latestBlock := 0
 	for _, record := range records {
-		if !enoughConfirmations(requiredConfirmations, record.JSON.Confirmations) {
-			continue
-		}
 		if common.HexToAddress(record.JSON.ContractAddress).Hex() != common.HexToAddress(contractAddr).Hex() {
 			continue
 		}
+		blockNumber, err := strconv.Atoi(record.JSON.BlockNumber)
+		if err != nil {
+			fmt.Println("avant_scraper: could not parse blocknumber")
+			continue
+		}
+		if blockNumber > latestBlock {
+			latestBlock = blockNumber
+		}
 		results = append(results, record)
+	}
+	if latestBlock > LastUSDCBlock {
+		LastUSDCBlock = latestBlock
 	}
 	return results, nil
 }
 
+var LastETHBlock = 0
+
 func ETH(requiredConfirmations int) ([]*Record, error) {
 
-	records, err := get(ETHSymbol)
+	records, err := get(ETHSymbol, LastETHBlock)
 	if err != nil {
 		return nil, err
 	}
 	results := []*Record{}
+	latestBlock := 0
 	for _, record := range records {
-		if !enoughConfirmations(requiredConfirmations, record.JSON.Confirmations) {
+		blockNumber, err := strconv.Atoi(record.JSON.BlockNumber)
+		if err != nil {
+			fmt.Println("avant_scraper: could not parse blocknumber")
 			continue
 		}
+		if blockNumber > latestBlock {
+			latestBlock = blockNumber
+		}
 		results = append(results, record)
+	}
+	if latestBlock > LastETHBlock {
+		LastETHBlock = latestBlock
+	}
+	return results, nil
+}
+
+var LastBNBBlock = 0
+
+func BNB(requiredConfirmations int) ([]*Record, error) {
+	records, err := get(BNBSymbol, LastBNBBlock)
+	if err != nil {
+		return nil, err
+	}
+	results := []*Record{}
+	latestBlock := 0
+	for _, record := range records {
+		blockNumber, err := strconv.Atoi(record.JSON.BlockNumber)
+		if err != nil {
+			fmt.Println("avant_scraper: could not parse blocknumber")
+			continue
+		}
+		if blockNumber > latestBlock {
+			latestBlock = blockNumber
+		}
+		results = append(results, record)
+	}
+	if latestBlock > LastBNBBlock {
+		LastBNBBlock = latestBlock
 	}
 	return results, nil
 }

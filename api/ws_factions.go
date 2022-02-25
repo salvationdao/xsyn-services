@@ -171,19 +171,22 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 type FactionChatRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		FactionID passport.FactionID `json:"factionID"`
-		Message   string             `json:"message"`
+		FactionID    passport.FactionID `json:"factionID"`
+		MessageColor string             `json:"messageColor"`
+		Message      string             `json:"message"`
 	} `json:"payload"`
 }
 
 // ChatMessageSend contains chat message data to send.
 type ChatMessageSend struct {
-	Message       string           `json:"message"`
-	FromUserID    passport.UserID  `json:"fromUserID"`
-	FromUsername  string           `json:"fromUsername"`
-	FactionColour *string          `json:"factionColour,omitempty"`
-	AvatarID      *passport.BlobID `json:"avatarID,omitempty"`
-	SentAt        time.Time        `json:"sentAt"`
+	Message           string           `json:"message"`
+	MessageColor      string           `json:"messageColor"`
+	FromUserID        passport.UserID  `json:"fromUserID"`
+	FromUsername      string           `json:"fromUsername"`
+	FactionColour     *string          `json:"factionColour,omitempty"`
+	FactionLogoBlobID *passport.BlobID `json:"factionLogoBlobID,omitempty"`
+	AvatarID          *passport.BlobID `json:"avatarID,omitempty"`
+	SentAt            time.Time        `json:"sentAt"`
 }
 
 // rootHub.SecureCommand(HubKeyFactionChat, factionHub.ChatMessageHandler)
@@ -208,15 +211,18 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 		return terror.Error(err)
 	}
 
-	var factionColour *string
 	// get faction primary colour from faction
+	var (
+		factionColour     *string
+		factionLogoBlobID *passport.BlobID
+	)
 	if user.FactionID != nil {
-		for _, faction := range passport.Factions {
-			if faction.ID == *user.FactionID {
-				factionColour = &faction.Theme.Primary
-				break
-			}
+		faction, err := db.FactionGet(ctx, fc.Conn, *user.FactionID)
+		if err != nil {
+			return terror.Error(err)
 		}
+		factionColour = &faction.Theme.Primary
+		factionLogoBlobID = &faction.LogoBlobID
 	}
 
 	// check if the faction id is provided
@@ -231,12 +237,14 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 
 		// send message
 		fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID)), &ChatMessageSend{
-			Message:       req.Payload.Message,
-			FromUserID:    user.ID,
-			FromUsername:  user.Username,
-			AvatarID:      user.AvatarID,
-			SentAt:        time.Now(),
-			FactionColour: factionColour,
+			Message:           req.Payload.Message,
+			MessageColor:      req.Payload.MessageColor,
+			FromUserID:        user.ID,
+			FromUsername:      user.Username,
+			AvatarID:          user.AvatarID,
+			SentAt:            time.Now(),
+			FactionColour:     factionColour,
+			FactionLogoBlobID: factionLogoBlobID,
 		})
 		reply(true)
 		return nil
@@ -244,12 +252,14 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 
 	// global message
 	fc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyGlobalChatSubscribe), &ChatMessageSend{
-		Message:       req.Payload.Message,
-		FromUserID:    user.ID,
-		FromUsername:  user.Username,
-		AvatarID:      user.AvatarID,
-		SentAt:        time.Now(),
-		FactionColour: factionColour,
+		Message:           req.Payload.Message,
+		MessageColor:      req.Payload.MessageColor,
+		FromUserID:        user.ID,
+		FromUsername:      user.Username,
+		AvatarID:          user.AvatarID,
+		SentAt:            time.Now(),
+		FactionColour:     factionColour,
+		FactionLogoBlobID: factionLogoBlobID,
 	})
 	reply(true)
 

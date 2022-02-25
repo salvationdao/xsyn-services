@@ -232,19 +232,20 @@ func (s *Seeder) SeedInitialStoreItems(ctx context.Context, passportURL string) 
 }
 
 func (s *Seeder) SeedCollections(ctx context.Context) ([]*passport.Collection, error) {
-	collectionNames := []string{"Supremacy", "Supremacy Genesis"}
-	collections := []*passport.Collection{}
-	for _, name := range collectionNames {
-		collection := &passport.Collection{
-			Name: name,
-		}
-
-		err := db.CollectionInsert(ctx, s.Conn, collection)
+	collections := []*passport.Collection{{
+		Name:          "Supremacy",
+		StakeContract: "0x0497e0F8FC07DaaAf2BC1da1eace3F5E60d008b8", // testnet
+		MintContract:  "0xEEfaF47acaa803176F1711c1cE783e790E4E750D", // testnet
+	}, {
+		Name:          "Supremacy Genesis",
+		StakeContract: "0x0497e0F8FC07DaaAf2BC1da1eace3F5E60d008b8",
+		MintContract:  "0xEEfaF47acaa803176F1711c1cE783e790E4E750D",
+	}}
+	for _, col := range collections {
+		err := db.CollectionInsert(ctx, s.Conn, col)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
-
-		collections = append(collections, collection)
 	}
 	return collections, nil
 }
