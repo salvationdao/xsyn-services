@@ -14,8 +14,14 @@ import (
 	"passport/db"
 	"passport/helpers"
 	"strings"
+	"time"
 
+	// "github.com/apex/log"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ninja-software/log_helpers"
+	"github.com/ninja-software/sale/dispersions"
 
 	oidc "github.com/coreos/go-oidc"
 	"github.com/jackc/pgx/v4"
@@ -27,6 +33,7 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/ninja-syndicate/supremacy-bridge/bridge"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -76,6 +83,8 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 	api.SecureCommandWithPerm(HubKeyUserUnarchive, userHub.UnarchiveHandler, passport.PermUserUnarchive)
 	api.SecureCommandWithPerm(HubKeyUserChangePassword, userHub.ChangePasswordHandler, passport.PermUserUpdate)
 	api.SecureCommandWithPerm(HubKeyUserForceDisconnect, userHub.ForceDisconnectHandler, passport.PermUserForceDisconnect)
+
+	api.Command(HubKeyCheckCanAccessStore, userHub.CheckCanAccessStore)
 
 	api.SubscribeCommand(HubKeyUserForceDisconnected, userHub.ForceDisconnectedHandler)
 	api.SubscribeCommand(HubKeyUserSubscribe, userHub.UpdatedSubscribeHandler)
@@ -2436,4 +2445,108 @@ func (uc *UserController) BlockConfirmationHandler(ctx context.Context, client *
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), nil
+}
+
+type CheckAllowedStoreAccess struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		WalletAddress string `json:"walletAddress"`
+	} `json:"payload"`
+}
+
+type CheckAllowedStoreAccessResponse struct {
+	IsAllowed bool   `json:"isAllowed"`
+	Message   string `json:"message"`
+}
+
+const HubKeyCheckCanAccessStore hub.HubCommandKey = "USER:CHECK:CAN_ACCESS_STORE"
+
+func (uc *UserController) CheckCanAccessStore(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	var WinTokens = []int{1, 2, 3, 4, 5, 6}
+
+	req := &CheckAllowedStoreAccess{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+	if req.Payload.WalletAddress == "" {
+		return terror.Error(terror.ErrInvalidInput, "Wallet address is required")
+	}
+
+	loc, err := time.LoadLocation("Australia/Perth")
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// alpha
+	PHASE_ONE := time.Date(2022, time.February, 24, 0, 0, 0, 0, loc)
+
+	PHASE_TWO := time.Date(2022, time.February, 27, 0, 0, 0, 0, loc)
+
+	PHASE_THREE := time.Date(2022, time.February, 27, 12, 0, 0, 0, loc)
+
+	isWhitelisted, err := db.IsUserWhitelisted(ctx, uc.Conn, req.Payload.WalletAddress)
+	if err != nil {
+		return terror.Error(err, "whitelisted check error")
+	}
+
+	isDeathlisted, err := db.IsUserDeathlisted(ctx, uc.Conn, req.Payload.WalletAddress)
+	if err != nil {
+		return terror.Error(err, "deathlisted check error")
+	}
+
+	client, err := ethclient.Dial("wss://speedy-nodes-nyc.moralis.io/1375aa321ac8ac6cfba6aa9c/eth/mainnet/ws")
+	if err != nil {
+		return terror.Error(terror.ErrInvalidInput, "eth client dial error")
+	}
+
+	e, err := bridge.NewERC1155(common.HexToAddress("0x17F5655c7D834e4772171F30E7315bbc3221F1eE"), client)
+	if err != nil {
+		return terror.Error(terror.ErrInvalidInput, "bridge error")
+	}
+
+	isWinHolder, err := e.OwnsAny(common.HexToAddress(req.Payload.WalletAddress), WinTokens)
+	if err != nil {
+		return terror.Error(terror.ErrInvalidInput, "secondary holder check error")
+	}
+
+	isEarly := false
+	now := time.Now().In(loc)
+	dispersionMap := dispersions.All()
+	for k := range dispersionMap {
+		if strings.EqualFold(common.HexToAddress(req.Payload.WalletAddress).Hex(), k.Hex()) {
+			if now.After(PHASE_ONE) {
+				isEarly = false
+			} else {
+				isEarly = true
+			}
+		}
+	}
+
+	// if between 26th 12am - 27 12am only whitelisted and win holders and early contributors
+	if now.After(PHASE_ONE) && now.Before(PHASE_TWO) && !(isWhitelisted || isWinHolder || isEarly) {
+		resp := &CheckAllowedStoreAccessResponse{
+			IsAllowed: false,
+			Message:   "You must be Whitelisted to access the store",
+		}
+		reply(resp)
+		return nil
+	}
+
+	// if after 27 12am included deathlisted
+	if now.After(PHASE_ONE) && now.Before(PHASE_THREE) && !(isWhitelisted || isWinHolder || isEarly || isDeathlisted) {
+		resp := &CheckAllowedStoreAccessResponse{
+			IsAllowed: false,
+			Message:   "You must be Whitelisted to access the store",
+		}
+		reply(resp)
+		return nil
+	}
+
+	resp := &CheckAllowedStoreAccessResponse{
+		IsAllowed: true,
+		Message:   "",
+	}
+	reply(resp)
+	return nil
 }
