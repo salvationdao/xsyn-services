@@ -20,9 +20,13 @@ type Transaction struct {
 	Status               TransactionStatus `json:"status" db:"status"`
 	TransactionReference string            `json:"transactionReference" db:"transaction_reference"`
 	Description          string            `json:"description" db:"description"`
-	GroupID              string            `json:"groupID" db:"group_id"`
-	Reason               string            `json:"reason" db:"reason"`
+	Reason               *string           `json:"reason" db:"reason"`
 	CreatedAt            time.Time         `json:"created_at" db:"created_at"`
+	GroupID              *string           `json:"groupID" db:"group_id"`
+
+	// Inner joined fields
+	To   User `json:"to"`
+	From User `json:"from"`
 }
 
 type ChainConfirmations struct {
