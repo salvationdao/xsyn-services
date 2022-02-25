@@ -388,7 +388,7 @@ func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 	// Get token id
 	hash := chi.URLParam(r, "hash")
 	if hash == "" {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("invalid token id"), "Invalid Token ID")
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("invalid asset hash"), "Invalid Asset Hash.")
 	}
 
 	// Get asset via token id
