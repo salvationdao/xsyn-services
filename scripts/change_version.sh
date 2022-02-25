@@ -69,5 +69,5 @@ ln -Tfsv $TARGET $(pwd)/${PACKAGE}_online
 # Ensure ownership
 chown -R ${PACKAGE}:${PACKAGE} .
 
-systemctl daemon-reload && systemctl start ${PACKAGE}
+systemctl daemon-reload && systemctl restart ${PACKAGE}
 nginx -t && nginx -s reload
