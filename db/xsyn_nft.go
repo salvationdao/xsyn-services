@@ -110,7 +110,7 @@ func XsynMetadataOwnerGet(ctx context.Context, conn Conn, userID passport.UserID
 			xsyn_metadata xnm
 		INNER JOIN
 			xsyn_assets xa ON xa.metadata_hash = xnm.hash
-		WHERE xa.user_id = $1 AND xa.hash = $2
+		WHERE xa.user_id = $1 AND xa.metadata_hash = $2
 	`
 	err := pgxscan.Get(ctx, conn, nft, q,
 		userID,
@@ -156,7 +156,7 @@ func XsynAssetDurabilityBulkUpdate(ctx context.Context, conn Conn, nfts []*passp
 	`
 
 	for i, nft := range nfts {
-		q += fmt.Sprintf("(%s, %d)", nft.Hash, nft.Durability)
+		q += fmt.Sprintf("('%s', %d)", nft.Hash, nft.Durability)
 		if i < len(nfts)-1 {
 			q += ","
 			continue
@@ -186,7 +186,7 @@ func XsynAssetDurabilityBulkIncrement(ctx context.Context, conn Conn, assetHashe
 			durability < 100 AND hash IN (
 	`
 	for i, hash := range assetHashes {
-		q += hash
+		q += "'" + hash + "'"
 		if i < len(assetHashes)-1 {
 			q += ","
 			continue
@@ -252,7 +252,7 @@ func XsynAssetBulkLock(ctx context.Context, conn Conn, assetHashes []string, use
 			metadata_hash IN (
 	`
 	for i, assetHast := range assetHashes {
-		q += assetHast
+		q += "'" + assetHast + "'"
 		if i < len(assetHashes)-1 {
 			q += ","
 			continue
@@ -286,7 +286,7 @@ func XsynAssetBulkRelease(ctx context.Context, conn Conn, nfts []*passport.WarMa
 	`
 
 	for i, nft := range nfts {
-		q += nft.Hash
+		q += "'" + nft.Hash + "'"
 		if i < len(nfts)-1 {
 			q += ","
 			continue
@@ -403,15 +403,15 @@ func XsynAssetLock(ctx context.Context, conn Conn, assetHash string, userID pass
 }
 
 // XsynAssetMintLock sets minting_signature of an asset
-func XsynAssetMintLock(ctx context.Context, conn Conn, assetHash string, sig string) error {
+func XsynAssetMintLock(ctx context.Context, conn Conn, assetHash string, sig string, expiry string) error {
 	q := `
 		UPDATE 
 			xsyn_assets
 		SET
-			minting_signature = $1
-		WHERE metadata_hash = $2`
+			minting_signature = $1, signature_expiry = $2
+		WHERE metadata_hash = $3`
 
-	_, err := conn.Exec(ctx, q, sig, assetHash)
+	_, err := conn.Exec(ctx, q, sig, expiry, assetHash)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -443,7 +443,7 @@ func XsynAssetMinted(ctx context.Context, conn Conn, assetHash string) error {
 			xsyn_metadata
 		SET
 			minted = true
-		WHERE metadata_hash = $1`
+		WHERE hash = $1`
 
 	_, err := conn.Exec(ctx, q, assetHash)
 	if err != nil {

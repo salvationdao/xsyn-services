@@ -72,3 +72,11 @@ var Factions = []*Faction{
 		By enlisting in Zaibatsu, you are joining a powerhouse in city construction and industrial production.`,
 	},
 }
+
+type FactionSaleAvailable struct {
+	ID              FactionID     `json:"id" db:"id"`
+	Label           string        `json:"label" db:"label"`
+	LogoBlobID      BlobID        `json:"logoBlobID" db:"logo_blob_id"`
+	Theme           *FactionTheme `json:"theme" db:"theme"`
+	AmountAvailable int64         `json:"amountAvailable" db:"amount_available"`
+}

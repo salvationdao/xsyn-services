@@ -282,40 +282,6 @@ func NewAPI(
 	return api
 }
 
-////test function for remaining supply
-//func (api *API) Dummysale(w http.ResponseWriter, r *http.Request) (int, error) {
-//	// get amount from get url
-//	ctx := context.Background()
-//	amount := r.URL.Query().Get("amount")
-//
-//	bigIntAmount := big.Int{}
-//	bigIntAmount.SetString(amount, 10)
-//
-//	tx := &passport.NewTransaction{
-//		From:                 passport.XsynSaleUserID,
-//		To:                   passport.SupremacyGameUserID,
-//		TransactionReference: "test sale",
-//		Amount:               bigIntAmount,
-//	}
-//
-//	select {
-//	case api.transaction <- tx:
-//
-//	case <-time.After(10 * time.Second):
-//		api.Log.Err(errors.New("timeout on channel send exceeded"))
-//		panic("transaction send")
-//	}
-//
-//	sups, err := db.UserBalance(ctx, api.Conn, passport.XsynSaleUserID)
-//	if err != nil {
-//		return http.StatusInternalServerError, terror.Error(err)
-//	}
-//
-//	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSRemainingSubscribe), sups.String())
-//
-//	return http.StatusAccepted, nil
-//}
-
 // Run the API service
 func (api *API) Run(ctx context.Context) error {
 	api.Log.Info().Msg("Starting API")

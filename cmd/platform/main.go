@@ -94,7 +94,7 @@ func main() {
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
 
 					&cli.BoolFlag{Name: "is_testnet_blockchain", Value: false, EnvVars: []string{envPrefix + "_IS_TESTNET_BLOCKCHAIN"}, Usage: "Update state according to testnet"},
-					&cli.BoolFlag{Name: "run_blockchain_bridge", Value: false, EnvVars: []string{envPrefix + "_RUN_BLOCKCHAIN_BRIDGE"}, Usage: "Run the bridge to blockchain data"},
+					&cli.BoolFlag{Name: "run_blockchain_bridge", Value: true, EnvVars: []string{envPrefix + "_RUN_BLOCKCHAIN_BRIDGE"}, Usage: "Run the bridge to blockchain data"},
 
 					&cli.StringFlag{Name: "environment", Value: "development", DefaultText: "development", EnvVars: []string{envPrefix + "_ENVIRONMENT", "ENVIRONMENT"}, Usage: "This program environment (development, testing, training, staging, production), it sets the log levels"},
 					&cli.StringFlag{Name: "sentry_dsn_backend", Value: "", EnvVars: []string{envPrefix + "_SENTRY_DSN_BACKEND", "SENTRY_DSN_BACKEND"}, Usage: "Sends error to remote server. If set, it will send error."},
@@ -145,9 +145,6 @@ func main() {
 					&cli.StringFlag{Name: "purchase_addr", Value: "0x52b38626D3167e5357FE7348624352B7062fE271", EnvVars: []string{envPrefix + "_PURCHASE_WALLET_ADDR"}, Usage: "Wallet address to receive payments and deposits"},
 
 					&cli.StringFlag{Name: "withdraw_addr", Value: "0x9DAcEA338E4DDd856B152Ce553C7540DF920Bb15", EnvVars: []string{envPrefix + "_WITHDRAW_CONTRACT_ADDR"}, Usage: "Withdraw contract address"},
-
-					&cli.StringFlag{Name: "eth_nft_addr", Value: "0xC1ce98F52E771Bd82938c4Cb6CCaA40Dc2B3258D", EnvVars: []string{envPrefix + "_NFT_CONTRACT_ADDR"}, Usage: "NFT contract address for minting"},
-					&cli.StringFlag{Name: "eth_nft_staking_addr", Value: "0xceED4Db9234e7374fe3132a2610c31275712685C", EnvVars: []string{envPrefix + "_NFT_STAKING_CONTRACT_ADDR"}, Usage: "NFT staking contract address for locking"},
 
 					// chain id
 					&cli.Int64Flag{Name: "bsc_chain_id", Value: 97, EnvVars: []string{envPrefix + "_BSC_CHAIN_ID"}, Usage: "BSC Chain ID"},
@@ -495,8 +492,6 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	SupAddr := ctxCLI.String("sup_addr")
 	PurchaseAddr := ctxCLI.String("purchase_addr")
 	WithdrawAddr := ctxCLI.String("withdraw_addr")
-	EthNftAddr := ctxCLI.String("eth_nft_addr")
-	EthNftStakingAddr := ctxCLI.String("eth_nft_staking_addr")
 	OperatorAddr := ctxCLI.String("operator_addr")
 	SignerPrivateKey := ctxCLI.String("signer_private_key")
 	BscNodeAddr := ctxCLI.String("bsc_node_addr")
@@ -528,22 +523,19 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		TokenExpirationDays: ctxCLI.Int("jwt_expiry_days"),
 		MetaMaskSignMessage: ctxCLI.String("metamask_sign_message"),
 		BridgeParams: &passport.BridgeParams{
-			MoralisKey:   MoralisKey,
-			OperatorAddr: common.HexToAddress(OperatorAddr),
-			UsdcAddr:     common.HexToAddress(UsdcAddr),
-			BusdAddr:     common.HexToAddress(BusdAddr),
-			SupAddr:      common.HexToAddress(SupAddr),
-			PurchaseAddr: common.HexToAddress(PurchaseAddr),
-			WithdrawAddr: common.HexToAddress(WithdrawAddr),
-
-			EthNftAddr:        common.HexToAddress(EthNftAddr),
-			EthNftStakingAddr: common.HexToAddress(EthNftStakingAddr),
-			SignerPrivateKey:  SignerPrivateKey,
-			BscNodeAddr:       BscNodeAddr,
-			EthNodeAddr:       EthNodeAddr,
-			BSCChainID:        BSCChainID,
-			ETHChainID:        ETHChainID,
-			BSCRouterAddr:     common.HexToAddress(BSCRouterAddr),
+			MoralisKey:       MoralisKey,
+			OperatorAddr:     common.HexToAddress(OperatorAddr),
+			UsdcAddr:         common.HexToAddress(UsdcAddr),
+			BusdAddr:         common.HexToAddress(BusdAddr),
+			SupAddr:          common.HexToAddress(SupAddr),
+			PurchaseAddr:     common.HexToAddress(PurchaseAddr),
+			WithdrawAddr:     common.HexToAddress(WithdrawAddr),
+			SignerPrivateKey: SignerPrivateKey,
+			BscNodeAddr:      BscNodeAddr,
+			EthNodeAddr:      EthNodeAddr,
+			BSCChainID:       BSCChainID,
+			ETHChainID:       ETHChainID,
+			BSCRouterAddr:    common.HexToAddress(BSCRouterAddr),
 		},
 		OnlyWalletConnect:       ctxCLI.Bool("only_wallet"),
 		WhitelistEndpoint:       ctxCLI.String("whitelist_check_endpoint"),

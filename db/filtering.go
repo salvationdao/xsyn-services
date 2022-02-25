@@ -170,9 +170,8 @@ type AttributeFilterRequestItem struct {
 
 // GenerateAttributeFilterSQL generates SQL for filtering a column
 func GenerateAttributeFilterSQL(trait string, value string, operator OperatorValueType, index int, tableName string) (*string, error) {
-	condition := fmt.Sprintf(`(
-	%[1]s.attributes @> '[{"trait_type": "%[2]s"}]' 
-	AND %[1]s.attributes @> '[{"value": "%[3]s"}]') `, tableName, trait, value)
+	condition := fmt.Sprintf(`
+	%[1]s.attributes @> '[{"trait_type": "%[2]s", "value": "%[3]s"}]' `, tableName, trait, value)
 
 	return &condition, nil
 }

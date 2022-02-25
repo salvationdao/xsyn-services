@@ -70,6 +70,7 @@ xsyn_assets.user_id,
 xsyn_assets.frozen_at,
 xsyn_assets.locked_by_id,
 xsyn_assets.tx_history,
+xsyn_assets.signature_expiry,
 COALESCE(xsyn_assets.minting_signature, '') as minting_signature,
 u.username
 ` + AssetGetQueryFrom
@@ -160,7 +161,7 @@ func AssetList(
 	if len(includedAssetHashes) > 0 {
 		cond := "("
 		for i, assetHash := range includedAssetHashes {
-			cond += assetHash
+			cond += "'" + assetHash + "'"
 			if i < len(includedAssetHashes)-1 {
 				cond += ","
 				continue
@@ -168,7 +169,7 @@ func AssetList(
 
 			cond += ")"
 		}
-		filterConditionsString += fmt.Sprintf(" AND xsyn_metadata.external_token_id  IN %v", cond)
+		filterConditionsString += fmt.Sprintf(" AND xsyn_metadata.hash  IN %v", cond)
 	}
 
 	archiveCondition := "IS NULL"
@@ -272,15 +273,31 @@ func AssetGet(ctx context.Context, conn Conn, hash string) (*passport.XsynMetada
 	return asset, nil
 }
 
-// AssetGetFromContractAndID returns asset by given ID and contract
-func AssetGetFromContractAndID(ctx context.Context, conn Conn, mintContractAddress string, externalTokenID uint64) (*passport.XsynMetadata, error) {
+// AssetGet returns a asset by given ID
+func AssetDurabilityGet(ctx context.Context, conn Conn, userID passport.UserID, hash string) (int64, error) {
+	durability := int64(0)
+
+	q := `
+		SELECT durability FROM xsyn_metadata xm 
+		INNER JOIN xsyn_assets xa ON xa.metadata_hash = xm.hash AND xa.user_id = $1
+		WHERE xm.hash = $2
+	`
+
+	err := pgxscan.Get(ctx, conn, &durability, q, userID, hash)
+	if err != nil {
+		return 0, terror.Error(err, "Issue getting asset durability from hash.")
+	}
+
+	return durability, nil
+}
+
+// AssetGetFromMintContractAndID returns asset by given ID and contract
+func AssetGetFromMintContractAndID(ctx context.Context, conn Conn, mintContractAddress string, externalTokenID uint64) (*passport.XsynMetadata, error) {
 	asset := &passport.XsynMetadata{}
 	count := 0
 
 	q := fmt.Sprintf(`SELECT count(*) %s WHERE c."mintContract" = $1 and xsyn_metadata.external_token_id = $2`, AssetGetQueryFrom)
-	fmt.Println(q)
-	fmt.Println(mintContractAddress)
-	fmt.Println(externalTokenID)
+
 	err := pgxscan.Get(ctx, conn, &count, q, mintContractAddress, externalTokenID)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting asset from contract address and token id.")
@@ -291,9 +308,6 @@ func AssetGetFromContractAndID(ctx context.Context, conn Conn, mintContractAddre
 	}
 
 	q = fmt.Sprintf(`%s WHERE c."mintContract" = $1 and xsyn_metadata.external_token_id = $2`, AssetGetQuery)
-	fmt.Println(q)
-	fmt.Println(mintContractAddress)
-	fmt.Println(externalTokenID)
 	err = pgxscan.Get(ctx, conn, asset, q, mintContractAddress, externalTokenID)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting asset from contract address and token id.")
@@ -415,4 +429,24 @@ func AssetTransferOnChain(ctx context.Context, conn Conn, tokenID uint64, txHash
 	}
 
 	return nil
+}
+
+// AssetSaleAvailable return the total of available war machine in each faction
+func AssetSaleAvailable(ctx context.Context, conn Conn) ([]*passport.FactionSaleAvailable, error) {
+	result := []*passport.FactionSaleAvailable{}
+	q := `
+	select f.id , f."label",f.logo_blob_id, f.theme, f2.amount_available from factions f  
+		left join lateral(
+			select (sum(xs.amount_available) - sum(xs.amount_sold)) as amount_available from xsyn_store xs 
+			where xs.faction_id = f.id
+			group by xs.faction_id 
+		)f2 on true 
+	`
+
+	err := pgxscan.Select(ctx, conn, &result, q)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return result, nil
 }
