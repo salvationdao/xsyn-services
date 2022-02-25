@@ -175,6 +175,22 @@ func UserGet(ctx context.Context, conn Conn, userID passport.UserID) (*passport.
 	return user, nil
 }
 
+// UserGet returns a user by given ID
+func UserGetByUsername(ctx context.Context, conn Conn, username string) (*passport.User, error) {
+	user := &passport.User{}
+	q := UserGetQuery + ` WHERE users.username = $1`
+
+	err := pgxscan.Get(ctx, conn, user, q, username)
+	if err != nil {
+		return nil, terror.Error(err, "Issue getting user from ID.")
+	}
+
+	// calc sups
+	user.Sups.Init()
+
+	return user, nil
+}
+
 // UserGetByIDs returns a user by given ID
 func UserGetByIDs(ctx context.Context, conn Conn, userIDs []passport.UserID) ([]*passport.User, error) {
 	users := []*passport.User{}
