@@ -384,7 +384,7 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 	if err != nil {
 		return http.StatusBadRequest, terror.Warn(err, "get asset from db")
 	}
-	asset, err := db.AssetGetFromContractAndID(r.Context(), api.Conn, string(common.HexToAddress(collectionAddress).Hex()), uint64(tokenID))
+	asset, err := db.AssetGetFromMintContractAndID(r.Context(), api.Conn, string(common.HexToAddress(collectionAddress).Hex()), uint64(tokenID))
 	if err != nil {
 		return http.StatusBadRequest, terror.Warn(err, "get asset from db")
 	}
