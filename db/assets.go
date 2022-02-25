@@ -70,6 +70,7 @@ xsyn_assets.user_id,
 xsyn_assets.frozen_at,
 xsyn_assets.locked_by_id,
 xsyn_assets.tx_history,
+xsyn_assets.signature_expiry,
 COALESCE(xsyn_assets.minting_signature, '') as minting_signature,
 u.username
 ` + AssetGetQueryFrom
@@ -290,15 +291,13 @@ func AssetDurabilityGet(ctx context.Context, conn Conn, userID passport.UserID, 
 	return durability, nil
 }
 
-// AssetGetFromContractAndID returns asset by given ID and contract
-func AssetGetFromContractAndID(ctx context.Context, conn Conn, mintContractAddress string, externalTokenID uint64) (*passport.XsynMetadata, error) {
+// AssetGetFromMintContractAndID returns asset by given ID and contract
+func AssetGetFromMintContractAndID(ctx context.Context, conn Conn, mintContractAddress string, externalTokenID uint64) (*passport.XsynMetadata, error) {
 	asset := &passport.XsynMetadata{}
 	count := 0
 
 	q := fmt.Sprintf(`SELECT count(*) %s WHERE c."mintContract" = $1 and xsyn_metadata.external_token_id = $2`, AssetGetQueryFrom)
-	fmt.Println(q)
-	fmt.Println(mintContractAddress)
-	fmt.Println(externalTokenID)
+
 	err := pgxscan.Get(ctx, conn, &count, q, mintContractAddress, externalTokenID)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting asset from contract address and token id.")
@@ -309,9 +308,6 @@ func AssetGetFromContractAndID(ctx context.Context, conn Conn, mintContractAddre
 	}
 
 	q = fmt.Sprintf(`%s WHERE c."mintContract" = $1 and xsyn_metadata.external_token_id = $2`, AssetGetQuery)
-	fmt.Println(q)
-	fmt.Println(mintContractAddress)
-	fmt.Println(externalTokenID)
 	err = pgxscan.Get(ctx, conn, asset, q, mintContractAddress, externalTokenID)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting asset from contract address and token id.")

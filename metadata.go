@@ -81,6 +81,7 @@ type XsynMetadata struct {
 	FrozenAt           *time.Time            `json:"frozenAt" db:"frozen_at"`
 	LockedByID         *UserID               `json:"lockedByID" db:"locked_by_id"`
 	MintingSignature   string                `json:"mintingSignature" db:"minting_signature"`
+	SignatureExpiry    string                `json:"signatureExpiry" db:"signature_expiry"`
 	UpdatedAt          time.Time             `json:"updatedAt" db:"updated_at"`
 	CreatedAt          time.Time             `json:"createdAt" db:"created_at"`
 	TxHistory          []string              `json:"txHistory" db:"tx_history"`

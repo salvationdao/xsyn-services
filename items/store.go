@@ -121,7 +121,6 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 	// create item on metadata table
 	err = db.XsynMetadataInsert(ctx, conn, newItem, externalUrl)
 	if err != nil {
-		fmt.Println("here11")
 		refund(err.Error())
 		return terror.Error(err)
 	}
@@ -129,7 +128,6 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 	// assign new item to user
 	err = db.XsynMetadataAssignUser(ctx, conn, newItem.Hash, user.ID, newItem.CollectionID, newItem.ExternalTokenID)
 	if err != nil {
-		fmt.Println("here22")
 		refund(err.Error())
 		return terror.Error(err)
 	}
@@ -144,7 +142,6 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		fmt.Println("here44")
 		refund(err.Error())
 		return terror.Error(err)
 	}

@@ -33,7 +33,6 @@ func (s *Seeder) Users(ctx context.Context, organisations []*passport.Organisati
 
 	passwordHash := crypto.HashPassword("NinjaDojo_!")
 
-	fmt.Println(" - set member user 1")
 	user := randomUsers[0]
 	user.Email = passport.NewString("member@example.com")
 	user.RoleID = passport.UserRoleMemberID
