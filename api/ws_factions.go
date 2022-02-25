@@ -171,14 +171,16 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 type FactionChatRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		FactionID passport.FactionID `json:"factionID"`
-		Message   string             `json:"message"`
+		FactionID    passport.FactionID `json:"factionID"`
+		MessageColor string             `json:"messageColor"`
+		Message      string             `json:"message"`
 	} `json:"payload"`
 }
 
 // ChatMessageSend contains chat message data to send.
 type ChatMessageSend struct {
 	Message           string           `json:"message"`
+	MessageColor      string           `json:"messageColor"`
 	FromUserID        passport.UserID  `json:"fromUserID"`
 	FromUsername      string           `json:"fromUsername"`
 	FactionColour     *string          `json:"factionColour,omitempty"`
@@ -237,6 +239,7 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 		// send message
 		fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID)), &ChatMessageSend{
 			Message:           req.Payload.Message,
+			MessageColor:      req.Payload.MessageColor,
 			FromUserID:        user.ID,
 			FromUsername:      user.Username,
 			AvatarID:          user.AvatarID,
@@ -251,6 +254,7 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 	// global message
 	fc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyGlobalChatSubscribe), &ChatMessageSend{
 		Message:           req.Payload.Message,
+		MessageColor:      req.Payload.MessageColor,
 		FromUserID:        user.ID,
 		FromUsername:      user.Username,
 		AvatarID:          user.AvatarID,
