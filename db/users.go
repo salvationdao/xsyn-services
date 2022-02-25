@@ -2,12 +2,14 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"passport"
 	"strings"
 	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
+	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -1165,4 +1167,38 @@ func FactionUserIDGetByFactionID(ctx context.Context, conn Conn, factionID passp
 	}
 
 	return userID, nil
+}
+
+type Address struct {
+	WalletAddress string `json:"walletAddress" db:"wallet_address"`
+}
+
+// IsUserWhitelisted check if user is whitelisted
+func IsUserWhitelisted(ctx context.Context, conn Conn, walletAddress string) (bool, error) {
+	user := &Address{}
+	q := "SELECT * FROM whitelisted_addresses WHERE wallet_address = $1"
+	err := pgxscan.Get(ctx, conn, user, q, walletAddress)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, terror.Error(err, "Issue getting user whitelisted user")
+	}
+
+	return true, nil
+}
+
+// IsUserWhitelisted check if user is whitelisted
+func IsUserDeathlisted(ctx context.Context, conn Conn, walletAddress string) (bool, error) {
+	user := &Address{}
+	q := "SELECT * FROM death_addresses WHERE wallet_address = $1"
+	err := pgxscan.Get(ctx, conn, user, q, walletAddress)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, terror.Error(err, "Issue getting user death listed user")
+	}
+
+	return true, nil
 }

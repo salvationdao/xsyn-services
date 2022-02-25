@@ -199,7 +199,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 		From:                 user.ID,
 		Amount:               price,
 		TransactionReference: passport.TransactionReference(txRef),
-		Description:          "Mystery Create purchase.",
+		Description:          "Mystery crate purchase.",
 	}
 
 	// process user cache map
