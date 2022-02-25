@@ -391,8 +391,6 @@ func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("invalid asset hash"), "Invalid Asset Hash.")
 	}
 
-	fmt.Println(hash)
-
 	// Get asset via token id
 	asset, err := db.AssetGet(r.Context(), api.Conn, hash)
 	if err != nil {
