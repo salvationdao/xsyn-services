@@ -59,8 +59,6 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 	newFromBalance.Add(newFromBalance, &fromBalance)
 	newFromBalance.Sub(newFromBalance, &nt.Amount)
 	if newFromBalance.Cmp(big.NewInt(0)) < 0 {
-		fromamt, _ := ucm.Get(nt.From.String())
-		fmt.Println(fromamt.Int64(), nt.Amount)
 		return nil, nil, TransactionFailed, terror.Error(errors.New("not enough funds"), "Not enough funds.")
 	}
 
