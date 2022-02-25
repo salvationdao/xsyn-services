@@ -8,6 +8,7 @@ import (
 	"passport/api"
 	"passport/db"
 	"passport/email"
+	"passport/helpers"
 	"passport/payments"
 	"passport/seed"
 	"strings"
@@ -93,7 +94,7 @@ func main() {
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
 
 					&cli.BoolFlag{Name: "is_testnet_blockchain", Value: false, EnvVars: []string{envPrefix + "_IS_TESTNET_BLOCKCHAIN"}, Usage: "Update state according to testnet"},
-					&cli.BoolFlag{Name: "run_blockchain_bridge", Value: true, EnvVars: []string{envPrefix + "_RUN_BLOCKCHAIN_BRIDGE"}, Usage: "Run the bridge to blockchain data"},
+					&cli.BoolFlag{Name: "run_blockchain_bridge", Value: false, EnvVars: []string{envPrefix + "_RUN_BLOCKCHAIN_BRIDGE"}, Usage: "Run the bridge to blockchain data"},
 
 					&cli.StringFlag{Name: "environment", Value: "development", DefaultText: "development", EnvVars: []string{envPrefix + "_ENVIRONMENT", "ENVIRONMENT"}, Usage: "This program environment (development, testing, training, staging, production), it sets the log levels"},
 					&cli.StringFlag{Name: "sentry_dsn_backend", Value: "", EnvVars: []string{envPrefix + "_SENTRY_DSN_BACKEND", "SENTRY_DSN_BACKEND"}, Usage: "Sends error to remote server. If set, it will send error."},
@@ -158,6 +159,8 @@ func main() {
 					//router address for exchange rates
 					&cli.StringFlag{Name: "bsc_router_addr", Value: "0x10ED43C718714eb63d5aA57B78B54704E256024E", EnvVars: []string{envPrefix + "_BSC_ROUTER_ADDR"}, Usage: "BSC Router address"},
 					&cli.BoolFlag{Name: "enable_purchase_subscription", Value: false, EnvVars: []string{envPrefix + "_ENABLE_PURCHASE_SUBSCRIPTION"}, Usage: "Poll payments and price"},
+					//moralis key- set in env vars
+					//moralis key- set in env vars
 					//moralis key- set in env vars
 					&cli.StringFlag{Name: "moralis_key", Value: "91Xp2ke5eOVMavAsqdOoiXN4lg0n0AieW5kTJoupdyQBhL2k9XvMQtFPSA4opX2s", EnvVars: []string{envPrefix + "_MORALIS_KEY"}, Usage: "Key to connect to moralis API"},
 				},
@@ -240,6 +243,17 @@ func main() {
 
 					seeder := seed.NewSeeder(pgxconn, txConn, passportWebHostUrl, passportWebHostUrl)
 					return seeder.Run(databaseProd)
+				},
+			},
+			{
+				Name:  "shortcodes",
+				Usage: "print shortcodes",
+				Action: func(c *cli.Context) error {
+					for i := 0; i < 9; i++ {
+						_, _ = helpers.GenerateMetadataHashID("9cdf55aa-217b-4821-aa77-bc8555195f23", i, true)
+					}
+
+					return nil
 				},
 			},
 		},

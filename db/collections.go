@@ -20,10 +20,12 @@ collections.updated_at,
 collections.created_at
 ` + CollectionGetQueryFrom
 
+
+// TODO: this query should be purely for collections, not assets and metadata
 const CollectionGetQueryFrom = `
 FROM collections
 LEFT OUTER JOIN xsyn_metadata ON collections.id = xsyn_metadata.collection_id 
-LEFT OUTER JOIN xsyn_assets ON xsyn_assets.token_id = xsyn_metadata.token_id 
+LEFT OUTER JOIN xsyn_assets ON xsyn_assets.external_token_id = xsyn_metadata.external_token_id and xsyn_assets.collection_id = xsyn_metadata.collection_id
 `
 
 type CollectionColumn string

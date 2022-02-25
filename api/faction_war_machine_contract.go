@@ -21,7 +21,7 @@ import (
 // Asset Repair //
 //////////////////
 
-type RepairQueue map[uint64]bool
+type RepairQueue map[string]bool
 
 func (api *API) InitialAssetRepairCenter() {
 	api.fastAssetRepairCenter = make(chan func(RepairQueue))
@@ -50,12 +50,12 @@ const (
 	RepairTypeStandard RepairType = "STANDARD"
 )
 
-func (api *API) RegisterRepairCenter(rt RepairType, tokenID uint64) {
+func (api *API) RegisterRepairCenter(rt RepairType, assetHash string) {
 	switch rt {
 	case RepairTypeFast:
 		select {
 		case api.fastAssetRepairCenter <- func(rq RepairQueue) {
-			rq[tokenID] = true
+			rq[assetHash] = true
 		}:
 
 		case <-time.After(10 * time.Second):
@@ -66,7 +66,7 @@ func (api *API) RegisterRepairCenter(rt RepairType, tokenID uint64) {
 	case RepairTypeStandard:
 		select {
 		case api.standardAssetRepairCenter <- func(rq RepairQueue) {
-			rq[tokenID] = true
+			rq[assetHash] = true
 		}:
 
 		case <-time.After(10 * time.Second):
@@ -102,12 +102,12 @@ func (api *API) startRepairTicker(rt RepairType) {
 				return
 			}
 
-			tokenIDs := []uint64{}
+			assetHashes := []string{}
 			for tokenID := range rq {
-				tokenIDs = append(tokenIDs, tokenID)
+				assetHashes = append(assetHashes, tokenID)
 			}
 
-			nfts, err := db.XsynAssetDurabilityBulkIncrement(context.Background(), api.Conn, tokenIDs)
+			nfts, err := db.XsynAssetDurabilityBulkIncrement(context.Background(), api.Conn, assetHashes)
 			if err != nil {
 				errChan <- err
 				return
@@ -116,7 +116,7 @@ func (api *API) startRepairTicker(rt RepairType) {
 			// remove war machine which is completely repaired
 			for _, nft := range nfts {
 				if nft.Durability == 100 {
-					delete(rq, nft.TokenID)
+					delete(rq, nft.Hash)
 				}
 			}
 			errChan <- nil

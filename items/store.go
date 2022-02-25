@@ -52,15 +52,16 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 	txID := uuid.Must(uuid.NewV4())
 	txRef := fmt.Sprintf("PURCHASE OF %s %s %d", storeItem.Name, txID, time.Now().UnixNano())
 
-	// convert price to sups
-	asDecimal := decimal.New(int64(storeItem.UsdCentCost), 0).Div(supPrice).Ceil()
-	asSups := decimal.New(asDecimal.IntPart(), 18).BigInt()
+	supsAsCents := supPrice.Mul(decimal.New(100, 0))
+	priceAsCents := decimal.New(int64(storeItem.UsdCentCost), 0)
+	priceAsSupsDecimal := priceAsCents.Div(supsAsCents)
+	priceAsSupsBigInt := priceAsSupsDecimal.Mul(decimal.New(1, 18)).BigInt()
 
 	// resultChan := make(chan *passport.TransactionResult, 1)
 	trans := &passport.NewTransaction{
 		To:                   passport.XsynTreasuryUserID,
 		From:                 user.ID,
-		Amount:               *asSups,
+		Amount:               *priceAsSupsBigInt,
 		TransactionReference: passport.TransactionReference(txRef),
 		Description:          "Purchase on Supremacy storefront.",
 	}
@@ -78,7 +79,7 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 		trans := &passport.NewTransaction{
 			To:                   user.ID,
 			From:                 passport.XsynTreasuryUserID,
-			Amount:               *asSups,
+			Amount:               *priceAsSupsBigInt,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
 			Description:          "Refund of purchase on Supremacy storefront.",
 		}
@@ -120,13 +121,15 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 	// create item on metadata table
 	err = db.XsynMetadataInsert(ctx, conn, newItem, externalUrl)
 	if err != nil {
+		fmt.Println("here11")
 		refund(err.Error())
 		return terror.Error(err)
 	}
 
 	// assign new item to user
-	err = db.XsynMetadataAssignUser(ctx, conn, newItem.TokenID, user.ID)
+	err = db.XsynMetadataAssignUser(ctx, conn, newItem.Hash, user.ID, newItem.CollectionID, newItem.ExternalTokenID)
 	if err != nil {
+		fmt.Println("here22")
 		refund(err.Error())
 		return terror.Error(err)
 	}
@@ -134,19 +137,19 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 	// update item amounts
 	err = db.StoreItemPurchased(ctx, conn, storeItem)
 	if err != nil {
+		fmt.Println("here33")
 		refund(err.Error())
 		return terror.Error(err)
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
+		fmt.Println("here44")
 		refund(err.Error())
 		return terror.Error(err)
 	}
 
-	priceAsDecimal := decimal.New(int64(storeItem.UsdCentCost), 0).Div(supPrice).Ceil()
-	priceAsSups := decimal.New(priceAsDecimal.IntPart(), 18).BigInt()
-	storeItem.SupCost = priceAsSups.String()
+	storeItem.SupCost = priceAsSupsBigInt.String()
 
 	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), storeItem)
 	return nil
@@ -154,12 +157,12 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 
 // PurchaseLootbox attempts to make a purchase for a given user ID and a given
 func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
-	ucmProcess func(*passport.NewTransaction) (*big.Int, *big.Int, string, error), user passport.User, factionID passport.FactionID, externalURL string) (*uint64, error) {
+	ucmProcess func(*passport.NewTransaction) (*big.Int, *big.Int, string, error), user passport.User, factionID passport.FactionID, externalURL string) (string, error) {
 
 	// get all faction items marked as loot box
 	mechs, err := db.StoreItemListByFactionLootbox(ctx, conn, factionID)
 	if err != nil {
-		return nil, terror.Error(err, "failed to get loot box items")
+		return "", terror.Error(err, "failed to get loot box items")
 	}
 
 	mechIDPool := []*passport.StoreItemID{}
@@ -170,7 +173,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	}
 
 	if len(mechs) == 0 {
-		return nil, terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
+		return "", terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
 	}
 
 	chosenIdx := rand.Intn(len(mechIDPool))
@@ -184,7 +187,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	}
 
 	if storeItem == nil {
-		return nil, terror.Error(fmt.Errorf("store item nil"), "Internal error, contact support or try again.")
+		return "", terror.Error(fmt.Errorf("store item nil"), "Internal error, contact support or try again.")
 	}
 
 	txID := uuid.Must(uuid.NewV4())
@@ -205,7 +208,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	// process user cache map
 	nfb, ntb, _, err := ucmProcess(trans)
 	if err != nil {
-		return nil, terror.Error(err)
+		return "", terror.Error(err)
 	}
 
 	if !trans.From.IsSystemUser() {
@@ -240,7 +243,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	tx, err := conn.Begin(ctx)
 	if err != nil {
 		refund(err.Error())
-		return nil, terror.Error(err)
+		return "", terror.Error(err)
 	}
 
 	defer func(tx pgx.Tx, ctx context.Context) {
@@ -263,29 +266,29 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	err = db.XsynMetadataInsert(ctx, conn, newItem, externalURL)
 	if err != nil {
 		refund(err.Error())
-		return nil, terror.Error(err)
+		return "", terror.Error(err)
 	}
 
 	// assign new item to user
-	err = db.XsynMetadataAssignUser(ctx, conn, newItem.TokenID, user.ID)
+	err = db.XsynMetadataAssignUser(ctx, conn, newItem.Hash, user.ID, newItem.CollectionID, newItem.ExternalTokenID)
 	if err != nil {
 		refund(err.Error())
-		return nil, terror.Error(err)
+		return "", terror.Error(err)
 	}
 
 	// update item amounts
 	err = db.StoreItemPurchased(ctx, conn, storeItem)
 	if err != nil {
 		refund(err.Error())
-		return nil, terror.Error(err)
+		return "", terror.Error(err)
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
 		refund(err.Error())
-		return nil, terror.Error(err)
+		return "", terror.Error(err)
 	}
 
 	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), storeItem)
-	return &newItem.TokenID, nil
+	return newItem.Hash, nil
 }
