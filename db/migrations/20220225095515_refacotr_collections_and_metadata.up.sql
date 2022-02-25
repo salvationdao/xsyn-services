@@ -33,7 +33,7 @@ DELETE FROM xsyn_metadata; -- CLEAR XSYN_METADATA
 ALTER TABLE xsyn_metadata DROP CONSTRAINT xsyn_metadata_collection_id_fkey; -- drop metadata PK
 ALTER TABLE xsyn_assets DROP COLUMN token_id; -- drop this before xsyn_metadata id column
 ALTER TABLE xsyn_metadata DROP COLUMN token_id; -- id column
-ALTER TABLE xsyn_metadata ADD COLUMN hash TEXT PRIMARY KEY; -- add new PK column (will be hash of collectio + token id)
+ALTER TABLE xsyn_metadata ADD COLUMN hash TEXT PRIMARY KEY UNIQUE; -- add new PK column (will be hash of collectio + token id)
 ALTER TABLE xsyn_metadata ADD COLUMN external_token_id NUMERIC(78, 0); -- add new token id column
 ALTER TABLE xsyn_metadata ADD CONSTRAINT xsyn_metadata_token_collection_unique UNIQUE(external_token_id, collection_id);
 
@@ -90,3 +90,5 @@ UPDATE xsyn_store SET restriction = 'WHITELIST' WHERE description = 'Gold';
 
 update xsyn_store set collection_id = (SELECT id from collections c where c.name = 'Supremacy Genesis')
 where attributes @> '[{"trait_type": "Rarity"}]' and attributes @> '[{"value": "Mega"}]';
+
+ALTER TABLE users ADD COLUMN metadata JSONB DEFAULT '';

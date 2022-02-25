@@ -47,7 +47,7 @@ func (ic AssetColumn) IsValid() error {
 		AssetColumnCreatedAt:
 		return nil
 	}
-	return terror.Error(fmt.Errorf("invalid asset column type"))
+	return terror.Error(fmt.Errorf("invalid asset column type %s", ic))
 }
 
 const AssetGetQuery string = `
@@ -77,7 +77,7 @@ u.username
 
 const AssetGetQueryFrom = `
 FROM xsyn_metadata 
-LEFT OUTER JOIN xsyn_assets ON xsyn_metadata.external_token_id = xsyn_assets.external_token_id
+LEFT OUTER JOIN xsyn_assets ON xsyn_metadata.external_token_id = xsyn_assets.external_token_id and xsyn_metadata.collection_id = xsyn_assets.collection_id
 INNER JOIN (
 	SELECT  id,
 			name,
@@ -200,8 +200,11 @@ func AssetList(
 		searchCondition,
 	)
 
+	fmt.Println()
+	fmt.Println(countQ)
+	fmt.Println(args...)
+	fmt.Println()
 	var totalRows int
-
 	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
 	if err != nil {
 		return 0, nil, terror.Error(err)
@@ -240,6 +243,10 @@ func AssetList(
 	)
 
 	result := make([]*passport.XsynMetadata, 0)
+	fmt.Println()
+	fmt.Println(q)
+	fmt.Println(args...)
+	fmt.Println()
 	err = pgxscan.Select(ctx, conn, &result, q, args...)
 	if err != nil {
 		return 0, nil, terror.Error(err)
@@ -264,7 +271,10 @@ func AssetGet(ctx context.Context, conn Conn, hash string) (*passport.XsynMetada
 	}
 
 	q = AssetGetQuery + `WHERE xsyn_metadata.hash = $1`
-
+	fmt.Println()
+	fmt.Println(q)
+	fmt.Println(hash)
+	fmt.Println()
 	err = pgxscan.Get(ctx, conn, asset, q, hash)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting asset from hash.")
