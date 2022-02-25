@@ -88,7 +88,7 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 		return terror.Error(fmt.Errorf("user not found"), "User not found")
 	}
 
-	if os.Getenv("PASSPORT_ENVIRONMENT") == "development" {
+	if os.Getenv("PASSPORT_ENVIRONMENT") == "development" || os.Getenv("PASSPORT_ENVIRONMENT") == "staging" {
 		oneSups := big.NewInt(1000000000000000000)
 		oneSups.Mul(oneSups, big.NewInt(100000))
 		gc.API.transactionCache.Process(&passport.NewTransaction{

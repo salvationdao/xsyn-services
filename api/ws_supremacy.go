@@ -65,7 +65,7 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	}
 
 	// sup control
-	api.SupremacyCommand(HubKeySupremacyHoldSups, supremacyHub.SupremacyHoldSupsHandler)
+	api.SupremacyCommand(HubKeySupremacySpendSups, supremacyHub.SupremacySpendSupsHandler)
 	api.SupremacyCommand(HubKeySupremacyReleaseTransactions, supremacyHub.SupremacyReleaseTransactionsHandler)
 
 	api.SupremacyCommand(HubKeySupremacyTickerTick, supremacyHub.SupremacyTickerTickHandler)
@@ -133,7 +133,7 @@ func (sc *SupremacyControllerWS) SupremacyUserConnectionUpgradeHandler(ctx conte
 	return nil
 }
 
-const HubKeySupremacyHoldSups = hub.HubCommandKey("SUPREMACY:HOLD_SUPS")
+const HubKeySupremacySpendSups = hub.HubCommandKey("SUPREMACY:HOLD_SUPS")
 
 type SupremacyHoldSupsRequest struct {
 	*hub.HubCommandRequest
@@ -141,11 +141,11 @@ type SupremacyHoldSupsRequest struct {
 		Amount               passport.BigInt               `json:"amount"`
 		FromUserID           passport.UserID               `json:"userID"`
 		TransactionReference passport.TransactionReference `json:"transactionReference"`
-		IsBattleVote         bool                          `json:"isBattleVote"`
+		GroupID              string                        `json:"groupID"`
 	} `json:"payload"`
 }
 
-func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (sc *SupremacyControllerWS) SupremacySpendSupsHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &SupremacyHoldSupsRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -163,8 +163,9 @@ func (sc *SupremacyControllerWS) SupremacyHoldSupsHandler(ctx context.Context, h
 		Amount:               req.Payload.Amount.Int,
 	}
 
-	if req.Payload.IsBattleVote {
+	if req.Payload.GroupID != "" {
 		tx.To = passport.SupremacyBattleUserID
+		tx.GroupID = &req.Payload.GroupID
 	}
 
 	nfb, ntb, txID, err := sc.API.userCacheMap.Process(tx)
@@ -225,7 +226,7 @@ func (sc *SupremacyControllerWS) SupremacyFeed() {
 	// process user cache map
 	fromBalance, toBalance, _, err := sc.API.userCacheMap.Process(tx)
 	if err != nil {
-		sc.Log.Err(errors.New("setting string not ok on fund big int")).Msg("too many strings")
+		sc.Log.Err(err).Msg(err.Error())
 		return
 	}
 
