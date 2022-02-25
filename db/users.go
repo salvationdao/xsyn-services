@@ -1218,3 +1218,26 @@ func IsUserDeathlisted(ctx context.Context, conn Conn, walletAddress string) (bo
 
 	return true, nil
 }
+
+func UpdateUserMetadata(ctx context.Context, conn Conn, userID passport.UserID, metadata *passport.UserMetadata) error {
+	q := "UPDATE users SET metadata = $1 WHERE id = $2"
+
+	_, err := conn.Exec(ctx, q, metadata, userID)
+	if err != nil {
+		return terror.Error(err, "Issue inserting user data.")
+	}
+
+	return nil
+}
+
+func GetUserMetadata(ctx context.Context, conn Conn, userID passport.UserID) (*passport.UserMetadata, error) {
+	md := &passport.User{}
+	q := "SELECT metadata FROM users WHERE id = $1"
+
+	err := pgxscan.Get(ctx, conn, md, q, userID)
+	if err != nil {
+		return nil, terror.Error(err, "Issue getting user metadata.")
+	}
+
+	return &md.Metadata, nil
+}

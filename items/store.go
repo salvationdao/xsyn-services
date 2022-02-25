@@ -49,6 +49,17 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 		return terror.Error(fmt.Errorf("cannot purchase whitelist item or lootbox"), "Item currently not available.")
 	}
 
+	md, err := db.GetUserMetadata(ctx, conn, user.ID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	if storeItem.UsdCentCost == 100 {
+		if md.BoughtStarterWarmachines >= 2 {
+			return terror.Warn(fmt.Errorf("user bought 2 starter mechs"), "You have reached your 2 Mega War Machine limit.")
+		}
+	}
+
 	txID := uuid.Must(uuid.NewV4())
 	txRef := fmt.Sprintf("PURCHASE OF %s %s %d", storeItem.Name, txID, time.Now().UnixNano())
 
@@ -139,6 +150,20 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 		return terror.Error(err)
 	}
 
+	md, err = db.GetUserMetadata(ctx, tx, user.ID)
+	if err != nil {
+		refund(err.Error())
+		return terror.Error(err)
+	}
+
+	md.BoughtStarterWarmachines++
+
+	err = db.UpdateUserMetadata(ctx, tx, user.ID, md)
+	if err != nil {
+		refund(err.Error())
+		return terror.Error(err)
+	}
+
 	err = tx.Commit(ctx)
 	if err != nil {
 		refund(err.Error())
@@ -154,6 +179,15 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 // PurchaseLootbox attempts to make a purchase for a given user ID and a given
 func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
 	ucmProcess func(*passport.NewTransaction) (*big.Int, *big.Int, string, error), user passport.User, factionID passport.FactionID, externalURL string) (string, error) {
+
+	md, err := db.GetUserMetadata(ctx, conn, user.ID)
+	if err != nil {
+		return "", terror.Error(err)
+	}
+
+	if md.BoughtLootboxes >= 10 {
+		return "", terror.Warn(fmt.Errorf("user bought 10 lootboxes"), "You have reached your 10 lootbox limit.")
+	}
 
 	// get all faction items marked as loot box
 	mechs, err := db.StoreItemListByFactionLootbox(ctx, conn, factionID)
@@ -274,6 +308,20 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 
 	// update item amounts
 	err = db.StoreItemPurchased(ctx, conn, storeItem)
+	if err != nil {
+		refund(err.Error())
+		return "", terror.Error(err)
+	}
+
+	md, err = db.GetUserMetadata(ctx, tx, user.ID)
+	if err != nil {
+		refund(err.Error())
+		return "", terror.Error(err)
+	}
+
+	md.BoughtLootboxes++
+
+	err = db.UpdateUserMetadata(ctx, tx, user.ID, md)
 	if err != nil {
 		refund(err.Error())
 		return "", terror.Error(err)
