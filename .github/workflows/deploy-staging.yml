@@ -119,7 +119,7 @@ jobs:
         if: ${{ !env.ACT }} # if running in local test environment
         with:
           name: ${{ needs.build.outputs.artifact_filename }}
-      
+
       - name: untar deploy directory
         run: tar -xvf ${{ needs.build.outputs.artifact_filename }}
 
@@ -130,7 +130,7 @@ jobs:
           echo '${{ secrets.STAGING_SSH_KNOWN_HOSTS }}' > ~/.ssh/known_hosts
           echo '${{ secrets.STAGING_SSH_PKEY }}' > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-      
+
       - name: Rsync to server
         if: ${{ !env.ACT }} # if running in local test environment
         run: rsync -av ./deploy/ ${{ secrets.STAGING_SSH_HOST }}:/usr/share/ninja_syndicate/passport-api_${{ needs.build.outputs.version }}
@@ -162,7 +162,7 @@ jobs:
 
       - name: "DB: seed"
         if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/passport-online && source ./init/passport-staging.env && ./passport-api db --database_user=$PASSPORT_DATABASE_USER --database_pass=$PASSPORT_DATABASE_PASS --database_host=$PASSPORT_DATABASE_HOST --database_port=$PASSPORT_DATABASE_PORT --database_name=$PASSPORT_DATABASE_NAME --database_tx_user=$PASSPORT_DATABASE_TX_USER --database_tx_pass=$PASSPORT_DATABASE_TX_PASS'
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/passport-online && source ./init/passport-staging.env && ./passport-api db --database_user=$PASSPORT_DATABASE_USER --database_pass=$PASSPORT_DATABASE_PASS --database_host=$PASSPORT_DATABASE_HOST --database_port=$PASSPORT_DATABASE_PORT --database_name=$PASSPORT_DATABASE_NAME --database_tx_user=$PASSPORT_DATABASE_TX_USER --database_tx_pass=$PASSPORT_DATABASE_TX_PASS --passport_web_host_url=$PASSPORT_WEB_HOST_URL'
 
       - name: restart api-server
         if: ${{ !env.ACT }} # if running in local test environment
