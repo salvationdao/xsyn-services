@@ -353,11 +353,6 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Clien
 		assetHashes = append(assetHashes, s.Hash)
 	}
 
-
-	fmt.Println()
-	fmt.Println()
-	fmt.Println(assetHashes)
-	fmt.Println()
 	resp := &AssetListResponse{
 		total,
 		assetHashes,

@@ -461,110 +461,108 @@ func (cc *ChainClients) runGoBNBPriceListener(ctx context.Context) {
 
 func (cc *ChainClients) handleNFTTransfer(ctx context.Context) func(xfer *bridge.NFTTransferEvent) {
 	fn := func(ev *bridge.NFTTransferEvent) {
-		func() {
-			if ev.From.Hex() == cc.Params.EthNftStakingAddr.Hex() || ev.To.Hex() == cc.Params.EthNftStakingAddr.Hex() {
+		if ev.From.Hex() == cc.Params.EthNftStakingAddr.Hex() || ev.To.Hex() == cc.Params.EthNftStakingAddr.Hex() {
+			return
+		}
+
+		asset, err := db.AssetGetFromContractAndID(ctx, cc.API.Conn, ev.Contract.Hex(), ev.TokenID.Uint64())
+		if err != nil {
+			cc.Log.Err(err).Msgf("issue getting asset: %s", ev.TokenID.String())
+			return
+		}
+		if asset == nil {
+			cc.Log.Err(err).Msgf("failed to find asset, asset was nil: %s", ev.TokenID.String())
+			return
+		}
+
+		// check if asset has handled this tx already
+		for _, tx := range asset.TxHistory {
+			if tx == ev.TxID.Hex() {
 				return
 			}
+		}
 
-			asset, err := db.AssetGetFromContractAndID(ctx, cc.API.Conn, ev.Contract.Hex(), ev.TokenID.Uint64())
+		// if asset owner is passport.onchainuser then it is an external transfer, so just store the tx hash
+		if asset.UserID != nil && *asset.UserID == passport.OnChainUserID {
+			err := db.AssetTransferOnChain(ctx, cc.API.Conn, ev.TokenID.Uint64(), ev.TxID.Hex())
 			if err != nil {
-				cc.Log.Err(err).Msgf("issue getting asset: %s", ev.TokenID.String())
+				cc.Log.Err(err).Msgf("failed to add tx hash to array asset: %s, tx: %s", ev.TokenID.String(), ev.TxID.Hex())
 				return
 			}
-			if asset == nil {
-				cc.Log.Err(err).Msgf("failed to find asset, asset was nil: %s", ev.TokenID.String())
-				return
-			}
+			return
+		}
 
-			// check if asset has handled this tx already
-			for _, tx := range asset.TxHistory {
-				if tx == ev.TxID.Hex() {
-					return
-				}
-			}
+		cc.Log.Info().
+			Str("Chain", "ETH").
+			Str("From", ev.From.Hex()).
+			Str("To", ev.To.Hex()).
+			Str("Token ID", ev.TokenID.String()).
+			Msg("nft mint")
 
-			// if asset owner is passport.onchainuser then it is an external transfer, so just store the tx hash
-			if asset.UserID != nil && *asset.UserID == passport.OnChainUserID {
-				err := db.AssetTransferOnChain(ctx, cc.API.Conn, ev.TokenID.Uint64(), ev.TxID.Hex())
-				if err != nil {
-					cc.Log.Err(err).Msgf("failed to add tx hash to array asset: %s, tx: %s", ev.TokenID.String(), ev.TxID.Hex())
-					return
-				}
-				return
-			}
-
-			cc.Log.Info().
-				Str("Chain", "ETH").
-				Str("From", ev.From.Hex()).
-				Str("To", ev.To.Hex()).
-				Str("Token ID", ev.TokenID.String()).
-				Msg("nft mint")
-
-			// get user
-			user, err := db.UserByPublicAddress(ctx, cc.API.Conn, ev.To.Hex())
+		// get user
+		user, err := db.UserByPublicAddress(ctx, cc.API.Conn, ev.To.Hex())
+		if err != nil {
+			cc.Log.Err(err).Msgf("issue finding user from public address: %s, locking and freezing asset token id %s", ev.To.Hex(), ev.TokenID.String())
+			// if issue transferring asset, LOCK IT!
+			err := db.XsynAssetLock(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
 			if err != nil {
-				cc.Log.Err(err).Msgf("issue finding user from public address: %s, locking and freezing asset token id %s", ev.To.Hex(), ev.TokenID.String())
-				// if issue transferring asset, LOCK IT!
-				err := db.XsynAssetLock(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
-				if err != nil {
-					cc.Log.Err(err).Msgf("FAILED TO LOCK ASSET token id: %s", ev.TokenID.String())
-					return
-				}
-
-				err = db.XsynAssetFreeze(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
-				if err != nil {
-					cc.Log.Err(err).Msgf("FAILED TO FREEZE ASSET token id: %s", ev.TokenID.String())
-					return
-				}
+				cc.Log.Err(err).Msgf("FAILED TO LOCK ASSET token id: %s", ev.TokenID.String())
 				return
 			}
 
-			// remove all the stores sigs for their other assets
-			err = db.XsynAssetMintUnLock(ctx, cc.API.Conn, user.ID)
+			err = db.XsynAssetFreeze(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
 			if err != nil {
-				cc.Log.Err(err).Msgf("failed to clear users asset mint signatures, user: %s", user.ID)
-			}
-
-			// check user owns asset
-			if asset.UserID == nil || *asset.UserID != user.ID {
-				cc.Log.Err(err).Msgf("this wallet address doesn't own this asset, locking and freezing asset token id %s", ev.TokenID.String())
-				// if issue transferring asset, LOCK IT!
-				err := db.XsynAssetLock(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
-				if err != nil {
-					cc.Log.Err(err).Msgf("FAILED TO LOCK ASSET token id: %s", ev.TokenID.String())
-				}
-				err = db.XsynAssetFreeze(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
-				if err != nil {
-					cc.Log.Err(err).Msgf("FAILED TO FREEZE ASSET token id: %s", ev.TokenID.String())
-				}
+				cc.Log.Err(err).Msgf("FAILED TO FREEZE ASSET token id: %s", ev.TokenID.String())
 				return
 			}
+			return
+		}
 
-			err = db.AssetTransfer(ctx, cc.API.Conn, ev.TokenID.Uint64(), user.ID, passport.OnChainUserID, ev.TxID.Hex())
+		// remove all the stores sigs for their other assets
+		err = db.XsynAssetMintUnLock(ctx, cc.API.Conn, user.ID)
+		if err != nil {
+			cc.Log.Err(err).Msgf("failed to clear users asset mint signatures, user: %s", user.ID)
+		}
+
+		// check user owns asset
+		if asset.UserID == nil || *asset.UserID != user.ID {
+			cc.Log.Err(err).Msgf("this wallet address doesn't own this asset, locking and freezing asset token id %s", ev.TokenID.String())
+			// if issue transferring asset, LOCK IT!
+			err := db.XsynAssetLock(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
 			if err != nil {
-				cc.Log.Err(err).Msgf("issue transferring asset token id: %s, locking and freezing it", ev.TokenID.String())
-				// if issue transferring asset, LOCK IT!
-				err := db.XsynAssetLock(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
-				if err != nil {
-					cc.Log.Err(err).Msgf("FAILED TO LOCK ASSET token id: %s", ev.TokenID.String())
-				}
-				err = db.XsynAssetFreeze(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
-				if err != nil {
-					cc.Log.Err(err).Msgf("FAILED TO FREEZE ASSET token id: %s", ev.TokenID.String())
-				}
-				return
+				cc.Log.Err(err).Msgf("FAILED TO LOCK ASSET token id: %s", ev.TokenID.String())
 			}
-		}()
+			err = db.XsynAssetFreeze(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
+			if err != nil {
+				cc.Log.Err(err).Msgf("FAILED TO FREEZE ASSET token id: %s", ev.TokenID.String())
+			}
+			return
+		}
+
+		err = db.AssetTransfer(ctx, cc.API.Conn, ev.TokenID.Uint64(), user.ID, passport.OnChainUserID, ev.TxID.Hex())
+		if err != nil {
+			cc.Log.Err(err).Msgf("issue transferring asset token id: %s, locking and freezing it", ev.TokenID.String())
+			// if issue transferring asset, LOCK IT!
+			err := db.XsynAssetLock(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
+			if err != nil {
+				cc.Log.Err(err).Msgf("FAILED TO LOCK ASSET token id: %s", ev.TokenID.String())
+			}
+			err = db.XsynAssetFreeze(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
+			if err != nil {
+				cc.Log.Err(err).Msgf("FAILED TO FREEZE ASSET token id: %s", ev.TokenID.String())
+			}
+			return
+		}
 
 		// mark as minted
-		err := db.XsynAssetMinted(ctx, cc.API.Conn, ev.TokenID.Uint64())
+		err = db.XsynAssetMinted(ctx, cc.API.Conn, asset.Hash)
 		if err != nil {
 			cc.Log.Err(err).Msgf("failed to find asset to mark minted: %s", ev.TokenID.String())
 			return
 		}
 
 		// get updated asset
-		asset, err := db.AssetGetFromContractAndID(ctx, cc.API.Conn, ev.Contract.Hex(), ev.TokenID.Uint64())
+		asset, err = db.AssetGetFromContractAndID(ctx, cc.API.Conn, ev.Contract.Hex(), ev.TokenID.Uint64())
 		if err != nil {
 			cc.Log.Err(err).Msgf("failed to find asset to reply: %s", ev.TokenID.String())
 			return

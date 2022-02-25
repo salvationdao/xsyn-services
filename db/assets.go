@@ -77,7 +77,17 @@ u.username
 const AssetGetQueryFrom = `
 FROM xsyn_metadata 
 LEFT OUTER JOIN xsyn_assets ON xsyn_metadata.external_token_id = xsyn_assets.external_token_id
-INNER JOIN collections c ON xsyn_metadata.collection_id = c.id
+INNER JOIN (
+	SELECT  id,
+			name,
+			logo_blob_id as logoBlobID,
+			keywords,
+			slug,
+			deleted_at as deletedAt,  
+			mint_contract as "mintContract",
+			stake_contract as "stakeContract"
+	FROM collections _c
+) c ON xsyn_metadata.collection_id = c.id
 INNER JOIN users u ON xsyn_assets.user_id = u.id
 `
 
@@ -103,7 +113,6 @@ func AssetList(
 	if filter != nil {
 		filterConditions := []string{}
 		for _, f := range filter.Items {
-			fmt.Println(f)
 			column := AssetColumn(f.ColumnField)
 			err := column.IsValid()
 			if err != nil {
@@ -243,11 +252,7 @@ func AssetGet(ctx context.Context, conn Conn, hash string) (*passport.XsynMetada
 	count := 0
 
 	q := fmt.Sprintf(`SELECT count(*) %s WHERE xsyn_metadata.hash = $1`, AssetGetQueryFrom)
-	fmt.Println()
-	fmt.Println()
-	fmt.Println(q)
-	fmt.Println(hash)
-	fmt.Println()
+
 	err := pgxscan.Get(ctx, conn, &count, q, hash)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting asset from hash.")
@@ -263,6 +268,7 @@ func AssetGet(ctx context.Context, conn Conn, hash string) (*passport.XsynMetada
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting asset from hash.")
 	}
+
 	return asset, nil
 }
 

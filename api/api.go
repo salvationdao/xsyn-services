@@ -215,7 +215,7 @@ func NewAPI(
 			r.Get("/verify", api.WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", api.WithError(api.Auth.GetNonce))
 			r.Get("/withdraw/{address}/{nonce}/{amount}", api.WithError(api.WithdrawSups))
-			r.Get("/mint-nft/{address}/{nonce}/{tokenID}", api.WithError(api.MintAsset))
+			r.Get("/mint-nft/{address}/{nonce}/{collectionSlug}/{externalTokenID}", api.WithError(api.MintAsset))
 			r.Get("/asset/{hash}", api.WithError(api.AssetGet))
 			r.Get("/auth/twitter", api.WithError(api.Auth.TwitterAuth))
 
