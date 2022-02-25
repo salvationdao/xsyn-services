@@ -172,13 +172,8 @@ type FactionChatRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		FactionID    passport.FactionID `json:"factionID"`
-<<<<<<< HEAD
 		MessageColor string             `json:"messageColor"`
 		Message      string             `json:"message"`
-=======
-		Message      string             `json:"message"`
-		MessageColor string             `json:"messageColor"`
->>>>>>> staging
 	} `json:"payload"`
 }
 
