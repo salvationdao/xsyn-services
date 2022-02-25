@@ -480,6 +480,7 @@ BEGIN
 END;
 $updateXsyn_metadataKeywords$
     LANGUAGE plpgsql;
+
 CREATE TRIGGER updateXsyn_metadataKeywords
     AFTER INSERT OR UPDATE
     ON xsyn_metadata
