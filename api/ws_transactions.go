@@ -52,8 +52,13 @@ type TransactionListRequest struct {
 
 // TransactionListResponse is the response from get Transaction list
 type TransactionListResponse struct {
-	Total          int      `json:"total"`
-	TransactionIDs []string `json:"transactionIDs"`
+	Total        int                    `json:"total"`
+	Transactions []CondensedTransaction `json:"transactions"`
+}
+
+type CondensedTransaction struct {
+	ID      string  `json:"id"`
+	GroupID *string `json:"groupID"`
 }
 
 const HubKeyTransactionList hub.HubCommandKey = "TRANSACTION:LIST"
@@ -92,14 +97,17 @@ func (tc *TransactionController) TransactionListHandler(ctx context.Context, hub
 		return terror.Error(err)
 	}
 
-	transactionIDs := make([]string, 0)
+	resultTransactions := make([]CondensedTransaction, 0)
 	for _, s := range transactions {
-		transactionIDs = append(transactionIDs, s.ID)
+		resultTransactions = append(resultTransactions, CondensedTransaction{
+			s.ID,
+			s.GroupID,
+		})
 	}
 
 	resp := &TransactionListResponse{
 		total,
-		transactionIDs,
+		resultTransactions,
 	}
 
 	reply(resp)
