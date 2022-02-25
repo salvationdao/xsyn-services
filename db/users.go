@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
@@ -1192,8 +1193,11 @@ type Address struct {
 // IsUserWhitelisted check if user is whitelisted
 func IsUserWhitelisted(ctx context.Context, conn Conn, walletAddress string) (bool, error) {
 	user := &Address{}
+
+	addr := common.HexToAddress(walletAddress).Hex()
+
 	q := "SELECT * FROM whitelisted_addresses WHERE wallet_address = $1"
-	err := pgxscan.Get(ctx, conn, user, q, walletAddress)
+	err := pgxscan.Get(ctx, conn, user, q, addr)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -1207,8 +1211,9 @@ func IsUserWhitelisted(ctx context.Context, conn Conn, walletAddress string) (bo
 // IsUserWhitelisted check if user is whitelisted
 func IsUserDeathlisted(ctx context.Context, conn Conn, walletAddress string) (bool, error) {
 	user := &Address{}
+	addr := common.HexToAddress(walletAddress).Hex()
 	q := "SELECT * FROM death_addresses WHERE wallet_address = $1"
-	err := pgxscan.Get(ctx, conn, user, q, walletAddress)
+	err := pgxscan.Get(ctx, conn, user, q, addr)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
