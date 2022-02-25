@@ -20,6 +20,9 @@ const (
 	OperatorValueTypeEndsWith   = "endsWith"
 	OperatorValueTypeEquals     = "equals"
 
+	OperatorValueTypeIsNull    = "isnull"
+	OperatorValueTypeIsNotNull = "isnotnull"
+
 	// Dates
 	OperatorValueTypeIs           = "is"
 	OperatorValueTypeIsNot        = "not"
@@ -84,6 +87,10 @@ func GenerateListFilterSQL(column string, value string, operator OperatorValueTy
 	}
 
 	switch operator {
+	case OperatorValueTypeIsNull:
+		condition = fmt.Sprintf("%s IS NULL", column)
+	case OperatorValueTypeIsNotNull:
+		condition = fmt.Sprintf("%s IS NOT NULL", column)
 	case OperatorValueTypeEquals, OperatorValueTypeIs, OperatorValueTypeNumberEquals:
 		condition = fmt.Sprintf("%s = %s", column, indexStr)
 	case OperatorValueTypeIsNot, OperatorValueTypeNumberNotEquals:
