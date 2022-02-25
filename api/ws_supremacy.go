@@ -226,7 +226,7 @@ func (sc *SupremacyControllerWS) SupremacyFeed() {
 	// process user cache map
 	fromBalance, toBalance, _, err := sc.API.userCacheMap.Process(tx)
 	if err != nil {
-		sc.Log.Err(errors.New("setting string not ok on fund big int")).Msg("too many strings")
+		sc.Log.Err(err).Msg(err.Error())
 		return
 	}
 
