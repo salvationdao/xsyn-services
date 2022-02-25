@@ -15,7 +15,7 @@ type AssetColumn string
 
 const (
 	AssetColumnID           AssetColumn = "id"
-	AssetColumnTokenID      AssetColumn = "token_id"
+	AssetColumnTokenID      AssetColumn = "external_token_id"
 	AssetColumnUserID       AssetColumn = "user_id"
 	AssetColumnUsername     AssetColumn = "username"
 	AssetColumnCollectionID AssetColumn = "collection_id"
@@ -53,7 +53,7 @@ func (ic AssetColumn) IsValid() error {
 const AssetGetQuery string = `
 SELECT 
 row_to_json(c) as collection,
-xsyn_metadata.token_id,
+xsyn_metadata.external_token_id,
 xsyn_metadata.minted,
 xsyn_metadata.name,
 xsyn_metadata.description,
@@ -65,18 +65,30 @@ xsyn_metadata.attributes,
 xsyn_metadata.deleted_at,
 xsyn_metadata.updated_at,
 xsyn_metadata.created_at,
+xsyn_metadata.hash,
 xsyn_assets.user_id,
 xsyn_assets.frozen_at,
 xsyn_assets.locked_by_id,
 xsyn_assets.tx_history,
+xsyn_assets.signature_expiry,
 COALESCE(xsyn_assets.minting_signature, '') as minting_signature,
 u.username
 ` + AssetGetQueryFrom
 
 const AssetGetQueryFrom = `
 FROM xsyn_metadata 
-LEFT OUTER JOIN xsyn_assets ON xsyn_metadata.token_id = xsyn_assets.token_id
-INNER JOIN collections c ON xsyn_metadata.collection_id = c.id
+LEFT OUTER JOIN xsyn_assets ON xsyn_metadata.external_token_id = xsyn_assets.external_token_id
+INNER JOIN (
+	SELECT  id,
+			name,
+			logo_blob_id as logoBlobID,
+			keywords,
+			slug,
+			deleted_at as deletedAt,  
+			mint_contract as "mintContract",
+			stake_contract as "stakeContract"
+	FROM collections _c
+) c ON xsyn_metadata.collection_id = c.id
 INNER JOIN users u ON xsyn_assets.user_id = u.id
 `
 
@@ -86,7 +98,7 @@ func AssetList(
 	conn Conn,
 	search string,
 	archived bool,
-	includedTokenIDs []uint64,
+	includedAssetHashes []string,
 	filter *ListFilterRequest,
 	attributeFilter *AttributeFilterRequest,
 	offset int,
@@ -109,6 +121,9 @@ func AssetList(
 			}
 
 			argIndex += 1
+			if f.ColumnField == string(AssetColumnCollectionID) {
+				f.ColumnField = fmt.Sprintf("xsyn_metadata.%s", AssetColumnCollectionID)
+			}
 			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, argIndex)
 			if condition != "" {
 				filterConditions = append(filterConditions, condition)
@@ -143,18 +158,18 @@ func AssetList(
 	}
 
 	// select specific assets via tokenIDs
-	if len(includedTokenIDs) > 0 {
+	if len(includedAssetHashes) > 0 {
 		cond := "("
-		for i, nftTokenID := range includedTokenIDs {
-			cond += fmt.Sprintf("%d", nftTokenID)
-			if i < len(includedTokenIDs)-1 {
+		for i, assetHash := range includedAssetHashes {
+			cond += "'" + assetHash + "'"
+			if i < len(includedAssetHashes)-1 {
 				cond += ","
 				continue
 			}
 
 			cond += ")"
 		}
-		filterConditionsString += fmt.Sprintf(" AND xsyn_metadata.token_id  IN %v", cond)
+		filterConditionsString += fmt.Sprintf(" AND xsyn_metadata.hash  IN %v", cond)
 	}
 
 	archiveCondition := "IS NULL"
@@ -173,7 +188,7 @@ func AssetList(
 
 	// Get Total Found
 	countQ := fmt.Sprintf(`--sql
-		SELECT COUNT(DISTINCT xsyn_metadata.token_id)
+		SELECT COUNT(DISTINCT xsyn_metadata.external_token_id)
 		%s
 		WHERE xsyn_metadata.deleted_at %s
 			%s
@@ -233,25 +248,69 @@ func AssetList(
 }
 
 // AssetGet returns a asset by given ID
-func AssetGet(ctx context.Context, conn Conn, tokenID uint64) (*passport.XsynMetadata, error) {
+func AssetGet(ctx context.Context, conn Conn, hash string) (*passport.XsynMetadata, error) {
 	asset := &passport.XsynMetadata{}
 	count := 0
 
-	q := fmt.Sprintf(`SELECT count(*) %s WHERE xsyn_metadata.token_id = $1`, AssetGetQueryFrom)
-	err := pgxscan.Get(ctx, conn, &count, q, tokenID)
+	q := fmt.Sprintf(`SELECT count(*) %s WHERE xsyn_metadata.hash = $1`, AssetGetQueryFrom)
+
+	err := pgxscan.Get(ctx, conn, &count, q, hash)
 	if err != nil {
-		return nil, terror.Error(err, "Issue getting asset from token ID.")
+		return nil, terror.Error(err, "Issue getting asset from hash.")
 	}
 
 	if count == 0 {
 		return nil, nil
 	}
 
-	q = AssetGetQuery + `WHERE xsyn_metadata.token_id = $1`
+	q = AssetGetQuery + `WHERE xsyn_metadata.hash = $1`
 
-	err = pgxscan.Get(ctx, conn, asset, q, tokenID)
+	err = pgxscan.Get(ctx, conn, asset, q, hash)
 	if err != nil {
-		return nil, terror.Error(err, "Issue getting asset from token ID.")
+		return nil, terror.Error(err, "Issue getting asset from hash.")
+	}
+
+	return asset, nil
+}
+
+// AssetGet returns a asset by given ID
+func AssetDurabilityGet(ctx context.Context, conn Conn, userID passport.UserID, hash string) (int64, error) {
+	durability := int64(0)
+
+	q := `
+		SELECT durability FROM xsyn_metadata xm 
+		INNER JOIN xsyn_assets xa ON xa.metadata_hash = xm.hash AND xa.user_id = $1
+		WHERE xm.hash = $2
+	`
+
+	err := pgxscan.Get(ctx, conn, &durability, q, userID, hash)
+	if err != nil {
+		return 0, terror.Error(err, "Issue getting asset durability from hash.")
+	}
+
+	return durability, nil
+}
+
+// AssetGetFromMintContractAndID returns asset by given ID and contract
+func AssetGetFromMintContractAndID(ctx context.Context, conn Conn, mintContractAddress string, externalTokenID uint64) (*passport.XsynMetadata, error) {
+	asset := &passport.XsynMetadata{}
+	count := 0
+
+	q := fmt.Sprintf(`SELECT count(*) %s WHERE c."mintContract" = $1 and xsyn_metadata.external_token_id = $2`, AssetGetQueryFrom)
+
+	err := pgxscan.Get(ctx, conn, &count, q, mintContractAddress, externalTokenID)
+	if err != nil {
+		return nil, terror.Error(err, "Issue getting asset from contract address and token id.")
+	}
+
+	if count == 0 {
+		return nil, nil
+	}
+
+	q = fmt.Sprintf(`%s WHERE c."mintContract" = $1 and xsyn_metadata.external_token_id = $2`, AssetGetQuery)
+	err = pgxscan.Get(ctx, conn, asset, q, mintContractAddress, externalTokenID)
+	if err != nil {
+		return nil, terror.Error(err, "Issue getting asset from contract address and token id.")
 	}
 	return asset, nil
 }
@@ -289,12 +348,12 @@ func AssetUpdate(ctx context.Context, conn Conn, tokenID uint64, newName string)
 			-- gets indexes of attribute's entries
 	        JSONB_ARRAY_ELEMENTS(attributes) WITH ORDINALITY arr(elem, pos)
 	    WHERE
-	        token_id = $2 and
+	        external_token_id = $2 and
 			-- gets the name entry
 	        elem->>'trait_type' = 'Name'
 	    ) sub
 	WHERE
-	    token_id = $2;    
+	    external_token_id = $2;    
 	`
 	_, err = conn.Exec(ctx,
 		q,
@@ -317,14 +376,14 @@ func AssetNameAvailable(ctx context.Context, conn Conn, nameToCheck string, toke
 
 	q := `
 	SELECT 
-		count(token_id) 
+		count(external_token_id) 
 	FROM 
 		xsyn_metadata, 
 		JSONB_ARRAY_ELEMENTS(attributes) WITH ORDINALITY arr(elem, pos)
 	WHERE 
 	    elem ->>'trait_type' = 'Name'
 		AND elem->>'value' = $2
-		AND xsyn_metadata.token_id != $1
+		AND xsyn_metadata.external_token_id != $1
 		`
 	err := pgxscan.Get(ctx, conn, &count, q, tokenID, nameToCheck)
 	if err != nil {
@@ -348,7 +407,7 @@ func AssetTransfer(ctx context.Context, conn Conn, tokenID uint64, oldUserID, ne
 	q := fmt.Sprintf(`
 	UPDATE xsyn_assets
 	SET user_id = $1 %s
-	WHERE user_id = $2 AND token_id = $3`, hashUpdate)
+	WHERE user_id = $2 AND external_token_id = $3`, hashUpdate)
 
 	_, err := conn.Exec(ctx, q, args...)
 	if err != nil {
@@ -363,11 +422,31 @@ func AssetTransferOnChain(ctx context.Context, conn Conn, tokenID uint64, txHash
 	q := fmt.Sprintf(`
 	UPDATE xsyn_assets
 	SET  tx_history = tx_history || '["%s"]'::jsonb
-	WHERE token_id = $1 AND NOT (tx_history @> '["%s"]'::jsonb) `, txHash, txHash)
+	WHERE external_token_id = $1 AND NOT (tx_history @> '["%s"]'::jsonb) `, txHash, txHash)
 	_, err := conn.Exec(ctx, q, tokenID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
 	return nil
+}
+
+// AssetSaleAvailable return the total of available war machine in each faction
+func AssetSaleAvailable(ctx context.Context, conn Conn) ([]*passport.FactionSaleAvailable, error) {
+	result := []*passport.FactionSaleAvailable{}
+	q := `
+	select f.id , f."label",f.logo_blob_id, f.theme, f2.amount_available from factions f  
+		left join lateral(
+			select (sum(xs.amount_available) - sum(xs.amount_sold)) as amount_available from xsyn_store xs 
+			where xs.faction_id = f.id
+			group by xs.faction_id 
+		)f2 on true 
+	`
+
+	err := pgxscan.Select(ctx, conn, &result, q)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return result, nil
 }

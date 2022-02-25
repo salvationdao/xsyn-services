@@ -211,19 +211,18 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 		return terror.Error(err)
 	}
 
+	// get faction primary colour from faction
 	var (
 		factionColour     *string
 		factionLogoBlobID *passport.BlobID
 	)
-	// get faction primary colour from faction
 	if user.FactionID != nil {
-		for _, faction := range passport.Factions {
-			if faction.ID == *user.FactionID {
-				factionColour = &faction.Theme.Primary
-				factionLogoBlobID = &faction.LogoBlobID
-				break
-			}
+		faction, err := db.FactionGet(ctx, fc.Conn, *user.FactionID)
+		if err != nil {
+			return terror.Error(err)
 		}
+		factionColour = &faction.Theme.Primary
+		factionLogoBlobID = &faction.LogoBlobID
 	}
 
 	// check if the faction id is provided

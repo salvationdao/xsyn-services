@@ -33,7 +33,6 @@ func (s *Seeder) Users(ctx context.Context, organisations []*passport.Organisati
 
 	passwordHash := crypto.HashPassword("NinjaDojo_!")
 
-	fmt.Println(" - set member user 1")
 	user := randomUsers[0]
 	user.Email = passport.NewString("member@example.com")
 	user.RoleID = passport.UserRoleMemberID
@@ -408,7 +407,6 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 		{
 			CollectionID:       collection.ID,
 			Name:               "",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -510,7 +508,6 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 		{
 			CollectionID:       collection.ID,
 			Name:               "",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -612,7 +609,6 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 		{
 			CollectionID:       collection.ID,
 			Name:               "",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -719,7 +715,7 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 			return terror.Error(err)
 		}
 
-		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.TokenID, passport.SupremacyZaibatsuUserID)
+		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.Hash, passport.SupremacyZaibatsuUserID, nft.CollectionID, nft.ExternalTokenID)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -733,7 +729,6 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 		{
 			CollectionID:       collection.ID,
 			Name:               "",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -825,7 +820,6 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 		{
 			CollectionID:       collection.ID,
 			Name:               "Olympus Mons LY07 B",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -917,7 +911,6 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 		{
 			CollectionID:       collection.ID,
 			Name:               "Olympus Mons LY07 B",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -1014,7 +1007,7 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 			return terror.Error(err)
 		}
 
-		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.TokenID, passport.SupremacyRedMountainUserID)
+		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.Hash, passport.SupremacyRedMountainUserID, nft.CollectionID, nft.ExternalTokenID)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -1028,7 +1021,6 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 		{
 			CollectionID:       collection.ID,
 			Name:               "",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -1107,7 +1099,6 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 		{
 			CollectionID:       collection.ID,
 			Name:               "Law Enforcer X-1000 B",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -1186,7 +1177,6 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 		{
 			CollectionID:       collection.ID,
 			Name:               "Law Enforcer X-1000 B",
-			Description:        "",
 			ExternalUrl:        "",
 			Image:              "",
 			AdditionalMetadata: nil,
@@ -1270,7 +1260,7 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 			return terror.Error(err)
 		}
 
-		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.TokenID, passport.SupremacyBostonCyberneticsUserID)
+		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.Hash, passport.SupremacyBostonCyberneticsUserID, nft.CollectionID, nft.ExternalTokenID)
 		if err != nil {
 			return terror.Error(err)
 		}

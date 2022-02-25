@@ -6,13 +6,15 @@ import (
 )
 
 type Collection struct {
-	ID        CollectionID `json:"id"`
-	Name      string       `json:"name"`
-	Slug      string       `json:"slug"`
-	ImageURL  string       `json:"imageURL"`
-	DeletedAt *time.Time   `json:"deleted_at" db:"deleted_at"`
-	UpdatedAt time.Time    `json:"updated_at" db:"updated_at"`
-	CreatedAt time.Time    `json:"created_at" db:"created_at"`
+	ID            CollectionID `json:"id"`
+	Name          string       `json:"name"`
+	Slug          string       `json:"slug"`
+	ImageURL      string       `json:"imageURL"`
+	DeletedAt     *time.Time   `json:"deleted_at" db:"deleted_at"`
+	UpdatedAt     time.Time    `json:"updated_at" db:"updated_at"`
+	CreatedAt     time.Time    `json:"created_at" db:"created_at"`
+	MintContract  string       `json:"mintContract" db:"mint_contract"`
+	StakeContract string       `json:"stakeContract" db:"stake_contract"`
 }
 
 type Attribute struct {
@@ -59,15 +61,16 @@ type StoreItem struct {
 
 // XsynMetadata holds xsyn nft metadata, the nfts main game data it stored here to show on opensea
 type XsynMetadata struct {
+	Hash               string                `json:"hash" db:"hash"`
 	UserID             *UserID               `json:"userID" db:"user_id"`
 	Minted             bool                  `json:"minted" db:"minted"`
 	Username           *string               `json:"username" db:"username"`
-	TokenID            uint64                `json:"tokenID" db:"token_id"`
+	ExternalTokenID    uint64                `json:"externalTokenID" db:"external_token_id"`
 	Name               string                `json:"name" db:"name"`
 	CollectionID       CollectionID          `json:"collectionID" db:"collection_id"`
 	Collection         Collection            `json:"collection" db:"collection"`
 	GameObject         interface{}           `json:"game_object" db:"game_object"`
-	Description        string                `json:"description" db:"description"`
+	Description        *string               `json:"description,omitempty" db:"description,omitempty"`
 	ExternalUrl        string                `json:"external_url" db:"external_url"`
 	Image              string                `json:"image" db:"image"`
 	AnimationURL       string                `json:"animation_url" db:"animation_url"`
@@ -78,6 +81,7 @@ type XsynMetadata struct {
 	FrozenAt           *time.Time            `json:"frozenAt" db:"frozen_at"`
 	LockedByID         *UserID               `json:"lockedByID" db:"locked_by_id"`
 	MintingSignature   string                `json:"mintingSignature" db:"minting_signature"`
+	SignatureExpiry    string                `json:"signatureExpiry" db:"signature_expiry"`
 	UpdatedAt          time.Time             `json:"updatedAt" db:"updated_at"`
 	CreatedAt          time.Time             `json:"createdAt" db:"created_at"`
 	TxHistory          []string              `json:"txHistory" db:"tx_history"`
@@ -108,10 +112,10 @@ type AdditionalMetadata struct {
 }
 
 type WarMachineMetadata struct {
-	TokenID         uint64             `json:"tokenID"`
+	Hash            string             `json:"hash"`
 	OwnedByID       UserID             `json:"ownedByID"`
 	Name            string             `json:"name"`
-	Description     string             `json:"description"`
+	Description     *string            `json:"description,omitempty"`
 	ExternalUrl     string             `json:"externalUrl"`
 	Image           string             `json:"image"`
 	Model           string             `json:"model"`
@@ -160,7 +164,7 @@ const (
 
 // ParseWarMachineMetadata convert json attribute to proper struct
 func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMachineMetadata) {
-	warMachineMetadata.TokenID = metadata.TokenID
+	warMachineMetadata.Hash = metadata.Hash
 	warMachineMetadata.Name = metadata.Name
 	warMachineMetadata.Description = metadata.Description
 	warMachineMetadata.ExternalUrl = metadata.ExternalUrl
@@ -204,7 +208,7 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 				continue
 			}
 			warMachineMetadata.Abilities = append(warMachineMetadata.Abilities, &AbilityMetadata{
-				TokenID: uint64(att.TokenID),
+				TokenID: att.TokenID,
 			})
 		}
 
@@ -213,16 +217,17 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 }
 
 type AbilityMetadata struct {
-	TokenID           uint64 `json:"tokenID"`
-	Name              string `json:"name"`
-	Description       string `json:"description"`
-	ExternalUrl       string `json:"externalUrl"`
-	Image             string `json:"image"`
-	SupsCost          string `json:"supsCost"`
-	GameClientID      int    `json:"gameClientID"`
-	RequiredSlot      string `json:"requiredSlot"`
-	RequiredPowerGrid int    `json:"requiredPowerGrid"`
-	RequiredCPU       int    `json:"requiredCPU"`
+	Hash              string  `json:"hash"`
+	TokenID           uint64  `json:"tokenID"`
+	Name              string  `json:"name"`
+	Description       *string `json:"description"`
+	ExternalUrl       string  `json:"externalUrl"`
+	Image             string  `json:"image"`
+	SupsCost          string  `json:"supsCost"`
+	GameClientID      int     `json:"gameClientID"`
+	RequiredSlot      string  `json:"requiredSlot"`
+	RequiredPowerGrid int     `json:"requiredPowerGrid"`
+	RequiredCPU       int     `json:"requiredCPU"`
 }
 
 type AbilityAttField string
@@ -237,7 +242,7 @@ const (
 
 // ParseAbilityMetadata convert json attribute to proper struct
 func ParseAbilityMetadata(metadata *XsynMetadata, abilityMetadata *AbilityMetadata) {
-	abilityMetadata.TokenID = metadata.TokenID
+	abilityMetadata.TokenID = metadata.ExternalTokenID
 	abilityMetadata.Name = metadata.Name
 	abilityMetadata.Description = metadata.Description
 	abilityMetadata.ExternalUrl = metadata.ExternalUrl

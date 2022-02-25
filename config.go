@@ -19,20 +19,18 @@ type Config struct {
 }
 
 type BridgeParams struct {
-	OperatorAddr      common.Address
-	MoralisKey        string
-	UsdcAddr          common.Address
-	BusdAddr          common.Address
-	SupAddr           common.Address
-	DepositAddr       common.Address
-	PurchaseAddr      common.Address
-	WithdrawAddr      common.Address
-	SignerPrivateKey  string
-	EthNftAddr        common.Address
-	EthNftStakingAddr common.Address
-	BscNodeAddr       string
-	EthNodeAddr       string
-	BSCChainID        int64
-	ETHChainID        int64
-	BSCRouterAddr     common.Address
+	OperatorAddr     common.Address
+	MoralisKey       string
+	UsdcAddr         common.Address
+	BusdAddr         common.Address
+	SupAddr          common.Address
+	DepositAddr      common.Address
+	PurchaseAddr     common.Address
+	WithdrawAddr     common.Address
+	SignerPrivateKey string
+	BscNodeAddr      string
+	EthNodeAddr      string
+	BSCChainID       int64
+	ETHChainID       int64
+	BSCRouterAddr    common.Address
 }

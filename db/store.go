@@ -221,11 +221,15 @@ func StoreList(
 				return 0, nil, terror.Error(err)
 			}
 
-			argIndex += 1
+			if f.OperatorValue != OperatorValueTypeIsNull && f.OperatorValue != OperatorValueTypeIsNotNull {
+				argIndex += 1
+			}
 			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, argIndex)
 			if condition != "" {
 				filterConditions = append(filterConditions, condition)
-				args = append(args, value)
+				if f.OperatorValue != OperatorValueTypeIsNull && f.OperatorValue != OperatorValueTypeIsNotNull {
+					args = append(args, value)
+				}
 			}
 		}
 		if len(filterConditions) > 0 {

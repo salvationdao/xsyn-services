@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"passport"
+	"passport/helpers"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
@@ -11,8 +12,8 @@ import (
 
 // CollectionInsert inserts a new collection
 func CollectionInsert(ctx context.Context, conn Conn, collection *passport.Collection) error {
-	q := `INSERT INTO collections (name) VALUES($1)`
-	_, err := conn.Exec(ctx, q, collection.Name)
+	q := `INSERT INTO collections (name, mint_contract, stake_contract) VALUES($1, $2, $3)`
+	_, err := conn.Exec(ctx, q, collection.Name, collection.MintContract, collection.StakeContract)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -22,36 +23,52 @@ func CollectionInsert(ctx context.Context, conn Conn, collection *passport.Colle
 
 // XsynMetadataInsert inserts a new item metadata
 func XsynMetadataInsert(ctx context.Context, conn Conn, item *passport.XsynMetadata, externalUrl string) error {
-	q := `	INSERT INTO xsyn_metadata (token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata)
-			VALUES((SELECT nextval('token_id_seq')),$1, $2, $3, $4, $5, $6, $7, $8)
-			RETURNING token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata`
-
-	err := pgxscan.Get(ctx, conn, item, q, item.Name, item.CollectionID, item.GameObject, item.Description, item.Image, item.AnimationURL, item.Attributes, item.AdditionalMetadata)
-	if err != nil {
-		return terror.Error(err)
-	}
-	updateQ := `UPDATE xsyn_metadata 
-				SET external_url = $1 
-				WHERE token_id = $2
-				RETURNING external_url`
-	err = pgxscan.Get(ctx, conn, item, updateQ , fmt.Sprintf("%s/asset/%d", externalUrl, item.TokenID), item.TokenID)
+	// generate token id
+	q := `SELECT count(*) from xsyn_metadata WHERE collection_id = $1`
+	err := pgxscan.Get(ctx, conn, &item.ExternalTokenID, q, item.CollectionID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
+	// generate hash
+	// TODO: get this to handle uint64
+	item.Hash, err = helpers.GenerateMetadataHashID(item.CollectionID.String(), int(item.ExternalTokenID), false)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	q = `	INSERT INTO xsyn_metadata (hash, external_token_id, name, collection_id, game_object, description, image, animation_url, attributes, additional_metadata, external_url)
+			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			RETURNING hash, external_token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata, external_url`
+
+	err = pgxscan.Get(ctx, conn, item, q,
+		item.Hash,
+		item.ExternalTokenID,
+		item.Name,
+		item.CollectionID,
+		item.GameObject,
+		item.Description,
+		item.Image,
+		item.AnimationURL,
+		item.Attributes,
+		item.AdditionalMetadata,
+		fmt.Sprintf("%s/asset/%s", externalUrl, item.Hash))
+	if err != nil {
+		return terror.Error(err)
+	}
 	return nil
 }
 
 // XsynMetadataAssignUser assign a nft metadata to a user
-func XsynMetadataAssignUser(ctx context.Context, conn Conn, nftTokenID uint64, userID passport.UserID) error {
+func XsynMetadataAssignUser(ctx context.Context, conn Conn, metadataHash string, userID passport.UserID, collectionID passport.CollectionID, externalTokenID uint64) error {
 	q := `
 		INSERT INTO 
-			xsyn_assets (token_id, user_id)
+			xsyn_assets (metadata_hash, user_id, collection_id, external_token_id)
 		VALUES
-			($1, $2);
+			($1, $2, $3, $4);
 	`
 
-	_, err := conn.Exec(ctx, q, nftTokenID, userID)
+	_, err := conn.Exec(ctx, q, metadataHash, userID, collectionID, externalTokenID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -59,15 +76,15 @@ func XsynMetadataAssignUser(ctx context.Context, conn Conn, nftTokenID uint64, u
 }
 
 // XsynMetadataAvailableGet return a available nft for joining the battle queue
-func XsynMetadataAvailableGet(ctx context.Context, conn Conn, userID passport.UserID, nftTokenID uint64) (*passport.XsynMetadata, error) {
+func XsynMetadataAvailableGet(ctx context.Context, conn Conn, userID passport.UserID, hash string) (*passport.XsynMetadata, error) {
 	nft := &passport.XsynMetadata{}
 	q := `
 		SELECT
-			xnm.token_id, xnm.minted, row_to_json(c) as collection, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes, xa.minting_signature
+			xnm.hash, xnm.minted, row_to_json(c) as collection, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes, xa.minting_signature
 		FROM 
 			xsyn_metadata xnm
 		INNER JOIN
-			xsyn_assets xa ON xa.token_id = xnm.token_id AND xa.user_id = $1 AND xa.token_id = $2 AND xa.frozen_at ISNULL
+			xsyn_assets xa ON xa.metadata_hash = xnm.hash AND xa.user_id = $1 AND xa.metadata_hash = $2 AND xa.frozen_at ISNULL
 		INNER JOIN
 			collections c on c.id = xnm.collection_id
 		WHERE
@@ -75,7 +92,7 @@ func XsynMetadataAvailableGet(ctx context.Context, conn Conn, userID passport.Us
 	`
 	err := pgxscan.Get(ctx, conn, nft, q,
 		userID,
-		nftTokenID,
+		hash,
 	)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -84,19 +101,20 @@ func XsynMetadataAvailableGet(ctx context.Context, conn Conn, userID passport.Us
 }
 
 // XsynMetadataOwnerGet return metadata that owner by the given user id and token id
-func XsynMetadataOwnerGet(ctx context.Context, conn Conn, userID passport.UserID, nftTokenID uint64) (*passport.XsynMetadata, error) {
+func XsynMetadataOwnerGet(ctx context.Context, conn Conn, userID passport.UserID, hash string) (*passport.XsynMetadata, error) {
 	nft := &passport.XsynMetadata{}
 	q := `
 		SELECT
-			xnm.token_id, xnm.minted, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes, xa.frozen_at, xa.locked_by_id, xa.minting_signature
+			xnm.hash, xnm.minted, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes, xa.frozen_at, xa.locked_by_id, xa.minting_signature
 		FROM 
 			xsyn_metadata xnm
 		INNER JOIN
-			xsyn_assets xa ON xa.token_id = xnm.token_id AND xa.user_id = $1 AND xa.token_id = $2
+			xsyn_assets xa ON xa.metadata_hash = xnm.hash
+		WHERE xa.user_id = $1 AND xa.metadata_hash = $2
 	`
 	err := pgxscan.Get(ctx, conn, nft, q,
 		userID,
-		nftTokenID,
+		hash,
 	)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -105,18 +123,18 @@ func XsynMetadataOwnerGet(ctx context.Context, conn Conn, userID passport.UserID
 }
 
 // XsynMetadataGet return metadata from token id
-func XsynMetadataGet(ctx context.Context, conn Conn, nftTokenID uint64) (*passport.XsynMetadata, error) {
+func XsynMetadataGet(ctx context.Context, conn Conn, hash string) (*passport.XsynMetadata, error) {
 	nft := &passport.XsynMetadata{}
 	q := `
 		SELECT
-			xnm.token_id, xnm.minted, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+			xnm.hash, xnm.minted, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM 
 			xsyn_metadata xnm
 		WHERE
-			xnm.token_id = $1
+			xnm.hash = $1
 	`
 	err := pgxscan.Get(ctx, conn, nft, q,
-		nftTokenID,
+		hash,
 	)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -138,15 +156,15 @@ func XsynAssetDurabilityBulkUpdate(ctx context.Context, conn Conn, nfts []*passp
 	`
 
 	for i, nft := range nfts {
-		q += fmt.Sprintf("(%d, %d)", nft.TokenID, nft.Durability)
+		q += fmt.Sprintf("('%s', %d)", nft.Hash, nft.Durability)
 		if i < len(nfts)-1 {
 			q += ","
 			continue
 		}
-		q += ") AS c(token_id, durability)"
+		q += ") AS c(metadata_hash, durability)"
 	}
 
-	q += " WHERE c.token_id = xnm.token_id;"
+	q += " WHERE c.metadata_hash = xnm.hash;"
 
 	_, err := conn.Exec(ctx, q)
 	if err != nil {
@@ -157,7 +175,7 @@ func XsynAssetDurabilityBulkUpdate(ctx context.Context, conn Conn, nfts []*passp
 }
 
 // XsynAssetDurabilityBulkIncrement update xsyn NFT metadata durability
-func XsynAssetDurabilityBulkIncrement(ctx context.Context, conn Conn, tokenIDs []uint64) ([]*passport.XsynMetadata, error) {
+func XsynAssetDurabilityBulkIncrement(ctx context.Context, conn Conn, assetHashes []string) ([]*passport.XsynMetadata, error) {
 	nfts := []*passport.XsynMetadata{}
 	q := `
 		UPDATE
@@ -165,18 +183,18 @@ func XsynAssetDurabilityBulkIncrement(ctx context.Context, conn Conn, tokenIDs [
 		SET
 			durability = durability + 1
 		WHERE
-			durability < 100 AND token_id IN (
+			durability < 100 AND hash IN (
 	`
-	for i, tokenID := range tokenIDs {
-		q += fmt.Sprintf("%v", tokenID)
-		if i < len(tokenIDs)-1 {
+	for i, hash := range assetHashes {
+		q += "'" + hash + "'"
+		if i < len(assetHashes)-1 {
 			q += ","
 			continue
 		}
 		q += ")"
 	}
 
-	q += " RETURNING token_id, durability;"
+	q += " RETURNING hash, durability;"
 
 	err := pgxscan.Select(ctx, conn, &nfts, q)
 	if err != nil {
@@ -187,7 +205,7 @@ func XsynAssetDurabilityBulkIncrement(ctx context.Context, conn Conn, tokenIDs [
 }
 
 // XsynAssetFreeze freeze a xsyn nft
-func XsynAssetFreeze(ctx context.Context, conn Conn, nftTokenID uint64, userID passport.UserID) error {
+func XsynAssetFreeze(ctx context.Context, conn Conn, assetHash string, userID passport.UserID) error {
 	q := `
 		UPDATE 
 			xsyn_assets
@@ -195,9 +213,9 @@ func XsynAssetFreeze(ctx context.Context, conn Conn, nftTokenID uint64, userID p
 			frozen_at = NOW(),
 			frozen_by_id = $2
 		WHERE
-			token_id = $1 AND frozen_at ISNULL;
+			metadata_hash = $1 AND frozen_at ISNULL;
 	`
-	_, err := conn.Exec(ctx, q, nftTokenID, userID)
+	_, err := conn.Exec(ctx, q, assetHash, userID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -206,16 +224,16 @@ func XsynAssetFreeze(ctx context.Context, conn Conn, nftTokenID uint64, userID p
 }
 
 // XsynAssetUnfreezeableCheck check whether the asset is unfreezeable
-func XsynAssetUnfreezeableCheck(ctx context.Context, conn Conn, nftTokenID uint64, userID passport.UserID) error {
+func XsynAssetUnfreezeableCheck(ctx context.Context, conn Conn, metadataHash string, userID passport.UserID) error {
 	q := `
 		SELECT 
 			1 
 		FROM 
 			xsyn_assets
 		WHERE
-			token_id = $1 AND user_id = $2 AND frozen_at NOTNULL AND locked_by_id ISNULL;
+		metadata_hash = $1 AND user_id = $2 AND frozen_at NOTNULL AND locked_by_id ISNULL;
 	`
-	_, err := conn.Exec(ctx, q, nftTokenID, userID)
+	_, err := conn.Exec(ctx, q, metadataHash, userID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -224,18 +242,18 @@ func XsynAssetUnfreezeableCheck(ctx context.Context, conn Conn, nftTokenID uint6
 }
 
 // XsynAssetBulkLock lock a list of xsyn nfts
-func XsynAssetBulkLock(ctx context.Context, conn Conn, nftTokenIDs []uint64, userID passport.UserID) error {
+func XsynAssetBulkLock(ctx context.Context, conn Conn, assetHashes []string, userID passport.UserID) error {
 	q := `
 		UPDATE 
 			xsyn_assets
 		SET
 			locked_by_id = $1
 		WHERE
-			token_id IN (
+			metadata_hash IN (
 	`
-	for i, nftTokenID := range nftTokenIDs {
-		q += fmt.Sprintf("%d", nftTokenID)
-		if i < len(nftTokenIDs)-1 {
+	for i, assetHast := range assetHashes {
+		q += "'" + assetHast + "'"
+		if i < len(assetHashes)-1 {
 			q += ","
 			continue
 		}
@@ -264,11 +282,11 @@ func XsynAssetBulkRelease(ctx context.Context, conn Conn, nfts []*passport.WarMa
 			frozen_by_id = NULL,
 			locked_by_id = NULL
 		WHERE
-			frozen_by_id = $1 AND frozen_at NOTNULL AND token_id IN (
+			frozen_by_id = $1 AND frozen_at NOTNULL AND metadata_hash IN (
 	`
 
 	for i, nft := range nfts {
-		q += fmt.Sprintf("%d", nft.TokenID)
+		q += "'" + nft.Hash + "'"
 		if i < len(nfts)-1 {
 			q += ","
 			continue
@@ -288,9 +306,9 @@ func XsynAssetBulkRelease(ctx context.Context, conn Conn, nfts []*passport.WarMa
 func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID, amount int) ([]*passport.XsynMetadata, error) {
 	nft := []*passport.XsynMetadata{}
 	q := `
-		SELECT xnm.token_id, xnm.minted, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+		SELECT xnm.hash, xnm.minted, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM xsyn_metadata xnm
-				 INNER JOIN xsyn_assets xa ON xa.token_id = xnm.token_id
+		INNER JOIN xsyn_assets xa ON xa.metadata_hash = xnm.hash
 		WHERE xa.user_id = $1
 		AND xnm.attributes @> '[{"value": "War Machine", "trait_type": "Asset Type"}]'
 		LIMIT $2
@@ -307,19 +325,18 @@ func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID
 	return nft, nil
 }
 
-// AbilityAssetGet
 func AbilityAssetGet(ctx context.Context, conn Conn, abilityMetadata *passport.AbilityMetadata) error {
 	nft := &passport.XsynMetadata{}
 	q := `
 		SELECT 
-			xnm.token_id, xnm.minted, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
+			xnm.hash, xnm.minted, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM 
 			xsyn_metadata xnm
 		WHERE 
-			xnm.token_id = $1 AND 
+			xnm.hash = $1 AND 
 			xnm.attributes @> '[{"value": "Ability", "trait_type": "Asset Type"}]';
 	`
-	err := pgxscan.Get(ctx, conn, nft, q, abilityMetadata.TokenID)
+	err := pgxscan.Get(ctx, conn, nft, q, abilityMetadata.Hash)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -330,44 +347,14 @@ func AbilityAssetGet(ctx context.Context, conn Conn, abilityMetadata *passport.A
 	return nil
 }
 
-// WarMachineAbilitySet
-func WarMachineAbilitySet(ctx context.Context, conn Conn, warMachineTokenID uint64, abilityTokenID uint64, warMachineAbilitySlot passport.WarMachineAttField) error {
-	if warMachineAbilitySlot != passport.WarMachineAttFieldAbility01 && warMachineAbilitySlot != passport.WarMachineAttFieldAbility02 {
-		return terror.Error(fmt.Errorf("invalid attribute slot"))
-	}
-
-	q := fmt.Sprintf(`
-	UPDATE 	
-		xsyn_metadata xm
-	SET
-		attributes = (
-			select xm3.att || '{"trait_type": "%s", "value": "none", "token_id": %d}'
-			from (
-				SELECT xm2.token_id ,to_jsonb(array_agg(elem)) AS att
-				FROM   xsyn_metadata xm2, jsonb_array_elements(xm2."attributes") elem
-				WHERE  xm2.token_id = $1 and elem ->> 'trait_type' <> '%s'
-				group by token_id
-			) xm3
-		)
-	WHERE 
-		xm.token_id = $1;
-	`, warMachineAbilitySlot, abilityTokenID, warMachineAbilitySlot)
-	_, err := conn.Exec(ctx, q, warMachineTokenID)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
-}
-
 // WarMachineGetByUserID return all the war machine owned by the user
 func WarMachineGetByUserID(ctx context.Context, conn Conn, userID passport.UserID) ([]*passport.XsynMetadata, error) {
 	xms := []*passport.XsynMetadata{}
 
 	q := `
-		SELECT xm.token_id, xm.minted, xm.collection_id, xm.durability, xm.name, xm.description, xm.external_url, xm.image, xm.attributes, xa.minting_signature
+		SELECT xm.hash, xm.minted, xm.collection_id, xm.durability, xm.name, xm.description, xm.external_url, xm.image, xm.attributes, xa.minting_signature
 		FROM xsyn_metadata xm
-		INNER JOIN xsyn_assets xa ON xa.token_id = xm.token_id AND xa.user_id = $1
+		INNER JOIN xsyn_assets xa ON xa.metadata_hash = xm.hash AND xa.user_id = $1
 	`
 	err := pgxscan.Select(ctx, conn, &xms, q, userID)
 	if err != nil {
@@ -398,37 +385,16 @@ func WarMachineAbilityCostGet(ctx context.Context, conn Conn, warMachineTokenID,
 	return supsCost, nil
 }
 
-// WarMachineAbilityCostUpsert Upsert the sups cost of a war machine ability
-func WarMachineAbilityCostUpsert(ctx context.Context, conn Conn, warMachineTokenID, abilityTokenID uint64, supsCost string) error {
-	q := `
-		INSERT INTO 
-			war_machine_ability_sups_cost (war_machine_token_id, ability_token_id, sups_cost)
-		VALUES
-			($1, $2, $3)
-		ON CONFLICT
-			(war_machine_token_id, ability_token_id)
-		DO UPDATE SET
-			sups_cost = $3
-	`
-
-	_, err := conn.Exec(ctx, q, warMachineTokenID, abilityTokenID, supsCost)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
-}
-
 // XsynAssetLock locks a asset
-func XsynAssetLock(ctx context.Context, conn Conn, tokenID uint64, userID passport.UserID) error {
+func XsynAssetLock(ctx context.Context, conn Conn, assetHash string, userID passport.UserID) error {
 	q := `
 		UPDATE 
 			xsyn_assets
 		SET
 			locked_by_id = $1
-		WHERE token_id = $2`
+		WHERE metadata_hash = $2`
 
-	_, err := conn.Exec(ctx, q, userID, tokenID)
+	_, err := conn.Exec(ctx, q, userID, assetHash)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -437,15 +403,15 @@ func XsynAssetLock(ctx context.Context, conn Conn, tokenID uint64, userID passpo
 }
 
 // XsynAssetMintLock sets minting_signature of an asset
-func XsynAssetMintLock(ctx context.Context, conn Conn, tokenID uint64, sig string) error {
+func XsynAssetMintLock(ctx context.Context, conn Conn, assetHash string, sig string, expiry string) error {
 	q := `
 		UPDATE 
 			xsyn_assets
 		SET
-			minting_signature = $1
-		WHERE token_id = $2`
+			minting_signature = $1, signature_expiry = $2
+		WHERE metadata_hash = $3`
 
-	_, err := conn.Exec(ctx, q, sig, tokenID)
+	_, err := conn.Exec(ctx, q, sig, expiry, assetHash)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -471,15 +437,15 @@ func XsynAssetMintUnLock(ctx context.Context, conn Conn, userID passport.UserID)
 }
 
 // XsynAssetMinted marked as a
-func XsynAssetMinted(ctx context.Context, conn Conn, tokenID uint64) error {
+func XsynAssetMinted(ctx context.Context, conn Conn, assetHash string) error {
 	q := `
 		UPDATE 
 			xsyn_metadata
 		SET
 			minted = true
-		WHERE token_id = $1`
+		WHERE hash = $1`
 
-	_, err := conn.Exec(ctx, q, tokenID)
+	_, err := conn.Exec(ctx, q, assetHash)
 	if err != nil {
 		return terror.Error(err)
 	}

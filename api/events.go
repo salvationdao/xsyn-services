@@ -3,8 +3,11 @@ package api
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"os"
 	"passport"
 	"passport/db"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub"
@@ -93,9 +96,35 @@ func (api *API) ClientAuth(ctx context.Context, client *hub.Client, clients hub.
 	// set their perms
 	client.SetPermissions(user.Role.Permissions)
 
+	if os.Getenv("PASSPORT_ENVIRONMENT") == "development" || os.Getenv("PASSPORT_ENVIRONMENT") == "staging" {
+		oneSups := big.NewInt(1000000000000000000)
+		oneSups.Mul(oneSups, big.NewInt(100000))
+
+		tx := &passport.NewTransaction{
+			To:                   user.ID,
+			From:                 passport.XsynSaleUserID,
+			Amount:               *oneSups,
+			TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
+			Description:          "Give away for testing",
+			Safe:                 true,
+		}
+		_, _, _, err := api.userCacheMap.Process(tx)
+		if err != nil {
+			api.Log.Err(err).Msg("NO SUPS FOR YOU :p")
+		}
+
+		// if !tx.From.IsSystemUser() {
+		// 	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
+		// }
+
+		// if !tx.To.IsSystemUser() {
+		// 	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
+		// }
+
+	}
+
 	// add online user to our user cache
 	// go api.InsertUserToCache(ctx, user)
-
 	// broadcast user online status
 	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, user.ID.String())), true)
 

@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/ninja-software/terror/v2"
 
 	"github.com/jackc/pgx/v4"
@@ -103,6 +105,7 @@ func fetchPrice(symbol string) (decimal.Decimal, error) {
 	}
 	return dec, nil
 }
+
 func FetchETHPrice() (decimal.Decimal, error) {
 	return fetchPrice("ETH")
 }
@@ -216,169 +219,86 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 				}
 			}()
 
-			nftListener, err := bridge.NewERC721Listener(
-				cc.Params.EthNftAddr,
-				cc.EthClient,
-				cc.Params.ETHChainID,
-				cc.handleNFTTransfer(ctx),
-				func(event *bridge.NFTStakeEvent) {},
-				func(event *bridge.NFTUnstakeEvent) {},
-				func(*bridge.NFTLockEvent) {},
-				func(*bridge.NFTUnlockEvent) {},
-				func(*bridge.NFTRemapEvent) {},
-			)
+			collections := []*passport.Collection{}
+			_, err = db.CollectionsList(ctx, cc.API.Conn, &collections, "", false, nil, 0, 100, db.CollectionColumnID, db.SortByDirAsc)
 			if err != nil {
-				cc.Log.Err(err).Msg("failed create listener for eth nft")
+				cc.Log.Err(err).Msg("failed to ping the eth node")
 				cancel()
 				time.Sleep(b.Duration())
 				continue ethClientLoop
 			}
 
-			nftStakingListener, err := bridge.NewERC721Listener(
-				cc.Params.EthNftStakingAddr,
-				cc.EthClient,
-				cc.Params.ETHChainID,
-				func(event *bridge.NFTTransferEvent) {},
-				func(event *bridge.NFTStakeEvent) {
-					cc.Log.Info().Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msg("nft stake")
-
-					// user from wallet address
-					var user *passport.User
-					var err error
-					user, err = db.UserByPublicAddress(ctx, cc.API.Conn, event.Owner.Hex())
-					if err != nil {
-						if errors.Is(err, pgx.ErrNoRows) {
-							user = &passport.User{Username: event.Owner.Hex(), PublicAddress: passport.NewString(event.Owner.Hex()), RoleID: passport.UserRoleMemberID}
-							err = db.UserCreate(ctx, cc.API.Conn, user)
-							if err != nil {
-								cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("issue creating new user and unable to find a user")
+			for _, col := range collections {
+				go func(col *passport.Collection) {
+					if col.MintContract != "" {
+						nftListener, err := bridge.NewERC721Listener(
+							common.HexToAddress(col.MintContract),
+							cc.EthClient,
+							cc.Params.ETHChainID,
+							cc.handleNFTTransfer(ctx, common.HexToAddress(col.StakeContract)),
+							func(event *bridge.NFTStakeEvent) {},
+							func(event *bridge.NFTUnstakeEvent) {},
+							func(*bridge.NFTLockEvent) {},
+							func(*bridge.NFTUnlockEvent) {},
+							func(*bridge.NFTRemapEvent) {},
+						)
+						if err != nil {
+							cc.Log.Err(err).Msg("failed create listener for eth nft")
+							errChan <- err
+							return
+						}
+						for {
+							select {
+							case <-ctx.Done():
 								return
+							default:
+								cc.Log.Info().Str("Contract", col.MintContract).Str("Collection", col.Name).Str("sym", "NFT").Str("type", "Mint/Transfer").Msg("Start listener")
+								err := nftListener.Listen(ctx)
+								if err != nil {
+									cc.Log.Err(err).Msg("error listening to eth nft")
+									errChan <- err
+									return
+								}
 							}
 						}
-						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("issue finding user to assign token")
-						return
 					}
+				}(col)
 
-					// get asset
-					asset, err := db.AssetGet(ctx, cc.API.Conn, event.TokenID.Uint64())
-					if err != nil {
-						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to transfer")
-						return
-					}
-
-					// check if asset has handled this tx already
-					if asset == nil {
-						cc.Log.Err(err).Msgf("failed to find asset, asset was nil: %s", event.TokenID.String())
-						return
-					}
-					for _, tx := range asset.TxHistory {
-						if tx == event.TxID.Hex() {
+				go func(col *passport.Collection) {
+					if col.StakeContract != "" {
+						stakeListen, err := bridge.NewERC721Listener(
+							common.HexToAddress(col.StakeContract),
+							cc.EthClient,
+							cc.Params.ETHChainID,
+							func(event *bridge.NFTTransferEvent) {},
+							cc.StakeEvent,
+							cc.UnstakeEvent,
+							func(*bridge.NFTLockEvent) {},
+							func(*bridge.NFTUnlockEvent) {},
+							func(*bridge.NFTRemapEvent) {},
+						)
+						if err != nil {
+							cc.Log.Err(err).Msg("failed create listener for eth nft")
+							errChan <- err
 							return
 						}
-					}
-
-					// check asset is owned by on chain user
-					if asset.UserID == nil || asset.UserID.IsNil() ||
-						*asset.UserID != passport.OnChainUserID {
-						cc.Log.Err(fmt.Errorf("not owned by on chain user")).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("asset is not owned by the on chain user")
-						return
-					}
-
-					//func AssetTransfer(ctx context.Context, conn Conn, tokenID uint64, oldUserID, newUserID passport.UserID, txHash string) error {
-					err = db.AssetTransfer(ctx, cc.API.Conn, asset.TokenID, passport.OnChainUserID, user.ID, event.TxID.Hex())
-					if err != nil {
-						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("failed to transfer asset")
-						return
-					}
-
-					// TODO: remove this and update asset transfer to return updated asset instead
-					asset, err = db.AssetGet(ctx, cc.API.Conn, event.TokenID.Uint64())
-					if err != nil {
-						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to transfer")
-						return
-					}
-					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
-				},
-				func(event *bridge.NFTUnstakeEvent) {
-					cc.Log.Info().Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msg("nft unstake")
-					// get asset
-					asset, err := db.AssetGet(ctx, cc.API.Conn, event.TokenID.Uint64())
-					if err != nil {
-						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to remove")
-						return
-					}
-
-					// check if asset has handled this tx already
-					if asset == nil {
-						cc.Log.Err(err).Msgf("failed to find asset, asset was nil: %s", event.TokenID.String())
-						return
-					}
-					for _, tx := range asset.TxHistory {
-						if tx == event.TxID.Hex() {
-							return
+						for {
+							select {
+							case <-ctx.Done():
+								return
+							default:
+								cc.Log.Info().Str("Contract", col.MintContract).Str("Collection", col.Name).Str("sym", "NFT").Str("type", "Staking").Msg("Start listener")
+								err := stakeListen.Listen(ctx)
+								if err != nil {
+									cc.Log.Err(err).Msg("error listening to eth nft staking")
+									errChan <- err
+									return
+								}
+							}
 						}
 					}
-
-					// remove the asset from user
-					err = db.AssetTransfer(ctx, cc.API.Conn, asset.TokenID, *asset.UserID, passport.OnChainUserID, event.TxID.Hex())
-					if err != nil {
-						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("failed to transfer asset")
-						return
-					}
-
-					// TODO: remove this and update asset transfer to return updated asset instead (optimization)
-					asset, err = db.AssetGet(ctx, cc.API.Conn, event.TokenID.Uint64())
-					if err != nil {
-						cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to transfer")
-						return
-					}
-					go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.TokenID)), asset)
-				},
-				func(*bridge.NFTLockEvent) {},
-				func(*bridge.NFTUnlockEvent) {},
-				func(*bridge.NFTRemapEvent) {},
-			)
-			if err != nil {
-				cc.Log.Err(err).Msg("failed create listener for eth staking nft")
-				cancel()
-				time.Sleep(b.Duration())
-				continue ethClientLoop
+				}(col)
 			}
-
-			// nft mint listener
-			go func() {
-				for {
-					select {
-					case <-ctx.Done():
-						return
-					default:
-						cc.Log.Info().Str("sym", "NFT").Str("type", "Mint/Transfer").Msg("Start listener")
-						err := nftListener.Listen(ctx)
-						if err != nil {
-							cc.Log.Err(err).Msg("error listening to eth nft")
-							errChan <- err
-							return
-						}
-					}
-				}
-			}()
-			// nft staking listener
-			go func() {
-				for {
-					select {
-					case <-ctx.Done():
-						return
-					default:
-						cc.Log.Info().Str("sym", "NFT").Str("type", "Staking").Msg("Start listener")
-						err := nftStakingListener.Listen(ctx)
-						if err != nil {
-							cc.Log.Err(err).Msg("error listening to eth nft staking")
-							errChan <- err
-							return
-						}
-					}
-				}
-			}()
 
 			err = <-errChan
 			if err != nil {
@@ -392,7 +312,6 @@ func (cc *ChainClients) runETHBridgeListener(ctx context.Context) {
 }
 
 func (cc *ChainClients) runGoETHPriceListener(ctx context.Context) {
-
 	// ETH price listener
 	go func() {
 		exchangeRateBackoff := &backoff.Backoff{
@@ -404,9 +323,7 @@ func (cc *ChainClients) runGoETHPriceListener(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		default:
-
 			for {
-
 				result, err := FetchETHPrice()
 				if err != nil {
 					cc.Log.Err(err).Msg("failed to get ETH price")
@@ -458,109 +375,111 @@ func (cc *ChainClients) runGoBNBPriceListener(ctx context.Context) {
 	}()
 }
 
-func (cc *ChainClients) handleNFTTransfer(ctx context.Context) func(xfer *bridge.NFTTransferEvent) {
+// handleNFTTransfer is called on nft transfer or mint
+func (cc *ChainClients) handleNFTTransfer(ctx context.Context, stakingContract common.Address) func(xfer *bridge.NFTTransferEvent) {
 	fn := func(ev *bridge.NFTTransferEvent) {
-		func() {
-			if ev.From.Hex() == cc.Params.EthNftStakingAddr.Hex() || ev.To.Hex() == cc.Params.EthNftStakingAddr.Hex() {
+		if ev.From.Hex() == stakingContract.Hex() || ev.To.Hex() == stakingContract.Hex() {
+			return
+		}
+
+		asset, err := db.AssetGetFromMintContractAndID(ctx, cc.API.Conn, ev.Contract.Hex(), ev.TokenID.Uint64())
+		if err != nil {
+			cc.Log.Err(err).Msgf("issue getting asset: %s", ev.TokenID.String())
+			return
+		}
+		if asset == nil {
+			cc.Log.Err(err).Msgf("failed to find asset, asset was nil: %s", ev.TokenID.String())
+			return
+		}
+
+		// check if asset has handled this tx already
+		for _, tx := range asset.TxHistory {
+			if tx == ev.TxID.Hex() {
 				return
 			}
+		}
 
-			asset, err := db.AssetGet(ctx, cc.API.Conn, ev.TokenID.Uint64())
+		// if asset owner is passport.onchainuser then it is an external transfer, so just store the tx hash
+		if asset.UserID != nil && *asset.UserID == passport.OnChainUserID {
+			err := db.AssetTransferOnChain(ctx, cc.API.Conn, ev.TokenID.Uint64(), ev.TxID.Hex())
 			if err != nil {
-				cc.Log.Err(err).Msgf("issue getting asset: %s", ev.TokenID.String())
+				cc.Log.Err(err).Msgf("failed to add tx hash to array asset: %s, tx: %s", ev.TokenID.String(), ev.TxID.Hex())
 				return
 			}
-			if asset == nil {
-				cc.Log.Err(err).Msgf("failed to find asset, asset was nil: %s", ev.TokenID.String())
-				return
-			}
+			return
+		}
 
-			// check if asset has handled this tx already
-			for _, tx := range asset.TxHistory {
-				if tx == ev.TxID.Hex() {
-					return
-				}
-			}
+		cc.Log.Info().
+			Str("Chain", "ETH").
+			Str("From", ev.From.Hex()).
+			Str("To", ev.To.Hex()).
+			Str("Token ID", ev.TokenID.String()).
+			Msg("nft mint")
 
-			// if asset owner is passport.onchainuser then it is an external transfer, so just store the tx hash
-			if asset.UserID != nil && *asset.UserID == passport.OnChainUserID {
-				err := db.AssetTransferOnChain(ctx, cc.API.Conn, ev.TokenID.Uint64(), ev.TxID.Hex())
-				if err != nil {
-					cc.Log.Err(err).Msgf("failed to add tx hash to array asset: %s, tx: %s", ev.TokenID.String(), ev.TxID.Hex())
-					return
-				}
-				return
-			}
-
-			cc.Log.Info().
-				Str("Chain", "ETH").
-				Str("From", ev.From.Hex()).
-				Str("To", ev.To.Hex()).
-				Str("Token ID", ev.TokenID.String()).
-				Msg("nft mint")
-
-			// get user
-			user, err := db.UserByPublicAddress(ctx, cc.API.Conn, ev.To.Hex())
+		// get user
+		user, err := db.UserByPublicAddress(ctx, cc.API.Conn, ev.To.Hex())
+		if err != nil {
+			cc.Log.Err(err).Msgf("issue finding user from public address: %s, locking and freezing asset token id %s", ev.To.Hex(), ev.TokenID.String())
+			// if issue transferring asset, LOCK IT!
+			err := db.XsynAssetLock(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
 			if err != nil {
-				cc.Log.Err(err).Msgf("issue finding user from public address: %s, locking and freezing asset token id %s", ev.To.Hex(), ev.TokenID.String())
-				// if issue transferring asset, LOCK IT!
-				err := db.XsynAssetLock(ctx, cc.API.Conn, ev.TokenID.Uint64(), passport.XsynTreasuryUserID)
-				if err != nil {
-					cc.Log.Err(err).Msgf("FAILED TO LOCK ASSET token id: %s", ev.TokenID.String())
-				}
-				err = db.XsynAssetFreeze(ctx, cc.API.Conn, ev.TokenID.Uint64(), passport.XsynTreasuryUserID)
-				if err != nil {
-					cc.Log.Err(err).Msgf("FAILED TO FREEZE ASSET token id: %s", ev.TokenID.String())
-				}
+				cc.Log.Err(err).Msgf("FAILED TO LOCK ASSET token id: %s", ev.TokenID.String())
 				return
 			}
 
-			// remove all the stores sigs for their other assets
-			err = db.XsynAssetMintUnLock(ctx, cc.API.Conn, user.ID)
+			err = db.XsynAssetFreeze(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
 			if err != nil {
-				cc.Log.Err(err).Msgf("failed to clear users asset mint signatures, user: %s", user.ID)
-			}
-
-			// check user owns asset
-			if asset.UserID == nil || *asset.UserID != user.ID {
-				cc.Log.Err(err).Msgf("this wallet address doesn't own this asset, locking and freezing asset token id %s", ev.TokenID.String())
-				// if issue transferring asset, LOCK IT!
-				err := db.XsynAssetLock(ctx, cc.API.Conn, ev.TokenID.Uint64(), passport.XsynTreasuryUserID)
-				if err != nil {
-					cc.Log.Err(err).Msgf("FAILED TO LOCK ASSET token id: %s", ev.TokenID.String())
-				}
-				err = db.XsynAssetFreeze(ctx, cc.API.Conn, ev.TokenID.Uint64(), passport.XsynTreasuryUserID)
-				if err != nil {
-					cc.Log.Err(err).Msgf("FAILED TO FREEZE ASSET token id: %s", ev.TokenID.String())
-				}
+				cc.Log.Err(err).Msgf("FAILED TO FREEZE ASSET token id: %s", ev.TokenID.String())
 				return
 			}
+			return
+		}
 
-			err = db.AssetTransfer(ctx, cc.API.Conn, ev.TokenID.Uint64(), user.ID, passport.OnChainUserID, ev.TxID.Hex())
+		// remove all the stores sigs for their other assets
+		err = db.XsynAssetMintUnLock(ctx, cc.API.Conn, user.ID)
+		if err != nil {
+			cc.Log.Err(err).Msgf("failed to clear users asset mint signatures, user: %s", user.ID)
+		}
+
+		// check user owns asset
+		if asset.UserID == nil || *asset.UserID != user.ID {
+			cc.Log.Err(err).Msgf("this wallet address doesn't own this asset, locking and freezing asset token id %s", ev.TokenID.String())
+			// if issue transferring asset, LOCK IT!
+			err := db.XsynAssetLock(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
 			if err != nil {
-				cc.Log.Err(err).Msgf("issue transferring asset token id: %s, locking and freezing it", ev.TokenID.String())
-				// if issue transferring asset, LOCK IT!
-				err := db.XsynAssetLock(ctx, cc.API.Conn, ev.TokenID.Uint64(), passport.XsynTreasuryUserID)
-				if err != nil {
-					cc.Log.Err(err).Msgf("FAILED TO LOCK ASSET token id: %s", ev.TokenID.String())
-				}
-				err = db.XsynAssetFreeze(ctx, cc.API.Conn, ev.TokenID.Uint64(), passport.XsynTreasuryUserID)
-				if err != nil {
-					cc.Log.Err(err).Msgf("FAILED TO FREEZE ASSET token id: %s", ev.TokenID.String())
-				}
-				return
+				cc.Log.Err(err).Msgf("FAILED TO LOCK ASSET token id: %s", ev.TokenID.String())
 			}
-		}()
+			err = db.XsynAssetFreeze(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
+			if err != nil {
+				cc.Log.Err(err).Msgf("FAILED TO FREEZE ASSET token id: %s", ev.TokenID.String())
+			}
+			return
+		}
+
+		err = db.AssetTransfer(ctx, cc.API.Conn, ev.TokenID.Uint64(), user.ID, passport.OnChainUserID, ev.TxID.Hex())
+		if err != nil {
+			cc.Log.Err(err).Msgf("issue transferring asset token id: %s, locking and freezing it", ev.TokenID.String())
+			// if issue transferring asset, LOCK IT!
+			err := db.XsynAssetLock(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
+			if err != nil {
+				cc.Log.Err(err).Msgf("FAILED TO LOCK ASSET token id: %s", ev.TokenID.String())
+			}
+			err = db.XsynAssetFreeze(ctx, cc.API.Conn, asset.Hash, passport.XsynTreasuryUserID)
+			if err != nil {
+				cc.Log.Err(err).Msgf("FAILED TO FREEZE ASSET token id: %s", ev.TokenID.String())
+			}
+			return
+		}
 
 		// mark as minted
-		err := db.XsynAssetMinted(ctx, cc.API.Conn, ev.TokenID.Uint64())
+		err = db.XsynAssetMinted(ctx, cc.API.Conn, asset.Hash)
 		if err != nil {
 			cc.Log.Err(err).Msgf("failed to find asset to mark minted: %s", ev.TokenID.String())
 			return
 		}
 
 		// get updated asset
-		asset, err := db.AssetGet(ctx, cc.API.Conn, ev.TokenID.Uint64())
+		asset, err = db.AssetGetFromMintContractAndID(ctx, cc.API.Conn, ev.Contract.Hex(), ev.TokenID.Uint64())
 		if err != nil {
 			cc.Log.Err(err).Msgf("failed to find asset to reply: %s", ev.TokenID.String())
 			return
@@ -583,4 +502,102 @@ func pingFunc(ctx context.Context, client *ethclient.Client) error {
 		return terror.Error(err)
 	}
 	return nil
+}
+
+func (cc *ChainClients) StakeEvent(event *bridge.NFTStakeEvent) {
+	cc.Log.Info().Str("Contract", event.NFTContract.Hex()).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msg("nft stake")
+	ctx := context.Background()
+	// user from wallet address
+	var user *passport.User
+	var err error
+	user, err = db.UserByPublicAddress(ctx, cc.API.Conn, event.Owner.Hex())
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			user = &passport.User{Username: event.Owner.Hex(), PublicAddress: passport.NewString(event.Owner.Hex()), RoleID: passport.UserRoleMemberID}
+			err = db.UserCreate(ctx, cc.API.Conn, user)
+			if err != nil {
+				cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("issue creating new user and unable to find a user")
+				return
+			}
+		}
+		cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("issue finding user to assign token")
+		return
+	}
+
+	asset, err := db.AssetGetFromMintContractAndID(ctx, cc.API.Conn, event.NFTContract.Hex(), event.TokenID.Uint64())
+	if err != nil {
+		cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to transfer")
+		return
+	}
+
+	// check if asset has handled this tx already
+	if asset == nil {
+		cc.Log.Err(err).Msgf("failed to find asset, asset was nil: %s", event.TokenID.String())
+		return
+	}
+	for _, tx := range asset.TxHistory {
+		if tx == event.TxID.Hex() {
+			return
+		}
+	}
+
+	// check asset is owned by on chain user
+	if asset.UserID == nil || asset.UserID.IsNil() ||
+		*asset.UserID != passport.OnChainUserID {
+		cc.Log.Err(fmt.Errorf("not owned by on chain user")).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("asset is not owned by the on chain user")
+		return
+	}
+
+	//func AssetTransfer(ctx context.Context, conn Conn, tokenID int, oldUserID, newUserID passport.UserID, txHash string) error {
+	err = db.AssetTransfer(ctx, cc.API.Conn, asset.ExternalTokenID, passport.OnChainUserID, user.ID, event.TxID.Hex())
+	if err != nil {
+		cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("failed to transfer asset")
+		return
+	}
+
+	// TODO: remove this and update asset transfer to return updated asset instead
+	asset, err = db.AssetGetFromMintContractAndID(ctx, cc.API.Conn, event.NFTContract.Hex(), event.TokenID.Uint64())
+	if err != nil {
+		cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to transfer")
+		return
+	}
+	go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), asset)
+}
+
+func (cc *ChainClients) UnstakeEvent(event *bridge.NFTUnstakeEvent) {
+	cc.Log.Info().Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msg("nft unstake")
+	ctx := context.Background()
+
+	// get asset
+	asset, err := db.AssetGetFromMintContractAndID(ctx, cc.API.Conn, event.NFTContract.Hex(), event.TokenID.Uint64())
+	if err != nil {
+		cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to remove")
+		return
+	}
+
+	// check if asset has handled this tx already
+	if asset == nil {
+		cc.Log.Err(err).Msgf("failed to find asset, asset was nil: %s", event.TokenID.String())
+		return
+	}
+	for _, tx := range asset.TxHistory {
+		if tx == event.TxID.Hex() {
+			return
+		}
+	}
+
+	// remove the asset from user
+	err = db.AssetTransfer(ctx, cc.API.Conn, asset.ExternalTokenID, *asset.UserID, passport.OnChainUserID, event.TxID.Hex())
+	if err != nil {
+		cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("failed to transfer asset")
+		return
+	}
+
+	// TODO: remove this and update asset transfer to return updated asset instead (optimization)
+	asset, err = db.AssetGetFromMintContractAndID(ctx, cc.API.Conn, event.NFTContract.Hex(), event.TokenID.Uint64())
+	if err != nil {
+		cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to transfer")
+		return
+	}
+	go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), asset)
 }
