@@ -674,6 +674,35 @@ func (sc *SupremacyControllerWS) SupremacyAssetReleaseHandler(ctx context.Contex
 	return nil
 }
 
+type SupremacyAssetQueuingChecklistRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		QueuedHashes []string `json:"queuedHashes"`
+	} `json:"payload"`
+}
+
+const HubKeySupremacyAssetQueuingChecklist hub.HubCommandKey = "SUPREMACY:QUEUING_ASSET_CHECKLIST"
+
+func (sc *SupremacyControllerWS) SupremacyAssetQueuingChecklistHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupremacyAssetQueuingChecklistRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	// err = db.AssetFreeUpCheck(ctx, sc.Conn, req.Payload.QueuedHashes, userID)
+	// if err != nil {
+	// 	return terror.Error(err)
+	// }
+
+	return nil
+}
+
 // 	rootHub.SecureCommand(HubKeySupremacyAssetFreeze, AssetController.RegisterHandler)
 const HubKeySupremacyWarMachineQueuePosition hub.HubCommandKey = "SUPREMACY:WAR:MACHINE:QUEUE:POSITION"
 
