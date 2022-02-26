@@ -315,14 +315,14 @@ func AssetGetFromMintContractAndID(ctx context.Context, conn Conn, mintContractA
 }
 
 // AssetUpdate will update an asset name entry in attribute
-func AssetUpdate(ctx context.Context, conn Conn, tokenID uint64, newName string) error {
+func AssetUpdate(ctx context.Context, conn Conn, hash string, newName string) error {
 
 	// profanity check
 	if goaway.IsProfane(newName) {
 		return terror.Error(fmt.Errorf("invalid asset name: cannot contain profanity"), "Asset name cannot contain any profanity.")
 	}
 
-	nameAvailable, err := AssetNameAvailable(ctx, conn, newName, tokenID)
+	nameAvailable, err := AssetNameAvailable(ctx, conn, newName, hash)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -352,12 +352,12 @@ func AssetUpdate(ctx context.Context, conn Conn, tokenID uint64, newName string)
 	        elem->>'trait_type' = 'Name'
 	    ) sub
 	WHERE
-	    external_token_id = $2;    
+	    hash = $2;
 	`
 	_, err = conn.Exec(ctx,
 		q,
 		newName,
-		tokenID,
+		hash,
 	)
 	if err != nil {
 		return terror.Error(err)
@@ -366,7 +366,7 @@ func AssetUpdate(ctx context.Context, conn Conn, tokenID uint64, newName string)
 }
 
 // AssetNameAvailable returns true if an asset name is free
-func AssetNameAvailable(ctx context.Context, conn Conn, nameToCheck string, tokenID uint64) (bool, error) {
+func AssetNameAvailable(ctx context.Context, conn Conn, nameToCheck string, hash string) (bool, error) {
 
 	if nameToCheck == "" {
 		return false, terror.Error(fmt.Errorf("name cannot be empty"), "Name cannot be empty.")
@@ -374,7 +374,7 @@ func AssetNameAvailable(ctx context.Context, conn Conn, nameToCheck string, toke
 	count := 0
 
 	q := `
-	SELECT 
+	SELECT
 		count(external_token_id) 
 	FROM 
 		xsyn_metadata, 
@@ -383,8 +383,9 @@ func AssetNameAvailable(ctx context.Context, conn Conn, nameToCheck string, toke
 	    elem ->>'trait_type' = 'Name'
 		AND elem->>'value' = $2
 		AND xsyn_metadata.external_token_id != $1
+		AND hash = $1
 		`
-	err := pgxscan.Get(ctx, conn, &count, q, tokenID, nameToCheck)
+	err := pgxscan.Get(ctx, conn, &count, q, hash, nameToCheck)
 	if err != nil {
 		return false, terror.Error(err)
 	}

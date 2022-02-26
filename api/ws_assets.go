@@ -545,7 +545,7 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 	}
 
 	// update asset name
-	err = db.AssetUpdate(ctx, ac.Conn, asset.ExternalTokenID, req.Payload.Name)
+	err = db.AssetUpdate(ctx, ac.Conn, asset.Hash, req.Payload.Name)
 	if err != nil {
 		return terror.Error(err)
 	}
