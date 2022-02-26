@@ -207,9 +207,15 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	//	abilityMetadata.SupsCost = supsCost
 	//}
 	//}
+	// get faction from id
+	f, err := db.FactionGet(ctx, ac.Conn, *user.FactionID)
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	// assign faction id
 	warMachineMetadata.FactionID = *user.FactionID
+	warMachineMetadata.Faction = f
 
 	// join the asset to the queue
 	ac.API.SendToAllServerClient(ctx, &ServerClientMessage{
