@@ -210,6 +210,7 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 
 	// assign faction id
 	warMachineMetadata.FactionID = *user.FactionID
+	warMachineMetadata.Faction = user.Faction
 
 	// join the asset to the queue
 	ac.API.SendToAllServerClient(ctx, &ServerClientMessage{
