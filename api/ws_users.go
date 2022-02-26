@@ -2515,9 +2515,9 @@ func (uc *UserController) CheckCanAccessStore(ctx context.Context, hubc *hub.Cli
 	for k := range dispersionMap {
 		if strings.EqualFold(common.HexToAddress(req.Payload.WalletAddress).Hex(), k.Hex()) {
 			if now.After(PHASE_ONE) {
-				isEarly = false
-			} else {
 				isEarly = true
+			} else {
+				isEarly = false
 			}
 		}
 	}
