@@ -260,7 +260,7 @@ func NewAPI(
 	ctx := context.TODO()
 	api.State, err = db.StateGet(ctx, isTestnetBlockchain, api.Conn)
 	if err != nil {
-		log.Fatal().Msgf("failed to init state object")
+		log.Fatal().Err(err).Msgf("failed to init state object")
 	}
 
 	// Run the server client channel listener
