@@ -382,7 +382,6 @@ func AssetNameAvailable(ctx context.Context, conn Conn, nameToCheck string, hash
 	WHERE 
 	    elem ->>'trait_type' = 'Name'
 		AND elem->>'value' = $2
-		AND xsyn_metadata.external_token_id != $1
 		AND hash = $1
 		`
 	err := pgxscan.Get(ctx, conn, &count, q, hash, nameToCheck)
