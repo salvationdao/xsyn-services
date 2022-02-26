@@ -352,7 +352,7 @@ func AssetUpdate(ctx context.Context, conn Conn, hash string, newName string) er
 	        elem->>'trait_type' = 'Name'
 	    ) sub
 	WHERE
-	    hash = $2;
+	    xsyn_metadata.hash = $2;
 	`
 	_, err = conn.Exec(ctx,
 		q,
@@ -382,7 +382,7 @@ func AssetNameAvailable(ctx context.Context, conn Conn, nameToCheck string, hash
 	WHERE 
 	    elem ->>'trait_type' = 'Name'
 		AND elem->>'value' = $2
-		AND hash = $1
+		AND xsyn_metadata.hash = $1
 		`
 	err := pgxscan.Get(ctx, conn, &count, q, hash, nameToCheck)
 	if err != nil {
