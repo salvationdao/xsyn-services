@@ -294,11 +294,10 @@ func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 	if err != nil {
 		return terror.Error(err)
 	}
+	fmt.Println("total fund: ", supsForTick.String())
 
 	supPool := &supsForTick
 	supPool.Div(&supsForTick, big.NewInt(3))
-
-	fmt.Println("total fund: ", supPool.String())
 
 	// distribute Red Mountain sups
 	c.DistrubuteFund(supPool.String(), int64(rmTotalPoint), rmTotalMap)
