@@ -434,12 +434,16 @@ func AssetTransferOnChain(ctx context.Context, conn Conn, tokenID uint64, txHash
 func AssetSaleAvailable(ctx context.Context, conn Conn) ([]*passport.FactionSaleAvailable, error) {
 	result := []*passport.FactionSaleAvailable{}
 	q := `
-	select f.id , f."label",f.logo_blob_id, f.theme, f2.amount_available from factions f  
+	select f.id , f."label",f.logo_blob_id, f.theme, f2.mega_amount, f3.lootbox_amount from factions f  
 		left join lateral(
-			select (sum(xs.amount_available) - sum(xs.amount_sold)) as amount_available from xsyn_store xs 
-			where xs.faction_id = f.id
+			select (sum(xs.amount_available) - sum(xs.amount_sold)) as mega_amount from xsyn_store xs 
+			where xs.faction_id = f.id and xs.restriction !='LOOTBOX'
 			group by xs.faction_id 
-		)f2 on true 
+		)f2 on true left join lateral(
+			select (sum(xs.amount_available) - sum(xs.amount_sold)) as lootbox_amount from xsyn_store xs 
+			where xs.faction_id = f.id and xs.restriction ='LOOTBOX'
+			group by xs.faction_id 
+		) f3 on true 
 	`
 
 	err := pgxscan.Select(ctx, conn, &result, q)
