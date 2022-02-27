@@ -18,6 +18,8 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
+	"github.com/microcosm-cc/bluemonday"
+
 )
 
 var Profanities = []string{
@@ -30,7 +32,7 @@ var Profanities = []string{
 }
 
 var profanityDetector = goaway.NewProfanityDetector().WithCustomDictionary(Profanities, []string{}, []string{})
-
+var bm = bluemonday.StrictPolicy()
 // FactionController holds handlers for roles
 type FactionController struct {
 	Conn *pgxpool.Pool
@@ -204,6 +206,17 @@ type ChatMessageSend struct {
 // rootHub.SecureCommand(HubKeyFactionChat, factionHub.ChatMessageHandler)
 const HubKeyChatMessage hub.HubCommandKey = "CHAT:MESSAGE"
 
+func firstN(s string, n int) string {
+	i := 0
+	for j := range s {
+		if i == n {
+			return s[:j]
+		}
+		i++
+	}
+	return s
+}
+
 // ChatMessageHandler sends chat message from user
 func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &FactionChatRequest{}
@@ -237,7 +250,11 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 		factionLogoBlobID = &faction.LogoBlobID
 	}
 
-	msg := profanityDetector.Censor(req.Payload.Message)
+	msg := bm.Sanitize(req.Payload.Message)
+	msg = profanityDetector.Censor(req.Payload.Message)
+	if len(msg) > 280 {
+		msg = firstN(msg,280)
+	}
 
 	// check if the faction id is provided
 	if !req.Payload.FactionID.IsNil() {
