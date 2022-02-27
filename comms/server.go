@@ -299,20 +299,25 @@ func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 	supPool.Div(&supsForTick, big.NewInt(3))
 
 	// distribute Red Mountain sups
-	c.DistrubuteFund(supPool, int64(rmTotalPoint), rmTotalMap)
+	c.DistrubuteFund(supPool.String(), int64(rmTotalPoint), rmTotalMap)
 
 	// distribute Boston sups
-	c.DistrubuteFund(supPool, int64(bTotalPoint), bTotalMap)
+	c.DistrubuteFund(supPool.String(), int64(bTotalPoint), bTotalMap)
 
 	// distribute Zaibatsu sups
-	c.DistrubuteFund(supPool, int64(zTotalPoint), zTotalMap)
+	c.DistrubuteFund(supPool.String(), int64(zTotalPoint), zTotalMap)
 
 	return nil
 }
 
-func (c *C) DistrubuteFund(fund *big.Int, totalPoints int64, userMap map[int][]passport.UserID) {
+func (c *C) DistrubuteFund(fund string, totalPoints int64, userMap map[int][]passport.UserID) {
 	copiedFund := big.NewInt(0)
-	copiedFund.Add(copiedFund, fund)
+	sups, ok := copiedFund.SetString(fund, 10)
+	if !ok {
+		c.Log.Err(fmt.Errorf("NOT work " + fund)).Msg(fund)
+		return
+	}
+	copiedFund.Add(copiedFund, sups)
 
 	if totalPoints == 0 {
 		return
