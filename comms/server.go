@@ -192,7 +192,7 @@ type TickerTickResp struct{}
 
 func (c *C) supremacyFeed() {
 	fund := big.NewInt(0)
-	fund, ok := fund.SetString("4000000000000000000", 10)
+	fund, ok := fund.SetString("100000000000000000000", 10)
 	if !ok {
 		c.Log.Err(errors.New("setting string not ok on fund big int")).Msg("too many strings")
 		return
@@ -337,6 +337,11 @@ func (c *C) DistrubuteFund(fundstr string, totalPoints int64, userMap map[int][]
 		for _, user := range users {
 			usersSups := big.NewInt(0)
 			usersSups = usersSups.Mul(onePointWorth, big.NewInt(int64(multiplier)))
+
+			// if greater than 2 sups get 2 sups
+			if usersSups.Cmp(big.NewInt(2000000000000000000)) >= 0 {
+				usersSups = big.NewInt(2000000000000000000)
+			}
 
 			tx := &passport.NewTransaction{
 				From:                 passport.SupremacySupPoolUserID,
