@@ -562,38 +562,6 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), asset)
 	}
 
-	// auto release it after an hour
-	for _, asset := range assets {
-		go func(asset *passport.XsynMetadata) {
-			frozenAt := asset.FrozenAt
-			time.Sleep(3 * time.Hour)
-			// get asset from db
-			a, err := db.AssetGet(ctx, sc.Conn, asset.Hash)
-			if err != nil {
-				sc.API.Log.Err(err).Msgf("Failed to get asset, token id: %d", asset.ExternalTokenID)
-				return
-			}
-
-			// check whether the frozen at has changed
-			if a.FrozenAt == nil || !frozenAt.Equal(*a.FrozenAt) {
-				// skip, if frozen at is changed
-				return
-			}
-
-			// otherwise release it
-			err = db.XsynAssetBulkRelease(ctx, sc.Conn, []*passport.WarMachineMetadata{
-				{
-					Hash: a.Hash,
-				},
-			}, userID)
-			if err != nil {
-				sc.API.Log.Err(err).Msgf("Failed to auto released, token id: %d", asset.ExternalTokenID)
-				return
-			}
-
-		}(asset)
-	}
-
 	reply(true)
 	return nil
 }
