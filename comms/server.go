@@ -310,11 +310,11 @@ func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 	return nil
 }
 
-func (c *C) DistrubuteFund(fund string, totalPoints int64, userMap map[int][]passport.UserID) {
+func (c *C) DistrubuteFund(fundstr string, totalPoints int64, userMap map[int][]passport.UserID) {
 	copiedFund := big.NewInt(0)
-	sups, ok := copiedFund.SetString(fund, 10)
+	sups, ok := copiedFund.SetString(fundstr, 10)
 	if !ok {
-		c.Log.Err(fmt.Errorf("NOT work " + fund)).Msg(fund)
+		c.Log.Err(fmt.Errorf("NOT work " + fundstr)).Msg(fundstr)
 		return
 	}
 	copiedFund.Add(copiedFund, sups)
