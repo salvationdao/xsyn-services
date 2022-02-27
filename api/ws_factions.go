@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	goaway "github.com/TwiN/go-away"
 	"passport"
 	"passport/db"
 	"passport/helpers"
@@ -18,6 +19,17 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 )
+
+var Profanities = []string{
+	"fag",
+	"fuck",
+	"nigga",
+	"nigger",
+	"rape",
+	"retard",
+}
+
+var profanityDetector = goaway.NewProfanityDetector().WithCustomDictionary(Profanities, []string{}, []string{})
 
 // FactionController holds handlers for roles
 type FactionController struct {
@@ -225,6 +237,8 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 		factionLogoBlobID = &faction.LogoBlobID
 	}
 
+	msg := profanityDetector.Censor(req.Payload.Message)
+
 	// check if the faction id is provided
 	if !req.Payload.FactionID.IsNil() {
 		if user.FactionID == nil || user.FactionID.IsNil() {
@@ -237,7 +251,7 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 
 		// send message
 		fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID)), &ChatMessageSend{
-			Message:           req.Payload.Message,
+			Message:           msg,
 			MessageColor:      req.Payload.MessageColor,
 			FromUserID:        user.ID,
 			FromUsername:      user.Username,
