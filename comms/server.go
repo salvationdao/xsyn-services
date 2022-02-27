@@ -322,7 +322,7 @@ func (c *C) DistrubuteFund(fundstr string, totalPoints int64, userMap map[int][]
 		return
 	}
 
-	if totalPoints == 0 {
+	if totalPoints <= 0 {
 		return
 	}
 
