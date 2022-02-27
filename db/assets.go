@@ -355,7 +355,7 @@ func AssetUpdate(ctx context.Context, conn Conn, hash string, newName string) er
 	WHERE
 	    xsyn_metadata.hash = $2;
 	`
-	_, err = conn.Exec(ctx,
+	_, err := conn.Exec(ctx,
 		q,
 		newName,
 		hash,
