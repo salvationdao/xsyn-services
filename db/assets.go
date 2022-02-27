@@ -322,13 +322,14 @@ func AssetUpdate(ctx context.Context, conn Conn, hash string, newName string) er
 		return terror.Error(fmt.Errorf("invalid asset name: cannot contain profanity"), "Asset name cannot contain any profanity.")
 	}
 
-	nameAvailable, err := AssetNameAvailable(ctx, conn, newName, hash)
-	if err != nil {
-		return terror.Error(err)
-	}
-	if !nameAvailable {
-		return terror.Error(fmt.Errorf("name is taken: %s", newName), fmt.Sprintf("The name %s has already been taken.", newName))
-	}
+	// commented out by vinnie 27/02/22
+	//nameAvailable, err := AssetNameAvailable(ctx, conn, newName, hash)
+	//if err != nil {
+	//	return terror.Error(err)
+	//}
+	//if !nameAvailable {
+	//	return terror.Error(fmt.Errorf("name is taken: %s", newName), fmt.Sprintf("The name %s has already been taken.", newName))
+	//}
 
 	// sql to update a 'Name' entry in the attributes column
 	// reference: https://stackoverflow.com/a/38996799
@@ -354,7 +355,7 @@ func AssetUpdate(ctx context.Context, conn Conn, hash string, newName string) er
 	WHERE
 	    xsyn_metadata.hash = $2;
 	`
-	_, err = conn.Exec(ctx,
+	_, err := conn.Exec(ctx,
 		q,
 		newName,
 		hash,
@@ -392,7 +393,7 @@ func AssetNameAvailable(ctx context.Context, conn Conn, nameToCheck string, hash
 	return count == 0, nil
 }
 
-// AssetTransfer changes ownership of an asset to another user // TODO: add internal transaciton details tx jsonb array
+// AssetTransfer changes ownership of an asset to another user // TODO: add internal transaction details tx jsonb array
 func AssetTransfer(ctx context.Context, conn Conn, tokenID uint64, oldUserID, newUserID passport.UserID, txHash string) error {
 	args := []interface{}{
 		newUserID, oldUserID, tokenID,
