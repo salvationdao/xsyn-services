@@ -78,7 +78,6 @@ func (ch *ServerClientControllerWS) Handler(ctx context.Context, hubc *hub.Clien
 	// setting level and identifier
 	hubc.SetLevel(passport.ServerClientLevel)
 	hubc.SetIdentifier(supremacyUser.String())
-	hubc.LockClient = true // lock the client so it cannot be updated
 	// TODO: get the matching server name
 	serverName := SupremacyGameServer
 

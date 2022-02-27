@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"passport"
 	"sync"
+	"time"
 
 	"github.com/ninja-syndicate/hub"
 )
@@ -138,7 +139,7 @@ func (api *API) SendToServerClient(ctx context.Context, name ServerClientName, m
 				api.Log.Err(err).Msgf("error sending message to server client for: %s", name)
 			}
 
-			go sc.Send(payload)
+			sc.Send(ctx, 3 * time.Second, payload)
 		}
 	}
 
@@ -152,7 +153,7 @@ func (api *API) SendToAllServerClient(ctx context.Context, msg *ServerClientMess
 				if err != nil {
 					api.Log.Err(err).Msgf("error sending message to server client: %s", gameName)
 				}
-				go sc.Send(payload)
+				sc.Send(ctx, 3 * time.Second, payload)
 			}
 		}
 	}
