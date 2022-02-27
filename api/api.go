@@ -40,16 +40,17 @@ import (
 
 // API server
 type API struct {
-	State        *passport.State
-	SupUSD       decimal.Decimal
-	Log          *zerolog.Logger
-	Routes       chi.Router
-	Addr         string
-	Mailer       *email.Mailer
-	HTMLSanitize *bluemonday.Policy
-	Hub          *hub.Hub
-	Conn         *pgxpool.Pool
-	Tokens       *Tokens
+	SupremacyController *SupremacyControllerWS
+	State               *passport.State
+	SupUSD              decimal.Decimal
+	Log                 *zerolog.Logger
+	Routes              chi.Router
+	Addr                string
+	Mailer              *email.Mailer
+	HTMLSanitize        *bluemonday.Policy
+	Hub                 *hub.Hub
+	Conn                *pgxpool.Pool
+	Tokens              *Tokens
 	*auth.Auth
 	*messagebus.MessageBus
 	ClientToken  string
@@ -102,7 +103,6 @@ func NewAPI(
 	isTestnetBlockchain bool,
 	runBlockchainBridge bool,
 	msgBus *messagebus.MessageBus,
-	msgBusCleanUpFunc hub.ClientOfflineFn,
 	enablePurchaseSubscription bool,
 ) *API {
 
@@ -119,9 +119,11 @@ func NewAPI(
 		},
 		MessageBus: msgBus,
 		Hub: hub.New(&hub.Config{
-			ClientOfflineFn: msgBusCleanUpFunc,
-			Log:             zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
-			Tracer:          SentryTracer.New(),
+			ClientOfflineFn: func(client *hub.Client) {
+				msgBus.UnsubAll(client)
+			},
+			Log:    zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
+			Tracer: SentryTracer.New(),
 			WelcomeMsg: &hub.WelcomeMsg{
 				Key:     "WELCOME",
 				Payload: nil,
@@ -247,19 +249,21 @@ func NewAPI(
 	_ = NewOrganisationController(log, conn, api)
 	_ = NewRoleController(log, conn, api)
 	_ = NewProductController(log, conn, api)
-	_ = NewSupremacyController(log, conn, api)
+	sc := NewSupremacyController(log, conn, api)
 	_ = NewGamebarController(log, conn, api)
 	_ = NewStoreController(log, conn, api)
 
+	api.SupremacyController = sc
+
 	//api.Hub.Events.AddEventHandler(hub.EventOnline, api.ClientOnline)
-	api.Hub.Events.AddEventHandler(auth.EventLogin, api.ClientAuth)
-	api.Hub.Events.AddEventHandler(auth.EventLogout, api.ClientLogout)
-	api.Hub.Events.AddEventHandler(hub.EventOffline, api.ClientOffline)
+	api.Hub.Events.AddEventHandler(auth.EventLogin, api.ClientAuth, func(err error) {})
+	api.Hub.Events.AddEventHandler(auth.EventLogout, api.ClientLogout, func(err error) {})
+	api.Hub.Events.AddEventHandler(hub.EventOffline, api.ClientOffline, func(err error) {})
 
 	ctx := context.TODO()
 	api.State, err = db.StateGet(ctx, isTestnetBlockchain, api.Conn)
 	if err != nil {
-		log.Fatal().Msgf("failed to init state object")
+		log.Fatal().Err(err).Msgf("failed to init state object")
 	}
 
 	// Run the server client channel listener

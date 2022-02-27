@@ -315,20 +315,21 @@ func AssetGetFromMintContractAndID(ctx context.Context, conn Conn, mintContractA
 }
 
 // AssetUpdate will update an asset name entry in attribute
-func AssetUpdate(ctx context.Context, conn Conn, tokenID uint64, newName string) error {
+func AssetUpdate(ctx context.Context, conn Conn, hash string, newName string) error {
 
 	// profanity check
 	if goaway.IsProfane(newName) {
 		return terror.Error(fmt.Errorf("invalid asset name: cannot contain profanity"), "Asset name cannot contain any profanity.")
 	}
 
-	nameAvailable, err := AssetNameAvailable(ctx, conn, newName, tokenID)
-	if err != nil {
-		return terror.Error(err)
-	}
-	if !nameAvailable {
-		return terror.Error(fmt.Errorf("name is taken: %s", newName), fmt.Sprintf("The name %s has already been taken.", newName))
-	}
+	// commented out by vinnie 27/02/22
+	//nameAvailable, err := AssetNameAvailable(ctx, conn, newName, hash)
+	//if err != nil {
+	//	return terror.Error(err)
+	//}
+	//if !nameAvailable {
+	//	return terror.Error(fmt.Errorf("name is taken: %s", newName), fmt.Sprintf("The name %s has already been taken.", newName))
+	//}
 
 	// sql to update a 'Name' entry in the attributes column
 	// reference: https://stackoverflow.com/a/38996799
@@ -352,12 +353,12 @@ func AssetUpdate(ctx context.Context, conn Conn, tokenID uint64, newName string)
 	        elem->>'trait_type' = 'Name'
 	    ) sub
 	WHERE
-	    external_token_id = $2;    
+	    xsyn_metadata.hash = $2;
 	`
-	_, err = conn.Exec(ctx,
+	_, err := conn.Exec(ctx,
 		q,
 		newName,
-		tokenID,
+		hash,
 	)
 	if err != nil {
 		return terror.Error(err)
@@ -366,7 +367,7 @@ func AssetUpdate(ctx context.Context, conn Conn, tokenID uint64, newName string)
 }
 
 // AssetNameAvailable returns true if an asset name is free
-func AssetNameAvailable(ctx context.Context, conn Conn, nameToCheck string, tokenID uint64) (bool, error) {
+func AssetNameAvailable(ctx context.Context, conn Conn, nameToCheck string, hash string) (bool, error) {
 
 	if nameToCheck == "" {
 		return false, terror.Error(fmt.Errorf("name cannot be empty"), "Name cannot be empty.")
@@ -374,7 +375,7 @@ func AssetNameAvailable(ctx context.Context, conn Conn, nameToCheck string, toke
 	count := 0
 
 	q := `
-	SELECT 
+	SELECT
 		count(external_token_id) 
 	FROM 
 		xsyn_metadata, 
@@ -382,9 +383,9 @@ func AssetNameAvailable(ctx context.Context, conn Conn, nameToCheck string, toke
 	WHERE 
 	    elem ->>'trait_type' = 'Name'
 		AND elem->>'value' = $2
-		AND xsyn_metadata.external_token_id != $1
+		AND xsyn_metadata.hash = $1
 		`
-	err := pgxscan.Get(ctx, conn, &count, q, tokenID, nameToCheck)
+	err := pgxscan.Get(ctx, conn, &count, q, hash, nameToCheck)
 	if err != nil {
 		return false, terror.Error(err)
 	}
@@ -392,7 +393,7 @@ func AssetNameAvailable(ctx context.Context, conn Conn, nameToCheck string, toke
 	return count == 0, nil
 }
 
-// AssetTransfer changes ownership of an asset to another user // TODO: add internal transaciton details tx jsonb array
+// AssetTransfer changes ownership of an asset to another user // TODO: add internal transaction details tx jsonb array
 func AssetTransfer(ctx context.Context, conn Conn, tokenID uint64, oldUserID, newUserID passport.UserID, txHash string) error {
 	args := []interface{}{
 		newUserID, oldUserID, tokenID,
@@ -434,12 +435,16 @@ func AssetTransferOnChain(ctx context.Context, conn Conn, tokenID uint64, txHash
 func AssetSaleAvailable(ctx context.Context, conn Conn) ([]*passport.FactionSaleAvailable, error) {
 	result := []*passport.FactionSaleAvailable{}
 	q := `
-	select f.id , f."label",f.logo_blob_id, f.theme, f2.amount_available from factions f  
+	select f.id , f."label",f.logo_blob_id, f.theme, f2.mega_amount, f3.lootbox_amount from factions f  
 		left join lateral(
-			select (sum(xs.amount_available) - sum(xs.amount_sold)) as amount_available from xsyn_store xs 
-			where xs.faction_id = f.id
+			select (sum(xs.amount_available) - sum(xs.amount_sold)- 200)  as mega_amount from xsyn_store xs 
+			where xs.faction_id = f.id and xs.restriction !='LOOTBOX'
 			group by xs.faction_id 
-		)f2 on true 
+		)f2 on true left join lateral(
+			select (sum(xs.amount_available) - sum(xs.amount_sold)) as lootbox_amount from xsyn_store xs 
+			where xs.faction_id = f.id and xs.restriction ='LOOTBOX'
+			group by xs.faction_id 
+		) f3 on true 
 	`
 
 	err := pgxscan.Select(ctx, conn, &result, q)

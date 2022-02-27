@@ -74,9 +74,10 @@ var Factions = []*Faction{
 }
 
 type FactionSaleAvailable struct {
-	ID              FactionID     `json:"id" db:"id"`
-	Label           string        `json:"label" db:"label"`
-	LogoBlobID      BlobID        `json:"logoBlobID" db:"logo_blob_id"`
-	Theme           *FactionTheme `json:"theme" db:"theme"`
-	AmountAvailable int64         `json:"amountAvailable" db:"amount_available"`
+	ID            FactionID     `json:"id" db:"id"`
+	Label         string        `json:"label" db:"label"`
+	LogoBlobID    BlobID        `json:"logoBlobID" db:"logo_blob_id"`
+	Theme         *FactionTheme `json:"theme" db:"theme"`
+	MegaAmount    int64         `json:"megaAmount" db:"mega_amount"`
+	LootboxAmount int64         `json:"lootboxAmount" db:"lootbox_amount"`
 }

@@ -24,6 +24,18 @@ type RepairQueue map[string]bool
 func (api *API) InitialAssetRepairCenter() {
 	api.fastAssetRepairCenter = make(chan func(RepairQueue))
 	fastRepairQueue := make(RepairQueue)
+
+	// get all the unrepair
+	hashes, err := db.AssetUnrepairList(context.Background(), api.Conn)
+	if err != nil {
+		api.Log.Err(err).Msg("failed to get initail unrepair war machines from db when initialise")
+	}
+
+	// chuck war machines in fast route repair
+	for _, hash := range hashes {
+		fastRepairQueue[hash] = true
+	}
+
 	go func() {
 		for fn := range api.fastAssetRepairCenter {
 			fn(fastRepairQueue)

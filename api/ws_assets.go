@@ -207,9 +207,15 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	//	abilityMetadata.SupsCost = supsCost
 	//}
 	//}
+	// get faction from id
+	f, err := db.FactionGet(ctx, ac.Conn, *user.FactionID)
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	// assign faction id
 	warMachineMetadata.FactionID = *user.FactionID
+	warMachineMetadata.Faction = f
 
 	// join the asset to the queue
 	ac.API.SendToAllServerClient(ctx, &ServerClientMessage{
@@ -510,8 +516,16 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 		return terror.Error(fmt.Errorf("asset doesn't exist"), "This asset does not exist.")
 	}
 
+	// get user
+	uid, err := uuid.FromString(hubc.Identifier())
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	userID := passport.UserID(uid)
+
 	// check if user owns asset
-	if *asset.UserID != *req.Payload.UserID {
+	if *asset.UserID != userID {
 		return terror.Error(err, "Must own Asset to update it's name.")
 	}
 
@@ -531,7 +545,7 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 	}
 
 	// update asset name
-	err = db.AssetUpdate(ctx, ac.Conn, asset.ExternalTokenID, req.Payload.Name)
+	err = db.AssetUpdate(ctx, ac.Conn, asset.Hash, req.Payload.Name)
 	if err != nil {
 		return terror.Error(err)
 	}

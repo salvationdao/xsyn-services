@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"passport"
 	"passport/api"
+	"passport/comms"
 	"passport/db"
 	"passport/email"
 	"passport/helpers"
@@ -627,7 +628,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 
 	tc := api.NewTransactionCache(txConn, log)
 
-	msgBus, msgBusCleanUpFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
+	msgBus := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
 
 	// initialise user cache map
 	ucm, err := api.NewUserCacheMap(pgxconn, tc, msgBus)
@@ -653,6 +654,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	}
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
+
 	api := api.NewAPI(log,
 		cancelOnPanic,
 		pgxconn,
@@ -675,9 +677,14 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		isTestnetBlockchain,
 		runBlockchainBridge,
 		msgBus,
-		msgBusCleanUpFunc,
 		enablePurchaseSubscription,
 	)
+
+	c := comms.New(ucm, msgBus, api.SupremacyController.Txs, log, pgxconn)
+	err = comms.Start(c)
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	return api.Run(ctx)
 }

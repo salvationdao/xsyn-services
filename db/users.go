@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"passport"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
@@ -1192,8 +1194,11 @@ type Address struct {
 // IsUserWhitelisted check if user is whitelisted
 func IsUserWhitelisted(ctx context.Context, conn Conn, walletAddress string) (bool, error) {
 	user := &Address{}
+
+	addr := common.HexToAddress(walletAddress).Hex()
+
 	q := "SELECT * FROM whitelisted_addresses WHERE wallet_address = $1"
-	err := pgxscan.Get(ctx, conn, user, q, walletAddress)
+	err := pgxscan.Get(ctx, conn, user, q, addr)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -1207,8 +1212,9 @@ func IsUserWhitelisted(ctx context.Context, conn Conn, walletAddress string) (bo
 // IsUserWhitelisted check if user is whitelisted
 func IsUserDeathlisted(ctx context.Context, conn Conn, walletAddress string) (bool, error) {
 	user := &Address{}
+	addr := common.HexToAddress(walletAddress).Hex()
 	q := "SELECT * FROM death_addresses WHERE wallet_address = $1"
-	err := pgxscan.Get(ctx, conn, user, q, walletAddress)
+	err := pgxscan.Get(ctx, conn, user, q, addr)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -1240,4 +1246,37 @@ func GetUserMetadata(ctx context.Context, conn Conn, userID passport.UserID) (*p
 	}
 
 	return &md.Metadata, nil
+}
+
+func GetFactionIDByUsers(ctx context.Context, conn Conn, um map[passport.UserID]passport.FactionID) error {
+	users := []*passport.User{}
+
+	var args []interface{}
+	q := `
+		SELECT id, faction_id FROM users WHERE id IN (
+	`
+
+	for uid := range um {
+		args = append(args, uid)
+
+		q += "$" + strconv.Itoa(len(args))
+		if len(args) < len(um) {
+			q += ","
+			continue
+		}
+		q += ")"
+	}
+
+	err := pgxscan.Select(ctx, conn, &users, q, args...)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	for _, user := range users {
+		if user.FactionID != nil && !user.FactionID.IsNil() {
+			um[user.ID] = *user.FactionID
+		}
+	}
+
+	return nil
 }

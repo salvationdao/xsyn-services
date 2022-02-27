@@ -176,6 +176,9 @@ func TransactionList(
 	if err != nil {
 		return 0, nil, terror.Error(err)
 	}
+	for _, r := range result {
+		r.Amount.Init()
+	}
 	return totalRows, result, nil
 }
 
@@ -183,11 +186,12 @@ func TransactionList(
 func TransactionGet(ctx context.Context, conn Conn, transactionID string) (*passport.Transaction, error) {
 	transaction := &passport.Transaction{}
 	q := TransactionGetQuery + "WHERE transactions.id = $1"
-
+	
 	err := pgxscan.Get(ctx, conn, transaction, q, transactionID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
+	transaction.Amount.Init()
 
 	return transaction, nil
 }

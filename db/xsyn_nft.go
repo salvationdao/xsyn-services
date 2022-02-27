@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"passport"
 	"passport/helpers"
+	"strconv"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
@@ -24,12 +25,12 @@ func CollectionInsert(ctx context.Context, conn Conn, collection *passport.Colle
 // XsynMetadataInsert inserts a new item metadata
 func XsynMetadataInsert(ctx context.Context, conn Conn, item *passport.XsynMetadata, externalUrl string) error {
 	// generate token id
-	q := `SELECT count(*) from xsyn_metadata WHERE collection_id = $1`
+	q := `SELECT coalesce(max(external_token_id), 0) from xsyn_metadata WHERE collection_id = $1`
 	err := pgxscan.Get(ctx, conn, &item.ExternalTokenID, q, item.CollectionID)
 	if err != nil {
 		return terror.Error(err)
 	}
-
+	item.ExternalTokenID++
 	// generate hash
 	// TODO: get this to handle uint64
 	item.Hash, err = helpers.GenerateMetadataHashID(item.CollectionID.String(), int(item.ExternalTokenID), false)
@@ -308,7 +309,7 @@ func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID
 	q := `
 		SELECT xnm.hash, xnm.minted, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
 		FROM xsyn_metadata xnm
-		INNER JOIN xsyn_assets xa ON xa.metadata_hash = xnm.hash
+	 	INNER JOIN xsyn_assets xa ON xa.metadata_hash = xnm.hash and xnm.collection_id = xa.collection_id
 		WHERE xa.user_id = $1
 		AND xnm.attributes @> '[{"value": "War Machine", "trait_type": "Asset Type"}]'
 		LIMIT $2
@@ -451,4 +452,57 @@ func XsynAssetMinted(ctx context.Context, conn Conn, assetHash string) error {
 	}
 
 	return nil
+}
+
+// AssetFreeUpCheck check through the locked mechs and release the mech that is NOT on the checklist
+func AssetFreeUpCheck(ctx context.Context, conn Conn, checklist []string, lockedByUserID passport.UserID) ([]string, error) {
+	var args []interface{}
+	args = append(args, lockedByUserID)
+
+	q := `
+		UPDATE
+			xsyn_assets xa
+		SET
+			frozen_at = NULL,
+			frozen_by_id = NULL,
+			locked_by_id = NULL
+		WHERE
+			(xa.frozen_at NOTNULL OR xa.locked_by_id NOTNULL) AND 
+			xa.frozen_by_id = $1 AND 
+			xa.metadata_hash NOT IN(
+	`
+
+	for i, hash := range checklist {
+		args = append(args, hash)
+		q += "$" + strconv.Itoa(len(args))
+		if i < len(checklist)-1 {
+			q += ","
+			continue
+		}
+		q += ")"
+	}
+
+	q += " RETURNING xa.metadata_hash"
+
+	result := []string{}
+	err := pgxscan.Select(ctx, conn, &result, q, args...)
+	if err != nil {
+		return []string{}, terror.Error(err)
+	}
+
+	return result, nil
+}
+
+// AssetUnrepairList query the list of unrepair asset and put into repair center, when the server start
+func AssetUnrepairList(ctx context.Context, conn Conn) ([]string, error) {
+	hashes := []string{}
+	q := `
+		select hash from xsyn_metadata xm where durability < 100
+	`
+	err := pgxscan.Select(ctx, conn, &hashes, q)
+	if err != nil {
+		return hashes, terror.Error(err)
+	}
+
+	return hashes, nil
 }

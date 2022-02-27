@@ -145,7 +145,7 @@ type WarMachineAttField string
 const (
 	WarMachineAttName                   WarMachineAttField = "Name"
 	WarMachineAttModel                  WarMachineAttField = "Model"
-	WarMachineAttSkin                   WarMachineAttField = "Skin"
+	WarMachineAttSubModel               WarMachineAttField = "SubModel"
 	WarMachineAttFieldMaxHitPoint       WarMachineAttField = "Max Structure Hit Points"
 	WarMachineAttFieldMaxShieldHitPoint WarMachineAttField = "Max Shield Hit Points"
 	WarMachineAttFieldSpeed             WarMachineAttField = "Speed"
@@ -176,9 +176,101 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 		case string(WarMachineAttName):
 			warMachineMetadata.Name = att.Value.(string)
 		case string(WarMachineAttModel):
-			warMachineMetadata.Model = att.Value.(string)
-		case string(WarMachineAttSkin):
-			warMachineMetadata.Skin = att.Value.(string)
+			switch att.Value.(string) {
+			case "Law Enforcer X-1000":
+				warMachineMetadata.Model = "XFVS"
+			case "Olympus Mons LY07":
+				warMachineMetadata.Model = "BXSD"
+			case "Tenshi Mk1":
+				warMachineMetadata.Model = "WREX"
+			default:
+				warMachineMetadata.Model = att.Value.(string)
+			}
+
+		case string(WarMachineAttSubModel):
+			switch att.Value.(string) {
+			case "Crystal Blue":
+				warMachineMetadata.Skin = "CrystalBlue"
+			case "Rust Bucket":
+				warMachineMetadata.Skin = "RustBucket"
+			case "Dune":
+				warMachineMetadata.Skin = "Dune"
+			case "Dynamic Yellow":
+				warMachineMetadata.Skin = "DynamicYellow"
+			case "Molten":
+				warMachineMetadata.Skin = "Molten"
+			case "Mystermech":
+				warMachineMetadata.Skin = "MysterMech"
+			case "Nebula":
+				warMachineMetadata.Skin = "Nebula"
+			case "Sleek":
+				warMachineMetadata.Skin = "Sleek"
+			case "Blue White":
+				warMachineMetadata.Skin = "BlueWhite"
+			case "BioHazard":
+				warMachineMetadata.Skin = "BioHazard"
+			case "Cyber":
+				warMachineMetadata.Skin = "Cyber"
+			case "Light Blue Police":
+				warMachineMetadata.Skin = "LightBluePolice"
+			case "Vintage":
+				warMachineMetadata.Skin = "Vintage"
+			case "Red White":
+				warMachineMetadata.Skin = "RedWhite"
+			case "Red Hex":
+				warMachineMetadata.Skin = "RedHex"
+			case "Desert":
+				warMachineMetadata.Skin = "Desert"
+			case "Navy":
+				warMachineMetadata.Skin = "Navy"
+			case "Nautical":
+				warMachineMetadata.Skin = "Nautical"
+			case "Military":
+				warMachineMetadata.Skin = "Military"
+			case "Irradiated":
+				warMachineMetadata.Skin = "Irradiated"
+			case "Eva":
+				warMachineMetadata.Skin = "EVA-02"
+			case "Beetle":
+				warMachineMetadata.Skin = "Beetle"
+			case "Villain":
+				warMachineMetadata.Skin = "Villain"
+			case "Green Yellow":
+				warMachineMetadata.Skin = "GreenYellow"
+			case "Red Blue":
+				warMachineMetadata.Skin = "RedBlue"
+			case "White Gold":
+				warMachineMetadata.Skin = "WhiteGold"
+			case "Vector":
+				warMachineMetadata.Skin = "Vector"
+			case "Cherry Blossom":
+				warMachineMetadata.Skin = "CherryBlossom"
+			case "Warden":
+				warMachineMetadata.Skin = "Warden"
+			case "Gundam":
+				warMachineMetadata.Skin = "Gundam"
+			case "White Gold Pattern":
+				warMachineMetadata.Skin = "WhiteGoldPattern"
+			case "Evangelion":
+				warMachineMetadata.Skin = "Evangelion"
+			case "Chalky Neon":
+				warMachineMetadata.Skin = "ChalkyNeon"
+			case "Black Digi":
+				warMachineMetadata.Skin = "BlackDigi"
+			case "Purple Haze":
+				warMachineMetadata.Skin = "PurpleHaze"
+			case "Destroyer":
+				warMachineMetadata.Skin = "Destroyer"
+			case "Static":
+				warMachineMetadata.Skin = "Static"
+			case "Neon":
+				warMachineMetadata.Skin = "Neon"
+			case "Gold":
+				warMachineMetadata.Skin = "Gold"
+			default:
+				warMachineMetadata.Skin = att.Value.(string)
+			}
+
 		case string(WarMachineAttFieldMaxHitPoint):
 			warMachineMetadata.MaxHealth = int(att.Value.(float64))
 			warMachineMetadata.Health = int(att.Value.(float64))

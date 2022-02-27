@@ -15,11 +15,12 @@ import (
 )
 
 // ClientOnline gets trigger on connection online
-func (api *API) ClientOnline(ctx context.Context, client *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
+func (api *API) ClientOnline(ctx context.Context, client *hub.Client) error {
+	return nil
 }
 
 // ClientOffline gets trigger on connection offline
-func (api *API) ClientOffline(ctx context.Context, client *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
+func (api *API) ClientOffline(ctx context.Context, client *hub.Client) error {
 	// if they are level 5, they are server client. So lets remove them
 	if client.Level == 5 {
 		api.ServerClientOffline(client)
@@ -36,9 +37,10 @@ func (api *API) ClientOffline(ctx context.Context, client *hub.Client, clients h
 	// remove offline user to our user cache
 	// go api.RemoveUserFromCache(userID)
 	// }
+	return nil
 }
 
-func (api *API) ClientLogout(ctx context.Context, client *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
+func (api *API) ClientLogout(ctx context.Context, client *hub.Client) error {
 	// userUUID, err := uuid.FromString(client.Identifier())
 	// if err != nil {
 	// 	api.Log.Err(err).Msgf("failed to get user uuid on logout for %s", client.Identifier())
@@ -53,6 +55,7 @@ func (api *API) ClientLogout(ctx context.Context, client *hub.Client, clients hu
 
 	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, client.Identifier())), false)
 	api.MessageBus.Unsub("", client, "")
+
 	// broadcast user online status to server clients
 	api.SendToAllServerClient(ctx, &ServerClientMessage{
 		Key: UserOnlineStatus,
@@ -64,12 +67,13 @@ func (api *API) ClientLogout(ctx context.Context, client *hub.Client, clients hu
 			Status: true,
 		},
 	})
+	return nil
 }
 
 // ClientAuth gets triggered on auth and handles setting the clients permissions and levels
-func (api *API) ClientAuth(ctx context.Context, client *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
+func (api *API) ClientAuth(ctx context.Context, client *hub.Client) error {
 	if client.Level == passport.ServerClientLevel {
-		return
+		return nil
 	}
 
 	userUuidString := client.Identifier()
@@ -142,4 +146,5 @@ func (api *API) ClientAuth(ctx context.Context, client *hub.Client, clients hub.
 			Status: true,
 		},
 	})
+	return nil
 }
