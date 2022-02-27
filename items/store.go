@@ -130,21 +130,21 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 	}
 
 	// create item on metadata table
-	err = db.XsynMetadataInsert(ctx, conn, newItem, externalUrl)
+	err = db.XsynMetadataInsert(ctx, tx, newItem, externalUrl)
 	if err != nil {
 		refund(err.Error())
 		return terror.Error(err)
 	}
 
 	// assign new item to user
-	err = db.XsynMetadataAssignUser(ctx, conn, newItem.Hash, user.ID, newItem.CollectionID, newItem.ExternalTokenID)
+	err = db.XsynMetadataAssignUser(ctx, tx, newItem.Hash, user.ID, newItem.CollectionID, newItem.ExternalTokenID)
 	if err != nil {
 		refund(err.Error())
 		return terror.Error(err)
 	}
 
 	// update item amounts
-	err = db.StoreItemPurchased(ctx, conn, storeItem)
+	err = db.StoreItemPurchased(ctx, tx, storeItem)
 	if err != nil {
 		refund(err.Error())
 		return terror.Error(err)
@@ -293,21 +293,21 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	}
 
 	// create item on metadata table
-	err = db.XsynMetadataInsert(ctx, conn, newItem, externalURL)
+	err = db.XsynMetadataInsert(ctx, tx, newItem, externalURL)
 	if err != nil {
 		refund(err.Error())
 		return "", terror.Error(err)
 	}
 
 	// assign new item to user
-	err = db.XsynMetadataAssignUser(ctx, conn, newItem.Hash, user.ID, newItem.CollectionID, newItem.ExternalTokenID)
+	err = db.XsynMetadataAssignUser(ctx, tx, newItem.Hash, user.ID, newItem.CollectionID, newItem.ExternalTokenID)
 	if err != nil {
 		refund(err.Error())
 		return "", terror.Error(err)
 	}
 
 	// update item amounts
-	err = db.StoreItemPurchased(ctx, conn, storeItem)
+	err = db.StoreItemPurchased(ctx, tx, storeItem)
 	if err != nil {
 		refund(err.Error())
 		return "", terror.Error(err)

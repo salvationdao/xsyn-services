@@ -24,12 +24,12 @@ func CollectionInsert(ctx context.Context, conn Conn, collection *passport.Colle
 // XsynMetadataInsert inserts a new item metadata
 func XsynMetadataInsert(ctx context.Context, conn Conn, item *passport.XsynMetadata, externalUrl string) error {
 	// generate token id
-	q := `SELECT count(*) from xsyn_metadata WHERE collection_id = $1`
+	q := `SELECT coalesce(max(external_token_id), 0) from xsyn_metadata WHERE collection_id = $1`
 	err := pgxscan.Get(ctx, conn, &item.ExternalTokenID, q, item.CollectionID)
 	if err != nil {
 		return terror.Error(err)
 	}
-
+	item.ExternalTokenID++
 	// generate hash
 	// TODO: get this to handle uint64
 	item.Hash, err = helpers.GenerateMetadataHashID(item.CollectionID.String(), int(item.ExternalTokenID), false)
