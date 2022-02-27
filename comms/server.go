@@ -15,6 +15,7 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
+	"github.com/shopspring/decimal"
 )
 
 type C struct {
@@ -25,7 +26,7 @@ type C struct {
 }
 
 type SpendSupsReq struct {
-	Amount               passport.BigInt               `json:"amount"`
+	Amount               string                        `json:"amount"`
 	FromUserID           passport.UserID               `json:"userID"`
 	TransactionReference passport.TransactionReference `json:"transactionReference"`
 	GroupID              string                        `json:"groupID"`
@@ -91,7 +92,11 @@ func Start(c *C) error {
 
 func (c *C) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) error {
 	ctx := context.Background()
-	if req.Amount.Cmp(big.NewInt(0)) < 0 {
+	amt, err := decimal.NewFromString(req.Amount)
+	if err != nil {
+		return err
+	}
+	if amt.LessThan(decimal.Zero) {
 		return terror.Error(terror.ErrInvalidInput, "Sups amount can not be negative")
 	}
 
@@ -99,7 +104,7 @@ func (c *C) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 		From:                 req.FromUserID,
 		To:                   passport.SupremacyGameUserID,
 		TransactionReference: req.TransactionReference,
-		Amount:               req.Amount.Int,
+		Amount:               *amt.BigInt(),
 	}
 
 	if req.GroupID != "" {
