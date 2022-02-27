@@ -321,7 +321,7 @@ func (c *C) DistrubuteFund(fund *big.Int, totalPoints int64, userMap map[int][]p
 
 	// var transactions []*passport.NewTransaction
 	onePointWorth := big.NewInt(0)
-	onePointWorth = onePointWorth.Div(fund, big.NewInt(int64(totalPoints)))
+	onePointWorth = onePointWorth.Div(copiedFund, big.NewInt(int64(totalPoints)))
 	// loop again to create all transactions
 	for multiplier, users := range userMap {
 		for _, user := range users {
