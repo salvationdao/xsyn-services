@@ -32,6 +32,8 @@ func GenerateMetadataHashID(uuidString string, tokenID int, debugPrint bool) (st
 	return e, nil
 }
 
+// UNRELIABLE DUE TO DIRTY DATA, DO NOT USE
+// Or at least recalculate the hashes first
 func UnhashMetadataHashID(collectionUUID, hash string) (int, error) {
 	hd := hashids.NewData()
 	hd.Salt = collectionUUID
