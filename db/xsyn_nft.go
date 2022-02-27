@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"passport"
 	"passport/helpers"
+	"strconv"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
@@ -451,4 +452,57 @@ func XsynAssetMinted(ctx context.Context, conn Conn, assetHash string) error {
 	}
 
 	return nil
+}
+
+// AssetFreeUpCheck check through the locked mechs and release the mech that is NOT on the checklist
+func AssetFreeUpCheck(ctx context.Context, conn Conn, checklist []string, lockedByUserID passport.UserID) ([]string, error) {
+	var args []interface{}
+	args = append(args, lockedByUserID)
+
+	q := `
+		UPDATE
+			xsyn_assets xa
+		SET
+			frozen_at = NULL,
+			frozen_by_id = NULL,
+			locked_by_id = NULL
+		WHERE
+			(xa.frozen_at NOTNULL OR xa.locked_by_id NOTNULL) AND 
+			xa.frozen_by_id = $1 AND 
+			xa.metadata_hash NOT IN(
+	`
+
+	for i, hash := range checklist {
+		args = append(args, hash)
+		q += "$" + strconv.Itoa(len(args))
+		if i < len(checklist)-1 {
+			q += ","
+			continue
+		}
+		q += ")"
+	}
+
+	q += " RETURNING xa.metadata_hash"
+
+	result := []string{}
+	err := pgxscan.Select(ctx, conn, &result, q, args...)
+	if err != nil {
+		return []string{}, terror.Error(err)
+	}
+
+	return result, nil
+}
+
+// AssetUnrepairList query the list of unrepair asset and put into repair center, when the server start
+func AssetUnrepairList(ctx context.Context, conn Conn) ([]string, error) {
+	hashes := []string{}
+	q := `
+		select hash from xsyn_metadata xm where durability < 100
+	`
+	err := pgxscan.Select(ctx, conn, &hashes, q)
+	if err != nil {
+		return hashes, terror.Error(err)
+	}
+
+	return hashes, nil
 }

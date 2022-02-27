@@ -453,20 +453,3 @@ func AssetSaleAvailable(ctx context.Context, conn Conn) ([]*passport.FactionSale
 
 	return result, nil
 }
-
-// // AssetFreeUpCheck check through the locked mechs and release the mech that is NOT on the checklist
-// func AssetFreeUpCheck(ctx context.Context, conn Conn, checklist []string, lockedByUserID passport.UserID) error {
-// 	q := `
-// 		UPDATE
-// 			xsyn_assets
-// 		SET
-
-// 	`
-
-// 	_, err := conn.Exec(ctx, q)
-// 	if err != nil {
-// 		return terror.Error(err)
-// 	}
-
-// 	return nil
-// }

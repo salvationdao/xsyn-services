@@ -82,6 +82,7 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	api.SupremacyCommand(HubKeySupremacyAssetRelease, supremacyHub.SupremacyAssetReleaseHandler)
 	api.SupremacyCommand(HubKeySupremacyWarMachineQueuePosition, supremacyHub.SupremacyWarMachineQueuePositionHandler)
 	api.SupremacyCommand(HubKeySupremacyPayAssetInsurance, supremacyHub.SupremacyPayAssetInsuranceHandler)
+	api.SupremacyCommand(HubKeySupremacyAssetQueuingCheck, supremacyHub.SupremacyAssetQueuingCheckHandler)
 
 	// battle queue
 	api.SupremacyCommand(HubKeySupremacyDefaultWarMachines, supremacyHub.SupremacyDefaultWarMachinesHandler)
@@ -1230,6 +1231,51 @@ func (sc *SupremacyControllerWS) SupremacyPayAssetInsuranceHandler(ctx context.C
 	}
 
 	reply(true)
+	return nil
+}
+
+type SupremacyAssetQueuingCheckRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		QueuedHashes []string `json:"queuedHashes"`
+	} `json:"payload"`
+}
+
+const HubKeySupremacyAssetQueuingCheck = hub.HubCommandKey("SUPREMACY:QUEUING_ASSET_CHECKLIST")
+
+func (sc *SupremacyControllerWS) SupremacyAssetQueuingCheckHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupremacyAssetQueuingCheckRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	if len(req.Payload.QueuedHashes) == 0 {
+		return nil
+	}
+
+	releasedHashes, err := db.AssetFreeUpCheck(ctx, sc.Conn, req.Payload.QueuedHashes, userID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	_, assets, err := db.AssetList(
+		ctx, sc.Conn,
+		"", false, releasedHashes, nil, nil, 0, len(releasedHashes), "", "",
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	for _, asset := range assets {
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), asset)
+	}
+
 	return nil
 }
 
