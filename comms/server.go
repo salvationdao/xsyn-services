@@ -10,6 +10,7 @@ import (
 	"passport"
 	"passport/api"
 	"passport/db"
+	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -27,6 +28,7 @@ type C struct {
 	Txs          *api.Transactions
 	Log          *zerolog.Logger
 	Conn         db.Conn
+	DistLock     sync.Mutex
 }
 
 type SpendSupsReq struct {
@@ -290,14 +292,15 @@ func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 	// we take the whole balance of supremacy sup pool and give it to the users watching
 	// amounts depend on their multiplier
 	// the supremacy sup pool user gets sups trickled into it from the last battle and 4 every 5 seconds
+	c.DistLock.Lock()
+	defer c.DistLock.Unlock()
 	supsForTick, err := c.UserCacheMap.Get(passport.SupremacySupPoolUserID.String())
 	if err != nil {
 		return terror.Error(err)
 	}
-	fmt.Println("total fund: ", supsForTick.String())
-
-	supPool := &supsForTick
-	supPool.Div(&supsForTick, big.NewInt(3))
+	supPool := big.NewInt(0)
+	supPool.Add(supPool, &supsForTick)
+	supPool.Div(supPool, big.NewInt(3))
 
 	// distribute Red Mountain sups
 	c.DistrubuteFund(supPool.String(), int64(rmTotalPoint), rmTotalMap)
@@ -319,19 +322,15 @@ func (c *C) DistrubuteFund(fundstr string, totalPoints int64, userMap map[int][]
 		return
 	}
 
-	fmt.Println("fund for each faction:", copiedFund.String())
-
 	if totalPoints == 0 {
 		return
 	}
-	ctx := context.Background()
+
+	totalPointsBigInt := big.NewInt(int64(totalPoints))
 
 	// var transactions []*passport.NewTransaction
 	onePointWorth := big.NewInt(0)
-	onePointWorth = onePointWorth.Div(copiedFund, big.NewInt(int64(totalPoints)))
-
-	fmt.Println("fund for each point", onePointWorth.String())
-	fmt.Println(onePointWorth.String())
+	onePointWorth = onePointWorth.Div(copiedFund, totalPointsBigInt)
 
 	// loop again to create all transactions
 	for multiplier, users := range userMap {
@@ -346,19 +345,10 @@ func (c *C) DistrubuteFund(fundstr string, totalPoints int64, userMap map[int][]
 				TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|ticker|%s|%s", user, time.Now())),
 			}
 
-			fmt.Println(usersSups.String())
-			nfb, ntb, _, err := c.UserCacheMap.Process(tx)
+			_, _, _, err := c.UserCacheMap.Process(tx)
 			if err != nil {
 				c.Log.Err(err).Msg("failed to process user fund")
 				return
-			}
-
-			if !tx.From.IsSystemUser() {
-				go c.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyUserSupsSubscribe, tx.From)), nfb.String())
-			}
-
-			if !tx.To.IsSystemUser() {
-				go c.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 			}
 
 			copiedFund = copiedFund.Sub(copiedFund, usersSups)
