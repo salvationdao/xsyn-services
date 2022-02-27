@@ -207,9 +207,9 @@ func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 
 	// sups guard
 	// kick users off the list, if they don't have any sups
-	newUserMap := make(map[int][]*passport.UserID)
+	newUserMap := make(map[int][]passport.UserID)
 	for multiplier, userIDs := range req.UserMap {
-		newList := []*passport.UserID{}
+		newList := []passport.UserID{}
 
 		for _, userID := range userIDs {
 			amount, err := c.UserCacheMap.Get(userID.String())
@@ -259,9 +259,9 @@ func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 
 			tx := &passport.NewTransaction{
 				From:                 passport.SupremacySupPoolUserID,
-				To:                   *user,
+				To:                   user,
 				Amount:               *usersSups,
-				TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|ticker|%s|%s", *user, time.Now())),
+				TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|ticker|%s|%s", user, time.Now())),
 			}
 
 			nfb, ntb, _, err := c.UserCacheMap.Process(tx)
