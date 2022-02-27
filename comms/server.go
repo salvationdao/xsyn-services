@@ -313,6 +313,7 @@ func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 func (c *C) DistrubuteFund(fundstr string, totalPoints int64, userMap map[int][]passport.UserID) {
 	copiedFund := big.NewInt(0)
 	sups, ok := copiedFund.SetString(fundstr, 10)
+	fmt.Println(fundstr + "111111111111111111111111111111111111111111111111111111111111111111")
 	if !ok {
 		c.Log.Err(fmt.Errorf("NOT work " + fundstr)).Msg(fundstr)
 		return
