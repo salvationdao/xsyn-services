@@ -22,24 +22,26 @@ import (
 	"github.com/rs/zerolog"
 )
 
+type TickerPoolCache struct {
+	outerMx            sync.Mutex
+	nextAccessMx       sync.Mutex
+	dataMx             sync.Mutex
+	TricklingAmountMap map[string]*big.Int
+}
+
 // SupremacyControllerWS holds handlers for supremacy and the supremacy held transactions
 type SupremacyControllerWS struct {
 	Conn            *pgxpool.Pool
 	Log             *zerolog.Logger
 	API             *API
-	TickerPoolCache struct {
-		outerMx            sync.Mutex
-		nextAccessMx       sync.Mutex
-		dataMx             sync.Mutex
-		TricklingAmountMap map[string]*big.Int
-	}
+	TickerPoolCache *TickerPoolCache
 
-	txs *transactions
+	Txs *Transactions
 }
 
-type transactions struct {
+type Transactions struct {
 	Txes []*passport.NewTransaction
-	txMx sync.Mutex
+	TxMx sync.Mutex
 }
 
 // NewSupremacyController creates the supremacy hub
@@ -48,31 +50,27 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 		Conn: conn,
 		Log:  log_helpers.NamedLogger(log, "supremacy"),
 		API:  api,
-		TickerPoolCache: struct {
-			outerMx            sync.Mutex
-			nextAccessMx       sync.Mutex
-			dataMx             sync.Mutex
-			TricklingAmountMap map[string]*big.Int
-		}{
+		TickerPoolCache: &TickerPoolCache{
 			outerMx:            sync.Mutex{},
 			nextAccessMx:       sync.Mutex{},
 			dataMx:             sync.Mutex{},
 			TricklingAmountMap: make(map[string]*big.Int),
 		},
-		txs: &transactions{
+		Txs: &Transactions{
 			Txes: []*passport.NewTransaction{},
 		},
 	}
 
 	// sup control
-	api.SupremacyCommand(HubKeySupremacySpendSups, supremacyHub.SupremacySpendSupsHandler)
-	api.SupremacyCommand(HubKeySupremacyReleaseTransactions, supremacyHub.SupremacyReleaseTransactionsHandler)
 
-	api.SupremacyCommand(HubKeySupremacyTickerTick, supremacyHub.SupremacyTickerTickHandler)
-	api.SupremacyCommand(HubKeySupremacyGetSpoilOfWar, supremacyHub.SupremacyGetSpoilOfWarHandler)
+	// MOVED TO net/rpc (comms)
+	// api.SupremacyCommand(HubKeySupremacySpendSups, supremacyHub.SupremacySpendSupsHandler)
+	// api.SupremacyCommand(HubKeySupremacyReleaseTransactions, supremacyHub.SupremacyReleaseTransactionsHandler)
+	// api.SupremacyCommand(HubKeySupremacyTickerTick, supremacyHub.SupremacyTickerTickHandler)
+	// api.SupremacyCommand(HubKeySupremacyGetSpoilOfWar, supremacyHub.SupremacyGetSpoilOfWarHandler)
+	// api.SupremacyCommand(HubKeySupremacyUserSupsMultiplierSend, supremacyHub.SupremacyUserSupsMultiplierSendHandler)
+
 	api.SupremacyCommand(HubKeySupremacyTransferBattleFundToSupPool, supremacyHub.SupremacyTransferBattleFundToSupPoolHandler)
-	api.SupremacyCommand(HubKeySupremacyUserSupsMultiplierSend, supremacyHub.SupremacyUserSupsMultiplierSendHandler)
-
 	// user connection upgrade
 	api.SupremacyCommand(HubKeySupremacyUserConnectionUpgrade, supremacyHub.SupremacyUserConnectionUpgradeHandler)
 
@@ -183,15 +181,15 @@ func (sc *SupremacyControllerWS) SupremacySpendSupsHandler(ctx context.Context, 
 	tx.ID = txID
 
 	// for refund
-	sc.txs.txMx.Lock()
-	sc.txs.Txes = append(sc.txs.Txes, &passport.NewTransaction{
+	sc.Txs.TxMx.Lock()
+	sc.Txs.Txes = append(sc.Txs.Txes, &passport.NewTransaction{
 		ID:                   txID,
 		From:                 tx.To,
 		To:                   tx.From,
 		Amount:               tx.Amount,
 		TransactionReference: passport.TransactionReference(fmt.Sprintf("refund|sups vote|%s", txID)),
 	})
-	sc.txs.txMx.Unlock()
+	sc.Txs.TxMx.Unlock()
 
 	reply(txID)
 	return nil
@@ -723,10 +721,10 @@ func (sc *SupremacyControllerWS) SupremacyReleaseTransactionsHandler(ctx context
 		return terror.Error(err, "Invalid request received")
 	}
 
-	sc.txs.txMx.Lock()
-	defer sc.txs.txMx.Unlock()
+	sc.Txs.TxMx.Lock()
+	defer sc.Txs.TxMx.Unlock()
 	for _, txID := range req.Payload.TxIDs {
-		for _, tx := range sc.txs.Txes {
+		for _, tx := range sc.Txs.Txes {
 			if txID != tx.ID {
 				continue
 			}
@@ -746,7 +744,7 @@ func (sc *SupremacyControllerWS) SupremacyReleaseTransactionsHandler(ctx context
 		}
 	}
 
-	sc.txs.Txes = []*passport.NewTransaction{}
+	sc.Txs.Txes = []*passport.NewTransaction{}
 
 	return nil
 }
