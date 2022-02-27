@@ -298,6 +298,8 @@ func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 	supPool := &supsForTick
 	supPool.Div(&supsForTick, big.NewInt(3))
 
+	fmt.Println("total fund: ", supPool.String())
+
 	// distribute Red Mountain sups
 	c.DistrubuteFund(supPool.String(), int64(rmTotalPoint), rmTotalMap)
 
@@ -312,13 +314,13 @@ func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 
 func (c *C) DistrubuteFund(fundstr string, totalPoints int64, userMap map[int][]passport.UserID) {
 	copiedFund := big.NewInt(0)
-	sups, ok := copiedFund.SetString(fundstr, 10)
-	fmt.Println(fundstr + "111111111111111111111111111111111111111111111111111111111111111111")
+	copiedFund, ok := copiedFund.SetString(fundstr, 10)
 	if !ok {
 		c.Log.Err(fmt.Errorf("NOT work " + fundstr)).Msg(fundstr)
 		return
 	}
-	copiedFund.Add(copiedFund, sups)
+
+	fmt.Println("fund for each faction:", copiedFund.String())
 
 	if totalPoints == 0 {
 		return
@@ -328,6 +330,10 @@ func (c *C) DistrubuteFund(fundstr string, totalPoints int64, userMap map[int][]
 	// var transactions []*passport.NewTransaction
 	onePointWorth := big.NewInt(0)
 	onePointWorth = onePointWorth.Div(copiedFund, big.NewInt(int64(totalPoints)))
+
+	fmt.Println("fund for each point", onePointWorth.String())
+	fmt.Println(onePointWorth.String())
+
 	// loop again to create all transactions
 	for multiplier, users := range userMap {
 		for _, user := range users {
@@ -341,6 +347,7 @@ func (c *C) DistrubuteFund(fundstr string, totalPoints int64, userMap map[int][]
 				TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|ticker|%s|%s", user, time.Now())),
 			}
 
+			fmt.Println(usersSups.String())
 			nfb, ntb, _, err := c.UserCacheMap.Process(tx)
 			if err != nil {
 				c.Log.Err(err).Msg("failed to process user fund")
