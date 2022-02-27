@@ -436,7 +436,7 @@ func AssetSaleAvailable(ctx context.Context, conn Conn) ([]*passport.FactionSale
 	q := `
 	select f.id , f."label",f.logo_blob_id, f.theme, f2.mega_amount, f3.lootbox_amount from factions f  
 		left join lateral(
-			select (sum(xs.amount_available) - sum(xs.amount_sold)) as mega_amount from xsyn_store xs 
+			select (sum(xs.amount_available) - sum(xs.amount_sold)- 200)  as mega_amount from xsyn_store xs 
 			where xs.faction_id = f.id and xs.restriction !='LOOTBOX'
 			group by xs.faction_id 
 		)f2 on true left join lateral(
