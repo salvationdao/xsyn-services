@@ -22,6 +22,7 @@ require (
 	github.com/jackc/pgconn v1.10.1
 	github.com/jackc/pgx/v4 v4.14.1
 	github.com/jpillora/backoff v1.0.0
+	github.com/kevinms/leakybucket-go v0.0.0-20200115003610-082473db97ca
 	github.com/lestrrat-go/jwx v1.2.15
 	github.com/lib/pq v1.10.4
 	github.com/mailgun/mailgun-go/v4 v4.6.0

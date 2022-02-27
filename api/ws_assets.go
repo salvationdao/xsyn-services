@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/microcosm-cc/bluemonday"
 	"math/big"
 	"passport"
 	"passport/db"
@@ -501,6 +502,8 @@ type AssetSetNameRequest struct {
 const HubKeyAssetUpdateName hub.HubCommandKey = "ASSET:UPDATE:NAME"
 
 func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	bm := bluemonday.StrictPolicy()
+
 	req := &AssetSetNameRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -544,8 +547,10 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 		return terror.Error(err, "Asset must be a War Machine")
 	}
 
+	name := bm.Sanitize(req.Payload.Name)
+
 	// update asset name
-	err = db.AssetUpdate(ctx, ac.Conn, asset.Hash, req.Payload.Name)
+	err = db.AssetUpdate(ctx, ac.Conn, asset.Hash, name)
 	if err != nil {
 		return terror.Error(err)
 	}

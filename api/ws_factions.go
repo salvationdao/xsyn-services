@@ -19,7 +19,7 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 	"github.com/microcosm-cc/bluemonday"
-
+leakybucket "github.com/kevinms/leakybucket-go"
 )
 
 var Profanities = []string{
@@ -217,8 +217,18 @@ func firstN(s string, n int) string {
 	return s
 }
 
+var bucket = leakybucket.NewCollector(2,10)
+var minuteBucket = leakybucket.NewCollector(0.5,30)
+
 // ChatMessageHandler sends chat message from user
 func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	b1 := bucket.Add(1)
+	b2 := bucket.Add(minuteBucket)
+
+	if b1 == 0 || b2 == 0 {
+		return terror.Error(errors.New("too many messages"), "too many message")
+	}
+
 	req := &FactionChatRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {

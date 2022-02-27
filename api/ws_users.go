@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/microcosm-cc/bluemonday"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -179,7 +180,8 @@ func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, hubc *h
 		return terror.Error(terror.ErrInvalidInput, "Username cannot be empty.")
 	}
 
-	username := strings.TrimSpace(req.Payload.Username)
+	bm := bluemonday.StrictPolicy()
+	username := bm.Sanitize(strings.TrimSpace(req.Payload.Username))
 
 	// Validate username
 	err = helpers.IsValidUsername(username)
