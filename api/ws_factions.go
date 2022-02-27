@@ -3,23 +3,25 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	goaway "github.com/TwiN/go-away"
 	"passport"
 	"passport/db"
 	"passport/helpers"
 	"time"
 
+	goaway "github.com/TwiN/go-away"
+
 	"github.com/ninja-software/log_helpers"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
+	leakybucket "github.com/kevinms/leakybucket-go"
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
-	"github.com/microcosm-cc/bluemonday"
-leakybucket "github.com/kevinms/leakybucket-go"
 )
 
 var Profanities = []string{
@@ -33,6 +35,7 @@ var Profanities = []string{
 
 var profanityDetector = goaway.NewProfanityDetector().WithCustomDictionary(Profanities, []string{}, []string{})
 var bm = bluemonday.StrictPolicy()
+
 // FactionController holds handlers for roles
 type FactionController struct {
 	Conn *pgxpool.Pool
@@ -217,13 +220,13 @@ func firstN(s string, n int) string {
 	return s
 }
 
-var bucket = leakybucket.NewCollector(2,10)
-var minuteBucket = leakybucket.NewCollector(0.5,30)
+var bucket = leakybucket.NewCollector(2, 10, true)
+var minuteBucket = leakybucket.NewCollector(0.5, 30, true)
 
 // ChatMessageHandler sends chat message from user
 func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	b1 := bucket.Add(1)
-	b2 := bucket.Add(minuteBucket)
+	b1 := bucket.Add(hubc.Identifier(), 1)
+	b2 := minuteBucket.Add(hubc.Identifier(), 1)
 
 	if b1 == 0 || b2 == 0 {
 		return terror.Error(errors.New("too many messages"), "too many message")
@@ -263,7 +266,7 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 	msg := bm.Sanitize(req.Payload.Message)
 	msg = profanityDetector.Censor(req.Payload.Message)
 	if len(msg) > 280 {
-		msg = firstN(msg,280)
+		msg = firstN(msg, 280)
 	}
 
 	// check if the faction id is provided
