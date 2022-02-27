@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"passport"
 	"passport/api"
+	"passport/comms"
 	"passport/db"
 	"passport/email"
 	"passport/helpers"
@@ -653,6 +654,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	}
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
+
 	api := api.NewAPI(log,
 		cancelOnPanic,
 		pgxconn,
@@ -677,6 +679,12 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		msgBus,
 		enablePurchaseSubscription,
 	)
+
+	c := comms.New(ucm, msgBus, api.SupremacyController.Txs, log)
+	err = comms.Start(c)
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	return api.Run(ctx)
 }

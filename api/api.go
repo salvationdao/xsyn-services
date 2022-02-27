@@ -40,16 +40,17 @@ import (
 
 // API server
 type API struct {
-	State        *passport.State
-	SupUSD       decimal.Decimal
-	Log          *zerolog.Logger
-	Routes       chi.Router
-	Addr         string
-	Mailer       *email.Mailer
-	HTMLSanitize *bluemonday.Policy
-	Hub          *hub.Hub
-	Conn         *pgxpool.Pool
-	Tokens       *Tokens
+	SupremacyController *SupremacyControllerWS
+	State               *passport.State
+	SupUSD              decimal.Decimal
+	Log                 *zerolog.Logger
+	Routes              chi.Router
+	Addr                string
+	Mailer              *email.Mailer
+	HTMLSanitize        *bluemonday.Policy
+	Hub                 *hub.Hub
+	Conn                *pgxpool.Pool
+	Tokens              *Tokens
 	*auth.Auth
 	*messagebus.MessageBus
 	ClientToken  string
@@ -248,9 +249,11 @@ func NewAPI(
 	_ = NewOrganisationController(log, conn, api)
 	_ = NewRoleController(log, conn, api)
 	_ = NewProductController(log, conn, api)
-	_ = NewSupremacyController(log, conn, api)
+	sc := NewSupremacyController(log, conn, api)
 	_ = NewGamebarController(log, conn, api)
 	_ = NewStoreController(log, conn, api)
+
+	api.SupremacyController = sc
 
 	//api.Hub.Events.AddEventHandler(hub.EventOnline, api.ClientOnline)
 	api.Hub.Events.AddEventHandler(auth.EventLogin, api.ClientAuth, func(err error) {})
