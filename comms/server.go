@@ -9,8 +9,11 @@ import (
 	"net/rpc"
 	"passport"
 	"passport/api"
+	"passport/db"
 	"time"
 
+	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -23,6 +26,7 @@ type C struct {
 	MessageBus   *messagebus.MessageBus
 	Txs          *api.Transactions
 	Log          *zerolog.Logger
+	Conn         db.Conn
 }
 
 type SpendSupsReq struct {
@@ -40,12 +44,14 @@ func New(
 	messageBus *messagebus.MessageBus,
 	txs *api.Transactions,
 	log *zerolog.Logger,
+	conn *pgxpool.Pool,
 ) *C {
 	result := &C{
 		UserCacheMap: userCacheMap,
 		MessageBus:   messageBus,
 		Txs:          txs,
 		Log:          log,
+		Conn:         conn,
 	}
 	return result
 }
@@ -206,13 +212,13 @@ func (c *C) supremacyFeed() {
 }
 
 func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
-	ctx := context.Background()
 	// make treasury send game server user moneys
 	c.supremacyFeed()
 
 	// sups guard
-	// kick users off the list, if they don't have any sups
-	newUserMap := make(map[int][]passport.UserID)
+	// kick users off the list, if they don't have any sups\
+	um := make(map[passport.UserID]passport.FactionID)
+	userMap := make(map[int][]passport.UserID)
 	for multiplier, userIDs := range req.UserMap {
 		newList := []passport.UserID{}
 
@@ -222,28 +228,64 @@ func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 				// kick user out
 				continue
 			}
+			um[userID] = passport.FactionID(uuid.Nil)
 			newList = append(newList, userID)
 		}
 
 		if len(newList) > 0 {
-			newUserMap[multiplier] = newList
+			userMap[multiplier] = newList
 		}
 	}
-
 	//  to avoid working in floats, a 100% multiplier is 100 points, a 25% is 25 points
 	// This will give us what we need to divide the pool by and then times by to give the user the correct share of the pool
 
-	totalPoints := 0
+	err := db.GetFactionIDByUsers(context.Background(), c.Conn, um)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// rebuild the sups disritbute system
+	rmTotalPoint := 0
+	rmTotalMap := make(map[int][]passport.UserID)
+	bTotalPoint := 0
+	bTotalMap := make(map[int][]passport.UserID)
+	zTotalPoint := 0
+	zTotalMap := make(map[int][]passport.UserID)
+
 	// loop once to get total point count
-	for multiplier, users := range newUserMap {
-		totalPoints = totalPoints + (multiplier * len(users))
-	}
+	for multiplier, users := range userMap {
+		for _, userID := range users {
+			switch um[userID] {
+			case passport.RedMountainFactionID:
+				rmTotalPoint += multiplier
 
-	if totalPoints == 0 {
-		return nil
-	}
+				// check user list
+				if _, ok := rmTotalMap[multiplier]; !ok {
+					rmTotalMap[multiplier] = []passport.UserID{}
+				}
+				rmTotalMap[multiplier] = append(rmTotalMap[multiplier], userID)
 
-	// var transactions []*passport.NewTransaction
+			case passport.BostonCyberneticsFactionID:
+				bTotalPoint += multiplier
+
+				// check user list
+				if _, ok := bTotalMap[multiplier]; !ok {
+					bTotalMap[multiplier] = []passport.UserID{}
+				}
+				bTotalMap[multiplier] = append(bTotalMap[multiplier], userID)
+
+			case passport.ZaibatsuFactionID:
+				zTotalPoint += multiplier
+
+				// check set up separate user rate
+				if _, ok := zTotalMap[multiplier]; !ok {
+					zTotalMap[multiplier] = []passport.UserID{}
+				}
+				zTotalMap[multiplier] = append(zTotalMap[multiplier], userID)
+			}
+		}
+
+	}
 
 	// we take the whole balance of supremacy sup pool and give it to the users watching
 	// amounts depend on their multiplier
@@ -254,10 +296,34 @@ func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 	}
 
 	supPool := &supsForTick
+	supPool.Div(&supsForTick, big.NewInt(3))
+
+	// distribute Red Mountain sups
+	c.DistrubuteFund(supPool, int64(rmTotalPoint), rmTotalMap)
+
+	// distribute Boston sups
+	c.DistrubuteFund(supPool, int64(bTotalPoint), bTotalMap)
+
+	// distribute Zaibatsu sups
+	c.DistrubuteFund(supPool, int64(zTotalPoint), zTotalMap)
+
+	return nil
+}
+
+func (c *C) DistrubuteFund(fund *big.Int, totalPoints int64, userMap map[int][]passport.UserID) {
+	copiedFund := big.NewInt(0)
+	copiedFund.Add(copiedFund, fund)
+
+	if totalPoints == 0 {
+		return
+	}
+	ctx := context.Background()
+
+	// var transactions []*passport.NewTransaction
 	onePointWorth := big.NewInt(0)
-	onePointWorth = onePointWorth.Div(supPool, big.NewInt(int64(totalPoints)))
+	onePointWorth = onePointWorth.Div(fund, big.NewInt(int64(totalPoints)))
 	// loop again to create all transactions
-	for multiplier, users := range newUserMap {
+	for multiplier, users := range userMap {
 		for _, user := range users {
 			usersSups := big.NewInt(0)
 			usersSups = usersSups.Mul(onePointWorth, big.NewInt(int64(multiplier)))
@@ -271,7 +337,8 @@ func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 
 			nfb, ntb, _, err := c.UserCacheMap.Process(tx)
 			if err != nil {
-				return terror.Error(err, "failed to process user fund")
+				c.Log.Err(err).Msg("failed to process user fund")
+				return
 			}
 
 			if !tx.From.IsSystemUser() {
@@ -282,11 +349,9 @@ func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 				go c.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyUserSupsSubscribe, tx.To)), ntb.String())
 			}
 
-			supPool = supPool.Sub(supPool, usersSups)
+			copiedFund = copiedFund.Sub(copiedFund, usersSups)
 		}
 	}
-
-	return nil
 }
 
 type GetSpoilOfWarReq struct{}

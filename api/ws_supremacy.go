@@ -250,6 +250,7 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 
 	// sups guard
 	// kick users off the list, if they don't have any sups
+	um := make(map[passport.UserID]passport.FactionID)
 	newUserMap := make(map[int][]*passport.UserID)
 	for multiplier, userIDs := range req.Payload.UserMap {
 		newList := []*passport.UserID{}
@@ -260,6 +261,7 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 				// kick user out
 				continue
 			}
+			um[*userID] = passport.FactionID(uuid.Nil)
 			newList = append(newList, userID)
 		}
 

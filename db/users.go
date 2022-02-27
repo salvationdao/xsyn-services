@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"passport"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1245,4 +1246,37 @@ func GetUserMetadata(ctx context.Context, conn Conn, userID passport.UserID) (*p
 	}
 
 	return &md.Metadata, nil
+}
+
+func GetFactionIDByUsers(ctx context.Context, conn Conn, um map[passport.UserID]passport.FactionID) error {
+	users := []*passport.User{}
+
+	var args []interface{}
+	q := `
+		SELECT id, faction_id FROM users WHERE id IN (
+	`
+
+	for uid := range um {
+		args = append(args, uid)
+
+		q += "$" + strconv.Itoa(len(args))
+		if len(args) < len(um) {
+			q += ","
+			continue
+		}
+		q += ")"
+	}
+
+	err := pgxscan.Select(ctx, conn, &users, q, args...)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	for _, user := range users {
+		if user.FactionID != nil && !user.FactionID.IsNil() {
+			um[user.ID] = *user.FactionID
+		}
+	}
+
+	return nil
 }

@@ -680,7 +680,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		enablePurchaseSubscription,
 	)
 
-	c := comms.New(ucm, msgBus, api.SupremacyController.Txs, log)
+	c := comms.New(ucm, msgBus, api.SupremacyController.Txs, log, pgxconn)
 	err = comms.Start(c)
 	if err != nil {
 		return terror.Error(err)
