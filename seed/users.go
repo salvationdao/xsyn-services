@@ -4,7 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/big"
+	"github.com/georgysavva/scany/pgxscan"
+"math/big"
 	"net/http"
 	"passport"
 	"passport/crypto"
@@ -304,10 +305,18 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 
 	}
 
-	supremacyCollection, err := db.CollectionGet(ctx, s.Conn, "supremacy")
-	if err != nil {
-		return nil, terror.Error(err)
-	}
+	//supremacyCollection, err := db.CollectionGet(ctx, s.Conn, "supremacy")
+	//if err != nil {
+	//	return nil, terror.Error(err)
+	//}
+
+		supremacyCollectionID := passport.CollectionID{}
+    	q:= `select id from collections where name ILIKE $1`
+    	err := pgxscan.Get(ctx, s.Conn, &supremacyCollectionID, q, "supremacy genesis")
+    	if err != nil {
+    		return nil, terror.Error(err)
+    	}
+
 
 	// Create user
 	u := &passport.User{
@@ -384,17 +393,17 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		TransactionReference: passport.TransactionReference("Initial supremacy RedMountain supply seed."),
 	})
 
-	err = s.SeedAndAssignZaibatsu(ctx, supremacyCollection)
+	err = s.SeedAndAssignZaibatsu(ctx, supremacyCollectionID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
-	err = s.SeedAndAssignRedMountain(ctx, supremacyCollection)
+	err = s.SeedAndAssignRedMountain(ctx, supremacyCollectionID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
-	err = s.SeedAndAssignBoston(ctx, supremacyCollection)
+	err = s.SeedAndAssignBoston(ctx, supremacyCollectionID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -402,10 +411,10 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 	return u, nil
 }
 
-func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport.Collection) error {
+func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collectionID passport.CollectionID) error {
 	newNFT := []*passport.XsynMetadata{
 		{
-			CollectionID:       collection.ID,
+			CollectionID:       collectionID,
 			Name:               "",
 			ExternalUrl:        "",
 			Image:              "",
@@ -506,7 +515,7 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 			},
 		},
 		{
-			CollectionID:       collection.ID,
+			CollectionID:       collectionID,
 			Name:               "",
 			ExternalUrl:        "",
 			Image:              "",
@@ -607,7 +616,7 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 			},
 		},
 		{
-			CollectionID:       collection.ID,
+			CollectionID:       collectionID,
 			Name:               "",
 			ExternalUrl:        "",
 			Image:              "",
@@ -710,12 +719,22 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 	}
 
 	for _, nft := range newNFT {
-		err := db.XsynMetadataInsert(ctx, s.Conn, nft, s.ExternalURL)
-		if err != nil {
-			return terror.Error(err)
-		}
+		q := `	INSERT INTO xsyn_metadata (token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata)
+    			VALUES((SELECT nextval('token_id_seq')),$1, $2, $3, $4, $5, $6, $7, $8)
+    			RETURNING token_id as external_token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata`
 
-		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.Hash, passport.SupremacyZaibatsuUserID, nft.CollectionID, nft.ExternalTokenID)
+    	err := pgxscan.Get(ctx, s.Conn, nft, q, nft.Name, nft.CollectionID, nft.GameObject, nft.Description, nft.Image, nft.AnimationURL, nft.Attributes, nft.AdditionalMetadata)
+    	if err != nil {
+    		return terror.Error(err)
+    	}
+
+
+		q = `INSERT INTO 
+        			xsyn_assets (token_id, user_id)
+        		VALUES
+        			($1, $2);`
+
+		_, err = s.Conn.Exec(ctx, q, nft.ExternalTokenID, passport.SupremacyZaibatsuUserID)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -724,10 +743,10 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collection *passport
 	return nil
 }
 
-func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passport.Collection) error {
+func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collectionID passport.CollectionID) error {
 	newNFT := []*passport.XsynMetadata{
 		{
-			CollectionID:       collection.ID,
+			CollectionID:       collectionID,
 			Name:               "",
 			ExternalUrl:        "",
 			Image:              "",
@@ -818,7 +837,7 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 			},
 		},
 		{
-			CollectionID:       collection.ID,
+			CollectionID:       collectionID,
 			Name:               "Olympus Mons LY07 B",
 			ExternalUrl:        "",
 			Image:              "",
@@ -909,7 +928,7 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 			},
 		},
 		{
-			CollectionID:       collection.ID,
+			CollectionID:       collectionID,
 			Name:               "Olympus Mons LY07 B",
 			ExternalUrl:        "",
 			Image:              "",
@@ -1002,12 +1021,22 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 	}
 
 	for _, nft := range newNFT {
-		err := db.XsynMetadataInsert(ctx, s.Conn, nft, s.ExternalURL)
-		if err != nil {
-			return terror.Error(err)
-		}
+		q := `	INSERT INTO xsyn_metadata (token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata)
+    			VALUES((SELECT nextval('token_id_seq')),$1, $2, $3, $4, $5, $6, $7, $8)
+    			RETURNING token_id as external_token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata`
 
-		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.Hash, passport.SupremacyRedMountainUserID, nft.CollectionID, nft.ExternalTokenID)
+    	err := pgxscan.Get(ctx, s.Conn, nft, q, nft.Name, nft.CollectionID, nft.GameObject, nft.Description, nft.Image, nft.AnimationURL, nft.Attributes, nft.AdditionalMetadata)
+    	if err != nil {
+    		return terror.Error(err)
+    	}
+
+
+		q = `INSERT INTO 
+        			xsyn_assets (token_id, user_id)
+        		VALUES
+        			($1, $2);`
+
+		_, err = s.Conn.Exec(ctx, q, nft.ExternalTokenID, passport.SupremacyZaibatsuUserID)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -1016,10 +1045,10 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collection *passp
 	return nil
 }
 
-func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.Collection) error {
+func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collectionID passport.CollectionID) error {
 	metadata := []*passport.XsynMetadata{
 		{
-			CollectionID:       collection.ID,
+			CollectionID:       collectionID,
 			Name:               "",
 			ExternalUrl:        "",
 			Image:              "",
@@ -1097,7 +1126,7 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 			},
 		},
 		{
-			CollectionID:       collection.ID,
+			CollectionID:       collectionID,
 			Name:               "Law Enforcer X-1000 B",
 			ExternalUrl:        "",
 			Image:              "",
@@ -1175,7 +1204,7 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 			},
 		},
 		{
-			CollectionID:       collection.ID,
+			CollectionID:       collectionID,
 			Name:               "Law Enforcer X-1000 B",
 			ExternalUrl:        "",
 			Image:              "",
@@ -1255,12 +1284,22 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collection *passport.C
 	}
 
 	for _, nft := range metadata {
-		err := db.XsynMetadataInsert(ctx, s.Conn, nft, s.ExternalURL)
-		if err != nil {
-			return terror.Error(err)
-		}
+		q := `	INSERT INTO xsyn_metadata (token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata)
+    			VALUES((SELECT nextval('token_id_seq')),$1, $2, $3, $4, $5, $6, $7, $8)
+    			RETURNING token_id as external_token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata`
 
-		err = db.XsynMetadataAssignUser(ctx, s.Conn, nft.Hash, passport.SupremacyBostonCyberneticsUserID, nft.CollectionID, nft.ExternalTokenID)
+    	err := pgxscan.Get(ctx, s.Conn, nft, q, nft.Name, nft.CollectionID, nft.GameObject, nft.Description, nft.Image, nft.AnimationURL, nft.Attributes, nft.AdditionalMetadata)
+    	if err != nil {
+    		return terror.Error(err)
+    	}
+
+
+		q = `INSERT INTO 
+        			xsyn_assets (token_id, user_id)
+        		VALUES
+        			($1, $2);`
+
+		_, err = s.Conn.Exec(ctx, q, nft.ExternalTokenID, passport.SupremacyZaibatsuUserID)
 		if err != nil {
 			return terror.Error(err)
 		}
