@@ -10,7 +10,6 @@ import (
 	"passport"
 	"passport/api"
 	"passport/db"
-	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -19,6 +18,7 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
 )
 
@@ -28,7 +28,7 @@ type C struct {
 	Txs          *api.Transactions
 	Log          *zerolog.Logger
 	Conn         db.Conn
-	DistLock     sync.Mutex
+	DistLock     deadlock.Mutex
 }
 
 type SpendSupsReq struct {

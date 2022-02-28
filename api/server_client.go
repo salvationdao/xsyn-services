@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"math/big"
 	"passport"
-	"sync"
 
 	"github.com/ninja-syndicate/hub"
+	"github.com/sasha-s/go-deadlock"
 )
 
 type SupremacySupPool struct {
@@ -45,7 +45,7 @@ func (api *API) SupremacySupPoolSet(sups passport.BigInt) {
 // SupremacySupPoolGetTrickleAmount return current trickle amount
 func (api *API) SupremacySupPoolGetTrickleAmount() passport.BigInt {
 	amount := passport.BigInt{}
-	wg := sync.WaitGroup{}
+	wg := deadlock.WaitGroup{}
 	wg.Add(1)
 	api.supremacySupsPool <- func(ssp *SupremacySupPool) {
 		defer wg.Done()

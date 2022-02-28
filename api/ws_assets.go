@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/microcosm-cc/bluemonday"
 	"math/big"
 	"passport"
 	"passport/db"
-
-	"github.com/microcosm-cc/bluemonday"
 
 	"github.com/ninja-software/log_helpers"
 
