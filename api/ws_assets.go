@@ -9,6 +9,8 @@ import (
 	"passport"
 	"passport/db"
 
+	"github.com/microcosm-cc/bluemonday"
+
 	"github.com/ninja-software/log_helpers"
 
 	"github.com/gofrs/uuid"
@@ -389,7 +391,7 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hub
 	}
 
 	reply(asset)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), nil
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.Hash)), nil
 }
 
 const HubKeyAssetDurabilitySubscribe hub.HubCommandKey = "ASSET:DURABILITY:SUBSCRIBE"
@@ -501,6 +503,8 @@ type AssetSetNameRequest struct {
 const HubKeyAssetUpdateName hub.HubCommandKey = "ASSET:UPDATE:NAME"
 
 func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	bm := bluemonday.StrictPolicy()
+
 	req := &AssetSetNameRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -544,8 +548,14 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 		return terror.Error(err, "Asset must be a War Machine")
 	}
 
+	name := bm.Sanitize(req.Payload.Name)
+
+	if len(name) > 10 {
+		return terror.Error(err, "Name must be less than 10 characters")
+	}
+
 	// update asset name
-	err = db.AssetUpdate(ctx, ac.Conn, asset.Hash, req.Payload.Name)
+	err = db.AssetUpdate(ctx, ac.Conn, asset.Hash, name)
 	if err != nil {
 		return terror.Error(err)
 	}

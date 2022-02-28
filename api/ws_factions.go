@@ -3,21 +3,38 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"passport"
 	"passport/db"
 	"passport/helpers"
 	"time"
 
+	goaway "github.com/TwiN/go-away"
+
 	"github.com/ninja-software/log_helpers"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
+	leakybucket "github.com/kevinms/leakybucket-go"
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 )
+
+var Profanities = []string{
+	"fag",
+	"fuck",
+	"nigga",
+	"nigger",
+	"rape",
+	"retard",
+}
+
+var profanityDetector = goaway.NewProfanityDetector().WithCustomDictionary(Profanities, []string{}, []string{})
+var bm = bluemonday.StrictPolicy()
 
 // FactionController holds handlers for roles
 type FactionController struct {
@@ -192,8 +209,29 @@ type ChatMessageSend struct {
 // rootHub.SecureCommand(HubKeyFactionChat, factionHub.ChatMessageHandler)
 const HubKeyChatMessage hub.HubCommandKey = "CHAT:MESSAGE"
 
+func firstN(s string, n int) string {
+	i := 0
+	for j := range s {
+		if i == n {
+			return s[:j]
+		}
+		i++
+	}
+	return s
+}
+
+var bucket = leakybucket.NewCollector(2, 10, true)
+var minuteBucket = leakybucket.NewCollector(0.5, 30, true)
+
 // ChatMessageHandler sends chat message from user
 func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	b1 := bucket.Add(hubc.Identifier(), 1)
+	b2 := minuteBucket.Add(hubc.Identifier(), 1)
+
+	if b1 == 0 || b2 == 0 {
+		return terror.Error(errors.New("too many messages"), "too many message")
+	}
+
 	req := &FactionChatRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -225,6 +263,12 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 		factionLogoBlobID = &faction.LogoBlobID
 	}
 
+	msg := bm.Sanitize(req.Payload.Message)
+	msg = profanityDetector.Censor(req.Payload.Message)
+	if len(msg) > 280 {
+		msg = firstN(msg, 280)
+	}
+
 	// check if the faction id is provided
 	if !req.Payload.FactionID.IsNil() {
 		if user.FactionID == nil || user.FactionID.IsNil() {
@@ -237,7 +281,7 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 
 		// send message
 		fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID)), &ChatMessageSend{
-			Message:           req.Payload.Message,
+			Message:           msg,
 			MessageColor:      req.Payload.MessageColor,
 			FromUserID:        user.ID,
 			FromUsername:      user.Username,
