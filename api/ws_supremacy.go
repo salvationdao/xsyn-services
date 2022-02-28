@@ -551,7 +551,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetLockHandler(ctx context.Context, 
 	}
 
 	for _, asset := range assets {
-		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), asset)
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.Hash)), asset)
 	}
 
 	reply(true)
@@ -628,7 +628,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetReleaseHandler(ctx context.Contex
 	}
 
 	for _, asset := range assets {
-		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), asset)
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.Hash)), asset)
 	}
 
 	return nil
@@ -1264,7 +1264,7 @@ func (sc *SupremacyControllerWS) SupremacyAssetQueuingCheckHandler(ctx context.C
 	}
 
 	for _, asset := range assets {
-		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), asset)
+		go sc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.Hash)), asset)
 	}
 
 	return nil

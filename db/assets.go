@@ -348,6 +348,8 @@ func AssetUpdate(ctx context.Context, conn Conn, hash string, newName string) er
 			-- gets indexes of attribute's entries
 	        JSONB_ARRAY_ELEMENTS(attributes) WITH ORDINALITY arr(elem, pos)
 	    WHERE
+			xsyn_metadata.hash = $2
+		AND
 			-- gets the name entry
 	        elem->>'trait_type' = 'Name'
 	    ) sub

@@ -390,7 +390,7 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hub
 	}
 
 	reply(asset)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), nil
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.Hash)), nil
 }
 
 const HubKeyAssetDurabilitySubscribe hub.HubCommandKey = "ASSET:DURABILITY:SUBSCRIBE"
@@ -548,6 +548,10 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 	}
 
 	name := bm.Sanitize(req.Payload.Name)
+
+	if len(name) > 10 {
+		return terror.Error(err, "Name must be less than 10 characters")
+	}
 
 	// update asset name
 	err = db.AssetUpdate(ctx, ac.Conn, asset.Hash, name)

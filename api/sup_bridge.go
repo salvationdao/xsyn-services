@@ -561,7 +561,7 @@ func (cc *ChainClients) StakeEvent(event *bridge.NFTStakeEvent) {
 		cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to transfer")
 		return
 	}
-	go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), asset)
+	go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.Hash)), asset)
 }
 
 func (cc *ChainClients) UnstakeEvent(event *bridge.NFTUnstakeEvent) {
@@ -599,5 +599,5 @@ func (cc *ChainClients) UnstakeEvent(event *bridge.NFTUnstakeEvent) {
 		cc.Log.Err(err).Str("Owner", event.Owner.Hex()).Uint64("Token", event.TokenID.Uint64()).Str("tx", event.TxID.Hex()).Msgf("unable to find asset to transfer")
 		return
 	}
-	go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), asset)
+	go cc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.Hash)), asset)
 }
