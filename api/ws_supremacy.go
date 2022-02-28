@@ -8,10 +8,10 @@ import (
 	"math/big"
 	"passport"
 	"passport/db"
-	"sync"
 	"time"
 
 	"github.com/ninja-software/log_helpers"
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
@@ -23,9 +23,9 @@ import (
 )
 
 type TickerPoolCache struct {
-	outerMx            sync.Mutex
-	nextAccessMx       sync.Mutex
-	dataMx             sync.Mutex
+	outerMx            deadlock.Mutex
+	nextAccessMx       deadlock.Mutex
+	dataMx             deadlock.Mutex
 	TricklingAmountMap map[string]*big.Int
 }
 
@@ -41,7 +41,7 @@ type SupremacyControllerWS struct {
 
 type Transactions struct {
 	Txes []*passport.NewTransaction
-	TxMx sync.Mutex
+	TxMx deadlock.Mutex
 }
 
 // NewSupremacyController creates the supremacy hub
@@ -51,9 +51,9 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 		Log:  log_helpers.NamedLogger(log, "supremacy"),
 		API:  api,
 		TickerPoolCache: &TickerPoolCache{
-			outerMx:            sync.Mutex{},
-			nextAccessMx:       sync.Mutex{},
-			dataMx:             sync.Mutex{},
+			outerMx:            deadlock.Mutex{},
+			nextAccessMx:       deadlock.Mutex{},
+			dataMx:             deadlock.Mutex{},
 			TricklingAmountMap: make(map[string]*big.Int),
 		},
 		Txs: &Transactions{
@@ -62,13 +62,6 @@ func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *
 	}
 
 	// sup control
-
-	// MOVED TO net/rpc (comms)
-	// api.SupremacyCommand(HubKeySupremacySpendSups, supremacyHub.SupremacySpendSupsHandler)
-	// api.SupremacyCommand(HubKeySupremacyReleaseTransactions, supremacyHub.SupremacyReleaseTransactionsHandler)
-	// api.SupremacyCommand(HubKeySupremacyTickerTick, supremacyHub.SupremacyTickerTickHandler)
-	// api.SupremacyCommand(HubKeySupremacyGetSpoilOfWar, supremacyHub.SupremacyGetSpoilOfWarHandler)
-	// api.SupremacyCommand(HubKeySupremacyUserSupsMultiplierSend, supremacyHub.SupremacyUserSupsMultiplierSendHandler)
 
 	api.SupremacyCommand(HubKeySupremacyTransferBattleFundToSupPool, supremacyHub.SupremacyTransferBattleFundToSupPoolHandler)
 
@@ -342,11 +335,10 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 
 	// generate new go routine to trickle sups
 	sc.poolHighPriorityLock()
-
+	defer sc.poolHighPriorityUnlock()
 	// get current battle user sups
 	battleUser, err := sc.API.userCacheMap.Get(passport.SupremacyBattleUserID.String())
 	if err != nil {
-		sc.poolHighPriorityUnlock()
 		return terror.Error(err, "failed to get battle user balance from db")
 	}
 
@@ -366,7 +358,6 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 
 	// skip, if trickle amount is empty
 	if supsPerTick.BitLen() == 0 {
-		sc.poolHighPriorityUnlock()
 		reply(true)
 		return nil
 	}
@@ -378,7 +369,6 @@ func (sc *SupremacyControllerWS) SupremacyTransferBattleFundToSupPoolHandler(ctx
 
 	// start a new go routine for current round
 	go sc.trickleFactory(key, ticksInFiveMinutes, supsPerTick)
-	sc.poolHighPriorityUnlock()
 
 	reply(true)
 	return nil
@@ -429,6 +419,8 @@ func (sc *SupremacyControllerWS) trickleFactory(key string, totalTick int, supsP
 		// }
 
 		sc.poolLowPriorityLock()
+		defer sc.poolLowPriorityUnlock()
+
 		tx := &passport.NewTransaction{
 			From:                 passport.SupremacyBattleUserID,
 			To:                   passport.SupremacySupPoolUserID,
@@ -457,7 +449,6 @@ func (sc *SupremacyControllerWS) trickleFactory(key string, totalTick int, supsP
 		if i < totalTick {
 			// update current trickling amount
 			sc.TickerPoolCache.TricklingAmountMap[key].Sub(sc.TickerPoolCache.TricklingAmountMap[key], supsPerTick)
-			sc.poolLowPriorityUnlock()
 
 			time.Sleep(5 * time.Second)
 			continue
@@ -465,7 +456,6 @@ func (sc *SupremacyControllerWS) trickleFactory(key string, totalTick int, supsP
 
 		// otherwise, delete the trickle amount from the map
 		delete(sc.TickerPoolCache.TricklingAmountMap, key)
-		sc.poolLowPriorityUnlock()
 		break
 	}
 }

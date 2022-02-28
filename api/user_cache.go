@@ -7,15 +7,15 @@ import (
 	"math/big"
 	"passport"
 	"passport/db"
-	"sync"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/sasha-s/go-deadlock"
 )
 
 type UserCacheMap struct {
-	sync.Map
+	deadlock.Map
 	conn             *pgxpool.Pool
 	TransactionCache *TransactionCache
 	MessageBus       *messagebus.MessageBus
@@ -23,7 +23,7 @@ type UserCacheMap struct {
 
 func NewUserCacheMap(conn *pgxpool.Pool, tc *TransactionCache, msgBus *messagebus.MessageBus) (*UserCacheMap, error) {
 	ucm := &UserCacheMap{
-		sync.Map{},
+		deadlock.Map{},
 		conn,
 		tc,
 		msgBus,

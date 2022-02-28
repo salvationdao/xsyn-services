@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"passport"
 	"passport/db"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -24,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/ninja-syndicate/supremacy-bridge/bridge"
+	"github.com/sasha-s/go-deadlock"
 )
 
 const ETHSymbol = "ETH"
@@ -45,7 +45,7 @@ type ChainClients struct {
 	API                 *API
 	Log                 *zerolog.Logger
 
-	updatePriceFuncMu sync.Mutex
+	updatePriceFuncMu deadlock.Mutex
 	updatePriceFunc   func(symbol string, amount decimal.Decimal)
 }
 
@@ -119,7 +119,7 @@ func NewChainClients(log *zerolog.Logger, api *API, p *passport.BridgeParams, is
 		Params:              p,
 		API:                 api,
 		Log:                 log,
-		updatePriceFuncMu:   sync.Mutex{},
+		updatePriceFuncMu:   deadlock.Mutex{},
 		isTestnetBlockchain: isTestnetBlockchain,
 		runBlockchainBridge: runBlockchainBridge,
 	}
