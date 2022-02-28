@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/microcosm-cc/bluemonday"
 	"math/big"
 	"passport"
 	"passport/db"
+
+	"github.com/microcosm-cc/bluemonday"
 
 	"github.com/ninja-software/log_helpers"
 
@@ -390,7 +391,7 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hub
 	}
 
 	reply(asset)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.ExternalTokenID)), nil
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.Hash)), nil
 }
 
 const HubKeyAssetDurabilitySubscribe hub.HubCommandKey = "ASSET:DURABILITY:SUBSCRIBE"
