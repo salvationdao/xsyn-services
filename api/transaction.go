@@ -51,7 +51,7 @@ func (tc *TransactionCache) commit() {
 			tx,
 		)
 		if err != nil {
-			tc.log.Err(err)
+			tc.log.Err(err).Msg("transaction cache lock")
 			if !tx.Safe {
 				tc.Lock() //grind to a halt if transactions fail to save to database
 			}

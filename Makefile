@@ -130,7 +130,7 @@ db-migrate-down-one:
 
 .PHONY: db-migrate-up-one
 db-migrate-up-one:
-	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations up 1
+	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations up 12
 
 
 .PHONY: db-seed
