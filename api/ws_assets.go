@@ -550,6 +550,10 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 
 	name := bm.Sanitize(req.Payload.Name)
 
+	if len(name) > 10 {
+		return terror.Error(err, "Name must be less than 10 characters")
+	}
+
 	// update asset name
 	err = db.AssetUpdate(ctx, ac.Conn, asset.Hash, name)
 	if err != nil {
