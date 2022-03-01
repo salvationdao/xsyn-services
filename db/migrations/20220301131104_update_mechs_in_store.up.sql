@@ -6,9 +6,8 @@ UPDATE xsyn_store
 SET attributes = attributes ||'[{"trait_type": "Shield Recharge Rate", "value": 80, "display_type": "number"}]'::jsonb
 WHERE xsyn_store.attributes @> '[{"trait_type": "Asset Type", "value": "War Machine"}]'; -- rarity we want to update
 -- "display_type": "number"
-/**
-  Update red mountain mechs
- **/
+
+----------------------  Update red mountain mechs  --------------------------------
 
 -- UPDATING Red Mountain store items - Mega - Max Structure Hit Points to 1500 from 1000
 WITH item AS (
@@ -23,7 +22,6 @@ SET attributes = JSONB_SET(attributes, item.path, '1500', FALSE)
 WHERE item.id = xsyn_store.id
 AND xsyn_store.attributes @> '[{"trait_type": "Rarity", "value": "Mega"}]' -- rarity we want to update
 AND faction_id = (SELECT id FROM factions WHERE factions.label = 'Red Mountain Offworld Mining Corporation'); -- faction we want to update
-
 
 -- UPDATING Red Mountain - Colossal - Max Structure Hit Points to 1530
 WITH item as (
@@ -103,7 +101,6 @@ WHERE item.id = xsyn_store.id
 AND xsyn_store.attributes @> '[{"trait_type": "Rarity", "value": "Exotic"}]' -- rarity we want to update
   AND faction_id = (SELECT id FROM factions where factions.label = 'Red Mountain Offworld Mining Corporation'); -- faction we want to update
 
-
 -- UPDATING Red Mountain - Colossal - Max Structure Hit Points to 1710
 WITH item as (
     SELECT ('{'||pos-1||',"value"}')::text[] as path, id
@@ -130,7 +127,6 @@ WHERE item.id = xsyn_store.id
 AND xsyn_store.attributes @> '[{"trait_type": "Rarity", "value": "Mythic"}]' -- rarity we want to update
   AND faction_id = (SELECT id FROM factions where factions.label = 'Red Mountain Offworld Mining Corporation'); -- faction we want to update
 
-
 -- UPDATING Red Mountain - Colossal - Max Structure Hit Points to 1800
 WITH item as (
     SELECT ('{'||pos-1||',"value"}')::text[] as path, id
@@ -144,11 +140,9 @@ WHERE item.id = xsyn_store.id
 AND xsyn_store.attributes @> '[{"trait_type": "Rarity", "value": "Deus ex"}]' -- rarity we want to update
   AND faction_id = (SELECT id FROM factions where factions.label = 'Red Mountain Offworld Mining Corporation'); -- faction we want to update
 
-/************************************
-    Zaibatsu mech updates
-**************************************/
+---------------------- Zaibatsu mech updates ----------------------------------
 
--- UPDATING Zaibatsu Heavy Industries - Mega - Shield Recharge Rate to 102
+-- UPDATING Zaibatsu Heavy Industries - Mega - Shield Recharge Rate to 100
 WITH item as (
     SELECT ('{'||pos-1||',"value"}')::text[] as path, id
     FROM xsyn_store, jsonb_array_elements(attributes) WITH ORDINALITY arr(elem, pos)
@@ -160,7 +154,6 @@ SET attributes = JSONB_SET(attributes, item.path, '100', FALSE)
 WHERE item.id = xsyn_store.id
   AND xsyn_store.attributes @> '[{"trait_type": "Rarity", "value": "Mega"}]' -- rarity we want to update
   AND faction_id = (SELECT id FROM factions where factions.label = 'Zaibatsu Heavy Industries'); -- faction we want to update
-
 
 -- UPDATING Zaibatsu Heavy Industries - Colossal - Shield Recharge Rate to 102
 WITH item as (
@@ -240,7 +233,6 @@ WHERE item.id = xsyn_store.id
 AND xsyn_store.attributes @> '[{"trait_type": "Rarity", "value": "Exotic"}]' -- rarity we want to update
   AND faction_id = (SELECT id FROM factions where factions.label = 'Zaibatsu Heavy Industries'); -- faction we want to update
 
-
 -- UPDATING Zaibatsu Heavy Industries - Guardian - Shield Recharge Rate to 114
 WITH item as (
     SELECT ('{'||pos-1||',"value"}')::text[] as path, id
@@ -281,9 +273,7 @@ WHERE item.id = xsyn_store.id
 AND xsyn_store.attributes @> '[{"trait_type": "Rarity", "value": "Deus ex"}]' -- rarity we want to update
   AND faction_id = (SELECT id FROM factions where factions.label = 'Zaibatsu Heavy Industries'); -- faction we want to update
 
-/************************************
-    Boston mech updates
-**************************************/
+---------------   Boston mech updates  --------------------------
 
 -- UPDATING Boston Cybernetics - Mega - Speed to 2750
 WITH item as (
@@ -297,7 +287,6 @@ SET attributes = JSONB_SET(attributes, item.path, '2750', FALSE)
 WHERE item.id = xsyn_store.id
   AND xsyn_store.attributes @> '[{"trait_type": "Rarity", "value": "Mega"}]' -- rarity we want to update
   AND faction_id = (SELECT id FROM factions where factions.label = 'Boston Cybernetics'); -- faction we want to update
-
 
 -- UPDATING Boston Cybernetics - Colossal - Speed to 2,805
 WITH item as (
@@ -377,7 +366,6 @@ WHERE item.id = xsyn_store.id
 AND xsyn_store.attributes @> '[{"trait_type": "Rarity", "value": "Exotic"}]' -- rarity we want to update
   AND faction_id = (SELECT id FROM factions where factions.label = 'Boston Cybernetics'); -- faction we want to update
 
-
 -- UPDATING Boston Cybernetics - Guardian - Speed to 3135
 WITH item as (
     SELECT ('{'||pos-1||',"value"}')::text[] as path, id
@@ -403,7 +391,6 @@ SET attributes = JSONB_SET(attributes, item.path, '3190', FALSE)
 WHERE item.id = xsyn_store.id
 AND xsyn_store.attributes @> '[{"trait_type": "Rarity", "value": "Mythic"}]' -- rarity we want to update
   AND faction_id = (SELECT id FROM factions where factions.label = 'Boston Cybernetics'); -- faction we want to update
-
 
 -- UPDATING Boston Cybernetics - Deus ex - Speed to 3300
 WITH item as (

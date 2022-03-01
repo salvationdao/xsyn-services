@@ -113,51 +113,53 @@ type AdditionalMetadata struct {
 }
 
 type WarMachineMetadata struct {
-	Hash            string             `json:"hash"`
-	OwnedByID       UserID             `json:"ownedByID"`
-	Name            string             `json:"name"`
-	Description     *string            `json:"description,omitempty"`
-	ExternalUrl     string             `json:"externalUrl"`
-	Image           string             `json:"image"`
-	Model           string             `json:"model"`
-	Skin            string             `json:"skin"`
-	MaxHealth       int                `json:"maxHealth"`
-	Health          int                `json:"health"`
-	MaxShield       int                `json:"maxShield"`
-	Shield          int                `json:"shield"`
-	Speed           int                `json:"speed"`
-	Durability      int                `json:"durability"`
-	PowerGrid       int                `json:"powerGrid"`
-	CPU             int                `json:"cpu"`
-	WeaponHardpoint int                `json:"weaponHardpoint"`
-	WeaponNames     []string           `json:"weaponNames"`
-	TurretHardpoint int                `json:"turretHardpoint"`
-	UtilitySlots    int                `json:"utilitySlots"`
-	FactionID       FactionID          `json:"factionID"`
-	Faction         *Faction           `json:"faction"`
-	Abilities       []*AbilityMetadata `json:"abilities"`
+	Hash               string             `json:"hash"`
+	OwnedByID          UserID             `json:"ownedByID"`
+	Name               string             `json:"name"`
+	Description        *string            `json:"description,omitempty"`
+	ExternalUrl        string             `json:"externalUrl"`
+	Image              string             `json:"image"`
+	Model              string             `json:"model"`
+	Skin               string             `json:"skin"`
+	MaxHealth          int                `json:"maxHealth"`
+	Health             int                `json:"health"`
+	MaxShield          int                `json:"maxShield"`
+	Shield             int                `json:"shield"`
+	ShieldRechargeRate float32            `json:"shieldRechargeRate"`
+	Speed              int                `json:"speed"`
+	Durability         int                `json:"durability"`
+	PowerGrid          int                `json:"powerGrid"`
+	CPU                int                `json:"cpu"`
+	WeaponHardpoint    int                `json:"weaponHardpoint"`
+	WeaponNames        []string           `json:"weaponNames"`
+	TurretHardpoint    int                `json:"turretHardpoint"`
+	UtilitySlots       int                `json:"utilitySlots"`
+	FactionID          FactionID          `json:"factionID"`
+	Faction            *Faction           `json:"faction"`
+	Abilities          []*AbilityMetadata `json:"abilities"`
 }
 
 type WarMachineAttField string
 
 const (
-	WarMachineAttName                   WarMachineAttField = "Name"
-	WarMachineAttModel                  WarMachineAttField = "Model"
-	WarMachineAttSubModel               WarMachineAttField = "SubModel"
-	WarMachineAttFieldMaxHitPoint       WarMachineAttField = "Max Structure Hit Points"
-	WarMachineAttFieldMaxShieldHitPoint WarMachineAttField = "Max Shield Hit Points"
-	WarMachineAttFieldSpeed             WarMachineAttField = "Speed"
-	WarMachineAttFieldPowerGrid         WarMachineAttField = "Power Grid"
-	WarMachineAttFieldCPU               WarMachineAttField = "CPU"
-	WarMachineAttFieldWeaponHardpoints  WarMachineAttField = "Weapon Hardpoints"
-	WarMachineAttFieldTurretHardpoints  WarMachineAttField = "Turret Hardpoints"
-	WarMachineAttFieldUtilitySlots      WarMachineAttField = "Utility Slots"
-	WarMachineAttFieldWeapon01          WarMachineAttField = "Weapon One"
-	WarMachineAttFieldWeapon02          WarMachineAttField = "Weapon Two"
-	WarMachineAttFieldTurret01          WarMachineAttField = "Turret One"
-	WarMachineAttFieldTurret02          WarMachineAttField = "Turret Two"
-	WarMachineAttFieldAbility01         WarMachineAttField = "Ability One"
-	WarMachineAttFieldAbility02         WarMachineAttField = "Ability Two"
+	WarMachineAttName                    WarMachineAttField = "Name"
+	WarMachineAttModel                   WarMachineAttField = "Model"
+	WarMachineAttSubModel                WarMachineAttField = "SubModel"
+	WarMachineAttFieldMaxHitPoint        WarMachineAttField = "Max Structure Hit Points"
+	WarMachineAttFieldMaxShieldHitPoint  WarMachineAttField = "Max Shield Hit Points"
+	WarMachineAttFieldSpeed              WarMachineAttField = "Speed"
+	WarMachineAttFieldPowerGrid          WarMachineAttField = "Power Grid"
+	WarMachineAttFieldShieldRechargeRate WarMachineAttField = "Shield Recharge Rate"
+	WarMachineAttFieldCPU                WarMachineAttField = "CPU"
+	WarMachineAttFieldWeaponHardpoints   WarMachineAttField = "Weapon Hardpoints"
+	WarMachineAttFieldTurretHardpoints   WarMachineAttField = "Turret Hardpoints"
+	WarMachineAttFieldUtilitySlots       WarMachineAttField = "Utility Slots"
+	WarMachineAttFieldWeapon01           WarMachineAttField = "Weapon One"
+	WarMachineAttFieldWeapon02           WarMachineAttField = "Weapon Two"
+	WarMachineAttFieldTurret01           WarMachineAttField = "Turret One"
+	WarMachineAttFieldTurret02           WarMachineAttField = "Turret Two"
+	WarMachineAttFieldAbility01          WarMachineAttField = "Ability One"
+	WarMachineAttFieldAbility02          WarMachineAttField = "Ability Two"
 )
 
 // ParseWarMachineMetadata convert json attribute to proper struct
@@ -279,6 +281,8 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 			warMachineMetadata.Speed = int(att.Value.(float64))
 		case string(WarMachineAttFieldPowerGrid):
 			warMachineMetadata.PowerGrid = int(att.Value.(float64))
+		case string(WarMachineAttFieldShieldRechargeRate):
+			warMachineMetadata.ShieldRechargeRate = att.Value.(float32)
 		case string(WarMachineAttFieldCPU):
 			warMachineMetadata.CPU = int(att.Value.(float64))
 		case string(WarMachineAttFieldWeaponHardpoints):
