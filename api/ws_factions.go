@@ -352,7 +352,7 @@ func (fc *FactionController) FactionStatUpdatedSubscribeHandler(ctx context.Cont
 	}
 
 	factionStat := &passport.FactionStat{}
-	err = fc.API.GameserverRequest(http.MethodPost, "faction_stat", struct {
+	err = fc.API.GameserverRequest(http.MethodPost, "/faction_stat", struct {
 		FactionID passport.FactionID `json:"factionID"`
 	}{
 		FactionID: req.Payload.FactionID,
