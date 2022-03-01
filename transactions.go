@@ -50,7 +50,7 @@ type NewTransaction struct {
 	TransactionReference TransactionReference `json:"transactionReference" db:"transaction_reference"`
 	Description          string               `json:"description" db:"description"`
 	GroupID              TransactionGroup     `json:"groupID,omitempty" db:"group_id,omitempty"`
-	NotSafe                 bool                 `json:"not_safe" db:"-"`
+	NotSafe              bool                 `json:"not_safe" db:"-"`
 	Processed            bool                 `json:"processed" db:"-"`
 	CreatedAt            time.Time            `json:"created_at" db:"created_at"`
 }

@@ -130,6 +130,10 @@ func main() {
 					&cli.BoolFlag{Name: "only_wallet", Value: true, EnvVars: []string{envPrefix + "_ONLY_WALLET"}, Usage: "Set passport to only accept wallet logins"},
 					&cli.StringFlag{Name: "whitelist_check_endpoint", Value: "https://stories.supremacy.game", EnvVars: []string{envPrefix + "_WHITELIST_ENDPOINT"}, Usage: "Endpoint to check if user is whitelisted"},
 
+					// setup for webhook
+					&cli.StringFlag{Name: "gameserver_webhook_secret", Value: "e1BD3FF270804c6a9edJDzzDks87a8a4fde15c7=", EnvVars: []string{"GAMESERVER_WEBHOOK_SECRET"}, Usage: "Authorization key to passport webhook"},
+					&cli.StringFlag{Name: "gameserver_host_url", Value: "http://localhost:8084", EnvVars: []string{"GAMESERVER_HOST_URL"}, Usage: "Authorization key to passport webhook"},
+
 					/****************************
 					 *		Bridge details		*
 					 ***************************/
@@ -531,65 +535,14 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		insecuritySkipVerify = true
 	}
 
-	config := &passport.Config{
-		CookieSecure:        ctxCLI.Bool("cookie_secure"),
-		PassportWebHostURL:  ctxCLI.String("passport_web_host_url"),
-		GameserverHostURL:   ctxCLI.String("gameserver_web_host_url"),
-		EncryptTokens:       ctxCLI.Bool("jwt_encrypt"),
-		EncryptTokensKey:    ctxCLI.String("jwt_encrypt_key"),
-		TokenExpirationDays: ctxCLI.Int("jwt_expiry_days"),
-		MetaMaskSignMessage: ctxCLI.String("metamask_sign_message"),
-		BridgeParams: &passport.BridgeParams{
-			MoralisKey:       MoralisKey,
-			OperatorAddr:     common.HexToAddress(OperatorAddr),
-			UsdcAddr:         common.HexToAddress(UsdcAddr),
-			BusdAddr:         common.HexToAddress(BusdAddr),
-			SupAddr:          common.HexToAddress(SupAddr),
-			PurchaseAddr:     common.HexToAddress(PurchaseAddr),
-			WithdrawAddr:     common.HexToAddress(WithdrawAddr),
-			SignerPrivateKey: SignerPrivateKey,
-			BscNodeAddr:      BscNodeAddr,
-			EthNodeAddr:      EthNodeAddr,
-			BSCChainID:       BSCChainID,
-			ETHChainID:       ETHChainID,
-			BSCRouterAddr:    common.HexToAddress(BSCRouterAddr),
-		},
-		OnlyWalletConnect:       ctxCLI.Bool("only_wallet"),
-		WhitelistEndpoint:       ctxCLI.String("whitelist_check_endpoint"),
-		InsecureSkipVerifyCheck: insecuritySkipVerify,
+	gameserverWebhookToken := ctxCLI.String("gameserver_webhook_secret")
+	if gameserverWebhookToken == "" {
+		return terror.Panic(fmt.Errorf("missing passort webhook token"))
 	}
 
-	pgxconn, err := pgxconnect(
-		databaseUser,
-		databasePass,
-		databaseHost,
-		databasePort,
-		databaseName,
-		databaseAppName,
-		Version,
-	)
-	if err != nil {
-		return terror.Panic(err)
-	}
-
-	txConn, err := txConnect(
-		databaseTxUser,
-		databaseTxPass,
-		databaseHost,
-		databasePort,
-		databaseName,
-	)
-	if err != nil {
-		return terror.Panic(err)
-	}
-
-	count := 0
-	err = db.IsSchemaDirty(ctx, pgxconn, &count)
-	if err != nil {
-		return terror.Error(api.ErrCheckDBQuery)
-	}
-	if count > 0 {
-		return terror.Error(api.ErrCheckDBDirty)
+	gameserverHostUrl := ctxCLI.String("gameserver_host_url")
+	if gameserverHostUrl == "" {
+		return terror.Panic(fmt.Errorf("missing passort webhook token"))
 	}
 
 	gameserverToken := ctxCLI.String("gameserver_token")
@@ -630,6 +583,81 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	discordClientSecret := ctxCLI.String("discord_client_secret")
 	if discordClientSecret == "" {
 		return terror.Panic(fmt.Errorf("no discord client secret"))
+	}
+
+	config := &passport.Config{
+		CookieSecure:        ctxCLI.Bool("cookie_secure"),
+		PassportWebHostURL:  ctxCLI.String("passport_web_host_url"),
+		GameserverHostURL:   ctxCLI.String("gameserver_web_host_url"),
+		EncryptTokens:       ctxCLI.Bool("jwt_encrypt"),
+		EncryptTokensKey:    ctxCLI.String("jwt_encrypt_key"),
+		TokenExpirationDays: ctxCLI.Int("jwt_expiry_days"),
+		MetaMaskSignMessage: ctxCLI.String("metamask_sign_message"),
+		BridgeParams: &passport.BridgeParams{
+			MoralisKey:       MoralisKey,
+			OperatorAddr:     common.HexToAddress(OperatorAddr),
+			UsdcAddr:         common.HexToAddress(UsdcAddr),
+			BusdAddr:         common.HexToAddress(BusdAddr),
+			SupAddr:          common.HexToAddress(SupAddr),
+			PurchaseAddr:     common.HexToAddress(PurchaseAddr),
+			WithdrawAddr:     common.HexToAddress(WithdrawAddr),
+			SignerPrivateKey: SignerPrivateKey,
+			BscNodeAddr:      BscNodeAddr,
+			EthNodeAddr:      EthNodeAddr,
+			BSCChainID:       BSCChainID,
+			ETHChainID:       ETHChainID,
+			BSCRouterAddr:    common.HexToAddress(BSCRouterAddr),
+		},
+		OnlyWalletConnect:       ctxCLI.Bool("only_wallet"),
+		WhitelistEndpoint:       ctxCLI.String("whitelist_check_endpoint"),
+		InsecureSkipVerifyCheck: insecuritySkipVerify,
+		AuthParams: &passport.AuthParams{
+			GameserverToken:     gameserverToken,
+			GoogleClientID:      googleClientID,
+			TwitchClientID:      twitchClientID,
+			TwitchClientSecret:  twitchClientSecret,
+			TwitterAPIKey:       twitterAPIKey,
+			TwitterAPISecret:    twitterAPISecret,
+			DiscordClientID:     discordClientID,
+			DiscordClientSecret: discordClientSecret,
+		},
+		WebhookParams: &passport.WebhookParams{
+			GameserverWebhookToken: gameserverWebhookToken,
+			GameserverHostUrl:      gameserverHostUrl,
+		},
+	}
+
+	pgxconn, err := pgxconnect(
+		databaseUser,
+		databasePass,
+		databaseHost,
+		databasePort,
+		databaseName,
+		databaseAppName,
+		Version,
+	)
+	if err != nil {
+		return terror.Panic(err)
+	}
+
+	txConn, err := txConnect(
+		databaseTxUser,
+		databaseTxPass,
+		databaseHost,
+		databasePort,
+		databaseName,
+	)
+	if err != nil {
+		return terror.Panic(err)
+	}
+
+	count := 0
+	err = db.IsSchemaDirty(ctx, pgxconn, &count)
+	if err != nil {
+		return terror.Error(api.ErrCheckDBQuery)
+	}
+	if count > 0 {
+		return terror.Error(api.ErrCheckDBDirty)
 	}
 
 	// Mailer
@@ -675,18 +703,10 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		cancelOnPanic,
 		pgxconn,
 		txConn,
-		googleClientID,
 		mailer,
 		apiAddr,
-		twitchClientID,
-		twitchClientSecret,
 		HTMLSanitizePolicy,
 		config,
-		twitterAPIKey,
-		twitterAPISecret,
-		discordClientID,
-		discordClientSecret,
-		gameserverToken,
 		externalURL,
 		tc,
 		ucm,
@@ -696,7 +716,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		enablePurchaseSubscription,
 	)
 
-	c := comms.New(ucm, msgBus, api.SupremacyController.Txs, log, pgxconn)
+	c := comms.New(ucm, msgBus, api.SupremacyController.Txs, log, pgxconn, api.ClientMap)
 	err = comms.Start(c)
 	if err != nil {
 		return terror.Error(err)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"passport"
 	"passport/db"
 	"passport/helpers"
@@ -15,6 +16,7 @@ import (
 	"github.com/ninja-software/log_helpers"
 
 	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	leakybucket "github.com/kevinms/leakybucket-go"
 	"github.com/microcosm-cc/bluemonday"
@@ -59,6 +61,7 @@ func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Fa
 	api.SubscribeCommand(HubKeyFactionStatUpdatedSubscribe, factionHub.FactionStatUpdatedSubscribeHandler)
 	api.SubscribeCommand(HubKeyGlobalChatSubscribe, factionHub.GlobalChatUpdatedSubscribeHandler)
 	api.SecureUserSubscribeCommand(HubKeyFactionChatSubscribe, factionHub.FactionChatUpdatedSubscribeHandler)
+	api.SecureUserSubscribeCommand(HubKeyFactionContractRewardSubscribe, factionHub.FactionContractRewardUpdateSubscriber)
 
 	return factionHub
 }
@@ -153,31 +156,16 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 	// broadcast updated user to gamebar user
 	go fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
-	// broadcast updated user to server client
-	fc.API.SendToAllServerClient(ctx, &ServerClientMessage{
-		Key: UserEnlistFaction,
-		Payload: struct {
-			UserID    passport.UserID    `json:"userID"`
-			FactionID passport.FactionID `json:"factionID"`
-		}{
-			UserID:    userID,
-			FactionID: req.Payload.FactionID,
-		},
-	})
-
-	// send faction stat request to game server
-	fc.API.SendToServerClient(
-		ctx,
-		SupremacyGameServer,
-		&ServerClientMessage{
-			Key: FactionStatGet,
-			Payload: struct {
-				FactionID passport.FactionID `json:"factionID,omitempty"`
-			}{
-				FactionID: req.Payload.FactionID,
-			},
-		},
-	)
+	err = fc.API.GameserverRequest(http.MethodPost, "/user_enlist_faction", struct {
+		UserID    passport.UserID    `json:"userID"`
+		FactionID passport.FactionID `json:"factionID"`
+	}{
+		UserID:    userID,
+		FactionID: req.Payload.FactionID,
+	}, nil)
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	reply(true)
 
@@ -355,32 +343,33 @@ func (fc *FactionController) FactionStatUpdatedSubscribeHandler(ctx context.Cont
 		return "", "", terror.Error(terror.ErrInvalidInput, "Faction id is empty")
 	}
 
-	var userID *passport.UserID
-	var sessionID *hub.SessionID
-
-	if client.Identifier() != "" {
-		uid := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
-		userID = &uid
-	} else {
-		sessionID = &client.SessionID
+	factionStat := &passport.FactionStat{}
+	err = fc.API.GameserverRequest(http.MethodPost, "faction_stat", struct {
+		FactionID passport.FactionID `json:"factionID"`
+	}{
+		FactionID: req.Payload.FactionID,
+	}, factionStat)
+	if err != nil {
+		return "", "", terror.Error(err)
 	}
 
-	// send faction stat request to game server
-	fc.API.SendToServerClient(ctx,
-		SupremacyGameServer,
-		&ServerClientMessage{
-			Key: FactionStatGet,
-			Payload: struct {
-				UserID    *passport.UserID   `json:"userID,omitempty"`
-				SessionID *hub.SessionID     `json:"sessionID,omitempty"`
-				FactionID passport.FactionID `json:"factionID,omitempty"`
-			}{
-				UserID:    userID,
-				SessionID: sessionID,
-				FactionID: req.Payload.FactionID,
-			},
-		},
-	)
+	user, err := db.FactionMvpGet(ctx, fc.Conn, req.Payload.FactionID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", "", terror.Error(err)
+	}
+	voteSup, err := db.FactionSupsVotedGet(ctx, fc.Conn, req.Payload.FactionID)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+	num, err := db.FactionGetRecruitNumber(ctx, fc.Conn, req.Payload.FactionID)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+	factionStat.RecruitNumber = num
+	factionStat.MVP = user
+	factionStat.SupsVoted = voteSup.String()
+
+	reply(factionStat)
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionStatUpdatedSubscribe, req.Payload.FactionID)), nil
 }
@@ -419,4 +408,40 @@ func (fc *FactionController) FactionChatUpdatedSubscribeHandler(ctx context.Cont
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID)), nil
+}
+
+const HubKeyFactionContractRewardSubscribe hub.HubCommandKey = "FACTION:CONTRACT:REWARD:SUBSCRIBE"
+
+func (fc *FactionController) FactionContractRewardUpdateSubscriber(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err)
+	}
+
+	userID := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrForbidden)
+	}
+
+	// get user faction
+	faction, err := db.FactionGetByUserID(ctx, fc.Conn, userID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", "", terror.Error(err)
+	}
+
+	contractReward := "0"
+	// get contract reward from web hook
+	err = fc.API.GameserverRequest(http.MethodPost, "/faction_contract_reward", struct {
+		FactionID passport.FactionID `json:"factionID"`
+	}{
+		FactionID: faction.ID,
+	}, &contractReward)
+	if err != nil {
+		return "", "", terror.Error(err, err.Error())
+	}
+
+	reply(contractReward)
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionContractRewardSubscribe, faction.ID)), nil
 }

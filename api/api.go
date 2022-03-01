@@ -11,6 +11,7 @@ import (
 	"passport/db"
 	"passport/email"
 	"strconv"
+	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ninja-software/log_helpers"
@@ -53,30 +54,27 @@ type API struct {
 	Tokens              *Tokens
 	*auth.Auth
 	*messagebus.MessageBus
-	ClientToken  string
-	BridgeParams *passport.BridgeParams
+	ClientToken       string
+	WebhookToken      string
+	GameserverHostUrl string
+	BridgeParams      *passport.BridgeParams
 
 	// online user cache
 	users chan func(userCacheList UserCacheMap)
 
 	// server clients
-	serverClients       chan func(serverClients ServerClientsList)
-	sendToServerClients chan *ServerClientMessage
+	// serverClients       chan func(serverClients ServerClientsList)
+	// sendToServerClients chan *ServerClientMessage
 
 	//tx stuff
 	transactionCache *TransactionCache
 	userCacheMap     *UserCacheMap
 
-	// Supremacy Sups Pool
-	supremacySupsPool chan func(*SupremacySupPool)
-
-	// War Machine Queue Contract
-	factionWarMachineContractMap map[passport.FactionID]chan func(*WarMachineContract)
-	fastAssetRepairCenter        chan func(RepairQueue)
-	standardAssetRepairCenter    chan func(RepairQueue)
-
 	walletOnlyConnect    bool
 	storeItemExternalUrl string
+
+	// supremacy client map
+	ClientMap *sync.Map
 }
 
 // NewAPI registers routes
@@ -85,18 +83,10 @@ func NewAPI(
 	cancelOnPanic context.CancelFunc,
 	conn *pgxpool.Pool,
 	txConn *sql.DB,
-	googleClientID string,
 	mailer *email.Mailer,
 	addr string,
-	twitchClientID string,
-	twitchClientSecret string,
 	HTMLSanitize *bluemonday.Policy,
 	config *passport.Config,
-	twitterAPIKey string,
-	twitterAPISecret string,
-	discordClientID string,
-	discordClientSecret string,
-	clientToken string,
 	externalUrl string,
 	tc *TransactionCache,
 	ucm *UserCacheMap,
@@ -109,7 +99,11 @@ func NewAPI(
 	api := &API{
 		SupUSD:       decimal.New(12, -2),
 		BridgeParams: config.BridgeParams,
-		ClientToken:  clientToken,
+		ClientToken:  config.AuthParams.GameserverToken,
+		// webhook setup
+		WebhookToken:      config.WebhookParams.GameserverWebhookToken,
+		GameserverHostUrl: config.WebhookParams.GameserverHostUrl,
+
 		Tokens: &Tokens{
 			Conn:                conn,
 			Mailer:              mailer,
@@ -141,8 +135,8 @@ func NewAPI(
 		Mailer:       mailer,
 		HTMLSanitize: HTMLSanitize,
 		// server clients
-		serverClients:       make(chan func(serverClients ServerClientsList)),
-		sendToServerClients: make(chan *ServerClientMessage),
+		// serverClients:       make(chan func(serverClients ServerClientsList)),
+		// sendToServerClients: make(chan *ServerClientMessage),
 		//382
 		// user cache map
 		users: make(chan func(userList UserCacheMap)),
@@ -151,14 +145,10 @@ func NewAPI(
 		transactionCache: tc,
 		userCacheMap:     ucm,
 
-		// treasury ticker map
-		supremacySupsPool: make(chan func(*SupremacySupPool)),
-
-		// faction war machine contract
-		factionWarMachineContractMap: make(map[passport.FactionID]chan func(*WarMachineContract)),
-
 		walletOnlyConnect:    config.OnlyWalletConnect,
 		storeItemExternalUrl: externalUrl,
+
+		ClientMap: &sync.Map{},
 	}
 
 	cc := NewChainClients(log, api, config.BridgeParams, isTestnetBlockchain, runBlockchainBridge, enablePurchaseSubscription)
@@ -176,19 +166,19 @@ func NewAPI(
 		CreateUserIfNotExist:     true,
 		CreateAndGetOAuthUserVia: auth.IdTypeID,
 		Google: &auth.GoogleConfig{
-			ClientID: googleClientID,
+			ClientID: config.AuthParams.GoogleClientID,
 		},
 		Twitch: &auth.TwitchConfig{
-			ClientID:     twitchClientID,
-			ClientSecret: twitchClientSecret,
+			ClientID:     config.AuthParams.TwitchClientID,
+			ClientSecret: config.AuthParams.TwitchClientSecret,
 		},
 		Twitter: &auth.TwitterConfig{
-			APIKey:    twitterAPIKey,
-			APISecret: twitterAPISecret,
+			APIKey:    config.AuthParams.TwitterAPIKey,
+			APISecret: config.AuthParams.TwitterAPISecret,
 		},
 		Discord: &auth.DiscordConfig{
-			ClientID:     discordClientID,
-			ClientSecret: discordClientSecret,
+			ClientID:     config.AuthParams.DiscordClientID,
+			ClientSecret: config.AuthParams.DiscordClientSecret,
 		},
 		CookieSecure: config.CookieSecure,
 		UserController: &UserGetter{
@@ -236,13 +226,13 @@ func NewAPI(
 	_ = NewCheckController(log, conn, api)
 	_ = NewUserActivityController(log, conn, api)
 	_ = NewUserController(log, conn, api, &auth.GoogleConfig{
-		ClientID: googleClientID,
+		ClientID: config.AuthParams.GoogleClientID,
 	}, &auth.TwitchConfig{
-		ClientID:     twitchClientID,
-		ClientSecret: twitchClientSecret,
+		ClientID:     config.AuthParams.TwitchClientID,
+		ClientSecret: config.AuthParams.TwitchClientSecret,
 	}, &auth.DiscordConfig{
-		ClientID:     discordClientID,
-		ClientSecret: discordClientSecret,
+		ClientID:     config.AuthParams.DiscordClientID,
+		ClientSecret: config.AuthParams.DiscordClientSecret,
 	})
 	_ = NewTransactionController(log, conn, api)
 	_ = NewFactionController(log, conn, api)
@@ -265,24 +255,6 @@ func NewAPI(
 	if err != nil {
 		log.Fatal().Err(err).Msgf("failed to init state object")
 	}
-
-	// Run the server client channel listener
-	go api.HandleServerClients()
-
-	// Initial supremacy sup pool
-	go api.StartSupremacySupPool()
-
-	// Initial faction war machine contract
-	api.factionWarMachineContractMap[passport.RedMountainFactionID] = make(chan func(*WarMachineContract))
-	go api.InitialiseFactionWarMachineContract(passport.RedMountainFactionID)
-	api.factionWarMachineContractMap[passport.BostonCyberneticsFactionID] = make(chan func(*WarMachineContract))
-	go api.InitialiseFactionWarMachineContract(passport.BostonCyberneticsFactionID)
-	api.factionWarMachineContractMap[passport.ZaibatsuFactionID] = make(chan func(*WarMachineContract))
-	go api.InitialiseFactionWarMachineContract(passport.ZaibatsuFactionID)
-
-	// Initialise repair center
-	go api.InitialAssetRepairCenter()
-
 	return api
 }
 

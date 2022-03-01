@@ -272,24 +272,6 @@ func AssetGet(ctx context.Context, conn Conn, hash string) (*passport.XsynMetada
 	return asset, nil
 }
 
-// AssetGet returns a asset by given ID
-func AssetDurabilityGet(ctx context.Context, conn Conn, userID passport.UserID, hash string) (int64, error) {
-	durability := int64(0)
-
-	q := `
-		SELECT durability FROM xsyn_metadata xm 
-		INNER JOIN xsyn_assets xa ON xa.metadata_hash = xm.hash AND xa.user_id = $1
-		WHERE xm.hash = $2
-	`
-
-	err := pgxscan.Get(ctx, conn, &durability, q, userID, hash)
-	if err != nil {
-		return 0, terror.Error(err, "Issue getting asset durability from hash.")
-	}
-
-	return durability, nil
-}
-
 // AssetGetFromMintContractAndID returns asset by given ID and contract
 func AssetGetFromMintContractAndID(ctx context.Context, conn Conn, mintContractAddress string, externalTokenID uint64) (*passport.XsynMetadata, error) {
 	asset := &passport.XsynMetadata{}
@@ -454,4 +436,16 @@ func AssetSaleAvailable(ctx context.Context, conn Conn) ([]*passport.FactionSale
 	}
 
 	return result, nil
+}
+
+func AssetGetByUserID(ctx context.Context, conn Conn, userID passport.UserID) ([]*passport.XsynMetadata, error) {
+	assets := []*passport.XsynMetadata{}
+	q := AssetGetQuery + `WHERE xsyn_assets.user_id = $1`
+
+	err := pgxscan.Select(ctx, conn, &assets, q, userID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return assets, nil
 }

@@ -23,15 +23,15 @@ type Faction struct {
 
 // from game server
 type FactionStat struct {
-	Velocity      int64     `json:"velocity"`
-	RecruitNumber int64     `json:"recruitNumber"`
-	ID            FactionID `json:"id" db:"id"`
-	WinCount      int64     `json:"winCount"`
-	LossCount     int64     `json:"lossCount"`
-	KillCount     int64     `json:"killCount"`
-	DeathCount    int64     `json:"deathCount"`
-	MVP           *User     `json:"mvp,omitempty"`
-	SupsVoted     string    `json:"supsVoted"`
+	Velocity      int64      `json:"velocity"`
+	RecruitNumber int64      `json:"recruitNumber"`
+	ID            FactionID  `json:"id" db:"id"`
+	WinCount      int64      `json:"winCount"`
+	LossCount     int64      `json:"lossCount"`
+	KillCount     int64      `json:"killCount"`
+	DeathCount    int64      `json:"deathCount"`
+	MVP           *UserBrief `json:"mvp,omitempty"`
+	SupsVoted     string     `json:"supsVoted"`
 }
 
 var Factions = []*Faction{
