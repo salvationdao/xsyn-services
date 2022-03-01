@@ -125,7 +125,7 @@ type WarMachineMetadata struct {
 	Health             int                `json:"health"`
 	MaxShield          int                `json:"maxShield"`
 	Shield             int                `json:"shield"`
-	ShieldRechargeRate float32            `json:"shieldRechargeRate"`
+	ShieldRechargeRate float64            `json:"shieldRechargeRate"`
 	Speed              int                `json:"speed"`
 	Durability         int                `json:"durability"`
 	PowerGrid          int                `json:"powerGrid"`
@@ -282,7 +282,7 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 		case string(WarMachineAttFieldPowerGrid):
 			warMachineMetadata.PowerGrid = int(att.Value.(float64))
 		case string(WarMachineAttFieldShieldRechargeRate):
-			warMachineMetadata.ShieldRechargeRate = att.Value.(float32)
+			warMachineMetadata.ShieldRechargeRate = att.Value.(float64)
 		case string(WarMachineAttFieldCPU):
 			warMachineMetadata.CPU = int(att.Value.(float64))
 		case string(WarMachineAttFieldWeaponHardpoints):
