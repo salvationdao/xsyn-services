@@ -439,6 +439,18 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("store record")
 			continue
 		}
+
+		input, output, tokenDecimals, err := payments.ProcessValues(r.Sups, r.Value, r.JSON.TokenDecimal)
+		if err != nil {
+			return err
+		}
+
+		if input.Equal(decimal.Zero) {
+			log.Warn().Str("sym", r.Symbol).Str("txid", r.TxHash).Msg("zero value payment")
+			skipped++
+			continue
+		}
+
 		err = payments.StoreRecord(ctx, user, ucm, r)
 		if err != nil && strings.Contains(err.Error(), "duplicate key") {
 			skipped++
@@ -449,6 +461,10 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("store record")
 			continue
 		}
+
+		outputStr := fmt.Sprintf("%s SUPS", output.Shift(-1*api.SUPSDecimals).StringFixed(4))
+		inputStr := fmt.Sprintf("%s %s", input.Shift(-1*int32(tokenDecimals)).StringFixed(4), strings.ToUpper(r.Symbol))
+		log.Info().Str("output", outputStr).Str("input", inputStr).Str("txid", r.TxHash).Msg("received payment")
 		successful++
 
 	}
