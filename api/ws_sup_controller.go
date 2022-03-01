@@ -116,6 +116,7 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 		Amount:               *withdrawAmount,
 		TransactionReference: passport.TransactionReference(txRef),
 		Description:          "Withdraw of SUPS.",
+		GroupID:              passport.TransactionGroupWithdrawal,
 	}
 
 	nfb, ntb, _, err := sc.API.userCacheMap.Process(trans)
@@ -138,6 +139,7 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 			Amount:               *withdrawAmount,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
 			Description:          "Refund of Withdraw of SUPS.",
+			GroupID:              passport.TransactionGroupWithdrawal,
 		}
 
 		_, _, _, err := sc.API.userCacheMap.Process(trans)

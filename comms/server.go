@@ -35,7 +35,7 @@ type SpendSupsReq struct {
 	Amount               string                        `json:"amount"`
 	FromUserID           passport.UserID               `json:"userID"`
 	TransactionReference passport.TransactionReference `json:"transactionReference"`
-	GroupID              string                        `json:"groupID"`
+	GroupID              passport.TransactionGroup     `json:"groupID"`
 }
 type SpendSupsResp struct {
 	TXID string `json:"txid"`
@@ -117,7 +117,7 @@ func (c *C) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 
 	if req.GroupID != "" {
 		tx.To = passport.SupremacyBattleUserID
-		tx.GroupID = &req.GroupID
+		tx.GroupID = req.GroupID
 	}
 
 	nfb, ntb, txID, err := c.UserCacheMap.Process(tx)
@@ -203,6 +203,7 @@ func (c *C) supremacyFeed() {
 		To:                   passport.SupremacySupPoolUserID,
 		Amount:               *fund,
 		TransactionReference: passport.TransactionReference(fmt.Sprintf("treasury|ticker|%s", time.Now())),
+		GroupID:              passport.TransactionGroupBattleStream,
 	}
 
 	// process user cache map
@@ -348,6 +349,7 @@ func (c *C) DistrubuteFund(fundstr string, totalPoints int64, userMap map[int][]
 				To:                   user,
 				Amount:               *usersSups,
 				TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|ticker|%s|%s", user, time.Now())),
+				GroupID:              passport.TransactionGroupBattleStream,
 				Description:          "Watch to earn",
 			}
 

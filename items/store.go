@@ -75,6 +75,7 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 		Amount:               *priceAsSupsBigInt,
 		TransactionReference: passport.TransactionReference(txRef),
 		Description:          "Purchase on Supremacy storefront.",
+		GroupID:              passport.TransactionGroupStore,
 	}
 
 	nfb, ntb, _, err := ucmProcess(trans)
@@ -233,6 +234,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 		Amount:               price,
 		TransactionReference: passport.TransactionReference(txRef),
 		Description:          "Mystery crate purchase.",
+		GroupID:              passport.TransactionGroupStore,
 	}
 
 	// process user cache map

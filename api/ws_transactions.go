@@ -31,10 +31,32 @@ func NewTransactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API)
 		API:  api,
 	}
 
+	api.SecureCommand(HubKeyTransactionGroups, transactionHub.TransactionGroupsHandler)
 	api.SecureCommand(HubKeyTransactionList, transactionHub.TransactionListHandler)
-	api.SubscribeCommand(HubKeyTransactionSubscribe, transactionHub.TransactionSubscribeHandler) // Auth check inside handler
+	api.SecureUserSubscribeCommand(HubKeyTransactionSubscribe, transactionHub.TransactionSubscribeHandler) // Auth check inside handler
 
 	return transactionHub
+}
+
+const HubKeyTransactionGroups hub.HubCommandKey = "TRANSACTION:GROUPS"
+
+// TransactionGroupsHandler returns a list of group IDs that the user's transactions exist in
+func (tc *TransactionController) TransactionGroupsHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	// get user
+	uid, err := uuid.FromString(hubc.Identifier())
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	userID := passport.UserID(uid)
+
+	groupIDs, err := db.UsersTransactionGroups(userID, ctx, tc.Conn)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	reply(groupIDs)
+	return nil
 }
 
 // TransactionListRequest requests for a transaction list
@@ -52,13 +74,8 @@ type TransactionListRequest struct {
 
 // TransactionListResponse is the response from get Transaction list
 type TransactionListResponse struct {
-	Total        int                    `json:"total"`
-	Transactions []CondensedTransaction `json:"transactions"`
-}
-
-type CondensedTransaction struct {
-	ID      string  `json:"id"`
-	GroupID *string `json:"groupID"`
+	Total          int      `json:"total"`
+	TransactionIDs []string `json:"transactionIDs"`
 }
 
 const HubKeyTransactionList hub.HubCommandKey = "TRANSACTION:LIST"
@@ -97,17 +114,14 @@ func (tc *TransactionController) TransactionListHandler(ctx context.Context, hub
 		return terror.Error(err)
 	}
 
-	resultTransactions := make([]CondensedTransaction, 0)
+	resultTransactionIDs := make([]string, 0)
 	for _, s := range transactions {
-		resultTransactions = append(resultTransactions, CondensedTransaction{
-			s.ID,
-			s.GroupID,
-		})
+		resultTransactionIDs = append(resultTransactionIDs, s.ID)
 	}
 
 	resp := &TransactionListResponse{
 		total,
-		resultTransactions,
+		resultTransactionIDs,
 	}
 
 	reply(resp)
@@ -123,7 +137,7 @@ type TransactionSubscribeRequest struct {
 	} `json:"payload"`
 }
 
-func (tc *TransactionController) TransactionSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (tc *TransactionController) TransactionSubscribeHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &TransactionSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -135,8 +149,15 @@ func (tc *TransactionController) TransactionSubscribeHandler(ctx context.Context
 		return "", "", terror.Error(err)
 	}
 
-	if client.Identifier() == "" || client.Level < 1 {
-		return "", "", terror.Error(fmt.Errorf("user not logged in"), "You must be logged in to view this item.")
+	// get user
+	uid, err := uuid.FromString(hubc.Identifier())
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	userID := passport.UserID(uid)
+	if transaction.Credit != userID && transaction.Debit != userID {
+		return "", "", terror.Error(fmt.Errorf("unauthorized"), "You do not have permission to view this item.")
 	}
 
 	reply(transaction)

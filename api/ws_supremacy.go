@@ -139,7 +139,7 @@ type SupremacyHoldSupsRequest struct {
 		Amount               passport.BigInt               `json:"amount"`
 		FromUserID           passport.UserID               `json:"userID"`
 		TransactionReference passport.TransactionReference `json:"transactionReference"`
-		GroupID              string                        `json:"groupID"`
+		GroupID              passport.TransactionGroup     `json:"groupID"`
 	} `json:"payload"`
 }
 
@@ -163,7 +163,7 @@ func (sc *SupremacyControllerWS) SupremacySpendSupsHandler(ctx context.Context, 
 
 	if req.Payload.GroupID != "" {
 		tx.To = passport.SupremacyBattleUserID
-		tx.GroupID = &req.Payload.GroupID
+		tx.GroupID = req.Payload.GroupID
 	}
 
 	nfb, ntb, txID, err := sc.API.userCacheMap.Process(tx)
@@ -219,6 +219,7 @@ func (sc *SupremacyControllerWS) SupremacyFeed() {
 		To:                   passport.SupremacySupPoolUserID,
 		Amount:               *fund,
 		TransactionReference: passport.TransactionReference(fmt.Sprintf("treasury|ticker|%s", time.Now())),
+		GroupID:              passport.TransactionGroupBattleStream,
 	}
 
 	// process user cache map
@@ -308,6 +309,7 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 				To:                   *user,
 				Amount:               *usersSups,
 				TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|ticker|%s|%s", *user, time.Now())),
+				GroupID:              passport.TransactionGroupBattleStream,
 			}
 
 			nfb, ntb, _, err := sc.API.userCacheMap.Process(tx)
@@ -434,6 +436,7 @@ func (sc *SupremacyControllerWS) trickleFactory(key string, totalTick int, supsP
 			To:                   passport.SupremacySupPoolUserID,
 			Amount:               *supsPerTick,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|battle_sups_spend_transfer|%s", time.Now())),
+			GroupID:              passport.TransactionGroupBattleStream,
 		}
 
 		// process user cache map
@@ -1203,6 +1206,7 @@ func (sc *SupremacyControllerWS) SupremacyPayAssetInsuranceHandler(ctx context.C
 		From:                 req.Payload.UserID,
 		TransactionReference: req.Payload.TransactionReference,
 		Amount:               req.Payload.Amount.Int,
+		GroupID:              passport.TransactionGroupAssetManagement,
 	}
 
 	// TODO: validate the insurance is 10% of current reward price
@@ -1307,6 +1311,7 @@ func (sc *SupremacyControllerWS) SupremacyRedeemFactionContractRewardHandler(ctx
 		To:                   req.Payload.UserID,
 		TransactionReference: req.Payload.TransactionReference,
 		Amount:               req.Payload.Amount.Int,
+		GroupID:              passport.TransactionGroupAssetManagement,
 	}
 
 	switch req.Payload.FactionID {

@@ -121,6 +121,7 @@ func StoreRecord(ctx context.Context, toUser *passport.User, ucm *api.UserCacheM
 		TransactionReference: passport.TransactionReference(record.TxHash),
 		Description:          msg,
 		Safe:                 true,
+		GroupID:              passport.TransactionGroupStore,
 	}
 
 	_, _, _, err = ucm.Process(trans)
