@@ -64,10 +64,10 @@ func (c *FilesController) FileGet(w http.ResponseWriter, r *http.Request) (int, 
 
 	// Get blob
 	blob, err := db.BlobGet(context.Background(), c.Conn, blobID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return http.StatusNotFound, terror.Error(err, "attachment not found")
-	}
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return http.StatusNotFound, terror.Error(err, "attachment not found")
+		}
 		return http.StatusInternalServerError, terror.Error(err, "could not get attachment")
 	}
 

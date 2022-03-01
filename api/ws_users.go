@@ -96,7 +96,7 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 	api.SubscribeCommand(HubKeySUPSExchangeRates, userHub.ExchangeRatesHandler)
 
 	// listen on queuing war machine
-	api.SecureUserSubscribeCommand(HubKeyWarMachineQueuePositionSubscribe, userHub.WarMachineQueuePositionUpdatedSubscribeHandler)
+	api.SecureUserSubscribeCommand(HubKeyWarMachineQueueStatSubscribe, userHub.WarMachineQueuePositionUpdatedSubscribeHandler)
 	api.SecureUserSubscribeCommand(HubKeyUserSupsSubscribe, userHub.UserSupsUpdatedSubscribeHandler)
 	api.SecureUserSubscribeCommand(HubKeyUserFactionSubscribe, userHub.UserFactionUpdatedSubscribeHandler)
 
@@ -2276,7 +2276,7 @@ type WarMachineQueuePositionRequest struct {
 	} `json:"payload"`
 }
 
-const HubKeyWarMachineQueuePositionSubscribe hub.HubCommandKey = "WAR:MACHINE:QUEUE:POSITION:SUBSCRIBE"
+const HubKeyWarMachineQueueStatSubscribe hub.HubCommandKey = "WAR:MACHINE:QUEUE:POSITION:SUBSCRIBE"
 
 func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &WarMachineQueuePositionRequest{}
@@ -2313,7 +2313,8 @@ func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx con
 	}
 
 	var resp struct {
-		Position *int `json:"position"`
+		Position       *int    `json:"position"`
+		ContractReward *string `json:"contractReward"`
 	}
 	err = uc.API.GameserverRequest(http.MethodPost, "/war_machine_queue_position", struct {
 		AssetHash string             `json:"assethash"`
@@ -2326,9 +2327,9 @@ func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx con
 		return "", "", terror.Error(err)
 	}
 
-	reply(resp.Position)
+	reply(resp)
 
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineQueuePositionSubscribe, req.Payload.AssetHash))
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineQueueStatSubscribe, req.Payload.AssetHash))
 
 	return req.TransactionID, busKey, nil
 }

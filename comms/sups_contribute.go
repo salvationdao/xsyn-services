@@ -18,7 +18,8 @@ import (
 
 type SpendSupsReq struct {
 	Amount               string                        `json:"amount"`
-	FromUserID           passport.UserID               `json:"userID"`
+	FromUserID           passport.UserID               `json:"fromUserID"`
+	ToUserID             *passport.UserID              `json:"toUserID,omitempty"`
 	TransactionReference passport.TransactionReference `json:"transactionReference"`
 	GroupID              passport.TransactionGroup     `json:"groupID,omitempty"`
 }
@@ -340,8 +341,8 @@ func (c *C) TransferBattleFundToSupPoolHandler(req TransferBattleFundToSupPoolRe
 	}
 
 	// generate new go routine to trickle sups
-	c.poolHighPriorityLock()
-	defer c.poolHighPriorityUnlock()
+	c.TickerPoolCache.Lock()
+	defer c.TickerPoolCache.Unlock()
 	// get current battle user sups
 	battleUser, err := c.UserCacheMap.Get(passport.SupremacyBattleUserID.String())
 	if err != nil {
@@ -393,40 +394,11 @@ func (c *C) TransferBattleFundToSupPoolHandler(req TransferBattleFundToSupPoolRe
 	return nil
 }
 
-// priority locks
-// poolHighPriorityLock
-func (c *C) poolHighPriorityLock() {
-	c.TickerPoolCache.nextAccessMx.Lock()
-	c.TickerPoolCache.dataMx.Lock()
-	c.TickerPoolCache.nextAccessMx.Unlock()
-}
-
-// poolHighPriorityUnlock
-func (c *C) poolHighPriorityUnlock() {
-	c.TickerPoolCache.dataMx.Unlock()
-}
-
-// poolLowPriorityLock
-func (c *C) poolLowPriorityLock() {
-	c.TickerPoolCache.outerMx.Lock()
-	c.TickerPoolCache.nextAccessMx.Lock()
-	c.TickerPoolCache.dataMx.Lock()
-	c.TickerPoolCache.nextAccessMx.Unlock()
-}
-
-// poolLowPriorityUnlock
-func (c *C) poolLowPriorityUnlock() {
-	c.TickerPoolCache.dataMx.Unlock()
-	c.TickerPoolCache.outerMx.Unlock()
-}
-
 // trickle factory
 func (c *C) newSupsTrickle(key string, totalTick int, supsPerTick *big.Int) {
 	i := 0
 	for {
 		i++
-		c.poolLowPriorityLock()
-		defer c.poolLowPriorityUnlock()
 
 		tx := &passport.NewTransaction{
 			From:                 passport.SupremacyBattleUserID,
@@ -435,10 +407,12 @@ func (c *C) newSupsTrickle(key string, totalTick int, supsPerTick *big.Int) {
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|battle_sups_spend_transfer|%s", time.Now())),
 		}
 
+		c.TickerPoolCache.Lock()
 		// process user cache map
 		_, _, _, err := c.UserCacheMap.Process(tx)
 		if err != nil {
 			c.Log.Err(err).Msg("insufficient fund")
+			c.TickerPoolCache.Unlock()
 			return
 		}
 		// if the routine is not finished
@@ -447,8 +421,10 @@ func (c *C) newSupsTrickle(key string, totalTick int, supsPerTick *big.Int) {
 			c.TickerPoolCache.TricklingAmountMap[key].Sub(c.TickerPoolCache.TricklingAmountMap[key], supsPerTick)
 
 			time.Sleep(5 * time.Second)
+			c.TickerPoolCache.Unlock()
 			continue
 		}
+		c.TickerPoolCache.Unlock()
 
 		// otherwise, delete the trickle amount from the map
 		delete(c.TickerPoolCache.TricklingAmountMap, key)

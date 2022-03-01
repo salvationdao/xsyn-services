@@ -18,9 +18,7 @@ import (
 
 // for sups trickle handler
 type TickerPoolCache struct {
-	outerMx            deadlock.Mutex
-	nextAccessMx       deadlock.Mutex
-	dataMx             deadlock.Mutex
+	deadlock.Mutex
 	TricklingAmountMap map[string]*big.Int
 }
 
@@ -51,7 +49,8 @@ func New(
 		Log:          log,
 		Conn:         conn,
 		TickerPoolCache: &TickerPoolCache{
-			TricklingAmountMap: make(map[string]*big.Int),
+			deadlock.Mutex{},
+			make(map[string]*big.Int),
 		},
 		HubSessionIDMap: cm,
 	}

@@ -81,3 +81,8 @@ type FactionSaleAvailable struct {
 	MegaAmount    int64         `json:"megaAmount" db:"mega_amount"`
 	LootboxAmount int64         `json:"lootboxAmount" db:"lootbox_amount"`
 }
+
+type AssetQueueStat struct {
+	Position       *int    `json:"position"`
+	ContractReward *string `json:"contractReward"`
+}

@@ -36,55 +36,6 @@ func NewServerClientController(log *zerolog.Logger, conn *pgxpool.Pool, api *API
 	return serverClientHub
 }
 
-// const HubKeyElevateAsServerClient = hub.HubCommandKey("AUTH:SERVERCLIENT")
-
-// type ElevateAsServerClientRequest struct {
-// 	*hub.HubCommandRequest
-// 	Payload struct {
-// 		ClientToken string `json:"clientToken"`
-// 	} `json:"payload"`
-// }
-
-// func (ch *ServerClientControllerWS) Handler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-// 	req := &ElevateAsServerClientRequest{}
-// 	err := json.Unmarshal(payload, req)
-// 	if err != nil {
-// 		return terror.Error(err, "Invalid request received")
-// 	}
-// 	if req.Payload.ClientToken == "" {
-// 		return terror.Error(fmt.Errorf("missing client auth token"))
-// 	}
-// 	// TODO: move to a db table with client IDs and secrets when we have more games connecting
-// 	if req.Payload.ClientToken != ch.API.ClientToken {
-// 		return terror.Error(terror.ErrUnauthorised)
-// 	}
-// 	// Remove any old supremacy connections
-// 	ch.API.ServerClients(func(serverClients ServerClientsList) {
-// 		if clients, ok := serverClients[SupremacyGameServer]; ok {
-// 			for c := range clients {
-// 				ch.API.ServerClientOffline(c)
-// 			}
-// 		}
-// 	})
-
-// 	supremacyUser, err := db.UserIDFromUsername(ctx, ch.Conn, passport.SupremacyGameUsername)
-// 	if err != nil {
-// 		ch.API.Hub.Offline(hubc)
-// 		return terror.Error(err)
-// 	}
-
-// 	// setting level and identifier
-// 	hubc.SetLevel(passport.ServerClientLevel)
-// 	hubc.SetIdentifier(supremacyUser.String())
-// 	// TODO: get the matching server name
-// 	serverName := SupremacyGameServer
-
-// 	// add this connection to our server client map
-// 	ch.API.ServerClientOnline(serverName, hubc)
-// 	reply(true)
-// 	return nil
-// }
-
 const HubKeyCheckTransactionList = hub.HubCommandKey("TRANSACTION:CHECK_LIST")
 
 type CheckTransactionsRequest struct {

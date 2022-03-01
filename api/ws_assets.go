@@ -120,7 +120,8 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	warMachineMetadata.FactionID = *user.FactionID
 
 	var resp struct {
-		Position *int `json:"position"`
+		Position       *int    `json:"position"`
+		ContractReward *string `json:"contractReward"`
 	}
 	err = ac.API.GameserverRequest(http.MethodPost, "/war_machine_join", struct {
 		WarMachineMetadata *passport.WarMachineMetadata `json:"warMachineMetadata"`
@@ -133,7 +134,7 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 		return terror.Error(err)
 	}
 
-	ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineQueuePositionSubscribe, warMachineMetadata.Hash)), resp.Position)
+	ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineQueueStatSubscribe, warMachineMetadata.Hash)), resp)
 
 	reply(true)
 	return nil

@@ -97,7 +97,7 @@ func (c *C) SupremacyDefaultWarMachinesHandler(req DefaultWarMachinesReq, resp *
 }
 
 type WarMachineQueuePositionReq struct {
-	WarMachineQueuePosition []*passport.WarMachineQueuePosition `json:"warMachineQueuePosition"`
+	WarMachineQueuePosition []*passport.WarMachineQueueStat `json:"warMachineQueuePosition"`
 }
 
 type WarMachineQueuePositionResp struct{}
@@ -107,7 +107,7 @@ func (c *C) SupremacyWarMachineQueuePositionHandler(req WarMachineQueuePositionR
 	ctx := context.Background()
 	// broadcast war machine position to all user client
 	for _, uwm := range req.WarMachineQueuePosition {
-		c.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyWarMachineQueuePositionSubscribe, uwm.Hash)), uwm.Position)
+		c.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyWarMachineQueueStatSubscribe, uwm.Hash)), uwm)
 	}
 
 	return nil

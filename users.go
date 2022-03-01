@@ -154,7 +154,8 @@ type SupsMultiplier struct {
 	ExpiredAt time.Time `json:"expiredAt"`
 }
 
-type WarMachineQueuePosition struct {
-	Hash     string `json:"hash"`
-	Position *int   `json:"position,omitempty"`
+type WarMachineQueueStat struct {
+	Hash           string  `json:"hash"`
+	Position       *int    `json:"position,omitempty"`
+	ContractReward *string `json:"contractReward,omitempty"`
 }

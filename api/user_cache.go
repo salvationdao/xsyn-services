@@ -44,6 +44,7 @@ var TransactionFailed = "TRANSACTION_FAILED"
 
 func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.Int, string, error) {
 	if nt.Amount.Cmp(big.NewInt(0)) < 1 {
+		fmt.Print(nt.Amount.String())
 		return nil, nil, TransactionFailed, terror.Error(fmt.Errorf("amount should be a positive number"), "Amount should be greater than zero")
 	}
 
