@@ -7,6 +7,7 @@ require (
 	github.com/aymerick/raymond v2.0.3-0.20180322193309-b565731e1464+incompatible
 	github.com/caddyserver/caddy/v2 v2.4.5
 	github.com/caddyserver/xcaddy v0.2.0
+	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/cosmtrek/air v1.27.3
 	github.com/georgysavva/scany v0.3.0
 	github.com/getsentry/sentry-go v0.11.0
@@ -41,13 +42,9 @@ require (
 	github.com/volatiletech/sqlboiler/v4 v4.8.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.0.0-20220210151621-f4118a5b28e2
+	google.golang.org/api v0.63.0
 	nhooyr.io/websocket v1.8.7
 	syreclabs.com/go/faker v1.2.3
-)
-
-require (
-	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
-	google.golang.org/api v0.63.0 // indirect
 )
 
 require (
