@@ -1,5 +1,5 @@
 /**
-  Add shield recharge stat to all mechs on the store
+  Add shield recharge stat to all mechs on the metadata
  **/
 
 UPDATE xsyn_metadata
