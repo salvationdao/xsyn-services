@@ -255,7 +255,7 @@ func (ac *AssetController) AssetRepairStatUpdateSubscriber(ctx context.Context, 
 
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return req.TransactionID, "", terror.Error(err)
+		return req.TransactionID, "", terror.Error(fmt.Errorf("no auth"))
 	}
 
 	if req.Payload.AssetHash == "" {
