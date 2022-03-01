@@ -1,14 +1,25 @@
-/**
-  Add shield recharge stat to all mechs on the metadata
- **/
+--  Add shield recharge stat to all mechs on the metadata
 
 UPDATE xsyn_metadata
 SET attributes = attributes ||'[{"trait_type": "Shield Recharge Rate", "value": 80, "display_type": "number"}]'::jsonb
 WHERE xsyn_metadata.attributes @> '[{"trait_type": "Asset Type", "value": "War Machine"}]';
 
-/**
-  Update red mountain mechs
- **/
+
+-------------------- Update red mountain mechs ---------------------------
+
+-- UPDATING Red Mountain - Mega - Max Structure Hit Points to 1500
+WITH item as (
+    SELECT ('{'||pos-1||',"value"}')::text[] as path, hash
+    FROM xsyn_metadata, jsonb_array_elements(attributes) WITH ORDINALITY arr(elem, pos)
+    WHERE elem->>'trait_type' = 'Max Structure Hit Points' -- trait we want to update
+)
+UPDATE xsyn_metadata
+SET attributes = JSONB_SET(attributes, item.path, '1500', FALSE)
+FROM item
+WHERE item.hash = xsyn_metadata.hash
+AND xsyn_metadata.attributes @> '[{"trait_type": "Rarity", "value": "Mega"}]' -- rarity we want to update
+AND xsyn_metadata.attributes @> '[{"trait_type": "Brand", "value": "Red Mountain"}]' -- mech brand to update
+AND xsyn_metadata.attributes @> '[{"value": "Olympus Mons LY07", "trait_type": "Model"}]'; -- mech model to update
 
 -- UPDATING Red Mountain - Colossal - Max Structure Hit Points to 1530
 WITH item as (
@@ -94,7 +105,6 @@ WHERE item.hash = xsyn_metadata.hash
   AND xsyn_metadata.attributes @> '[{"trait_type": "Brand", "value": "Red Mountain"}]' -- mech brand to update
 AND xsyn_metadata.attributes @> '[{"value": "Olympus Mons LY07", "trait_type": "Model"}]'; -- mech model to update
 
-
 -- UPDATING Red Mountain - Colossal - Max Structure Hit Points to 1710
 WITH item as (
     SELECT ('{'||pos-1||',"value"}')::text[] as path, hash
@@ -137,141 +147,165 @@ WHERE item.hash = xsyn_metadata.hash
 AND xsyn_metadata.attributes @> '[{"trait_type": "Brand", "value": "Red Mountain"}]' -- mech brand to update
 AND xsyn_metadata.attributes @> '[{"value": "Olympus Mons LY07", "trait_type": "Model"}]'; -- mech model to update
 
-/************************************
-    Zaibatsu mech updates
-**************************************/
 
--- UPDATING Zaibatsu Heavy Industries - Colossal - Shield Recharge Rate to 81.6
+--------------------  Zaibatsu mech updates ---------------------------
+
+-- UPDATING Zaibatsu Heavy Industries - Mega - Shield Recharge Rate to 100
 WITH item as (
     SELECT ('{'||pos-1||',"value"}')::text[] as path, hash
     FROM xsyn_metadata, jsonb_array_elements(attributes) WITH ORDINALITY arr(elem, pos)
     WHERE elem->>'trait_type' = 'Shield Recharge Rate' -- trait we want to update
 )
 UPDATE xsyn_metadata
-SET attributes = JSONB_SET(attributes, item.path, '81.6', FALSE)
+SET attributes = JSONB_SET(attributes, item.path, '100', FALSE)
+FROM item
+WHERE item.hash = xsyn_metadata.hash
+  AND xsyn_metadata.attributes @> '[{"trait_type": "Rarity", "value": "Mega"}]' -- rarity we want to update
+  AND xsyn_metadata.attributes @> '[{"trait_type": "Brand", "value": "Zaibatsu"}]' -- mech brand to update
+  AND xsyn_metadata.attributes @> '[{"value": "Tenshi Mk1", "trait_type": "Model"}]'; -- mech model to update
+
+-- UPDATING Zaibatsu Heavy Industries - Colossal - Shield Recharge Rate to 102
+WITH item as (
+    SELECT ('{'||pos-1||',"value"}')::text[] as path, hash
+    FROM xsyn_metadata, jsonb_array_elements(attributes) WITH ORDINALITY arr(elem, pos)
+    WHERE elem->>'trait_type' = 'Shield Recharge Rate' -- trait we want to update
+)
+UPDATE xsyn_metadata
+SET attributes = JSONB_SET(attributes, item.path, '102', FALSE)
 FROM item
 WHERE item.hash = xsyn_metadata.hash
   AND xsyn_metadata.attributes @> '[{"trait_type": "Rarity", "value": "Colossal"}]' -- rarity we want to update
 AND xsyn_metadata.attributes @> '[{"trait_type": "Brand", "value": "Zaibatsu"}]' -- mech brand to update
 AND xsyn_metadata.attributes @> '[{"value": "Tenshi Mk1", "trait_type": "Model"}]'; -- mech model to update
 
--- UPDATING Zaibatsu Heavy Industries - Rare - Shield Recharge Rate to 83.2
+-- UPDATING Zaibatsu Heavy Industries - Rare - Shield Recharge Rate to 104
 WITH item as (
     SELECT ('{'||pos-1||',"value"}')::text[] as path, hash
     FROM xsyn_metadata, jsonb_array_elements(attributes) WITH ORDINALITY arr(elem, pos)
     WHERE elem->>'trait_type' = 'Shield Recharge Rate' -- trait we want to update
 )
 UPDATE xsyn_metadata
-SET attributes = JSONB_SET(attributes, item.path, '83.2', FALSE)
+SET attributes = JSONB_SET(attributes, item.path, '104', FALSE)
 FROM item
 WHERE item.hash = xsyn_metadata.hash
   AND xsyn_metadata.attributes @> '[{"trait_type": "Rarity", "value": "Rare"}]' -- rarity we want to update
   AND xsyn_metadata.attributes @> '[{"trait_type": "Brand", "value": "Zaibatsu"}]' -- mech brand to update
   AND xsyn_metadata.attributes @> '[{"value": "Tenshi Mk1", "trait_type": "Model"}]'; -- mech model to update
 
--- UPDATING Zaibatsu Heavy Industries - Legendary - Shield Recharge Rate to 84.8
+-- UPDATING Zaibatsu Heavy Industries - Legendary - Shield Recharge Rate to 106
 WITH item as (
     SELECT ('{'||pos-1||',"value"}')::text[] as path, hash
     FROM xsyn_metadata, jsonb_array_elements(attributes) WITH ORDINALITY arr(elem, pos)
     WHERE elem->>'trait_type' = 'Shield Recharge Rate' -- trait we want to update
 )
 UPDATE xsyn_metadata
-SET attributes = JSONB_SET(attributes, item.path, '84.8', FALSE)
+SET attributes = JSONB_SET(attributes, item.path, '106', FALSE)
 FROM item
 WHERE item.hash = xsyn_metadata.hash
   AND xsyn_metadata.attributes @> '[{"trait_type": "Rarity", "value": "Legendary"}]' -- rarity we want to update
   AND xsyn_metadata.attributes @> '[{"trait_type": "Brand", "value": "Zaibatsu"}]' -- mech brand to update
   AND xsyn_metadata.attributes @> '[{"value": "Tenshi Mk1", "trait_type": "Model"}]'; -- mech model to update
 
--- UPDATING Zaibatsu Heavy Industries - Elite Legendary - Shield Recharge Rate to 86.4
+-- UPDATING Zaibatsu Heavy Industries - Elite Legendary - Shield Recharge Rate to 108
 WITH item as (
     SELECT ('{'||pos-1||',"value"}')::text[] as path, hash
     FROM xsyn_metadata, jsonb_array_elements(attributes) WITH ORDINALITY arr(elem, pos)
     WHERE elem->>'trait_type' = 'Shield Recharge Rate' -- trait we want to update
 )
 UPDATE xsyn_metadata
-SET attributes = JSONB_SET(attributes, item.path, '86.4', FALSE)
+SET attributes = JSONB_SET(attributes, item.path, '108', FALSE)
 FROM item
 WHERE item.hash = xsyn_metadata.hash
   AND xsyn_metadata.attributes @> '[{"trait_type": "Rarity", "value": "Elite Legendary"}]' -- rarity we want to update
   AND xsyn_metadata.attributes @> '[{"trait_type": "Brand", "value": "Zaibatsu"}]' -- mech brand to update
   AND xsyn_metadata.attributes @> '[{"value": "Tenshi Mk1", "trait_type": "Model"}]'; -- mech model to update
 
--- UPDATING Zaibatsu Heavy Industries - Ultra Rare - Shield Recharge Rate to 88
+-- UPDATING Zaibatsu Heavy Industries - Ultra Rare - Shield Recharge Rate to 110
 WITH item as (
     SELECT ('{'||pos-1||',"value"}')::text[] as path, hash
     FROM xsyn_metadata, jsonb_array_elements(attributes) WITH ORDINALITY arr(elem, pos)
     WHERE elem->>'trait_type' = 'Shield Recharge Rate' -- trait we want to update
 )
 UPDATE xsyn_metadata
-SET attributes = JSONB_SET(attributes, item.path, '88', FALSE)
+SET attributes = JSONB_SET(attributes, item.path, '110', FALSE)
 FROM item
 WHERE item.hash = xsyn_metadata.hash
   AND xsyn_metadata.attributes @> '[{"trait_type": "Rarity", "value": "Ultra Rare"}]' -- rarity we want to update
   AND xsyn_metadata.attributes @> '[{"trait_type": "Brand", "value": "Zaibatsu"}]' -- mech brand to update
   AND xsyn_metadata.attributes @> '[{"value": "Tenshi Mk1", "trait_type": "Model"}]'; -- mech model to update
 
--- UPDATING Zaibatsu Heavy Industries - Exotic - Shield Recharge Rate to 89.6
+-- UPDATING Zaibatsu Heavy Industries - Exotic - Shield Recharge Rate to 112
 WITH item as (
     SELECT ('{'||pos-1||',"value"}')::text[] as path, hash
     FROM xsyn_metadata, jsonb_array_elements(attributes) WITH ORDINALITY arr(elem, pos)
     WHERE elem->>'trait_type' = 'Shield Recharge Rate' -- trait we want to update
 )
 UPDATE xsyn_metadata
-SET attributes = JSONB_SET(attributes, item.path, '89.6', FALSE)
+SET attributes = JSONB_SET(attributes, item.path, '112', FALSE)
 FROM item
 WHERE item.hash = xsyn_metadata.hash
   AND xsyn_metadata.attributes @> '[{"trait_type": "Rarity", "value": "Exotic"}]' -- rarity we want to update
   AND xsyn_metadata.attributes @> '[{"trait_type": "Brand", "value": "Zaibatsu"}]' -- mech brand to update
   AND xsyn_metadata.attributes @> '[{"value": "Tenshi Mk1", "trait_type": "Model"}]'; -- mech model to update
 
-
--- UPDATING Zaibatsu Heavy Industries - Guardian - Shield Recharge Rate to 91.2
+-- UPDATING Zaibatsu Heavy Industries - Guardian - Shield Recharge Rate to 114
 WITH item as (
     SELECT ('{'||pos-1||',"value"}')::text[] as path, hash
     FROM xsyn_metadata, jsonb_array_elements(attributes) WITH ORDINALITY arr(elem, pos)
     WHERE elem->>'trait_type' = 'Shield Recharge Rate' -- trait we want to update
 )
 UPDATE xsyn_metadata
-SET attributes = JSONB_SET(attributes, item.path, '91.2', FALSE)
+SET attributes = JSONB_SET(attributes, item.path, '114', FALSE)
 FROM item
 WHERE item.hash = xsyn_metadata.hash
   AND xsyn_metadata.attributes @> '[{"trait_type": "Rarity", "value": "Guardian"}]' -- rarity we want to update
   AND xsyn_metadata.attributes @> '[{"trait_type": "Brand", "value": "Zaibatsu"}]' -- mech brand to update
   AND xsyn_metadata.attributes @> '[{"value": "Tenshi Mk1", "trait_type": "Model"}]'; -- mech model to update
 
--- UPDATING Zaibatsu Heavy Industries - Mythic - Shield Recharge Rate to 92.8
+-- UPDATING Zaibatsu Heavy Industries - Mythic - Shield Recharge Rate to 116
 WITH item as (
     SELECT ('{'||pos-1||',"value"}')::text[] as path, hash
     FROM xsyn_metadata, jsonb_array_elements(attributes) WITH ORDINALITY arr(elem, pos)
     WHERE elem->>'trait_type' = 'Shield Recharge Rate' -- trait we want to update
 )
 UPDATE xsyn_metadata
-SET attributes = JSONB_SET(attributes, item.path, '92.8', FALSE)
+SET attributes = JSONB_SET(attributes, item.path, '116', FALSE)
 FROM item
 WHERE item.hash = xsyn_metadata.hash
   AND xsyn_metadata.attributes @> '[{"trait_type": "Rarity", "value": "Mythic"}]' -- rarity we want to update
   AND xsyn_metadata.attributes @> '[{"trait_type": "Brand", "value": "Zaibatsu"}]' -- mech brand to update
   AND xsyn_metadata.attributes @> '[{"value": "Tenshi Mk1", "trait_type": "Model"}]'; -- mech model to update
 
-
--- UPDATING Zaibatsu Heavy Industries - Deus ex - Shield Recharge Rate to 96
+-- UPDATING Zaibatsu Heavy Industries - Deus ex - Shield Recharge Rate to 120
 WITH item as (
     SELECT ('{'||pos-1||',"value"}')::text[] as path, hash
     FROM xsyn_metadata, jsonb_array_elements(attributes) WITH ORDINALITY arr(elem, pos)
     WHERE elem->>'trait_type' = 'Shield Recharge Rate' -- trait we want to update
 )
 UPDATE xsyn_metadata
-SET attributes = JSONB_SET(attributes, item.path, '96', FALSE)
+SET attributes = JSONB_SET(attributes, item.path, '120', FALSE)
 FROM item
 WHERE item.hash = xsyn_metadata.hash
   AND xsyn_metadata.attributes @> '[{"trait_type": "Rarity", "value": "Deus ex"}]' -- rarity we want to update
   AND xsyn_metadata.attributes @> '[{"trait_type": "Brand", "value": "Zaibatsu"}]' -- mech brand to update
   AND xsyn_metadata.attributes @> '[{"value": "Tenshi Mk1", "trait_type": "Model"}]'; -- mech model to update
 
-/************************************
-    Boston mech updates
-**************************************/
+
+--------------------  Boston mech updates ---------------------------
+
+-- UPDATING Boston Cybernetics - Mega - Speed to 2750
+WITH item as (
+    SELECT ('{'||pos-1||',"value"}')::text[] as path, hash
+    FROM xsyn_metadata, jsonb_array_elements(attributes) WITH ORDINALITY arr(elem, pos)
+    WHERE elem->>'trait_type' = 'Speed' -- trait we want to update
+)
+UPDATE xsyn_metadata
+SET attributes = JSONB_SET(attributes, item.path, '2750', FALSE)
+FROM item
+WHERE item.hash = xsyn_metadata.hash
+  AND xsyn_metadata.attributes @> '[{"trait_type": "Rarity", "value": "Mega"}]' -- rarity we want to update
+  AND xsyn_metadata.attributes @> '[{"trait_type": "Brand", "value": "Boston Cybernetics"}]' -- mech brand to update
+  AND xsyn_metadata.attributes @> '[{"value": "Law Enforcer X-1000", "trait_type": "Model"}]'; -- mech model to update
 
 -- UPDATING Boston Cybernetics - Colossal - Speed to 2,805
 WITH item as (
@@ -357,7 +391,6 @@ WHERE item.hash = xsyn_metadata.hash
   AND xsyn_metadata.attributes @> '[{"trait_type": "Brand", "value": "Boston Cybernetics"}]' -- mech brand to update
   AND xsyn_metadata.attributes @> '[{"value": "Law Enforcer X-1000", "trait_type": "Model"}]'; -- mech model to update
 
-
 -- UPDATING Boston Cybernetics - Guardian - Speed to 3135
 WITH item as (
     SELECT ('{'||pos-1||',"value"}')::text[] as path, hash
@@ -385,7 +418,6 @@ WHERE item.hash = xsyn_metadata.hash
   AND xsyn_metadata.attributes @> '[{"trait_type": "Rarity", "value": "Mythic"}]' -- rarity we want to update
   AND xsyn_metadata.attributes @> '[{"trait_type": "Brand", "value": "Boston Cybernetics"}]' -- mech brand to update
   AND xsyn_metadata.attributes @> '[{"value": "Law Enforcer X-1000", "trait_type": "Model"}]'; -- mech model to update
-
 
 -- UPDATING Boston Cybernetics - Deus ex - Speed to 3300
 WITH item as (
