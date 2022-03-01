@@ -120,7 +120,6 @@ func StoreRecord(ctx context.Context, toUser *passport.User, ucm *api.UserCacheM
 		Amount:               *output.BigInt(),
 		TransactionReference: passport.TransactionReference(record.TxHash),
 		Description:          msg,
-		Safe:                 true,
 		GroupID:              passport.TransactionGroupStore,
 	}
 

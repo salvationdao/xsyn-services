@@ -35,10 +35,17 @@ func (s *Seeder) EarlyContributors(ctx context.Context) error {
 				To:                   u.ID,
 				Description:          "Supremacy early contributor dispersion.",
 				TransactionReference: passport.TransactionReference(fmt.Sprintf("Supremacy early contributor dispersion #%04d", i)),
-				Safe:                 true,
 			}
 
-			s.TransactionCache.Process(nt)
+
+
+		q := `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
+        				VALUES((SELECT count(*) from transactions), $1, $2, $3, $4, $5);`
+
+    	_, err = s.Conn.Exec(ctx, q, nt.Description, nt.TransactionReference, nt.Amount.String(), nt.To, nt.From)
+    	if err != nil {
+    		return terror.Error(err)
+    	}
 			i++
 		}
 	}

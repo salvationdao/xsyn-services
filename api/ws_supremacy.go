@@ -159,6 +159,7 @@ func (sc *SupremacyControllerWS) SupremacySpendSupsHandler(ctx context.Context, 
 		To:                   passport.SupremacyGameUserID,
 		TransactionReference: req.Payload.TransactionReference,
 		Amount:               req.Payload.Amount.Int,
+		NotSafe: true,
 	}
 
 	if req.Payload.GroupID != "" {
@@ -188,6 +189,7 @@ func (sc *SupremacyControllerWS) SupremacySpendSupsHandler(ctx context.Context, 
 		From:                 tx.To,
 		To:                   tx.From,
 		Amount:               tx.Amount,
+		NotSafe: true,
 		TransactionReference: passport.TransactionReference(fmt.Sprintf("refund|sups vote|%s", txID)),
 	})
 	sc.Txs.TxMx.Unlock()
@@ -218,6 +220,7 @@ func (sc *SupremacyControllerWS) SupremacyFeed() {
 		From:                 passport.XsynTreasuryUserID,
 		To:                   passport.SupremacySupPoolUserID,
 		Amount:               *fund,
+		NotSafe: true,
 		TransactionReference: passport.TransactionReference(fmt.Sprintf("treasury|ticker|%s", time.Now())),
 		GroupID:              passport.TransactionGroupBattleStream,
 	}
@@ -308,6 +311,7 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 				From:                 passport.SupremacySupPoolUserID,
 				To:                   *user,
 				Amount:               *usersSups,
+				NotSafe: true,
 				TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|ticker|%s|%s", *user, time.Now())),
 				GroupID:              passport.TransactionGroupBattleStream,
 			}
@@ -435,6 +439,7 @@ func (sc *SupremacyControllerWS) trickleFactory(key string, totalTick int, supsP
 			From:                 passport.SupremacyBattleUserID,
 			To:                   passport.SupremacySupPoolUserID,
 			Amount:               *supsPerTick,
+			NotSafe: true,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|battle_sups_spend_transfer|%s", time.Now())),
 			GroupID:              passport.TransactionGroupBattleStream,
 		}
@@ -1203,6 +1208,7 @@ func (sc *SupremacyControllerWS) SupremacyPayAssetInsuranceHandler(ctx context.C
 
 	tx := &passport.NewTransaction{
 		// ResultChan:           resultChan,
+		NotSafe: true,
 		From:                 req.Payload.UserID,
 		TransactionReference: req.Payload.TransactionReference,
 		Amount:               req.Payload.Amount.Int,
@@ -1308,6 +1314,7 @@ func (sc *SupremacyControllerWS) SupremacyRedeemFactionContractRewardHandler(ctx
 	}
 
 	tx := &passport.NewTransaction{
+		NotSafe: true,
 		To:                   req.Payload.UserID,
 		TransactionReference: req.Payload.TransactionReference,
 		Amount:               req.Payload.Amount.Int,

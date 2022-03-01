@@ -95,6 +95,7 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 			To:                   user.ID,
 			From:                 passport.XsynSaleUserID,
 			Amount:               *oneSups,
+			NotSafe: true,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
 			Description:          "Give away for testing",
 		})

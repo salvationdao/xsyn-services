@@ -218,6 +218,7 @@ func BenchmarkTransactions(b *testing.B) {
 						From:                 offChainUser.ID,
 						To:                   randUser1.ID,
 						Amount:               *amountToTransfer,
+						NotSafe: true,
 						TransactionReference: passport.TransactionReference(fmt.Sprintf("%d:%d", outI, inI)),
 					}
 				}

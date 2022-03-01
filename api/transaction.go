@@ -60,7 +60,7 @@ func (tc *TransactionCache) commit() {
 				Str("to", tx.To.String()).
 				Str("txref", string(tx.TransactionReference)).
 				Msg("transaction cache lock")
-			if !tx.Safe {
+			if tx.NotSafe {
 				tc.Lock() //grind to a halt if transactions fail to save to database
 			}
 			return
@@ -79,9 +79,8 @@ func (tc *TransactionCache) Process(t *passport.NewTransaction) string {
 	tc.Lock()
 	defer func() {
 		tc.Unlock()
-		if t.Safe {
+		if !t.NotSafe {
 			tc.commit()
-
 		}
 	}()
 	tc.transactions = append(tc.transactions, t)

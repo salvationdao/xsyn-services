@@ -177,15 +177,23 @@ func (s *Seeder) XsynTreasuryUser(ctx context.Context) (*passport.User, error) {
 
 	}
 
-	s.TransactionCache.Process(&passport.NewTransaction{
-		Safe:                 true,
+
+	txObj := &passport.NewTransaction{
 		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		From:                 passport.OnChainUserID,
 		To:                   u.ID,
 		Amount:               *amount,
 		Description:          "Initial supply seed.",
 		TransactionReference: passport.TransactionReference("Initial supply seed."),
-	})
+	}
+
+	q := `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
+    				VALUES((SELECT count(*) from transactions), $1, $2, $3, $4, $5);`
+
+	_, err = s.Conn.Exec(ctx, q, txObj.Description, txObj.TransactionReference, txObj.Amount.String(), txObj.To, txObj.From)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
 
 	return u, nil
 }
@@ -212,15 +220,22 @@ func (s *Seeder) SupremacyUser(ctx context.Context) (*passport.User, error) {
 
 	}
 	id := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
-	s.TransactionCache.Process(&passport.NewTransaction{
-		Safe:                 true,
+	txObj := &passport.NewTransaction{
 		ID:                   id,
 		From:                 passport.XsynTreasuryUserID,
 		To:                   u.ID,
 		Amount:               *amount,
 		Description:          "",
 		TransactionReference: passport.TransactionReference(id),
-	})
+	}
+
+		q := `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
+        				VALUES((SELECT count(*) from transactions), $1, $2, $3, $4, $5);`
+
+    	_, err = s.Conn.Exec(ctx, q, txObj.Description, txObj.TransactionReference, txObj.Amount.String(), txObj.To, txObj.From)
+    	if err != nil {
+    		return nil, terror.Error(err)
+    	}
 
 	return u, nil
 }
@@ -248,15 +263,22 @@ func (s *Seeder) XsynSaleUser(ctx context.Context) (*passport.User, error) {
 
 	// create xsynSaleUser balance of 217M from the xsynTreasuryUser
 	id := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
-	s.TransactionCache.Process(&passport.NewTransaction{
-		Safe:                 true,
+	txObj := &passport.NewTransaction{
 		ID:                   id,
 		From:                 passport.XsynTreasuryUserID,
 		To:                   u.ID,
 		Amount:               *amount,
 		Description:          "",
 		TransactionReference: passport.TransactionReference(id),
-	})
+	}
+
+		q := `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
+        				VALUES((SELECT count(*) from transactions), $1, $2, $3, $4, $5);`
+
+    	_, err = s.Conn.Exec(ctx, q, txObj.Description, txObj.TransactionReference, txObj.Amount.String(), txObj.To, txObj.From)
+    	if err != nil {
+    		return nil, terror.Error(err)
+    	}
 
 	return u, nil
 }
@@ -333,15 +355,22 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		return nil, terror.Error(err)
 	}
 
-	s.TransactionCache.Process(&passport.NewTransaction{
-		Safe:                 true,
+	txObj := &passport.NewTransaction{
 		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		From:                 passport.XsynTreasuryUserID,
 		To:                   u.ID,
 		Amount:               *amount,
 		Description:          "Initial supremacy Zaibatsu supply seed.",
 		TransactionReference: passport.TransactionReference("Initial supremacy Zaibatsu supply seed."),
-	})
+	}
+
+		q = `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
+        				VALUES((SELECT count(*) from transactions), $1, $2, $3, $4, $5);`
+
+    	_, err = s.Conn.Exec(ctx, q, txObj.Description, txObj.TransactionReference, txObj.Amount.String(), txObj.To, txObj.From)
+    	if err != nil {
+    		return nil, terror.Error(err)
+    	}
 
 	// Create user
 	u = &passport.User{
@@ -358,15 +387,21 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		return nil, terror.Error(err)
 	}
 
-	s.TransactionCache.Process(&passport.NewTransaction{
-		Safe:                 true,
+	txObj = &passport.NewTransaction{
 		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		From:                 passport.XsynTreasuryUserID,
 		To:                   u.ID,
 		Amount:               *amount,
 		Description:          "Initial supremacy BostonCybernetics supply seed.",
 		TransactionReference: passport.TransactionReference("Initial supremacy BostonCybernetics supply seed."),
-	})
+	}
+		q = `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
+        				VALUES((SELECT count(*) from transactions), $1, $2, $3, $4, $5);`
+
+    	_, err = s.Conn.Exec(ctx, q, txObj.Description, txObj.TransactionReference, txObj.Amount.String(), txObj.To, txObj.From)
+    	if err != nil {
+    		return nil, terror.Error(err)
+    	}
 
 	// Create user
 	u = &passport.User{
@@ -383,15 +418,22 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		return nil, terror.Error(err)
 	}
 
-	s.TransactionCache.Process(&passport.NewTransaction{
-		Safe:                 true,
+	txObj = &passport.NewTransaction{
 		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		From:                 passport.XsynTreasuryUserID,
 		Amount:               *amount,
 		To:                   u.ID,
 		Description:          "Initial supremacy RedMountain supply seed.",
 		TransactionReference: passport.TransactionReference("Initial supremacy RedMountain supply seed."),
-	})
+	}
+
+		q = `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
+        				VALUES((SELECT count(*) from transactions), $1, $2, $3, $4, $5);`
+
+    	_, err = s.Conn.Exec(ctx, q, txObj.Description, txObj.TransactionReference, txObj.Amount.String(), txObj.To, txObj.From)
+    	if err != nil {
+    		return nil, terror.Error(err)
+    	}
 
 	err = s.SeedAndAssignZaibatsu(ctx, supremacyCollectionID)
 	if err != nil {
