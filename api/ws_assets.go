@@ -258,6 +258,10 @@ func (ac *AssetController) AssetRepairStatUpdateSubscriber(ctx context.Context, 
 		return req.TransactionID, "", terror.Error(err)
 	}
 
+	if req.Payload.AssetHash == "" {
+		return req.TransactionID, "", terror.Error(fmt.Errorf("empty asset hash"), "Issue subscripting to asset repair status.")
+	}
+
 	// check ownership
 	// get asset
 	asset, err := db.AssetGet(ctx, ac.Conn, req.Payload.AssetHash)
@@ -270,7 +274,7 @@ func (ac *AssetController) AssetRepairStatUpdateSubscriber(ctx context.Context, 
 
 	// check if user owns asset
 	if *asset.UserID != userID {
-		return "", "", terror.Error(err, "Must own Asset to update it's name.")
+		return "", "", terror.Error(err, "Must own Asset to repair it.")
 	}
 
 	// get repair stat from gameserver
