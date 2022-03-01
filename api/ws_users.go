@@ -476,12 +476,15 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 
 	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
+	var resp struct {
+		IsSuccess bool `json:"isSuccess"`
+	}
 	// update game client server
 	err = uc.API.GameserverRequest(http.MethodPost, "/user_update", struct {
 		User *passport.User `json:"user"`
 	}{
 		User: user,
-	}, nil)
+	}, &resp)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -2174,17 +2177,19 @@ func (uc *UserController) UserSupsMultiplierUpdatedSubscribeHandler(ctx context.
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
 
-	dist := []*passport.SupsMultiplier{}
+	var resp struct {
+		UserMultipliers []*passport.SupsMultiplier `json:"userMultipliers"`
+	}
 	err = uc.API.GameserverRequest(http.MethodPost, "/user_multiplier", struct {
 		UserID passport.UserID `json:"userID"`
 	}{
 		UserID: passport.UserID(uuid.FromStringOrNil(client.Identifier())),
-	}, &dist)
+	}, &resp)
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
 
-	reply(dist)
+	reply(resp.UserMultipliers)
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsMultiplierSubscribe, client.Identifier())), nil
 }
@@ -2302,7 +2307,9 @@ func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx con
 		return "", "", terror.Error(err, "Must own Asset to update it's name.")
 	}
 
-	var resp *int
+	var resp struct {
+		Position *int `json:"position"`
+	}
 	err = uc.API.GameserverRequest(http.MethodPost, "/war_machine_queue_position", struct {
 		AssetHash string `json:"assethash"`
 	}{
@@ -2311,7 +2318,8 @@ func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx con
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
-	reply(resp)
+
+	reply(resp.Position)
 
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineQueuePositionSubscribe, req.Payload.AssetHash))
 

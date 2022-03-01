@@ -96,7 +96,7 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 			To:                   user.ID,
 			From:                 passport.XsynSaleUserID,
 			Amount:               *oneSups,
-			NotSafe: true,
+			NotSafe:              true,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
 			Description:          "Give away for testing",
 		})
@@ -104,20 +104,24 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 		if err != nil {
 			gc.API.Log.Err(err).Msg("NO SUPS FOR YOU :p")
 		}
-
 	}
 
+	var resp struct {
+		IsSuccess bool `json:"isSuccess"`
+	}
 	err = gc.API.GameserverRequest(http.MethodPost, "/auth_ring_check", struct {
 		User                *passport.User `json:"user"`
 		GameserverSessionID string         `json:"gameserverSessionID"`
-		SessionID           hub.SessionID  `json:"sessionID"`
 	}{
 		User:                user,
 		GameserverSessionID: req.Payload.GameserverSessionID,
-		SessionID:           hubc.SessionID,
-	}, nil)
+	}, &resp)
 	if err != nil {
 		return terror.Error(err, err.Error())
+	}
+
+	if !resp.IsSuccess {
+		return terror.Error(fmt.Errorf("Failed to pass ring check"))
 	}
 
 	reply(true)

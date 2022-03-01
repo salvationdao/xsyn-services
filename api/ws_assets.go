@@ -117,16 +117,21 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	// assign faction id
 	warMachineMetadata.FactionID = *user.FactionID
 
+	var resp struct {
+		Position *int `json:"position"`
+	}
 	err = ac.API.GameserverRequest(http.MethodPost, "/war_machine_join", struct {
 		WarMachineMetadata *passport.WarMachineMetadata `json:"warMachineMetadata"`
 		NeedInsured        bool                         `json:"needInsured"`
 	}{
 		WarMachineMetadata: warMachineMetadata,
 		NeedInsured:        req.Payload.NeedInsured,
-	}, nil)
+	}, &resp)
 	if err != nil {
 		return terror.Error(err)
 	}
+
+	ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineQueuePositionSubscribe, warMachineMetadata.Hash)), resp.Position)
 
 	reply(true)
 	return nil
@@ -269,18 +274,21 @@ func (ac *AssetController) AssetRepairStatUpdateSubscriber(ctx context.Context, 
 	}
 
 	// get repair stat from gameserver
-	resp := &passport.AssetRepairRecord{}
+	var resp struct {
+		AssetRepairRecord *passport.AssetRepairRecord `json:"assetRepairRecord"`
+	}
+
 	err = ac.API.GameserverRequest(http.MethodPost, "/asset_repair_stat", struct {
 		Hash string `json:"hash"`
 	}{
 		Hash: req.Payload.AssetHash,
-	}, resp)
+	}, &resp)
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
 
-	if resp.Hash == req.Payload.AssetHash {
-		resp.StartedAt = ReverseAssetRepairStartTime(resp)
+	if resp.AssetRepairRecord.Hash == req.Payload.AssetHash {
+		resp.AssetRepairRecord.StartedAt = ReverseAssetRepairStartTime(resp.AssetRepairRecord)
 		reply(resp)
 	} else {
 		reply(nil)
