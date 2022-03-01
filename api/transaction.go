@@ -50,6 +50,7 @@ func (tc *TransactionCache) commit() {
 			tc.conn,
 			tx,
 		)
+
 		if err != nil {
 			tc.
 				log.
@@ -74,11 +75,13 @@ func (tc *TransactionCache) Process(t *passport.NewTransaction) string {
 	t.ID = fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
 	t.CreatedAt = time.Now()
 	t.Processed = true
+
 	tc.Lock()
 	defer func() {
 		tc.Unlock()
 		if t.Safe {
 			tc.commit()
+
 		}
 	}()
 	tc.transactions = append(tc.transactions, t)

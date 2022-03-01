@@ -348,6 +348,7 @@ func (c *C) DistrubuteFund(fundstr string, totalPoints int64, userMap map[int][]
 				To:                   user,
 				Amount:               *usersSups,
 				TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|ticker|%s|%s", user, time.Now())),
+				Description:          "Watch to earn",
 			}
 
 			_, _, _, err := c.UserCacheMap.Process(tx)

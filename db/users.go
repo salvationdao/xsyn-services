@@ -1280,3 +1280,30 @@ func GetFactionIDByUsers(ctx context.Context, conn Conn, um map[passport.UserID]
 
 	return nil
 }
+
+// UserTransactionGetList returns list of transactions based on userid == credit/ debit
+func UserTransactionGetList(ctx context.Context, conn Conn, userID passport.UserID, limit int) ([]*passport.Transaction, error) {
+	var transactions []*passport.Transaction
+
+	q := `--sql
+		SELECT *
+		FROM transactions
+		WHERE transactions.credit = $1 OR transactions.debit = $1 
+		ORDER BY transactions.created_at desc
+		LIMIT $2`
+	err := pgxscan.Select(ctx, conn, &transactions, q, userID, limit)
+	if err != nil {
+		fmt.Println("err here")
+		return nil, terror.Error(err)
+	}
+
+	for _, t := range transactions {
+		_, err := t.Amount.Value()
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+
+	}
+
+	return transactions, nil
+}

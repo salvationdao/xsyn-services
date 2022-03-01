@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/microcosm-cc/bluemonday"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -16,6 +15,8 @@ import (
 	"passport/helpers"
 	"strings"
 	"time"
+
+	"github.com/microcosm-cc/bluemonday"
 
 	// "github.com/apex/log"
 
@@ -86,6 +87,9 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 	api.SecureCommandWithPerm(HubKeyUserForceDisconnect, userHub.ForceDisconnectHandler, passport.PermUserForceDisconnect)
 
 	api.Command(HubKeyCheckCanAccessStore, userHub.CheckCanAccessStore)
+
+	api.SecureUserSubscribeCommand(HubKeyUserTransactionsSubscribe, userHub.UserTransactionsSubscribeHandler)
+	api.SecureUserSubscribeCommand(HubKeyUserLatestTransactionSubscribe, userHub.UserLatestTransactionsSubscribeHandler)
 
 	api.SubscribeCommand(HubKeyUserForceDisconnected, userHub.ForceDisconnectedHandler)
 	api.SubscribeCommand(HubKeyUserSubscribe, userHub.UpdatedSubscribeHandler)
@@ -2550,4 +2554,43 @@ func (uc *UserController) CheckCanAccessStore(ctx context.Context, hubc *hub.Cli
 	}
 	reply(resp)
 	return nil
+}
+
+const HubKeyUserTransactionsSubscribe hub.HubCommandKey = "USER:SUPS:TRANSACTIONS:SUBSCRIBE"
+const HubKeyUserLatestTransactionSubscribe hub.HubCommandKey = "USER:SUPS:LATEST_TRANSACTION:SUBSCRIBE"
+
+func (uc *UserController) UserTransactionsSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &UpdatedSubscribeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+
+	// get users transactions
+	list, err := db.UserTransactionGetList(ctx, uc.Conn, req.Payload.ID, 5)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "failed to get transactions")
+	}
+	reply(list)
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserTransactionsSubscribe, req.Payload.ID.String())), nil
+
+}
+
+func (uc *UserController) UserLatestTransactionsSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &UpdatedSubscribeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+
+	// get transaction
+	list, err := db.UserTransactionGetList(ctx, uc.Conn, req.Payload.ID, 1)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "failed to get transactions")
+	}
+	reply(list)
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, req.Payload.ID.String())), nil
+
 }
