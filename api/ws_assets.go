@@ -258,7 +258,11 @@ func (ac *AssetController) AssetRepairStatUpdateSubscriber(ctx context.Context, 
 
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return req.TransactionID, "", terror.Error(err)
+		return req.TransactionID, "", terror.Error(fmt.Errorf("no auth"))
+	}
+
+	if req.Payload.AssetHash == "" {
+		return req.TransactionID, "", terror.Error(fmt.Errorf("empty asset hash"), "Issue subscripting to asset repair status.")
 	}
 
 	// check ownership
@@ -273,7 +277,7 @@ func (ac *AssetController) AssetRepairStatUpdateSubscriber(ctx context.Context, 
 
 	// check if user owns asset
 	if *asset.UserID != userID {
-		return "", "", terror.Error(err, "Must own Asset to update it's name.")
+		return "", "", terror.Error(err, "Must own Asset to repair it.")
 	}
 
 	// get repair stat from gameserver
