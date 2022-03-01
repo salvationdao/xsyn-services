@@ -156,15 +156,23 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 	// broadcast updated user to gamebar user
 	go fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
+	var resp struct {
+		IsSuccess bool `json:"isSuccess"`
+	}
+
 	err = fc.API.GameserverRequest(http.MethodPost, "/user_enlist_faction", struct {
 		UserID    passport.UserID    `json:"userID"`
 		FactionID passport.FactionID `json:"factionID"`
 	}{
 		UserID:    userID,
 		FactionID: req.Payload.FactionID,
-	}, nil)
+	}, &resp)
 	if err != nil {
 		return terror.Error(err)
+	}
+
+	if !resp.IsSuccess {
+		return terror.Error(fmt.Errorf("failed to enlist faction"))
 	}
 
 	reply(true)
@@ -430,18 +438,20 @@ func (fc *FactionController) FactionContractRewardUpdateSubscriber(ctx context.C
 		return "", "", terror.Error(err)
 	}
 
-	contractReward := "0"
+	var resp struct {
+		ContractReward string `json:"contractReward"`
+	}
 	// get contract reward from web hook
 	err = fc.API.GameserverRequest(http.MethodPost, "/faction_contract_reward", struct {
 		FactionID passport.FactionID `json:"factionID"`
 	}{
 		FactionID: faction.ID,
-	}, &contractReward)
+	}, &resp)
 	if err != nil {
 		return "", "", terror.Error(err, err.Error())
 	}
 
-	reply(contractReward)
+	reply(resp.ContractReward)
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionContractRewardSubscribe, faction.ID)), nil
 }

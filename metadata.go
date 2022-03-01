@@ -291,7 +291,7 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 			string(WarMachineAttFieldWeapon02),
 			string(WarMachineAttFieldTurret01),
 			string(WarMachineAttFieldTurret02):
-			warMachineMetadata.WeaponNames = append(warMachineMetadata.WeaponNames, att.Value.(string))
+			// warMachineMetadata.WeaponNames = append(warMachineMetadata.WeaponNames, att.Value.(string))
 		case string(WarMachineAttFieldAbility01),
 			string(WarMachineAttFieldAbility02):
 			if att.TokenID == 0 {
