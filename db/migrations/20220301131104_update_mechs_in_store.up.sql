@@ -4,8 +4,8 @@
 
 UPDATE xsyn_store
 SET attributes = attributes ||'[{"trait_type": "Shield Recharge Rate", "value": 80}]'::jsonb
-WHERE xsyn_store.attributes @> '[{"trait_type": "Asset Type", "value": "War Machine"}]'; -- rarity we want to update
-
+WHERE xsyn_store.attributes @> '[{"trait_type": "Asset Type", "value": "War Machine", "display_type": "number"}]'; -- rarity we want to update
+-- "display_type": "number"
 /**
   Update red mountain mechs
  **/

@@ -4,7 +4,7 @@
 
 UPDATE xsyn_metadata
 SET attributes = attributes ||'[{"trait_type": "Shield Recharge Rate", "value": 80}]'::jsonb
-WHERE xsyn_metadata.attributes @> '[{"trait_type": "Asset Type", "value": "War Machine"}]';
+WHERE xsyn_metadata.attributes @> '[{"trait_type": "Asset Type", "value": "War Machine", "display_type": "number"}]';
 
 /**
   Update red mountain mechs
