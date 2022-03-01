@@ -155,6 +155,9 @@ type FactionQueuingCostReq struct {
 type FactionQueuingCostResp struct{}
 
 func (c *C) SupremacyFactionQueuingCostHandler(req FactionQueuingCostReq, resp *FactionQueuingCostResp) error {
+	cost := big.NewInt(1000000000000000000)
+	cost.Mul(cost, big.NewInt(int64(req.QueuingLength)+1))
 
+	c.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyAssetRepairStatUpdate, req.FactionID)), cost.String())
 	return nil
 }

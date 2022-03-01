@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"passport"
 	"passport/db"
@@ -47,6 +48,7 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 
 	api.SecureCommand(HubKeyAssetQueueJoin, assetHub.JoinQueueHandler)
 	api.SecureUserSubscribeCommand(HubKeyAssetRepairStatUpdate, assetHub.AssetRepairStatUpdateSubscriber)
+	api.SecureUserSubscribeCommand(HubKeyAssetQueueCostUpdate, assetHub.AssetQueueCostUpdateSubscriber)
 
 	return assetHub
 }
@@ -295,6 +297,46 @@ func (ac *AssetController) AssetRepairStatUpdateSubscriber(ctx context.Context, 
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetRepairStatUpdate, req.Payload.AssetHash)), nil
+}
+
+const HubKeyAssetQueueCostUpdate hub.HubCommandKey = "ASSET:QUEUE:COST:UPDATE"
+
+func (ac *AssetController) AssetQueueCostUpdateSubscriber(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err)
+	}
+
+	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrForbidden)
+	}
+
+	faction, err := db.FactionGetByUserID(context.Background(), ac.Conn, userID)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	var resp struct {
+		Length int `json:"length"`
+	}
+
+	err = ac.API.GameserverRequest(http.MethodPost, "/faction_queue_cost", struct {
+		FactionID passport.FactionID `json:"factionID"`
+	}{
+		FactionID: faction.ID,
+	}, &resp)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	cost := big.NewInt(1000000000000000000)
+	cost.Mul(cost, big.NewInt(int64(resp.Length)+1))
+
+	reply(cost.String())
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetRepairStatUpdate, faction.ID)), nil
 }
 
 func ReverseAssetRepairStartTime(record *passport.AssetRepairRecord) time.Time {

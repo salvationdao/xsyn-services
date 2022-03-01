@@ -222,18 +222,18 @@ func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 	}
 
 	// distribute Red Mountain sups
-	c.DistrubuteFund(supPool.String(), int64(rmTotalPoint), rmTotalMap)
+	c.distributeFund(supPool.String(), int64(rmTotalPoint), rmTotalMap)
 
 	// distribute Boston sups
-	c.DistrubuteFund(supPool.String(), int64(bTotalPoint), bTotalMap)
+	c.distributeFund(supPool.String(), int64(bTotalPoint), bTotalMap)
 
 	// distribute Zaibatsu sups
-	c.DistrubuteFund(supPool.String(), int64(zTotalPoint), zTotalMap)
+	c.distributeFund(supPool.String(), int64(zTotalPoint), zTotalMap)
 
 	return nil
 }
 
-func (c *C) DistrubuteFund(fundstr string, totalPoints int64, userMap map[int][]passport.UserID) {
+func (c *C) distributeFund(fundstr string, totalPoints int64, userMap map[int][]passport.UserID) {
 	copiedFund := big.NewInt(0)
 	copiedFund, ok := copiedFund.SetString(fundstr, 10)
 	if !ok {
