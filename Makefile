@@ -138,7 +138,7 @@ db-seed:
 	go run cmd/platform/main.go db --seed
 
 .PHONY: db-reset
-db-reset: db-drop db-migrate db-seed
+db-reset: db-drop db-migrate-up-one  db-seed db-migrate
 
 .PHONY: go-mod-download
 go-mod-download:

@@ -43,6 +43,7 @@ func NewUserCacheMap(conn *pgxpool.Pool, tc *TransactionCache, msgBus *messagebu
 var TransactionFailed = "TRANSACTION_FAILED"
 
 func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.Int, string, error) {
+
 	// load balance first
 	fromBalance, err := ucm.Get(nt.From.String())
 	if err != nil {
@@ -75,6 +76,21 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 	ucm.Store(nt.To.String(), *newToBalance)
 
 	transactonID := ucm.TransactionCache.Process(nt)
+
+	tx := &passport.Transaction{
+		ID:     transactonID,
+		Credit: nt.To,
+		Debit:  nt.From,
+		Amount: passport.BigInt{
+			Int: nt.Amount,
+		},
+		TransactionReference: string(nt.TransactionReference),
+		Description:          nt.Description,
+		CreatedAt:            nt.CreatedAt,
+		GroupID:              nt.GroupID,
+	}
+	go ucm.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, nt.From)), []*passport.Transaction{tx})
+	go ucm.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, nt.To)), []*passport.Transaction{tx})
 
 	ctx := context.Background()
 	if !nt.From.IsSystemUser() {

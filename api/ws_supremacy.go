@@ -132,7 +132,7 @@ type SupremacyHoldSupsRequest struct {
 		Amount               passport.BigInt               `json:"amount"`
 		FromUserID           passport.UserID               `json:"userID"`
 		TransactionReference passport.TransactionReference `json:"transactionReference"`
-		GroupID              string                        `json:"groupID"`
+		GroupID              passport.TransactionGroup     `json:"groupID"`
 	} `json:"payload"`
 }
 
@@ -152,11 +152,12 @@ func (sc *SupremacyControllerWS) SupremacySpendSupsHandler(ctx context.Context, 
 		To:                   passport.SupremacyGameUserID,
 		TransactionReference: req.Payload.TransactionReference,
 		Amount:               req.Payload.Amount.Int,
+		NotSafe: true,
 	}
 
 	if req.Payload.GroupID != "" {
 		tx.To = passport.SupremacyBattleUserID
-		tx.GroupID = &req.Payload.GroupID
+		tx.GroupID = req.Payload.GroupID
 	}
 
 	nfb, ntb, txID, err := sc.API.userCacheMap.Process(tx)
@@ -181,6 +182,7 @@ func (sc *SupremacyControllerWS) SupremacySpendSupsHandler(ctx context.Context, 
 		From:                 tx.To,
 		To:                   tx.From,
 		Amount:               tx.Amount,
+		NotSafe: true,
 		TransactionReference: passport.TransactionReference(fmt.Sprintf("refund|sups vote|%s", txID)),
 	})
 	sc.Txs.TxMx.Unlock()
@@ -211,7 +213,9 @@ func (sc *SupremacyControllerWS) SupremacyFeed() {
 		From:                 passport.XsynTreasuryUserID,
 		To:                   passport.SupremacySupPoolUserID,
 		Amount:               *fund,
+		NotSafe: true,
 		TransactionReference: passport.TransactionReference(fmt.Sprintf("treasury|ticker|%s", time.Now())),
+		GroupID:              passport.TransactionGroupBattleStream,
 	}
 
 	// process user cache map
@@ -300,7 +304,9 @@ func (sc *SupremacyControllerWS) SupremacyTickerTickHandler(ctx context.Context,
 				From:                 passport.SupremacySupPoolUserID,
 				To:                   *user,
 				Amount:               *usersSups,
+				NotSafe: true,
 				TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|ticker|%s|%s", *user, time.Now())),
+				GroupID:              passport.TransactionGroupBattleStream,
 			}
 
 			nfb, ntb, _, err := sc.API.userCacheMap.Process(tx)
@@ -425,7 +431,9 @@ func (sc *SupremacyControllerWS) trickleFactory(key string, totalTick int, supsP
 			From:                 passport.SupremacyBattleUserID,
 			To:                   passport.SupremacySupPoolUserID,
 			Amount:               *supsPerTick,
+			NotSafe: true,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|battle_sups_spend_transfer|%s", time.Now())),
+			GroupID:              passport.TransactionGroupBattleStream,
 		}
 
 		// process user cache map
@@ -1190,9 +1198,11 @@ func (sc *SupremacyControllerWS) SupremacyPayAssetInsuranceHandler(ctx context.C
 
 	tx := &passport.NewTransaction{
 		// ResultChan:           resultChan,
+		NotSafe: true,
 		From:                 req.Payload.UserID,
 		TransactionReference: req.Payload.TransactionReference,
 		Amount:               req.Payload.Amount.Int,
+		GroupID:              passport.TransactionGroupAssetManagement,
 	}
 
 	// TODO: validate the insurance is 10% of current reward price
@@ -1294,9 +1304,11 @@ func (sc *SupremacyControllerWS) SupremacyRedeemFactionContractRewardHandler(ctx
 	}
 
 	tx := &passport.NewTransaction{
+		NotSafe: true,
 		To:                   req.Payload.UserID,
 		TransactionReference: req.Payload.TransactionReference,
 		Amount:               req.Payload.Amount.Int,
+		GroupID:              passport.TransactionGroupAssetManagement,
 	}
 
 	switch req.Payload.FactionID {

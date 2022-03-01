@@ -35,7 +35,7 @@ type SpendSupsReq struct {
 	Amount               string                        `json:"amount"`
 	FromUserID           passport.UserID               `json:"userID"`
 	TransactionReference passport.TransactionReference `json:"transactionReference"`
-	GroupID              string                        `json:"groupID"`
+	GroupID              passport.TransactionGroup     `json:"groupID"`
 }
 type SpendSupsResp struct {
 	TXID string `json:"txid"`
@@ -109,6 +109,7 @@ func (c *C) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 	}
 
 	tx := &passport.NewTransaction{
+		NotSafe: true,
 		From:                 req.FromUserID,
 		To:                   passport.SupremacyGameUserID,
 		TransactionReference: req.TransactionReference,
@@ -117,7 +118,7 @@ func (c *C) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 
 	if req.GroupID != "" {
 		tx.To = passport.SupremacyBattleUserID
-		tx.GroupID = &req.GroupID
+		tx.GroupID = req.GroupID
 	}
 
 	nfb, ntb, txID, err := c.UserCacheMap.Process(tx)
@@ -140,6 +141,7 @@ func (c *C) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 	c.Txs.Txes = append(c.Txs.Txes, &passport.NewTransaction{
 		ID:                   txID,
 		From:                 tx.To,
+		NotSafe: true,
 		To:                   tx.From,
 		Amount:               tx.Amount,
 		TransactionReference: passport.TransactionReference(fmt.Sprintf("refund|sups vote|%s", txID)),
@@ -202,7 +204,9 @@ func (c *C) supremacyFeed() {
 		From:                 passport.XsynTreasuryUserID,
 		To:                   passport.SupremacySupPoolUserID,
 		Amount:               *fund,
+		NotSafe: true,
 		TransactionReference: passport.TransactionReference(fmt.Sprintf("treasury|ticker|%s", time.Now())),
+		GroupID:              passport.TransactionGroupBattleStream,
 	}
 
 	// process user cache map
@@ -347,7 +351,10 @@ func (c *C) DistrubuteFund(fundstr string, totalPoints int64, userMap map[int][]
 				From:                 passport.SupremacySupPoolUserID,
 				To:                   user,
 				Amount:               *usersSups,
+				NotSafe: true,
 				TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|ticker|%s|%s", user, time.Now())),
+				GroupID:              passport.TransactionGroupBattleStream,
+				Description:          "Watch to earn",
 			}
 
 			_, _, _, err := c.UserCacheMap.Process(tx)

@@ -22,7 +22,7 @@ type Transaction struct {
 	Description          string            `json:"description" db:"description"`
 	Reason               *string           `json:"reason" db:"reason"`
 	CreatedAt            time.Time         `json:"created_at" db:"created_at"`
-	GroupID              *string           `json:"groupID" db:"group_id"`
+	GroupID              TransactionGroup  `json:"groupID" db:"group_id"`
 
 	// Inner joined fields
 	To   User `json:"to"`
@@ -49,8 +49,8 @@ type NewTransaction struct {
 	Amount               big.Int              `json:"amount" db:"amount"`
 	TransactionReference TransactionReference `json:"transactionReference" db:"transaction_reference"`
 	Description          string               `json:"description" db:"description"`
-	GroupID              *string              `json:"groupID,omitempty" db:"group_id,omitempty"`
-	Safe                 bool                 `json:"safe" db:"-"`
+	GroupID              TransactionGroup     `json:"groupID,omitempty" db:"group_id,omitempty"`
+	NotSafe                 bool                 `json:"not_safe" db:"-"`
 	Processed            bool                 `json:"processed" db:"-"`
 	CreatedAt            time.Time            `json:"created_at" db:"created_at"`
 }
@@ -59,3 +59,12 @@ type TransactionResult struct {
 	Transaction *Transaction
 	Error       error
 }
+
+type TransactionGroup string
+
+const (
+	TransactionGroupStore           TransactionGroup = "Store"
+	TransactionGroupWithdrawal      TransactionGroup = "Withdrawal"
+	TransactionGroupBattleStream    TransactionGroup = "Battle Stream"
+	TransactionGroupAssetManagement TransactionGroup = "Asset Management"
+)

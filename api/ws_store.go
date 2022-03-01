@@ -38,6 +38,7 @@ func NewStoreController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Stor
 
 	api.Command(HubKeyStoreList, storeHub.StoreListHandler)
 	api.Command(HubKeyLootbox, storeHub.PurchaseLootboxHandler)
+	api.Command(HubKeyLootboxAmount, storeHub.LootboxAmountHandler)
 
 	api.SecureCommand(HubKeyPurchaseItem, storeHub.PurchaseItemHandler)
 
@@ -135,6 +136,25 @@ func (sc *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, hubc *h
 		}
 		sc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyAvailableItemAmountSubscribe), fsa)
 	}()
+
+	return nil
+}
+
+const HubKeyLootboxAmount = hub.HubCommandKey("STORE:LOOTBOX:AMOUNT")
+
+func (sc *StoreControllerWS) LootboxAmountHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &PurchaseLootboxRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	amount, err := items.LootboxAmountPerFaction(ctx, sc.Conn, sc.Log, sc.API.MessageBus, messagebus.BusKey(HubKeyLootboxAmount), req.Payload.FactionID)
+	if err != nil {
+		return terror.Error(err, "Could not get mystery crate amount")
+	}
+
+	reply(amount)
 
 	return nil
 }

@@ -113,9 +113,11 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 	trans := &passport.NewTransaction{
 		To:                   passport.OnChainUserID,
 		From:                 userID,
+		NotSafe: true,
 		Amount:               *withdrawAmount,
 		TransactionReference: passport.TransactionReference(txRef),
 		Description:          "Withdraw of SUPS.",
+		GroupID:              passport.TransactionGroupWithdrawal,
 	}
 
 	nfb, ntb, _, err := sc.API.userCacheMap.Process(trans)
@@ -134,10 +136,12 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 	refund := func(reason string) {
 		trans := &passport.NewTransaction{
 			To:                   userID,
+			NotSafe: true,
 			From:                 passport.OnChainUserID,
 			Amount:               *withdrawAmount,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
 			Description:          "Refund of Withdraw of SUPS.",
+			GroupID:              passport.TransactionGroupWithdrawal,
 		}
 
 		_, _, _, err := sc.API.userCacheMap.Process(trans)
