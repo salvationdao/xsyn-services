@@ -58,7 +58,7 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 	}
 
 	// check balance
-	user, err := db.UserByPublicAddress(r.Context(), api.Conn, address)
+	user, err := db.UserByPublicAddress(context.Background(), api.Conn, address)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
 	}
@@ -136,18 +136,18 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	}
 
 	// check user owns this asset
-	user, err := db.UserByPublicAddress(r.Context(), api.Conn, address)
+	user, err := db.UserByPublicAddress(context.Background(), api.Conn, address)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
 	}
 
 	// get collection details
-	collection, err := db.CollectionGet(r.Context(), api.Conn, collectionSlug)
+	collection, err := db.CollectionGet(context.Background(), api.Conn, collectionSlug)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get collection.")
 	}
 
-	asset, err := db.AssetGetFromMintContractAndID(r.Context(), api.Conn, collection.MintContract, tokenIDuint64)
+	asset, err := db.AssetGetFromMintContractAndID(context.Background(), api.Conn, collection.MintContract, tokenIDuint64)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
 	}
@@ -180,13 +180,13 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	}
 
 	// mint lock asset
-	err = db.XsynAssetMintLock(r.Context(), api.Conn, asset.Hash, hexutil.Encode(messageSig), big.NewInt(expiry.Unix()).String())
+	err = db.XsynAssetMintLock(context.Background(), api.Conn, asset.Hash, hexutil.Encode(messageSig), big.NewInt(expiry.Unix()).String())
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to generate signature, please try again.")
 	}
 
 	// get updated asset
-	asset, err = db.AssetGetFromMintContractAndID(r.Context(), api.Conn, collection.MintContract, tokenIDuint64)
+	asset, err = db.AssetGetFromMintContractAndID(context.Background(), api.Conn, collection.MintContract, tokenIDuint64)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
 

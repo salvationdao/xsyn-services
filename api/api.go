@@ -326,7 +326,7 @@ func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 	}
 
 	// Get asset via token id
-	asset, err := db.AssetGet(r.Context(), api.Conn, hash)
+	asset, err := db.AssetGet(context.Background(), api.Conn, hash)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset")
 	}
@@ -360,7 +360,7 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 	if err != nil {
 		return http.StatusBadRequest, terror.Warn(err, "get asset from db")
 	}
-	asset, err := db.AssetGetFromMintContractAndID(r.Context(), api.Conn, string(common.HexToAddress(collectionAddress).Hex()), uint64(tokenID))
+	asset, err := db.AssetGetFromMintContractAndID(context.Background(), api.Conn, string(common.HexToAddress(collectionAddress).Hex()), uint64(tokenID))
 	if err != nil {
 		return http.StatusBadRequest, terror.Warn(err, "get asset from db")
 	}

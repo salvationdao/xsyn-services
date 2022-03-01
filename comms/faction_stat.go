@@ -146,3 +146,15 @@ func (c *C) SupremacyRedeemFactionContractRewardHandler(req RedeemFactionContrac
 	}
 	return nil
 }
+
+type FactionQueuingCostReq struct {
+	FactionID     passport.FactionID `json:"factionID"`
+	QueuingLength int                `json:"queuingLength"`
+}
+
+type FactionQueuingCostResp struct{}
+
+func (c *C) SupremacyFactionQueuingCostHandler(req FactionQueuingCostReq, resp *FactionQueuingCostResp) error {
+
+	return nil
+}

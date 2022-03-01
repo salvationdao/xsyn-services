@@ -37,6 +37,7 @@ func (api *API) GameserverRequest(method string, endpoint string, data interface
 		if err != nil {
 			return terror.Error(err)
 		}
+
 		return terror.Error(fmt.Errorf("%s", errObj.Message), errObj.Message)
 	}
 

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"passport"
@@ -25,12 +26,12 @@ func (api *API) FactionGetData(w http.ResponseWriter, r *http.Request) (int, err
 	}
 	factionID := uuid.Must(uuid.FromString(fID[0]))
 	factionData := &FactionData{FactionID: passport.FactionID(factionID)}
-	memberCount, err := db.FactionGetRecruitNumber(r.Context(), api.Conn, passport.FactionID(factionID))
+	memberCount, err := db.FactionGetRecruitNumber(context.Background(), api.Conn, passport.FactionID(factionID))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("url query param not given"))
 	}
 
-	factionSupVote, err := db.FactionSupsVotedGet(r.Context(), api.Conn, passport.FactionID(factionID))
+	factionSupVote, err := db.FactionSupsVotedGet(context.Background(), api.Conn, passport.FactionID(factionID))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("url query param not given"))
 	}
@@ -38,7 +39,7 @@ func (api *API) FactionGetData(w http.ResponseWriter, r *http.Request) (int, err
 	factionData.MemberCount = memberCount
 	factionData.TotalSpentSups = factionSupVote.Int64()
 
-	user, err := db.FactionMvpGet(r.Context(), api.Conn, passport.FactionID(factionID))
+	user, err := db.FactionMvpGet(context.Background(), api.Conn, passport.FactionID(factionID))
 	if err != nil {
 		factionData.MVPUser = "nil"
 		return helpers.EncodeJSON(w, factionData)
