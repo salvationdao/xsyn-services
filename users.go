@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/ninja-syndicate/hub"
 	"github.com/volatiletech/null/v8"
 )
 
@@ -83,6 +84,12 @@ type User struct {
 	Metadata                         UserMetadata `json:"metadata" db:"metadata"`
 }
 
+type UserBrief struct {
+	ID       UserID  `json:"id" db:"id"`
+	Username string  `json:"username" db:"username"`
+	AvatarID *BlobID `json:"avatarID" db:"avatar_id"`
+}
+
 type UserMetadata struct {
 	BoughtStarterWarmachines int  `json:"boughtStarterWarmachines"`
 	BoughtLootboxes          int  `json:"boughtLootboxes"`
@@ -133,4 +140,21 @@ type UserStat struct {
 	TotalVoteCount        int64  `json:"totalVoteCount"`
 	TotalAbilityTriggered int64  `json:"totalAbilityTriggered"`
 	KillCount             int64  `json:"killCount"`
+}
+
+type UserSupsMultiplierSend struct {
+	ToUserID        UserID            `json:"toUserID"`
+	ToUserSessionID *hub.SessionID    `json:"toUserSessionID,omitempty"`
+	SupsMultipliers []*SupsMultiplier `json:"supsMultiplier"`
+}
+
+type SupsMultiplier struct {
+	Key       string    `json:"key"`
+	Value     int       `json:"value"`
+	ExpiredAt time.Time `json:"expiredAt"`
+}
+
+type WarMachineQueuePosition struct {
+	Hash     string `json:"hash"`
+	Position *int   `json:"position,omitempty"`
 }

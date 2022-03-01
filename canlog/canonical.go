@@ -2,7 +2,8 @@ package canlog
 
 import (
 	"context"
-	"sync"
+
+	"github.com/sasha-s/go-deadlock"
 )
 
 // Logger methods
@@ -17,14 +18,14 @@ type ctxKey struct{}
 
 type ctxValue struct {
 	fields map[string]interface{}
-	*sync.Mutex
+	*deadlock.Mutex
 }
 
 // NewContext return a new ctx with a logger
 func NewContext(ctx context.Context) context.Context {
 	return context.WithValue(ctx, ctxKey{}, ctxValue{
 		map[string]interface{}{},
-		&sync.Mutex{},
+		&deadlock.Mutex{},
 	})
 }
 

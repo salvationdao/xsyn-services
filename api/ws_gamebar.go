@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
 	"os"
 	"passport"
 	"passport/db"
@@ -106,21 +107,20 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 
 	}
 
-	reply(true)
+	err = gc.API.GameserverRequest(http.MethodPost, "/auth_ring_check", struct {
+		User                *passport.User `json:"user"`
+		GameserverSessionID string         `json:"gameserverSessionID"`
+		SessionID           hub.SessionID  `json:"sessionID"`
+	}{
+		User:                user,
+		GameserverSessionID: req.Payload.GameserverSessionID,
+		SessionID:           hubc.SessionID,
+	}, nil)
+	if err != nil {
+		return terror.Error(err, err.Error())
+	}
 
-	// send to supremacy server
-	gc.API.SendToServerClient(ctx, SupremacyGameServer, &ServerClientMessage{
-		Key: "AUTH:RING:CHECK",
-		Payload: struct {
-			User                *passport.User `json:"user"`
-			GameserverSessionID string         `json:"gameserverSessionID"`
-			SessionID           hub.SessionID  `json:"sessionID"`
-		}{
-			User:                user,
-			GameserverSessionID: req.Payload.GameserverSessionID,
-			SessionID:           hubc.SessionID,
-		},
-	})
+	reply(true)
 
 	return nil
 }

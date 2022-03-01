@@ -7,7 +7,6 @@ require (
 	github.com/aymerick/raymond v2.0.3-0.20180322193309-b565731e1464+incompatible
 	github.com/caddyserver/caddy/v2 v2.4.5
 	github.com/caddyserver/xcaddy v0.2.0
-	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/cosmtrek/air v1.27.3
 	github.com/georgysavva/scany v0.3.0
 	github.com/getsentry/sentry-go v0.11.0
@@ -42,9 +41,13 @@ require (
 	github.com/volatiletech/sqlboiler/v4 v4.8.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.0.0-20220210151621-f4118a5b28e2
-	google.golang.org/api v0.63.0
 	nhooyr.io/websocket v1.8.7
 	syreclabs.com/go/faker v1.2.3
+)
+
+require (
+	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
+	google.golang.org/api v0.63.0 // indirect
 )
 
 require (
@@ -72,9 +75,11 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/opencontainers/runc v1.0.2 // indirect
+	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/pquerna/cachecontrol v0.1.0 // indirect
 	github.com/rjeczalik/notify v0.9.2 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
+	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
@@ -146,7 +151,6 @@ require (
 	github.com/miekg/dns v1.1.42 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/ninja-software/tickle v1.3.2
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect

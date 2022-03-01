@@ -4,16 +4,16 @@ import (
 	"database/sql"
 	"fmt"
 	"passport"
-	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
+	"github.com/sasha-s/go-deadlock"
 )
 
 type TransactionCache struct {
-	sync.RWMutex
+	deadlock.RWMutex
 	conn         *sql.DB
 	log          *zerolog.Logger
 	transactions []*passport.NewTransaction
@@ -21,7 +21,7 @@ type TransactionCache struct {
 
 func NewTransactionCache(conn *sql.DB, log *zerolog.Logger) *TransactionCache {
 	tc := &TransactionCache{
-		sync.RWMutex{},
+		deadlock.RWMutex{},
 		conn,
 		log,
 		[]*passport.NewTransaction{},

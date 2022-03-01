@@ -163,8 +163,8 @@ func FactionMvpMaterialisedViewRefresh(ctx context.Context, conn Conn) error {
 	return nil
 }
 
-func FactionMvpGet(ctx context.Context, conn Conn, factionID passport.FactionID) (*passport.User, error) {
-	user := &passport.User{}
+func FactionMvpGet(ctx context.Context, conn Conn, factionID passport.FactionID) (*passport.UserBrief, error) {
+	user := &passport.UserBrief{}
 	q := `
 		SELECT u.id, u.username, u.avatar_id FROM users u 
 		INNER JOIN faction_mvp fm ON fm.mvp_user_id = u.id AND fm.faction_id = $1

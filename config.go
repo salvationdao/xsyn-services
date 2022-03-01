@@ -16,6 +16,8 @@ type Config struct {
 	OnlyWalletConnect       bool
 	WhitelistEndpoint       string
 	InsecureSkipVerifyCheck bool
+	AuthParams              *AuthParams
+	WebhookParams           *WebhookParams
 }
 
 type BridgeParams struct {
@@ -33,4 +35,20 @@ type BridgeParams struct {
 	BSCChainID       int64
 	ETHChainID       int64
 	BSCRouterAddr    common.Address
+}
+
+type AuthParams struct {
+	GameserverToken     string
+	GoogleClientID      string
+	TwitchClientID      string
+	TwitchClientSecret  string
+	TwitterAPIKey       string
+	TwitterAPISecret    string
+	DiscordClientID     string
+	DiscordClientSecret string
+}
+
+type WebhookParams struct {
+	GameserverHostUrl      string
+	GameserverWebhookToken string
 }

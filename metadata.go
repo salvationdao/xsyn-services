@@ -136,9 +136,6 @@ type WarMachineMetadata struct {
 	FactionID       FactionID          `json:"factionID"`
 	Faction         *Faction           `json:"faction"`
 	Abilities       []*AbilityMetadata `json:"abilities"`
-
-	ContractReward big.Int `json:"contractReward"`
-	IsInsured      bool    `json:"isInsured"`
 }
 
 type WarMachineAttField string
@@ -359,13 +356,6 @@ func ParseAbilityMetadata(metadata *XsynMetadata, abilityMetadata *AbilityMetada
 
 // IsUsable returns true if the asset isn't locked in any way
 func (xsmd *XsynMetadata) IsUsable() bool {
-
-	if xsmd.LockedByID != nil && !xsmd.LockedByID.IsNil() {
-		return false
-	}
-	if xsmd.FrozenAt != nil && !xsmd.FrozenAt.IsZero() {
-		return false
-	}
 	if xsmd.DeletedAt != nil && !xsmd.DeletedAt.IsZero() {
 		return false
 	}
@@ -381,4 +371,25 @@ func (xsmd *XsynMetadata) IsUsable() bool {
 	}
 
 	return true
+}
+
+type WarMachineContract struct {
+	CurrentReward big.Int
+}
+
+type RepairMode string
+
+const (
+	RepairModeFast     = "FAST"
+	RepairModeStandard = "STANDARD"
+)
+
+type AssetRepairRecord struct {
+	Hash              string     `json:"hash"`
+	StartedAt         time.Time  `json:"startedAt"` // this is calculated on fly value
+	ExpectCompletedAt time.Time  `json:"expectCompleteAt"`
+	RepairMode        RepairMode `json:"repairMode"`
+	IsPaidToComplete  bool       `json:"isPaidToComplete"`
+	CompletedAt       *time.Time `json:"completedAt,omitempty"`
+	CreatedAt         time.Time  `json:"createdAt"`
 }
