@@ -5,6 +5,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 )
 
@@ -155,7 +156,7 @@ type SupsMultiplier struct {
 }
 
 type WarMachineQueueStat struct {
-	Hash           string  `json:"hash"`
-	Position       *int    `json:"position,omitempty"`
-	ContractReward *string `json:"contractReward,omitempty"`
+	Hash           string          `json:"hash"`
+	Position       *int            `json:"position,omitempty"`
+	ContractReward decimal.Decimal `json:"contractReward,omitempty"`
 }
