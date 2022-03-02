@@ -13,14 +13,6 @@ import (
 
 //var ErrNoRows = errors.New("no rows in result set")
 
-type DefaultWarMachinesReq struct {
-	FactionID passport.FactionID `json:"factionID"`
-}
-
-type DefaultWarMachinesResp struct {
-	WarMachines []*passport.WarMachineMetadata `json:"warMachines"`
-}
-
 func (c *C) SupremacyDefaultWarMachinesHandler(req DefaultWarMachinesReq, resp *DefaultWarMachinesResp) error {
 
 	ctx := context.Background()
@@ -95,12 +87,6 @@ func (c *C) SupremacyDefaultWarMachinesHandler(req DefaultWarMachinesReq, resp *
 	resp.WarMachines = warMachines
 	return nil
 }
-
-type WarMachineQueuePositionReq struct {
-	WarMachineQueuePosition []*passport.WarMachineQueueStat `json:"warMachineQueuePosition"`
-}
-
-type WarMachineQueuePositionResp struct{}
 
 // SupremacyWarMachineQueuePositionHandler broadcast the updated battle queue position detail
 func (c *C) SupremacyWarMachineQueuePositionHandler(req WarMachineQueuePositionReq, resp *WarMachineQueuePositionResp) error {

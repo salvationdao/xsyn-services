@@ -15,12 +15,6 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
 
-type FactionAllReq struct{}
-
-type FactionAllResp struct {
-	Factions []*passport.Faction `json:"factions"`
-}
-
 func (c *C) SupremacyFactionAllHandler(req FactionAllReq, resp *FactionAllResp) error {
 	var err error
 	resp.Factions, err = db.FactionAll(context.Background(), c.Conn)

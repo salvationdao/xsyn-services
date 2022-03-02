@@ -18,17 +18,6 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type SpendSupsReq struct {
-	Amount               string                        `json:"amount"`
-	FromUserID           passport.UserID               `json:"fromUserID"`
-	ToUserID             *passport.UserID              `json:"toUserID,omitempty"`
-	TransactionReference passport.TransactionReference `json:"transactionReference"`
-	GroupID              passport.TransactionGroup     `json:"groupID,omitempty"`
-}
-type SpendSupsResp struct {
-	TXID string `json:"txid"`
-}
-
 func (c *C) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) error {
 	amt, err := decimal.NewFromString(req.Amount)
 	if err != nil {
@@ -72,11 +61,6 @@ func (c *C) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 	return nil
 }
 
-type ReleaseTransactionsReq struct {
-	TxIDs []string `json:"txIDs"`
-}
-type ReleaseTransactionsResp struct{}
-
 func (c *C) ReleaseTransactionsHandler(req ReleaseTransactionsReq, resp *ReleaseTransactionsResp) error {
 	c.Txs.TxMx.Lock()
 	defer c.Txs.TxMx.Unlock()
@@ -97,11 +81,6 @@ func (c *C) ReleaseTransactionsHandler(req ReleaseTransactionsReq, resp *Release
 
 	return nil
 }
-
-type TickerTickReq struct {
-	UserMap map[int][]passport.UserID `json:"userMap"`
-}
-type TickerTickResp struct{}
 
 func (c *C) supremacyFeed() {
 	fund := big.NewInt(0)
@@ -283,11 +262,6 @@ func (c *C) distributeFund(fundstr string, totalPoints int64, userMap map[int][]
 	}
 }
 
-type GetSpoilOfWarReq struct{}
-type GetSpoilOfWarResp struct {
-	Amount string
-}
-
 func (c *C) SupremacyGetSpoilOfWarHandler(req GetSpoilOfWarReq, resp *GetSpoilOfWarResp) error {
 	// get current sup pool user sups
 	supsPoolUser, err := c.UserCacheMap.Get(passport.SupremacySupPoolUserID.String())
@@ -308,12 +282,6 @@ func (c *C) SupremacyGetSpoilOfWarHandler(req GetSpoilOfWarReq, resp *GetSpoilOf
 	return nil
 }
 
-type UserSupsMultiplierSendReq struct {
-	UserSupsMultiplierSends []*passport.UserSupsMultiplierSend `json:"userSupsMultiplierSends"`
-}
-
-type UserSupsMultiplierSendResp struct{}
-
 func (c *C) UserSupsMultiplierSendHandler(req UserSupsMultiplierSendReq, resp *UserSupsMultiplierSendResp) error {
 	ctx := context.Background()
 	for _, usm := range req.UserSupsMultiplierSends {
@@ -330,9 +298,6 @@ func (c *C) UserSupsMultiplierSendHandler(req UserSupsMultiplierSendReq, resp *U
 	}
 	return nil
 }
-
-type TransferBattleFundToSupPoolReq struct{}
-type TransferBattleFundToSupPoolResp struct{}
 
 func (c *C) TransferBattleFundToSupPoolHandler(req TransferBattleFundToSupPoolReq, resp *TransferBattleFundToSupPoolResp) error {
 	ctx := context.Background()
@@ -435,16 +400,6 @@ func (c *C) newSupsTrickle(key string, totalTick int, supsPerTick *big.Int) {
 		delete(c.TickerPoolCache.TricklingAmountMap, key)
 		break
 	}
-}
-
-type TopSupsContributorReq struct {
-	StartTime time.Time `json:"startTime"`
-	EndTime   time.Time `json:"endTime"`
-}
-
-type TopSupsContributorResp struct {
-	TopSupsContributors       []*passport.User    `json:"topSupsContributors"`
-	TopSupsContributeFactions []*passport.Faction `json:"topSupsContributeFactions"`
 }
 
 func (c *C) TopSupsContributorHandler(req TopSupsContributorReq, resp *TopSupsContributorResp) error {

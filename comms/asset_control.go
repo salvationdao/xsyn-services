@@ -3,17 +3,10 @@ package comms
 import (
 	"context"
 	"fmt"
-	"passport"
 	"passport/api"
 
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
-
-type AssetRepairStatReq struct {
-	AssetRepairRecord *passport.AssetRepairRecord `json:"assetRepairRecord"`
-}
-
-type AssetRepairStatResp struct{}
 
 // AssetContractRewardRedeem redeem faction contract reward
 func (c *C) SupremacyAssetRepairStatUpdateHandler(req AssetRepairStatReq, resp *AssetRepairStatResp) error {
