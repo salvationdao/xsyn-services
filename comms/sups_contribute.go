@@ -86,7 +86,7 @@ func (c *C) ReleaseTransactionsHandler(req ReleaseTransactionsReq, resp *Release
 
 func (c *C) supremacyFeed() {
 	fund := big.NewInt(0)
-	fund, ok := fund.SetString("100000000000000000000", 10)
+	fund, ok := fund.SetString("50000000000000000000", 10)
 	if !ok {
 		c.Log.Err(errors.New("setting string not ok on fund big int")).Msg("too many strings")
 		return
@@ -110,7 +110,7 @@ func (c *C) supremacyFeed() {
 func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 	// make treasury send game server user moneys
 	// Turn off the supremacy feed for now
-	// c.supremacyFeed()
+	c.supremacyFeed()
 
 	// sups guard
 	// kick users off the list, if they don't have any sups\
