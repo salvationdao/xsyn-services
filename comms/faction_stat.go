@@ -109,6 +109,7 @@ type RedeemFactionContractRewardReq struct {
 type RedeemFactionContractRewardResp struct{}
 
 func (c *C) SupremacyRedeemFactionContractRewardHandler(req RedeemFactionContractRewardReq, resp *RedeemFactionContractRewardResp) error {
+
 	amount := big.NewInt(0)
 	amount, ok := amount.SetString(req.Amount, 10)
 	if !ok {

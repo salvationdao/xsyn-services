@@ -7,6 +7,7 @@ import (
 	"os"
 	"passport"
 	"passport/db"
+	"passport/passlog"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -82,7 +83,14 @@ func (api *API) ClientAuth(ctx context.Context, client *hub.Client) error {
 		}
 		_, _, _, err := api.userCacheMap.Process(tx)
 		if err != nil {
-			api.Log.Err(err).Msg("NO SUPS FOR YOU :p")
+			passlog.PassLog.
+				Err(err).
+				Str("to", tx.To.String()).
+				Str("from", tx.From.String()).
+				Str("amount", tx.Amount.String()).
+				Str("description", tx.Description).
+				Str("transaction_reference", string(tx.TransactionReference)).
+				Msg("NO SUPS FOR YOU :p")
 		}
 	}
 
