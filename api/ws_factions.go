@@ -260,7 +260,7 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 	}
 
 	msg := bm.Sanitize(req.Payload.Message)
-	msg = profanityDetector.Censor(req.Payload.Message)
+	msg = profanityDetector.Censor(msg)
 	if len(msg) > 280 {
 		msg = firstN(msg, 280)
 	}
@@ -292,7 +292,7 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 
 	// global message
 	fc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyGlobalChatSubscribe), &ChatMessageSend{
-		Message:           req.Payload.Message,
+		Message:           msg,
 		MessageColor:      req.Payload.MessageColor,
 		FromUserID:        user.ID,
 		FromUsername:      user.Username,
