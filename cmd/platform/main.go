@@ -36,6 +36,7 @@ import (
 	"os"
 
 	"github.com/urfave/cli/v2"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 // Variable passed in at compile time using `-ldflags`
@@ -176,7 +177,12 @@ func main() {
 					log := log_helpers.LoggerInitZero(environment, level)
 					passlog.New(environment, level)
 					log.Info().Msg("zerolog initialised")
-
+					tracer.Start(
+						tracer.WithEnv(environment),
+						tracer.WithService(envPrefix),
+						tracer.WithServiceVersion(Version),
+					)
+					defer tracer.Stop()
 					g := &run.Group{}
 					// Listen for os.interrupt
 					g.Add(run.SignalHandler(ctx, os.Interrupt))
