@@ -86,7 +86,7 @@ func (c *C) ReleaseTransactionsHandler(req ReleaseTransactionsReq, resp *Release
 
 func (c *C) supremacyFeed() {
 	fund := big.NewInt(0)
-	fund, ok := fund.SetString("50000000000000000000", 10)
+	fund, ok := fund.SetString("500000000000000000", 10)
 	if !ok {
 		c.Log.Err(errors.New("setting string not ok on fund big int")).Msg("too many strings")
 		return
