@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/net/html"
 	"net/http"
 	"passport"
 	"passport/db"
@@ -259,7 +260,7 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 		factionLogoBlobID = &faction.LogoBlobID
 	}
 
-	msg := bm.Sanitize(req.Payload.Message)
+	msg := html.UnescapeString(bm.Sanitize(req.Payload.Message))
 	msg = profanityDetector.Censor(msg)
 	if len(msg) > 280 {
 		msg = firstN(msg, 280)
