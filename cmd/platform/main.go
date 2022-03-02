@@ -10,6 +10,7 @@ import (
 	"passport/db"
 	"passport/email"
 	"passport/helpers"
+	"passport/passlog"
 	"passport/payments"
 	"passport/seed"
 	"strings"
@@ -173,6 +174,7 @@ func main() {
 					environment := c.String("environment")
 					level := c.String("log_level")
 					log := log_helpers.LoggerInitZero(environment, level)
+					passlog.New(environment, level)
 					log.Info().Msg("zerolog initialised")
 
 					g := &run.Group{}

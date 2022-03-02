@@ -2,6 +2,7 @@ package passport
 
 import (
 	"math/big"
+	"passport/passlog"
 	"strconv"
 	"time"
 )
@@ -278,6 +279,23 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 			warMachineMetadata.MaxShield = int(att.Value.(float64))
 			warMachineMetadata.Shield = int(att.Value.(float64))
 		case string(WarMachineAttFieldSpeed):
+			switch att.Value.(type) {
+			case float64:
+				warMachineMetadata.Speed = int(att.Value.(float64))
+			case int:
+				warMachineMetadata.Speed = att.Value.(int)
+			case string:
+				s, err := strconv.Atoi(att.Value.(string))
+				if err != nil {
+					warMachineMetadata.Speed = 1750
+					passlog.PassLog.Warn().Interface("value",att.Value).Str("metadata_hash", metadata.Hash).Err(err).Msgf("Speed attribute is not a number. Set as default 1750.") /*  */
+				}
+				warMachineMetadata.Speed = s
+			default:
+				warMachineMetadata.Speed = 1750
+				passlog.PassLog.Warn().Interface("value",att.Value).Str("metadata_hash", metadata.Hash).Msgf("Speed attribute is not a number. Set as default 1750.") /*  */
+			}
+		default:
 			warMachineMetadata.Speed = int(att.Value.(float64))
 		case string(WarMachineAttFieldPowerGrid):
 			warMachineMetadata.PowerGrid = int(att.Value.(float64))
