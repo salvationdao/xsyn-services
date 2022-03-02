@@ -239,7 +239,7 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 				warMachineMetadata.Skin = "Military"
 			case "Irradiated":
 				warMachineMetadata.Skin = "Irradiated"
-			case "Eva":
+			case "Evo":
 				warMachineMetadata.Skin = "EVA-02"
 			case "Beetle":
 				warMachineMetadata.Skin = "Beetle"
@@ -257,11 +257,11 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 				warMachineMetadata.Skin = "CherryBlossom"
 			case "Warden":
 				warMachineMetadata.Skin = "Warden"
-			case "Gundam":
+			case "Gumdan":
 				warMachineMetadata.Skin = "Gundam"
 			case "White Gold Pattern":
 				warMachineMetadata.Skin = "WhiteGoldPattern"
-			case "Evangelion":
+			case "Evangelic":
 				warMachineMetadata.Skin = "Evangelion"
 			case "Chalky Neon":
 				warMachineMetadata.Skin = "ChalkyNeon"
