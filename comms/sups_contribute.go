@@ -39,6 +39,8 @@ func (c *C) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 		tx.GroupID = req.GroupID
 	}
 
+	fmt.Println(req.Amount)
+
 	_, _, txID, err := c.UserCacheMap.Process(tx)
 	if err != nil {
 		return terror.Error(err, "failed to process sups")
@@ -84,7 +86,7 @@ func (c *C) ReleaseTransactionsHandler(req ReleaseTransactionsReq, resp *Release
 
 func (c *C) supremacyFeed() {
 	fund := big.NewInt(0)
-	fund, ok := fund.SetString("100000000000000000000", 10)
+	fund, ok := fund.SetString("500000000000000000", 10)
 	if !ok {
 		c.Log.Err(errors.New("setting string not ok on fund big int")).Msg("too many strings")
 		return
@@ -108,7 +110,7 @@ func (c *C) supremacyFeed() {
 func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 	// make treasury send game server user moneys
 	// Turn off the supremacy feed for now
-	// c.supremacyFeed()
+	c.supremacyFeed()
 
 	// sups guard
 	// kick users off the list, if they don't have any sups\
@@ -329,7 +331,7 @@ func (c *C) TransferBattleFundToSupPoolHandler(req TransferBattleFundToSupPoolRe
 	supsForTreasury := big.NewInt(0)
 	supsForTreasury.Add(supsForTreasury, supsForTrickle)
 	supsForTreasury.Div(supsForTreasury, big.NewInt(10))
-	if supsForTreasury.Cmp(big.NewInt(0)) >= 0 {
+	if supsForTreasury.Cmp(big.NewInt(0)) <= 0 {
 		return nil
 	}
 	tx := &passport.NewTransaction{
@@ -343,6 +345,8 @@ func (c *C) TransferBattleFundToSupPoolHandler(req TransferBattleFundToSupPoolRe
 		return terror.Error(err, "Failed to transfer 10% spoil of war to treasury")
 	}
 
+	// reduce the sups for trickle from sups for treasury
+	supsForTrickle.Sub(supsForTrickle, supsForTreasury)
 	// so here we want to trickle the battle pool out over 5 minutes, so we create a ticker that ticks every 5 seconds with a max ticks of 300 / 5
 	ticksInFiveMinutes := 300 / 5
 	supsPerTick := big.NewInt(0)
