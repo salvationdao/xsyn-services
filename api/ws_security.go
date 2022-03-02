@@ -22,6 +22,7 @@ func (api *API) Command(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 func (api *API) SecureCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 	api.Hub.Handle(key, func(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 		span := tracer.StartSpan("ws.SecureCommand", tracer.ResourceName(string(key)))
+		span.SetTag("user", hubc.Identifier())
 		defer span.Finish()
 		uuidString := hubc.Identifier() // identifier gets set on auth by default, so no ident = not authed
 		if uuidString == "" {
@@ -36,6 +37,7 @@ func (api *API) SecureCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 func (api *API) SecureCommandWithPerm(key hub.HubCommandKey, fn hub.HubCommandFunc, perm passport.Perm) {
 	api.Hub.Handle(key, func(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 		span := tracer.StartSpan("ws.SecureCommandWithPerm", tracer.ResourceName(string(key)))
+		span.SetTag("user", hubc.Identifier())
 		defer span.Finish()
 		allowed := hubc.HasPermission(perm.String())
 		if !allowed {
