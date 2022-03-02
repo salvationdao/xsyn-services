@@ -2272,7 +2272,7 @@ func (uc *UserController) UserFactionUpdatedSubscribeHandler(ctx context.Context
 type WarMachineQueuePositionRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AssetHash string `json:"assethash"`
+		AssetHash string `json:"assetHash"`
 	} `json:"payload"`
 }
 
