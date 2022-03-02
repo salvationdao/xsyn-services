@@ -327,7 +327,16 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 		}
 	}
 	if req.Payload.NewUsername != nil && req.Payload.Username != *req.Payload.NewUsername {
-		user.Username = *req.Payload.NewUsername
+		bm := bluemonday.StrictPolicy()
+		sanitizedUsername := bm.Sanitize(strings.TrimSpace(*req.Payload.NewUsername))
+
+		// Validate username
+		err = helpers.IsValidUsername(sanitizedUsername)
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		user.Username = sanitizedUsername
 	}
 	if req.Payload.NewPassword != nil && *req.Payload.NewPassword != "" {
 		if user.Email.String == "" && req.Payload.Email.String == "" {
