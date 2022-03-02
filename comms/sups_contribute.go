@@ -328,25 +328,25 @@ func (c *C) TransferBattleFundToSupPoolHandler(req TransferBattleFundToSupPoolRe
 	}
 
 	// transfer 10% of current spoil of war back to treasury
-	supsForTreasury := big.NewInt(0)
-	supsForTreasury.Add(supsForTreasury, supsForTrickle)
-	supsForTreasury.Div(supsForTreasury, big.NewInt(10))
-	if supsForTreasury.Cmp(big.NewInt(0)) <= 0 {
-		return nil
-	}
-	tx := &passport.NewTransaction{
-		From:                 passport.SupremacyBattleUserID,
-		To:                   passport.XsynTreasuryUserID,
-		Amount:               *supsForTreasury,
-		TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|battle_sups_spend_transfer|%s", time.Now())),
-	}
-	_, _, _, err = c.UserCacheMap.Process(tx)
-	if err != nil {
-		return terror.Error(err, "Failed to transfer 10% spoil of war to treasury")
-	}
+	// supsForTreasury := big.NewInt(0)
+	// supsForTreasury.Add(supsForTreasury, supsForTrickle)
+	// supsForTreasury.Div(supsForTreasury, big.NewInt(10))
+	// if supsForTreasury.Cmp(big.NewInt(0)) <= 0 {
+	// 	return nil
+	// }
+	// tx := &passport.NewTransaction{
+	// 	From:                 passport.SupremacyBattleUserID,
+	// 	To:                   passport.XsynTreasuryUserID,
+	// 	Amount:               *supsForTreasury,
+	// 	TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|battle_sups_spend_transfer|%s", time.Now())),
+	// }
+	// _, _, _, err = c.UserCacheMap.Process(tx)
+	// if err != nil {
+	// 	return terror.Error(err, "Failed to transfer 10% spoil of war to treasury")
+	// }
+	// // reduce the sups for trickle from sups for treasury
+	// supsForTrickle.Sub(supsForTrickle, supsForTreasury)
 
-	// reduce the sups for trickle from sups for treasury
-	supsForTrickle.Sub(supsForTrickle, supsForTreasury)
 	// so here we want to trickle the battle pool out over 5 minutes, so we create a ticker that ticks every 5 seconds with a max ticks of 300 / 5
 	ticksInFiveMinutes := 300 / 5
 	supsPerTick := big.NewInt(0)
