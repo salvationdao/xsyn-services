@@ -175,6 +175,10 @@ func main() {
 					environment := c.String("environment")
 					level := c.String("log_level")
 					log := log_helpers.LoggerInitZero(environment, level)
+					if environment == "production" || environment == "staging" {
+						logPtr := zerolog.New(os.Stdout)
+						log = &logPtr
+					}
 					passlog.New(environment, level)
 					log.Info().Msg("zerolog initialised")
 					tracer.Start(
