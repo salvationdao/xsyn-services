@@ -250,6 +250,8 @@ type AssetRepairStatUpdateRequest struct {
 const HubKeyAssetRepairStatUpdate hub.HubCommandKey = "ASSET:DURABILITY:SUBSCRIBE"
 
 func (ac *AssetController) AssetRepairStatUpdateSubscriber(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	ac.Log.Debug().RawJSON("req", payload).Str("fn", "AssetRepairStatUpdateSubscriber").Msg("ws handler")
+
 	req := &AssetRepairStatUpdateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {

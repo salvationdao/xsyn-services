@@ -23,6 +23,7 @@ type DefaultWarMachinesResp struct {
 }
 
 func (c *C) SupremacyDefaultWarMachinesHandler(req DefaultWarMachinesReq, resp *DefaultWarMachinesResp) error {
+
 	ctx := context.Background()
 	var warMachines []*passport.WarMachineMetadata
 	// check user own this asset, and it has not joined the queue yet
@@ -91,7 +92,7 @@ func (c *C) SupremacyDefaultWarMachinesHandler(req DefaultWarMachinesReq, resp *
 			warMachines = append(warMachines, warMachineMetadata)
 		}
 	}
-
+	c.Log.Info().Str("fn", "SupremacyDefaultWarMachinesHandler").Str("faction_id", req.FactionID.String()).Msg("rpc")
 	resp.WarMachines = warMachines
 	return nil
 }
