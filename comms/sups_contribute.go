@@ -23,6 +23,7 @@ func (c *C) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 	if err != nil {
 		return err
 	}
+
 	if amt.LessThan(decimal.Zero) {
 		return terror.Error(terror.ErrInvalidInput, "Sups amount can not be negative")
 	}
@@ -32,6 +33,10 @@ func (c *C) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 		To:                   passport.SupremacyGameUserID,
 		TransactionReference: req.TransactionReference,
 		Amount:               *amt.BigInt(),
+	}
+
+	if req.ToUserID != nil {
+		tx.To = *req.ToUserID
 	}
 
 	if req.GroupID != "" {
