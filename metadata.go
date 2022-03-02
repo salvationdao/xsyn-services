@@ -175,7 +175,16 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 	for _, att := range metadata.Attributes {
 		switch att.TraitType {
 		case string(WarMachineAttName):
-			warMachineMetadata.Name = att.Value.(string)
+			switch att.Value.(type) {
+			case float64:
+				warMachineMetadata.Name = ""
+			case int:
+				warMachineMetadata.Name = ""
+			case string:
+				warMachineMetadata.Name = att.Value.(string)
+			default:
+				warMachineMetadata.Name = ""
+			}
 		case string(WarMachineAttModel):
 			switch att.Value.(string) {
 			case "Law Enforcer X-1000":
