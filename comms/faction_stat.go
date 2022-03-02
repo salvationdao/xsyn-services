@@ -9,6 +9,8 @@ import (
 	"passport/api"
 	"passport/db"
 
+	"github.com/jackc/pgx/v4"
+
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
@@ -55,8 +57,9 @@ func (c *C) SupremacyFactionStatSendHandler(req FactionStatSendReq, resp *Factio
 		factionStatSend.FactionStat.Velocity = 0
 
 		// get mvp
+
 		mvp, err := db.FactionMvpGet(ctx, c.Conn, factionStatSend.FactionStat.ID)
-		if err != nil && !errors.Is(err, ErrNoRows) {
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			c.Log.Err(err).Msgf("failed to get mvp from faction %s", factionStatSend.FactionStat.ID)
 			continue
 		}

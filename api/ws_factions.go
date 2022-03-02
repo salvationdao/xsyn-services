@@ -378,7 +378,6 @@ func (fc *FactionController) FactionStatUpdatedSubscribeHandler(ctx context.Cont
 	factionStat.SupsVoted = voteSup.String()
 
 	reply(factionStat)
-
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionStatUpdatedSubscribe, req.Payload.FactionID)), nil
 }
 

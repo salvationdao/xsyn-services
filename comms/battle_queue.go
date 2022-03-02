@@ -2,7 +2,6 @@ package comms
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"passport"
 	"passport/api"
@@ -12,7 +11,7 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
 
-var ErrNoRows = errors.New("no rows in result set")
+//var ErrNoRows = errors.New("no rows in result set")
 
 type DefaultWarMachinesReq struct {
 	FactionID passport.FactionID `json:"factionID"`

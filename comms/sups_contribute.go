@@ -10,6 +10,8 @@ import (
 	"passport/db"
 	"time"
 
+	"github.com/jackc/pgx/v4"
+
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -449,13 +451,13 @@ func (c *C) TopSupsContributorHandler(req TopSupsContributorReq, resp *TopSupsCo
 
 	// get top contribute users
 	resp.TopSupsContributors, err = db.BattleArenaSupsTopContributors(ctx, c.Conn, req.StartTime, req.EndTime)
-	if err != nil && !errors.Is(err, ErrNoRows) {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return terror.Error(err)
 	}
 
 	// get top contribute faction
 	resp.TopSupsContributeFactions, err = db.BattleArenaSupsTopContributeFaction(ctx, c.Conn, req.StartTime, req.EndTime)
-	if err != nil && !errors.Is(err, ErrNoRows) {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return terror.Error(err)
 	}
 
