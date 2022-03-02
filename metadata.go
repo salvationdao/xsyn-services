@@ -293,7 +293,7 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 				warMachineMetadata.Speed = s
 			default:
 				warMachineMetadata.Speed = 1750
-				passlog.PassLog.Warn().Interface("value", att.Value).Str("metadata_hash", metadata.Hash).Msgf("Speed attribute is not a number. Set as default 1750.") /*  */
+				passlog.PassLog.Warn().Interface("value", att.Value).Interface("metadata_hash", metadata.Hash).Msgf("Speed attribute is not a number. Set as default 1750.") /*  */
 			}
 		// default:
 		// 	warMachineMetadata.Speed = int(att.Value.(float64))
