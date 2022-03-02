@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
@@ -62,11 +63,11 @@ func (c *FilesController) FileGet(w http.ResponseWriter, r *http.Request) (int, 
 	}
 
 	// Get blob
-	blob, err := db.BlobGet(r.Context(), c.Conn, blobID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return http.StatusNotFound, terror.Error(err, "attachment not found")
-	}
+	blob, err := db.BlobGet(context.Background(), c.Conn, blobID)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return http.StatusNotFound, terror.Error(err, "attachment not found")
+		}
 		return http.StatusInternalServerError, terror.Error(err, "could not get attachment")
 	}
 
@@ -123,13 +124,13 @@ func (c *FilesController) FileUpload(w http.ResponseWriter, r *http.Request, use
 
 	// File with the same size and hash exists? return that
 	if blob.Hash != nil {
-		existingBlob, err := db.BlobGetByHash(r.Context(), c.Conn, *blob.Hash, blob.FileSizeBytes)
+		existingBlob, err := db.BlobGetByHash(context.Background(), c.Conn, *blob.Hash, blob.FileSizeBytes)
 
 		if err == nil {
 			if existingBlob != nil && !existingBlob.Public && blob.Public {
 				// Make existing blob public
 				existingBlob.Public = true
-				err = db.BlobUpdate(r.Context(), c.Conn, existingBlob)
+				err = db.BlobUpdate(context.Background(), c.Conn, existingBlob)
 				if err != nil {
 					return http.StatusInternalServerError, terror.Error(err, "failed to upload")
 				}
@@ -143,7 +144,7 @@ func (c *FilesController) FileUpload(w http.ResponseWriter, r *http.Request, use
 	}
 
 	// Insert blob
-	err = db.BlobInsert(r.Context(), c.Conn, blob)
+	err = db.BlobInsert(context.Background(), c.Conn, blob)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "failed to upload")
 	}

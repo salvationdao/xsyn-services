@@ -50,9 +50,17 @@ func (tc *TransactionCache) commit() {
 			tc.conn,
 			tx,
 		)
+
 		if err != nil {
-			tc.log.Err(err)
-			if !tx.Safe {
+			tc.
+				log.
+				Err(err).
+				Str("amt", tx.Amount.String()).
+				Str("from", tx.From.String()).
+				Str("to", tx.To.String()).
+				Str("txref", string(tx.TransactionReference)).
+				Msg("transaction cache lock")
+			if tx.NotSafe {
 				tc.Lock() //grind to a halt if transactions fail to save to database
 			}
 			return
@@ -61,16 +69,18 @@ func (tc *TransactionCache) commit() {
 }
 
 func (tc *TransactionCache) Process(t *passport.NewTransaction) string {
+
 	if t.Processed {
 		return t.ID
 	}
 	t.ID = fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
 	t.CreatedAt = time.Now()
 	t.Processed = true
+
 	tc.Lock()
 	defer func() {
 		tc.Unlock()
-		if t.Safe {
+		if !t.NotSafe {
 			tc.commit()
 		}
 	}()

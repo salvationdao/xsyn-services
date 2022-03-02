@@ -15,6 +15,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
@@ -162,7 +163,10 @@ func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebook
 	}
 
 	trimmedUsername := strings.TrimSpace(username)
-	err := helpers.IsValidUsername(trimmedUsername)
+	bm := bluemonday.StrictPolicy()
+	sanitizedUsername := bm.Sanitize(trimmedUsername)
+
+	err := helpers.IsValidUsername(sanitizedUsername)
 	if err != nil {
 		return nil, terror.Error(err)
 	}

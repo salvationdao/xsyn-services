@@ -2,6 +2,8 @@ package passport
 
 import (
 	"math/big"
+	"passport/passlog"
+	"strconv"
 	"time"
 )
 
@@ -112,54 +114,53 @@ type AdditionalMetadata struct {
 }
 
 type WarMachineMetadata struct {
-	Hash            string             `json:"hash"`
-	OwnedByID       UserID             `json:"ownedByID"`
-	Name            string             `json:"name"`
-	Description     *string            `json:"description,omitempty"`
-	ExternalUrl     string             `json:"externalUrl"`
-	Image           string             `json:"image"`
-	Model           string             `json:"model"`
-	Skin            string             `json:"skin"`
-	MaxHealth       int                `json:"maxHealth"`
-	Health          int                `json:"health"`
-	MaxShield       int                `json:"maxShield"`
-	Shield          int                `json:"shield"`
-	Speed           int                `json:"speed"`
-	Durability      int                `json:"durability"`
-	PowerGrid       int                `json:"powerGrid"`
-	CPU             int                `json:"cpu"`
-	WeaponHardpoint int                `json:"weaponHardpoint"`
-	WeaponNames     []string           `json:"weaponNames"`
-	TurretHardpoint int                `json:"turretHardpoint"`
-	UtilitySlots    int                `json:"utilitySlots"`
-	FactionID       FactionID          `json:"factionID"`
-	Faction         *Faction           `json:"faction"`
-	Abilities       []*AbilityMetadata `json:"abilities"`
-
-	ContractReward big.Int `json:"contractReward"`
-	IsInsured      bool    `json:"isInsured"`
+	Hash               string             `json:"hash"`
+	OwnedByID          UserID             `json:"ownedByID"`
+	Name               string             `json:"name"`
+	Description        *string            `json:"description,omitempty"`
+	ExternalUrl        string             `json:"externalUrl"`
+	Image              string             `json:"image"`
+	Model              string             `json:"model"`
+	Skin               string             `json:"skin"`
+	MaxHealth          int                `json:"maxHealth"`
+	Health             int                `json:"health"`
+	MaxShield          int                `json:"maxShield"`
+	Shield             int                `json:"shield"`
+	ShieldRechargeRate float64            `json:"shieldRechargeRate"`
+	Speed              int                `json:"speed"`
+	Durability         int                `json:"durability"`
+	PowerGrid          int                `json:"powerGrid"`
+	CPU                int                `json:"cpu"`
+	WeaponHardpoint    int                `json:"weaponHardpoint"`
+	WeaponNames        []string           `json:"weaponNames"`
+	TurretHardpoint    int                `json:"turretHardpoint"`
+	UtilitySlots       int                `json:"utilitySlots"`
+	FactionID          FactionID          `json:"factionID"`
+	Faction            *Faction           `json:"faction"`
+	Abilities          []*AbilityMetadata `json:"abilities"`
 }
 
 type WarMachineAttField string
 
 const (
-	WarMachineAttName                   WarMachineAttField = "Name"
-	WarMachineAttModel                  WarMachineAttField = "Model"
-	WarMachineAttSubModel               WarMachineAttField = "SubModel"
-	WarMachineAttFieldMaxHitPoint       WarMachineAttField = "Max Structure Hit Points"
-	WarMachineAttFieldMaxShieldHitPoint WarMachineAttField = "Max Shield Hit Points"
-	WarMachineAttFieldSpeed             WarMachineAttField = "Speed"
-	WarMachineAttFieldPowerGrid         WarMachineAttField = "Power Grid"
-	WarMachineAttFieldCPU               WarMachineAttField = "CPU"
-	WarMachineAttFieldWeaponHardpoints  WarMachineAttField = "Weapon Hardpoints"
-	WarMachineAttFieldTurretHardpoints  WarMachineAttField = "Turret Hardpoints"
-	WarMachineAttFieldUtilitySlots      WarMachineAttField = "Utility Slots"
-	WarMachineAttFieldWeapon01          WarMachineAttField = "Weapon One"
-	WarMachineAttFieldWeapon02          WarMachineAttField = "Weapon Two"
-	WarMachineAttFieldTurret01          WarMachineAttField = "Turret One"
-	WarMachineAttFieldTurret02          WarMachineAttField = "Turret Two"
-	WarMachineAttFieldAbility01         WarMachineAttField = "Ability One"
-	WarMachineAttFieldAbility02         WarMachineAttField = "Ability Two"
+	WarMachineAttName                    WarMachineAttField = "Name"
+	WarMachineAttModel                   WarMachineAttField = "Model"
+	WarMachineAttSubModel                WarMachineAttField = "SubModel"
+	WarMachineAttFieldMaxHitPoint        WarMachineAttField = "Max Structure Hit Points"
+	WarMachineAttFieldMaxShieldHitPoint  WarMachineAttField = "Max Shield Hit Points"
+	WarMachineAttFieldSpeed              WarMachineAttField = "Speed"
+	WarMachineAttFieldPowerGrid          WarMachineAttField = "Power Grid"
+	WarMachineAttFieldShieldRechargeRate WarMachineAttField = "Shield Recharge Rate"
+	WarMachineAttFieldCPU                WarMachineAttField = "CPU"
+	WarMachineAttFieldWeaponHardpoints   WarMachineAttField = "Weapon Hardpoints"
+	WarMachineAttFieldTurretHardpoints   WarMachineAttField = "Turret Hardpoints"
+	WarMachineAttFieldUtilitySlots       WarMachineAttField = "Utility Slots"
+	WarMachineAttFieldWeapon01           WarMachineAttField = "Weapon One"
+	WarMachineAttFieldWeapon02           WarMachineAttField = "Weapon Two"
+	WarMachineAttFieldTurret01           WarMachineAttField = "Turret One"
+	WarMachineAttFieldTurret02           WarMachineAttField = "Turret Two"
+	WarMachineAttFieldAbility01          WarMachineAttField = "Ability One"
+	WarMachineAttFieldAbility02          WarMachineAttField = "Ability Two"
 )
 
 // ParseWarMachineMetadata convert json attribute to proper struct
@@ -174,7 +175,16 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 	for _, att := range metadata.Attributes {
 		switch att.TraitType {
 		case string(WarMachineAttName):
-			warMachineMetadata.Name = att.Value.(string)
+			switch att.Value.(type) {
+			case float64:
+				warMachineMetadata.Name = ""
+			case int:
+				warMachineMetadata.Name = ""
+			case string:
+				warMachineMetadata.Name = att.Value.(string)
+			default:
+				warMachineMetadata.Name = ""
+			}
 		case string(WarMachineAttModel):
 			switch att.Value.(string) {
 			case "Law Enforcer X-1000":
@@ -229,7 +239,7 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 				warMachineMetadata.Skin = "Military"
 			case "Irradiated":
 				warMachineMetadata.Skin = "Irradiated"
-			case "Eva":
+			case "Evo":
 				warMachineMetadata.Skin = "EVA-02"
 			case "Beetle":
 				warMachineMetadata.Skin = "Beetle"
@@ -247,11 +257,11 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 				warMachineMetadata.Skin = "CherryBlossom"
 			case "Warden":
 				warMachineMetadata.Skin = "Warden"
-			case "Gundam":
+			case "Gumdan":
 				warMachineMetadata.Skin = "Gundam"
 			case "White Gold Pattern":
 				warMachineMetadata.Skin = "WhiteGoldPattern"
-			case "Evangelion":
+			case "Evangelic":
 				warMachineMetadata.Skin = "Evangelion"
 			case "Chalky Neon":
 				warMachineMetadata.Skin = "ChalkyNeon"
@@ -278,9 +288,28 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 			warMachineMetadata.MaxShield = int(att.Value.(float64))
 			warMachineMetadata.Shield = int(att.Value.(float64))
 		case string(WarMachineAttFieldSpeed):
-			warMachineMetadata.Speed = int(att.Value.(float64))
+			switch att.Value.(type) {
+			case float64:
+				warMachineMetadata.Speed = int(att.Value.(float64))
+			case int:
+				warMachineMetadata.Speed = att.Value.(int)
+			case string:
+				s, err := strconv.Atoi(att.Value.(string))
+				if err != nil {
+					warMachineMetadata.Speed = 1750
+					passlog.PassLog.Warn().Str("asset_hash", metadata.Hash).Err(err).Msgf("Speed attribute is not a number. Set as default 1750") /*  */
+				}
+				warMachineMetadata.Speed = s
+			default:
+				warMachineMetadata.Speed = 1750
+				passlog.PassLog.Warn().Str("asset_hash", metadata.Hash).Msgf("Speed attribute is not a number. Set as default 1750") /*  */
+			}
+		// default:
+		// 	warMachineMetadata.Speed = int(att.Value.(float64))
 		case string(WarMachineAttFieldPowerGrid):
 			warMachineMetadata.PowerGrid = int(att.Value.(float64))
+		case string(WarMachineAttFieldShieldRechargeRate):
+			warMachineMetadata.ShieldRechargeRate = att.Value.(float64)
 		case string(WarMachineAttFieldCPU):
 			warMachineMetadata.CPU = int(att.Value.(float64))
 		case string(WarMachineAttFieldWeaponHardpoints):
@@ -293,7 +322,7 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 			string(WarMachineAttFieldWeapon02),
 			string(WarMachineAttFieldTurret01),
 			string(WarMachineAttFieldTurret02):
-			warMachineMetadata.WeaponNames = append(warMachineMetadata.WeaponNames, att.Value.(string))
+			// warMachineMetadata.WeaponNames = append(warMachineMetadata.WeaponNames, att.Value.(string))
 		case string(WarMachineAttFieldAbility01),
 			string(WarMachineAttFieldAbility02):
 			if att.TokenID == 0 {
@@ -358,18 +387,40 @@ func ParseAbilityMetadata(metadata *XsynMetadata, abilityMetadata *AbilityMetada
 
 // IsUsable returns true if the asset isn't locked in any way
 func (xsmd *XsynMetadata) IsUsable() bool {
-	if xsmd.LockedByID != nil && !xsmd.LockedByID.IsNil() {
-		return false
-	}
-	if xsmd.FrozenAt != nil && !xsmd.FrozenAt.IsZero() {
-		return false
-	}
 	if xsmd.DeletedAt != nil && !xsmd.DeletedAt.IsZero() {
 		return false
 	}
-	if xsmd.MintingSignature != "" {
-		return false
+
+	if xsmd.SignatureExpiry != "" {
+		intExp, _ := strconv.ParseInt(xsmd.SignatureExpiry, 10, 64)
+		tEXp := time.Unix(intExp, 0)
+		now := time.Now()
+
+		if now.Before((tEXp)) {
+			return false
+		}
 	}
 
 	return true
+}
+
+type WarMachineContract struct {
+	CurrentReward big.Int
+}
+
+type RepairMode string
+
+const (
+	RepairModeFast     = "FAST"
+	RepairModeStandard = "STANDARD"
+)
+
+type AssetRepairRecord struct {
+	Hash              string     `json:"hash"`
+	StartedAt         time.Time  `json:"startedAt"` // this is calculated on fly value
+	ExpectCompletedAt time.Time  `json:"expectCompleteAt"`
+	RepairMode        RepairMode `json:"repairMode"`
+	IsPaidToComplete  bool       `json:"isPaidToComplete"`
+	CompletedAt       *time.Time `json:"completedAt,omitempty"`
+	CreatedAt         time.Time  `json:"createdAt"`
 }

@@ -43,6 +43,10 @@ func NewUserCacheMap(conn *pgxpool.Pool, tc *TransactionCache, msgBus *messagebu
 var TransactionFailed = "TRANSACTION_FAILED"
 
 func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.Int, string, error) {
+	if nt.Amount.Cmp(big.NewInt(0)) < 1 {
+		return nil, nil, TransactionFailed, terror.Error(fmt.Errorf("amount should be a positive number: %s", nt.Amount.String()), "Amount should be greater than zero")
+	}
+
 	// load balance first
 	fromBalance, err := ucm.Get(nt.From.String())
 	if err != nil {
@@ -76,11 +80,26 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 
 	transactonID := ucm.TransactionCache.Process(nt)
 
+	tx := &passport.Transaction{
+		ID:     transactonID,
+		Credit: nt.To,
+		Debit:  nt.From,
+		Amount: passport.BigInt{
+			Int: nt.Amount,
+		},
+		TransactionReference: string(nt.TransactionReference),
+		Description:          nt.Description,
+		CreatedAt:            nt.CreatedAt,
+		GroupID:              nt.GroupID,
+	}
+
 	ctx := context.Background()
 	if !nt.From.IsSystemUser() {
+		go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, nt.From)), []*passport.Transaction{tx})
 		go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, nt.From)), newFromBalance.String())
 	}
 	if !nt.To.IsSystemUser() {
+		go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, nt.To)), []*passport.Transaction{tx})
 		go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, nt.To)), newToBalance.String())
 	}
 

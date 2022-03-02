@@ -6,9 +6,21 @@ import (
 	"strings"
 	"unicode"
 
+	goaway "github.com/TwiN/go-away"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 )
+
+var Profanities = []string{
+	"fag",
+	"fuck",
+	"nigga",
+	"nigger",
+	"rape",
+	"retard",
+}
+
+var profanityDetector = goaway.NewProfanityDetector().WithCustomDictionary(Profanities, []string{}, []string{})
 
 // FirstDigitRegexp returns the first digit found in a string (used for checking duplicate slugs)
 var FirstDigitRegexp = regexp.MustCompile(`\d`)
@@ -17,7 +29,7 @@ var emailRegexp = regexp.MustCompile("^.+?@.+?...+?$")
 
 var PasswordRegExp = regexp.MustCompile("[`!@#$%^&*()_+\\-=\\[\\]{};':\"\\|,.<>\\/?~]")
 
-var UsernameRegExp = regexp.MustCompile("[`!@#$%^&*()+=\\[\\]{};':\"\\|,.<>\\/?]")
+var UsernameRegExp = regexp.MustCompile("[`\\-~!@#$%^&*()+=\\[\\]{};':\"\\|,.<>\\/?]")
 
 // IsEmpty checks if string given is empty
 func IsEmpty(text *null.String) bool {
@@ -80,11 +92,18 @@ func IsValidUsername(username string) error {
 	// Must contain at least 3 characters
 	// Cannot contain more than 15 characters
 	// Cannot conain profanity
-	// Can only contain the following symbols: _-~
-	// hasDisallowedSymbol := false
-	// if UsernameRegExp.Match([]byte(username)) {
-	// 	hasDisallowedSymbol = true
-	// }
+	// Can only contain the following symbols: _
+	hasDisallowedSymbol := false
+	if UsernameRegExp.Match([]byte(username)) {
+		hasDisallowedSymbol = true
+	}
+
+	hasWhitespace := false
+	for _, r := range username {
+		if unicode.IsSpace(r) {
+			hasWhitespace = true
+		}
+	}
 
 	err := fmt.Errorf("username does not meet requirements")
 	if len(username) < 3 {
@@ -96,12 +115,15 @@ func IsValidUsername(username string) error {
 	if strings.TrimSpace(username) == "" {
 		return terror.Error(err, "Invalid username. Your username cannot be empty.")
 	}
-	// if hasDisallowedSymbol {
-	// 	return terror.Error(err, "Invalid username. Your username contains a disallowed symbol.")
-	// }
-	// if goaway.IsProfane(username) {
-	// return terror.Error(err, "Invalid username. Your username contains profanity.")
-	// }
+	if hasDisallowedSymbol {
+		return terror.Error(err, "Invalid username. Your username contains a disallowed symbol.")
+	}
+	if hasWhitespace {
+		return terror.Error(err, "Invalid username. Your username cannot contain whitespace characters.")
+	}
+	if goaway.IsProfane(username) {
+		return terror.Error(err, "Invalid username. Your username contains profanity.")
+	}
 
 	return nil
 }

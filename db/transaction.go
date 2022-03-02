@@ -67,6 +67,32 @@ INNER JOIN users t ON transactions.credit = t.id
 INNER JOIN users f ON transactions.debit = f.id
 `
 
+// UsersTransactionGroups returns details about the user's transactions that have group IDs
+func UsersTransactionGroups(
+	userID passport.UserID,
+	ctx context.Context,
+	conn Conn,
+) ([]string, error) {
+	// Get all transaction Group IDs
+	q := `--sql
+		SELECT transactions.group_id
+		from transactions
+		WHERE transactions.group_id is not null
+		AND (transactions.credit = $1 OR transactions.debit = $1)
+		group by transactions.group_id
+	`
+	var args []interface{}
+	args = append(args, userID.String())
+
+	result := make([]string, 0)
+	err := pgxscan.Select(ctx, conn, &result, q, args...)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return result, nil
+}
+
 // TransactionList gets a list of Transactions depending on the filters
 func TransactionList(
 	ctx context.Context,
@@ -79,12 +105,11 @@ func TransactionList(
 	sortBy TransactionColumn,
 	sortDir SortByDir,
 ) (int, []*passport.Transaction, error) {
-
-	// Prepare Filters
 	var args []interface{}
 
+	// Prepare Filters
 	filterConditionsString := ""
-	argIndex := 0
+	argIndex := 1
 	if filter != nil {
 		filterConditions := []string{}
 		for _, f := range filter.Items {
@@ -94,11 +119,16 @@ func TransactionList(
 				return 0, nil, terror.Error(err)
 			}
 
-			argIndex += 1
 			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, argIndex)
 			if condition != "" {
+				switch f.OperatorValue {
+				case OperatorValueTypeIsNull, OperatorValueTypeIsNotNull:
+					break
+				default:
+					argIndex += 1
+					args = append(args, value)
+				}
 				filterConditions = append(filterConditions, condition)
-				args = append(args, value)
 			}
 		}
 		if len(filterConditions) > 0 {
@@ -116,7 +146,7 @@ func TransactionList(
 		xsearch := ParseQueryText(search, true)
 		if len(xsearch) > 0 {
 			args = append(args, xsearch)
-			searchCondition = fmt.Sprintf(" AND transactions.description @@ to_tsquery($%d)", len(args))
+			searchCondition = fmt.Sprintf(" AND ((to_tsvector('english', transactions.description) @@ to_tsquery($%[1]d)) OR (to_tsvector('english', transactions.transaction_reference) @@ to_tsquery($%[1]d)))", len(args))
 		}
 	}
 
@@ -186,7 +216,7 @@ func TransactionList(
 func TransactionGet(ctx context.Context, conn Conn, transactionID string) (*passport.Transaction, error) {
 	transaction := &passport.Transaction{}
 	q := TransactionGetQuery + "WHERE transactions.id = $1"
-	
+
 	err := pgxscan.Get(ctx, conn, transaction, q, transactionID)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -492,7 +522,6 @@ func BattleArenaSupsTopContributors(ctx context.Context, conn Conn, startTime, e
 			u.id, t.debit
 		ORDER BY 
 			SUM(t.amount) DESC
-		LIMIT 5
 	`
 	err := pgxscan.Select(ctx, conn, &uss, q, passport.SupremacyBattleUserID, startTime, endTime)
 	if err != nil {

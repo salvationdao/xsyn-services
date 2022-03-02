@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
 	"os"
 	"passport"
 	"passport/db"
+	"passport/passlog"
 	"time"
 
 	"github.com/ninja-software/log_helpers"
@@ -91,35 +93,47 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 	if os.Getenv("PASSPORT_ENVIRONMENT") == "development" || os.Getenv("PASSPORT_ENVIRONMENT") == "staging" {
 		oneSups := big.NewInt(1000000000000000000)
 		oneSups.Mul(oneSups, big.NewInt(100000))
-		_, _, _, err := gc.API.userCacheMap.Process(&passport.NewTransaction{
+		tx := &passport.NewTransaction{
 			To:                   user.ID,
 			From:                 passport.XsynSaleUserID,
 			Amount:               *oneSups,
+			NotSafe:              true,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
 			Description:          "Give away for testing",
-		})
+		}
+		_, _, _, err := gc.API.userCacheMap.Process(tx)
 
 		if err != nil {
-			gc.API.Log.Err(err).Msg("NO SUPS FOR YOU :p")
+			passlog.PassLog.
+				Err(err).
+				Str("to", tx.To.String()).
+				Str("from", tx.From.String()).
+				Str("amount", tx.Amount.String()).
+				Str("description", tx.Description).
+				Str("transaction_reference", string(tx.TransactionReference)).
+				Msg("NO SUPS FOR YOU :p")
 		}
+	}
 
+	var resp struct {
+		IsSuccess bool `json:"isSuccess"`
+	}
+	err = gc.API.GameserverRequest(http.MethodPost, "/auth_ring_check", struct {
+		User                *passport.User `json:"user"`
+		GameserverSessionID string         `json:"gameserverSessionID"`
+	}{
+		User:                user,
+		GameserverSessionID: req.Payload.GameserverSessionID,
+	}, &resp)
+	if err != nil {
+		return terror.Error(err, err.Error())
+	}
+
+	if !resp.IsSuccess {
+		return terror.Error(fmt.Errorf("Failed to pass ring check"))
 	}
 
 	reply(true)
-
-	// send to supremacy server
-	gc.API.SendToServerClient(ctx, SupremacyGameServer, &ServerClientMessage{
-		Key: "AUTH:RING:CHECK",
-		Payload: struct {
-			User                *passport.User `json:"user"`
-			GameserverSessionID string         `json:"gameserverSessionID"`
-			SessionID           hub.SessionID  `json:"sessionID"`
-		}{
-			User:                user,
-			GameserverSessionID: req.Payload.GameserverSessionID,
-			SessionID:           hubc.SessionID,
-		},
-	})
 
 	return nil
 }

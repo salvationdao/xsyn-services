@@ -304,7 +304,7 @@ func XsynAssetBulkRelease(ctx context.Context, conn Conn, nfts []*passport.WarMa
 }
 
 // DefaultWarMachineGet return given amount of default war machines for given faction
-func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID, amount int) ([]*passport.XsynMetadata, error) {
+func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID) ([]*passport.XsynMetadata, error) {
 	nft := []*passport.XsynMetadata{}
 	q := `
 		SELECT xnm.hash, xnm.minted, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
@@ -312,14 +312,10 @@ func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID
 	 	INNER JOIN xsyn_assets xa ON xa.metadata_hash = xnm.hash and xnm.collection_id = xa.collection_id
 		WHERE xa.user_id = $1
 		AND xnm.attributes @> '[{"value": "War Machine", "trait_type": "Asset Type"}]'
-		LIMIT $2
 	`
 
 	// TODO: find a better way to get the default warmachines out
-	err := pgxscan.Select(ctx, conn, &nft, q,
-		userID,
-		amount,
-	)
+	err := pgxscan.Select(ctx, conn, &nft, q, userID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}

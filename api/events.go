@@ -7,6 +7,7 @@ import (
 	"os"
 	"passport"
 	"passport/db"
+	"passport/passlog"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -21,52 +22,21 @@ func (api *API) ClientOnline(ctx context.Context, client *hub.Client) error {
 
 // ClientOffline gets trigger on connection offline
 func (api *API) ClientOffline(ctx context.Context, client *hub.Client) error {
-	// if they are level 5, they are server client. So lets remove them
-	if client.Level == 5 {
-		api.ServerClientOffline(client)
-	}
-
-	// since they can go offline without logging out check the client identifier
-	// if client.Identifier() != "" {
-	// userUUID, err := uuid.FromString(client.Identifier())
-	// if err != nil {
-	// 	api.Log.Err(err).Msgf("failed to get user uuid on logout for %s", client.Identifier())
-	// }
-	// userID := passport.UserID(userUUID)
-
-	// remove offline user to our user cache
-	// go api.RemoveUserFromCache(userID)
+	// // if they are level 5, they are server client. So lets remove them
+	// if client.Level == 5 {
+	// 	api.ServerClientOffline(client)
 	// }
 	return nil
 }
 
 func (api *API) ClientLogout(ctx context.Context, client *hub.Client) error {
-	// userUUID, err := uuid.FromString(client.Identifier())
-	// if err != nil {
-	// 	api.Log.Err(err).Msgf("failed to get user uuid on logout for %s", client.Identifier())
-	// }
-	// userID := passport.UserID(userUUID)
 
 	// broadcast logout to gamebar
 	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyGamebarUserSubscribe, client.SessionID)), nil)
 
-	// remove offline user to our user cache
-	// go api.RemoveUserFromCache(userID)
-
 	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, client.Identifier())), false)
 	api.MessageBus.Unsub("", client, "")
 
-	// broadcast user online status to server clients
-	api.SendToAllServerClient(ctx, &ServerClientMessage{
-		Key: UserOnlineStatus,
-		Payload: struct {
-			UserID string `json:"userID"`
-			Status bool   `json:"status"`
-		}{
-			UserID: client.Identifier(),
-			Status: true,
-		},
-	})
 	return nil
 }
 
@@ -110,21 +80,18 @@ func (api *API) ClientAuth(ctx context.Context, client *hub.Client) error {
 			Amount:               *oneSups,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
 			Description:          "Give away for testing",
-			Safe:                 true,
 		}
 		_, _, _, err := api.userCacheMap.Process(tx)
 		if err != nil {
-			api.Log.Err(err).Msg("NO SUPS FOR YOU :p")
+			passlog.PassLog.
+				Err(err).
+				Str("to", tx.To.String()).
+				Str("from", tx.From.String()).
+				Str("amount", tx.Amount.String()).
+				Str("description", tx.Description).
+				Str("transaction_reference", string(tx.TransactionReference)).
+				Msg("NO SUPS FOR YOU :p")
 		}
-
-		// if !tx.From.IsSystemUser() {
-		// 	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.From)), nfb.String())
-		// }
-
-		// if !tx.To.IsSystemUser() {
-		// 	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, tx.To)), ntb.String())
-		// }
-
 	}
 
 	// add online user to our user cache
@@ -135,16 +102,5 @@ func (api *API) ClientAuth(ctx context.Context, client *hub.Client) error {
 	// broadcast user to gamebar
 	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyGamebarUserSubscribe, client.SessionID)), user)
 
-	// broadcast user online status to server clients
-	api.SendToAllServerClient(ctx, &ServerClientMessage{
-		Key: UserOnlineStatus,
-		Payload: struct {
-			UserID passport.UserID `json:"userID"`
-			Status bool            `json:"status"`
-		}{
-			UserID: user.ID,
-			Status: true,
-		},
-	})
 	return nil
 }
