@@ -98,6 +98,10 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 		return terror.Error(fmt.Errorf("asset doesn't exist"))
 	}
 
+	if asset.UserID == nil || *asset.UserID != userID {
+		return terror.Error(terror.ErrForbidden)
+	}
+
 	warMachineMetadata := &passport.WarMachineMetadata{
 		OwnedByID: userID,
 	}
@@ -118,6 +122,7 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 
 	// assign faction id
 	warMachineMetadata.FactionID = *user.FactionID
+	warMachineMetadata.Hash = req.Payload.AssetHash
 
 	var resp struct {
 		Position       *int    `json:"position"`
