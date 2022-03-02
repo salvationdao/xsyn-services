@@ -7,8 +7,11 @@ import (
 
 var PassLog *zerolog.Logger
 
-func New(environment, level string) *zerolog.Logger {
+func New(environment, level string) {
 	GameLog := log_helpers.LoggerInitZero(environment, level)
 	GameLog.Info().Msg("zerolog initialised")
-	return GameLog
+	if PassLog != nil {
+		panic("passlog already initialised")
+	}
+	PassLog = GameLog
 }
