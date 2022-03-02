@@ -69,6 +69,7 @@ func (tc *TransactionCache) commit() {
 }
 
 func (tc *TransactionCache) Process(t *passport.NewTransaction) string {
+
 	if t.Processed {
 		return t.ID
 	}

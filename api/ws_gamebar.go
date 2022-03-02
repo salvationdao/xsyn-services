@@ -10,6 +10,7 @@ import (
 	"os"
 	"passport"
 	"passport/db"
+	"passport/passlog"
 	"time"
 
 	"github.com/ninja-software/log_helpers"
@@ -92,17 +93,25 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 	if os.Getenv("PASSPORT_ENVIRONMENT") == "development" || os.Getenv("PASSPORT_ENVIRONMENT") == "staging" {
 		oneSups := big.NewInt(1000000000000000000)
 		oneSups.Mul(oneSups, big.NewInt(100000))
-		_, _, _, err := gc.API.userCacheMap.Process(&passport.NewTransaction{
+		tx := &passport.NewTransaction{
 			To:                   user.ID,
 			From:                 passport.XsynSaleUserID,
 			Amount:               *oneSups,
 			NotSafe:              true,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
 			Description:          "Give away for testing",
-		})
+		}
+		_, _, _, err := gc.API.userCacheMap.Process(tx)
 
 		if err != nil {
-			gc.API.Log.Err(err).Msg("NO SUPS FOR YOU :p")
+			passlog.PassLog.
+				Err(err).
+				Str("to", tx.To.String()).
+				Str("from", tx.From.String()).
+				Str("amount", tx.Amount.String()).
+				Str("description", tx.Description).
+				Str("transaction_reference", string(tx.TransactionReference)).
+				Msg("NO SUPS FOR YOU :p")
 		}
 	}
 
