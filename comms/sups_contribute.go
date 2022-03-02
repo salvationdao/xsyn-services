@@ -10,6 +10,7 @@ import (
 	"passport/db"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/jackc/pgx/v4"
 
 	"github.com/gofrs/uuid"
@@ -38,8 +39,6 @@ func (c *C) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 		tx.To = passport.SupremacyBattleUserID
 		tx.GroupID = req.GroupID
 	}
-
-	fmt.Println(req.Amount)
 
 	_, _, txID, err := c.UserCacheMap.Process(tx)
 	if err != nil {
@@ -411,6 +410,8 @@ func (c *C) TopSupsContributorHandler(req TopSupsContributorReq, resp *TopSupsCo
 
 	var err error
 
+	spew.Dump(req)
+
 	// get top contribute users
 	resp.TopSupsContributors, err = db.BattleArenaSupsTopContributors(ctx, c.Conn, req.StartTime, req.EndTime)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -422,6 +423,8 @@ func (c *C) TopSupsContributorHandler(req TopSupsContributorReq, resp *TopSupsCo
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return terror.Error(err)
 	}
+
+	spew.Dump(resp)
 
 	return nil
 }

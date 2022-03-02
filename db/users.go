@@ -1293,7 +1293,6 @@ func UserTransactionGetList(ctx context.Context, conn Conn, userID passport.User
 		LIMIT $2`
 	err := pgxscan.Select(ctx, conn, &transactions, q, userID, limit)
 	if err != nil {
-		fmt.Println("err here")
 		return nil, terror.Error(err)
 	}
 
