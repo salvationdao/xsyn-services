@@ -13,6 +13,7 @@ import (
 	"passport/crypto"
 	"passport/db"
 	"passport/helpers"
+	"passport/passlog"
 	"strings"
 	"time"
 
@@ -123,6 +124,7 @@ const HubKeyUserGet hub.HubCommandKey = "USER:GET"
 
 // GetHandler gets the details for a user
 func (uc *UserController) GetHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "GetHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &GetUserRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -172,6 +174,7 @@ type UpdateUserUsernameRequest struct {
 const HubKeyUserUsernameUpdate hub.HubCommandKey = "USER:USERNAME:UPDATE"
 
 func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "UpdateUserUsernameHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &UpdateUserUsernameRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -286,6 +289,7 @@ type UpdateUserRequest struct {
 
 // UpdateHandler updates a user
 func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "UpdateHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &UpdateUserRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -520,6 +524,7 @@ type CreateUserRequest struct {
 
 // CreateHandler creates a user
 func (uc *UserController) CreateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "CreateHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &CreateUserRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -650,6 +655,7 @@ type UserListResponse struct {
 
 // ListHandler lists users with pagination
 func (uc *UserController) ListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "ListHandler").RawJSON("req", payload).Msg("ws handler")
 	errMsg := "Something went wrong, please try again."
 
 	req := &ListHandlerRequest{}
@@ -706,6 +712,7 @@ const (
 
 // ArchiveHandler archives a user
 func (uc *UserController) ArchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "ArchiveHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &UserArchiveRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -740,6 +747,7 @@ func (uc *UserController) ArchiveHandler(ctx context.Context, hubc *hub.Client, 
 
 // UnarchiveHandler unarchives a user
 func (uc *UserController) UnarchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "UnarchiveHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &UserArchiveRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -786,6 +794,7 @@ type UserChangePasswordRequest struct {
 
 // ChangePasswordHandler
 func (uc *UserController) ChangePasswordHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "ChangePasswordHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &UserChangePasswordRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -878,6 +887,7 @@ type UserForceDisconnectRequest struct {
 
 // ForceDisconnectHandler to force disconnect a user and invalidate their tokens
 func (uc *UserController) ForceDisconnectHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "ForceDisconnectHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &UserForceDisconnectRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -933,6 +943,7 @@ const HubKeyUserForceDisconnected hub.HubCommandKey = "USER:FORCE_DISCONNECTED"
 
 // ForceDisconnectedHandler subscribes a user to force disconnected messages
 func (uc *UserController) ForceDisconnectedHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	passlog.PassLog.Info().Str("fn", "ForceDisconnectedHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &ForceDisconnectRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -959,6 +970,7 @@ type HubKeyUserOnlineStatusRequest struct {
 
 // OnlineStatusSubscribeHandler to subscribe to user online status changes
 func (uc *UserController) OnlineStatusSubscribeHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	passlog.PassLog.Info().Str("fn", "OnlineStatusSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &HubKeyUserOnlineStatusRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1014,6 +1026,7 @@ type AddServiceRequest struct {
 const HubKeyUserRemoveFacebook hub.HubCommandKey = "USER:REMOVE_FACEBOOK"
 
 func (uc *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "RemoveFacebookHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1088,6 +1101,7 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hub.C
 const HubKeyUserAddFacebook hub.HubCommandKey = "USER:ADD_FACEBOOK"
 
 func (uc *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "AddFacebookHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &AddServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1165,6 +1179,7 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.Clie
 const HubKeyUserRemoveGoogle hub.HubCommandKey = "USER:REMOVE_GOOGLE"
 
 func (uc *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "RemoveGoogleHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1239,6 +1254,7 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.Cli
 const HubKeyUserAddGoogle hub.HubCommandKey = "USER:ADD_GOOGLE"
 
 func (uc *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "AddGoogleHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &AddServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1313,6 +1329,7 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Client
 const HubKeyUserRemoveTwitch hub.HubCommandKey = "USER:REMOVE_TWITCH"
 
 func (uc *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "RemoveTwitchHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1395,6 +1412,7 @@ type AddTwitchRequest struct {
 }
 
 func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "AddTwitchHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &AddTwitchRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1501,6 +1519,7 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client
 const HubKeyUserRemoveTwitter hub.HubCommandKey = "USER:REMOVE_TWITTER"
 
 func (uc *UserController) RemoveTwitterHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "RemoveTwitterHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1583,6 +1602,7 @@ type AddTwitterRequest struct {
 const HubKeyUserAddTwitter hub.HubCommandKey = "USER:ADD_TWITTER"
 
 func (uc *UserController) AddTwitterHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "AddTwitterHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &AddTwitterRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1690,6 +1710,7 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, hubc *hub.Clien
 const HubKeyUserRemoveDiscord hub.HubCommandKey = "USER:REMOVE_DISCORD"
 
 func (uc *UserController) RemoveDiscordHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "RemoveDiscordHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1772,6 +1793,7 @@ type AddDiscordRequest struct {
 }
 
 func (uc *UserController) AddDiscordHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "AddDiscordHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &AddDiscordRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1903,6 +1925,7 @@ type RemoveWalletRequest struct {
 
 // RemoveWalletHandler removes a linked wallet address
 func (uc *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "RemoveWalletHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &RemoveWalletRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -2005,6 +2028,7 @@ type AddWalletRequest struct {
 
 // AddWalletHandler links a wallet address to a user
 func (uc *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "AddWalletHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &AddWalletRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -2111,6 +2135,7 @@ type UpdatedSubscribeRequest struct {
 }
 
 func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	passlog.PassLog.Info().Str("fn", "UpdatedSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -2147,6 +2172,7 @@ func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, client *h
 const HubKeyUserSupsSubscribe hub.HubCommandKey = "USER:SUPS:SUBSCRIBE"
 
 func (uc *UserController) UserSupsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	passlog.PassLog.Info().Str("fn", "UserSupsUpdatedSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -2171,6 +2197,7 @@ func (uc *UserController) UserSupsUpdatedSubscribeHandler(ctx context.Context, c
 const HubKeyUserSupsMultiplierSubscribe hub.HubCommandKey = "USER:SUPS:MULTIPLIER:SUBSCRIBE"
 
 func (uc *UserController) UserSupsMultiplierUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	passlog.PassLog.Info().Str("fn", "UserSupsMultiplierUpdatedSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -2197,6 +2224,7 @@ func (uc *UserController) UserSupsMultiplierUpdatedSubscribeHandler(ctx context.
 const HubKeyUserStatSubscribe hub.HubCommandKey = "USER:STAT:SUBSCRIBE"
 
 func (uc *UserController) UserStatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	passlog.PassLog.Info().Str("fn", "UserStatUpdatedSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -2236,6 +2264,7 @@ type UserFactionDetail struct {
 const HubKeyUserFactionSubscribe hub.HubCommandKey = "USER:FACTION:SUBSCRIBE"
 
 func (uc *UserController) UserFactionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	passlog.PassLog.Info().Str("fn", "UserFactionUpdatedSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -2279,6 +2308,7 @@ type WarMachineQueuePositionRequest struct {
 const HubKeyWarMachineQueueStatSubscribe hub.HubCommandKey = "WAR:MACHINE:QUEUE:POSITION:SUBSCRIBE"
 
 func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	passlog.PassLog.Info().Str("fn", "WarMachineQueuePositionUpdatedSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	uc.Log.Debug().RawJSON("req", payload).Str("fn", "WarMachineQueuePositionUpdatedSubscribeHandler").Msg("ws handler")
 	req := &WarMachineQueuePositionRequest{}
 	err := json.Unmarshal(payload, req)
@@ -2363,6 +2393,7 @@ func GetUserServiceCount(user *passport.User) int {
 const HubKeySUPSRemainingSubscribe hub.HubCommandKey = "SUPS:TREASURY"
 
 func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	passlog.PassLog.Info().Str("fn", "TotalSupRemainingHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -2381,6 +2412,7 @@ func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, client *
 const HubKeySUPSExchangeRates hub.HubCommandKey = "SUPS:EXCHANGE"
 
 func (uc *UserController) ExchangeRatesHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	passlog.PassLog.Info().Str("fn", "ExchangeRatesHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -2404,6 +2436,7 @@ type BlockConfirmationRequest struct {
 const HubKeyBlockConfirmation hub.HubCommandKey = "BLOCK:CONFIRM"
 
 func (uc *UserController) BlockConfirmationHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	passlog.PassLog.Info().Str("fn", "BlockConfirmationHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &BlockConfirmationRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -2441,6 +2474,7 @@ type CheckAllowedStoreAccessResponse struct {
 const HubKeyCheckCanAccessStore hub.HubCommandKey = "USER:CHECK:CAN_ACCESS_STORE"
 
 func (uc *UserController) CheckCanAccessStore(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "CheckCanAccessStore").RawJSON("req", payload).Msg("ws handler")
 	var WinTokens = []int{1, 2, 3, 4, 5, 6}
 
 	req := &CheckAllowedStoreAccess{}
@@ -2535,6 +2569,7 @@ const HubKeyUserAssetList hub.HubCommandKey = "USER:ASSET:LIST"
 
 // UserAssetListHandler return a list of asset that user own
 func (uc *UserController) UserAssetListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	passlog.PassLog.Info().Str("fn", "UserAssetListHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -2560,6 +2595,7 @@ const HubKeyUserTransactionsSubscribe hub.HubCommandKey = "USER:SUPS:TRANSACTION
 const HubKeyUserLatestTransactionSubscribe hub.HubCommandKey = "USER:SUPS:LATEST_TRANSACTION:SUBSCRIBE"
 
 func (uc *UserController) UserTransactionsSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	passlog.PassLog.Info().Str("fn", "UserTransactionsSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -2578,6 +2614,7 @@ func (uc *UserController) UserTransactionsSubscribeHandler(ctx context.Context, 
 }
 
 func (uc *UserController) UserLatestTransactionsSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	passlog.PassLog.Info().Str("fn", "UserLatestTransactionsSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
