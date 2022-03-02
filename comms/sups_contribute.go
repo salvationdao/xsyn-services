@@ -241,8 +241,10 @@ func (c *C) distributeFund(fundstr string, totalPoints int64, userMap map[int][]
 			usersSups = usersSups.Mul(onePointWorth, big.NewInt(int64(multiplier)))
 
 			// if greater than 2 sups get 2 sups
-			if usersSups.Cmp(big.NewInt(2000000000000000000)) >= 0 {
-				usersSups = big.NewInt(2000000000000000000)
+			cap := big.NewInt(1000000000000000000)
+			cap.Mul(cap, big.NewInt(100))
+			if usersSups.Cmp(cap) >= 0 {
+				usersSups = cap
 			}
 
 			tx := &passport.NewTransaction{
