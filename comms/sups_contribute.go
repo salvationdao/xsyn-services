@@ -364,6 +364,9 @@ func (c *C) TransferBattleFundToSupPoolHandler(req TransferBattleFundToSupPoolRe
 	supsForTreasury := big.NewInt(0)
 	supsForTreasury.Add(supsForTreasury, supsForTrickle)
 	supsForTreasury.Div(supsForTreasury, big.NewInt(10))
+	if supsForTreasury.Cmp(big.NewInt(0)) >= 0 {
+		return nil
+	}
 	tx := &passport.NewTransaction{
 		From:                 passport.SupremacyBattleUserID,
 		To:                   passport.XsynTreasuryUserID,
