@@ -2279,6 +2279,7 @@ type WarMachineQueuePositionRequest struct {
 const HubKeyWarMachineQueueStatSubscribe hub.HubCommandKey = "WAR:MACHINE:QUEUE:POSITION:SUBSCRIBE"
 
 func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	uc.Log.Debug().RawJSON("req", payload).Str("fn", "WarMachineQueuePositionUpdatedSubscribeHandler").Msg("ws handler")
 	req := &WarMachineQueuePositionRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
