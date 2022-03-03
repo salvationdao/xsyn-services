@@ -2567,38 +2567,46 @@ func (uc *UserController) UserAssetListHandler(ctx context.Context, hubc *hub.Cl
 const HubKeyUserTransactionsSubscribe hub.HubCommandKey = "USER:SUPS:TRANSACTIONS:SUBSCRIBE"
 const HubKeyUserLatestTransactionSubscribe hub.HubCommandKey = "USER:SUPS:LATEST_TRANSACTION:SUBSCRIBE"
 
-func (uc *UserController) UserTransactionsSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (uc *UserController) UserTransactionsSubscribeHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+
+	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
+	if userID.IsNil() {
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
 
 	// get users transactions
-	list, err := db.UserTransactionGetList(ctx, uc.Conn, req.Payload.ID, 5)
+	list, err := db.UserTransactionGetList(ctx, uc.Conn, userID, 5)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err, "failed to get transactions")
 	}
 	reply(list)
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserTransactionsSubscribe, req.Payload.ID.String())), nil
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserTransactionsSubscribe, userID.String())), nil
 
 }
 
-func (uc *UserController) UserLatestTransactionsSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (uc *UserController) UserLatestTransactionsSubscribeHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
 
+	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
+	if userID.IsNil() {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+
 	// get transaction
-	list, err := db.UserTransactionGetList(ctx, uc.Conn, req.Payload.ID, 1)
+	list, err := db.UserTransactionGetList(ctx, uc.Conn, userID, 1)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err, "failed to get transactions")
 	}
 	reply(list)
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, req.Payload.ID.String())), nil
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, userID.String())), nil
 
 }

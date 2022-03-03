@@ -35,6 +35,10 @@ func (c *C) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 		Amount:               *amt.BigInt(),
 	}
 
+	if req.NotSafe {
+		tx.NotSafe = true
+	}
+
 	if req.ToUserID != nil {
 		tx.To = *req.ToUserID
 	}
