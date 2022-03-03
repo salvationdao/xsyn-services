@@ -140,7 +140,6 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineQueueStatSubscribe, warMachineMetadata.Hash)), resp)
-
 	reply(true)
 	return nil
 }

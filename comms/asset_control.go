@@ -22,3 +22,19 @@ func (c *C) SupremacyAssetRepairStatUpdateHandler(req AssetRepairStatReq, resp *
 	c.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyAssetRepairStatUpdate, req.AssetRepairRecord.Hash)), req.AssetRepairRecord)
 	return nil
 }
+
+type SupremacyQueueUpdateResp struct {
+}
+type SupremacyQueueUpdateReq struct {
+	Hash           string  `json:"hash"`
+	Position       *int    `json:"position"`
+	ContractReward *string `json:"contractReward"`
+}
+
+func (c *C) SupremacyQueueUpdateHandler(req SupremacyQueueUpdateReq, resp *SupremacyQueueUpdateResp) error {
+	ctx := context.Background()
+
+	// if repair not complete, send current record
+	go c.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyWarMachineQueueStatSubscribe, req.Hash)), req)
+	return nil
+}
