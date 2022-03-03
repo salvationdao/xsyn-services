@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"passport"
 
@@ -32,13 +33,12 @@ func (api *API) GameserverRequest(method string, endpoint string, data interface
 	}
 
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		errObj := &ErrorObject{}
-		err = json.NewDecoder(resp.Body).Decode(errObj)
+		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return terror.Error(err)
+			return terror.Error(err, "Could not fetch contract reward")
 		}
-
-		return terror.Error(fmt.Errorf("%s", errObj.Message), errObj.Message)
+		defer resp.Body.Close()
+		return terror.Error(fmt.Errorf("%s", b), "Could not fetch contract reward")
 	}
 
 	if dist != nil {

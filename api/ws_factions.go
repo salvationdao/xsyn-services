@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/net/html"
 	"net/http"
 	"passport"
 	"passport/db"
 	"passport/helpers"
 	"time"
+
+	"golang.org/x/net/html"
 
 	goaway "github.com/TwiN/go-away"
 
@@ -62,7 +63,7 @@ func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Fa
 	api.SubscribeCommand(HubKeyFactionStatUpdatedSubscribe, factionHub.FactionStatUpdatedSubscribeHandler)
 	api.SubscribeCommand(HubKeyGlobalChatSubscribe, factionHub.GlobalChatUpdatedSubscribeHandler)
 	api.SecureUserSubscribeCommand(HubKeyFactionChatSubscribe, factionHub.FactionChatUpdatedSubscribeHandler)
-	api.SecureUserSubscribeCommand(HubKeyFactionContractRewardSubscribe, factionHub.FactionContractRewardUpdateSubscriber)
+	// api.SecureUserSubscribeCommand(HubKeyFactionContractRewardSubscribe, factionHub.FactionContractRewardUpdateSubscriber)
 
 	return factionHub
 }
@@ -448,7 +449,7 @@ func (fc *FactionController) FactionContractRewardUpdateSubscriber(ctx context.C
 		FactionID: faction.ID,
 	}, &resp)
 	if err != nil {
-		return "", "", terror.Error(err, err.Error())
+		return "", "", terror.Error(err, "There was a problem fetching the reward")
 	}
 
 	reply(resp.ContractReward)
