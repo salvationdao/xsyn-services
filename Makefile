@@ -13,7 +13,7 @@ LOCAL_DEV_DB_USER=$(PACKAGE)
 LOCAL_DEV_DB_PASS=dev
 LOCAL_DEV_DB_TX_USER=$(PACKAGE)_tx
 LOCAL_DEV_DB_TX_PASS=dev-tx
-LOCAL_DEV_DB_HOST=localhost
+LOCAL_DEV_DB_HOST=172.30.112.1
 LOCAL_DEV_DB_PORT=5432
 LOCAL_DEV_DB_DATABASE=$(PACKAGE)
 DB_CONNECTION_STRING="postgres://$(LOCAL_DEV_DB_USER):$(LOCAL_DEV_DB_PASS)@$(LOCAL_DEV_DB_HOST):$(LOCAL_DEV_DB_PORT)/$(LOCAL_DEV_DB_DATABASE)?sslmode=disable"
@@ -105,7 +105,7 @@ docker-setup:
 
 .PHONY: db-setup
 db-setup:
-	psql -U postgres -f init.sql
+	psql -h $(LOCAL_DEV_DB_HOST) -p $(LOCAL_DEV_DB_PORT) -U postgres -f init.sql
 
 
 .PHONY: db-version
@@ -132,6 +132,10 @@ db-migrate-down-one:
 db-migrate-up-one:
 	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations up 1
 
+# make sure `make tools` is done
+.PHONY: db-boiler
+db-boiler:
+	$(BIN)/sqlboiler $(BIN)/sqlboiler-psql --wipe --config sqlboiler.toml
 
 .PHONY: db-seed
 db-seed:

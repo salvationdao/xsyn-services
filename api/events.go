@@ -80,6 +80,7 @@ func (api *API) ClientAuth(ctx context.Context, client *hub.Client) error {
 			Amount:               *oneSups,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
 			Description:          "Give away for testing",
+			Group:                "Testing",
 		}
 		_, _, _, err := api.userCacheMap.Process(tx)
 		if err != nil {

@@ -42,8 +42,11 @@ type SpendSupsReq struct {
 	FromUserID           passport.UserID               `json:"fromUserID"`
 	ToUserID             *passport.UserID              `json:"toUserID,omitempty"`
 	TransactionReference passport.TransactionReference `json:"transactionReference"`
-	GroupID              passport.TransactionGroup     `json:"groupID,omitempty"`
-	NotSafe              bool                          `json:"notSafe"`
+	Group                passport.TransactionGroup     `json:"group,omitempty"`
+	SubGroup             string                        `json:"subGroup"`    //TODO: send battle id
+	Description          string                        `json:"description"` //TODO: send descritpion
+
+	NotSafe bool `json:"notSafe"`
 }
 type SpendSupsResp struct {
 	TXID string `json:"txid"`

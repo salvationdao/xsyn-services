@@ -12,11 +12,17 @@ import (
 	"github.com/sasha-s/go-deadlock"
 )
 
+type IsLocked struct {
+	deadlock.RWMutex
+	isLocked bool
+}
+
 type TransactionCache struct {
 	deadlock.RWMutex
 	conn         *sql.DB
 	log          *zerolog.Logger
 	transactions []*passport.NewTransaction
+	IsLocked     *IsLocked
 }
 
 func NewTransactionCache(conn *sql.DB, log *zerolog.Logger) *TransactionCache {
@@ -25,6 +31,9 @@ func NewTransactionCache(conn *sql.DB, log *zerolog.Logger) *TransactionCache {
 		conn,
 		log,
 		[]*passport.NewTransaction{},
+		&IsLocked{
+			isLocked: false,
+		},
 	}
 
 	ticker := time.NewTicker(10 * time.Second)
@@ -60,7 +69,10 @@ func (tc *TransactionCache) commit() {
 				Str("to", tx.To.String()).
 				Str("txref", string(tx.TransactionReference)).
 				Msg("transaction cache lock")
-			if tx.NotSafe {
+			if !tx.NotSafe {
+				tc.IsLocked.Lock()
+				tc.IsLocked.isLocked = true
+				tc.IsLocked.Unlock()
 				tc.Lock() //grind to a halt if transactions fail to save to database
 			}
 			return
@@ -91,10 +103,10 @@ func (tc *TransactionCache) Process(t *passport.NewTransaction) string {
 
 // CreateTransactionEntry adds an entry to the transaction entry table
 func CreateTransactionEntry(conn *sql.DB, nt *passport.NewTransaction) error {
-	q := `INSERT INTO transactions(id ,description, transaction_reference, amount, credit, debit, group_id , created_at)
-				VALUES($1, $2, $3, $4, $5, $6, $7, $8);`
+	q := `INSERT INTO transactions(id ,description, transaction_reference, amount, credit, debit, "group", sub_group, created_at)
+				VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9);`
 
-	_, err := conn.Exec(q, nt.ID, nt.Description, nt.TransactionReference, nt.Amount.String(), nt.To, nt.From, nt.GroupID, nt.CreatedAt)
+	_, err := conn.Exec(q, nt.ID, nt.Description, nt.TransactionReference, nt.Amount.String(), nt.To, nt.From, nt.Group, nt.SubGroup, nt.CreatedAt)
 	if err != nil {
 		return terror.Error(err)
 	}
