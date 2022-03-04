@@ -5,6 +5,7 @@ import (
 )
 
 func (c *C) GetMechOwner() error {
+
 	return terror.ErrNotImplemented
 }
 
