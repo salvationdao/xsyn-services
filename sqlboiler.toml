@@ -1,4 +1,4 @@
-output = "./server/db/boiler"
+output = "./db/boiler"
 pkgname = "boiler"
 no-context = true
 no-tests = true
