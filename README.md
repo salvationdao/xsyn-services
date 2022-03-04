@@ -58,3 +58,13 @@ PASSPORT_METAMASK_SIGN_MESSAGE
 PASSPORT_TWITCH_CLIENT_ID
 PASSPORT_TWITCH_CLIENT_SECRET
 ```
+
+#### db-boiler
+
+For existing db, migrate up is required, to allow sqlboiler to generate boilers codes
+
+```bash
+make tools
+make db-migrate
+make db-boiler
+```
