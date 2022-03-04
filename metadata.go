@@ -47,6 +47,7 @@ type StoreItem struct {
 	Collection           Collection          `json:"collection" db:"collection"`
 	Description          string              `json:"description" db:"description"`
 	Image                string              `json:"image" db:"image"`
+	ImageAvatar          string              `json:"imageAvatar" db:"image_avatar"`
 	AnimationURL         string              `json:"animation_url" db:"animation_url"`
 	Attributes           []*Attribute        `json:"attributes" db:"attributes"`
 	AdditionalMetadata   *AdditionalMetadata `json:"additionalMetadata" db:"additional_metadata"`
@@ -75,6 +76,7 @@ type XsynMetadata struct {
 	Description        *string               `json:"description,omitempty" db:"description,omitempty"`
 	ExternalUrl        string                `json:"external_url" db:"external_url"`
 	Image              string                `json:"image" db:"image"`
+	ImageAvatar        string                `json:"imageAvatar" db:"image_avatar"`
 	AnimationURL       string                `json:"animation_url" db:"animation_url"`
 	Durability         int                   `json:"durability" db:"durability"`
 	Attributes         []*Attribute          `json:"attributes" db:"attributes"`

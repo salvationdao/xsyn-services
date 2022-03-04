@@ -38,9 +38,9 @@ func XsynMetadataInsert(ctx context.Context, conn Conn, item *passport.XsynMetad
 		return terror.Error(err)
 	}
 
-	q = `	INSERT INTO xsyn_metadata (hash, external_token_id, name, collection_id, game_object, description, image, animation_url, attributes, additional_metadata, external_url)
-			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-			RETURNING hash, external_token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata, external_url`
+	q = `	INSERT INTO xsyn_metadata (hash, external_token_id, name, collection_id, game_object, description, image, animation_url, attributes, additional_metadata, external_url, image_avatar)
+			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			RETURNING hash, external_token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata, external_url, image_avatar`
 
 	err = pgxscan.Get(ctx, conn, item, q,
 		item.Hash,
@@ -53,7 +53,9 @@ func XsynMetadataInsert(ctx context.Context, conn Conn, item *passport.XsynMetad
 		item.AnimationURL,
 		item.Attributes,
 		item.AdditionalMetadata,
-		fmt.Sprintf("%s/asset/%s", externalUrl, item.Hash))
+		fmt.Sprintf("%s/asset/%s", externalUrl, item.Hash),
+		item.ImageAvatar,
+	)
 	if err != nil {
 		return terror.Error(err)
 	}
