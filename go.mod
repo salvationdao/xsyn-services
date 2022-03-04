@@ -55,11 +55,20 @@ require (
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.1-0.20200219035652-afde56e7acac // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
+	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
+	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/philhofer/fwd v1.1.1 // indirect
+	github.com/spf13/afero v1.6.0 // indirect
+	github.com/spf13/cobra v1.2.1 // indirect
+	github.com/spf13/jwalterweatherman v1.1.0 // indirect
+	github.com/spf13/viper v1.9.0 // indirect
+	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/tinylib/msgp v1.1.2 // indirect
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
+	gopkg.in/ini.v1 v1.63.2 // indirect
 )
 
 require (
