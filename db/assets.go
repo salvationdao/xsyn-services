@@ -24,6 +24,7 @@ const (
 	AssetColumnExternalUrl  AssetColumn = "external_url"
 	AssetColumnImage        AssetColumn = "image"
 	AssetColumnAttributes   AssetColumn = "attributes"
+	AssetColumnImageAvatar  AssetColumn = "image_avatar"
 
 	AssetColumnDeletedAt AssetColumn = "deleted_at"
 	AssetColumnUpdatedAt AssetColumn = "updated_at"
@@ -42,6 +43,7 @@ func (ic AssetColumn) IsValid() error {
 		AssetColumnExternalUrl,
 		AssetColumnImage,
 		AssetColumnAttributes,
+		AssetColumnImageAvatar,
 		AssetColumnDeletedAt,
 		AssetColumnUpdatedAt,
 		AssetColumnCreatedAt:
@@ -66,6 +68,7 @@ xsyn_metadata.deleted_at,
 xsyn_metadata.updated_at,
 xsyn_metadata.created_at,
 xsyn_metadata.hash,
+xsyn_metadata.image_avatar,
 xsyn_assets.user_id,
 xsyn_assets.frozen_at,
 xsyn_assets.locked_by_id,

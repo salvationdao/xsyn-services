@@ -28,6 +28,7 @@ const (
 	StoreColumnAmountAvailable    StoreColumn = "amount_available"
 	StoreColumnSoldAfter          StoreColumn = "sold_after"
 	StoreColumnSoldBefore         StoreColumn = "sold_before"
+	StoreColumnImageAvatar        StoreColumn = "image_avatar"
 
 	StoreColumnDeletedAt StoreColumn = "deleted_at"
 	StoreColumnUpdatedAt StoreColumn = "updated_at"
@@ -49,6 +50,7 @@ func (ic StoreColumn) IsValid() error {
 		StoreColumnUsdCentCost,
 		StoreColumnAmountSold,
 		StoreColumnAmountAvailable,
+		StoreColumnImageAvatar,
 		StoreColumnSoldAfter,
 		StoreColumnSoldBefore,
 		StoreColumnDeletedAt,
@@ -77,6 +79,7 @@ xsyn_store.amount_sold,
 xsyn_store.amount_available,
 xsyn_store.sold_after,
 xsyn_store.sold_before,
+xsyn_store.image_avatar,
 xsyn_store.deleted_at,
 xsyn_store.updated_at,
 xsyn_store.created_at
@@ -106,8 +109,9 @@ func AddItemToStore(ctx context.Context, conn Conn, storeObject *passport.StoreI
                                       amount_available,
                                       sold_after,
                                       sold_before,
-									  restriction)
-			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+									  restriction,
+									  image_avatar)
+			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 			RETURNING id`
 
 	_, err := conn.Exec(ctx, q,
@@ -124,6 +128,7 @@ func AddItemToStore(ctx context.Context, conn Conn, storeObject *passport.StoreI
 		storeObject.SoldAfter,
 		storeObject.SoldAfter,
 		storeObject.Restriction,
+		storeObject.ImageAvatar,
 	)
 	if err != nil {
 		return terror.Error(err)

@@ -131,6 +131,7 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 		Image:        storeItem.Image,
 		Attributes:   storeItem.Attributes,
 		AnimationURL: storeItem.AnimationURL,
+		ImageAvatar:  storeItem.ImageAvatar,
 	}
 
 	// create item on metadata table
@@ -298,6 +299,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 		Image:        storeItem.Image,
 		Attributes:   storeItem.Attributes,
 		AnimationURL: storeItem.AnimationURL,
+		ImageAvatar:  storeItem.ImageAvatar,
 	}
 
 	// create item on metadata table
