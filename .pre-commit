@@ -15,7 +15,7 @@ find "${REPO_ROOT}" -path "${REPO_ROOT}/db/boiler" -prune -o -type f -iname '*.g
 # .All() is not sqlboiler
 grep -v '.All()' ${REPO_ROOT}/.check-bad-files > ${REPO_ROOT}/.check-bad-files2
 cp ${REPO_ROOT}/.check-bad-files2 ${REPO_ROOT}/.check-bad-files
-# example file excludsion
+# example file exclusion
 cat ${REPO_ROOT}/.check-bad-files | grep -v 'butter_chicken.go' > ${REPO_ROOT}/.check-bad-files2
 cp ${REPO_ROOT}/.check-bad-files2 ${REPO_ROOT}/.check-bad-files
 
