@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v4/stdlib"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -319,6 +321,35 @@ func pgxconnect(
 	}
 
 	return conn, nil
+}
+
+func sqlConnect(
+	databaseTxUser string,
+	databaseTxPass string,
+	databaseHost string,
+	databasePort string,
+	databaseName string,
+) (*sql.DB, error) {
+	params := url.Values{}
+	params.Add("sslmode", "disable")
+	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
+		databaseTxUser,
+		databaseTxPass,
+		databaseHost,
+		databasePort,
+		databaseName,
+		params.Encode(),
+	)
+	cfg, err := pgx.ParseConfig(connString)
+	if err != nil {
+		return nil, err
+	}
+	conn := stdlib.OpenDB(*cfg)
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+
 }
 
 func txConnect(
@@ -653,11 +684,6 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		return terror.Panic(err)
 	}
 
-	err = passdb.New(pgxconn)
-	if err != nil {
-		return terror.Panic(err)
-	}
-
 	txConn, err := txConnect(
 		databaseTxUser,
 		databaseTxPass,
@@ -669,6 +695,21 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		return terror.Panic(err)
 	}
 
+	sqlConnect, err := sqlConnect(
+		databaseTxUser,
+		databaseTxPass,
+		databaseHost,
+		databasePort,
+		databaseName,
+	)
+
+	err = passdb.New(pgxconn, sqlConnect)
+	if err != nil {
+		return terror.Panic(err)
+	}
+	if err != nil {
+		return terror.Panic(err)
+	}
 	count := 0
 	err = db.IsSchemaDirty(ctx, pgxconn, &count)
 	if err != nil {

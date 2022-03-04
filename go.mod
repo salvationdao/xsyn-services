@@ -54,6 +54,7 @@ require (
 	github.com/DataDog/sketches-go v1.0.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.1-0.20200219035652-afde56e7acac // indirect
+	github.com/ericlagergren/decimal v0.0.0-20181231230500-73749d4874d5 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
@@ -137,7 +138,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.0-20210816181553-5444fa50b93d // indirect
 	github.com/ethereum/go-ethereum v1.10.16
 	github.com/fatih/color v1.13.0 // indirect
-	github.com/friendsofgo/errors v0.9.2 // indirect
+	github.com/friendsofgo/errors v0.9.2
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/goccy/go-json v0.9.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -183,7 +184,7 @@ require (
 	github.com/stretchr/testify v1.7.1-0.20210427113832-6241f9ab9942 // indirect
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/randomize v0.0.1 // indirect
-	github.com/volatiletech/strmangle v0.0.1 // indirect
+	github.com/volatiletech/strmangle v0.0.1
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect

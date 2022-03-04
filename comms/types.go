@@ -6,7 +6,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub"
-	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 type AssetRepairStatReq struct {
@@ -85,77 +85,23 @@ type User struct {
 	ID uuid.UUID
 }
 type GetMechOwnerReq struct {
-	*User
+	Payload types.JSON
 }
 type GetMechOwnerResp struct {
+	Payload types.JSON
 }
-type Mech struct {
-	ID           uuid.UUID
-	Hash         string
-	CollectionID uuid.UUID
-
-	TemplateID uuid.UUID
-	OwnerByID  uuid.UUID
-
-	Brand                 string
-	Model                 string
-	Skin                  string
-	Name                  string
-	AssetType             string
-	MaxStructureHitPoints string
-	MaxShieldHitPoints    string
-	Speed                 string
-	WeaponHardpoints      string
-	TurretHardpoints      string
-	UtilitySlots          string
-	WeaponOne             string
-	WeaponTwo             string
-	TurretOne             string
-	TurretTwo             string
-	UtilityOne            string
-	ShieldRechargeRate    string
-
-	CreatedAt time.Time
-	DeletedAt null.Time
-	UpdatedAt time.Time
+type GetAllMechsReq struct {
 }
 
-type MigrateOnlyGetAllMechsReq struct {
+type GetAll struct {
+	AssetPayload    types.JSON
+	MetadataPayload types.JSON
+	StorePayload    types.JSON
+	UserPayload     types.JSON
 }
 
-type MigrateOnlyGetAllMechsResp struct {
-	Mechs []*Mech
+type GetAllTemplatesReq struct {
 }
-
-type MechTemplate struct {
-	ID           uuid.UUID
-	CollectionID uuid.UUID
-
-	Hash                  string
-	Brand                 string
-	Model                 string
-	Skin                  string
-	Name                  string
-	AssetType             string
-	MaxStructureHitPoints string
-	MaxShieldHitPoints    string
-	Speed                 string
-	WeaponHardpoints      string
-	TurretHardpoints      string
-	UtilitySlots          string
-	WeaponOne             string
-	WeaponTwo             string
-	TurretOne             string
-	TurretTwo             string
-	UtilityOne            string
-	ShieldRechargeRate    string
-
-	CreatedAt time.Time
-	DeletedAt null.Time
-	UpdatedAt time.Time
-}
-type MigrateOnlyGetAllTemplatesReq struct {
-}
-type MigrateOnlyGetAllTemplatesResp struct {
-	MechTemplates []*MechTemplate
+type GetAllTemplatesResp struct {
+	Payload types.JSON
 }

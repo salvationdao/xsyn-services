@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -23,80 +24,260 @@ import (
 
 // User is an object representing the database table.
 type User struct {
-	ID              string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	ViewBattleCount int       `boiler:"view_battle_count" boil:"view_battle_count" json:"viewBattleCount" toml:"viewBattleCount" yaml:"viewBattleCount"`
-	SupsMultipliers null.JSON `boiler:"sups_multipliers" boil:"sups_multipliers" json:"supsMultipliers,omitempty" toml:"supsMultipliers" yaml:"supsMultipliers,omitempty"`
+	ID                               string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Username                         string          `boiler:"username" boil:"username" json:"username" toml:"username" yaml:"username"`
+	RoleID                           null.String     `boiler:"role_id" boil:"role_id" json:"roleID,omitempty" toml:"roleID" yaml:"roleID,omitempty"`
+	AvatarID                         null.String     `boiler:"avatar_id" boil:"avatar_id" json:"avatarID,omitempty" toml:"avatarID" yaml:"avatarID,omitempty"`
+	FacebookID                       null.String     `boiler:"facebook_id" boil:"facebook_id" json:"facebookID,omitempty" toml:"facebookID" yaml:"facebookID,omitempty"`
+	GoogleID                         null.String     `boiler:"google_id" boil:"google_id" json:"googleID,omitempty" toml:"googleID" yaml:"googleID,omitempty"`
+	TwitchID                         null.String     `boiler:"twitch_id" boil:"twitch_id" json:"twitchID,omitempty" toml:"twitchID" yaml:"twitchID,omitempty"`
+	TwitterID                        null.String     `boiler:"twitter_id" boil:"twitter_id" json:"twitterID,omitempty" toml:"twitterID" yaml:"twitterID,omitempty"`
+	DiscordID                        null.String     `boiler:"discord_id" boil:"discord_id" json:"discordID,omitempty" toml:"discordID" yaml:"discordID,omitempty"`
+	FactionID                        null.String     `boiler:"faction_id" boil:"faction_id" json:"factionID,omitempty" toml:"factionID" yaml:"factionID,omitempty"`
+	Email                            null.String     `boiler:"email" boil:"email" json:"email,omitempty" toml:"email" yaml:"email,omitempty"`
+	FirstName                        null.String     `boiler:"first_name" boil:"first_name" json:"firstName,omitempty" toml:"firstName" yaml:"firstName,omitempty"`
+	LastName                         null.String     `boiler:"last_name" boil:"last_name" json:"lastName,omitempty" toml:"lastName" yaml:"lastName,omitempty"`
+	Verified                         bool            `boiler:"verified" boil:"verified" json:"verified" toml:"verified" yaml:"verified"`
+	OldPasswordRequired              bool            `boiler:"old_password_required" boil:"old_password_required" json:"oldPasswordRequired" toml:"oldPasswordRequired" yaml:"oldPasswordRequired"`
+	TwoFactorAuthenticationActivated bool            `boiler:"two_factor_authentication_activated" boil:"two_factor_authentication_activated" json:"twoFactorAuthenticationActivated" toml:"twoFactorAuthenticationActivated" yaml:"twoFactorAuthenticationActivated"`
+	TwoFactorAuthenticationSecret    string          `boiler:"two_factor_authentication_secret" boil:"two_factor_authentication_secret" json:"twoFactorAuthenticationSecret" toml:"twoFactorAuthenticationSecret" yaml:"twoFactorAuthenticationSecret"`
+	TwoFactorAuthenticationIsSet     bool            `boiler:"two_factor_authentication_is_set" boil:"two_factor_authentication_is_set" json:"twoFactorAuthenticationIsSet" toml:"twoFactorAuthenticationIsSet" yaml:"twoFactorAuthenticationIsSet"`
+	Sups                             decimal.Decimal `boiler:"sups" boil:"sups" json:"sups" toml:"sups" yaml:"sups"`
+	PublicAddress                    null.String     `boiler:"public_address" boil:"public_address" json:"publicAddress,omitempty" toml:"publicAddress" yaml:"publicAddress,omitempty"`
+	PrivateAddress                   null.String     `boiler:"private_address" boil:"private_address" json:"privateAddress,omitempty" toml:"privateAddress" yaml:"privateAddress,omitempty"`
+	Nonce                            null.String     `boiler:"nonce" boil:"nonce" json:"nonce,omitempty" toml:"nonce" yaml:"nonce,omitempty"`
+	Keywords                         null.String     `boiler:"keywords" boil:"keywords" json:"keywords,omitempty" toml:"keywords" yaml:"keywords,omitempty"`
+	DeletedAt                        null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
+	UpdatedAt                        time.Time       `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
+	CreatedAt                        time.Time       `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	Metadata                         null.JSON       `boiler:"metadata" boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
 
 	R *userR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var UserColumns = struct {
-	ID              string
-	ViewBattleCount string
-	SupsMultipliers string
+	ID                               string
+	Username                         string
+	RoleID                           string
+	AvatarID                         string
+	FacebookID                       string
+	GoogleID                         string
+	TwitchID                         string
+	TwitterID                        string
+	DiscordID                        string
+	FactionID                        string
+	Email                            string
+	FirstName                        string
+	LastName                         string
+	Verified                         string
+	OldPasswordRequired              string
+	TwoFactorAuthenticationActivated string
+	TwoFactorAuthenticationSecret    string
+	TwoFactorAuthenticationIsSet     string
+	Sups                             string
+	PublicAddress                    string
+	PrivateAddress                   string
+	Nonce                            string
+	Keywords                         string
+	DeletedAt                        string
+	UpdatedAt                        string
+	CreatedAt                        string
+	Metadata                         string
 }{
-	ID:              "id",
-	ViewBattleCount: "view_battle_count",
-	SupsMultipliers: "sups_multipliers",
+	ID:                               "id",
+	Username:                         "username",
+	RoleID:                           "role_id",
+	AvatarID:                         "avatar_id",
+	FacebookID:                       "facebook_id",
+	GoogleID:                         "google_id",
+	TwitchID:                         "twitch_id",
+	TwitterID:                        "twitter_id",
+	DiscordID:                        "discord_id",
+	FactionID:                        "faction_id",
+	Email:                            "email",
+	FirstName:                        "first_name",
+	LastName:                         "last_name",
+	Verified:                         "verified",
+	OldPasswordRequired:              "old_password_required",
+	TwoFactorAuthenticationActivated: "two_factor_authentication_activated",
+	TwoFactorAuthenticationSecret:    "two_factor_authentication_secret",
+	TwoFactorAuthenticationIsSet:     "two_factor_authentication_is_set",
+	Sups:                             "sups",
+	PublicAddress:                    "public_address",
+	PrivateAddress:                   "private_address",
+	Nonce:                            "nonce",
+	Keywords:                         "keywords",
+	DeletedAt:                        "deleted_at",
+	UpdatedAt:                        "updated_at",
+	CreatedAt:                        "created_at",
+	Metadata:                         "metadata",
 }
 
 var UserTableColumns = struct {
-	ID              string
-	ViewBattleCount string
-	SupsMultipliers string
+	ID                               string
+	Username                         string
+	RoleID                           string
+	AvatarID                         string
+	FacebookID                       string
+	GoogleID                         string
+	TwitchID                         string
+	TwitterID                        string
+	DiscordID                        string
+	FactionID                        string
+	Email                            string
+	FirstName                        string
+	LastName                         string
+	Verified                         string
+	OldPasswordRequired              string
+	TwoFactorAuthenticationActivated string
+	TwoFactorAuthenticationSecret    string
+	TwoFactorAuthenticationIsSet     string
+	Sups                             string
+	PublicAddress                    string
+	PrivateAddress                   string
+	Nonce                            string
+	Keywords                         string
+	DeletedAt                        string
+	UpdatedAt                        string
+	CreatedAt                        string
+	Metadata                         string
 }{
-	ID:              "users.id",
-	ViewBattleCount: "users.view_battle_count",
-	SupsMultipliers: "users.sups_multipliers",
+	ID:                               "users.id",
+	Username:                         "users.username",
+	RoleID:                           "users.role_id",
+	AvatarID:                         "users.avatar_id",
+	FacebookID:                       "users.facebook_id",
+	GoogleID:                         "users.google_id",
+	TwitchID:                         "users.twitch_id",
+	TwitterID:                        "users.twitter_id",
+	DiscordID:                        "users.discord_id",
+	FactionID:                        "users.faction_id",
+	Email:                            "users.email",
+	FirstName:                        "users.first_name",
+	LastName:                         "users.last_name",
+	Verified:                         "users.verified",
+	OldPasswordRequired:              "users.old_password_required",
+	TwoFactorAuthenticationActivated: "users.two_factor_authentication_activated",
+	TwoFactorAuthenticationSecret:    "users.two_factor_authentication_secret",
+	TwoFactorAuthenticationIsSet:     "users.two_factor_authentication_is_set",
+	Sups:                             "users.sups",
+	PublicAddress:                    "users.public_address",
+	PrivateAddress:                   "users.private_address",
+	Nonce:                            "users.nonce",
+	Keywords:                         "users.keywords",
+	DeletedAt:                        "users.deleted_at",
+	UpdatedAt:                        "users.updated_at",
+	CreatedAt:                        "users.created_at",
+	Metadata:                         "users.metadata",
 }
 
 // Generated where
 
-type whereHelpernull_JSON struct{ field string }
-
-func (w whereHelpernull_JSON) EQ(x null.JSON) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, false, x)
-}
-func (w whereHelpernull_JSON) NEQ(x null.JSON) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, true, x)
-}
-func (w whereHelpernull_JSON) LT(x null.JSON) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelpernull_JSON) LTE(x null.JSON) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelpernull_JSON) GT(x null.JSON) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelpernull_JSON) GTE(x null.JSON) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
-
-func (w whereHelpernull_JSON) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
-func (w whereHelpernull_JSON) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
-
 var UserWhere = struct {
-	ID              whereHelperstring
-	ViewBattleCount whereHelperint
-	SupsMultipliers whereHelpernull_JSON
+	ID                               whereHelperstring
+	Username                         whereHelperstring
+	RoleID                           whereHelpernull_String
+	AvatarID                         whereHelpernull_String
+	FacebookID                       whereHelpernull_String
+	GoogleID                         whereHelpernull_String
+	TwitchID                         whereHelpernull_String
+	TwitterID                        whereHelpernull_String
+	DiscordID                        whereHelpernull_String
+	FactionID                        whereHelpernull_String
+	Email                            whereHelpernull_String
+	FirstName                        whereHelpernull_String
+	LastName                         whereHelpernull_String
+	Verified                         whereHelperbool
+	OldPasswordRequired              whereHelperbool
+	TwoFactorAuthenticationActivated whereHelperbool
+	TwoFactorAuthenticationSecret    whereHelperstring
+	TwoFactorAuthenticationIsSet     whereHelperbool
+	Sups                             whereHelperdecimal_Decimal
+	PublicAddress                    whereHelpernull_String
+	PrivateAddress                   whereHelpernull_String
+	Nonce                            whereHelpernull_String
+	Keywords                         whereHelpernull_String
+	DeletedAt                        whereHelpernull_Time
+	UpdatedAt                        whereHelpertime_Time
+	CreatedAt                        whereHelpertime_Time
+	Metadata                         whereHelpernull_JSON
 }{
-	ID:              whereHelperstring{field: "\"users\".\"id\""},
-	ViewBattleCount: whereHelperint{field: "\"users\".\"view_battle_count\""},
-	SupsMultipliers: whereHelpernull_JSON{field: "\"users\".\"sups_multipliers\""},
+	ID:                               whereHelperstring{field: "\"users\".\"id\""},
+	Username:                         whereHelperstring{field: "\"users\".\"username\""},
+	RoleID:                           whereHelpernull_String{field: "\"users\".\"role_id\""},
+	AvatarID:                         whereHelpernull_String{field: "\"users\".\"avatar_id\""},
+	FacebookID:                       whereHelpernull_String{field: "\"users\".\"facebook_id\""},
+	GoogleID:                         whereHelpernull_String{field: "\"users\".\"google_id\""},
+	TwitchID:                         whereHelpernull_String{field: "\"users\".\"twitch_id\""},
+	TwitterID:                        whereHelpernull_String{field: "\"users\".\"twitter_id\""},
+	DiscordID:                        whereHelpernull_String{field: "\"users\".\"discord_id\""},
+	FactionID:                        whereHelpernull_String{field: "\"users\".\"faction_id\""},
+	Email:                            whereHelpernull_String{field: "\"users\".\"email\""},
+	FirstName:                        whereHelpernull_String{field: "\"users\".\"first_name\""},
+	LastName:                         whereHelpernull_String{field: "\"users\".\"last_name\""},
+	Verified:                         whereHelperbool{field: "\"users\".\"verified\""},
+	OldPasswordRequired:              whereHelperbool{field: "\"users\".\"old_password_required\""},
+	TwoFactorAuthenticationActivated: whereHelperbool{field: "\"users\".\"two_factor_authentication_activated\""},
+	TwoFactorAuthenticationSecret:    whereHelperstring{field: "\"users\".\"two_factor_authentication_secret\""},
+	TwoFactorAuthenticationIsSet:     whereHelperbool{field: "\"users\".\"two_factor_authentication_is_set\""},
+	Sups:                             whereHelperdecimal_Decimal{field: "\"users\".\"sups\""},
+	PublicAddress:                    whereHelpernull_String{field: "\"users\".\"public_address\""},
+	PrivateAddress:                   whereHelpernull_String{field: "\"users\".\"private_address\""},
+	Nonce:                            whereHelpernull_String{field: "\"users\".\"nonce\""},
+	Keywords:                         whereHelpernull_String{field: "\"users\".\"keywords\""},
+	DeletedAt:                        whereHelpernull_Time{field: "\"users\".\"deleted_at\""},
+	UpdatedAt:                        whereHelpertime_Time{field: "\"users\".\"updated_at\""},
+	CreatedAt:                        whereHelpertime_Time{field: "\"users\".\"created_at\""},
+	Metadata:                         whereHelpernull_JSON{field: "\"users\".\"metadata\""},
 }
 
 // UserRels is where relationship names are stored.
 var UserRels = struct {
-	BattlesUserVotes string
+	Avatar             string
+	Faction            string
+	Role               string
+	PasswordHash       string
+	IssueTokens        string
+	CreditTransactions string
+	DebitTransactions  string
+	UserActivities     string
+	Organisations      string
+	UserRecoveryCodes  string
+	FrozenByXsynAssets string
+	LockedByXsynAssets string
+	XsynAssets         string
 }{
-	BattlesUserVotes: "BattlesUserVotes",
+	Avatar:             "Avatar",
+	Faction:            "Faction",
+	Role:               "Role",
+	PasswordHash:       "PasswordHash",
+	IssueTokens:        "IssueTokens",
+	CreditTransactions: "CreditTransactions",
+	DebitTransactions:  "DebitTransactions",
+	UserActivities:     "UserActivities",
+	Organisations:      "Organisations",
+	UserRecoveryCodes:  "UserRecoveryCodes",
+	FrozenByXsynAssets: "FrozenByXsynAssets",
+	LockedByXsynAssets: "LockedByXsynAssets",
+	XsynAssets:         "XsynAssets",
 }
 
 // userR is where relationships are stored.
 type userR struct {
-	BattlesUserVotes BattlesUserVoteSlice `boiler:"BattlesUserVotes" boil:"BattlesUserVotes" json:"BattlesUserVotes" toml:"BattlesUserVotes" yaml:"BattlesUserVotes"`
+	Avatar             *Blob                 `boiler:"Avatar" boil:"Avatar" json:"Avatar" toml:"Avatar" yaml:"Avatar"`
+	Faction            *Faction              `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	Role               *Role                 `boiler:"Role" boil:"Role" json:"Role" toml:"Role" yaml:"Role"`
+	PasswordHash       *PasswordHash         `boiler:"PasswordHash" boil:"PasswordHash" json:"PasswordHash" toml:"PasswordHash" yaml:"PasswordHash"`
+	IssueTokens        IssueTokenSlice       `boiler:"IssueTokens" boil:"IssueTokens" json:"IssueTokens" toml:"IssueTokens" yaml:"IssueTokens"`
+	CreditTransactions TransactionSlice      `boiler:"CreditTransactions" boil:"CreditTransactions" json:"CreditTransactions" toml:"CreditTransactions" yaml:"CreditTransactions"`
+	DebitTransactions  TransactionSlice      `boiler:"DebitTransactions" boil:"DebitTransactions" json:"DebitTransactions" toml:"DebitTransactions" yaml:"DebitTransactions"`
+	UserActivities     UserActivitySlice     `boiler:"UserActivities" boil:"UserActivities" json:"UserActivities" toml:"UserActivities" yaml:"UserActivities"`
+	Organisations      OrganisationSlice     `boiler:"Organisations" boil:"Organisations" json:"Organisations" toml:"Organisations" yaml:"Organisations"`
+	UserRecoveryCodes  UserRecoveryCodeSlice `boiler:"UserRecoveryCodes" boil:"UserRecoveryCodes" json:"UserRecoveryCodes" toml:"UserRecoveryCodes" yaml:"UserRecoveryCodes"`
+	FrozenByXsynAssets XsynAssetSlice        `boiler:"FrozenByXsynAssets" boil:"FrozenByXsynAssets" json:"FrozenByXsynAssets" toml:"FrozenByXsynAssets" yaml:"FrozenByXsynAssets"`
+	LockedByXsynAssets XsynAssetSlice        `boiler:"LockedByXsynAssets" boil:"LockedByXsynAssets" json:"LockedByXsynAssets" toml:"LockedByXsynAssets" yaml:"LockedByXsynAssets"`
+	XsynAssets         XsynAssetSlice        `boiler:"XsynAssets" boil:"XsynAssets" json:"XsynAssets" toml:"XsynAssets" yaml:"XsynAssets"`
 }
 
 // NewStruct creates a new relationship struct
@@ -108,9 +289,9 @@ func (*userR) NewStruct() *userR {
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"id", "view_battle_count", "sups_multipliers"}
-	userColumnsWithoutDefault = []string{"sups_multipliers"}
-	userColumnsWithDefault    = []string{"id", "view_battle_count"}
+	userAllColumns            = []string{"id", "username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "sups", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata"}
+	userColumnsWithoutDefault = []string{"username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "public_address", "private_address", "nonce", "keywords", "deleted_at"}
+	userColumnsWithDefault    = []string{"id", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "sups", "updated_at", "created_at", "metadata"}
 	userPrimaryKeyColumns     = []string{"id"}
 )
 
@@ -353,30 +534,584 @@ func (q userQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// BattlesUserVotes retrieves all the battles_user_vote's BattlesUserVotes with an executor.
-func (o *User) BattlesUserVotes(mods ...qm.QueryMod) battlesUserVoteQuery {
+// Avatar pointed to by the foreign key.
+func (o *User) Avatar(mods ...qm.QueryMod) blobQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.AvatarID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Blobs(queryMods...)
+	queries.SetFrom(query.Query, "\"blobs\"")
+
+	return query
+}
+
+// Faction pointed to by the foreign key.
+func (o *User) Faction(mods ...qm.QueryMod) factionQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.FactionID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Factions(queryMods...)
+	queries.SetFrom(query.Query, "\"factions\"")
+
+	return query
+}
+
+// Role pointed to by the foreign key.
+func (o *User) Role(mods ...qm.QueryMod) roleQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.RoleID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Roles(queryMods...)
+	queries.SetFrom(query.Query, "\"roles\"")
+
+	return query
+}
+
+// PasswordHash pointed to by the foreign key.
+func (o *User) PasswordHash(mods ...qm.QueryMod) passwordHashQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"user_id\" = ?", o.ID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := PasswordHashes(queryMods...)
+	queries.SetFrom(query.Query, "\"password_hashes\"")
+
+	return query
+}
+
+// IssueTokens retrieves all the issue_token's IssueTokens with an executor.
+func (o *User) IssueTokens(mods ...qm.QueryMod) issueTokenQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"battles_user_votes\".\"user_id\"=?", o.ID),
+		qm.Where("\"issue_tokens\".\"user_id\"=?", o.ID),
 	)
 
-	query := BattlesUserVotes(queryMods...)
-	queries.SetFrom(query.Query, "\"battles_user_votes\"")
+	query := IssueTokens(queryMods...)
+	queries.SetFrom(query.Query, "\"issue_tokens\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"battles_user_votes\".*"})
+		queries.SetSelect(query.Query, []string{"\"issue_tokens\".*"})
 	}
 
 	return query
 }
 
-// LoadBattlesUserVotes allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadBattlesUserVotes(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+// CreditTransactions retrieves all the transaction's Transactions with an executor via credit column.
+func (o *User) CreditTransactions(mods ...qm.QueryMod) transactionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"transactions\".\"credit\"=?", o.ID),
+	)
+
+	query := Transactions(queryMods...)
+	queries.SetFrom(query.Query, "\"transactions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"transactions\".*"})
+	}
+
+	return query
+}
+
+// DebitTransactions retrieves all the transaction's Transactions with an executor via debit column.
+func (o *User) DebitTransactions(mods ...qm.QueryMod) transactionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"transactions\".\"debit\"=?", o.ID),
+	)
+
+	query := Transactions(queryMods...)
+	queries.SetFrom(query.Query, "\"transactions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"transactions\".*"})
+	}
+
+	return query
+}
+
+// UserActivities retrieves all the user_activity's UserActivities with an executor.
+func (o *User) UserActivities(mods ...qm.QueryMod) userActivityQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"user_activities\".\"user_id\"=?", o.ID),
+	)
+
+	query := UserActivities(queryMods...)
+	queries.SetFrom(query.Query, "\"user_activities\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"user_activities\".*"})
+	}
+
+	return query
+}
+
+// Organisations retrieves all the organisation's Organisations with an executor.
+func (o *User) Organisations(mods ...qm.QueryMod) organisationQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.InnerJoin("\"user_organisations\" on \"organisations\".\"id\" = \"user_organisations\".\"organisation_id\""),
+		qm.Where("\"user_organisations\".\"user_id\"=?", o.ID),
+	)
+
+	query := Organisations(queryMods...)
+	queries.SetFrom(query.Query, "\"organisations\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"organisations\".*"})
+	}
+
+	return query
+}
+
+// UserRecoveryCodes retrieves all the user_recovery_code's UserRecoveryCodes with an executor.
+func (o *User) UserRecoveryCodes(mods ...qm.QueryMod) userRecoveryCodeQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"user_recovery_codes\".\"user_id\"=?", o.ID),
+	)
+
+	query := UserRecoveryCodes(queryMods...)
+	queries.SetFrom(query.Query, "\"user_recovery_codes\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"user_recovery_codes\".*"})
+	}
+
+	return query
+}
+
+// FrozenByXsynAssets retrieves all the xsyn_asset's XsynAssets with an executor via frozen_by_id column.
+func (o *User) FrozenByXsynAssets(mods ...qm.QueryMod) xsynAssetQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"xsyn_assets\".\"frozen_by_id\"=?", o.ID),
+	)
+
+	query := XsynAssets(queryMods...)
+	queries.SetFrom(query.Query, "\"xsyn_assets\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"xsyn_assets\".*"})
+	}
+
+	return query
+}
+
+// LockedByXsynAssets retrieves all the xsyn_asset's XsynAssets with an executor via locked_by_id column.
+func (o *User) LockedByXsynAssets(mods ...qm.QueryMod) xsynAssetQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"xsyn_assets\".\"locked_by_id\"=?", o.ID),
+	)
+
+	query := XsynAssets(queryMods...)
+	queries.SetFrom(query.Query, "\"xsyn_assets\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"xsyn_assets\".*"})
+	}
+
+	return query
+}
+
+// XsynAssets retrieves all the xsyn_asset's XsynAssets with an executor.
+func (o *User) XsynAssets(mods ...qm.QueryMod) xsynAssetQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"xsyn_assets\".\"user_id\"=?", o.ID),
+	)
+
+	query := XsynAssets(queryMods...)
+	queries.SetFrom(query.Query, "\"xsyn_assets\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"xsyn_assets\".*"})
+	}
+
+	return query
+}
+
+// LoadAvatar allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (userL) LoadAvatar(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		if !queries.IsNil(object.AvatarID) {
+			args = append(args, object.AvatarID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.AvatarID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.AvatarID) {
+				args = append(args, obj.AvatarID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`blobs`),
+		qm.WhereIn(`blobs.id in ?`, args...),
+		qmhelper.WhereIsNull(`blobs.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Blob")
+	}
+
+	var resultSlice []*Blob
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Blob")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for blobs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blobs")
+	}
+
+	if len(userAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Avatar = foreign
+		if foreign.R == nil {
+			foreign.R = &blobR{}
+		}
+		foreign.R.AvatarUsers = append(foreign.R.AvatarUsers, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.AvatarID, foreign.ID) {
+				local.R.Avatar = foreign
+				if foreign.R == nil {
+					foreign.R = &blobR{}
+				}
+				foreign.R.AvatarUsers = append(foreign.R.AvatarUsers, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadFaction allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (userL) LoadFaction(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		if !queries.IsNil(object.FactionID) {
+			args = append(args, object.FactionID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.FactionID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.FactionID) {
+				args = append(args, obj.FactionID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`factions`),
+		qm.WhereIn(`factions.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Faction")
+	}
+
+	var resultSlice []*Faction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Faction")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for factions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for factions")
+	}
+
+	if len(userAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Faction = foreign
+		if foreign.R == nil {
+			foreign.R = &factionR{}
+		}
+		foreign.R.Users = append(foreign.R.Users, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.FactionID, foreign.ID) {
+				local.R.Faction = foreign
+				if foreign.R == nil {
+					foreign.R = &factionR{}
+				}
+				foreign.R.Users = append(foreign.R.Users, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadRole allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (userL) LoadRole(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		if !queries.IsNil(object.RoleID) {
+			args = append(args, object.RoleID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.RoleID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.RoleID) {
+				args = append(args, obj.RoleID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`roles`),
+		qm.WhereIn(`roles.id in ?`, args...),
+		qmhelper.WhereIsNull(`roles.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Role")
+	}
+
+	var resultSlice []*Role
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Role")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for roles")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for roles")
+	}
+
+	if len(userAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Role = foreign
+		if foreign.R == nil {
+			foreign.R = &roleR{}
+		}
+		foreign.R.Users = append(foreign.R.Users, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.RoleID, foreign.ID) {
+				local.R.Role = foreign
+				if foreign.R == nil {
+					foreign.R = &roleR{}
+				}
+				foreign.R.Users = append(foreign.R.Users, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadPasswordHash allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (userL) LoadPasswordHash(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
 	var slice []*User
 	var object *User
 
@@ -414,8 +1149,9 @@ func (userL) LoadBattlesUserVotes(e boil.Executor, singular bool, maybeUser inte
 	}
 
 	query := NewQuery(
-		qm.From(`battles_user_votes`),
-		qm.WhereIn(`battles_user_votes.user_id in ?`, args...),
+		qm.From(`password_hashes`),
+		qm.WhereIn(`password_hashes.user_id in ?`, args...),
+		qmhelper.WhereIsNull(`password_hashes.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -423,45 +1159,48 @@ func (userL) LoadBattlesUserVotes(e boil.Executor, singular bool, maybeUser inte
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load battles_user_votes")
+		return errors.Wrap(err, "failed to eager load PasswordHash")
 	}
 
-	var resultSlice []*BattlesUserVote
+	var resultSlice []*PasswordHash
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice battles_user_votes")
+		return errors.Wrap(err, "failed to bind eager loaded slice PasswordHash")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on battles_user_votes")
+		return errors.Wrap(err, "failed to close results of eager load for password_hashes")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battles_user_votes")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for password_hashes")
 	}
 
-	if len(battlesUserVoteAfterSelectHooks) != 0 {
+	if len(userAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
 			}
 		}
 	}
-	if singular {
-		object.R.BattlesUserVotes = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &battlesUserVoteR{}
-			}
-			foreign.R.User = object
-		}
+
+	if len(resultSlice) == 0 {
 		return nil
 	}
 
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
+	if singular {
+		foreign := resultSlice[0]
+		object.R.PasswordHash = foreign
+		if foreign.R == nil {
+			foreign.R = &passwordHashR{}
+		}
+		foreign.R.User = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
 			if local.ID == foreign.UserID {
-				local.R.BattlesUserVotes = append(local.R.BattlesUserVotes, foreign)
+				local.R.PasswordHash = foreign
 				if foreign.R == nil {
-					foreign.R = &battlesUserVoteR{}
+					foreign.R = &passwordHashR{}
 				}
 				foreign.R.User = local
 				break
@@ -472,11 +1211,1198 @@ func (userL) LoadBattlesUserVotes(e boil.Executor, singular bool, maybeUser inte
 	return nil
 }
 
-// AddBattlesUserVotes adds the given related objects to the existing relationships
+// LoadIssueTokens allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadIssueTokens(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`issue_tokens`),
+		qm.WhereIn(`issue_tokens.user_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load issue_tokens")
+	}
+
+	var resultSlice []*IssueToken
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice issue_tokens")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on issue_tokens")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for issue_tokens")
+	}
+
+	if len(issueTokenAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.IssueTokens = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &issueTokenR{}
+			}
+			foreign.R.User = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.UserID {
+				local.R.IssueTokens = append(local.R.IssueTokens, foreign)
+				if foreign.R == nil {
+					foreign.R = &issueTokenR{}
+				}
+				foreign.R.User = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadCreditTransactions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadCreditTransactions(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`transactions`),
+		qm.WhereIn(`transactions.credit in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load transactions")
+	}
+
+	var resultSlice []*Transaction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice transactions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on transactions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions")
+	}
+
+	if len(transactionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.CreditTransactions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &transactionR{}
+			}
+			foreign.R.CreditUser = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.Credit {
+				local.R.CreditTransactions = append(local.R.CreditTransactions, foreign)
+				if foreign.R == nil {
+					foreign.R = &transactionR{}
+				}
+				foreign.R.CreditUser = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadDebitTransactions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadDebitTransactions(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`transactions`),
+		qm.WhereIn(`transactions.debit in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load transactions")
+	}
+
+	var resultSlice []*Transaction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice transactions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on transactions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions")
+	}
+
+	if len(transactionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.DebitTransactions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &transactionR{}
+			}
+			foreign.R.DebitUser = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.Debit {
+				local.R.DebitTransactions = append(local.R.DebitTransactions, foreign)
+				if foreign.R == nil {
+					foreign.R = &transactionR{}
+				}
+				foreign.R.DebitUser = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadUserActivities allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadUserActivities(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`user_activities`),
+		qm.WhereIn(`user_activities.user_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load user_activities")
+	}
+
+	var resultSlice []*UserActivity
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice user_activities")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on user_activities")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_activities")
+	}
+
+	if len(userActivityAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.UserActivities = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &userActivityR{}
+			}
+			foreign.R.User = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.UserID {
+				local.R.UserActivities = append(local.R.UserActivities, foreign)
+				if foreign.R == nil {
+					foreign.R = &userActivityR{}
+				}
+				foreign.R.User = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadOrganisations allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadOrganisations(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.Select("\"organisations\".id, \"organisations\".slug, \"organisations\".name, \"organisations\".keywords, \"organisations\".deleted_at, \"organisations\".updated_at, \"organisations\".created_at, \"a\".\"user_id\""),
+		qm.From("\"organisations\""),
+		qm.InnerJoin("\"user_organisations\" as \"a\" on \"organisations\".\"id\" = \"a\".\"organisation_id\""),
+		qm.WhereIn("\"a\".\"user_id\" in ?", args...),
+		qmhelper.WhereIsNull("\"organisations\".\"deleted_at\""),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load organisations")
+	}
+
+	var resultSlice []*Organisation
+
+	var localJoinCols []string
+	for results.Next() {
+		one := new(Organisation)
+		var localJoinCol string
+
+		err = results.Scan(&one.ID, &one.Slug, &one.Name, &one.Keywords, &one.DeletedAt, &one.UpdatedAt, &one.CreatedAt, &localJoinCol)
+		if err != nil {
+			return errors.Wrap(err, "failed to scan eager loaded results for organisations")
+		}
+		if err = results.Err(); err != nil {
+			return errors.Wrap(err, "failed to plebian-bind eager loaded slice organisations")
+		}
+
+		resultSlice = append(resultSlice, one)
+		localJoinCols = append(localJoinCols, localJoinCol)
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on organisations")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for organisations")
+	}
+
+	if len(organisationAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.Organisations = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &organisationR{}
+			}
+			foreign.R.Users = append(foreign.R.Users, object)
+		}
+		return nil
+	}
+
+	for i, foreign := range resultSlice {
+		localJoinCol := localJoinCols[i]
+		for _, local := range slice {
+			if local.ID == localJoinCol {
+				local.R.Organisations = append(local.R.Organisations, foreign)
+				if foreign.R == nil {
+					foreign.R = &organisationR{}
+				}
+				foreign.R.Users = append(foreign.R.Users, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadUserRecoveryCodes allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadUserRecoveryCodes(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`user_recovery_codes`),
+		qm.WhereIn(`user_recovery_codes.user_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load user_recovery_codes")
+	}
+
+	var resultSlice []*UserRecoveryCode
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice user_recovery_codes")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on user_recovery_codes")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_recovery_codes")
+	}
+
+	if len(userRecoveryCodeAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.UserRecoveryCodes = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &userRecoveryCodeR{}
+			}
+			foreign.R.User = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.UserID {
+				local.R.UserRecoveryCodes = append(local.R.UserRecoveryCodes, foreign)
+				if foreign.R == nil {
+					foreign.R = &userRecoveryCodeR{}
+				}
+				foreign.R.User = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadFrozenByXsynAssets allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadFrozenByXsynAssets(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`xsyn_assets`),
+		qm.WhereIn(`xsyn_assets.frozen_by_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load xsyn_assets")
+	}
+
+	var resultSlice []*XsynAsset
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice xsyn_assets")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on xsyn_assets")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for xsyn_assets")
+	}
+
+	if len(xsynAssetAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.FrozenByXsynAssets = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &xsynAssetR{}
+			}
+			foreign.R.FrozenBy = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.FrozenByID) {
+				local.R.FrozenByXsynAssets = append(local.R.FrozenByXsynAssets, foreign)
+				if foreign.R == nil {
+					foreign.R = &xsynAssetR{}
+				}
+				foreign.R.FrozenBy = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadLockedByXsynAssets allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadLockedByXsynAssets(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`xsyn_assets`),
+		qm.WhereIn(`xsyn_assets.locked_by_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load xsyn_assets")
+	}
+
+	var resultSlice []*XsynAsset
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice xsyn_assets")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on xsyn_assets")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for xsyn_assets")
+	}
+
+	if len(xsynAssetAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.LockedByXsynAssets = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &xsynAssetR{}
+			}
+			foreign.R.LockedBy = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.LockedByID) {
+				local.R.LockedByXsynAssets = append(local.R.LockedByXsynAssets, foreign)
+				if foreign.R == nil {
+					foreign.R = &xsynAssetR{}
+				}
+				foreign.R.LockedBy = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadXsynAssets allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadXsynAssets(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`xsyn_assets`),
+		qm.WhereIn(`xsyn_assets.user_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load xsyn_assets")
+	}
+
+	var resultSlice []*XsynAsset
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice xsyn_assets")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on xsyn_assets")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for xsyn_assets")
+	}
+
+	if len(xsynAssetAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.XsynAssets = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &xsynAssetR{}
+			}
+			foreign.R.User = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.UserID {
+				local.R.XsynAssets = append(local.R.XsynAssets, foreign)
+				if foreign.R == nil {
+					foreign.R = &xsynAssetR{}
+				}
+				foreign.R.User = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// SetAvatar of the user to the related item.
+// Sets o.R.Avatar to related.
+// Adds o to related.R.AvatarUsers.
+func (o *User) SetAvatar(exec boil.Executor, insert bool, related *Blob) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"users\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"avatar_id"}),
+		strmangle.WhereClause("\"", "\"", 2, userPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.AvatarID, related.ID)
+	if o.R == nil {
+		o.R = &userR{
+			Avatar: related,
+		}
+	} else {
+		o.R.Avatar = related
+	}
+
+	if related.R == nil {
+		related.R = &blobR{
+			AvatarUsers: UserSlice{o},
+		}
+	} else {
+		related.R.AvatarUsers = append(related.R.AvatarUsers, o)
+	}
+
+	return nil
+}
+
+// RemoveAvatar relationship.
+// Sets o.R.Avatar to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *User) RemoveAvatar(exec boil.Executor, related *Blob) error {
+	var err error
+
+	queries.SetScanner(&o.AvatarID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("avatar_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Avatar = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.AvatarUsers {
+		if queries.Equal(o.AvatarID, ri.AvatarID) {
+			continue
+		}
+
+		ln := len(related.R.AvatarUsers)
+		if ln > 1 && i < ln-1 {
+			related.R.AvatarUsers[i] = related.R.AvatarUsers[ln-1]
+		}
+		related.R.AvatarUsers = related.R.AvatarUsers[:ln-1]
+		break
+	}
+	return nil
+}
+
+// SetFaction of the user to the related item.
+// Sets o.R.Faction to related.
+// Adds o to related.R.Users.
+func (o *User) SetFaction(exec boil.Executor, insert bool, related *Faction) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"users\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
+		strmangle.WhereClause("\"", "\"", 2, userPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.FactionID, related.ID)
+	if o.R == nil {
+		o.R = &userR{
+			Faction: related,
+		}
+	} else {
+		o.R.Faction = related
+	}
+
+	if related.R == nil {
+		related.R = &factionR{
+			Users: UserSlice{o},
+		}
+	} else {
+		related.R.Users = append(related.R.Users, o)
+	}
+
+	return nil
+}
+
+// RemoveFaction relationship.
+// Sets o.R.Faction to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *User) RemoveFaction(exec boil.Executor, related *Faction) error {
+	var err error
+
+	queries.SetScanner(&o.FactionID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("faction_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Faction = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.Users {
+		if queries.Equal(o.FactionID, ri.FactionID) {
+			continue
+		}
+
+		ln := len(related.R.Users)
+		if ln > 1 && i < ln-1 {
+			related.R.Users[i] = related.R.Users[ln-1]
+		}
+		related.R.Users = related.R.Users[:ln-1]
+		break
+	}
+	return nil
+}
+
+// SetRole of the user to the related item.
+// Sets o.R.Role to related.
+// Adds o to related.R.Users.
+func (o *User) SetRole(exec boil.Executor, insert bool, related *Role) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"users\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"role_id"}),
+		strmangle.WhereClause("\"", "\"", 2, userPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.RoleID, related.ID)
+	if o.R == nil {
+		o.R = &userR{
+			Role: related,
+		}
+	} else {
+		o.R.Role = related
+	}
+
+	if related.R == nil {
+		related.R = &roleR{
+			Users: UserSlice{o},
+		}
+	} else {
+		related.R.Users = append(related.R.Users, o)
+	}
+
+	return nil
+}
+
+// RemoveRole relationship.
+// Sets o.R.Role to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *User) RemoveRole(exec boil.Executor, related *Role) error {
+	var err error
+
+	queries.SetScanner(&o.RoleID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("role_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Role = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.Users {
+		if queries.Equal(o.RoleID, ri.RoleID) {
+			continue
+		}
+
+		ln := len(related.R.Users)
+		if ln > 1 && i < ln-1 {
+			related.R.Users[i] = related.R.Users[ln-1]
+		}
+		related.R.Users = related.R.Users[:ln-1]
+		break
+	}
+	return nil
+}
+
+// SetPasswordHash of the user to the related item.
+// Sets o.R.PasswordHash to related.
+// Adds o to related.R.User.
+func (o *User) SetPasswordHash(exec boil.Executor, insert bool, related *PasswordHash) error {
+	var err error
+
+	if insert {
+		related.UserID = o.ID
+
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"password_hashes\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
+			strmangle.WhereClause("\"", "\"", 2, passwordHashPrimaryKeyColumns),
+		)
+		values := []interface{}{o.ID, related.UserID}
+
+		if boil.DebugMode {
+			fmt.Fprintln(boil.DebugWriter, updateQuery)
+			fmt.Fprintln(boil.DebugWriter, values)
+		}
+		if _, err = exec.Exec(updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		related.UserID = o.ID
+
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			PasswordHash: related,
+		}
+	} else {
+		o.R.PasswordHash = related
+	}
+
+	if related.R == nil {
+		related.R = &passwordHashR{
+			User: o,
+		}
+	} else {
+		related.R.User = o
+	}
+	return nil
+}
+
+// AddIssueTokens adds the given related objects to the existing relationships
 // of the user, optionally inserting them as new records.
-// Appends related to o.R.BattlesUserVotes.
+// Appends related to o.R.IssueTokens.
 // Sets related.R.User appropriately.
-func (o *User) AddBattlesUserVotes(exec boil.Executor, insert bool, related ...*BattlesUserVote) error {
+func (o *User) AddIssueTokens(exec boil.Executor, insert bool, related ...*IssueToken) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -486,11 +2412,11 @@ func (o *User) AddBattlesUserVotes(exec boil.Executor, insert bool, related ...*
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"battles_user_votes\" SET %s WHERE %s",
+				"UPDATE \"issue_tokens\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
-				strmangle.WhereClause("\"", "\"", 2, battlesUserVotePrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, issueTokenPrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.BattleID, rel.UserID}
+			values := []interface{}{o.ID, rel.ID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -506,15 +2432,666 @@ func (o *User) AddBattlesUserVotes(exec boil.Executor, insert bool, related ...*
 
 	if o.R == nil {
 		o.R = &userR{
-			BattlesUserVotes: related,
+			IssueTokens: related,
 		}
 	} else {
-		o.R.BattlesUserVotes = append(o.R.BattlesUserVotes, related...)
+		o.R.IssueTokens = append(o.R.IssueTokens, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &battlesUserVoteR{
+			rel.R = &issueTokenR{
+				User: o,
+			}
+		} else {
+			rel.R.User = o
+		}
+	}
+	return nil
+}
+
+// AddCreditTransactions adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.CreditTransactions.
+// Sets related.R.CreditUser appropriately.
+func (o *User) AddCreditTransactions(exec boil.Executor, insert bool, related ...*Transaction) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.Credit = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"transactions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"credit"}),
+				strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.Credit = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			CreditTransactions: related,
+		}
+	} else {
+		o.R.CreditTransactions = append(o.R.CreditTransactions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &transactionR{
+				CreditUser: o,
+			}
+		} else {
+			rel.R.CreditUser = o
+		}
+	}
+	return nil
+}
+
+// AddDebitTransactions adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.DebitTransactions.
+// Sets related.R.DebitUser appropriately.
+func (o *User) AddDebitTransactions(exec boil.Executor, insert bool, related ...*Transaction) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.Debit = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"transactions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"debit"}),
+				strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.Debit = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			DebitTransactions: related,
+		}
+	} else {
+		o.R.DebitTransactions = append(o.R.DebitTransactions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &transactionR{
+				DebitUser: o,
+			}
+		} else {
+			rel.R.DebitUser = o
+		}
+	}
+	return nil
+}
+
+// AddUserActivities adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.UserActivities.
+// Sets related.R.User appropriately.
+func (o *User) AddUserActivities(exec boil.Executor, insert bool, related ...*UserActivity) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.UserID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"user_activities\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
+				strmangle.WhereClause("\"", "\"", 2, userActivityPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.UserID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			UserActivities: related,
+		}
+	} else {
+		o.R.UserActivities = append(o.R.UserActivities, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &userActivityR{
+				User: o,
+			}
+		} else {
+			rel.R.User = o
+		}
+	}
+	return nil
+}
+
+// AddOrganisations adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.Organisations.
+// Sets related.R.Users appropriately.
+func (o *User) AddOrganisations(exec boil.Executor, insert bool, related ...*Organisation) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		}
+	}
+
+	for _, rel := range related {
+		query := "insert into \"user_organisations\" (\"user_id\", \"organisation_id\") values ($1, $2)"
+		values := []interface{}{o.ID, rel.ID}
+
+		if boil.DebugMode {
+			fmt.Fprintln(boil.DebugWriter, query)
+			fmt.Fprintln(boil.DebugWriter, values)
+		}
+		_, err = exec.Exec(query, values...)
+		if err != nil {
+			return errors.Wrap(err, "failed to insert into join table")
+		}
+	}
+	if o.R == nil {
+		o.R = &userR{
+			Organisations: related,
+		}
+	} else {
+		o.R.Organisations = append(o.R.Organisations, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &organisationR{
+				Users: UserSlice{o},
+			}
+		} else {
+			rel.R.Users = append(rel.R.Users, o)
+		}
+	}
+	return nil
+}
+
+// SetOrganisations removes all previously related items of the
+// user replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Users's Organisations accordingly.
+// Replaces o.R.Organisations with related.
+// Sets related.R.Users's Organisations accordingly.
+func (o *User) SetOrganisations(exec boil.Executor, insert bool, related ...*Organisation) error {
+	query := "delete from \"user_organisations\" where \"user_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	removeOrganisationsFromUsersSlice(o, related)
+	if o.R != nil {
+		o.R.Organisations = nil
+	}
+	return o.AddOrganisations(exec, insert, related...)
+}
+
+// RemoveOrganisations relationships from objects passed in.
+// Removes related items from R.Organisations (uses pointer comparison, removal does not keep order)
+// Sets related.R.Users.
+func (o *User) RemoveOrganisations(exec boil.Executor, related ...*Organisation) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	query := fmt.Sprintf(
+		"delete from \"user_organisations\" where \"user_id\" = $1 and \"organisation_id\" in (%s)",
+		strmangle.Placeholders(dialect.UseIndexPlaceholders, len(related), 2, 1),
+	)
+	values := []interface{}{o.ID}
+	for _, rel := range related {
+		values = append(values, rel.ID)
+	}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err = exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+	removeOrganisationsFromUsersSlice(o, related)
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.Organisations {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.Organisations)
+			if ln > 1 && i < ln-1 {
+				o.R.Organisations[i] = o.R.Organisations[ln-1]
+			}
+			o.R.Organisations = o.R.Organisations[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+func removeOrganisationsFromUsersSlice(o *User, related []*Organisation) {
+	for _, rel := range related {
+		if rel.R == nil {
+			continue
+		}
+		for i, ri := range rel.R.Users {
+			if o.ID != ri.ID {
+				continue
+			}
+
+			ln := len(rel.R.Users)
+			if ln > 1 && i < ln-1 {
+				rel.R.Users[i] = rel.R.Users[ln-1]
+			}
+			rel.R.Users = rel.R.Users[:ln-1]
+			break
+		}
+	}
+}
+
+// AddUserRecoveryCodes adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.UserRecoveryCodes.
+// Sets related.R.User appropriately.
+func (o *User) AddUserRecoveryCodes(exec boil.Executor, insert bool, related ...*UserRecoveryCode) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.UserID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"user_recovery_codes\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
+				strmangle.WhereClause("\"", "\"", 2, userRecoveryCodePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.UserID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			UserRecoveryCodes: related,
+		}
+	} else {
+		o.R.UserRecoveryCodes = append(o.R.UserRecoveryCodes, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &userRecoveryCodeR{
+				User: o,
+			}
+		} else {
+			rel.R.User = o
+		}
+	}
+	return nil
+}
+
+// AddFrozenByXsynAssets adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.FrozenByXsynAssets.
+// Sets related.R.FrozenBy appropriately.
+func (o *User) AddFrozenByXsynAssets(exec boil.Executor, insert bool, related ...*XsynAsset) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.FrozenByID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"xsyn_assets\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"frozen_by_id"}),
+				strmangle.WhereClause("\"", "\"", 2, xsynAssetPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.MetadataHash}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.FrozenByID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			FrozenByXsynAssets: related,
+		}
+	} else {
+		o.R.FrozenByXsynAssets = append(o.R.FrozenByXsynAssets, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &xsynAssetR{
+				FrozenBy: o,
+			}
+		} else {
+			rel.R.FrozenBy = o
+		}
+	}
+	return nil
+}
+
+// SetFrozenByXsynAssets removes all previously related items of the
+// user replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.FrozenBy's FrozenByXsynAssets accordingly.
+// Replaces o.R.FrozenByXsynAssets with related.
+// Sets related.R.FrozenBy's FrozenByXsynAssets accordingly.
+func (o *User) SetFrozenByXsynAssets(exec boil.Executor, insert bool, related ...*XsynAsset) error {
+	query := "update \"xsyn_assets\" set \"frozen_by_id\" = null where \"frozen_by_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.FrozenByXsynAssets {
+			queries.SetScanner(&rel.FrozenByID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.FrozenBy = nil
+		}
+
+		o.R.FrozenByXsynAssets = nil
+	}
+	return o.AddFrozenByXsynAssets(exec, insert, related...)
+}
+
+// RemoveFrozenByXsynAssets relationships from objects passed in.
+// Removes related items from R.FrozenByXsynAssets (uses pointer comparison, removal does not keep order)
+// Sets related.R.FrozenBy.
+func (o *User) RemoveFrozenByXsynAssets(exec boil.Executor, related ...*XsynAsset) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.FrozenByID, nil)
+		if rel.R != nil {
+			rel.R.FrozenBy = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("frozen_by_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.FrozenByXsynAssets {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.FrozenByXsynAssets)
+			if ln > 1 && i < ln-1 {
+				o.R.FrozenByXsynAssets[i] = o.R.FrozenByXsynAssets[ln-1]
+			}
+			o.R.FrozenByXsynAssets = o.R.FrozenByXsynAssets[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+// AddLockedByXsynAssets adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.LockedByXsynAssets.
+// Sets related.R.LockedBy appropriately.
+func (o *User) AddLockedByXsynAssets(exec boil.Executor, insert bool, related ...*XsynAsset) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.LockedByID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"xsyn_assets\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"locked_by_id"}),
+				strmangle.WhereClause("\"", "\"", 2, xsynAssetPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.MetadataHash}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.LockedByID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			LockedByXsynAssets: related,
+		}
+	} else {
+		o.R.LockedByXsynAssets = append(o.R.LockedByXsynAssets, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &xsynAssetR{
+				LockedBy: o,
+			}
+		} else {
+			rel.R.LockedBy = o
+		}
+	}
+	return nil
+}
+
+// SetLockedByXsynAssets removes all previously related items of the
+// user replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.LockedBy's LockedByXsynAssets accordingly.
+// Replaces o.R.LockedByXsynAssets with related.
+// Sets related.R.LockedBy's LockedByXsynAssets accordingly.
+func (o *User) SetLockedByXsynAssets(exec boil.Executor, insert bool, related ...*XsynAsset) error {
+	query := "update \"xsyn_assets\" set \"locked_by_id\" = null where \"locked_by_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.LockedByXsynAssets {
+			queries.SetScanner(&rel.LockedByID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.LockedBy = nil
+		}
+
+		o.R.LockedByXsynAssets = nil
+	}
+	return o.AddLockedByXsynAssets(exec, insert, related...)
+}
+
+// RemoveLockedByXsynAssets relationships from objects passed in.
+// Removes related items from R.LockedByXsynAssets (uses pointer comparison, removal does not keep order)
+// Sets related.R.LockedBy.
+func (o *User) RemoveLockedByXsynAssets(exec boil.Executor, related ...*XsynAsset) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.LockedByID, nil)
+		if rel.R != nil {
+			rel.R.LockedBy = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("locked_by_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.LockedByXsynAssets {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.LockedByXsynAssets)
+			if ln > 1 && i < ln-1 {
+				o.R.LockedByXsynAssets[i] = o.R.LockedByXsynAssets[ln-1]
+			}
+			o.R.LockedByXsynAssets = o.R.LockedByXsynAssets[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+// AddXsynAssets adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.XsynAssets.
+// Sets related.R.User appropriately.
+func (o *User) AddXsynAssets(exec boil.Executor, insert bool, related ...*XsynAsset) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.UserID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"xsyn_assets\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
+				strmangle.WhereClause("\"", "\"", 2, xsynAssetPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.MetadataHash}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.UserID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			XsynAssets: related,
+		}
+	} else {
+		o.R.XsynAssets = append(o.R.XsynAssets, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &xsynAssetR{
 				User: o,
 			}
 		} else {
@@ -526,7 +3103,7 @@ func (o *User) AddBattlesUserVotes(exec boil.Executor, insert bool, related ...*
 
 // Users retrieves all the records using an executor.
 func Users(mods ...qm.QueryMod) userQuery {
-	mods = append(mods, qm.From("\"users\""))
+	mods = append(mods, qm.From("\"users\""), qmhelper.WhereIsNull("\"users\".\"deleted_at\""))
 	return userQuery{NewQuery(mods...)}
 }
 
@@ -540,7 +3117,7 @@ func FindUser(exec boil.Executor, iD string, selectCols ...string) (*User, error
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"users\" where \"id\"=$1", sel,
+		"select %s from \"users\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -568,6 +3145,14 @@ func (o *User) Insert(exec boil.Executor, columns boil.Columns) error {
 	}
 
 	var err error
+	currTime := time.Now().In(boil.GetLocation())
+
+	if o.UpdatedAt.IsZero() {
+		o.UpdatedAt = currTime
+	}
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
+	}
 
 	if err := o.doBeforeInsertHooks(exec); err != nil {
 		return err
@@ -642,6 +3227,10 @@ func (o *User) Insert(exec boil.Executor, columns boil.Columns) error {
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
 func (o *User) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+	currTime := time.Now().In(boil.GetLocation())
+
+	o.UpdatedAt = currTime
+
 	var err error
 	if err = o.doBeforeUpdateHooks(exec); err != nil {
 		return 0, err
@@ -770,6 +3359,12 @@ func (o *User) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns
 	if o == nil {
 		return errors.New("boiler: no users provided for upsert")
 	}
+	currTime := time.Now().In(boil.GetLocation())
+
+	o.UpdatedAt = currTime
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
+	}
 
 	if err := o.doBeforeUpsertHooks(exec); err != nil {
 		return err
@@ -880,7 +3475,7 @@ func (o *User) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns
 
 // Delete deletes a single User record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *User) Delete(exec boil.Executor) (int64, error) {
+func (o *User) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no User provided for delete")
 	}
@@ -889,8 +3484,26 @@ func (o *User) Delete(exec boil.Executor) (int64, error) {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), userPrimaryKeyMapping)
-	sql := "DELETE FROM \"users\" WHERE \"id\"=$1"
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), userPrimaryKeyMapping)
+		sql = "DELETE FROM \"users\" WHERE \"id\"=$1"
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		o.DeletedAt = null.TimeFrom(currTime)
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"users\" SET %s WHERE \"id\"=$2",
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		valueMapping, err := queries.BindMapping(userType, userMapping, append(wl, userPrimaryKeyColumns...))
+		if err != nil {
+			return 0, err
+		}
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
+	}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -914,12 +3527,17 @@ func (o *User) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q userQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q userQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no userQuery provided for delete all")
 	}
 
-	queries.SetDelete(q.Query)
+	if hardDelete {
+		queries.SetDelete(q.Query)
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
+	}
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -935,7 +3553,7 @@ func (q userQuery) DeleteAll(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o UserSlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o UserSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -948,14 +3566,31 @@ func (o UserSlice) DeleteAll(exec boil.Executor) (int64, error) {
 		}
 	}
 
-	var args []interface{}
-	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), userPrimaryKeyMapping)
-		args = append(args, pkeyArgs...)
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), userPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+		}
+		sql = "DELETE FROM \"users\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, userPrimaryKeyColumns, len(o))
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), userPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+			obj.DeletedAt = null.TimeFrom(currTime)
+		}
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"users\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, userPrimaryKeyColumns, len(o)),
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		args = append([]interface{}{currTime}, args...)
 	}
-
-	sql := "DELETE FROM \"users\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, userPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1009,7 +3644,8 @@ func (o *UserSlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"users\".* FROM \"users\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, userPrimaryKeyColumns, len(*o))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, userPrimaryKeyColumns, len(*o)) +
+		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
@@ -1026,7 +3662,7 @@ func (o *UserSlice) ReloadAll(exec boil.Executor) error {
 // UserExists checks if the User row exists.
 func UserExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"users\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"users\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)

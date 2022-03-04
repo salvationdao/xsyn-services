@@ -17,57 +17,113 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"
+	"github.com/volatiletech/sqlboiler/v4/types"
 	"github.com/volatiletech/strmangle"
 )
 
 // Faction is an object representing the database table.
 type Faction struct {
-	ID             string `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	VotePrice      string `boiler:"vote_price" boil:"vote_price" json:"votePrice" toml:"votePrice" yaml:"votePrice"`
-	ContractReward string `boiler:"contract_reward" boil:"contract_reward" json:"contractReward" toml:"contractReward" yaml:"contractReward"`
+	ID               string     `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Label            string     `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Theme            types.JSON `boiler:"theme" boil:"theme" json:"theme" toml:"theme" yaml:"theme"`
+	LogoBlobID       string     `boiler:"logo_blob_id" boil:"logo_blob_id" json:"logoBlobID" toml:"logoBlobID" yaml:"logoBlobID"`
+	BackgroundBlobID string     `boiler:"background_blob_id" boil:"background_blob_id" json:"backgroundBlobID" toml:"backgroundBlobID" yaml:"backgroundBlobID"`
+	Description      string     `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
 
 	R *factionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L factionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var FactionColumns = struct {
-	ID             string
-	VotePrice      string
-	ContractReward string
+	ID               string
+	Label            string
+	Theme            string
+	LogoBlobID       string
+	BackgroundBlobID string
+	Description      string
 }{
-	ID:             "id",
-	VotePrice:      "vote_price",
-	ContractReward: "contract_reward",
+	ID:               "id",
+	Label:            "label",
+	Theme:            "theme",
+	LogoBlobID:       "logo_blob_id",
+	BackgroundBlobID: "background_blob_id",
+	Description:      "description",
 }
 
 var FactionTableColumns = struct {
-	ID             string
-	VotePrice      string
-	ContractReward string
+	ID               string
+	Label            string
+	Theme            string
+	LogoBlobID       string
+	BackgroundBlobID string
+	Description      string
 }{
-	ID:             "factions.id",
-	VotePrice:      "factions.vote_price",
-	ContractReward: "factions.contract_reward",
+	ID:               "factions.id",
+	Label:            "factions.label",
+	Theme:            "factions.theme",
+	LogoBlobID:       "factions.logo_blob_id",
+	BackgroundBlobID: "factions.background_blob_id",
+	Description:      "factions.description",
 }
 
 // Generated where
 
+type whereHelpertypes_JSON struct{ field string }
+
+func (w whereHelpertypes_JSON) EQ(x types.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.EQ, x)
+}
+func (w whereHelpertypes_JSON) NEQ(x types.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.NEQ, x)
+}
+func (w whereHelpertypes_JSON) LT(x types.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpertypes_JSON) LTE(x types.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpertypes_JSON) GT(x types.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpertypes_JSON) GTE(x types.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
 var FactionWhere = struct {
-	ID             whereHelperstring
-	VotePrice      whereHelperstring
-	ContractReward whereHelperstring
+	ID               whereHelperstring
+	Label            whereHelperstring
+	Theme            whereHelpertypes_JSON
+	LogoBlobID       whereHelperstring
+	BackgroundBlobID whereHelperstring
+	Description      whereHelperstring
 }{
-	ID:             whereHelperstring{field: "\"factions\".\"id\""},
-	VotePrice:      whereHelperstring{field: "\"factions\".\"vote_price\""},
-	ContractReward: whereHelperstring{field: "\"factions\".\"contract_reward\""},
+	ID:               whereHelperstring{field: "\"factions\".\"id\""},
+	Label:            whereHelperstring{field: "\"factions\".\"label\""},
+	Theme:            whereHelpertypes_JSON{field: "\"factions\".\"theme\""},
+	LogoBlobID:       whereHelperstring{field: "\"factions\".\"logo_blob_id\""},
+	BackgroundBlobID: whereHelperstring{field: "\"factions\".\"background_blob_id\""},
+	Description:      whereHelperstring{field: "\"factions\".\"description\""},
 }
 
 // FactionRels is where relationship names are stored.
 var FactionRels = struct {
-}{}
+	BackgroundBlob string
+	LogoBlob       string
+	Users          string
+	XsynStores     string
+}{
+	BackgroundBlob: "BackgroundBlob",
+	LogoBlob:       "LogoBlob",
+	Users:          "Users",
+	XsynStores:     "XsynStores",
+}
 
 // factionR is where relationships are stored.
 type factionR struct {
+	BackgroundBlob *Blob          `boiler:"BackgroundBlob" boil:"BackgroundBlob" json:"BackgroundBlob" toml:"BackgroundBlob" yaml:"BackgroundBlob"`
+	LogoBlob       *Blob          `boiler:"LogoBlob" boil:"LogoBlob" json:"LogoBlob" toml:"LogoBlob" yaml:"LogoBlob"`
+	Users          UserSlice      `boiler:"Users" boil:"Users" json:"Users" toml:"Users" yaml:"Users"`
+	XsynStores     XsynStoreSlice `boiler:"XsynStores" boil:"XsynStores" json:"XsynStores" toml:"XsynStores" yaml:"XsynStores"`
 }
 
 // NewStruct creates a new relationship struct
@@ -79,9 +135,9 @@ func (*factionR) NewStruct() *factionR {
 type factionL struct{}
 
 var (
-	factionAllColumns            = []string{"id", "vote_price", "contract_reward"}
-	factionColumnsWithoutDefault = []string{}
-	factionColumnsWithDefault    = []string{"id", "vote_price", "contract_reward"}
+	factionAllColumns            = []string{"id", "label", "theme", "logo_blob_id", "background_blob_id", "description"}
+	factionColumnsWithoutDefault = []string{"label", "logo_blob_id", "background_blob_id"}
+	factionColumnsWithDefault    = []string{"id", "theme", "description"}
 	factionPrimaryKeyColumns     = []string{"id"}
 )
 
@@ -322,6 +378,830 @@ func (q factionQuery) Exists(exec boil.Executor) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+// BackgroundBlob pointed to by the foreign key.
+func (o *Faction) BackgroundBlob(mods ...qm.QueryMod) blobQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.BackgroundBlobID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Blobs(queryMods...)
+	queries.SetFrom(query.Query, "\"blobs\"")
+
+	return query
+}
+
+// LogoBlob pointed to by the foreign key.
+func (o *Faction) LogoBlob(mods ...qm.QueryMod) blobQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.LogoBlobID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Blobs(queryMods...)
+	queries.SetFrom(query.Query, "\"blobs\"")
+
+	return query
+}
+
+// Users retrieves all the user's Users with an executor.
+func (o *Faction) Users(mods ...qm.QueryMod) userQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"users\".\"faction_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"users\".\"deleted_at\""),
+	)
+
+	query := Users(queryMods...)
+	queries.SetFrom(query.Query, "\"users\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"users\".*"})
+	}
+
+	return query
+}
+
+// XsynStores retrieves all the xsyn_store's XsynStores with an executor.
+func (o *Faction) XsynStores(mods ...qm.QueryMod) xsynStoreQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"xsyn_store\".\"faction_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"xsyn_store\".\"deleted_at\""),
+	)
+
+	query := XsynStores(queryMods...)
+	queries.SetFrom(query.Query, "\"xsyn_store\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"xsyn_store\".*"})
+	}
+
+	return query
+}
+
+// LoadBackgroundBlob allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (factionL) LoadBackgroundBlob(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
+	var slice []*Faction
+	var object *Faction
+
+	if singular {
+		object = maybeFaction.(*Faction)
+	} else {
+		slice = *maybeFaction.(*[]*Faction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &factionR{}
+		}
+		args = append(args, object.BackgroundBlobID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &factionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.BackgroundBlobID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.BackgroundBlobID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`blobs`),
+		qm.WhereIn(`blobs.id in ?`, args...),
+		qmhelper.WhereIsNull(`blobs.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Blob")
+	}
+
+	var resultSlice []*Blob
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Blob")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for blobs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blobs")
+	}
+
+	if len(factionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.BackgroundBlob = foreign
+		if foreign.R == nil {
+			foreign.R = &blobR{}
+		}
+		foreign.R.BackgroundBlobFactions = append(foreign.R.BackgroundBlobFactions, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.BackgroundBlobID == foreign.ID {
+				local.R.BackgroundBlob = foreign
+				if foreign.R == nil {
+					foreign.R = &blobR{}
+				}
+				foreign.R.BackgroundBlobFactions = append(foreign.R.BackgroundBlobFactions, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadLogoBlob allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (factionL) LoadLogoBlob(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
+	var slice []*Faction
+	var object *Faction
+
+	if singular {
+		object = maybeFaction.(*Faction)
+	} else {
+		slice = *maybeFaction.(*[]*Faction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &factionR{}
+		}
+		args = append(args, object.LogoBlobID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &factionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.LogoBlobID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.LogoBlobID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`blobs`),
+		qm.WhereIn(`blobs.id in ?`, args...),
+		qmhelper.WhereIsNull(`blobs.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Blob")
+	}
+
+	var resultSlice []*Blob
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Blob")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for blobs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blobs")
+	}
+
+	if len(factionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.LogoBlob = foreign
+		if foreign.R == nil {
+			foreign.R = &blobR{}
+		}
+		foreign.R.LogoBlobFactions = append(foreign.R.LogoBlobFactions, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.LogoBlobID == foreign.ID {
+				local.R.LogoBlob = foreign
+				if foreign.R == nil {
+					foreign.R = &blobR{}
+				}
+				foreign.R.LogoBlobFactions = append(foreign.R.LogoBlobFactions, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadUsers allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (factionL) LoadUsers(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
+	var slice []*Faction
+	var object *Faction
+
+	if singular {
+		object = maybeFaction.(*Faction)
+	} else {
+		slice = *maybeFaction.(*[]*Faction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &factionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &factionR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`users`),
+		qm.WhereIn(`users.faction_id in ?`, args...),
+		qmhelper.WhereIsNull(`users.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load users")
+	}
+
+	var resultSlice []*User
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice users")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on users")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for users")
+	}
+
+	if len(userAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.Users = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &userR{}
+			}
+			foreign.R.Faction = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.FactionID) {
+				local.R.Users = append(local.R.Users, foreign)
+				if foreign.R == nil {
+					foreign.R = &userR{}
+				}
+				foreign.R.Faction = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadXsynStores allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (factionL) LoadXsynStores(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
+	var slice []*Faction
+	var object *Faction
+
+	if singular {
+		object = maybeFaction.(*Faction)
+	} else {
+		slice = *maybeFaction.(*[]*Faction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &factionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &factionR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`xsyn_store`),
+		qm.WhereIn(`xsyn_store.faction_id in ?`, args...),
+		qmhelper.WhereIsNull(`xsyn_store.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load xsyn_store")
+	}
+
+	var resultSlice []*XsynStore
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice xsyn_store")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on xsyn_store")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for xsyn_store")
+	}
+
+	if len(xsynStoreAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.XsynStores = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &xsynStoreR{}
+			}
+			foreign.R.Faction = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.FactionID) {
+				local.R.XsynStores = append(local.R.XsynStores, foreign)
+				if foreign.R == nil {
+					foreign.R = &xsynStoreR{}
+				}
+				foreign.R.Faction = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// SetBackgroundBlob of the faction to the related item.
+// Sets o.R.BackgroundBlob to related.
+// Adds o to related.R.BackgroundBlobFactions.
+func (o *Faction) SetBackgroundBlob(exec boil.Executor, insert bool, related *Blob) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"factions\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"background_blob_id"}),
+		strmangle.WhereClause("\"", "\"", 2, factionPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.BackgroundBlobID = related.ID
+	if o.R == nil {
+		o.R = &factionR{
+			BackgroundBlob: related,
+		}
+	} else {
+		o.R.BackgroundBlob = related
+	}
+
+	if related.R == nil {
+		related.R = &blobR{
+			BackgroundBlobFactions: FactionSlice{o},
+		}
+	} else {
+		related.R.BackgroundBlobFactions = append(related.R.BackgroundBlobFactions, o)
+	}
+
+	return nil
+}
+
+// SetLogoBlob of the faction to the related item.
+// Sets o.R.LogoBlob to related.
+// Adds o to related.R.LogoBlobFactions.
+func (o *Faction) SetLogoBlob(exec boil.Executor, insert bool, related *Blob) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"factions\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"logo_blob_id"}),
+		strmangle.WhereClause("\"", "\"", 2, factionPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.LogoBlobID = related.ID
+	if o.R == nil {
+		o.R = &factionR{
+			LogoBlob: related,
+		}
+	} else {
+		o.R.LogoBlob = related
+	}
+
+	if related.R == nil {
+		related.R = &blobR{
+			LogoBlobFactions: FactionSlice{o},
+		}
+	} else {
+		related.R.LogoBlobFactions = append(related.R.LogoBlobFactions, o)
+	}
+
+	return nil
+}
+
+// AddUsers adds the given related objects to the existing relationships
+// of the faction, optionally inserting them as new records.
+// Appends related to o.R.Users.
+// Sets related.R.Faction appropriately.
+func (o *Faction) AddUsers(exec boil.Executor, insert bool, related ...*User) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.FactionID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"users\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
+				strmangle.WhereClause("\"", "\"", 2, userPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.FactionID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &factionR{
+			Users: related,
+		}
+	} else {
+		o.R.Users = append(o.R.Users, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &userR{
+				Faction: o,
+			}
+		} else {
+			rel.R.Faction = o
+		}
+	}
+	return nil
+}
+
+// SetUsers removes all previously related items of the
+// faction replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Faction's Users accordingly.
+// Replaces o.R.Users with related.
+// Sets related.R.Faction's Users accordingly.
+func (o *Faction) SetUsers(exec boil.Executor, insert bool, related ...*User) error {
+	query := "update \"users\" set \"faction_id\" = null where \"faction_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.Users {
+			queries.SetScanner(&rel.FactionID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Faction = nil
+		}
+
+		o.R.Users = nil
+	}
+	return o.AddUsers(exec, insert, related...)
+}
+
+// RemoveUsers relationships from objects passed in.
+// Removes related items from R.Users (uses pointer comparison, removal does not keep order)
+// Sets related.R.Faction.
+func (o *Faction) RemoveUsers(exec boil.Executor, related ...*User) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.FactionID, nil)
+		if rel.R != nil {
+			rel.R.Faction = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("faction_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.Users {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.Users)
+			if ln > 1 && i < ln-1 {
+				o.R.Users[i] = o.R.Users[ln-1]
+			}
+			o.R.Users = o.R.Users[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+// AddXsynStores adds the given related objects to the existing relationships
+// of the faction, optionally inserting them as new records.
+// Appends related to o.R.XsynStores.
+// Sets related.R.Faction appropriately.
+func (o *Faction) AddXsynStores(exec boil.Executor, insert bool, related ...*XsynStore) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.FactionID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"xsyn_store\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
+				strmangle.WhereClause("\"", "\"", 2, xsynStorePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.FactionID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &factionR{
+			XsynStores: related,
+		}
+	} else {
+		o.R.XsynStores = append(o.R.XsynStores, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &xsynStoreR{
+				Faction: o,
+			}
+		} else {
+			rel.R.Faction = o
+		}
+	}
+	return nil
+}
+
+// SetXsynStores removes all previously related items of the
+// faction replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Faction's XsynStores accordingly.
+// Replaces o.R.XsynStores with related.
+// Sets related.R.Faction's XsynStores accordingly.
+func (o *Faction) SetXsynStores(exec boil.Executor, insert bool, related ...*XsynStore) error {
+	query := "update \"xsyn_store\" set \"faction_id\" = null where \"faction_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.XsynStores {
+			queries.SetScanner(&rel.FactionID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Faction = nil
+		}
+
+		o.R.XsynStores = nil
+	}
+	return o.AddXsynStores(exec, insert, related...)
+}
+
+// RemoveXsynStores relationships from objects passed in.
+// Removes related items from R.XsynStores (uses pointer comparison, removal does not keep order)
+// Sets related.R.Faction.
+func (o *Faction) RemoveXsynStores(exec boil.Executor, related ...*XsynStore) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.FactionID, nil)
+		if rel.R != nil {
+			rel.R.Faction = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("faction_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.XsynStores {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.XsynStores)
+			if ln > 1 && i < ln-1 {
+				o.R.XsynStores[i] = o.R.XsynStores[ln-1]
+			}
+			o.R.XsynStores = o.R.XsynStores[:ln-1]
+			break
+		}
+	}
+
+	return nil
 }
 
 // Factions retrieves all the records using an executor.

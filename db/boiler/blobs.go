@@ -31,6 +31,7 @@ type Blob struct {
 	File          []byte      `boiler:"file" boil:"file" json:"file" toml:"file" yaml:"file"`
 	Views         int         `boiler:"views" boil:"views" json:"views" toml:"views" yaml:"views"`
 	Hash          null.String `boiler:"hash" boil:"hash" json:"hash,omitempty" toml:"hash" yaml:"hash,omitempty"`
+	Public        bool        `boiler:"public" boil:"public" json:"public" toml:"public" yaml:"public"`
 	DeletedAt     null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
 	UpdatedAt     time.Time   `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
 	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
@@ -48,6 +49,7 @@ var BlobColumns = struct {
 	File          string
 	Views         string
 	Hash          string
+	Public        string
 	DeletedAt     string
 	UpdatedAt     string
 	CreatedAt     string
@@ -60,6 +62,7 @@ var BlobColumns = struct {
 	File:          "file",
 	Views:         "views",
 	Hash:          "hash",
+	Public:        "public",
 	DeletedAt:     "deleted_at",
 	UpdatedAt:     "updated_at",
 	CreatedAt:     "created_at",
@@ -74,6 +77,7 @@ var BlobTableColumns = struct {
 	File          string
 	Views         string
 	Hash          string
+	Public        string
 	DeletedAt     string
 	UpdatedAt     string
 	CreatedAt     string
@@ -86,12 +90,36 @@ var BlobTableColumns = struct {
 	File:          "blobs.file",
 	Views:         "blobs.views",
 	Hash:          "blobs.hash",
+	Public:        "blobs.public",
 	DeletedAt:     "blobs.deleted_at",
 	UpdatedAt:     "blobs.updated_at",
 	CreatedAt:     "blobs.created_at",
 }
 
 // Generated where
+
+type whereHelperstring struct{ field string }
+
+func (w whereHelperstring) EQ(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
+func (w whereHelperstring) NEQ(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
+func (w whereHelperstring) LT(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
+func (w whereHelperstring) LTE(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
+func (w whereHelperstring) GT(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
+func (w whereHelperstring) GTE(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
+func (w whereHelperstring) IN(slice []string) qm.QueryMod {
+	values := make([]interface{}, 0, len(slice))
+	for _, value := range slice {
+		values = append(values, value)
+	}
+	return qm.WhereIn(fmt.Sprintf("%s IN ?", w.field), values...)
+}
+func (w whereHelperstring) NIN(slice []string) qm.QueryMod {
+	values := make([]interface{}, 0, len(slice))
+	for _, value := range slice {
+		values = append(values, value)
+	}
+	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
+}
 
 type whereHelperint64 struct{ field string }
 
@@ -125,6 +153,107 @@ func (w whereHelper__byte) LTE(x []byte) qm.QueryMod { return qmhelper.Where(w.f
 func (w whereHelper__byte) GT(x []byte) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
 func (w whereHelper__byte) GTE(x []byte) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
 
+type whereHelperint struct{ field string }
+
+func (w whereHelperint) EQ(x int) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
+func (w whereHelperint) NEQ(x int) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
+func (w whereHelperint) LT(x int) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
+func (w whereHelperint) LTE(x int) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
+func (w whereHelperint) GT(x int) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
+func (w whereHelperint) GTE(x int) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
+func (w whereHelperint) IN(slice []int) qm.QueryMod {
+	values := make([]interface{}, 0, len(slice))
+	for _, value := range slice {
+		values = append(values, value)
+	}
+	return qm.WhereIn(fmt.Sprintf("%s IN ?", w.field), values...)
+}
+func (w whereHelperint) NIN(slice []int) qm.QueryMod {
+	values := make([]interface{}, 0, len(slice))
+	for _, value := range slice {
+		values = append(values, value)
+	}
+	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
+}
+
+type whereHelpernull_String struct{ field string }
+
+func (w whereHelpernull_String) EQ(x null.String) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_String) NEQ(x null.String) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_String) LT(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_String) LTE(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_String) GT(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_String) GTE(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelpernull_String) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_String) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
+
+type whereHelperbool struct{ field string }
+
+func (w whereHelperbool) EQ(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
+func (w whereHelperbool) NEQ(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
+func (w whereHelperbool) LT(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
+func (w whereHelperbool) LTE(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
+func (w whereHelperbool) GT(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
+func (w whereHelperbool) GTE(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
+
+type whereHelpernull_Time struct{ field string }
+
+func (w whereHelpernull_Time) EQ(x null.Time) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_Time) NEQ(x null.Time) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_Time) LT(x null.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_Time) LTE(x null.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_Time) GT(x null.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_Time) GTE(x null.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelpernull_Time) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_Time) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
+
+type whereHelpertime_Time struct{ field string }
+
+func (w whereHelpertime_Time) EQ(x time.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.EQ, x)
+}
+func (w whereHelpertime_Time) NEQ(x time.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.NEQ, x)
+}
+func (w whereHelpertime_Time) LT(x time.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpertime_Time) LTE(x time.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpertime_Time) GT(x time.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpertime_Time) GTE(x time.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
 var BlobWhere = struct {
 	ID            whereHelperstring
 	FileName      whereHelperstring
@@ -134,6 +263,7 @@ var BlobWhere = struct {
 	File          whereHelper__byte
 	Views         whereHelperint
 	Hash          whereHelpernull_String
+	Public        whereHelperbool
 	DeletedAt     whereHelpernull_Time
 	UpdatedAt     whereHelpertime_Time
 	CreatedAt     whereHelpertime_Time
@@ -146,6 +276,7 @@ var BlobWhere = struct {
 	File:          whereHelper__byte{field: "\"blobs\".\"file\""},
 	Views:         whereHelperint{field: "\"blobs\".\"views\""},
 	Hash:          whereHelpernull_String{field: "\"blobs\".\"hash\""},
+	Public:        whereHelperbool{field: "\"blobs\".\"public\""},
 	DeletedAt:     whereHelpernull_Time{field: "\"blobs\".\"deleted_at\""},
 	UpdatedAt:     whereHelpertime_Time{field: "\"blobs\".\"updated_at\""},
 	CreatedAt:     whereHelpertime_Time{field: "\"blobs\".\"created_at\""},
@@ -153,10 +284,26 @@ var BlobWhere = struct {
 
 // BlobRels is where relationship names are stored.
 var BlobRels = struct {
-}{}
+	LogoBlobCollections    string
+	BackgroundBlobFactions string
+	LogoBlobFactions       string
+	ImageProducts          string
+	AvatarUsers            string
+}{
+	LogoBlobCollections:    "LogoBlobCollections",
+	BackgroundBlobFactions: "BackgroundBlobFactions",
+	LogoBlobFactions:       "LogoBlobFactions",
+	ImageProducts:          "ImageProducts",
+	AvatarUsers:            "AvatarUsers",
+}
 
 // blobR is where relationships are stored.
 type blobR struct {
+	LogoBlobCollections    CollectionSlice `boiler:"LogoBlobCollections" boil:"LogoBlobCollections" json:"LogoBlobCollections" toml:"LogoBlobCollections" yaml:"LogoBlobCollections"`
+	BackgroundBlobFactions FactionSlice    `boiler:"BackgroundBlobFactions" boil:"BackgroundBlobFactions" json:"BackgroundBlobFactions" toml:"BackgroundBlobFactions" yaml:"BackgroundBlobFactions"`
+	LogoBlobFactions       FactionSlice    `boiler:"LogoBlobFactions" boil:"LogoBlobFactions" json:"LogoBlobFactions" toml:"LogoBlobFactions" yaml:"LogoBlobFactions"`
+	ImageProducts          ProductSlice    `boiler:"ImageProducts" boil:"ImageProducts" json:"ImageProducts" toml:"ImageProducts" yaml:"ImageProducts"`
+	AvatarUsers            UserSlice       `boiler:"AvatarUsers" boil:"AvatarUsers" json:"AvatarUsers" toml:"AvatarUsers" yaml:"AvatarUsers"`
 }
 
 // NewStruct creates a new relationship struct
@@ -168,9 +315,9 @@ func (*blobR) NewStruct() *blobR {
 type blobL struct{}
 
 var (
-	blobAllColumns            = []string{"id", "file_name", "mime_type", "file_size_bytes", "extension", "file", "views", "hash", "deleted_at", "updated_at", "created_at"}
+	blobAllColumns            = []string{"id", "file_name", "mime_type", "file_size_bytes", "extension", "file", "views", "hash", "public", "deleted_at", "updated_at", "created_at"}
 	blobColumnsWithoutDefault = []string{"file_name", "mime_type", "file_size_bytes", "extension", "file", "hash", "deleted_at"}
-	blobColumnsWithDefault    = []string{"id", "views", "updated_at", "created_at"}
+	blobColumnsWithDefault    = []string{"id", "views", "public", "updated_at", "created_at"}
 	blobPrimaryKeyColumns     = []string{"id"}
 )
 
@@ -413,9 +560,1089 @@ func (q blobQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// LogoBlobCollections retrieves all the collection's Collections with an executor via logo_blob_id column.
+func (o *Blob) LogoBlobCollections(mods ...qm.QueryMod) collectionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"collections\".\"logo_blob_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"collections\".\"deleted_at\""),
+	)
+
+	query := Collections(queryMods...)
+	queries.SetFrom(query.Query, "\"collections\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"collections\".*"})
+	}
+
+	return query
+}
+
+// BackgroundBlobFactions retrieves all the faction's Factions with an executor via background_blob_id column.
+func (o *Blob) BackgroundBlobFactions(mods ...qm.QueryMod) factionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"factions\".\"background_blob_id\"=?", o.ID),
+	)
+
+	query := Factions(queryMods...)
+	queries.SetFrom(query.Query, "\"factions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"factions\".*"})
+	}
+
+	return query
+}
+
+// LogoBlobFactions retrieves all the faction's Factions with an executor via logo_blob_id column.
+func (o *Blob) LogoBlobFactions(mods ...qm.QueryMod) factionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"factions\".\"logo_blob_id\"=?", o.ID),
+	)
+
+	query := Factions(queryMods...)
+	queries.SetFrom(query.Query, "\"factions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"factions\".*"})
+	}
+
+	return query
+}
+
+// ImageProducts retrieves all the product's Products with an executor via image_id column.
+func (o *Blob) ImageProducts(mods ...qm.QueryMod) productQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"products\".\"image_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"products\".\"deleted_at\""),
+	)
+
+	query := Products(queryMods...)
+	queries.SetFrom(query.Query, "\"products\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"products\".*"})
+	}
+
+	return query
+}
+
+// AvatarUsers retrieves all the user's Users with an executor via avatar_id column.
+func (o *Blob) AvatarUsers(mods ...qm.QueryMod) userQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"users\".\"avatar_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"users\".\"deleted_at\""),
+	)
+
+	query := Users(queryMods...)
+	queries.SetFrom(query.Query, "\"users\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"users\".*"})
+	}
+
+	return query
+}
+
+// LoadLogoBlobCollections allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blobL) LoadLogoBlobCollections(e boil.Executor, singular bool, maybeBlob interface{}, mods queries.Applicator) error {
+	var slice []*Blob
+	var object *Blob
+
+	if singular {
+		object = maybeBlob.(*Blob)
+	} else {
+		slice = *maybeBlob.(*[]*Blob)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blobR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blobR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`collections`),
+		qm.WhereIn(`collections.logo_blob_id in ?`, args...),
+		qmhelper.WhereIsNull(`collections.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load collections")
+	}
+
+	var resultSlice []*Collection
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice collections")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on collections")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for collections")
+	}
+
+	if len(collectionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.LogoBlobCollections = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &collectionR{}
+			}
+			foreign.R.LogoBlob = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.LogoBlobID) {
+				local.R.LogoBlobCollections = append(local.R.LogoBlobCollections, foreign)
+				if foreign.R == nil {
+					foreign.R = &collectionR{}
+				}
+				foreign.R.LogoBlob = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadBackgroundBlobFactions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blobL) LoadBackgroundBlobFactions(e boil.Executor, singular bool, maybeBlob interface{}, mods queries.Applicator) error {
+	var slice []*Blob
+	var object *Blob
+
+	if singular {
+		object = maybeBlob.(*Blob)
+	} else {
+		slice = *maybeBlob.(*[]*Blob)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blobR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blobR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`factions`),
+		qm.WhereIn(`factions.background_blob_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load factions")
+	}
+
+	var resultSlice []*Faction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice factions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on factions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for factions")
+	}
+
+	if len(factionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BackgroundBlobFactions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &factionR{}
+			}
+			foreign.R.BackgroundBlob = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.BackgroundBlobID {
+				local.R.BackgroundBlobFactions = append(local.R.BackgroundBlobFactions, foreign)
+				if foreign.R == nil {
+					foreign.R = &factionR{}
+				}
+				foreign.R.BackgroundBlob = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadLogoBlobFactions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blobL) LoadLogoBlobFactions(e boil.Executor, singular bool, maybeBlob interface{}, mods queries.Applicator) error {
+	var slice []*Blob
+	var object *Blob
+
+	if singular {
+		object = maybeBlob.(*Blob)
+	} else {
+		slice = *maybeBlob.(*[]*Blob)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blobR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blobR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`factions`),
+		qm.WhereIn(`factions.logo_blob_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load factions")
+	}
+
+	var resultSlice []*Faction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice factions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on factions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for factions")
+	}
+
+	if len(factionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.LogoBlobFactions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &factionR{}
+			}
+			foreign.R.LogoBlob = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.LogoBlobID {
+				local.R.LogoBlobFactions = append(local.R.LogoBlobFactions, foreign)
+				if foreign.R == nil {
+					foreign.R = &factionR{}
+				}
+				foreign.R.LogoBlob = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadImageProducts allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blobL) LoadImageProducts(e boil.Executor, singular bool, maybeBlob interface{}, mods queries.Applicator) error {
+	var slice []*Blob
+	var object *Blob
+
+	if singular {
+		object = maybeBlob.(*Blob)
+	} else {
+		slice = *maybeBlob.(*[]*Blob)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blobR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blobR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`products`),
+		qm.WhereIn(`products.image_id in ?`, args...),
+		qmhelper.WhereIsNull(`products.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load products")
+	}
+
+	var resultSlice []*Product
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice products")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on products")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for products")
+	}
+
+	if len(productAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.ImageProducts = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &productR{}
+			}
+			foreign.R.Image = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.ImageID) {
+				local.R.ImageProducts = append(local.R.ImageProducts, foreign)
+				if foreign.R == nil {
+					foreign.R = &productR{}
+				}
+				foreign.R.Image = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadAvatarUsers allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blobL) LoadAvatarUsers(e boil.Executor, singular bool, maybeBlob interface{}, mods queries.Applicator) error {
+	var slice []*Blob
+	var object *Blob
+
+	if singular {
+		object = maybeBlob.(*Blob)
+	} else {
+		slice = *maybeBlob.(*[]*Blob)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blobR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blobR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`users`),
+		qm.WhereIn(`users.avatar_id in ?`, args...),
+		qmhelper.WhereIsNull(`users.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load users")
+	}
+
+	var resultSlice []*User
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice users")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on users")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for users")
+	}
+
+	if len(userAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.AvatarUsers = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &userR{}
+			}
+			foreign.R.Avatar = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.AvatarID) {
+				local.R.AvatarUsers = append(local.R.AvatarUsers, foreign)
+				if foreign.R == nil {
+					foreign.R = &userR{}
+				}
+				foreign.R.Avatar = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// AddLogoBlobCollections adds the given related objects to the existing relationships
+// of the blob, optionally inserting them as new records.
+// Appends related to o.R.LogoBlobCollections.
+// Sets related.R.LogoBlob appropriately.
+func (o *Blob) AddLogoBlobCollections(exec boil.Executor, insert bool, related ...*Collection) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.LogoBlobID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"collections\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"logo_blob_id"}),
+				strmangle.WhereClause("\"", "\"", 2, collectionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.LogoBlobID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blobR{
+			LogoBlobCollections: related,
+		}
+	} else {
+		o.R.LogoBlobCollections = append(o.R.LogoBlobCollections, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &collectionR{
+				LogoBlob: o,
+			}
+		} else {
+			rel.R.LogoBlob = o
+		}
+	}
+	return nil
+}
+
+// SetLogoBlobCollections removes all previously related items of the
+// blob replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.LogoBlob's LogoBlobCollections accordingly.
+// Replaces o.R.LogoBlobCollections with related.
+// Sets related.R.LogoBlob's LogoBlobCollections accordingly.
+func (o *Blob) SetLogoBlobCollections(exec boil.Executor, insert bool, related ...*Collection) error {
+	query := "update \"collections\" set \"logo_blob_id\" = null where \"logo_blob_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.LogoBlobCollections {
+			queries.SetScanner(&rel.LogoBlobID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.LogoBlob = nil
+		}
+
+		o.R.LogoBlobCollections = nil
+	}
+	return o.AddLogoBlobCollections(exec, insert, related...)
+}
+
+// RemoveLogoBlobCollections relationships from objects passed in.
+// Removes related items from R.LogoBlobCollections (uses pointer comparison, removal does not keep order)
+// Sets related.R.LogoBlob.
+func (o *Blob) RemoveLogoBlobCollections(exec boil.Executor, related ...*Collection) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.LogoBlobID, nil)
+		if rel.R != nil {
+			rel.R.LogoBlob = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("logo_blob_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.LogoBlobCollections {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.LogoBlobCollections)
+			if ln > 1 && i < ln-1 {
+				o.R.LogoBlobCollections[i] = o.R.LogoBlobCollections[ln-1]
+			}
+			o.R.LogoBlobCollections = o.R.LogoBlobCollections[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+// AddBackgroundBlobFactions adds the given related objects to the existing relationships
+// of the blob, optionally inserting them as new records.
+// Appends related to o.R.BackgroundBlobFactions.
+// Sets related.R.BackgroundBlob appropriately.
+func (o *Blob) AddBackgroundBlobFactions(exec boil.Executor, insert bool, related ...*Faction) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.BackgroundBlobID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"factions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"background_blob_id"}),
+				strmangle.WhereClause("\"", "\"", 2, factionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.BackgroundBlobID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blobR{
+			BackgroundBlobFactions: related,
+		}
+	} else {
+		o.R.BackgroundBlobFactions = append(o.R.BackgroundBlobFactions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &factionR{
+				BackgroundBlob: o,
+			}
+		} else {
+			rel.R.BackgroundBlob = o
+		}
+	}
+	return nil
+}
+
+// AddLogoBlobFactions adds the given related objects to the existing relationships
+// of the blob, optionally inserting them as new records.
+// Appends related to o.R.LogoBlobFactions.
+// Sets related.R.LogoBlob appropriately.
+func (o *Blob) AddLogoBlobFactions(exec boil.Executor, insert bool, related ...*Faction) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.LogoBlobID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"factions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"logo_blob_id"}),
+				strmangle.WhereClause("\"", "\"", 2, factionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.LogoBlobID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blobR{
+			LogoBlobFactions: related,
+		}
+	} else {
+		o.R.LogoBlobFactions = append(o.R.LogoBlobFactions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &factionR{
+				LogoBlob: o,
+			}
+		} else {
+			rel.R.LogoBlob = o
+		}
+	}
+	return nil
+}
+
+// AddImageProducts adds the given related objects to the existing relationships
+// of the blob, optionally inserting them as new records.
+// Appends related to o.R.ImageProducts.
+// Sets related.R.Image appropriately.
+func (o *Blob) AddImageProducts(exec boil.Executor, insert bool, related ...*Product) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.ImageID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"products\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"image_id"}),
+				strmangle.WhereClause("\"", "\"", 2, productPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.ImageID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blobR{
+			ImageProducts: related,
+		}
+	} else {
+		o.R.ImageProducts = append(o.R.ImageProducts, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &productR{
+				Image: o,
+			}
+		} else {
+			rel.R.Image = o
+		}
+	}
+	return nil
+}
+
+// SetImageProducts removes all previously related items of the
+// blob replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Image's ImageProducts accordingly.
+// Replaces o.R.ImageProducts with related.
+// Sets related.R.Image's ImageProducts accordingly.
+func (o *Blob) SetImageProducts(exec boil.Executor, insert bool, related ...*Product) error {
+	query := "update \"products\" set \"image_id\" = null where \"image_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.ImageProducts {
+			queries.SetScanner(&rel.ImageID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Image = nil
+		}
+
+		o.R.ImageProducts = nil
+	}
+	return o.AddImageProducts(exec, insert, related...)
+}
+
+// RemoveImageProducts relationships from objects passed in.
+// Removes related items from R.ImageProducts (uses pointer comparison, removal does not keep order)
+// Sets related.R.Image.
+func (o *Blob) RemoveImageProducts(exec boil.Executor, related ...*Product) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.ImageID, nil)
+		if rel.R != nil {
+			rel.R.Image = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("image_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.ImageProducts {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.ImageProducts)
+			if ln > 1 && i < ln-1 {
+				o.R.ImageProducts[i] = o.R.ImageProducts[ln-1]
+			}
+			o.R.ImageProducts = o.R.ImageProducts[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+// AddAvatarUsers adds the given related objects to the existing relationships
+// of the blob, optionally inserting them as new records.
+// Appends related to o.R.AvatarUsers.
+// Sets related.R.Avatar appropriately.
+func (o *Blob) AddAvatarUsers(exec boil.Executor, insert bool, related ...*User) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.AvatarID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"users\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"avatar_id"}),
+				strmangle.WhereClause("\"", "\"", 2, userPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.AvatarID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blobR{
+			AvatarUsers: related,
+		}
+	} else {
+		o.R.AvatarUsers = append(o.R.AvatarUsers, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &userR{
+				Avatar: o,
+			}
+		} else {
+			rel.R.Avatar = o
+		}
+	}
+	return nil
+}
+
+// SetAvatarUsers removes all previously related items of the
+// blob replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Avatar's AvatarUsers accordingly.
+// Replaces o.R.AvatarUsers with related.
+// Sets related.R.Avatar's AvatarUsers accordingly.
+func (o *Blob) SetAvatarUsers(exec boil.Executor, insert bool, related ...*User) error {
+	query := "update \"users\" set \"avatar_id\" = null where \"avatar_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.AvatarUsers {
+			queries.SetScanner(&rel.AvatarID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Avatar = nil
+		}
+
+		o.R.AvatarUsers = nil
+	}
+	return o.AddAvatarUsers(exec, insert, related...)
+}
+
+// RemoveAvatarUsers relationships from objects passed in.
+// Removes related items from R.AvatarUsers (uses pointer comparison, removal does not keep order)
+// Sets related.R.Avatar.
+func (o *Blob) RemoveAvatarUsers(exec boil.Executor, related ...*User) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.AvatarID, nil)
+		if rel.R != nil {
+			rel.R.Avatar = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("avatar_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.AvatarUsers {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.AvatarUsers)
+			if ln > 1 && i < ln-1 {
+				o.R.AvatarUsers[i] = o.R.AvatarUsers[ln-1]
+			}
+			o.R.AvatarUsers = o.R.AvatarUsers[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
 // Blobs retrieves all the records using an executor.
 func Blobs(mods ...qm.QueryMod) blobQuery {
-	mods = append(mods, qm.From("\"blobs\""))
+	mods = append(mods, qm.From("\"blobs\""), qmhelper.WhereIsNull("\"blobs\".\"deleted_at\""))
 	return blobQuery{NewQuery(mods...)}
 }
 
@@ -429,7 +1656,7 @@ func FindBlob(exec boil.Executor, iD string, selectCols ...string) (*Blob, error
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"blobs\" where \"id\"=$1", sel,
+		"select %s from \"blobs\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -787,7 +2014,7 @@ func (o *Blob) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns
 
 // Delete deletes a single Blob record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *Blob) Delete(exec boil.Executor) (int64, error) {
+func (o *Blob) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no Blob provided for delete")
 	}
@@ -796,8 +2023,26 @@ func (o *Blob) Delete(exec boil.Executor) (int64, error) {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), blobPrimaryKeyMapping)
-	sql := "DELETE FROM \"blobs\" WHERE \"id\"=$1"
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), blobPrimaryKeyMapping)
+		sql = "DELETE FROM \"blobs\" WHERE \"id\"=$1"
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		o.DeletedAt = null.TimeFrom(currTime)
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"blobs\" SET %s WHERE \"id\"=$2",
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		valueMapping, err := queries.BindMapping(blobType, blobMapping, append(wl, blobPrimaryKeyColumns...))
+		if err != nil {
+			return 0, err
+		}
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
+	}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -821,12 +2066,17 @@ func (o *Blob) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q blobQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q blobQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no blobQuery provided for delete all")
 	}
 
-	queries.SetDelete(q.Query)
+	if hardDelete {
+		queries.SetDelete(q.Query)
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
+	}
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -842,7 +2092,7 @@ func (q blobQuery) DeleteAll(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o BlobSlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o BlobSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -855,14 +2105,31 @@ func (o BlobSlice) DeleteAll(exec boil.Executor) (int64, error) {
 		}
 	}
 
-	var args []interface{}
-	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blobPrimaryKeyMapping)
-		args = append(args, pkeyArgs...)
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blobPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+		}
+		sql = "DELETE FROM \"blobs\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blobPrimaryKeyColumns, len(o))
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blobPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+			obj.DeletedAt = null.TimeFrom(currTime)
+		}
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"blobs\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, blobPrimaryKeyColumns, len(o)),
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		args = append([]interface{}{currTime}, args...)
 	}
-
-	sql := "DELETE FROM \"blobs\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blobPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -916,7 +2183,8 @@ func (o *BlobSlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"blobs\".* FROM \"blobs\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blobPrimaryKeyColumns, len(*o))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blobPrimaryKeyColumns, len(*o)) +
+		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
@@ -933,7 +2201,7 @@ func (o *BlobSlice) ReloadAll(exec boil.Executor) error {
 // BlobExists checks if the Blob row exists.
 func BlobExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"blobs\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"blobs\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)

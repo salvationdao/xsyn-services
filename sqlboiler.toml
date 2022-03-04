@@ -2,19 +2,19 @@ output = "./db/boiler"
 pkgname = "boiler"
 no-context = true
 no-tests = true
-# add-soft-deletes = true
+add-soft-deletes = true
 struct-tag-casing = "camel"
 wipe = true
 tag = ["boiler"]
 
 [psql]
-  dbname = "gameserver"
+  dbname = "passport"
   host   = "localhost"
   port   = 5432
-  user   = "postgres"
+  user   = "passport"
   pass   = "dev"
   schema = "public"
-  blacklist = ["migrations", "other"]
+  blacklist = ["migrations", "other", "state"]
   sslmode = "disable"
 
 # example for join table, so have correct singular/plural
