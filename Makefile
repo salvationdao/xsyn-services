@@ -24,8 +24,13 @@ GITBRANCH=`git rev-parse --abbrev-ref HEAD`
 GITHASH=`git rev-parse HEAD`
 BUILDDATE=`date -u +%Y%m%d%H%M%S`
 GITSTATE=`git status --porcelain | wc -l`
+REPO_ROOT=`git rev-parse --show-toplevel`
 
 # Make Commands
+.PHONY: setup-git
+setup-git:
+	ln -s ${REPO_ROOT}/.pre-commit ${REPO_ROOT}/.git/hooks/pre-commit
+
 .PHONY: clean
 clean:
 	rm -rf deploy

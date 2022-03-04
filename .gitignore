@@ -146,3 +146,4 @@ tmp/*
 cmd/platform/passport-server
 deploy/
 .vscode/settings.json
+.check-bad-files
