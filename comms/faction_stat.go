@@ -106,6 +106,7 @@ func (c *C) SupremacyFactionContractRewardUpdateHandler(req FactionContractRewar
 type RedeemFactionContractRewardReq struct {
 	UserID               passport.UserID               `json:"userID"`
 	FactionID            passport.FactionID            `json:"factionID"`
+	BattleID             string                        `json:"battleID"`
 	Amount               string                        `json:"amount"`
 	TransactionReference passport.TransactionReference `json:"transactionReference"`
 }
@@ -129,6 +130,9 @@ func (c *C) SupremacyRedeemFactionContractRewardHandler(req RedeemFactionContrac
 		To:                   req.UserID,
 		TransactionReference: req.TransactionReference,
 		Amount:               *amount,
+		Description:          "Contract Reward",
+		Group:                passport.TransactionGroupBattle,
+		SubGroup:             req.BattleID,
 	}
 
 	switch req.FactionID {

@@ -100,6 +100,7 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 			NotSafe:              true,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
 			Description:          "Give away for testing",
+			Group:                "Testing",
 		}
 		_, _, _, err := gc.API.userCacheMap.Process(tx)
 

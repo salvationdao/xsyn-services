@@ -75,12 +75,13 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 		Amount:               *priceAsSupsBigInt,
 		TransactionReference: passport.TransactionReference(txRef),
 		Description:          "Purchase on Supremacy storefront.",
-		GroupID:              passport.TransactionGroupStore,
+		Group:                passport.TransactionGroupStore,
+		SubGroup:             "Purchase",
 	}
 
 	nfb, ntb, _, err := ucmProcess(trans)
 	if err != nil {
-		return terror.Error(err, "failed to process user sups")
+		return terror.Error(err)
 	}
 
 	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
@@ -94,11 +95,13 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 			Amount:               *priceAsSupsBigInt,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
 			Description:          "Refund of purchase on Supremacy storefront.",
+			Group:                passport.TransactionGroupStore,
+			SubGroup:             "Refund",
 		}
 
 		nfb, ntb, _, err := ucmProcess(trans)
 		if err != nil {
-			log.Err(errors.New("failed to process user sups"))
+			log.Err(err).Msg("failed to process refund")
 			return
 		}
 
@@ -234,7 +237,8 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 		Amount:               price,
 		TransactionReference: passport.TransactionReference(txRef),
 		Description:          "Mystery crate purchase.",
-		GroupID:              passport.TransactionGroupStore,
+		Group:                passport.TransactionGroupStore,
+		SubGroup:             "Purchase",
 	}
 
 	// process user cache map
@@ -259,11 +263,13 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 			Amount:               price,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
 			Description:          "Refund of purchase on Supremacy storefront.",
+			Group:                passport.TransactionGroupStore,
+			SubGroup:             "Refund",
 		}
 
 		nfb, ntb, _, err := ucmProcess(trans)
 		if err != nil {
-			log.Err(errors.New("failed to process user sups"))
+			log.Err(err).Msg("failed to process refund")
 			return
 		}
 

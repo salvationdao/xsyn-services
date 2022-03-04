@@ -33,6 +33,8 @@ func (c *C) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 		To:                   passport.SupremacyGameUserID,
 		TransactionReference: req.TransactionReference,
 		Amount:               *amt.BigInt(),
+		Group:                req.Group,
+		SubGroup:             req.SubGroup,
 	}
 
 	if req.NotSafe {
@@ -43,9 +45,8 @@ func (c *C) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 		tx.To = *req.ToUserID
 	}
 
-	if req.GroupID != "" {
+	if req.Group == "Battle" {
 		tx.To = passport.SupremacyBattleUserID
-		tx.GroupID = req.GroupID
 	}
 
 	_, _, txID, err := c.UserCacheMap.Process(tx)
@@ -260,6 +261,9 @@ func (c *C) distributeFund(fundstr string, totalPoints int64, userMap map[int][]
 				To:                   user,
 				Amount:               *usersSups,
 				TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|ticker|%s|%s", user, time.Now())),
+				Description:          "Ticker earnings.",
+				Group:                passport.TransactionGroupSupremacy,
+				SubGroup:             "Ticker",
 			}
 
 			_, _, _, err := c.UserCacheMap.Process(tx)

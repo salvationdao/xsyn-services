@@ -43,6 +43,12 @@ func NewUserCacheMap(conn *pgxpool.Pool, tc *TransactionCache, msgBus *messagebu
 var TransactionFailed = "TRANSACTION_FAILED"
 
 func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.Int, string, error) {
+	ucm.TransactionCache.IsLocked.RLock()
+	if ucm.TransactionCache.IsLocked.isLocked {
+		ucm.TransactionCache.IsLocked.RUnlock()
+		return nil, nil, TransactionFailed, terror.Error(fmt.Errorf("transactions are locked"), "Unable to process payment, please contact support.")
+	}
+	ucm.TransactionCache.IsLocked.RUnlock()
 	if nt.Amount.Cmp(big.NewInt(0)) < 1 {
 		return nil, nil, TransactionFailed, terror.Error(fmt.Errorf("amount should be a positive number: %s", nt.Amount.String()), "Amount should be greater than zero")
 	}
@@ -78,10 +84,10 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 	ucm.Store(nt.From.String(), *newFromBalance)
 	ucm.Store(nt.To.String(), *newToBalance)
 
-	transactonID := ucm.TransactionCache.Process(nt)
+	transactionID := ucm.TransactionCache.Process(nt)
 
 	tx := &passport.Transaction{
-		ID:     transactonID,
+		ID:     transactionID,
 		Credit: nt.To,
 		Debit:  nt.From,
 		Amount: passport.BigInt{
@@ -90,7 +96,8 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 		TransactionReference: string(nt.TransactionReference),
 		Description:          nt.Description,
 		CreatedAt:            nt.CreatedAt,
-		GroupID:              nt.GroupID,
+		Group:                nt.Group,
+		SubGroup:             nt.SubGroup,
 	}
 
 	ctx := context.Background()
@@ -103,7 +110,7 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 		go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, nt.To)), newToBalance.String())
 	}
 
-	return newFromBalance, newToBalance, transactonID, nil
+	return newFromBalance, newToBalance, transactionID, nil
 }
 
 func (ucm *UserCacheMap) Get(id string) (big.Int, error) {

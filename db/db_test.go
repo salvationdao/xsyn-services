@@ -13,6 +13,7 @@ import (
 	"os"
 	"passport"
 	"passport/db"
+	"strconv"
 	"testing"
 	"time"
 
@@ -218,8 +219,11 @@ func BenchmarkTransactions(b *testing.B) {
 						From:                 offChainUser.ID,
 						To:                   randUser1.ID,
 						Amount:               *amountToTransfer,
-						NotSafe: true,
+						NotSafe:              true,
 						TransactionReference: passport.TransactionReference(fmt.Sprintf("%d:%d", outI, inI)),
+						Description:          "benchmark",
+						Group:                "benchmark",
+						SubGroup:             strconv.Itoa(outI),
 					}
 				}
 			}(outI)
