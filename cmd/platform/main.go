@@ -10,6 +10,7 @@ import (
 	"passport/db"
 	"passport/email"
 	"passport/helpers"
+	"passport/passdb"
 	"passport/passlog"
 	"passport/payments"
 	"passport/seed"
@@ -648,6 +649,11 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		databaseAppName,
 		Version,
 	)
+	if err != nil {
+		return terror.Panic(err)
+	}
+
+	err = passdb.New(pgxconn)
 	if err != nil {
 		return terror.Panic(err)
 	}
