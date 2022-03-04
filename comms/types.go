@@ -4,7 +4,9 @@ import (
 	"passport"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub"
+	"github.com/volatiletech/null/v8"
 )
 
 type AssetRepairStatReq struct {
@@ -74,4 +76,83 @@ type TopSupsContributorReq struct {
 type TopSupsContributorResp struct {
 	TopSupsContributors       []*passport.User    `json:"topSupsContributors"`
 	TopSupsContributeFactions []*passport.Faction `json:"topSupsContributeFactions"`
+}
+
+type User struct {
+	ID uuid.UUID
+}
+type GetMechOwnerReq struct {
+	*User
+}
+type GetMechOwnerResp struct {
+}
+type Mech struct {
+	ID           uuid.UUID
+	Hash         string
+	CollectionID uuid.UUID
+
+	TemplateID uuid.UUID
+	OwnerByID  uuid.UUID
+
+	Brand                 string
+	Model                 string
+	Skin                  string
+	Name                  string
+	AssetType             string
+	MaxStructureHitPoints string
+	MaxShieldHitPoints    string
+	Speed                 string
+	WeaponHardpoints      string
+	TurretHardpoints      string
+	UtilitySlots          string
+	WeaponOne             string
+	WeaponTwo             string
+	TurretOne             string
+	TurretTwo             string
+	UtilityOne            string
+	ShieldRechargeRate    string
+
+	CreatedAt time.Time
+	DeletedAt null.Time
+	UpdatedAt time.Time
+}
+
+type MigrateOnlyGetAllMechsReq struct {
+}
+
+type MigrateOnlyGetAllMechsResp struct {
+	Mechs []*Mech
+}
+
+type MechTemplate struct {
+	ID           uuid.UUID
+	CollectionID uuid.UUID
+
+	Hash                  string
+	Brand                 string
+	Model                 string
+	Skin                  string
+	Name                  string
+	AssetType             string
+	MaxStructureHitPoints string
+	MaxShieldHitPoints    string
+	Speed                 string
+	WeaponHardpoints      string
+	TurretHardpoints      string
+	UtilitySlots          string
+	WeaponOne             string
+	WeaponTwo             string
+	TurretOne             string
+	TurretTwo             string
+	UtilityOne            string
+	ShieldRechargeRate    string
+
+	CreatedAt time.Time
+	DeletedAt null.Time
+	UpdatedAt time.Time
+}
+type MigrateOnlyGetAllTemplatesReq struct {
+}
+type MigrateOnlyGetAllTemplatesResp struct {
+	MechTemplates []*MechTemplate
 }
