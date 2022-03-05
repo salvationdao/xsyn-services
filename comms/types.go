@@ -98,6 +98,7 @@ type GetAll struct {
 	MetadataPayload types.JSON
 	StorePayload    types.JSON
 	UserPayload     types.JSON
+	FactionPayload  types.JSON
 }
 
 type GetAllTemplatesReq struct {

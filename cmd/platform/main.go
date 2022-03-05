@@ -696,13 +696,15 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	}
 
 	sqlConnect, err := sqlConnect(
-		databaseTxUser,
-		databaseTxPass,
+		databaseUser,
+		databasePass,
 		databaseHost,
 		databasePort,
 		databaseName,
 	)
-
+	if err != nil {
+		return terror.Panic(err)
+	}
 	err = passdb.New(pgxconn, sqlConnect)
 	if err != nil {
 		return terror.Panic(err)
