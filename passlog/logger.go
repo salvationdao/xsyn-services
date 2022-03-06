@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var PassLog *zerolog.Logger
+var L *zerolog.Logger
 
 func New(environment, level string) {
 	log := log_helpers.LoggerInitZero(environment, level)
@@ -18,8 +18,8 @@ func New(environment, level string) {
 
 	}
 	log.Info().Msg("zerolog initialised")
-	if PassLog != nil {
+	if L != nil {
 		panic("passlog already initialised")
 	}
-	PassLog = log
+	L = log
 }

@@ -105,7 +105,7 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 		_, _, _, err := gc.API.userCacheMap.Process(tx)
 
 		if err != nil {
-			passlog.PassLog.
+			passlog.L.
 				Err(err).
 				Str("to", tx.To.String()).
 				Str("from", tx.From.String()).
@@ -131,7 +131,7 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 	}
 
 	if !resp.IsSuccess {
-		return terror.Error(fmt.Errorf("Failed to pass ring check"))
+		return terror.Error(errors.New("failed to pass ring check"))
 	}
 
 	reply(true)

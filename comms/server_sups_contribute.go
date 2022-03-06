@@ -18,7 +18,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-func (c *C) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) error {
+func (c *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) error {
 	amt, err := decimal.NewFromString(req.Amount)
 	if err != nil {
 		return err
@@ -71,7 +71,7 @@ func (c *C) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 	return nil
 }
 
-func (c *C) ReleaseTransactionsHandler(req ReleaseTransactionsReq, resp *ReleaseTransactionsResp) error {
+func (c *S) ReleaseTransactionsHandler(req ReleaseTransactionsReq, resp *ReleaseTransactionsResp) error {
 	c.Txs.TxMx.Lock()
 	defer c.Txs.TxMx.Unlock()
 	for _, txID := range req.TxIDs {
@@ -92,7 +92,7 @@ func (c *C) ReleaseTransactionsHandler(req ReleaseTransactionsReq, resp *Release
 	return nil
 }
 
-func (c *C) supremacyFeed() {
+func (c *S) supremacyFeed() {
 	fund := big.NewInt(0)
 	fund, ok := fund.SetString("500000000000000000", 10)
 	if !ok {
@@ -115,7 +115,7 @@ func (c *C) supremacyFeed() {
 	}
 }
 
-func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
+func (c *S) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 	// make treasury send game server user moneys
 	// Turn off the supremacy feed for now
 	c.supremacyFeed()
@@ -225,7 +225,7 @@ func (c *C) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 	return nil
 }
 
-func (c *C) distributeFund(fundstr string, totalPoints int64, userMap map[int][]passport.UserID) {
+func (c *S) distributeFund(fundstr string, totalPoints int64, userMap map[int][]passport.UserID) {
 	copiedFund := big.NewInt(0)
 	copiedFund, ok := copiedFund.SetString(fundstr, 10)
 	if !ok {
@@ -277,7 +277,7 @@ func (c *C) distributeFund(fundstr string, totalPoints int64, userMap map[int][]
 	}
 }
 
-func (c *C) SupremacyGetSpoilOfWarHandler(req GetSpoilOfWarReq, resp *GetSpoilOfWarResp) error {
+func (c *S) SupremacyGetSpoilOfWarHandler(req GetSpoilOfWarReq, resp *GetSpoilOfWarResp) error {
 	// get current sup pool user sups
 	supsPoolUser, err := c.UserCacheMap.Get(passport.SupremacySupPoolUserID.String())
 	if err != nil {
@@ -297,7 +297,7 @@ func (c *C) SupremacyGetSpoilOfWarHandler(req GetSpoilOfWarReq, resp *GetSpoilOf
 	return nil
 }
 
-func (c *C) UserSupsMultiplierSendHandler(req UserSupsMultiplierSendReq, resp *UserSupsMultiplierSendResp) error {
+func (c *S) UserSupsMultiplierSendHandler(req UserSupsMultiplierSendReq, resp *UserSupsMultiplierSendResp) error {
 	ctx := context.Background()
 	for _, usm := range req.UserSupsMultiplierSends {
 		// broadcast to specific hub client if session id is provided
@@ -314,7 +314,7 @@ func (c *C) UserSupsMultiplierSendHandler(req UserSupsMultiplierSendReq, resp *U
 	return nil
 }
 
-func (c *C) TransferBattleFundToSupPoolHandler(req TransferBattleFundToSupPoolReq, resp *TransferBattleFundToSupPoolResp) error {
+func (c *S) TransferBattleFundToSupPoolHandler(req TransferBattleFundToSupPoolReq, resp *TransferBattleFundToSupPoolResp) error {
 	ctx := context.Background()
 	// recalculate faction mvp user
 	err := db.FactionMvpMaterialisedViewRefresh(ctx, c.Conn)
@@ -382,7 +382,7 @@ func (c *C) TransferBattleFundToSupPoolHandler(req TransferBattleFundToSupPoolRe
 }
 
 // trickle factory
-func (c *C) newSupsTrickle(key string, totalTick int, supsPerTick *big.Int) {
+func (c *S) newSupsTrickle(key string, totalTick int, supsPerTick *big.Int) {
 	i := 0
 	for {
 		i++
@@ -419,7 +419,7 @@ func (c *C) newSupsTrickle(key string, totalTick int, supsPerTick *big.Int) {
 	}
 }
 
-func (c *C) TopSupsContributorHandler(req TopSupsContributorReq, resp *TopSupsContributorResp) error {
+func (c *S) TopSupsContributorHandler(req TopSupsContributorReq, resp *TopSupsContributorResp) error {
 	ctx := context.Background()
 
 	var err error

@@ -3,7 +3,9 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"net/http"
 	"net/url"
+	"os/signal"
 	"passport"
 	"passport/api"
 	"passport/comms"
@@ -13,6 +15,7 @@ import (
 	"passport/passdb"
 	"passport/passlog"
 	"passport/payments"
+	"passport/rpcclient"
 	"passport/seed"
 	"strings"
 	"time"
@@ -194,7 +197,7 @@ func main() {
 					// Listen for os.interrupt
 					g.Add(run.SignalHandler(ctx, os.Interrupt))
 					// start the server
-					g.Add(func() error { return ServeFunc(c, ctx, log) }, func(err error) { cancel() })
+					g.Add(func() error { return ServeFunc(c, log) }, func(err error) { cancel() })
 
 					err := g.Run()
 					if errors.Is(err, run.SignalError{Signal: os.Interrupt}) {
@@ -202,6 +205,23 @@ func main() {
 					}
 					log_helpers.TerrorEcho(ctx, err, log)
 					return nil
+				},
+			},
+			{
+				Name:    "supermigrate",
+				Aliases: []string{"sm"},
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "database_user", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
+					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{"PASSPORT_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
+					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{"PASSPORT_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
+					&cli.StringFlag{Name: "database_port", Value: "5432", EnvVars: []string{"PASSPORT_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
+					&cli.StringFlag{Name: "database_name", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
+					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{"PASSPORT_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+					&cli.StringFlag{Name: "gameserver_web_host_url", Value: "http://localhost:8084", EnvVars: []string{"GAMESERVER_HOST_URL"}, Usage: "The host for the gameserver, to allow it to connect"},
+				},
+				Usage: "sync items over from gameserver",
+				Action: func(c *cli.Context) error {
+					return SuperMigrate(c)
 				},
 			},
 			{
@@ -519,7 +539,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 	log.Info().Int("skipped", skipped).Int("successful", successful).Int("failed", failed).Msg("Synced payments.")
 	return nil
 }
-func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) error {
+func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
@@ -671,6 +691,17 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		},
 	}
 
+	txConn, err := txConnect(
+		databaseTxUser,
+		databaseTxPass,
+		databaseHost,
+		databasePort,
+		databaseName,
+	)
+	if err != nil {
+		return terror.Panic(err)
+	}
+
 	pgxconn, err := pgxconnect(
 		databaseUser,
 		databasePass,
@@ -679,17 +710,6 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		databaseName,
 		databaseAppName,
 		Version,
-	)
-	if err != nil {
-		return terror.Panic(err)
-	}
-
-	txConn, err := txConnect(
-		databaseTxUser,
-		databaseTxPass,
-		databaseHost,
-		databasePort,
-		databaseName,
 	)
 	if err != nil {
 		return terror.Panic(err)
@@ -709,11 +729,8 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 	if err != nil {
 		return terror.Panic(err)
 	}
-	if err != nil {
-		return terror.Panic(err)
-	}
 	count := 0
-	err = db.IsSchemaDirty(ctx, pgxconn, &count)
+	err = db.IsSchemaDirty(context.Background(), pgxconn, &count)
 	if err != nil {
 		return terror.Error(api.ErrCheckDBQuery)
 	}
@@ -758,10 +775,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		}()
 	}
 	// API Server
-	ctx, cancelOnPanic := context.WithCancel(ctx)
-
 	api := api.NewAPI(log,
-		cancelOnPanic,
 		pgxconn,
 		txConn,
 		mailer,
@@ -777,11 +791,118 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger) er
 		enablePurchaseSubscription,
 	)
 
-	c := comms.New(ucm, msgBus, api.SupremacyController.Txs, log, pgxconn, api.ClientMap)
-	err = comms.Start(c)
+	s := comms.NewServer(ucm, msgBus, api.SupremacyController.Txs, log, pgxconn, api.ClientMap)
+	err = comms.StartServer(s)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	return api.Run(ctx)
+	apiServer := &http.Server{
+		Addr:    api.Addr,
+		Handler: api.Routes,
+	}
+
+	go func() {
+		stop := make(chan os.Signal, 1)
+		signal.Notify(stop, os.Interrupt)
+		<-stop
+		api.Log.Info().Msg("Stopping API")
+		err := apiServer.Shutdown(context.Background())
+		if err != nil {
+			api.Log.Warn().Err(err).Msg("")
+		}
+		os.Exit(1)
+	}()
+
+	go func() {
+		gameserverAddr := ctxCLI.String("gameserver_web_host_url")
+		gameserverURL, err := url.Parse(gameserverAddr)
+		if err != nil {
+			passlog.L.Err(err).Msg("parse gameserver addr")
+			return
+		}
+		hostname := gameserverURL.Hostname()
+		rpcAddrs := []string{
+			fmt.Sprintf("%s:10016", hostname),
+			fmt.Sprintf("%s:10015", hostname),
+			fmt.Sprintf("%s:10014", hostname),
+			fmt.Sprintf("%s:10013", hostname),
+			fmt.Sprintf("%s:10012", hostname),
+			fmt.Sprintf("%s:10011", hostname),
+		}
+		rpcClient, err := rpcclient.NewClient(rpcAddrs...)
+		if err != nil {
+			passlog.L.Err(err).Msg("setup rpc client")
+			return
+		}
+		rpcclient.SetGlobalClient(rpcClient)
+	}()
+
+	api.Log.Info().Msg("Starting API")
+	return apiServer.ListenAndServe()
+}
+
+func SuperMigrate(c *cli.Context) error {
+	databaseUser := c.String("database_user")
+	databasePass := c.String("database_pass")
+	databaseHost := c.String("database_host")
+	databasePort := c.String("database_port")
+	databaseName := c.String("database_name")
+	databaseAppName := c.String("database_application_name")
+	gameserverAddr := c.String("gameserver_web_host_url")
+	passlog.New("development", "TraceLevel")
+	pgxconn, err := pgxconnect(
+		databaseUser,
+		databasePass,
+		databaseHost,
+		databasePort,
+		databaseName,
+		databaseAppName,
+		Version,
+	)
+	if err != nil {
+		return terror.Panic(err)
+	}
+
+	sqlConnect, err := sqlConnect(
+		databaseUser,
+		databasePass,
+		databaseHost,
+		databasePort,
+		databaseName,
+	)
+	if err != nil {
+		return terror.Panic(err)
+	}
+	err = passdb.New(pgxconn, sqlConnect)
+	if err != nil {
+		return terror.Panic(err)
+	}
+	gameserverURL, err := url.Parse(gameserverAddr)
+	if err != nil {
+		return terror.Panic(err)
+	}
+	hostname := gameserverURL.Hostname()
+	rpcAddrs := []string{
+		fmt.Sprintf("%s:10016", hostname),
+		fmt.Sprintf("%s:10015", hostname),
+		fmt.Sprintf("%s:10014", hostname),
+		fmt.Sprintf("%s:10013", hostname),
+		fmt.Sprintf("%s:10012", hostname),
+		fmt.Sprintf("%s:10011", hostname),
+	}
+	rpcClient, err := rpcclient.NewClient(rpcAddrs...)
+	if err != nil {
+		return terror.Panic(err)
+	}
+	rpcclient.SetGlobalClient(rpcClient)
+	err = db.SyncStoreItems()
+	if err != nil {
+		return terror.Panic(err)
+	}
+	err = db.SyncPurchasedItems()
+	if err != nil {
+		return terror.Panic(err)
+	}
+	return nil
 }

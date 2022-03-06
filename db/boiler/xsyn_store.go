@@ -44,6 +44,7 @@ type XsynStore struct {
 	UpdatedAt            time.Time         `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
 	Restriction          string            `boiler:"restriction" boil:"restriction" json:"restriction" toml:"restriction" yaml:"restriction"`
 	WhiteListedAddresses types.StringArray `boiler:"white_listed_addresses" boil:"white_listed_addresses" json:"whiteListedAddresses,omitempty" toml:"whiteListedAddresses" yaml:"whiteListedAddresses,omitempty"`
+	ImageAvatar          string            `boiler:"image_avatar" boil:"image_avatar" json:"imageAvatar" toml:"imageAvatar" yaml:"imageAvatar"`
 
 	R *xsynStoreR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L xsynStoreL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -70,6 +71,7 @@ var XsynStoreColumns = struct {
 	UpdatedAt            string
 	Restriction          string
 	WhiteListedAddresses string
+	ImageAvatar          string
 }{
 	ID:                   "id",
 	FactionID:            "faction_id",
@@ -91,6 +93,7 @@ var XsynStoreColumns = struct {
 	UpdatedAt:            "updated_at",
 	Restriction:          "restriction",
 	WhiteListedAddresses: "white_listed_addresses",
+	ImageAvatar:          "image_avatar",
 }
 
 var XsynStoreTableColumns = struct {
@@ -114,6 +117,7 @@ var XsynStoreTableColumns = struct {
 	UpdatedAt            string
 	Restriction          string
 	WhiteListedAddresses string
+	ImageAvatar          string
 }{
 	ID:                   "xsyn_store.id",
 	FactionID:            "xsyn_store.faction_id",
@@ -135,6 +139,7 @@ var XsynStoreTableColumns = struct {
 	UpdatedAt:            "xsyn_store.updated_at",
 	Restriction:          "xsyn_store.restriction",
 	WhiteListedAddresses: "xsyn_store.white_listed_addresses",
+	ImageAvatar:          "xsyn_store.image_avatar",
 }
 
 // Generated where
@@ -165,6 +170,7 @@ var XsynStoreWhere = struct {
 	UpdatedAt            whereHelpertime_Time
 	Restriction          whereHelperstring
 	WhiteListedAddresses whereHelpertypes_StringArray
+	ImageAvatar          whereHelperstring
 }{
 	ID:                   whereHelperstring{field: "\"xsyn_store\".\"id\""},
 	FactionID:            whereHelpernull_String{field: "\"xsyn_store\".\"faction_id\""},
@@ -186,6 +192,7 @@ var XsynStoreWhere = struct {
 	UpdatedAt:            whereHelpertime_Time{field: "\"xsyn_store\".\"updated_at\""},
 	Restriction:          whereHelperstring{field: "\"xsyn_store\".\"restriction\""},
 	WhiteListedAddresses: whereHelpertypes_StringArray{field: "\"xsyn_store\".\"white_listed_addresses\""},
+	ImageAvatar:          whereHelperstring{field: "\"xsyn_store\".\"image_avatar\""},
 }
 
 // XsynStoreRels is where relationship names are stored.
@@ -212,9 +219,9 @@ func (*xsynStoreR) NewStruct() *xsynStoreR {
 type xsynStoreL struct{}
 
 var (
-	xsynStoreAllColumns            = []string{"id", "faction_id", "name", "collection_id", "description", "image", "animation_url", "attributes", "additional_metadata", "keywords", "usd_cent_cost", "amount_sold", "amount_available", "sold_after", "sold_before", "deleted_at", "created_at", "updated_at", "restriction", "white_listed_addresses"}
+	xsynStoreAllColumns            = []string{"id", "faction_id", "name", "collection_id", "description", "image", "animation_url", "attributes", "additional_metadata", "keywords", "usd_cent_cost", "amount_sold", "amount_available", "sold_after", "sold_before", "deleted_at", "created_at", "updated_at", "restriction", "white_listed_addresses", "image_avatar"}
 	xsynStoreColumnsWithoutDefault = []string{"faction_id", "name", "collection_id", "description", "attributes", "additional_metadata", "keywords", "usd_cent_cost", "deleted_at", "white_listed_addresses"}
-	xsynStoreColumnsWithDefault    = []string{"id", "image", "animation_url", "amount_sold", "amount_available", "sold_after", "sold_before", "created_at", "updated_at", "restriction"}
+	xsynStoreColumnsWithDefault    = []string{"id", "image", "animation_url", "amount_sold", "amount_available", "sold_after", "sold_before", "created_at", "updated_at", "restriction", "image_avatar"}
 	xsynStorePrimaryKeyColumns     = []string{"id"}
 )
 

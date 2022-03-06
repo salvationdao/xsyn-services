@@ -9,7 +9,7 @@ import (
 )
 
 // AssetContractRewardRedeem redeem faction contract reward
-func (c *C) SupremacyAssetRepairStatUpdateHandler(req AssetRepairStatReq, resp *AssetRepairStatResp) error {
+func (c *S) SupremacyAssetRepairStatUpdateHandler(req AssetRepairStatReq, resp *AssetRepairStatResp) error {
 	ctx := context.Background()
 
 	// if repair complete, send nil
@@ -31,7 +31,7 @@ type SupremacyQueueUpdateReq struct {
 	ContractReward *string `json:"contractReward"`
 }
 
-func (c *C) SupremacyQueueUpdateHandler(req SupremacyQueueUpdateReq, resp *SupremacyQueueUpdateResp) error {
+func (c *S) SupremacyQueueUpdateHandler(req SupremacyQueueUpdateReq, resp *SupremacyQueueUpdateResp) error {
 	ctx := context.Background()
 
 	// if repair not complete, send current record

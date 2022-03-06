@@ -22,7 +22,7 @@ type TickerPoolCache struct {
 	TricklingAmountMap map[string]*big.Int
 }
 
-type C struct {
+type S struct {
 	UserCacheMap *api.UserCacheMap
 	MessageBus   *messagebus.MessageBus
 	Txs          *api.Transactions
@@ -34,15 +34,15 @@ type C struct {
 	HubSessionIDMap *sync.Map
 }
 
-func New(
+func NewServer(
 	userCacheMap *api.UserCacheMap,
 	messageBus *messagebus.MessageBus,
 	txs *api.Transactions,
 	log *zerolog.Logger,
 	conn *pgxpool.Pool,
 	cm *sync.Map,
-) *C {
-	result := &C{
+) *S {
+	result := &S{
 		UserCacheMap: userCacheMap,
 		MessageBus:   messageBus,
 		Txs:          txs,
@@ -81,13 +81,13 @@ func New(
 	return result
 }
 
-func (c *C) listen(addrStr ...string) ([]net.Listener, error) {
+func (s *S) listen(addrStr ...string) ([]net.Listener, error) {
 	listeners := make([]net.Listener, len(addrStr))
 	for i, a := range addrStr {
-		c.Log.Info().Str("addr", a).Msg("registering RPC server")
+		s.Log.Info().Str("addr", a).Msg("registering RPC server")
 		addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("0.0.0.0:%s", a))
 		if err != nil {
-			c.Log.Err(err).Str("addr", a).Msg("registering RPC server")
+			s.Log.Err(err).Str("addr", a).Msg("registering RPC server")
 			return listeners, nil
 		}
 
@@ -102,20 +102,20 @@ func (c *C) listen(addrStr ...string) ([]net.Listener, error) {
 	return listeners, nil
 }
 
-func Start(c *C) error {
-	listeners, err := c.listen("10001", "10002", "10003", "10004", "10005", "10006")
+func StartServer(s *S) error {
+	listeners, err := s.listen("10001", "10002", "10003", "10004", "10005", "10006")
 	if err != nil {
 		return err
 	}
 	for _, l := range listeners {
-		s := rpc.NewServer()
-		err = s.Register(c)
+		srv := rpc.NewServer()
+		err = srv.Register(s)
 		if err != nil {
 			return err
 		}
 
-		c.Log.Info().Str("addr", l.Addr().String()).Msg("starting up RPC server")
-		go s.Accept(l)
+		s.Log.Info().Str("addr", l.Addr().String()).Msg("starting up RPC server")
+		go srv.Accept(l)
 	}
 
 	return nil

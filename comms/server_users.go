@@ -10,6 +10,6 @@ type UserReq struct {
 }
 type UserResp struct{}
 
-func (c *C) User(req UserReq, resp *UserResp) error {
+func (c *S) User(req UserReq, resp *UserResp) error {
 	return terror.ErrNotImplemented
 }

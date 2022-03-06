@@ -6,7 +6,7 @@ import (
 	"passport/passdb"
 )
 
-func (c *C) SuperMigrate(req GetAllMechsReq, resp *GetAll) error {
+func (c *S) SuperMigrate(req GetAllMechsReq, resp *GetAll) error {
 	assets, err := boiler.XsynAssets().All(passdb.StdConn)
 	if err != nil {
 		return err

@@ -20,7 +20,7 @@ type UsersGetResp struct {
 	Users []*passport.User `json:"users"`
 }
 
-func (c *C) SupremacyUsersGetHandler(req UsersGetReq, resp *UsersGetResp) error {
+func (c *S) SupremacyUsersGetHandler(req UsersGetReq, resp *UsersGetResp) error {
 	ctx := context.Background()
 
 	var err error
@@ -43,7 +43,7 @@ type UserStatSend struct {
 
 type UserStatSendResp struct{}
 
-func (c *C) SupremacyUserStatSendHandler(req UserStatSendReq, resp *UserStatSendResp) error {
+func (c *S) SupremacyUserStatSendHandler(req UserStatSendReq, resp *UserStatSendResp) error {
 	ctx := context.Background()
 	for _, userStatSend := range req.UserStatSends {
 

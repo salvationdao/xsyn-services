@@ -109,11 +109,13 @@ var FactionWhere = struct {
 var FactionRels = struct {
 	BackgroundBlob string
 	LogoBlob       string
+	StoreItems     string
 	Users          string
 	XsynStores     string
 }{
 	BackgroundBlob: "BackgroundBlob",
 	LogoBlob:       "LogoBlob",
+	StoreItems:     "StoreItems",
 	Users:          "Users",
 	XsynStores:     "XsynStores",
 }
@@ -122,6 +124,7 @@ var FactionRels = struct {
 type factionR struct {
 	BackgroundBlob *Blob          `boiler:"BackgroundBlob" boil:"BackgroundBlob" json:"BackgroundBlob" toml:"BackgroundBlob" yaml:"BackgroundBlob"`
 	LogoBlob       *Blob          `boiler:"LogoBlob" boil:"LogoBlob" json:"LogoBlob" toml:"LogoBlob" yaml:"LogoBlob"`
+	StoreItems     StoreItemSlice `boiler:"StoreItems" boil:"StoreItems" json:"StoreItems" toml:"StoreItems" yaml:"StoreItems"`
 	Users          UserSlice      `boiler:"Users" boil:"Users" json:"Users" toml:"Users" yaml:"Users"`
 	XsynStores     XsynStoreSlice `boiler:"XsynStores" boil:"XsynStores" json:"XsynStores" toml:"XsynStores" yaml:"XsynStores"`
 }
@@ -410,6 +413,28 @@ func (o *Faction) LogoBlob(mods ...qm.QueryMod) blobQuery {
 	return query
 }
 
+// StoreItems retrieves all the store_item's StoreItems with an executor.
+func (o *Faction) StoreItems(mods ...qm.QueryMod) storeItemQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"store_items\".\"faction_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"store_items\".\"deleted_at\""),
+	)
+
+	query := StoreItems(queryMods...)
+	queries.SetFrom(query.Query, "\"store_items\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"store_items\".*"})
+	}
+
+	return query
+}
+
 // Users retrieves all the user's Users with an executor.
 func (o *Faction) Users(mods ...qm.QueryMod) userQuery {
 	var queryMods []qm.QueryMod
@@ -656,6 +681,105 @@ func (factionL) LoadLogoBlob(e boil.Executor, singular bool, maybeFaction interf
 					foreign.R = &blobR{}
 				}
 				foreign.R.LogoBlobFactions = append(foreign.R.LogoBlobFactions, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadStoreItems allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (factionL) LoadStoreItems(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
+	var slice []*Faction
+	var object *Faction
+
+	if singular {
+		object = maybeFaction.(*Faction)
+	} else {
+		slice = *maybeFaction.(*[]*Faction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &factionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &factionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`store_items`),
+		qm.WhereIn(`store_items.faction_id in ?`, args...),
+		qmhelper.WhereIsNull(`store_items.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load store_items")
+	}
+
+	var resultSlice []*StoreItem
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice store_items")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on store_items")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for store_items")
+	}
+
+	if len(storeItemAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.StoreItems = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &storeItemR{}
+			}
+			foreign.R.Faction = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.FactionID {
+				local.R.StoreItems = append(local.R.StoreItems, foreign)
+				if foreign.R == nil {
+					foreign.R = &storeItemR{}
+				}
+				foreign.R.Faction = local
 				break
 			}
 		}
@@ -951,6 +1075,58 @@ func (o *Faction) SetLogoBlob(exec boil.Executor, insert bool, related *Blob) er
 		related.R.LogoBlobFactions = append(related.R.LogoBlobFactions, o)
 	}
 
+	return nil
+}
+
+// AddStoreItems adds the given related objects to the existing relationships
+// of the faction, optionally inserting them as new records.
+// Appends related to o.R.StoreItems.
+// Sets related.R.Faction appropriately.
+func (o *Faction) AddStoreItems(exec boil.Executor, insert bool, related ...*StoreItem) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.FactionID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"store_items\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
+				strmangle.WhereClause("\"", "\"", 2, storeItemPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.FactionID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &factionR{
+			StoreItems: related,
+		}
+	} else {
+		o.R.StoreItems = append(o.R.StoreItems, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &storeItemR{
+				Faction: o,
+			}
+		} else {
+			rel.R.Faction = o
+		}
+	}
 	return nil
 }
 

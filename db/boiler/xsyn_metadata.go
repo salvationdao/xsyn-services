@@ -41,6 +41,7 @@ type XsynMetadatum struct {
 	Minted             null.Bool           `boiler:"minted" boil:"minted" json:"minted,omitempty" toml:"minted" yaml:"minted,omitempty"`
 	Hash               string              `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
 	ExternalTokenID    decimal.NullDecimal `boiler:"external_token_id" boil:"external_token_id" json:"externalTokenID,omitempty" toml:"externalTokenID" yaml:"externalTokenID,omitempty"`
+	ImageAvatar        string              `boiler:"image_avatar" boil:"image_avatar" json:"imageAvatar" toml:"imageAvatar" yaml:"imageAvatar"`
 
 	R *xsynMetadatumR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L xsynMetadatumL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -64,6 +65,7 @@ var XsynMetadatumColumns = struct {
 	Minted             string
 	Hash               string
 	ExternalTokenID    string
+	ImageAvatar        string
 }{
 	Name:               "name",
 	CollectionID:       "collection_id",
@@ -82,6 +84,7 @@ var XsynMetadatumColumns = struct {
 	Minted:             "minted",
 	Hash:               "hash",
 	ExternalTokenID:    "external_token_id",
+	ImageAvatar:        "image_avatar",
 }
 
 var XsynMetadatumTableColumns = struct {
@@ -102,6 +105,7 @@ var XsynMetadatumTableColumns = struct {
 	Minted             string
 	Hash               string
 	ExternalTokenID    string
+	ImageAvatar        string
 }{
 	Name:               "xsyn_metadata.name",
 	CollectionID:       "xsyn_metadata.collection_id",
@@ -120,6 +124,7 @@ var XsynMetadatumTableColumns = struct {
 	Minted:             "xsyn_metadata.minted",
 	Hash:               "xsyn_metadata.hash",
 	ExternalTokenID:    "xsyn_metadata.external_token_id",
+	ImageAvatar:        "xsyn_metadata.image_avatar",
 }
 
 // Generated where
@@ -166,6 +171,7 @@ var XsynMetadatumWhere = struct {
 	Minted             whereHelpernull_Bool
 	Hash               whereHelperstring
 	ExternalTokenID    whereHelperdecimal_NullDecimal
+	ImageAvatar        whereHelperstring
 }{
 	Name:               whereHelperstring{field: "\"xsyn_metadata\".\"name\""},
 	CollectionID:       whereHelperstring{field: "\"xsyn_metadata\".\"collection_id\""},
@@ -184,6 +190,7 @@ var XsynMetadatumWhere = struct {
 	Minted:             whereHelpernull_Bool{field: "\"xsyn_metadata\".\"minted\""},
 	Hash:               whereHelperstring{field: "\"xsyn_metadata\".\"hash\""},
 	ExternalTokenID:    whereHelperdecimal_NullDecimal{field: "\"xsyn_metadata\".\"external_token_id\""},
+	ImageAvatar:        whereHelperstring{field: "\"xsyn_metadata\".\"image_avatar\""},
 }
 
 // XsynMetadatumRels is where relationship names are stored.
@@ -207,9 +214,9 @@ func (*xsynMetadatumR) NewStruct() *xsynMetadatumR {
 type xsynMetadatumL struct{}
 
 var (
-	xsynMetadatumAllColumns            = []string{"name", "collection_id", "game_object", "description", "external_url", "image", "animation_url", "durability", "attributes", "additional_metadata", "keywords", "deleted_at", "updated_at", "created_at", "minted", "hash", "external_token_id"}
+	xsynMetadatumAllColumns            = []string{"name", "collection_id", "game_object", "description", "external_url", "image", "animation_url", "durability", "attributes", "additional_metadata", "keywords", "deleted_at", "updated_at", "created_at", "minted", "hash", "external_token_id", "image_avatar"}
 	xsynMetadatumColumnsWithoutDefault = []string{"name", "collection_id", "game_object", "description", "external_url", "image", "animation_url", "attributes", "additional_metadata", "keywords", "deleted_at", "hash", "external_token_id"}
-	xsynMetadatumColumnsWithDefault    = []string{"durability", "updated_at", "created_at", "minted"}
+	xsynMetadatumColumnsWithDefault    = []string{"durability", "updated_at", "created_at", "minted", "image_avatar"}
 	xsynMetadatumPrimaryKeyColumns     = []string{"hash"}
 )
 

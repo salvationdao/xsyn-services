@@ -80,7 +80,6 @@ type API struct {
 // NewAPI registers routes
 func NewAPI(
 	log *zerolog.Logger,
-	cancelOnPanic context.CancelFunc,
 	conn *pgxpool.Pool,
 	txConn *sql.DB,
 	mailer *email.Mailer,
@@ -250,33 +249,11 @@ func NewAPI(
 	api.Hub.Events.AddEventHandler(auth.EventLogout, api.ClientLogout, func(err error) {})
 	api.Hub.Events.AddEventHandler(hub.EventOffline, api.ClientOffline, func(err error) {})
 
-	ctx := context.TODO()
-	api.State, err = db.StateGet(ctx, isTestnetBlockchain, api.Conn)
+	api.State, err = db.StateGet(context.Background(), isTestnetBlockchain, api.Conn)
 	if err != nil {
 		log.Fatal().Err(err).Msgf("failed to init state object")
 	}
 	return api
-}
-
-// Run the API service
-func (api *API) Run(ctx context.Context) error {
-	api.Log.Info().Msg("Starting API")
-
-	server := &http.Server{
-		Addr:    api.Addr,
-		Handler: api.Routes,
-	}
-
-	go func() {
-		<-ctx.Done()
-		api.Log.Info().Msg("Stopping API")
-		err := server.Shutdown(ctx)
-		if err != nil {
-			api.Log.Warn().Err(err).Msg("")
-		}
-	}()
-
-	return server.ListenAndServe()
 }
 
 // RecordUserActivity adds a UserActivity to the db for the current user

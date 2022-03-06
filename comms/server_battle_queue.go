@@ -13,7 +13,7 @@ import (
 
 //var ErrNoRows = errors.New("no rows in result set")
 
-func (c *C) SupremacyDefaultWarMachinesHandler(req DefaultWarMachinesReq, resp *DefaultWarMachinesResp) error {
+func (c *S) SupremacyDefaultWarMachinesHandler(req DefaultWarMachinesReq, resp *DefaultWarMachinesResp) error {
 
 	ctx := context.Background()
 	var warMachines []*passport.WarMachineMetadata
@@ -89,7 +89,7 @@ func (c *C) SupremacyDefaultWarMachinesHandler(req DefaultWarMachinesReq, resp *
 }
 
 // SupremacyWarMachineQueuePositionHandler broadcast the updated battle queue position detail
-func (c *C) SupremacyWarMachineQueuePositionHandler(req WarMachineQueuePositionReq, resp *WarMachineQueuePositionResp) error {
+func (c *S) SupremacyWarMachineQueuePositionHandler(req WarMachineQueuePositionReq, resp *WarMachineQueuePositionResp) error {
 	ctx := context.Background()
 	// broadcast war machine position to all user client
 	for _, uwm := range req.WarMachineQueuePosition {

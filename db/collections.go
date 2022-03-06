@@ -4,11 +4,20 @@ import (
 	"context"
 	"fmt"
 	"passport"
+	"passport/db/boiler"
+	"passport/passdb"
 	"strings"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
 )
+
+func AICollection() (*boiler.Collection, error) {
+	return boiler.Collections(boiler.CollectionWhere.Name.EQ("Supremacy AI")).One(passdb.StdConn)
+}
+func GenesisCollection() (*boiler.Collection, error) {
+	return boiler.Collections(boiler.CollectionWhere.Name.EQ("Supremacy AI")).One(passdb.StdConn)
+}
 
 const CollectionGetQuery string = `
 SELECT 

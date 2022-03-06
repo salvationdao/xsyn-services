@@ -84,7 +84,7 @@ func (api *API) ClientAuth(ctx context.Context, client *hub.Client) error {
 		}
 		_, _, _, err := api.userCacheMap.Process(tx)
 		if err != nil {
-			passlog.PassLog.
+			passlog.L.
 				Err(err).
 				Str("to", tx.To.String()).
 				Str("from", tx.From.String()).

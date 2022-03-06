@@ -16,8 +16,8 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
 
-func (c *C) SupremacyFactionAllHandler(req FactionAllReq, resp *FactionAllResp) error {
-	passlog.PassLog.Trace().Str("fn", "SupremacyFactionAllHandler").Msg("rpc handler")
+func (c *S) SupremacyFactionAllHandler(req FactionAllReq, resp *FactionAllResp) error {
+	passlog.L.Trace().Str("fn", "SupremacyFactionAllHandler").Msg("rpc handler")
 	var err error
 	resp.Factions, err = db.FactionAll(context.Background(), c.Conn)
 	if err != nil {
@@ -37,8 +37,8 @@ type FactionStatSend struct {
 
 type FactionStatSendResp struct{}
 
-func (c *C) SupremacyFactionStatSendHandler(req FactionStatSendReq, resp *FactionStatSendResp) error {
-	passlog.PassLog.Trace().Str("fn", "SupremacyFactionStatSendHandler").Msg("rpc handler")
+func (c *S) SupremacyFactionStatSendHandler(req FactionStatSendReq, resp *FactionStatSendResp) error {
+	passlog.L.Trace().Str("fn", "SupremacyFactionStatSendHandler").Msg("rpc handler")
 	ctx := context.Background()
 	for _, factionStatSend := range req.FactionStatSends {
 		// get recruit number
@@ -93,8 +93,8 @@ type FactionContractReward struct {
 type FactionContractRewardUpdateResp struct {
 }
 
-func (c *C) SupremacyFactionContractRewardUpdateHandler(req FactionContractRewardUpdateReq, resp *FactionContractRewardUpdateResp) error {
-	passlog.PassLog.Trace().Str("fn", "SupremacyFactionContractRewardUpdateHandler").Msg("rpc handler")
+func (c *S) SupremacyFactionContractRewardUpdateHandler(req FactionContractRewardUpdateReq, resp *FactionContractRewardUpdateResp) error {
+	passlog.L.Trace().Str("fn", "SupremacyFactionContractRewardUpdateHandler").Msg("rpc handler")
 	ctx := context.Background()
 	for _, fcr := range req.FactionContractRewards {
 		c.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyFactionContractRewardSubscribe, fcr.FactionID)), fcr.ContractReward)
@@ -113,8 +113,8 @@ type RedeemFactionContractRewardReq struct {
 
 type RedeemFactionContractRewardResp struct{}
 
-func (c *C) SupremacyRedeemFactionContractRewardHandler(req RedeemFactionContractRewardReq, resp *RedeemFactionContractRewardResp) error {
-	passlog.PassLog.Trace().Str("fn", "SupremacyRedeemFactionContractRewardHandler").Msg("rpc handler")
+func (c *S) SupremacyRedeemFactionContractRewardHandler(req RedeemFactionContractRewardReq, resp *RedeemFactionContractRewardResp) error {
+	passlog.L.Trace().Str("fn", "SupremacyRedeemFactionContractRewardHandler").Msg("rpc handler")
 
 	amount := big.NewInt(0)
 	amount, ok := amount.SetString(req.Amount, 10)
@@ -161,8 +161,8 @@ type FactionQueuingCostReq struct {
 
 type FactionQueuingCostResp struct{}
 
-func (c *C) SupremacyFactionQueuingCostHandler(req FactionQueuingCostReq, resp *FactionQueuingCostResp) error {
-	passlog.PassLog.Trace().Str("fn", "SupremacyFactionQueuingCostHandler").Msg("rpc handler")
+func (c *S) SupremacyFactionQueuingCostHandler(req FactionQueuingCostReq, resp *FactionQueuingCostResp) error {
+	passlog.L.Trace().Str("fn", "SupremacyFactionQueuingCostHandler").Msg("rpc handler")
 	cost := big.NewInt(1000000000000000000)
 	cost.Mul(cost, big.NewInt(int64(req.QueuingLength)+1))
 

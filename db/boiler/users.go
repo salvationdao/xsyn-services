@@ -234,50 +234,53 @@ var UserWhere = struct {
 
 // UserRels is where relationship names are stored.
 var UserRels = struct {
-	Avatar             string
-	Faction            string
-	Role               string
-	PasswordHash       string
-	IssueTokens        string
-	CreditTransactions string
-	DebitTransactions  string
-	UserActivities     string
-	Organisations      string
-	UserRecoveryCodes  string
-	FrozenByXsynAssets string
-	LockedByXsynAssets string
-	XsynAssets         string
+	Avatar              string
+	Faction             string
+	Role                string
+	PasswordHash        string
+	IssueTokens         string
+	OwnerPurchasedItems string
+	CreditTransactions  string
+	DebitTransactions   string
+	UserActivities      string
+	Organisations       string
+	UserRecoveryCodes   string
+	FrozenByXsynAssets  string
+	LockedByXsynAssets  string
+	XsynAssets          string
 }{
-	Avatar:             "Avatar",
-	Faction:            "Faction",
-	Role:               "Role",
-	PasswordHash:       "PasswordHash",
-	IssueTokens:        "IssueTokens",
-	CreditTransactions: "CreditTransactions",
-	DebitTransactions:  "DebitTransactions",
-	UserActivities:     "UserActivities",
-	Organisations:      "Organisations",
-	UserRecoveryCodes:  "UserRecoveryCodes",
-	FrozenByXsynAssets: "FrozenByXsynAssets",
-	LockedByXsynAssets: "LockedByXsynAssets",
-	XsynAssets:         "XsynAssets",
+	Avatar:              "Avatar",
+	Faction:             "Faction",
+	Role:                "Role",
+	PasswordHash:        "PasswordHash",
+	IssueTokens:         "IssueTokens",
+	OwnerPurchasedItems: "OwnerPurchasedItems",
+	CreditTransactions:  "CreditTransactions",
+	DebitTransactions:   "DebitTransactions",
+	UserActivities:      "UserActivities",
+	Organisations:       "Organisations",
+	UserRecoveryCodes:   "UserRecoveryCodes",
+	FrozenByXsynAssets:  "FrozenByXsynAssets",
+	LockedByXsynAssets:  "LockedByXsynAssets",
+	XsynAssets:          "XsynAssets",
 }
 
 // userR is where relationships are stored.
 type userR struct {
-	Avatar             *Blob                 `boiler:"Avatar" boil:"Avatar" json:"Avatar" toml:"Avatar" yaml:"Avatar"`
-	Faction            *Faction              `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	Role               *Role                 `boiler:"Role" boil:"Role" json:"Role" toml:"Role" yaml:"Role"`
-	PasswordHash       *PasswordHash         `boiler:"PasswordHash" boil:"PasswordHash" json:"PasswordHash" toml:"PasswordHash" yaml:"PasswordHash"`
-	IssueTokens        IssueTokenSlice       `boiler:"IssueTokens" boil:"IssueTokens" json:"IssueTokens" toml:"IssueTokens" yaml:"IssueTokens"`
-	CreditTransactions TransactionSlice      `boiler:"CreditTransactions" boil:"CreditTransactions" json:"CreditTransactions" toml:"CreditTransactions" yaml:"CreditTransactions"`
-	DebitTransactions  TransactionSlice      `boiler:"DebitTransactions" boil:"DebitTransactions" json:"DebitTransactions" toml:"DebitTransactions" yaml:"DebitTransactions"`
-	UserActivities     UserActivitySlice     `boiler:"UserActivities" boil:"UserActivities" json:"UserActivities" toml:"UserActivities" yaml:"UserActivities"`
-	Organisations      OrganisationSlice     `boiler:"Organisations" boil:"Organisations" json:"Organisations" toml:"Organisations" yaml:"Organisations"`
-	UserRecoveryCodes  UserRecoveryCodeSlice `boiler:"UserRecoveryCodes" boil:"UserRecoveryCodes" json:"UserRecoveryCodes" toml:"UserRecoveryCodes" yaml:"UserRecoveryCodes"`
-	FrozenByXsynAssets XsynAssetSlice        `boiler:"FrozenByXsynAssets" boil:"FrozenByXsynAssets" json:"FrozenByXsynAssets" toml:"FrozenByXsynAssets" yaml:"FrozenByXsynAssets"`
-	LockedByXsynAssets XsynAssetSlice        `boiler:"LockedByXsynAssets" boil:"LockedByXsynAssets" json:"LockedByXsynAssets" toml:"LockedByXsynAssets" yaml:"LockedByXsynAssets"`
-	XsynAssets         XsynAssetSlice        `boiler:"XsynAssets" boil:"XsynAssets" json:"XsynAssets" toml:"XsynAssets" yaml:"XsynAssets"`
+	Avatar              *Blob                 `boiler:"Avatar" boil:"Avatar" json:"Avatar" toml:"Avatar" yaml:"Avatar"`
+	Faction             *Faction              `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	Role                *Role                 `boiler:"Role" boil:"Role" json:"Role" toml:"Role" yaml:"Role"`
+	PasswordHash        *PasswordHash         `boiler:"PasswordHash" boil:"PasswordHash" json:"PasswordHash" toml:"PasswordHash" yaml:"PasswordHash"`
+	IssueTokens         IssueTokenSlice       `boiler:"IssueTokens" boil:"IssueTokens" json:"IssueTokens" toml:"IssueTokens" yaml:"IssueTokens"`
+	OwnerPurchasedItems PurchasedItemSlice    `boiler:"OwnerPurchasedItems" boil:"OwnerPurchasedItems" json:"OwnerPurchasedItems" toml:"OwnerPurchasedItems" yaml:"OwnerPurchasedItems"`
+	CreditTransactions  TransactionSlice      `boiler:"CreditTransactions" boil:"CreditTransactions" json:"CreditTransactions" toml:"CreditTransactions" yaml:"CreditTransactions"`
+	DebitTransactions   TransactionSlice      `boiler:"DebitTransactions" boil:"DebitTransactions" json:"DebitTransactions" toml:"DebitTransactions" yaml:"DebitTransactions"`
+	UserActivities      UserActivitySlice     `boiler:"UserActivities" boil:"UserActivities" json:"UserActivities" toml:"UserActivities" yaml:"UserActivities"`
+	Organisations       OrganisationSlice     `boiler:"Organisations" boil:"Organisations" json:"Organisations" toml:"Organisations" yaml:"Organisations"`
+	UserRecoveryCodes   UserRecoveryCodeSlice `boiler:"UserRecoveryCodes" boil:"UserRecoveryCodes" json:"UserRecoveryCodes" toml:"UserRecoveryCodes" yaml:"UserRecoveryCodes"`
+	FrozenByXsynAssets  XsynAssetSlice        `boiler:"FrozenByXsynAssets" boil:"FrozenByXsynAssets" json:"FrozenByXsynAssets" toml:"FrozenByXsynAssets" yaml:"FrozenByXsynAssets"`
+	LockedByXsynAssets  XsynAssetSlice        `boiler:"LockedByXsynAssets" boil:"LockedByXsynAssets" json:"LockedByXsynAssets" toml:"LockedByXsynAssets" yaml:"LockedByXsynAssets"`
+	XsynAssets          XsynAssetSlice        `boiler:"XsynAssets" boil:"XsynAssets" json:"XsynAssets" toml:"XsynAssets" yaml:"XsynAssets"`
 }
 
 // NewStruct creates a new relationship struct
@@ -609,6 +612,28 @@ func (o *User) IssueTokens(mods ...qm.QueryMod) issueTokenQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"issue_tokens\".*"})
+	}
+
+	return query
+}
+
+// OwnerPurchasedItems retrieves all the purchased_item's PurchasedItems with an executor via owner_id column.
+func (o *User) OwnerPurchasedItems(mods ...qm.QueryMod) purchasedItemQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"purchased_items\".\"owner_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"purchased_items\".\"deleted_at\""),
+	)
+
+	query := PurchasedItems(queryMods...)
+	queries.SetFrom(query.Query, "\"purchased_items\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"purchased_items\".*"})
 	}
 
 	return query
@@ -1301,6 +1326,105 @@ func (userL) LoadIssueTokens(e boil.Executor, singular bool, maybeUser interface
 					foreign.R = &issueTokenR{}
 				}
 				foreign.R.User = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadOwnerPurchasedItems allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadOwnerPurchasedItems(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`purchased_items`),
+		qm.WhereIn(`purchased_items.owner_id in ?`, args...),
+		qmhelper.WhereIsNull(`purchased_items.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load purchased_items")
+	}
+
+	var resultSlice []*PurchasedItem
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice purchased_items")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on purchased_items")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for purchased_items")
+	}
+
+	if len(purchasedItemAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.OwnerPurchasedItems = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &purchasedItemR{}
+			}
+			foreign.R.Owner = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.OwnerID {
+				local.R.OwnerPurchasedItems = append(local.R.OwnerPurchasedItems, foreign)
+				if foreign.R == nil {
+					foreign.R = &purchasedItemR{}
+				}
+				foreign.R.Owner = local
 				break
 			}
 		}
@@ -2445,6 +2569,58 @@ func (o *User) AddIssueTokens(exec boil.Executor, insert bool, related ...*Issue
 			}
 		} else {
 			rel.R.User = o
+		}
+	}
+	return nil
+}
+
+// AddOwnerPurchasedItems adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.OwnerPurchasedItems.
+// Sets related.R.Owner appropriately.
+func (o *User) AddOwnerPurchasedItems(exec boil.Executor, insert bool, related ...*PurchasedItem) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.OwnerID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"purchased_items\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
+				strmangle.WhereClause("\"", "\"", 2, purchasedItemPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.OwnerID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			OwnerPurchasedItems: related,
+		}
+	} else {
+		o.R.OwnerPurchasedItems = append(o.R.OwnerPurchasedItems, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &purchasedItemR{
+				Owner: o,
+			}
+		} else {
+			rel.R.Owner = o
 		}
 	}
 	return nil
