@@ -352,33 +352,6 @@ func AssetUpdate(ctx context.Context, conn Conn, hash string, newName string) er
 	return nil
 }
 
-// AssetNameAvailable returns true if an asset name is free
-func AssetNameAvailable(ctx context.Context, conn Conn, nameToCheck string, hash string) (bool, error) {
-
-	if nameToCheck == "" {
-		return false, terror.Error(fmt.Errorf("name cannot be empty"), "Name cannot be empty.")
-	}
-	count := 0
-
-	q := `
-	SELECT
-		count(external_token_id) 
-	FROM 
-		xsyn_metadata, 
-		JSONB_ARRAY_ELEMENTS(attributes) WITH ORDINALITY arr(elem, pos)
-	WHERE 
-	    elem ->>'trait_type' = 'Name'
-		AND elem->>'value' = $2
-		AND xsyn_metadata.hash = $1
-		`
-	err := pgxscan.Get(ctx, conn, &count, q, hash, nameToCheck)
-	if err != nil {
-		return false, terror.Error(err)
-	}
-
-	return count == 0, nil
-}
-
 // AssetTransfer changes ownership of an asset to another user // TODO: add internal transaction details tx jsonb array
 func AssetTransfer(ctx context.Context, conn Conn, tokenID uint64, oldUserID, newUserID passport.UserID, txHash string) error {
 	args := []interface{}{

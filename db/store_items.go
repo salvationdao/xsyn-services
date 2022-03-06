@@ -243,9 +243,10 @@ func getStoreItem(storeItemID uuid.UUID) (*boiler.StoreItem, error) {
 	if err != nil {
 		return nil, err
 	}
-	item, err = refreshStoreItem(uuid.Must(uuid.FromString(item.ID)), true)
+	refreshedItem, err := refreshStoreItem(uuid.Must(uuid.FromString(item.ID)), true)
 	if err != nil {
-		return nil, err
+		passlog.L.Err(err).Str("store_item_id", item.ID).Msg("could not refresh store item from gameserver, using cached store item")
+		return item, nil
 	}
-	return item, nil
+	return refreshedItem, nil
 }

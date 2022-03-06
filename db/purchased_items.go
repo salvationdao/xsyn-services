@@ -256,14 +256,15 @@ func getPurchasedItem(itemID uuid.UUID) (*boiler.PurchasedItem, error) {
 	if err != nil {
 		return nil, fmt.Errorf("find item: %w", err)
 	}
-	item, err = refreshItem(uuid.Must(uuid.FromString(item.ID)), true)
+	refreshedItem, err := refreshItem(uuid.Must(uuid.FromString(item.ID)), true)
 	if err != nil {
-		return nil, fmt.Errorf("refresh item: %w", err)
+		passlog.L.Err(err).Str("purchased_item_id", item.ID).Msg("could not refresh purchased item from gameserver, using cached purchased item")
+		return item, nil
 	}
-	return item, nil
+	return refreshedItem, nil
 }
 
-// PurchasedItem fetches the item, obeying TTL
+// PurchasedItem fetches the item, with the db as a fallback cache
 func PurchasedItem(itemID uuid.UUID) (*boiler.PurchasedItem, error) {
 	passlog.L.Debug().Str("fn", "PurchasedItem").Msg("db func")
 	return getPurchasedItem(itemID)
