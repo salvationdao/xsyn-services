@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"passport"
 	"passport/db"
+	"passport/passlog"
 
 	"github.com/gofrs/uuid"
 	"github.com/lestrrat-go/jwx/jwt/openid"
@@ -38,11 +39,10 @@ type ErrorObject struct {
 }
 
 // WithError handles error responses.
-func (api *API) WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) http.HandlerFunc {
+func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) http.HandlerFunc {
 	// TODO: Ask about sentry ideas?
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		contents, _ := ioutil.ReadAll(r.Body)
-
 
 		r.Body = ioutil.NopCloser(bytes.NewReader(contents))
 		defer r.Body.Close()
@@ -60,9 +60,9 @@ func (api *API) WithError(next func(w http.ResponseWriter, r *http.Request) (int
 
 				switch bErr.Level {
 				case terror.ErrLevelWarn:
-					api.Log.Warn().Err(err).Msg("rest error")
+					passlog.L.Warn().Err(err).Msg("rest error")
 				default:
-					api.Log.Err(err).Msg("rest error")
+					passlog.L.Err(err).Msg("rest error")
 				}
 
 				// set generic messages if friendly message not set making genric messages overrideable
@@ -89,7 +89,7 @@ func (api *API) WithError(next func(w http.ResponseWriter, r *http.Request) (int
 					}
 				}
 			} else {
-				api.Log.Err(err).Msg("rest error")
+				passlog.L.Err(err).Msg("rest error")
 			}
 
 			jsonErr, err := json.Marshal(errObj)

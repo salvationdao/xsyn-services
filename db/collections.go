@@ -16,7 +16,7 @@ func AICollection() (*boiler.Collection, error) {
 	return boiler.Collections(boiler.CollectionWhere.Name.EQ("Supremacy AI")).One(passdb.StdConn)
 }
 func GenesisCollection() (*boiler.Collection, error) {
-	return boiler.Collections(boiler.CollectionWhere.Name.EQ("Supremacy AI")).One(passdb.StdConn)
+	return boiler.Collections(boiler.CollectionWhere.Name.EQ("Supremacy Genesis")).One(passdb.StdConn)
 }
 
 const CollectionGetQuery string = `

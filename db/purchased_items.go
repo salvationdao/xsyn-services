@@ -11,6 +11,7 @@ import (
 
 	"passport/rpcclient"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gofrs/uuid"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
@@ -36,6 +37,7 @@ func SyncPurchasedItems() error {
 			return fmt.Errorf("check purchased item exists: %w", err)
 		}
 		if !exists {
+			passlog.L.Info().Str("id", item.Mech.ID).Msg("creating new mech")
 			data, err := json.Marshal(item)
 			if err != nil {
 				return fmt.Errorf("marshal json: %w", err)
@@ -52,19 +54,21 @@ func SyncPurchasedItems() error {
 			}
 
 			newItem := &boiler.PurchasedItem{
-				ID:           item.Mech.ID,
-				CollectionID: collection.ID,
-				StoreItemID:  item.Mech.TemplateID,
-				OwnerID:      item.Mech.OwnerID,
-				Hash:         item.Mech.Hash,
-				Data:         data,
-				RefreshesAt:  time.Now().Add(RefreshDuration),
+				ID:              item.Mech.ID,
+				CollectionID:    collection.ID,
+				StoreItemID:     item.Mech.TemplateID,
+				OwnerID:         item.Mech.OwnerID,
+				ExternalTokenID: item.Mech.ExternalTokenID,
+				Hash:            item.Mech.Hash,
+				Data:            data,
+				RefreshesAt:     time.Now().Add(RefreshDuration),
 			}
 			err = newItem.Insert(tx, boil.Infer())
 			if err != nil {
 				return fmt.Errorf("insert new item: %w", err)
 			}
 		} else {
+			passlog.L.Info().Str("id", item.Mech.ID).Msg("updating existing mech")
 			_, err = refreshItem(uuid.Must(uuid.FromString(item.Mech.ID)), true)
 			if err != nil {
 				return fmt.Errorf("refresh item: %w", err)
@@ -95,9 +99,9 @@ func PurchasedItemsByOwnerID(ownerID uuid.UUID) ([]*boiler.PurchasedItem, error)
 	return result, nil
 }
 
-func PurchasedItemRegister() (*boiler.PurchasedItem, error) {
+func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) (*boiler.PurchasedItem, error) {
 	passlog.L.Debug().Str("fn", "PurchasedItemRegister").Msg("db func")
-	req := rpcclient.MechRegisterReq{}
+	req := rpcclient.MechRegisterReq{TemplateID: storeItemID, OwnerID: ownerID}
 	resp := &rpcclient.MechRegisterResp{}
 	err := rpcclient.Client.Call("S.MechRegister", req, resp)
 	if err != nil {
@@ -119,11 +123,14 @@ func PurchasedItemRegister() (*boiler.PurchasedItem, error) {
 		}
 	}
 	newItem := &boiler.PurchasedItem{
-		ID:           resp.MechContainer.Mech.ID,
-		CollectionID: collection.ID,
-		OwnerID:      resp.MechContainer.Mech.OwnerID,
-		Data:         data,
-		RefreshesAt:  time.Now().Add(RefreshDuration),
+		ID:              resp.MechContainer.Mech.ID,
+		StoreItemID:     resp.MechContainer.Mech.TemplateID,
+		ExternalTokenID: resp.MechContainer.Mech.ExternalTokenID,
+		Hash:            resp.MechContainer.Mech.Hash,
+		CollectionID:    collection.ID,
+		OwnerID:         resp.MechContainer.Mech.OwnerID,
+		Data:            data,
+		RefreshesAt:     time.Now().Add(RefreshDuration),
 	}
 	newItem, err = setPurchasedItem(newItem)
 	if err != nil {
@@ -145,29 +152,29 @@ func PurchasedItemRegister() (*boiler.PurchasedItem, error) {
 	}
 	return newItem, nil
 }
-func PurchasedItemSetName(mechID uuid.UUID, name string) (*boiler.PurchasedItem, error) {
+func PurchasedItemSetName(purchasedItemID uuid.UUID, name string) (*boiler.PurchasedItem, error) {
 	passlog.L.Debug().Str("fn", "PurchasedItemSetName").Msg("db func")
-	req := rpcclient.MechSetNameReq{MechID: mechID, Name: name}
+	req := rpcclient.MechSetNameReq{MechID: purchasedItemID, Name: name}
 	resp := &rpcclient.MechSetNameResp{}
 	err := rpcclient.Client.Call("S.MechSetName", req, resp)
 	if err != nil {
 		return nil, fmt.Errorf("rpc call: %w", err)
 	}
-	refreshedItem, err := refreshItem(mechID, true)
+	refreshedItem, err := refreshItem(purchasedItemID, true)
 	if err != nil {
 		return nil, fmt.Errorf("refresh item: %w", err)
 	}
 	return refreshedItem, nil
 }
-func PurchasedItemSetOwner(mechID uuid.UUID, ownerID uuid.UUID) (*boiler.PurchasedItem, error) {
+func PurchasedItemSetOwner(purchasedItemID uuid.UUID, ownerID uuid.UUID) (*boiler.PurchasedItem, error) {
 	passlog.L.Debug().Str("fn", "PurchasedItemSetOwner").Msg("db func")
-	req := rpcclient.MechSetOwnerReq{MechID: mechID, OwnerID: ownerID}
+	req := rpcclient.MechSetOwnerReq{MechID: purchasedItemID, OwnerID: ownerID}
 	resp := &rpcclient.MechSetOwnerResp{}
 	err := rpcclient.Client.Call("S.MechSetOwner", req, resp)
 	if err != nil {
 		return nil, fmt.Errorf("rpc call: %w", err)
 	}
-	refreshedItem, err := refreshItem(mechID, true)
+	refreshedItem, err := refreshItem(purchasedItemID, true)
 	if err != nil {
 		return nil, fmt.Errorf("refresh item: %w", err)
 	}
@@ -226,18 +233,14 @@ func refreshItem(itemID uuid.UUID, force bool) (*boiler.PurchasedItem, error) {
 // Does not obey TTL, can be heavy to run
 func setPurchasedItem(item *boiler.PurchasedItem) (*boiler.PurchasedItem, error) {
 	passlog.L.Debug().Str("fn", "setPurchasedItem").Msg("db func")
-	tx, err := passdb.StdConn.Begin()
-	if err != nil {
-		return nil, fmt.Errorf("begin tx: %w", err)
-	}
-	defer tx.Rollback()
 	exists, err := boiler.PurchasedItemExists(passdb.StdConn, item.ID)
 	if err != nil {
 		return nil, fmt.Errorf("check item exists: %w", err)
 	}
 	if !exists {
-		err = item.Insert(tx, boil.Infer())
+		err = item.Insert(passdb.StdConn, boil.Infer())
 		if err != nil {
+			spew.Dump(item)
 			return nil, fmt.Errorf("insert item: %w", err)
 		}
 	}
@@ -245,7 +248,7 @@ func setPurchasedItem(item *boiler.PurchasedItem) (*boiler.PurchasedItem, error)
 	if err != nil {
 		return nil, fmt.Errorf("refresh item: %w", err)
 	}
-	tx.Commit()
+
 	return item, nil
 }
 

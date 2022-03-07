@@ -140,6 +140,24 @@ func SyncStoreItems() error {
 
 	return nil
 }
+
+// PurchasedItems for admin only
+func PurchasedItems() ([]*boiler.PurchasedItem, error) {
+	result, err := boiler.PurchasedItems().All(passdb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// StoreItems for admin only
+func StoreItems() ([]*boiler.StoreItem, error) {
+	result, err := boiler.StoreItems().All(passdb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
 func StoreItem(storeItemID uuid.UUID) (*boiler.StoreItem, error) {
 	passlog.L.Debug().Str("fn", "StoreItem").Msg("db func")
 	return getStoreItem(storeItemID)

@@ -24,100 +24,107 @@ import (
 
 // PurchasedItem is an object representing the database table.
 type PurchasedItem struct {
-	ID           string     `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	CollectionID string     `boiler:"collection_id" boil:"collection_id" json:"collectionID" toml:"collectionID" yaml:"collectionID"`
-	StoreItemID  string     `boiler:"store_item_id" boil:"store_item_id" json:"storeItemID" toml:"storeItemID" yaml:"storeItemID"`
-	Hash         string     `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
-	OwnerID      string     `boiler:"owner_id" boil:"owner_id" json:"ownerID" toml:"ownerID" yaml:"ownerID"`
-	Data         types.JSON `boiler:"data" boil:"data" json:"data" toml:"data" yaml:"data"`
-	MintedAt     null.Time  `boiler:"minted_at" boil:"minted_at" json:"mintedAt,omitempty" toml:"mintedAt" yaml:"mintedAt,omitempty"`
-	DeletedAt    null.Time  `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	RefreshesAt  time.Time  `boiler:"refreshes_at" boil:"refreshes_at" json:"refreshesAt" toml:"refreshesAt" yaml:"refreshesAt"`
-	UpdatedAt    time.Time  `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt    time.Time  `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	ID              string     `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	CollectionID    string     `boiler:"collection_id" boil:"collection_id" json:"collectionID" toml:"collectionID" yaml:"collectionID"`
+	StoreItemID     string     `boiler:"store_item_id" boil:"store_item_id" json:"storeItemID" toml:"storeItemID" yaml:"storeItemID"`
+	ExternalTokenID int        `boiler:"external_token_id" boil:"external_token_id" json:"externalTokenID" toml:"externalTokenID" yaml:"externalTokenID"`
+	Hash            string     `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
+	OwnerID         string     `boiler:"owner_id" boil:"owner_id" json:"ownerID" toml:"ownerID" yaml:"ownerID"`
+	Data            types.JSON `boiler:"data" boil:"data" json:"data" toml:"data" yaml:"data"`
+	MintedAt        null.Time  `boiler:"minted_at" boil:"minted_at" json:"mintedAt,omitempty" toml:"mintedAt" yaml:"mintedAt,omitempty"`
+	DeletedAt       null.Time  `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
+	RefreshesAt     time.Time  `boiler:"refreshes_at" boil:"refreshes_at" json:"refreshesAt" toml:"refreshesAt" yaml:"refreshesAt"`
+	UpdatedAt       time.Time  `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
+	CreatedAt       time.Time  `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
 
 	R *purchasedItemR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L purchasedItemL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var PurchasedItemColumns = struct {
-	ID           string
-	CollectionID string
-	StoreItemID  string
-	Hash         string
-	OwnerID      string
-	Data         string
-	MintedAt     string
-	DeletedAt    string
-	RefreshesAt  string
-	UpdatedAt    string
-	CreatedAt    string
+	ID              string
+	CollectionID    string
+	StoreItemID     string
+	ExternalTokenID string
+	Hash            string
+	OwnerID         string
+	Data            string
+	MintedAt        string
+	DeletedAt       string
+	RefreshesAt     string
+	UpdatedAt       string
+	CreatedAt       string
 }{
-	ID:           "id",
-	CollectionID: "collection_id",
-	StoreItemID:  "store_item_id",
-	Hash:         "hash",
-	OwnerID:      "owner_id",
-	Data:         "data",
-	MintedAt:     "minted_at",
-	DeletedAt:    "deleted_at",
-	RefreshesAt:  "refreshes_at",
-	UpdatedAt:    "updated_at",
-	CreatedAt:    "created_at",
+	ID:              "id",
+	CollectionID:    "collection_id",
+	StoreItemID:     "store_item_id",
+	ExternalTokenID: "external_token_id",
+	Hash:            "hash",
+	OwnerID:         "owner_id",
+	Data:            "data",
+	MintedAt:        "minted_at",
+	DeletedAt:       "deleted_at",
+	RefreshesAt:     "refreshes_at",
+	UpdatedAt:       "updated_at",
+	CreatedAt:       "created_at",
 }
 
 var PurchasedItemTableColumns = struct {
-	ID           string
-	CollectionID string
-	StoreItemID  string
-	Hash         string
-	OwnerID      string
-	Data         string
-	MintedAt     string
-	DeletedAt    string
-	RefreshesAt  string
-	UpdatedAt    string
-	CreatedAt    string
+	ID              string
+	CollectionID    string
+	StoreItemID     string
+	ExternalTokenID string
+	Hash            string
+	OwnerID         string
+	Data            string
+	MintedAt        string
+	DeletedAt       string
+	RefreshesAt     string
+	UpdatedAt       string
+	CreatedAt       string
 }{
-	ID:           "purchased_items.id",
-	CollectionID: "purchased_items.collection_id",
-	StoreItemID:  "purchased_items.store_item_id",
-	Hash:         "purchased_items.hash",
-	OwnerID:      "purchased_items.owner_id",
-	Data:         "purchased_items.data",
-	MintedAt:     "purchased_items.minted_at",
-	DeletedAt:    "purchased_items.deleted_at",
-	RefreshesAt:  "purchased_items.refreshes_at",
-	UpdatedAt:    "purchased_items.updated_at",
-	CreatedAt:    "purchased_items.created_at",
+	ID:              "purchased_items.id",
+	CollectionID:    "purchased_items.collection_id",
+	StoreItemID:     "purchased_items.store_item_id",
+	ExternalTokenID: "purchased_items.external_token_id",
+	Hash:            "purchased_items.hash",
+	OwnerID:         "purchased_items.owner_id",
+	Data:            "purchased_items.data",
+	MintedAt:        "purchased_items.minted_at",
+	DeletedAt:       "purchased_items.deleted_at",
+	RefreshesAt:     "purchased_items.refreshes_at",
+	UpdatedAt:       "purchased_items.updated_at",
+	CreatedAt:       "purchased_items.created_at",
 }
 
 // Generated where
 
 var PurchasedItemWhere = struct {
-	ID           whereHelperstring
-	CollectionID whereHelperstring
-	StoreItemID  whereHelperstring
-	Hash         whereHelperstring
-	OwnerID      whereHelperstring
-	Data         whereHelpertypes_JSON
-	MintedAt     whereHelpernull_Time
-	DeletedAt    whereHelpernull_Time
-	RefreshesAt  whereHelpertime_Time
-	UpdatedAt    whereHelpertime_Time
-	CreatedAt    whereHelpertime_Time
+	ID              whereHelperstring
+	CollectionID    whereHelperstring
+	StoreItemID     whereHelperstring
+	ExternalTokenID whereHelperint
+	Hash            whereHelperstring
+	OwnerID         whereHelperstring
+	Data            whereHelpertypes_JSON
+	MintedAt        whereHelpernull_Time
+	DeletedAt       whereHelpernull_Time
+	RefreshesAt     whereHelpertime_Time
+	UpdatedAt       whereHelpertime_Time
+	CreatedAt       whereHelpertime_Time
 }{
-	ID:           whereHelperstring{field: "\"purchased_items\".\"id\""},
-	CollectionID: whereHelperstring{field: "\"purchased_items\".\"collection_id\""},
-	StoreItemID:  whereHelperstring{field: "\"purchased_items\".\"store_item_id\""},
-	Hash:         whereHelperstring{field: "\"purchased_items\".\"hash\""},
-	OwnerID:      whereHelperstring{field: "\"purchased_items\".\"owner_id\""},
-	Data:         whereHelpertypes_JSON{field: "\"purchased_items\".\"data\""},
-	MintedAt:     whereHelpernull_Time{field: "\"purchased_items\".\"minted_at\""},
-	DeletedAt:    whereHelpernull_Time{field: "\"purchased_items\".\"deleted_at\""},
-	RefreshesAt:  whereHelpertime_Time{field: "\"purchased_items\".\"refreshes_at\""},
-	UpdatedAt:    whereHelpertime_Time{field: "\"purchased_items\".\"updated_at\""},
-	CreatedAt:    whereHelpertime_Time{field: "\"purchased_items\".\"created_at\""},
+	ID:              whereHelperstring{field: "\"purchased_items\".\"id\""},
+	CollectionID:    whereHelperstring{field: "\"purchased_items\".\"collection_id\""},
+	StoreItemID:     whereHelperstring{field: "\"purchased_items\".\"store_item_id\""},
+	ExternalTokenID: whereHelperint{field: "\"purchased_items\".\"external_token_id\""},
+	Hash:            whereHelperstring{field: "\"purchased_items\".\"hash\""},
+	OwnerID:         whereHelperstring{field: "\"purchased_items\".\"owner_id\""},
+	Data:            whereHelpertypes_JSON{field: "\"purchased_items\".\"data\""},
+	MintedAt:        whereHelpernull_Time{field: "\"purchased_items\".\"minted_at\""},
+	DeletedAt:       whereHelpernull_Time{field: "\"purchased_items\".\"deleted_at\""},
+	RefreshesAt:     whereHelpertime_Time{field: "\"purchased_items\".\"refreshes_at\""},
+	UpdatedAt:       whereHelpertime_Time{field: "\"purchased_items\".\"updated_at\""},
+	CreatedAt:       whereHelpertime_Time{field: "\"purchased_items\".\"created_at\""},
 }
 
 // PurchasedItemRels is where relationship names are stored.
@@ -150,8 +157,8 @@ func (*purchasedItemR) NewStruct() *purchasedItemR {
 type purchasedItemL struct{}
 
 var (
-	purchasedItemAllColumns            = []string{"id", "collection_id", "store_item_id", "hash", "owner_id", "data", "minted_at", "deleted_at", "refreshes_at", "updated_at", "created_at"}
-	purchasedItemColumnsWithoutDefault = []string{"collection_id", "store_item_id", "hash", "owner_id", "data", "minted_at", "deleted_at"}
+	purchasedItemAllColumns            = []string{"id", "collection_id", "store_item_id", "external_token_id", "hash", "owner_id", "data", "minted_at", "deleted_at", "refreshes_at", "updated_at", "created_at"}
+	purchasedItemColumnsWithoutDefault = []string{"collection_id", "store_item_id", "external_token_id", "hash", "owner_id", "data", "minted_at", "deleted_at"}
 	purchasedItemColumnsWithDefault    = []string{"id", "refreshes_at", "updated_at", "created_at"}
 	purchasedItemPrimaryKeyColumns     = []string{"id"}
 )

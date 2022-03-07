@@ -774,8 +774,9 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 			}
 		}()
 	}
+
 	// API Server
-	api := api.NewAPI(log,
+	api, routes := api.NewAPI(log,
 		pgxconn,
 		txConn,
 		mailer,
@@ -799,7 +800,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 
 	apiServer := &http.Server{
 		Addr:    api.Addr,
-		Handler: api.Routes,
+		Handler: routes,
 	}
 
 	go func() {
@@ -850,7 +851,7 @@ func SuperMigrate(c *cli.Context) error {
 	databaseName := c.String("database_name")
 	databaseAppName := c.String("database_application_name")
 	gameserverAddr := c.String("gameserver_web_host_url")
-	passlog.New("development", "TraceLevel")
+	passlog.New("development", "InfoLevel")
 	pgxconn, err := pgxconnect(
 		databaseUser,
 		databasePass,

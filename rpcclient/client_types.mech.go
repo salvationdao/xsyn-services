@@ -15,21 +15,22 @@ type MechContainer struct {
 }
 
 type Mech struct {
-	ID           string
-	OwnerID      string
-	TemplateID   string
-	ChassisID    string
-	Tier         string
-	IsDefault    bool
-	ImageURL     string
-	AnimationURL string
-	Hash         string
-	Name         string
-	Label        string
-	Slug         string
-	DeletedAt    null.Time
-	UpdatedAt    time.Time
-	CreatedAt    time.Time
+	ID              string
+	OwnerID         string
+	TemplateID      string
+	ChassisID       string
+	ExternalTokenID int
+	Tier            string
+	IsDefault       bool
+	ImageURL        string
+	AnimationURL    string
+	Hash            string
+	Name            string
+	Label           string
+	Slug            string
+	DeletedAt       null.Time
+	UpdatedAt       time.Time
+	CreatedAt       time.Time
 }
 type Chassis struct {
 	ID                 string

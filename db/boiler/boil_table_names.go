@@ -4,6 +4,7 @@
 package boiler
 
 var TableNames = struct {
+	APIKeys                 string
 	Blobs                   string
 	ChainConfirmations      string
 	Collections             string
@@ -28,6 +29,7 @@ var TableNames = struct {
 	XsynMetadata            string
 	XsynStore               string
 }{
+	APIKeys:                 "api_keys",
 	Blobs:                   "blobs",
 	ChainConfirmations:      "chain_confirmations",
 	Collections:             "collections",

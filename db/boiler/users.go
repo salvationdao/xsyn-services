@@ -238,6 +238,7 @@ var UserRels = struct {
 	Faction             string
 	Role                string
 	PasswordHash        string
+	APIKeys             string
 	IssueTokens         string
 	OwnerPurchasedItems string
 	CreditTransactions  string
@@ -253,6 +254,7 @@ var UserRels = struct {
 	Faction:             "Faction",
 	Role:                "Role",
 	PasswordHash:        "PasswordHash",
+	APIKeys:             "APIKeys",
 	IssueTokens:         "IssueTokens",
 	OwnerPurchasedItems: "OwnerPurchasedItems",
 	CreditTransactions:  "CreditTransactions",
@@ -271,6 +273,7 @@ type userR struct {
 	Faction             *Faction              `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	Role                *Role                 `boiler:"Role" boil:"Role" json:"Role" toml:"Role" yaml:"Role"`
 	PasswordHash        *PasswordHash         `boiler:"PasswordHash" boil:"PasswordHash" json:"PasswordHash" toml:"PasswordHash" yaml:"PasswordHash"`
+	APIKeys             APIKeySlice           `boiler:"APIKeys" boil:"APIKeys" json:"APIKeys" toml:"APIKeys" yaml:"APIKeys"`
 	IssueTokens         IssueTokenSlice       `boiler:"IssueTokens" boil:"IssueTokens" json:"IssueTokens" toml:"IssueTokens" yaml:"IssueTokens"`
 	OwnerPurchasedItems PurchasedItemSlice    `boiler:"OwnerPurchasedItems" boil:"OwnerPurchasedItems" json:"OwnerPurchasedItems" toml:"OwnerPurchasedItems" yaml:"OwnerPurchasedItems"`
 	CreditTransactions  TransactionSlice      `boiler:"CreditTransactions" boil:"CreditTransactions" json:"CreditTransactions" toml:"CreditTransactions" yaml:"CreditTransactions"`
@@ -592,6 +595,28 @@ func (o *User) PasswordHash(mods ...qm.QueryMod) passwordHashQuery {
 
 	query := PasswordHashes(queryMods...)
 	queries.SetFrom(query.Query, "\"password_hashes\"")
+
+	return query
+}
+
+// APIKeys retrieves all the api_key's APIKeys with an executor.
+func (o *User) APIKeys(mods ...qm.QueryMod) apiKeyQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"api_keys\".\"user_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"api_keys\".\"deleted_at\""),
+	)
+
+	query := APIKeys(queryMods...)
+	queries.SetFrom(query.Query, "\"api_keys\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"api_keys\".*"})
+	}
 
 	return query
 }
@@ -1226,6 +1251,105 @@ func (userL) LoadPasswordHash(e boil.Executor, singular bool, maybeUser interfac
 				local.R.PasswordHash = foreign
 				if foreign.R == nil {
 					foreign.R = &passwordHashR{}
+				}
+				foreign.R.User = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadAPIKeys allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadAPIKeys(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`api_keys`),
+		qm.WhereIn(`api_keys.user_id in ?`, args...),
+		qmhelper.WhereIsNull(`api_keys.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load api_keys")
+	}
+
+	var resultSlice []*APIKey
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice api_keys")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on api_keys")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for api_keys")
+	}
+
+	if len(apiKeyAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.APIKeys = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &apiKeyR{}
+			}
+			foreign.R.User = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.UserID {
+				local.R.APIKeys = append(local.R.APIKeys, foreign)
+				if foreign.R == nil {
+					foreign.R = &apiKeyR{}
 				}
 				foreign.R.User = local
 				break
@@ -2518,6 +2642,58 @@ func (o *User) SetPasswordHash(exec boil.Executor, insert bool, related *Passwor
 		}
 	} else {
 		related.R.User = o
+	}
+	return nil
+}
+
+// AddAPIKeys adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.APIKeys.
+// Sets related.R.User appropriately.
+func (o *User) AddAPIKeys(exec boil.Executor, insert bool, related ...*APIKey) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.UserID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"api_keys\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
+				strmangle.WhereClause("\"", "\"", 2, apiKeyPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.UserID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			APIKeys: related,
+		}
+	} else {
+		o.R.APIKeys = append(o.R.APIKeys, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &apiKeyR{
+				User: o,
+			}
+		} else {
+			rel.R.User = o
+		}
 	}
 	return nil
 }

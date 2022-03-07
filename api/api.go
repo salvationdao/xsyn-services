@@ -45,7 +45,6 @@ type API struct {
 	State               *passport.State
 	SupUSD              decimal.Decimal
 	Log                 *zerolog.Logger
-	Routes              chi.Router
 	Addr                string
 	Mailer              *email.Mailer
 	HTMLSanitize        *bluemonday.Policy
@@ -93,7 +92,7 @@ func NewAPI(
 	runBlockchainBridge bool,
 	msgBus *messagebus.MessageBus,
 	enablePurchaseSubscription bool,
-) *API {
+) (*API, chi.Router) {
 
 	api := &API{
 		SupUSD:       decimal.New(12, -2),
@@ -129,7 +128,6 @@ func NewAPI(
 		}),
 		Log:          log_helpers.NamedLogger(log, "api"),
 		Conn:         conn,
-		Routes:       chi.NewRouter(),
 		Addr:         addr,
 		Mailer:       mailer,
 		HTMLSanitize: HTMLSanitize,
@@ -151,11 +149,11 @@ func NewAPI(
 	}
 
 	cc := NewChainClients(log, api, config.BridgeParams, isTestnetBlockchain, runBlockchainBridge, enablePurchaseSubscription)
-
-	api.Routes.Use(middleware.RequestID)
-	api.Routes.Use(middleware.RealIP)
-	api.Routes.Use(middleware.Logger)
-	api.Routes.Use(cors.New(cors.Options{
+	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowCredentials: true,
 	}).Handler)
@@ -194,28 +192,37 @@ func NewAPI(
 		log.Fatal().Msgf("failed to init hub auther: %s", err.Error())
 	}
 
-	api.Routes.Handle("/metrics", promhttp.Handler())
-	api.Routes.Route("/api", func(r chi.Router) {
+	r.Handle("/metrics", promhttp.Handler())
+	r.Route("/api", func(r chi.Router) {
+		r.Route("/admin", func(r chi.Router) {
+			r.Get("/purchased_items", WithError(WithAdmin(ListPurchasedItems)))
+			r.Get("/store_items", WithError(WithAdmin(ListStoreItems)))
+			r.Get("/users", WithError(WithAdmin(ListUsers)))
+			r.Post("/purchased_items/register/{template_id}/{owner_id}", WithError(WithAdmin(PurchasedItemRegisterHandler)))
+			r.Post("/purchased_items/set_owner/{purchased_item_id}/{owner_id}", WithError(WithAdmin(PurchasedItemSetOwner)))
+			r.Get("/check", WithError(WithAdmin(AdminCheck)))
+		})
 		r.Group(func(r chi.Router) {
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
 			r.Use(sentryHandler.Handle)
 			r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn))
 			r.Mount("/files", FileRouter(conn, api))
-			r.Get("/verify", api.WithError(api.Auth.VerifyAccountHandler))
-			r.Get("/get-nonce", api.WithError(api.Auth.GetNonce))
-			r.Get("/withdraw/{address}/{nonce}/{amount}", api.WithError(api.WithdrawSups))
-			r.Get("/mint-nft/{address}/{nonce}/{collectionSlug}/{externalTokenID}", api.WithError(api.MintAsset))
-			r.Get("/asset/{hash}", api.WithError(api.AssetGet))
-			r.Get("/asset/{collection_address}/{token_id}", api.WithError(api.AssetGetByCollectionAndTokenID))
-			r.Get("/auth/twitter", api.WithError(api.Auth.TwitterAuth))
+			r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
+			r.Get("/get-nonce", WithError(api.Auth.GetNonce))
+			r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSups))
+			r.Get("/mint-nft/{address}/{nonce}/{collectionSlug}/{externalTokenID}", WithError(api.MintAsset))
+			r.Get("/asset/{hash}", WithError(api.AssetGet))
+			r.Get("/asset/{collection_address}/{token_id}", WithError(api.AssetGetByCollectionAndTokenID))
+			r.Get("/auth/twitter", WithError(api.Auth.TwitterAuth))
 
-			r.Get("/whitelist/check", api.WithError(api.WhitelistOnlyWalletCheck))
-			r.Get("/faction-data", api.WithError(api.FactionGetData))
+			r.Get("/whitelist/check", WithError(api.WhitelistOnlyWalletCheck))
+			r.Get("/faction-data", WithError(api.FactionGetData))
 		})
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
 		r.Handle("/ws", api.Hub)
 	})
+
 	if runBlockchainBridge {
 		_ = NewSupController(log, conn, api, cc)
 	}
@@ -253,7 +260,7 @@ func NewAPI(
 	if err != nil {
 		log.Fatal().Err(err).Msgf("failed to init state object")
 	}
-	return api
+	return api, r
 }
 
 // RecordUserActivity adds a UserActivity to the db for the current user
