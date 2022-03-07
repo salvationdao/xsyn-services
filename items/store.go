@@ -285,11 +285,20 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	return newItem.Hash, nil
 }
 
-func LootboxAmountPerFaction(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
-	factionID passport.FactionID) (int, error) {
-
+func LootboxAmountPerFaction(
+	ctx context.Context,
+	conn *pgxpool.Pool,
+	log *zerolog.Logger,
+	bus *messagebus.MessageBus,
+	busKey messagebus.BusKey,
+	factionID passport.FactionID,
+) (int, error) {
+	collection, err := db.GenesisCollection()
+	if err != nil {
+		return 0, err
+	}
 	// get all faction items marked as loot box
-	remainingLootboxesForFaction, err := db.StoreItemsRemainingByFactionIDAndRestrictionGroup(uuid.UUID(factionID), db.RestrictionGroupLootbox)
+	remainingLootboxesForFaction, err := db.StoreItemsRemainingByFactionIDAndRestrictionGroup(uuid.Must(uuid.FromString(collection.ID)), uuid.UUID(factionID), db.RestrictionGroupLootbox)
 	if err != nil {
 		return -1, terror.Error(err, "failed to get loot box items")
 	}

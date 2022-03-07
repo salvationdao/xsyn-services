@@ -160,23 +160,35 @@ func SyncStoreItems() error {
 	return nil
 }
 
-func StoreItemsRemainingByFactionIDAndRestrictionGroup(factionID uuid.UUID, restrictionGroup string) (int, error) {
-	count, err := boiler.StoreItems(
+func StoreItemsRemainingByFactionIDAndRestrictionGroup(collectionID uuid.UUID, factionID uuid.UUID, restrictionGroup string) (int, error) {
+	items, err := boiler.StoreItems(
 		boiler.StoreItemWhere.FactionID.EQ(factionID.String()),
 		boiler.StoreItemWhere.RestrictionGroup.EQ(restrictionGroup),
-	).Count(passdb.StdConn)
-	return int(count), err
+	).All(passdb.StdConn)
+	count := 0
+	for _, item := range items {
+		count = count + item.AmountAvailable - item.AmountSold
+	}
+	return count, err
 }
-func StoreItemsRemainingByFactionIDAndTier(factionID uuid.UUID, tier string) (int, error) {
-	count, err := boiler.StoreItems(
+func StoreItemsRemainingByFactionIDAndTier(collectionID uuid.UUID, factionID uuid.UUID, tier string) (int, error) {
+	items, err := boiler.StoreItems(
 		boiler.StoreItemWhere.FactionID.EQ(factionID.String()),
 		boiler.StoreItemWhere.Tier.EQ(tier),
-	).Count(passdb.StdConn)
-	return int(count), err
+	).All(passdb.StdConn)
+	count := 0
+	for _, item := range items {
+		count = count + item.AmountAvailable - item.AmountSold
+	}
+	return count, err
 }
 
 // StoreItemsAvailable return the total of available war machine in each faction
 func StoreItemsAvailable() ([]*passport.FactionSaleAvailable, error) {
+	collection, err := GenesisCollection()
+	if err != nil {
+		return nil, err
+	}
 	factions, err := boiler.Factions().All(passdb.StdConn)
 	if err != nil {
 		return nil, err
@@ -189,11 +201,11 @@ func StoreItemsAvailable() ([]*passport.FactionSaleAvailable, error) {
 		if err != nil {
 			return nil, err
 		}
-		megaAmount, err := StoreItemsRemainingByFactionIDAndTier(uuid.Must(uuid.FromString(faction.ID)), "MEGA")
+		megaAmount, err := StoreItemsRemainingByFactionIDAndTier(uuid.Must(uuid.FromString(collection.ID)), uuid.Must(uuid.FromString(faction.ID)), "MEGA")
 		if err != nil {
 			return nil, err
 		}
-		lootboxAmount, err := StoreItemsRemainingByFactionIDAndRestrictionGroup(uuid.Must(uuid.FromString(faction.ID)), "LOOTBOX")
+		lootboxAmount, err := StoreItemsRemainingByFactionIDAndRestrictionGroup(uuid.Must(uuid.FromString(collection.ID)), uuid.Must(uuid.FromString(faction.ID)), "LOOTBOX")
 		if err != nil {
 			return nil, err
 		}
