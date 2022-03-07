@@ -25,7 +25,7 @@ const (
 	TransactionColumnStatus               TransactionColumn = "status"
 	TransactionColumnReason               TransactionColumn = "reason"
 	TransactionColumnCreatedAt            TransactionColumn = "created_at"
-	TransactionColumnGroupID              TransactionColumn = "group_id"
+	TransactionColumnGroup                TransactionColumn = "group"
 )
 
 func (ic TransactionColumn) IsValid() error {
@@ -39,7 +39,7 @@ func (ic TransactionColumn) IsValid() error {
 		TransactionColumnStatus,
 		TransactionColumnReason,
 		TransactionColumnCreatedAt,
-		TransactionColumnGroupID:
+		TransactionColumnGroup:
 		return nil
 	}
 	return terror.Error(fmt.Errorf("invalid transaction column type"))
@@ -58,7 +58,7 @@ transactions.debit,
 transactions.status,
 transactions.reason,
 transactions.created_at,
-transactions.group_id
+transactions.group
 ` + TransactionGetQueryFrom
 
 const TransactionGetQueryFrom = `
@@ -75,11 +75,11 @@ func UsersTransactionGroups(
 ) ([]string, error) {
 	// Get all transaction Group IDs
 	q := `--sql
-		SELECT transactions.group_id
+		SELECT transactions.group
 		from transactions
-		WHERE transactions.group_id is not null
+		WHERE transactions.group is not null
 		AND (transactions.credit = $1 OR transactions.debit = $1)
-		group by transactions.group_id
+		group by transactions.group
 	`
 	var args []interface{}
 	args = append(args, userID.String())

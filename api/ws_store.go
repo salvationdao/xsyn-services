@@ -180,7 +180,21 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Cli
 		return terror.Error(err, "Invalid request received")
 	}
 
-	storeItems, err := db.StoreItems()
+	// get user to check faction
+	uid, err := uuid.FromString(hubc.Identifier())
+	if err != nil {
+		return terror.Error(err, "Could not find user")
+	}
+	user, err := db.UserGet(ctx, sc.Conn, passport.UserID(uid))
+	if err != nil {
+		return terror.Error(err, "Could not find user")
+	}
+
+	if user.FactionID == nil {
+		return terror.Error(err, "User is not enlisted")
+	}
+
+	storeItems, err := db.StoreItemsByFactionID(uuid.UUID(*user.FactionID))
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -248,8 +262,8 @@ func (sc *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, clie
 	priceAsSups := priceAsCents.Div(supsAsCents).Mul(decimal.New(1, 18)).BigInt().String()
 
 	result := struct {
-		PriceInSUPS string
-		Item        *boiler.StoreItem
+		PriceInSUPS string            `json:"price_in_sups"`
+		Item        *boiler.StoreItem `json:"item"`
 	}{
 		PriceInSUPS: priceAsSups,
 		Item:        item,
