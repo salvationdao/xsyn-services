@@ -46,11 +46,11 @@ const HubKeyUserActivityList hub.HubCommandKey = "USER_ACTIVITY:LIST"
 type UserActivityListRequest struct {
 	*hub.HubCommandKey
 	Payload struct {
-		SortDir  db.SortByDir          `json:"sortDir"`
-		SortBy   db.UserActivityColumn `json:"sortBy"`
+		SortDir  db.SortByDir          `json:"sort_dir"`
+		SortBy   db.UserActivityColumn `json:"sort_by"`
 		Filter   *db.ListFilterRequest `json:"filter"`
 		Search   string                `json:"search"`
-		PageSize int                   `json:"pageSize"`
+		PageSize int                   `json:"page_size"`
 		Page     int                   `json:"page"`
 	} `json:"payload"`
 }
@@ -106,12 +106,12 @@ const HubKeyUserActivityCreate hub.HubCommandKey = "USER_ACTIVITY:CREATE"
 
 // UserActivityPayload used for create requests
 type UserActivityPayload struct {
-	UserID     passport.UserID     `json:"userID"`
+	UserID     passport.UserID     `json:"user_id"`
 	Action     string              `json:"action"`
-	ObjectID   *string             `json:"objectID"`
-	ObjectSlug *string             `json:"objectSlug"`
-	ObjectName *string             `json:"objectName"`
-	ObjectType passport.ObjectType `json:"objectType"`
+	ObjectID   *string             `json:"object_id"`
+	ObjectSlug *string             `json:"object_slug"`
+	ObjectName *string             `json:"object_name"`
+	ObjectType passport.ObjectType `json:"object_type"`
 	OldData    null.JSON           `json:"old_data"`
 	NewData    null.JSON           `json:"new_data"`
 }

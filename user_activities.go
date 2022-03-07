@@ -11,15 +11,15 @@ import (
 // UserActivity is a single userActivity on the platform
 type UserActivity struct {
 	ID         UserActivityID `json:"id" db:"id"`
-	UserID     UserID         `json:"userID" db:"user_id"`
+	UserID     UserID         `json:"user_id" db:"user_id"`
 	Action     string         `json:"action" db:"action"`
-	ObjectID   *string        `json:"objectID,omitempty" db:"object_id"`
-	ObjectSlug *string        `json:"objectSlug,omitempty" db:"object_slug"`
-	ObjectName *string        `json:"objectName,omitempty" db:"object_name"`
-	ObjectType ObjectType     `json:"objectType" db:"object_type"`
-	OldData    null.JSON      `json:"oldData,omitempty" db:"old_data"`
-	NewData    null.JSON      `json:"newData,omitempty" db:"new_data"`
-	CreatedAt  time.Time      `json:"createdAt" db:"created_at"`
+	ObjectID   *string        `json:"object_id,omitempty" db:"object_id"`
+	ObjectSlug *string        `json:"object_slug,omitempty" db:"object_slug"`
+	ObjectName *string        `json:"object_name,omitempty" db:"object_name"`
+	ObjectType ObjectType     `json:"object_type" db:"object_type"`
+	OldData    null.JSON      `json:"old_data,omitempty" db:"old_data"`
+	NewData    null.JSON      `json:"new_data,omitempty" db:"new_data"`
+	CreatedAt  time.Time      `json:"created_at" db:"created_at"`
 	User       *User          `json:"user" db:"user"`
 }
 

@@ -146,7 +146,7 @@ type Transaction struct {
 	From                 passport.UserID `json:"from"`
 	To                   passport.UserID `json:"to"`
 	Amount               passport.BigInt `json:"amount"`
-	TransactionReference string          `json:"transactionReference"`
+	TransactionReference string          `json:"transaction_reference"`
 }
 
 func BenchmarkTransactions(b *testing.B) {

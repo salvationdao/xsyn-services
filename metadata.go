@@ -11,12 +11,12 @@ type Collection struct {
 	ID            CollectionID `json:"id"`
 	Name          string       `json:"name"`
 	Slug          string       `json:"slug"`
-	ImageURL      string       `json:"imageURL"`
+	ImageURL      string       `json:"image_url"`
 	DeletedAt     *time.Time   `json:"deleted_at" db:"deleted_at"`
 	UpdatedAt     time.Time    `json:"updated_at" db:"updated_at"`
 	CreatedAt     time.Time    `json:"created_at" db:"created_at"`
-	MintContract  string       `json:"mintContract" db:"mint_contract"`
-	StakeContract string       `json:"stakeContract" db:"stake_contract"`
+	MintContract  string       `json:"mint_contract" db:"mint_contract"`
+	StakeContract string       `json:"stake_contract" db:"stake_contract"`
 }
 
 type Attribute struct {
@@ -37,58 +37,58 @@ const (
 
 // StoreItem holds data for a nft that is listed on the marketplace
 type StoreItem struct {
-	ID                   StoreItemID         `json:"ID" db:"id"`
+	ID                   StoreItemID         `json:"id" db:"id"`
 	Name                 string              `json:"name" db:"name"`
-	WhitelistedAddresses []string            `json:"whiteListedAddresses" db:"white_listed_addresses"`
+	WhitelistedAddresses []string            `json:"white_listed_addresses" db:"white_listed_addresses"`
 	Restriction          string              `json:"restriction" db:"restriction"`
-	FactionID            FactionID           `json:"factionID" db:"faction_id"`
+	FactionID            FactionID           `json:"faction_id" db:"faction_id"`
 	Faction              *Faction            `json:"faction" db:"faction"`
-	CollectionID         CollectionID        `json:"collectionID" db:"collection_id"`
+	CollectionID         CollectionID        `json:"collection_id" db:"collection_id"`
 	Collection           Collection          `json:"collection" db:"collection"`
 	Description          string              `json:"description" db:"description"`
 	Image                string              `json:"image" db:"image"`
-	ImageAvatar          string              `json:"imageAvatar" db:"image_avatar"`
+	ImageAvatar          string              `json:"image_avatar" db:"image_avatar"`
 	AnimationURL         string              `json:"animation_url" db:"animation_url"`
 	Attributes           []*Attribute        `json:"attributes" db:"attributes"`
-	AdditionalMetadata   *AdditionalMetadata `json:"additionalMetadata" db:"additional_metadata"`
-	UsdCentCost          int                 `json:"usdCentCost" db:"usd_cent_cost"`
-	AmountSold           int                 `json:"amountSold" db:"amount_sold"`
-	AmountAvailable      int                 `json:"amountAvailable" db:"amount_available"`
-	SoldAfter            time.Time           `json:"soldAfter" db:"sold_after"`
-	SoldBefore           time.Time           `json:"soldBefore" db:"sold_before"`
-	DeletedAt            *time.Time          `json:"deletedAt" db:"deleted_at"`
-	CreatedAt            time.Time           `json:"createdAt" db:"created_at"`
-	UpdatedAt            time.Time           `json:"updatedAt" db:"updated_at"`
-	SupCost              string              `json:"supCost"`
+	AdditionalMetadata   *AdditionalMetadata `json:"additional_metadata" db:"additional_metadata"`
+	UsdCentCost          int                 `json:"usd_cent_cost" db:"usd_cent_cost"`
+	AmountSold           int                 `json:"amount_sold" db:"amount_sold"`
+	AmountAvailable      int                 `json:"amount_available" db:"amount_available"`
+	SoldAfter            time.Time           `json:"sold_after" db:"sold_after"`
+	SoldBefore           time.Time           `json:"sold_before" db:"sold_before"`
+	DeletedAt            *time.Time          `json:"deleted_at" db:"deleted_at"`
+	CreatedAt            time.Time           `json:"created_at" db:"created_at"`
+	UpdatedAt            time.Time           `json:"updated_at" db:"updated_at"`
+	SupCost              string              `json:"sup_cost"`
 }
 
 // XsynMetadata holds xsyn nft metadata, the nfts main game data it stored here to show on opensea
 type XsynMetadata struct {
 	Hash               string                `json:"hash" db:"hash"`
-	UserID             *UserID               `json:"userID" db:"user_id"`
+	UserID             *UserID               `json:"user_id" db:"user_id"`
 	Minted             bool                  `json:"minted" db:"minted"`
 	Username           *string               `json:"username" db:"username"`
-	ExternalTokenID    uint64                `json:"externalTokenID" db:"external_token_id"`
+	ExternalTokenID    uint64                `json:"external_token_id" db:"external_token_id"`
 	Name               string                `json:"name" db:"name"`
-	CollectionID       CollectionID          `json:"collectionID" db:"collection_id"`
+	CollectionID       CollectionID          `json:"collection_id" db:"collection_id"`
 	Collection         Collection            `json:"collection" db:"collection"`
 	GameObject         interface{}           `json:"game_object" db:"game_object"`
 	Description        *string               `json:"description,omitempty" db:"description,omitempty"`
 	ExternalUrl        string                `json:"external_url" db:"external_url"`
 	Image              string                `json:"image" db:"image"`
-	ImageAvatar        string                `json:"imageAvatar" db:"image_avatar"`
+	ImageAvatar        string                `json:"image_avatar" db:"image_avatar"`
 	AnimationURL       string                `json:"animation_url" db:"animation_url"`
 	Durability         int                   `json:"durability" db:"durability"`
 	Attributes         []*Attribute          `json:"attributes" db:"attributes"`
 	AdditionalMetadata []*AdditionalMetadata `json:"additional_metadata" db:"additional_metadata"`
 	DeletedAt          *time.Time            `json:"deleted_at" db:"deleted_at"`
-	FrozenAt           *time.Time            `json:"frozenAt" db:"frozen_at"`
-	LockedByID         *UserID               `json:"lockedByID" db:"locked_by_id"`
-	MintingSignature   string                `json:"mintingSignature" db:"minting_signature"`
-	SignatureExpiry    string                `json:"signatureExpiry" db:"signature_expiry"`
-	UpdatedAt          time.Time             `json:"updatedAt" db:"updated_at"`
-	CreatedAt          time.Time             `json:"createdAt" db:"created_at"`
-	TxHistory          []string              `json:"txHistory" db:"tx_history"`
+	FrozenAt           *time.Time            `json:"frozen_at" db:"frozen_at"`
+	LockedByID         *UserID               `json:"locked_by_id" db:"locked_by_id"`
+	MintingSignature   string                `json:"minting_signature" db:"minting_signature"`
+	SignatureExpiry    string                `json:"signature_expiry" db:"signature_expiry"`
+	UpdatedAt          time.Time             `json:"updated_at" db:"updated_at"`
+	CreatedAt          time.Time             `json:"created_at" db:"created_at"`
+	TxHistory          []string              `json:"tx_history" db:"tx_history"`
 }
 
 type AssetType string
@@ -102,7 +102,7 @@ const (
 
 // AdditionalMetadata holds metadata for a nfts non main game
 type AdditionalMetadata struct {
-	TokenID     uint64       `json:"tokenID"`
+	TokenID     uint64       `json:"token_id"`
 	Collection  Collection   `json:"collection" db:"collection"`
 	GameObject  interface{}  `json:"game_object" db:"game_object"`
 	Name        string       `json:"name" db:"name"`
@@ -117,27 +117,27 @@ type AdditionalMetadata struct {
 
 type WarMachineMetadata struct {
 	Hash               string             `json:"hash"`
-	OwnedByID          UserID             `json:"ownedByID"`
+	OwnedByID          UserID             `json:"owned_by_id"`
 	Name               string             `json:"name"`
 	Description        *string            `json:"description,omitempty"`
-	ExternalUrl        string             `json:"externalUrl"`
+	ExternalUrl        string             `json:"external_url"`
 	Image              string             `json:"image"`
 	Model              string             `json:"model"`
 	Skin               string             `json:"skin"`
-	MaxHealth          int                `json:"maxHealth"`
+	MaxHealth          int                `json:"max_health"`
 	Health             int                `json:"health"`
-	MaxShield          int                `json:"maxShield"`
+	MaxShield          int                `json:"max_shield"`
 	Shield             int                `json:"shield"`
-	ShieldRechargeRate float64            `json:"shieldRechargeRate"`
+	ShieldRechargeRate float64            `json:"shield_recharge_rate"`
 	Speed              int                `json:"speed"`
 	Durability         int                `json:"durability"`
-	PowerGrid          int                `json:"powerGrid"`
+	PowerGrid          int                `json:"power_grid"`
 	CPU                int                `json:"cpu"`
-	WeaponHardpoint    int                `json:"weaponHardpoint"`
-	WeaponNames        []string           `json:"weaponNames"`
-	TurretHardpoint    int                `json:"turretHardpoint"`
-	UtilitySlots       int                `json:"utilitySlots"`
-	FactionID          FactionID          `json:"factionID"`
+	WeaponHardpoint    int                `json:"weapon_hardpoint"`
+	WeaponNames        []string           `json:"weapon_names"`
+	TurretHardpoint    int                `json:"turret_hardpoint"`
+	UtilitySlots       int                `json:"utility_slots"`
+	FactionID          FactionID          `json:"faction_id"`
 	Faction            *Faction           `json:"faction"`
 	Abilities          []*AbilityMetadata `json:"abilities"`
 }
@@ -341,16 +341,16 @@ func ParseWarMachineMetadata(metadata *XsynMetadata, warMachineMetadata *WarMach
 
 type AbilityMetadata struct {
 	Hash              string  `json:"hash"`
-	TokenID           uint64  `json:"tokenID"`
+	TokenID           uint64  `json:"token_id"`
 	Name              string  `json:"name"`
 	Description       *string `json:"description"`
-	ExternalUrl       string  `json:"externalUrl"`
+	ExternalUrl       string  `json:"external_url"`
 	Image             string  `json:"image"`
-	SupsCost          string  `json:"supsCost"`
-	GameClientID      int     `json:"gameClientID"`
-	RequiredSlot      string  `json:"requiredSlot"`
-	RequiredPowerGrid int     `json:"requiredPowerGrid"`
-	RequiredCPU       int     `json:"requiredCPU"`
+	SupsCost          string  `json:"sups_cost"`
+	GameClientID      int     `json:"game_client_id"`
+	RequiredSlot      string  `json:"required_slot"`
+	RequiredPowerGrid int     `json:"required_power_grid"`
+	RequiredCPU       int     `json:"required_cpu"`
 }
 
 type AbilityAttField string
@@ -400,10 +400,10 @@ const (
 
 type AssetRepairRecord struct {
 	Hash              string     `json:"hash"`
-	StartedAt         time.Time  `json:"startedAt"` // this is calculated on fly value
-	ExpectCompletedAt time.Time  `json:"expectCompleteAt"`
-	RepairMode        RepairMode `json:"repairMode"`
-	IsPaidToComplete  bool       `json:"isPaidToComplete"`
-	CompletedAt       *time.Time `json:"completedAt,omitempty"`
-	CreatedAt         time.Time  `json:"createdAt"`
+	StartedAt         time.Time  `json:"started_at"` // this is calculated on fly value
+	ExpectCompletedAt time.Time  `json:"expect_complete_at"`
+	RepairMode        RepairMode `json:"repair_mode"`
+	IsPaidToComplete  bool       `json:"is_paid_to_complete"`
+	CompletedAt       *time.Time `json:"completed_at,omitempty"`
+	CreatedAt         time.Time  `json:"created_at"`
 }
