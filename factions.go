@@ -15,8 +15,8 @@ type FactionTheme struct {
 type Faction struct {
 	ID               FactionID     `json:"id" db:"id"`
 	Label            string        `json:"label" db:"label"`
-	LogoBlobID       BlobID        `json:"logoBlobID" db:"logo_blob_id"`
-	BackgroundBlobID BlobID        `json:"backgroundBlobID" db:"background_blob_id"`
+	LogoBlobID       BlobID        `json:"logo_blob_id" db:"logo_blob_id"`
+	BackgroundBlobID BlobID        `json:"background_blob_id" db:"background_blob_id"`
 	Theme            *FactionTheme `json:"theme" db:"theme"`
 	Description      string        `json:"description" db:"description"`
 }
@@ -24,14 +24,14 @@ type Faction struct {
 // from game server
 type FactionStat struct {
 	Velocity      int64      `json:"velocity"`
-	RecruitNumber int64      `json:"recruitNumber"`
+	RecruitNumber int64      `json:"recruit_number"`
 	ID            FactionID  `json:"id" db:"id"`
-	WinCount      int64      `json:"winCount"`
-	LossCount     int64      `json:"lossCount"`
-	KillCount     int64      `json:"killCount"`
-	DeathCount    int64      `json:"deathCount"`
+	WinCount      int64      `json:"win_count"`
+	LossCount     int64      `json:"loss_count"`
+	KillCount     int64      `json:"kill_count"`
+	DeathCount    int64      `json:"death_count"`
 	MVP           *UserBrief `json:"mvp,omitempty"`
-	SupsVoted     string     `json:"supsVoted"`
+	SupsVoted     string     `json:"sups_voted"`
 }
 
 var Factions = []*Faction{
@@ -76,13 +76,13 @@ var Factions = []*Faction{
 type FactionSaleAvailable struct {
 	ID            FactionID     `json:"id" db:"id"`
 	Label         string        `json:"label" db:"label"`
-	LogoBlobID    BlobID        `json:"logoBlobID" db:"logo_blob_id"`
+	LogoBlobID    BlobID        `json:"logo_blob_id" db:"logo_blob_id"`
 	Theme         *FactionTheme `json:"theme" db:"theme"`
-	MegaAmount    int64         `json:"megaAmount" db:"mega_amount"`
-	LootboxAmount int64         `json:"lootboxAmount" db:"lootbox_amount"`
+	MegaAmount    int64         `json:"mega_amount" db:"mega_amount"`
+	LootboxAmount int64         `json:"lootbox_amount" db:"lootbox_amount"`
 }
 
 type AssetQueueStat struct {
 	Position       *int    `json:"position"`
-	ContractReward *string `json:"contractReward"`
+	ContractReward *string `json:"contract_reward"`
 }

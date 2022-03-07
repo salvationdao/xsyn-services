@@ -8,8 +8,8 @@ type Product struct {
 	Slug        string     `json:"slug" db:"slug"`
 	Name        string     `json:"name" db:"name"`
 	Description string     `json:"description" db:"description"`
-	ImageID     *BlobID    `json:"imageID" db:"image_id"`
-	CreatedAt   time.Time  `json:"createdAt" db:"created_at"`
-	UpdatedAt   time.Time  `json:"updatedAt" db:"updated_at"`
-	DeletedAt   *time.Time `json:"deletedAt" db:"deleted_at"`
+	ImageID     *BlobID    `json:"image_id" db:"image_id"`
+	CreatedAt   time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at" db:"updated_at"`
+	DeletedAt   *time.Time `json:"deleted_at" db:"deleted_at"`
 }
