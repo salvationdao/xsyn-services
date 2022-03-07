@@ -258,8 +258,8 @@ func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, hubc *h
 type UpdateUserFactionRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID    passport.UserID    `json:"userID"`
-		FactionID passport.FactionID `json:"factionID"`
+		UserID    passport.UserID    `json:"user_id"`
+		FactionID passport.FactionID `json:"faction_id"`
 	} `json:"payload"`
 }
 
@@ -272,15 +272,15 @@ type UpdateUserRequest struct {
 	Payload struct {
 		ID                               passport.UserID          `json:"id"`
 		Username                         string                   `json:"username"`
-		NewUsername                      *string                  `json:"newUsername"`
-		FirstName                        string                   `json:"firstName"`
-		LastName                         string                   `json:"lastName"`
+		NewUsername                      *string                  `json:"new_username"`
+		FirstName                        string                   `json:"first_name"`
+		LastName                         string                   `json:"last_name"`
 		Email                            null.String              `json:"email"`
-		AvatarID                         *passport.BlobID         `json:"avatarID"`
-		CurrentPassword                  *string                  `json:"currentPassword"`
-		NewPassword                      *string                  `json:"newPassword"`
-		OrganisationID                   *passport.OrganisationID `json:"organisationID"`
-		TwoFactorAuthenticationActivated bool                     `json:"twoFactorAuthenticationActivated"`
+		AvatarID                         *passport.BlobID         `json:"avatar_id"`
+		CurrentPassword                  *string                  `json:"current_password"`
+		NewPassword                      *string                  `json:"new_password"`
+		OrganisationID                   *passport.OrganisationID `json:"organisation_id"`
+		TwoFactorAuthenticationActivated bool                     `json:"two_factor_authentication_activated"`
 	} `json:"payload"`
 }
 
@@ -486,7 +486,7 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	var resp struct {
-		IsSuccess bool `json:"isSuccess"`
+		IsSuccess bool `json:"is_success"`
 	}
 	// update game client server
 	err = uc.API.GameserverRequest(http.MethodPost, "/user_update", struct {
@@ -505,8 +505,8 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 type UpdateUserSupsRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID     passport.UserID `json:"userID"`
-		SupsChange int64           `json:"supsChange"`
+		UserID     passport.UserID `json:"user_id"`
+		SupsChange int64           `json:"sups_change"`
 	} `json:"payload"`
 }
 
@@ -517,13 +517,13 @@ const HubKeyUserCreate hub.HubCommandKey = "USER:CREATE"
 type CreateUserRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		FirstName      string                   `json:"firstName"`
-		LastName       string                   `json:"lastName"`
+		FirstName      string                   `json:"first_name"`
+		LastName       string                   `json:"last_name"`
 		Email          null.String              `json:"email"`
-		AvatarID       *passport.BlobID         `json:"avatarID"`
-		NewPassword    *string                  `json:"newPassword"`
-		RoleID         passport.RoleID          `json:"roleID"`
-		OrganisationID *passport.OrganisationID `json:"organisationID"`
+		AvatarID       *passport.BlobID         `json:"avatar_id"`
+		NewPassword    *string                  `json:"new_password"`
+		RoleID         passport.RoleID          `json:"role_id"`
+		OrganisationID *passport.OrganisationID `json:"organisation_id"`
 	} `json:"payload"`
 }
 
@@ -641,12 +641,12 @@ const HubKeyUserList hub.HubCommandKey = "USER:LIST"
 type ListHandlerRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		SortDir  db.SortByDir          `json:"sortDir"`
-		SortBy   db.UserColumn         `json:"sortBy"`
+		SortDir  db.SortByDir          `json:"sort_dir"`
+		SortBy   db.UserColumn         `json:"sort_by"`
 		Filter   *db.ListFilterRequest `json:"filter"`
 		Archived bool                  `json:"archived"`
 		Search   string                `json:"search"`
-		PageSize int                   `json:"pageSize"`
+		PageSize int                   `json:"page_size"`
 		Page     int                   `json:"page"`
 	} `json:"payload"`
 }
@@ -789,7 +789,7 @@ type UserChangePasswordRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		ID          passport.UserID `json:"id"`
-		NewPassword string          `json:"newPassword"`
+		NewPassword string          `json:"new_password"`
 	} `json:"payload"`
 }
 
@@ -1583,8 +1583,8 @@ func (uc *UserController) RemoveTwitterHandler(ctx context.Context, hubc *hub.Cl
 type AddTwitterRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		OAuthToken    string `json:"oauthToken"`
-		OAuthVerifier string `json:"oauthVerifier"`
+		OAuthToken    string `json:"oauth_token"`
+		OAuthVerifier string `json:"oauth_verifier"`
 	} `json:"payload"`
 }
 
@@ -1776,7 +1776,7 @@ type AddDiscordRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		Code        string `json:"code"`
-		RedirectURI string `json:"redirectURI"`
+		RedirectURI string `json:"redirect_uri"`
 	} `json:"payload"`
 }
 
@@ -2007,7 +2007,7 @@ type AddWalletRequest struct {
 	Payload struct {
 		ID            passport.UserID `json:"id"`
 		Username      string          `json:"username"`
-		PublicAddress string          `json:"publicAddress"`
+		PublicAddress string          `json:"public_address"`
 		Signature     string          `json:"signature"`
 	} `json:"payload"`
 }
@@ -2187,10 +2187,10 @@ func (uc *UserController) UserSupsMultiplierUpdatedSubscribeHandler(ctx context.
 	}
 
 	var resp struct {
-		UserMultipliers []*passport.SupsMultiplier `json:"userMultipliers"`
+		UserMultipliers []*passport.SupsMultiplier `json:"user_multipliers"`
 	}
 	err = uc.API.GameserverRequest(http.MethodPost, "/user_multiplier", struct {
-		UserID passport.UserID `json:"userID"`
+		UserID passport.UserID `json:"user_id"`
 	}{
 		UserID: passport.UserID(uuid.FromStringOrNil(client.Identifier())),
 	}, &resp)
@@ -2214,8 +2214,8 @@ func (uc *UserController) UserStatUpdatedSubscribeHandler(ctx context.Context, c
 
 	resp := &passport.UserStat{}
 	err = uc.API.GameserverRequest(http.MethodPost, "/user_stat", struct {
-		UserID    passport.UserID `json:"userID"`
-		SessionID hub.SessionID   `json:"sessionID"`
+		UserID    passport.UserID `json:"user_id"`
+		SessionID hub.SessionID   `json:"session_id"`
 	}{
 		UserID:    passport.UserID(uuid.FromStringOrNil(client.Identifier())),
 		SessionID: client.SessionID,
@@ -2230,15 +2230,15 @@ func (uc *UserController) UserStatUpdatedSubscribeHandler(ctx context.Context, c
 }
 
 type UserFactionDetail struct {
-	RecruitID      string          `json:"recruitID"`
-	SupsEarned     passport.BigInt `json:"supsEarned"`
+	RecruitID      string          `json:"recruit_id"`
+	SupsEarned     passport.BigInt `json:"sups_earned"`
 	Rank           string          `json:"rank"`
-	SpectatedCount int64           `json:"spectatedCount"`
+	SpectatedCount int64           `json:"spectated_count"`
 
 	// faction detail
-	FactionID        string                 `json:"factionID"`
-	LogoBlobID       passport.BlobID        `json:"logoBlobID" db:"logo_blob_id"`
-	BackgroundBlobID passport.BlobID        `json:"backgroundBlobID" db:"background_blob_id"`
+	FactionID        string                 `json:"faction_id"`
+	LogoBlobID       passport.BlobID        `json:"logo_blob_id" db:"logo_blob_id"`
+	BackgroundBlobID passport.BlobID        `json:"background_blob_id" db:"background_blob_id"`
 	Theme            *passport.FactionTheme `json:"theme"`
 }
 
@@ -2281,7 +2281,7 @@ func (uc *UserController) UserFactionUpdatedSubscribeHandler(ctx context.Context
 type WarMachineQueuePositionRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AssetHash string `json:"assetHash"`
+		AssetHash string `json:"asset_hash"`
 	} `json:"payload"`
 }
 
@@ -2323,11 +2323,11 @@ func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx con
 
 	var resp struct {
 		Position       *int    `json:"position"`
-		ContractReward *string `json:"contractReward"`
+		ContractReward *string `json:"contract_reward"`
 	}
 	err = uc.API.GameserverRequest(http.MethodPost, "/war_machine_queue_position", struct {
 		AssetHash string             `json:"assethash"`
-		FactionID passport.FactionID `json:"factionID"`
+		FactionID passport.FactionID `json:"faction_id"`
 	}{
 		AssetHash: req.Payload.AssetHash,
 		FactionID: f.ID,
@@ -2405,7 +2405,7 @@ type BlockConfirmationRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		ID             passport.UserID `json:"id"`
-		GetInitialData bool            `json:"getInitialData"`
+		GetInitialData bool            `json:"get_initial_data"`
 	} `json:"payload"`
 }
 
@@ -2437,12 +2437,12 @@ func (uc *UserController) BlockConfirmationHandler(ctx context.Context, client *
 type CheckAllowedStoreAccess struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		WalletAddress string `json:"walletAddress"`
+		WalletAddress string `json:"wallet_address"`
 	} `json:"payload"`
 }
 
 type CheckAllowedStoreAccessResponse struct {
-	IsAllowed bool   `json:"isAllowed"`
+	IsAllowed bool   `json:"is_allowed"`
 	Message   string `json:"message"`
 }
 

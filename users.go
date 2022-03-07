@@ -53,48 +53,48 @@ const ServerClientLevel = 5
 // User is a single user on the platform
 type User struct {
 	ID                               UserID        `json:"id" db:"id"`
-	FirstName                        string        `json:"firstName" db:"first_name"`
-	LastName                         string        `json:"lastName" db:"last_name"`
+	FirstName                        string        `json:"first_name" db:"first_name"`
+	LastName                         string        `json:"last_name" db:"last_name"`
 	Email                            null.String   `json:"email" db:"email"`
-	FacebookID                       null.String   `json:"facebookID" db:"facebook_id"`
-	GoogleID                         null.String   `json:"googleID" db:"google_id"`
-	TwitchID                         null.String   `json:"twitchID" db:"twitch_id"`
-	TwitterID                        null.String   `json:"twitterID" db:"twitter_id"`
-	DiscordID                        null.String   `json:"discordID" db:"discord_id"`
-	FactionID                        *FactionID    `json:"factionID" db:"faction_id"`
+	FacebookID                       null.String   `json:"facebook_id" db:"facebook_id"`
+	GoogleID                         null.String   `json:"google_id" db:"google_id"`
+	TwitchID                         null.String   `json:"twitch_id" db:"twitch_id"`
+	TwitterID                        null.String   `json:"twitter_id" db:"twitter_id"`
+	DiscordID                        null.String   `json:"discord_id" db:"discord_id"`
+	FactionID                        *FactionID    `json:"faction_id" db:"faction_id"`
 	Faction                          *Faction      `json:"faction"`
 	Username                         string        `json:"username" db:"username"`
 	Verified                         bool          `json:"verified" db:"verified"`
-	OldPasswordRequired              bool          `json:"oldPasswordRequired" db:"old_password_required"`
-	RoleID                           RoleID        `json:"roleID" db:"role_id"`
+	OldPasswordRequired              bool          `json:"old_password_required" db:"old_password_required"`
+	RoleID                           RoleID        `json:"role_id" db:"role_id"`
 	Role                             Role          `json:"role" db:"role"`
 	Organisation                     *Organisation `json:"organisation" db:"organisation"`
-	AvatarID                         *BlobID       `json:"avatarID" db:"avatar_id"`
+	AvatarID                         *BlobID       `json:"avatar_id" db:"avatar_id"`
 	Sups                             BigInt
 	Online                           bool         `json:"online"`
-	TwoFactorAuthenticationActivated bool         `json:"twoFactorAuthenticationActivated" db:"two_factor_authentication_activated"`
-	TwoFactorAuthenticationSecret    string       `json:"twoFactorAuthenticationSecret" db:"two_factor_authentication_secret"`
-	TwoFactorAuthenticationIsSet     bool         `json:"twoFactorAuthenticationIsSet" db:"two_factor_authentication_is_set"`
-	HasRecoveryCode                  bool         `json:"hasRecoveryCode" db:"has_recovery_code"`
-	Pass2FA                          bool         `json:"pass2FA"`
+	TwoFactorAuthenticationActivated bool         `json:"two_factor_authentication_activated" db:"two_factor_authentication_activated"`
+	TwoFactorAuthenticationSecret    string       `json:"two_factor_authentication_secret" db:"two_factor_authentication_secret"`
+	TwoFactorAuthenticationIsSet     bool         `json:"two_factor_authentication_is_set" db:"two_factor_authentication_is_set"`
+	HasRecoveryCode                  bool         `json:"has_recovery_code" db:"has_recovery_code"`
+	Pass2FA                          bool         `json:"pass_2_fa"`
 	Nonce                            null.String  `json:"-" db:"nonce"`
-	PublicAddress                    null.String  `json:"publicAddress,omitempty" db:"public_address"`
-	CreatedAt                        time.Time    `json:"createdAt" db:"created_at"`
-	UpdatedAt                        time.Time    `json:"updatedAt" db:"updated_at"`
-	DeletedAt                        *time.Time   `json:"deletedAt" db:"deleted_at"`
+	PublicAddress                    null.String  `json:"public_address,omitempty" db:"public_address"`
+	CreatedAt                        time.Time    `json:"created_at" db:"created_at"`
+	UpdatedAt                        time.Time    `json:"updated_at" db:"updated_at"`
+	DeletedAt                        *time.Time   `json:"deleted_at" db:"deleted_at"`
 	Metadata                         UserMetadata `json:"metadata" db:"metadata"`
 }
 
 type UserBrief struct {
 	ID       UserID  `json:"id" db:"id"`
 	Username string  `json:"username" db:"username"`
-	AvatarID *BlobID `json:"avatarID" db:"avatar_id"`
+	AvatarID *BlobID `json:"avatar_id" db:"avatar_id"`
 }
 
 type UserMetadata struct {
-	BoughtStarterWarmachines int  `json:"boughtStarterWarmachines"`
-	BoughtLootboxes          int  `json:"boughtLootboxes"`
-	WatchedVideo             bool `json:"watchedVideo"`
+	BoughtStarterWarmachines int  `json:"bought_starter_warmachines"`
+	BoughtLootboxes          int  `json:"bought_lootboxes"`
+	WatchedVideo             bool `json:"watched_video"`
 }
 
 // IsAdmin is needed for the hub interface, no admins here!
@@ -110,7 +110,7 @@ func (user *User) IsMember() bool {
 // IssueToken contains token information used for login and verifying accounts
 type IssueToken struct {
 	ID     IssueTokenID `json:"id" db:"id"`
-	UserID UserID       `json:"userID" db:"user_id"`
+	UserID UserID       `json:"user_id" db:"user_id"`
 }
 
 func (i IssueToken) Whitelisted() bool {
@@ -137,26 +137,26 @@ type UserOnlineStatusChange struct {
 // from game server
 type UserStat struct {
 	ID                    UserID `json:"id"`
-	ViewBattleCount       int64  `json:"viewBattleCount"`
-	TotalVoteCount        int64  `json:"totalVoteCount"`
-	TotalAbilityTriggered int64  `json:"totalAbilityTriggered"`
-	KillCount             int64  `json:"killCount"`
+	ViewBattleCount       int64  `json:"view_battle_count"`
+	TotalVoteCount        int64  `json:"total_vote_count"`
+	TotalAbilityTriggered int64  `json:"total_ability_triggered"`
+	KillCount             int64  `json:"kill_count"`
 }
 
 type UserSupsMultiplierSend struct {
-	ToUserID        UserID            `json:"toUserID"`
-	ToUserSessionID *hub.SessionID    `json:"toUserSessionID,omitempty"`
-	SupsMultipliers []*SupsMultiplier `json:"supsMultiplier"`
+	ToUserID        UserID            `json:"to_user_id"`
+	ToUserSessionID *hub.SessionID    `json:"to_user_session_id,omitempty"`
+	SupsMultipliers []*SupsMultiplier `json:"sups_multiplier"`
 }
 
 type SupsMultiplier struct {
 	Key       string    `json:"key"`
 	Value     int       `json:"value"`
-	ExpiredAt time.Time `json:"expiredAt"`
+	ExpiredAt time.Time `json:"expired_at"`
 }
 
 type WarMachineQueueStat struct {
 	Hash           string          `json:"hash"`
 	Position       *int            `json:"position,omitempty"`
-	ContractReward decimal.Decimal `json:"contractReward,omitempty"`
+	ContractReward decimal.Decimal `json:"contract_reward,omitempty"`
 }

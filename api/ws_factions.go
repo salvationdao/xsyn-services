@@ -93,7 +93,7 @@ func (fc *FactionController) FactionAllHandler(ctx context.Context, hubc *hub.Cl
 type FactionEnlistRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		FactionID passport.FactionID `json:"factionID"`
+		FactionID passport.FactionID `json:"faction_id"`
 	} `json:"payload"`
 }
 
@@ -159,12 +159,12 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 	go fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	var resp struct {
-		IsSuccess bool `json:"isSuccess"`
+		IsSuccess bool `json:"is_success"`
 	}
 
 	err = fc.API.GameserverRequest(http.MethodPost, "/user_enlist_faction", struct {
-		UserID    passport.UserID    `json:"userID"`
-		FactionID passport.FactionID `json:"factionID"`
+		UserID    passport.UserID    `json:"user_id"`
+		FactionID passport.FactionID `json:"faction_id"`
 	}{
 		UserID:    userID,
 		FactionID: req.Payload.FactionID,
@@ -186,8 +186,8 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 type FactionChatRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		FactionID    passport.FactionID `json:"factionID"`
-		MessageColor string             `json:"messageColor"`
+		FactionID    passport.FactionID `json:"faction_id"`
+		MessageColor string             `json:"message_color"`
 		Message      string             `json:"message"`
 	} `json:"payload"`
 }
@@ -195,13 +195,13 @@ type FactionChatRequest struct {
 // ChatMessageSend contains chat message data to send.
 type ChatMessageSend struct {
 	Message           string           `json:"message"`
-	MessageColor      string           `json:"messageColor"`
-	FromUserID        passport.UserID  `json:"fromUserID"`
-	FromUsername      string           `json:"fromUsername"`
-	FactionColour     *string          `json:"factionColour,omitempty"`
-	FactionLogoBlobID *passport.BlobID `json:"factionLogoBlobID,omitempty"`
-	AvatarID          *passport.BlobID `json:"avatarID,omitempty"`
-	SentAt            time.Time        `json:"sentAt"`
+	MessageColor      string           `json:"message_color"`
+	FromUserID        passport.UserID  `json:"from_user_id"`
+	FromUsername      string           `json:"from_username"`
+	FactionColour     *string          `json:"faction_colour,omitempty"`
+	FactionLogoBlobID *passport.BlobID `json:"faction_logo_blob_id,omitempty"`
+	AvatarID          *passport.BlobID `json:"avatar_id,omitempty"`
+	SentAt            time.Time        `json:"sent_at"`
 }
 
 // rootHub.SecureCommand(HubKeyFactionChat, factionHub.ChatMessageHandler)
@@ -355,7 +355,7 @@ func (fc *FactionController) FactionStatUpdatedSubscribeHandler(ctx context.Cont
 
 	factionStat := &passport.FactionStat{}
 	err = fc.API.GameserverRequest(http.MethodPost, "/faction_stat", struct {
-		FactionID passport.FactionID `json:"factionID"`
+		FactionID passport.FactionID `json:"faction_id"`
 	}{
 		FactionID: req.Payload.FactionID,
 	}, factionStat)
@@ -440,11 +440,11 @@ func (fc *FactionController) FactionContractRewardUpdateSubscriber(ctx context.C
 	}
 
 	var resp struct {
-		ContractReward string `json:"contractReward"`
+		ContractReward string `json:"contract_reward"`
 	}
 	// get contract reward from web hook
 	err = fc.API.GameserverRequest(http.MethodPost, "/faction_contract_reward", struct {
-		FactionID passport.FactionID `json:"factionID"`
+		FactionID passport.FactionID `json:"faction_id"`
 	}{
 		FactionID: faction.ID,
 	}, &resp)

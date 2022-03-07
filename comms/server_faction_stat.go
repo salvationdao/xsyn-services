@@ -28,11 +28,11 @@ func (c *S) SupremacyFactionAllHandler(req FactionAllReq, resp *FactionAllResp) 
 }
 
 type FactionStatSendReq struct {
-	FactionStatSends []*FactionStatSend `json:"factionStatSends"`
+	FactionStatSends []*FactionStatSend `json:"faction_stat_sends"`
 }
 
 type FactionStatSend struct {
-	FactionStat *passport.FactionStat `json:"factionStat"`
+	FactionStat *passport.FactionStat `json:"faction_stat"`
 }
 
 type FactionStatSendResp struct{}
@@ -82,12 +82,12 @@ func (c *S) SupremacyFactionStatSendHandler(req FactionStatSendReq, resp *Factio
 //  CONTRACT REWARD
 //****************************************
 type FactionContractRewardUpdateReq struct {
-	FactionContractRewards []*FactionContractReward `json:"factionContractRewards"`
+	FactionContractRewards []*FactionContractReward `json:"faction_contract_rewards"`
 }
 
 type FactionContractReward struct {
-	FactionID      passport.FactionID `json:"factionID"`
-	ContractReward string             `json:"contractReward"`
+	FactionID      passport.FactionID `json:"faction_id"`
+	ContractReward string             `json:"contract_reward"`
 }
 
 type FactionContractRewardUpdateResp struct {
@@ -104,11 +104,11 @@ func (c *S) SupremacyFactionContractRewardUpdateHandler(req FactionContractRewar
 }
 
 type RedeemFactionContractRewardReq struct {
-	UserID               passport.UserID               `json:"userID"`
-	FactionID            passport.FactionID            `json:"factionID"`
-	BattleID             string                        `json:"battleID"`
+	UserID               passport.UserID               `json:"user_id"`
+	FactionID            passport.FactionID            `json:"faction_id"`
+	BattleID             string                        `json:"battle_id"`
 	Amount               string                        `json:"amount"`
-	TransactionReference passport.TransactionReference `json:"transactionReference"`
+	TransactionReference passport.TransactionReference `json:"transaction_reference"`
 }
 
 type RedeemFactionContractRewardResp struct{}
@@ -155,8 +155,8 @@ func (c *S) SupremacyRedeemFactionContractRewardHandler(req RedeemFactionContrac
 }
 
 type FactionQueuingCostReq struct {
-	FactionID     passport.FactionID `json:"factionID"`
-	QueuingLength int                `json:"queuingLength"`
+	FactionID     passport.FactionID `json:"faction_id"`
+	QueuingLength int                `json:"queuing_length"`
 }
 
 type FactionQueuingCostResp struct{}

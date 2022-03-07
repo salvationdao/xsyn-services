@@ -57,8 +57,8 @@ func NewAssetController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Asse
 type AssetJoinQueueRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AssetHash   string `json:"assetHash"`
-		NeedInsured bool   `json:"needInsured"`
+		AssetHash   string `json:"asset_hash"`
+		NeedInsured bool   `json:"need_insured"`
 	} `json:"payload"`
 }
 
@@ -126,11 +126,11 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 
 	var resp struct {
 		Position       *int    `json:"position"`
-		ContractReward *string `json:"contractReward"`
+		ContractReward *string `json:"contract_reward"`
 	}
 	err = ac.API.GameserverRequest(http.MethodPost, "/war_machine_join", struct {
-		WarMachineMetadata *passport.WarMachineMetadata `json:"warMachineMetadata"`
-		NeedInsured        bool                         `json:"needInsured"`
+		WarMachineMetadata *passport.WarMachineMetadata `json:"war_machine_metadata"`
+		NeedInsured        bool                         `json:"need_insured"`
 	}{
 		WarMachineMetadata: warMachineMetadata,
 		NeedInsured:        req.Payload.NeedInsured,
@@ -149,15 +149,15 @@ type AssetsUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		UserID              passport.UserID            `json:"user_id"`
-		SortDir             db.SortByDir               `json:"sortDir"`
-		SortBy              db.AssetColumn             `json:"sortBy"`
-		IncludedAssetHashes []string                   `json:"includedAssetHashes"`
+		SortDir             db.SortByDir               `json:"sort_dir"`
+		SortBy              db.AssetColumn             `json:"sort_by"`
+		IncludedAssetHashes []string                   `json:"included_asset_hashes"`
 		Filter              *db.ListFilterRequest      `json:"filter,omitempty"`
-		AttributeFilter     *db.AttributeFilterRequest `json:"attributeFilter,omitempty"`
-		AssetType           string                     `json:"assetType"`
+		AttributeFilter     *db.AttributeFilterRequest `json:"attribute_filter,omitempty"`
+		AssetType           string                     `json:"asset_type"`
 		Archived            bool                       `json:"archived"`
 		Search              string                     `json:"search"`
-		PageSize            int                        `json:"pageSize"`
+		PageSize            int                        `json:"page_size"`
 		Page                int                        `json:"page"`
 	} `json:"payload"`
 }
@@ -165,7 +165,7 @@ type AssetsUpdatedSubscribeRequest struct {
 // AssetListResponse is the response from get asset list
 type AssetListResponse struct {
 	Total       int      `json:"total"`
-	AssetHashes []string `json:"assetHashes"`
+	AssetHashes []string `json:"asset_hashes"`
 }
 
 const HubKeyAssetList hub.HubCommandKey = "ASSET:LIST"
@@ -217,7 +217,7 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Clien
 type AssetUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AssetHash string `json:"assetHash"`
+		AssetHash string `json:"asset_hash"`
 	} `json:"payload"`
 }
 
@@ -247,7 +247,7 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hub
 type AssetRepairStatUpdateRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AssetHash string `json:"assetHash"`
+		AssetHash string `json:"asset_hash"`
 	} `json:"payload"`
 }
 
@@ -288,7 +288,7 @@ func (ac *AssetController) AssetRepairStatUpdateSubscriber(ctx context.Context, 
 
 	// get repair stat from gameserver
 	var resp struct {
-		AssetRepairRecord *passport.AssetRepairRecord `json:"assetRepairRecord"`
+		AssetRepairRecord *passport.AssetRepairRecord `json:"asset_repair_record"`
 	}
 
 	err = ac.API.GameserverRequest(http.MethodPost, "/asset_repair_stat", struct {
@@ -334,7 +334,7 @@ func (ac *AssetController) AssetQueueCostUpdateSubscriber(ctx context.Context, h
 	}
 
 	err = ac.API.GameserverRequest(http.MethodPost, "/faction_queue_cost", struct {
-		FactionID passport.FactionID `json:"factionID"`
+		FactionID passport.FactionID `json:"faction_id"`
 	}{
 		FactionID: faction.ID,
 	}, &resp)
@@ -363,8 +363,8 @@ func ReverseAssetRepairStartTime(record *passport.AssetRepairRecord) time.Time {
 type AssetSetNameRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AssetHash string           `json:"assetHash"`
-		UserID    *passport.UserID `json:"userID"`
+		AssetHash string           `json:"asset_hash"`
+		UserID    *passport.UserID `json:"user_id"`
 		Name      string           `json:"name"`
 	} `json:"payload"`
 }

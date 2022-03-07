@@ -50,14 +50,14 @@ func NewCollectionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, 
 type CollectionListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID           passport.UserID       `json:"userID"`
-		SortDir          db.SortByDir          `json:"sortDir"`
-		SortBy           db.CollectionColumn   `json:"sortBy"`
-		IncludedTokenIDs []int                 `json:"includedTokenIDs"`
+		UserID           passport.UserID       `json:"user_id"`
+		SortDir          db.SortByDir          `json:"sort_dir"`
+		SortBy           db.CollectionColumn   `json:"sort_by"`
+		IncludedTokenIDs []int                 `json:"included_token_ids"`
 		Filter           *db.ListFilterRequest `json:"filter"`
 		Archived         bool                  `json:"archived"`
 		Search           string                `json:"search"`
-		PageSize         int                   `json:"pageSize"`
+		PageSize         int                   `json:"page_size"`
 		Page             int                   `json:"page"`
 	} `json:"payload"`
 }
@@ -111,13 +111,13 @@ type WalletCollectionsListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		Username        string                     `json:"username"`
-		SortDir         db.SortByDir               `json:"sortDir"`
-		SortBy          string                     `json:"sortBy"`
-		AttributeFilter *db.AttributeFilterRequest `json:"attributeFilter,omitempty"`
-		AssetType       string                     `json:"assetType"`
+		SortDir         db.SortByDir               `json:"sort_dir"`
+		SortBy          string                     `json:"sort_by"`
+		AttributeFilter *db.AttributeFilterRequest `json:"attribute_filter,omitempty"`
+		AssetType       string                     `json:"asset_type"`
 		Archived        bool                       `json:"archived"`
 		Search          string                     `json:"search"`
-		PageSize        int                        `json:"pageSize"`
+		PageSize        int                        `json:"page_size"`
 		Page            int                        `json:"page"`
 	} `json:"payload"`
 }
@@ -125,7 +125,7 @@ type WalletCollectionsListRequest struct {
 // WalletCollectionListResponse is the response from get WalletCollection list
 type WalletCollectionListResponse struct {
 	Total       int      `json:"total"`
-	AssetHashes []string `json:"assetHashes"`
+	AssetHashes []string `json:"asset_hashes"`
 }
 
 const HubKeyWalletCollectionList hub.HubCommandKey = "COLLECTION:WALLET:LIST"
