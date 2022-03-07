@@ -136,6 +136,7 @@ func SyncStoreItems() error {
 				FactionID:        template.Template.FactionID,
 				UsdCentCost:      priceCents,
 				Tier:             template.Template.Tier,
+				IsDefault:        template.Template.IsDefault,
 				AmountSold:       count,
 				AmountAvailable:  amountAvailable,
 				RestrictionGroup: restrictionGroup,
@@ -164,6 +165,7 @@ func StoreItemsRemainingByFactionIDAndRestrictionGroup(collectionID uuid.UUID, f
 	items, err := boiler.StoreItems(
 		boiler.StoreItemWhere.FactionID.EQ(factionID.String()),
 		boiler.StoreItemWhere.RestrictionGroup.EQ(restrictionGroup),
+		boiler.StoreItemWhere.IsDefault.EQ(false),
 	).All(passdb.StdConn)
 	count := 0
 	for _, item := range items {
@@ -175,6 +177,7 @@ func StoreItemsRemainingByFactionIDAndTier(collectionID uuid.UUID, factionID uui
 	items, err := boiler.StoreItems(
 		boiler.StoreItemWhere.FactionID.EQ(factionID.String()),
 		boiler.StoreItemWhere.Tier.EQ(tier),
+		boiler.StoreItemWhere.IsDefault.EQ(false),
 	).All(passdb.StdConn)
 	count := 0
 	for _, item := range items {
