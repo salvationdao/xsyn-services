@@ -31,6 +31,7 @@ var RestrictionMap = map[string]string{
 
 const RestrictionGroupLootbox = "LOOTBOX"
 const RestrictionGroupNone = "NONE"
+const RestrictionGroupPrize = "PRIZE"
 
 const TierMega = "MEGA"
 const TierColossal = "COLOSSAL"
@@ -118,6 +119,11 @@ func SyncStoreItems() error {
 			if !ok {
 				return fmt.Errorf("restriction not found for %s", template.Template.Tier)
 			}
+
+			// Golds are prizes only, not purchasable
+			if template.BlueprintChassis.Skin == "Gold" {
+				restrictionGroup = RestrictionGroupPrize
+			}
 			amountAvailable, ok := AmountMap[template.Template.Tier]
 			if !ok {
 				return fmt.Errorf("amountAvailable not found for %s", template.Template.Tier)
@@ -143,12 +149,14 @@ func SyncStoreItems() error {
 				Data:             data,
 				RefreshesAt:      time.Now().Add(RefreshDuration),
 			}
+			passlog.L.Info().Str("id", template.Template.ID).Msg("inserting new store item")
 			err = newStoreItem.Insert(tx, boil.Infer())
 			if err != nil {
 				spew.Dump(newStoreItem)
 				return fmt.Errorf("insert new store item: %w", err)
 			}
 		} else {
+			passlog.L.Info().Str("id", template.Template.ID).Msg("updating existing store item")
 			_, err = refreshStoreItem(uuid.Must(uuid.FromString(template.Template.ID)), true)
 			if err != nil {
 				return err
@@ -306,6 +314,10 @@ func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, err
 	if !ok {
 		return nil, fmt.Errorf("restriction not found for %s", resp.TemplateContainer.Template.Tier)
 	}
+	// Golds are prizes only, not purchasable
+	if resp.TemplateContainer.BlueprintChassis.Skin == "Gold" {
+		restrictionGroup = RestrictionGroupPrize
+	}
 	amountAvailable, ok := AmountMap[resp.TemplateContainer.Template.Tier]
 	if !ok {
 		return nil, fmt.Errorf("amountAvailable not found for %s", resp.TemplateContainer.Template.Tier)
@@ -326,6 +338,8 @@ func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, err
 	dbitem.AmountAvailable = amountAvailable
 	dbitem.UsdCentCost = priceCents
 	dbitem.AmountSold = count
+	dbitem.Tier = resp.TemplateContainer.Template.Tier
+	dbitem.IsDefault = resp.TemplateContainer.Template.IsDefault
 
 	_, err = dbitem.Update(tx, boil.Infer())
 	if err != nil {

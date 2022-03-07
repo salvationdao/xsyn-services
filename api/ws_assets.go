@@ -135,7 +135,6 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 type AssetsUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID passport.UserID `json:"user_id"`
 	} `json:"payload"`
 }
 
@@ -154,8 +153,12 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Clien
 	if err != nil {
 		return terror.Error(err)
 	}
+	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(fmt.Errorf("no auth: user ID %s", userID), "User not found")
+	}
 
-	items, err := db.PurchasedItemsByOwnerID(uuid.UUID(req.Payload.UserID))
+	items, err := db.PurchasedItemsByOwnerID(uuid.UUID(userID))
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -183,8 +186,9 @@ type AssetUpdatedSubscribeRequest struct {
 }
 
 type AssetUpdatedSubscribeResponse struct {
-	PurchasedItem *boiler.PurchasedItem `json:"purchased_item"`
-	OwnerUsername string                `json:"owner_username"`
+	CollectionSlug string                `json:"collection_slug"`
+	PurchasedItem  *boiler.PurchasedItem `json:"purchased_item"`
+	OwnerUsername  string                `json:"owner_username"`
 }
 
 // 	rootHub.SecureCommand(HubKeyAssetSubscribe, AssetController.AssetSubscribe)
@@ -209,9 +213,15 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hub
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
 	}
+
+	collection, err := db.Collection(uuid.Must(uuid.FromString(asset.CollectionID)))
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err)
+	}
 	reply(&AssetUpdatedSubscribeResponse{
-		PurchasedItem: asset,
-		OwnerUsername: owner.Username,
+		PurchasedItem:  asset,
+		OwnerUsername:  owner.Username,
+		CollectionSlug: collection.Slug,
 	})
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.Hash)), nil
 }
@@ -387,8 +397,19 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 	if err != nil {
 		return terror.Error(err)
 	}
-
-	go ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.AssetHash)), item)
+	u, err := db.UserGet(context.Background(), ac.Conn, userID)
+	if err != nil {
+		return terror.Error(err)
+	}
+	collection, err := db.Collection(uuid.Must(uuid.FromString(item.CollectionID)))
+	if err != nil {
+		return terror.Error(err)
+	}
+	go ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.AssetHash)), &AssetUpdatedSubscribeResponse{
+		PurchasedItem:  item,
+		OwnerUsername:  u.Username,
+		CollectionSlug: collection.Slug,
+	})
 
 	reply(item)
 	return nil

@@ -139,7 +139,7 @@ func Purchase(
 		}
 	}(tx, ctx)
 
-	purchasedItem, err := db.PurchasedItemRegister(uuid.Must(uuid.FromString(storeItem.ID)), uuid.UUID(user.ID))
+	_, err = db.PurchasedItemRegister(uuid.Must(uuid.FromString(storeItem.ID)), uuid.UUID(user.ID))
 	if err != nil {
 		refund(err.Error())
 		return err
@@ -151,7 +151,15 @@ func Purchase(
 		return terror.Error(err)
 	}
 
-	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), purchasedItem)
+	resp := struct {
+		PriceInSUPS string            `json:"price_in_sups"`
+		Item        *boiler.StoreItem `json:"item"`
+	}{
+		PriceInSUPS: priceAsSupsBigInt.String(),
+		Item:        storeItem,
+	}
+
+	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), resp)
 	return nil
 }
 
@@ -169,11 +177,10 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	}
 
 	// get all faction items marked as loot box
-	items, err := db.StoreItemsByFactionID(uuid.UUID(factionID))
+	items, err := db.StoreItemsByFactionIDAndRestrictionGroup(uuid.UUID(factionID), db.RestrictionGroupLootbox)
 	if err != nil {
 		return "", terror.Error(err, "failed to get loot box items")
 	}
-
 	itemIDs := []passport.StoreItemID{}
 	for _, m := range items {
 		for i := 0; i < m.AmountAvailable-m.AmountSold; i++ {

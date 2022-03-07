@@ -6,6 +6,7 @@ import (
 	"passport/passdb"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -17,7 +18,9 @@ func AICollection() (*boiler.Collection, error) {
 func GenesisCollection() (*boiler.Collection, error) {
 	return boiler.Collections(boiler.CollectionWhere.Name.EQ("Supremacy Genesis")).One(passdb.StdConn)
 }
-
+func Collection(id uuid.UUID) (*boiler.Collection, error) {
+	return boiler.FindCollection(passdb.StdConn, id.String())
+}
 func CollectionByMintAddress(mintAddr common.Address) (*boiler.Collection, error) {
 	return boiler.Collections(boiler.CollectionWhere.MintContract.EQ(null.StringFrom(mintAddr.Hex()))).One(passdb.StdConn)
 }

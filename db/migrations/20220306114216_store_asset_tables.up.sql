@@ -8,7 +8,7 @@ CREATE TABLE store_items (
     usd_cent_cost INT NOT NULL CHECK (usd_cent_cost > 0),
     amount_sold INTEGER NOT NULL CHECK (amount_sold >= 0 AND amount_sold <= amount_available),
     amount_available INTEGER NOT NULL CHECK (amount_available >= 0),
-    restriction_group TEXT NOT NULL CHECK (restriction_group IN ('NONE', 'WHITELIST', 'LOOTBOX')),
+    restriction_group TEXT NOT NULL CHECK (restriction_group IN ('NONE', 'WHITELIST', 'LOOTBOX', 'PRIZE')),
     is_default BOOLEAN NOT NULL,
     tier TEXT NOT NULL CHECK (tier IN ('MEGA', 'COLOSSAL', 'RARE', 'LEGENDARY', 'ELITE_LEGENDARY', 'ULTRA_RARE', 'EXOTIC', 'GUARDIAN', 'MYTHIC', 'DEUS_EX')),
     data JSONB NOT NULL,

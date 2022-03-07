@@ -7,7 +7,7 @@ import (
 )
 
 type MechContainer struct {
-	*Mech
+	Mech    *Mech              `json:"mech"`
 	Chassis *Chassis           `json:"chassis"`
 	Weapons map[string]*Weapon `json:"weapons"`
 	Turrets map[string]*Weapon `json:"turrets"`

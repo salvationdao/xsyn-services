@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 const RefreshDuration = 1 * time.Minute
@@ -153,10 +154,14 @@ func PurchasedItemByHash(hash string) (*boiler.PurchasedItem, error) {
 }
 func PurchasedItemsByOwnerID(ownerID uuid.UUID) ([]*boiler.PurchasedItem, error) {
 	passlog.L.Debug().Str("fn", "PurchasedItemsByOwnerID").Msg("db func")
-	items, err := boiler.PurchasedItems(boiler.PurchasedItemWhere.OwnerID.EQ(ownerID.String())).All(passdb.StdConn)
+	items, err := boiler.PurchasedItems(
+		boiler.PurchasedItemWhere.OwnerID.EQ(ownerID.String()),
+		qm.OrderBy("external_token_id ASC"),
+	).All(passdb.StdConn)
 	if err != nil {
 		return nil, fmt.Errorf("list purchased items: %w", err)
 	}
+	spew.Dump(items)
 	result := []*boiler.PurchasedItem{}
 	for _, item := range items {
 		item, err = getPurchasedItem(uuid.Must(uuid.FromString(item.ID)))

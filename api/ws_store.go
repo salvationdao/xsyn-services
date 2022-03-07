@@ -191,7 +191,7 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Cli
 	}
 
 	if user.FactionID == nil {
-		return terror.Error(err, "User is not enlisted")
+		return terror.Error(fmt.Errorf("user not enlisted: %s", user.ID), "User is not enlisted")
 	}
 
 	storeItems, err := db.StoreItemsByFactionID(uuid.UUID(*user.FactionID))
@@ -199,7 +199,14 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Cli
 		return terror.Error(err)
 	}
 	storeItemIDs := make([]passport.StoreItemID, 0)
+	// filter by megas for now
 	for _, storeItem := range storeItems {
+		if storeItem.Tier != db.TierMega {
+			continue
+		}
+		if storeItem.IsDefault {
+			continue
+		}
 		storeItemIDs = append(storeItemIDs, passport.StoreItemID(uuid.Must(uuid.FromString(storeItem.ID))))
 	}
 
@@ -217,6 +224,11 @@ type StoreItemSubscribeRequest struct {
 	Payload struct {
 		StoreItemID passport.StoreItemID `json:"store_item_id"`
 	} `json:"payload"`
+}
+
+type StoreItemSubscribeResponse struct {
+	PriceInSUPS string            `json:"price_in_sups"`
+	Item        *boiler.StoreItem `json:"item"`
 }
 
 func (sc *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
@@ -261,10 +273,7 @@ func (sc *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, clie
 	priceAsCents := decimal.New(int64(item.UsdCentCost), 0)
 	priceAsSups := priceAsCents.Div(supsAsCents).Mul(decimal.New(1, 18)).BigInt().String()
 
-	result := struct {
-		PriceInSUPS string            `json:"price_in_sups"`
-		Item        *boiler.StoreItem `json:"item"`
-	}{
+	result := &StoreItemSubscribeResponse{
 		PriceInSUPS: priceAsSups,
 		Item:        item,
 	}
