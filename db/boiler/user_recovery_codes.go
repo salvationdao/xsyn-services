@@ -24,11 +24,11 @@ import (
 // UserRecoveryCode is an object representing the database table.
 type UserRecoveryCode struct {
 	ID           string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	UserID       string    `boiler:"user_id" boil:"user_id" json:"userID" toml:"userID" yaml:"userID"`
-	RecoveryCode string    `boiler:"recovery_code" boil:"recovery_code" json:"recoveryCode" toml:"recoveryCode" yaml:"recoveryCode"`
-	UsedAt       null.Time `boiler:"used_at" boil:"used_at" json:"usedAt,omitempty" toml:"usedAt" yaml:"usedAt,omitempty"`
-	UpdatedAt    time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt    time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	UserID       string    `boiler:"user_id" boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
+	RecoveryCode string    `boiler:"recovery_code" boil:"recovery_code" json:"recovery_code" toml:"recovery_code" yaml:"recovery_code"`
+	UsedAt       null.Time `boiler:"used_at" boil:"used_at" json:"used_at,omitempty" toml:"used_at" yaml:"used_at,omitempty"`
+	UpdatedAt    time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt    time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *userRecoveryCodeR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userRecoveryCodeL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

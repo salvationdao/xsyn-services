@@ -24,17 +24,17 @@ import (
 
 // XsynAsset is an object representing the database table.
 type XsynAsset struct {
-	UserID           string              `boiler:"user_id" boil:"user_id" json:"userID" toml:"userID" yaml:"userID"`
-	TransferredInAt  time.Time           `boiler:"transferred_in_at" boil:"transferred_in_at" json:"transferredInAt" toml:"transferredInAt" yaml:"transferredInAt"`
-	FrozenByID       null.String         `boiler:"frozen_by_id" boil:"frozen_by_id" json:"frozenByID,omitempty" toml:"frozenByID" yaml:"frozenByID,omitempty"`
-	LockedByID       null.String         `boiler:"locked_by_id" boil:"locked_by_id" json:"lockedByID,omitempty" toml:"lockedByID" yaml:"lockedByID,omitempty"`
-	FrozenAt         null.Time           `boiler:"frozen_at" boil:"frozen_at" json:"frozenAt,omitempty" toml:"frozenAt" yaml:"frozenAt,omitempty"`
-	MintingSignature null.String         `boiler:"minting_signature" boil:"minting_signature" json:"mintingSignature,omitempty" toml:"mintingSignature" yaml:"mintingSignature,omitempty"`
-	TXHistory        null.JSON           `boiler:"tx_history" boil:"tx_history" json:"txHistory,omitempty" toml:"txHistory" yaml:"txHistory,omitempty"`
-	ExternalTokenID  decimal.NullDecimal `boiler:"external_token_id" boil:"external_token_id" json:"externalTokenID,omitempty" toml:"externalTokenID" yaml:"externalTokenID,omitempty"`
-	CollectionID     null.String         `boiler:"collection_id" boil:"collection_id" json:"collectionID,omitempty" toml:"collectionID" yaml:"collectionID,omitempty"`
-	MetadataHash     string              `boiler:"metadata_hash" boil:"metadata_hash" json:"metadataHash" toml:"metadataHash" yaml:"metadataHash"`
-	SignatureExpiry  null.String         `boiler:"signature_expiry" boil:"signature_expiry" json:"signatureExpiry,omitempty" toml:"signatureExpiry" yaml:"signatureExpiry,omitempty"`
+	UserID           string              `boiler:"user_id" boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
+	TransferredInAt  time.Time           `boiler:"transferred_in_at" boil:"transferred_in_at" json:"transferred_in_at" toml:"transferred_in_at" yaml:"transferred_in_at"`
+	FrozenByID       null.String         `boiler:"frozen_by_id" boil:"frozen_by_id" json:"frozen_by_id,omitempty" toml:"frozen_by_id" yaml:"frozen_by_id,omitempty"`
+	LockedByID       null.String         `boiler:"locked_by_id" boil:"locked_by_id" json:"locked_by_id,omitempty" toml:"locked_by_id" yaml:"locked_by_id,omitempty"`
+	FrozenAt         null.Time           `boiler:"frozen_at" boil:"frozen_at" json:"frozen_at,omitempty" toml:"frozen_at" yaml:"frozen_at,omitempty"`
+	MintingSignature null.String         `boiler:"minting_signature" boil:"minting_signature" json:"minting_signature,omitempty" toml:"minting_signature" yaml:"minting_signature,omitempty"`
+	TXHistory        null.JSON           `boiler:"tx_history" boil:"tx_history" json:"tx_history,omitempty" toml:"tx_history" yaml:"tx_history,omitempty"`
+	ExternalTokenID  decimal.NullDecimal `boiler:"external_token_id" boil:"external_token_id" json:"external_token_id,omitempty" toml:"external_token_id" yaml:"external_token_id,omitempty"`
+	CollectionID     null.String         `boiler:"collection_id" boil:"collection_id" json:"collection_id,omitempty" toml:"collection_id" yaml:"collection_id,omitempty"`
+	MetadataHash     string              `boiler:"metadata_hash" boil:"metadata_hash" json:"metadata_hash" toml:"metadata_hash" yaml:"metadata_hash"`
+	SignatureExpiry  null.String         `boiler:"signature_expiry" boil:"signature_expiry" json:"signature_expiry,omitempty" toml:"signature_expiry" yaml:"signature_expiry,omitempty"`
 
 	R *xsynAssetR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L xsynAssetL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

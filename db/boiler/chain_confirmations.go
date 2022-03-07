@@ -25,13 +25,13 @@ import (
 // ChainConfirmation is an object representing the database table.
 type ChainConfirmation struct {
 	TX                 string          `boiler:"tx" boil:"tx" json:"tx" toml:"tx" yaml:"tx"`
-	TXID               null.String     `boiler:"tx_id" boil:"tx_id" json:"txID,omitempty" toml:"txID" yaml:"txID,omitempty"`
+	TXID               null.String     `boiler:"tx_id" boil:"tx_id" json:"tx_id,omitempty" toml:"tx_id" yaml:"tx_id,omitempty"`
 	Block              decimal.Decimal `boiler:"block" boil:"block" json:"block" toml:"block" yaml:"block"`
-	ChainID            decimal.Decimal `boiler:"chain_id" boil:"chain_id" json:"chainID" toml:"chainID" yaml:"chainID"`
-	ConfirmedAt        null.Time       `boiler:"confirmed_at" boil:"confirmed_at" json:"confirmedAt,omitempty" toml:"confirmedAt" yaml:"confirmedAt,omitempty"`
-	DeletedAt          null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	CreatedAt          time.Time       `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
-	ConfirmationAmount int             `boiler:"confirmation_amount" boil:"confirmation_amount" json:"confirmationAmount" toml:"confirmationAmount" yaml:"confirmationAmount"`
+	ChainID            decimal.Decimal `boiler:"chain_id" boil:"chain_id" json:"chain_id" toml:"chain_id" yaml:"chain_id"`
+	ConfirmedAt        null.Time       `boiler:"confirmed_at" boil:"confirmed_at" json:"confirmed_at,omitempty" toml:"confirmed_at" yaml:"confirmed_at,omitempty"`
+	DeletedAt          null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	CreatedAt          time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ConfirmationAmount int             `boiler:"confirmation_amount" boil:"confirmation_amount" json:"confirmation_amount" toml:"confirmation_amount" yaml:"confirmation_amount"`
 
 	R *chainConfirmationR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L chainConfirmationL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

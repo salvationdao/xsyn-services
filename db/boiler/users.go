@@ -26,30 +26,30 @@ import (
 type User struct {
 	ID                               string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	Username                         string          `boiler:"username" boil:"username" json:"username" toml:"username" yaml:"username"`
-	RoleID                           null.String     `boiler:"role_id" boil:"role_id" json:"roleID,omitempty" toml:"roleID" yaml:"roleID,omitempty"`
-	AvatarID                         null.String     `boiler:"avatar_id" boil:"avatar_id" json:"avatarID,omitempty" toml:"avatarID" yaml:"avatarID,omitempty"`
-	FacebookID                       null.String     `boiler:"facebook_id" boil:"facebook_id" json:"facebookID,omitempty" toml:"facebookID" yaml:"facebookID,omitempty"`
-	GoogleID                         null.String     `boiler:"google_id" boil:"google_id" json:"googleID,omitempty" toml:"googleID" yaml:"googleID,omitempty"`
-	TwitchID                         null.String     `boiler:"twitch_id" boil:"twitch_id" json:"twitchID,omitempty" toml:"twitchID" yaml:"twitchID,omitempty"`
-	TwitterID                        null.String     `boiler:"twitter_id" boil:"twitter_id" json:"twitterID,omitempty" toml:"twitterID" yaml:"twitterID,omitempty"`
-	DiscordID                        null.String     `boiler:"discord_id" boil:"discord_id" json:"discordID,omitempty" toml:"discordID" yaml:"discordID,omitempty"`
-	FactionID                        null.String     `boiler:"faction_id" boil:"faction_id" json:"factionID,omitempty" toml:"factionID" yaml:"factionID,omitempty"`
+	RoleID                           null.String     `boiler:"role_id" boil:"role_id" json:"role_id,omitempty" toml:"role_id" yaml:"role_id,omitempty"`
+	AvatarID                         null.String     `boiler:"avatar_id" boil:"avatar_id" json:"avatar_id,omitempty" toml:"avatar_id" yaml:"avatar_id,omitempty"`
+	FacebookID                       null.String     `boiler:"facebook_id" boil:"facebook_id" json:"facebook_id,omitempty" toml:"facebook_id" yaml:"facebook_id,omitempty"`
+	GoogleID                         null.String     `boiler:"google_id" boil:"google_id" json:"google_id,omitempty" toml:"google_id" yaml:"google_id,omitempty"`
+	TwitchID                         null.String     `boiler:"twitch_id" boil:"twitch_id" json:"twitch_id,omitempty" toml:"twitch_id" yaml:"twitch_id,omitempty"`
+	TwitterID                        null.String     `boiler:"twitter_id" boil:"twitter_id" json:"twitter_id,omitempty" toml:"twitter_id" yaml:"twitter_id,omitempty"`
+	DiscordID                        null.String     `boiler:"discord_id" boil:"discord_id" json:"discord_id,omitempty" toml:"discord_id" yaml:"discord_id,omitempty"`
+	FactionID                        null.String     `boiler:"faction_id" boil:"faction_id" json:"faction_id,omitempty" toml:"faction_id" yaml:"faction_id,omitempty"`
 	Email                            null.String     `boiler:"email" boil:"email" json:"email,omitempty" toml:"email" yaml:"email,omitempty"`
-	FirstName                        null.String     `boiler:"first_name" boil:"first_name" json:"firstName,omitempty" toml:"firstName" yaml:"firstName,omitempty"`
-	LastName                         null.String     `boiler:"last_name" boil:"last_name" json:"lastName,omitempty" toml:"lastName" yaml:"lastName,omitempty"`
+	FirstName                        null.String     `boiler:"first_name" boil:"first_name" json:"first_name,omitempty" toml:"first_name" yaml:"first_name,omitempty"`
+	LastName                         null.String     `boiler:"last_name" boil:"last_name" json:"last_name,omitempty" toml:"last_name" yaml:"last_name,omitempty"`
 	Verified                         bool            `boiler:"verified" boil:"verified" json:"verified" toml:"verified" yaml:"verified"`
-	OldPasswordRequired              bool            `boiler:"old_password_required" boil:"old_password_required" json:"oldPasswordRequired" toml:"oldPasswordRequired" yaml:"oldPasswordRequired"`
-	TwoFactorAuthenticationActivated bool            `boiler:"two_factor_authentication_activated" boil:"two_factor_authentication_activated" json:"twoFactorAuthenticationActivated" toml:"twoFactorAuthenticationActivated" yaml:"twoFactorAuthenticationActivated"`
-	TwoFactorAuthenticationSecret    string          `boiler:"two_factor_authentication_secret" boil:"two_factor_authentication_secret" json:"twoFactorAuthenticationSecret" toml:"twoFactorAuthenticationSecret" yaml:"twoFactorAuthenticationSecret"`
-	TwoFactorAuthenticationIsSet     bool            `boiler:"two_factor_authentication_is_set" boil:"two_factor_authentication_is_set" json:"twoFactorAuthenticationIsSet" toml:"twoFactorAuthenticationIsSet" yaml:"twoFactorAuthenticationIsSet"`
+	OldPasswordRequired              bool            `boiler:"old_password_required" boil:"old_password_required" json:"old_password_required" toml:"old_password_required" yaml:"old_password_required"`
+	TwoFactorAuthenticationActivated bool            `boiler:"two_factor_authentication_activated" boil:"two_factor_authentication_activated" json:"two_factor_authentication_activated" toml:"two_factor_authentication_activated" yaml:"two_factor_authentication_activated"`
+	TwoFactorAuthenticationSecret    string          `boiler:"two_factor_authentication_secret" boil:"two_factor_authentication_secret" json:"two_factor_authentication_secret" toml:"two_factor_authentication_secret" yaml:"two_factor_authentication_secret"`
+	TwoFactorAuthenticationIsSet     bool            `boiler:"two_factor_authentication_is_set" boil:"two_factor_authentication_is_set" json:"two_factor_authentication_is_set" toml:"two_factor_authentication_is_set" yaml:"two_factor_authentication_is_set"`
 	Sups                             decimal.Decimal `boiler:"sups" boil:"sups" json:"sups" toml:"sups" yaml:"sups"`
-	PublicAddress                    null.String     `boiler:"public_address" boil:"public_address" json:"publicAddress,omitempty" toml:"publicAddress" yaml:"publicAddress,omitempty"`
-	PrivateAddress                   null.String     `boiler:"private_address" boil:"private_address" json:"privateAddress,omitempty" toml:"privateAddress" yaml:"privateAddress,omitempty"`
+	PublicAddress                    null.String     `boiler:"public_address" boil:"public_address" json:"public_address,omitempty" toml:"public_address" yaml:"public_address,omitempty"`
+	PrivateAddress                   null.String     `boiler:"private_address" boil:"private_address" json:"private_address,omitempty" toml:"private_address" yaml:"private_address,omitempty"`
 	Nonce                            null.String     `boiler:"nonce" boil:"nonce" json:"nonce,omitempty" toml:"nonce" yaml:"nonce,omitempty"`
 	Keywords                         null.String     `boiler:"keywords" boil:"keywords" json:"keywords,omitempty" toml:"keywords" yaml:"keywords,omitempty"`
-	DeletedAt                        null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt                        time.Time       `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt                        time.Time       `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	DeletedAt                        null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt                        time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt                        time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	Metadata                         null.JSON       `boiler:"metadata" boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
 
 	R *userR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

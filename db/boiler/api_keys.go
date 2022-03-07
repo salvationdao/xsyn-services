@@ -24,11 +24,11 @@ import (
 // APIKey is an object representing the database table.
 type APIKey struct {
 	ID        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	UserID    string    `boiler:"user_id" boil:"user_id" json:"userID" toml:"userID" yaml:"userID"`
+	UserID    string    `boiler:"user_id" boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
 	Type      string    `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
-	DeletedAt null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	DeletedAt null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *apiKeyR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L apiKeyL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

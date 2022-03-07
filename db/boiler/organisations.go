@@ -27,9 +27,9 @@ type Organisation struct {
 	Slug      string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
 	Name      string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
 	Keywords  null.String `boiler:"keywords" boil:"keywords" json:"keywords,omitempty" toml:"keywords" yaml:"keywords,omitempty"`
-	DeletedAt null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt time.Time   `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	DeletedAt null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *organisationR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L organisationL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

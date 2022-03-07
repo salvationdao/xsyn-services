@@ -22,7 +22,7 @@ import (
 
 // WhitelistedAddress is an object representing the database table.
 type WhitelistedAddress struct {
-	WalletAddress string `boiler:"wallet_address" boil:"wallet_address" json:"walletAddress" toml:"walletAddress" yaml:"walletAddress"`
+	WalletAddress string `boiler:"wallet_address" boil:"wallet_address" json:"wallet_address" toml:"wallet_address" yaml:"wallet_address"`
 
 	R *whitelistedAddressR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L whitelistedAddressL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

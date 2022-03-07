@@ -31,7 +31,7 @@ type PurchasedItem struct {
 	IsDefault       bool       `boiler:"is_default" boil:"is_default" json:"isDefault" toml:"isDefault" yaml:"isDefault"`
 	Tier            string     `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
 	Hash            string     `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
-	OwnerID         string     `boiler:"owner_id" boil:"owner_id" json:"ownerID" toml:"ownerID" yaml:"ownerID"`
+	OwnerID         string     `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
 	Data            types.JSON `boiler:"data" boil:"data" json:"data" toml:"data" yaml:"data"`
 	UnlockedAt      time.Time  `boiler:"unlocked_at" boil:"unlocked_at" json:"unlockedAt" toml:"unlockedAt" yaml:"unlockedAt"`
 	MintedAt        null.Time  `boiler:"minted_at" boil:"minted_at" json:"mintedAt,omitempty" toml:"mintedAt" yaml:"mintedAt,omitempty"`

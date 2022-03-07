@@ -34,10 +34,10 @@ type StoreItem struct {
 	IsDefault        bool       `boiler:"is_default" boil:"is_default" json:"isDefault" toml:"isDefault" yaml:"isDefault"`
 	Tier             string     `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
 	Data             types.JSON `boiler:"data" boil:"data" json:"data" toml:"data" yaml:"data"`
-	DeletedAt        null.Time  `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	RefreshesAt      time.Time  `boiler:"refreshes_at" boil:"refreshes_at" json:"refreshesAt" toml:"refreshesAt" yaml:"refreshesAt"`
-	UpdatedAt        time.Time  `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt        time.Time  `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	DeletedAt        null.Time  `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	RefreshesAt      time.Time  `boiler:"refreshes_at" boil:"refreshes_at" json:"refreshes_at" toml:"refreshes_at" yaml:"refreshes_at"`
+	UpdatedAt        time.Time  `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt        time.Time  `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *storeItemR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L storeItemL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

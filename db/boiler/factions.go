@@ -26,8 +26,8 @@ type Faction struct {
 	ID               string     `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	Label            string     `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	Theme            types.JSON `boiler:"theme" boil:"theme" json:"theme" toml:"theme" yaml:"theme"`
-	LogoBlobID       string     `boiler:"logo_blob_id" boil:"logo_blob_id" json:"logoBlobID" toml:"logoBlobID" yaml:"logoBlobID"`
-	BackgroundBlobID string     `boiler:"background_blob_id" boil:"background_blob_id" json:"backgroundBlobID" toml:"backgroundBlobID" yaml:"backgroundBlobID"`
+	LogoBlobID       string     `boiler:"logo_blob_id" boil:"logo_blob_id" json:"logo_blob_id" toml:"logo_blob_id" yaml:"logo_blob_id"`
+	BackgroundBlobID string     `boiler:"background_blob_id" boil:"background_blob_id" json:"background_blob_id" toml:"background_blob_id" yaml:"background_blob_id"`
 	Description      string     `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
 
 	R *factionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
