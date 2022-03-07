@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"passport"
 	"passport/db"
+	"passport/db/boiler"
 	"time"
 
 	"github.com/microcosm-cc/bluemonday"
@@ -181,6 +182,11 @@ type AssetUpdatedSubscribeRequest struct {
 	} `json:"payload"`
 }
 
+type AssetUpdatedSubscribeResponse struct {
+	PurchasedItem *boiler.PurchasedItem `json:"purchased_item"`
+	OwnerUsername string                `json:"owner_username"`
+}
+
 // 	rootHub.SecureCommand(HubKeyAssetSubscribe, AssetController.AssetSubscribe)
 const HubKeyAssetSubscribe hub.HubCommandKey = "ASSET:SUBSCRIBE"
 
@@ -199,7 +205,14 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hub
 		return req.TransactionID, "", terror.Error(fmt.Errorf("asset doesn't exist"))
 	}
 
-	reply(asset)
+	owner, err := db.UserGet(context.Background(), ac.Conn, passport.UserID(uuid.Must(uuid.FromString(asset.OwnerID))))
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err)
+	}
+	reply(&AssetUpdatedSubscribeResponse{
+		PurchasedItem: asset,
+		OwnerUsername: owner.Username,
+	})
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.Hash)), nil
 }
 

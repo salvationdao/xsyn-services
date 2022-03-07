@@ -24,10 +24,12 @@ type Mech struct {
 	IsDefault       bool      `json:"is_default"`
 	ImageURL        string    `json:"image_url"`
 	AnimationURL    string    `json:"animation_url"`
+	AvatarURL       string    `json:"avatar_url"`
 	Hash            string    `json:"hash"`
 	Name            string    `json:"name"`
 	Label           string    `json:"label"`
 	Slug            string    `json:"slug"`
+	AssetType       string    `json:"asset_type"`
 	DeletedAt       null.Time `json:"deleted_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 	CreatedAt       time.Time `json:"created_at"`
