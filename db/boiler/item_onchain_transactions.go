@@ -24,14 +24,14 @@ import (
 // ItemOnchainTransaction is an object representing the database table.
 type ItemOnchainTransaction struct {
 	ID              string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	PurchasedItemID string    `boiler:"purchased_item_id" boil:"purchased_item_id" json:"purchasedItemID" toml:"purchasedItemID" yaml:"purchasedItemID"`
-	TXID            string    `boiler:"tx_id" boil:"tx_id" json:"txID" toml:"txID" yaml:"txID"`
-	ContractAddr    string    `boiler:"contract_addr" boil:"contract_addr" json:"contractAddr" toml:"contractAddr" yaml:"contractAddr"`
-	FromAddr        string    `boiler:"from_addr" boil:"from_addr" json:"fromAddr" toml:"fromAddr" yaml:"fromAddr"`
-	ToAddr          string    `boiler:"to_addr" boil:"to_addr" json:"toAddr" toml:"toAddr" yaml:"toAddr"`
-	DeletedAt       null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt       time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt       time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	PurchasedItemID string    `boiler:"purchased_item_id" boil:"purchased_item_id" json:"purchased_item_id" toml:"purchased_item_id" yaml:"purchased_item_id"`
+	TXID            string    `boiler:"tx_id" boil:"tx_id" json:"tx_id" toml:"tx_id" yaml:"tx_id"`
+	ContractAddr    string    `boiler:"contract_addr" boil:"contract_addr" json:"contract_addr" toml:"contract_addr" yaml:"contract_addr"`
+	FromAddr        string    `boiler:"from_addr" boil:"from_addr" json:"from_addr" toml:"from_addr" yaml:"from_addr"`
+	ToAddr          string    `boiler:"to_addr" boil:"to_addr" json:"to_addr" toml:"to_addr" yaml:"to_addr"`
+	DeletedAt       null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt       time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt       time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *itemOnchainTransactionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L itemOnchainTransactionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

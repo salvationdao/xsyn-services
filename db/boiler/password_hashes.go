@@ -23,11 +23,11 @@ import (
 
 // PasswordHash is an object representing the database table.
 type PasswordHash struct {
-	UserID       string    `boiler:"user_id" boil:"user_id" json:"userID" toml:"userID" yaml:"userID"`
-	PasswordHash string    `boiler:"password_hash" boil:"password_hash" json:"passwordHash" toml:"passwordHash" yaml:"passwordHash"`
-	DeletedAt    null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt    time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt    time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	UserID       string    `boiler:"user_id" boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
+	PasswordHash string    `boiler:"password_hash" boil:"password_hash" json:"password_hash" toml:"password_hash" yaml:"password_hash"`
+	DeletedAt    null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt    time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt    time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *passwordHashR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L passwordHashL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

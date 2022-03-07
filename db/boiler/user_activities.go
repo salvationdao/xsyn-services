@@ -24,16 +24,16 @@ import (
 // UserActivity is an object representing the database table.
 type UserActivity struct {
 	ID         string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	UserID     string      `boiler:"user_id" boil:"user_id" json:"userID" toml:"userID" yaml:"userID"`
+	UserID     string      `boiler:"user_id" boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
 	Action     string      `boiler:"action" boil:"action" json:"action" toml:"action" yaml:"action"`
-	ObjectID   null.String `boiler:"object_id" boil:"object_id" json:"objectID,omitempty" toml:"objectID" yaml:"objectID,omitempty"`
-	ObjectSlug null.String `boiler:"object_slug" boil:"object_slug" json:"objectSlug,omitempty" toml:"objectSlug" yaml:"objectSlug,omitempty"`
-	ObjectName null.String `boiler:"object_name" boil:"object_name" json:"objectName,omitempty" toml:"objectName" yaml:"objectName,omitempty"`
-	ObjectType string      `boiler:"object_type" boil:"object_type" json:"objectType" toml:"objectType" yaml:"objectType"`
-	OldData    null.JSON   `boiler:"old_data" boil:"old_data" json:"oldData,omitempty" toml:"oldData" yaml:"oldData,omitempty"`
-	NewData    null.JSON   `boiler:"new_data" boil:"new_data" json:"newData,omitempty" toml:"newData" yaml:"newData,omitempty"`
+	ObjectID   null.String `boiler:"object_id" boil:"object_id" json:"object_id,omitempty" toml:"object_id" yaml:"object_id,omitempty"`
+	ObjectSlug null.String `boiler:"object_slug" boil:"object_slug" json:"object_slug,omitempty" toml:"object_slug" yaml:"object_slug,omitempty"`
+	ObjectName null.String `boiler:"object_name" boil:"object_name" json:"object_name,omitempty" toml:"object_name" yaml:"object_name,omitempty"`
+	ObjectType string      `boiler:"object_type" boil:"object_type" json:"object_type" toml:"object_type" yaml:"object_type"`
+	OldData    null.JSON   `boiler:"old_data" boil:"old_data" json:"old_data,omitempty" toml:"old_data" yaml:"old_data,omitempty"`
+	NewData    null.JSON   `boiler:"new_data" boil:"new_data" json:"new_data,omitempty" toml:"new_data" yaml:"new_data,omitempty"`
 	Keywords   null.String `boiler:"keywords" boil:"keywords" json:"keywords,omitempty" toml:"keywords" yaml:"keywords,omitempty"`
-	CreatedAt  time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	CreatedAt  time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *userActivityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userActivityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

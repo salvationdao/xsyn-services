@@ -3,64 +3,65 @@ package rpcclient
 import (
 	"time"
 
-	"github.com/volatiletech/null/v8"
+	null "github.com/volatiletech/null/v8"
 )
 
 type MechContainer struct {
-	Mech    *Mech
-	Chassis *Chassis
-	Weapons map[int]*Weapon
-	Turrets map[int]*Weapon
-	Modules map[int]*Module
+	*Mech
+	Chassis *Chassis           `json:"chassis"`
+	Weapons map[string]*Weapon `json:"weapons"`
+	Turrets map[string]*Weapon `json:"turrets"`
+	Modules map[string]*Module `json:"modules"`
 }
 
 type Mech struct {
-	ID              string
-	OwnerID         string
-	TemplateID      string
-	ChassisID       string
-	ExternalTokenID int
-	Tier            string
-	IsDefault       bool
-	ImageURL        string
-	AnimationURL    string
-	Hash            string
-	Name            string
-	Label           string
-	Slug            string
-	DeletedAt       null.Time
-	UpdatedAt       time.Time
-	CreatedAt       time.Time
+	ID              string    `json:"id"`
+	OwnerID         string    `json:"owner_id"`
+	TemplateID      string    `json:"template_id"`
+	ChassisID       string    `json:"chassis_id"`
+	ExternalTokenID int       `json:"external_token_id"`
+	Tier            string    `json:"tier"`
+	IsDefault       bool      `json:"is_default"`
+	ImageURL        string    `json:"image_url"`
+	AnimationURL    string    `json:"animation_url"`
+	Hash            string    `json:"hash"`
+	Name            string    `json:"name"`
+	Label           string    `json:"label"`
+	Slug            string    `json:"slug"`
+	DeletedAt       null.Time `json:"deleted_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 type Chassis struct {
-	ID                 string
-	BrandID            string
-	Label              string
-	Model              string
-	Skin               string
-	Slug               string
-	ShieldRechargeRate int
-	HealthRemaining    int
-	WeaponHardpoints   int
-	TurretHardpoints   int
-	UtilitySlots       int
-	Speed              int
-	MaxHitpoints       int
-	MaxShield          int
-	DeletedAt          null.Time
-	UpdatedAt          time.Time
-	CreatedAt          time.Time
+	ID                 string    `json:"id"`
+	BrandID            string    `json:"brand_id"`
+	Label              string    `json:"label"`
+	Model              string    `json:"model"`
+	Skin               string    `json:"skin"`
+	Slug               string    `json:"slug"`
+	ShieldRechargeRate int       `json:"shield_recharge_rate"`
+	HealthRemaining    int       `json:"health_remaining"`
+	WeaponHardpoints   int       `json:"weapon_hardpoints"`
+	TurretHardpoints   int       `json:"turret_hardpoints"`
+	UtilitySlots       int       `json:"utility_slots"`
+	Speed              int       `json:"speed"`
+	MaxHitpoints       int       `json:"max_hitpoints"`
+	MaxShield          int       `json:"max_shield"`
+	DeletedAt          null.Time `json:"deleted_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+	CreatedAt          time.Time `json:"created_at"`
 }
+
 type Weapon struct {
-	ID         string
-	BrandID    null.String
-	Label      string
-	Slug       string
-	Damage     int
-	WeaponType string
-	DeletedAt  null.Time
-	UpdatedAt  time.Time
-	CreatedAt  time.Time
+	ID         string      `json:"id"`
+	BrandID    null.String `json:"brand_id"`
+	Label      string      `json:"label"`
+	Slug       string      `json:"slug"`
+	Damage     int         `json:"damage"`
+	WeaponType string      `json:"weapon_type"`
+	DeletedAt  null.Time   `json:"deleted_at"`
+	UpdatedAt  time.Time   `json:"updated_at"`
+	CreatedAt  time.Time   `json:"created_at"`
 }
 type Module struct {
 	ID               string

@@ -23,8 +23,8 @@ import (
 // IssueToken is an object representing the database table.
 type IssueToken struct {
 	ID        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	UserID    string    `boiler:"user_id" boil:"user_id" json:"userID" toml:"userID" yaml:"userID"`
-	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	UserID    string    `boiler:"user_id" boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
+	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *issueTokenR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L issueTokenL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

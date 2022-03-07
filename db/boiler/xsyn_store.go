@@ -25,26 +25,26 @@ import (
 // XsynStore is an object representing the database table.
 type XsynStore struct {
 	ID                   string            `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	FactionID            null.String       `boiler:"faction_id" boil:"faction_id" json:"factionID,omitempty" toml:"factionID" yaml:"factionID,omitempty"`
+	FactionID            null.String       `boiler:"faction_id" boil:"faction_id" json:"faction_id,omitempty" toml:"faction_id" yaml:"faction_id,omitempty"`
 	Name                 string            `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	CollectionID         null.String       `boiler:"collection_id" boil:"collection_id" json:"collectionID,omitempty" toml:"collectionID" yaml:"collectionID,omitempty"`
+	CollectionID         null.String       `boiler:"collection_id" boil:"collection_id" json:"collection_id,omitempty" toml:"collection_id" yaml:"collection_id,omitempty"`
 	Description          string            `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
 	Image                string            `boiler:"image" boil:"image" json:"image" toml:"image" yaml:"image"`
-	AnimationURL         string            `boiler:"animation_url" boil:"animation_url" json:"animationURL" toml:"animationURL" yaml:"animationURL"`
+	AnimationURL         string            `boiler:"animation_url" boil:"animation_url" json:"animation_url" toml:"animation_url" yaml:"animation_url"`
 	Attributes           null.JSON         `boiler:"attributes" boil:"attributes" json:"attributes,omitempty" toml:"attributes" yaml:"attributes,omitempty"`
-	AdditionalMetadata   null.JSON         `boiler:"additional_metadata" boil:"additional_metadata" json:"additionalMetadata,omitempty" toml:"additionalMetadata" yaml:"additionalMetadata,omitempty"`
+	AdditionalMetadata   null.JSON         `boiler:"additional_metadata" boil:"additional_metadata" json:"additional_metadata,omitempty" toml:"additional_metadata" yaml:"additional_metadata,omitempty"`
 	Keywords             null.String       `boiler:"keywords" boil:"keywords" json:"keywords,omitempty" toml:"keywords" yaml:"keywords,omitempty"`
-	UsdCentCost          int               `boiler:"usd_cent_cost" boil:"usd_cent_cost" json:"usdCentCost" toml:"usdCentCost" yaml:"usdCentCost"`
-	AmountSold           int               `boiler:"amount_sold" boil:"amount_sold" json:"amountSold" toml:"amountSold" yaml:"amountSold"`
-	AmountAvailable      int               `boiler:"amount_available" boil:"amount_available" json:"amountAvailable" toml:"amountAvailable" yaml:"amountAvailable"`
-	SoldAfter            time.Time         `boiler:"sold_after" boil:"sold_after" json:"soldAfter" toml:"soldAfter" yaml:"soldAfter"`
-	SoldBefore           time.Time         `boiler:"sold_before" boil:"sold_before" json:"soldBefore" toml:"soldBefore" yaml:"soldBefore"`
-	DeletedAt            null.Time         `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	CreatedAt            time.Time         `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
-	UpdatedAt            time.Time         `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
+	UsdCentCost          int               `boiler:"usd_cent_cost" boil:"usd_cent_cost" json:"usd_cent_cost" toml:"usd_cent_cost" yaml:"usd_cent_cost"`
+	AmountSold           int               `boiler:"amount_sold" boil:"amount_sold" json:"amount_sold" toml:"amount_sold" yaml:"amount_sold"`
+	AmountAvailable      int               `boiler:"amount_available" boil:"amount_available" json:"amount_available" toml:"amount_available" yaml:"amount_available"`
+	SoldAfter            time.Time         `boiler:"sold_after" boil:"sold_after" json:"sold_after" toml:"sold_after" yaml:"sold_after"`
+	SoldBefore           time.Time         `boiler:"sold_before" boil:"sold_before" json:"sold_before" toml:"sold_before" yaml:"sold_before"`
+	DeletedAt            null.Time         `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	CreatedAt            time.Time         `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt            time.Time         `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	Restriction          string            `boiler:"restriction" boil:"restriction" json:"restriction" toml:"restriction" yaml:"restriction"`
-	WhiteListedAddresses types.StringArray `boiler:"white_listed_addresses" boil:"white_listed_addresses" json:"whiteListedAddresses,omitempty" toml:"whiteListedAddresses" yaml:"whiteListedAddresses,omitempty"`
-	ImageAvatar          string            `boiler:"image_avatar" boil:"image_avatar" json:"imageAvatar" toml:"imageAvatar" yaml:"imageAvatar"`
+	WhiteListedAddresses types.StringArray `boiler:"white_listed_addresses" boil:"white_listed_addresses" json:"white_listed_addresses,omitempty" toml:"white_listed_addresses" yaml:"white_listed_addresses,omitempty"`
+	ImageAvatar          string            `boiler:"image_avatar" boil:"image_avatar" json:"image_avatar" toml:"image_avatar" yaml:"image_avatar"`
 
 	R *xsynStoreR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L xsynStoreL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

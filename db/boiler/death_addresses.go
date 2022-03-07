@@ -22,7 +22,7 @@ import (
 
 // DeathAddress is an object representing the database table.
 type DeathAddress struct {
-	WalletAddress string `boiler:"wallet_address" boil:"wallet_address" json:"walletAddress" toml:"walletAddress" yaml:"walletAddress"`
+	WalletAddress string `boiler:"wallet_address" boil:"wallet_address" json:"wallet_address" toml:"wallet_address" yaml:"wallet_address"`
 
 	R *deathAddressR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L deathAddressL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

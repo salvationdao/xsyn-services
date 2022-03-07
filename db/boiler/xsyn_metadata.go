@@ -25,23 +25,23 @@ import (
 // XsynMetadatum is an object representing the database table.
 type XsynMetadatum struct {
 	Name               string              `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	CollectionID       string              `boiler:"collection_id" boil:"collection_id" json:"collectionID" toml:"collectionID" yaml:"collectionID"`
-	GameObject         null.JSON           `boiler:"game_object" boil:"game_object" json:"gameObject,omitempty" toml:"gameObject" yaml:"gameObject,omitempty"`
+	CollectionID       string              `boiler:"collection_id" boil:"collection_id" json:"collection_id" toml:"collection_id" yaml:"collection_id"`
+	GameObject         null.JSON           `boiler:"game_object" boil:"game_object" json:"game_object,omitempty" toml:"game_object" yaml:"game_object,omitempty"`
 	Description        null.String         `boiler:"description" boil:"description" json:"description,omitempty" toml:"description" yaml:"description,omitempty"`
-	ExternalURL        null.String         `boiler:"external_url" boil:"external_url" json:"externalURL,omitempty" toml:"externalURL" yaml:"externalURL,omitempty"`
+	ExternalURL        null.String         `boiler:"external_url" boil:"external_url" json:"external_url,omitempty" toml:"external_url" yaml:"external_url,omitempty"`
 	Image              null.String         `boiler:"image" boil:"image" json:"image,omitempty" toml:"image" yaml:"image,omitempty"`
-	AnimationURL       null.String         `boiler:"animation_url" boil:"animation_url" json:"animationURL,omitempty" toml:"animationURL" yaml:"animationURL,omitempty"`
+	AnimationURL       null.String         `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
 	Durability         int                 `boiler:"durability" boil:"durability" json:"durability" toml:"durability" yaml:"durability"`
 	Attributes         null.JSON           `boiler:"attributes" boil:"attributes" json:"attributes,omitempty" toml:"attributes" yaml:"attributes,omitempty"`
-	AdditionalMetadata null.JSON           `boiler:"additional_metadata" boil:"additional_metadata" json:"additionalMetadata,omitempty" toml:"additionalMetadata" yaml:"additionalMetadata,omitempty"`
+	AdditionalMetadata null.JSON           `boiler:"additional_metadata" boil:"additional_metadata" json:"additional_metadata,omitempty" toml:"additional_metadata" yaml:"additional_metadata,omitempty"`
 	Keywords           null.String         `boiler:"keywords" boil:"keywords" json:"keywords,omitempty" toml:"keywords" yaml:"keywords,omitempty"`
-	DeletedAt          null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt          time.Time           `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt          time.Time           `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	DeletedAt          null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt          time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt          time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	Minted             null.Bool           `boiler:"minted" boil:"minted" json:"minted,omitempty" toml:"minted" yaml:"minted,omitempty"`
 	Hash               string              `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
-	ExternalTokenID    decimal.NullDecimal `boiler:"external_token_id" boil:"external_token_id" json:"externalTokenID,omitempty" toml:"externalTokenID" yaml:"externalTokenID,omitempty"`
-	ImageAvatar        string              `boiler:"image_avatar" boil:"image_avatar" json:"imageAvatar" toml:"imageAvatar" yaml:"imageAvatar"`
+	ExternalTokenID    decimal.NullDecimal `boiler:"external_token_id" boil:"external_token_id" json:"external_token_id,omitempty" toml:"external_token_id" yaml:"external_token_id,omitempty"`
+	ImageAvatar        string              `boiler:"image_avatar" boil:"image_avatar" json:"image_avatar" toml:"image_avatar" yaml:"image_avatar"`
 
 	R *xsynMetadatumR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L xsynMetadatumL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

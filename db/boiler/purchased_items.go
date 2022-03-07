@@ -25,17 +25,17 @@ import (
 // PurchasedItem is an object representing the database table.
 type PurchasedItem struct {
 	ID              string     `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	CollectionID    string     `boiler:"collection_id" boil:"collection_id" json:"collectionID" toml:"collectionID" yaml:"collectionID"`
-	StoreItemID     string     `boiler:"store_item_id" boil:"store_item_id" json:"storeItemID" toml:"storeItemID" yaml:"storeItemID"`
-	ExternalTokenID int        `boiler:"external_token_id" boil:"external_token_id" json:"externalTokenID" toml:"externalTokenID" yaml:"externalTokenID"`
+	CollectionID    string     `boiler:"collection_id" boil:"collection_id" json:"collection_id" toml:"collection_id" yaml:"collection_id"`
+	StoreItemID     string     `boiler:"store_item_id" boil:"store_item_id" json:"store_item_id" toml:"store_item_id" yaml:"store_item_id"`
+	ExternalTokenID int        `boiler:"external_token_id" boil:"external_token_id" json:"external_token_id" toml:"external_token_id" yaml:"external_token_id"`
 	Hash            string     `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
-	OwnerID         string     `boiler:"owner_id" boil:"owner_id" json:"ownerID" toml:"ownerID" yaml:"ownerID"`
+	OwnerID         string     `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
 	Data            types.JSON `boiler:"data" boil:"data" json:"data" toml:"data" yaml:"data"`
-	MintedAt        null.Time  `boiler:"minted_at" boil:"minted_at" json:"mintedAt,omitempty" toml:"mintedAt" yaml:"mintedAt,omitempty"`
-	DeletedAt       null.Time  `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	RefreshesAt     time.Time  `boiler:"refreshes_at" boil:"refreshes_at" json:"refreshesAt" toml:"refreshesAt" yaml:"refreshesAt"`
-	UpdatedAt       time.Time  `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt       time.Time  `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	MintedAt        null.Time  `boiler:"minted_at" boil:"minted_at" json:"minted_at,omitempty" toml:"minted_at" yaml:"minted_at,omitempty"`
+	DeletedAt       null.Time  `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	RefreshesAt     time.Time  `boiler:"refreshes_at" boil:"refreshes_at" json:"refreshes_at" toml:"refreshes_at" yaml:"refreshes_at"`
+	UpdatedAt       time.Time  `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt       time.Time  `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *purchasedItemR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L purchasedItemL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

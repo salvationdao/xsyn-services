@@ -10,25 +10,25 @@ import (
 )
 
 type AssetRepairStatReq struct {
-	AssetRepairRecord *passport.AssetRepairRecord `json:"assetRepairRecord"`
+	AssetRepairRecord *passport.AssetRepairRecord `json:"asset_repair_record"`
 }
 
 type AssetRepairStatResp struct{}
 type DefaultWarMachinesReq struct {
-	FactionID passport.FactionID `json:"factionID"`
+	FactionID passport.FactionID `json:"faction_id"`
 }
 
 type DefaultWarMachinesResp struct {
-	WarMachines []*passport.WarMachineMetadata `json:"warMachines"`
+	WarMachines []*passport.WarMachineMetadata `json:"war_machines"`
 }
 type WarMachineQueuePositionReq struct {
-	WarMachineQueuePosition []*passport.WarMachineQueueStat `json:"warMachineQueuePosition"`
+	WarMachineQueuePosition []*passport.WarMachineQueueStat `json:"war_machine_queue_position"`
 }
 
 type WarMachineQueuePositionResp struct{}
 
 type UserConnectionUpgradeReq struct {
-	SessionID hub.SessionID `json:"sessionID"`
+	SessionID hub.SessionID `json:"session_id"`
 }
 
 type UserConnectionUpgradeResp struct{}
@@ -39,24 +39,24 @@ type FactionAllResp struct {
 }
 type SpendSupsReq struct {
 	Amount               string                        `json:"amount"`
-	FromUserID           passport.UserID               `json:"fromUserID"`
-	ToUserID             *passport.UserID              `json:"toUserID,omitempty"`
-	TransactionReference passport.TransactionReference `json:"transactionReference"`
+	FromUserID           passport.UserID               `json:"from_user_id"`
+	ToUserID             *passport.UserID              `json:"to_user_id,omitempty"`
+	TransactionReference passport.TransactionReference `json:"transaction_reference"`
 	Group                passport.TransactionGroup     `json:"group,omitempty"`
-	SubGroup             string                        `json:"subGroup"`    //TODO: send battle id
+	SubGroup             string                        `json:"sub_group"`   //TODO: send battle id
 	Description          string                        `json:"description"` //TODO: send descritpion
 
-	NotSafe bool `json:"notSafe"`
+	NotSafe bool `json:"not_safe"`
 }
 type SpendSupsResp struct {
 	TXID string `json:"txid"`
 }
 type ReleaseTransactionsReq struct {
-	TxIDs []string `json:"txIDs"`
+	TxIDs []string `json:"tx_ids"`
 }
 type ReleaseTransactionsResp struct{}
 type TickerTickReq struct {
-	UserMap map[int][]passport.UserID `json:"userMap"`
+	UserMap map[int][]passport.UserID `json:"user_map"`
 }
 type TickerTickResp struct{}
 
@@ -65,20 +65,20 @@ type GetSpoilOfWarResp struct {
 	Amount string
 }
 type UserSupsMultiplierSendReq struct {
-	UserSupsMultiplierSends []*passport.UserSupsMultiplierSend `json:"userSupsMultiplierSends"`
+	UserSupsMultiplierSends []*passport.UserSupsMultiplierSend `json:"user_sups_multiplier_sends"`
 }
 
 type UserSupsMultiplierSendResp struct{}
 type TransferBattleFundToSupPoolReq struct{}
 type TransferBattleFundToSupPoolResp struct{}
 type TopSupsContributorReq struct {
-	StartTime time.Time `json:"startTime"`
-	EndTime   time.Time `json:"endTime"`
+	StartTime time.Time `json:"start_time"`
+	EndTime   time.Time `json:"end_time"`
 }
 
 type TopSupsContributorResp struct {
-	TopSupsContributors       []*passport.User    `json:"topSupsContributors"`
-	TopSupsContributeFactions []*passport.Faction `json:"topSupsContributeFactions"`
+	TopSupsContributors       []*passport.User    `json:"top_sups_contributors"`
+	TopSupsContributeFactions []*passport.Faction `json:"top_sups_contribute_factions"`
 }
 
 type User struct {

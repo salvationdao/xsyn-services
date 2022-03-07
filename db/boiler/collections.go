@@ -25,14 +25,14 @@ import (
 type Collection struct {
 	ID            string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	Name          string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	LogoBlobID    null.String `boiler:"logo_blob_id" boil:"logo_blob_id" json:"logoBlobID,omitempty" toml:"logoBlobID" yaml:"logoBlobID,omitempty"`
+	LogoBlobID    null.String `boiler:"logo_blob_id" boil:"logo_blob_id" json:"logo_blob_id,omitempty" toml:"logo_blob_id" yaml:"logo_blob_id,omitempty"`
 	Keywords      null.String `boiler:"keywords" boil:"keywords" json:"keywords,omitempty" toml:"keywords" yaml:"keywords,omitempty"`
-	DeletedAt     null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt     time.Time   `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	DeletedAt     null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt     time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	Slug          string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	MintContract  null.String `boiler:"mint_contract" boil:"mint_contract" json:"mintContract,omitempty" toml:"mintContract" yaml:"mintContract,omitempty"`
-	StakeContract null.String `boiler:"stake_contract" boil:"stake_contract" json:"stakeContract,omitempty" toml:"stakeContract" yaml:"stakeContract,omitempty"`
+	MintContract  null.String `boiler:"mint_contract" boil:"mint_contract" json:"mint_contract,omitempty" toml:"mint_contract" yaml:"mint_contract,omitempty"`
+	StakeContract null.String `boiler:"stake_contract" boil:"stake_contract" json:"stake_contract,omitempty" toml:"stake_contract" yaml:"stake_contract,omitempty"`
 
 	R *collectionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L collectionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

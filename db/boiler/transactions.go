@@ -26,15 +26,15 @@ import (
 type Transaction struct {
 	ID                   string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	Description          string          `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
-	TransactionReference string          `boiler:"transaction_reference" boil:"transaction_reference" json:"transactionReference" toml:"transactionReference" yaml:"transactionReference"`
+	TransactionReference string          `boiler:"transaction_reference" boil:"transaction_reference" json:"transaction_reference" toml:"transaction_reference" yaml:"transaction_reference"`
 	Amount               decimal.Decimal `boiler:"amount" boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
 	Credit               string          `boiler:"credit" boil:"credit" json:"credit" toml:"credit" yaml:"credit"`
 	Debit                string          `boiler:"debit" boil:"debit" json:"debit" toml:"debit" yaml:"debit"`
 	Status               string          `boiler:"status" boil:"status" json:"status" toml:"status" yaml:"status"`
 	Reason               null.String     `boiler:"reason" boil:"reason" json:"reason,omitempty" toml:"reason" yaml:"reason,omitempty"`
-	CreatedAt            time.Time       `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	CreatedAt            time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	Group                string          `boiler:"group" boil:"group" json:"group" toml:"group" yaml:"group"`
-	SubGroup             null.String     `boiler:"sub_group" boil:"sub_group" json:"subGroup,omitempty" toml:"subGroup" yaml:"subGroup,omitempty"`
+	SubGroup             null.String     `boiler:"sub_group" boil:"sub_group" json:"sub_group,omitempty" toml:"sub_group" yaml:"sub_group,omitempty"`
 
 	R *transactionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L transactionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

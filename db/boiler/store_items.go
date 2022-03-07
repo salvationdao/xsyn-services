@@ -25,17 +25,17 @@ import (
 // StoreItem is an object representing the database table.
 type StoreItem struct {
 	ID               string     `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	CollectionID     string     `boiler:"collection_id" boil:"collection_id" json:"collectionID" toml:"collectionID" yaml:"collectionID"`
-	FactionID        string     `boiler:"faction_id" boil:"faction_id" json:"factionID" toml:"factionID" yaml:"factionID"`
-	UsdCentCost      int        `boiler:"usd_cent_cost" boil:"usd_cent_cost" json:"usdCentCost" toml:"usdCentCost" yaml:"usdCentCost"`
-	AmountSold       int        `boiler:"amount_sold" boil:"amount_sold" json:"amountSold" toml:"amountSold" yaml:"amountSold"`
-	AmountAvailable  int        `boiler:"amount_available" boil:"amount_available" json:"amountAvailable" toml:"amountAvailable" yaml:"amountAvailable"`
-	RestrictionGroup string     `boiler:"restriction_group" boil:"restriction_group" json:"restrictionGroup" toml:"restrictionGroup" yaml:"restrictionGroup"`
+	CollectionID     string     `boiler:"collection_id" boil:"collection_id" json:"collection_id" toml:"collection_id" yaml:"collection_id"`
+	FactionID        string     `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	UsdCentCost      int        `boiler:"usd_cent_cost" boil:"usd_cent_cost" json:"usd_cent_cost" toml:"usd_cent_cost" yaml:"usd_cent_cost"`
+	AmountSold       int        `boiler:"amount_sold" boil:"amount_sold" json:"amount_sold" toml:"amount_sold" yaml:"amount_sold"`
+	AmountAvailable  int        `boiler:"amount_available" boil:"amount_available" json:"amount_available" toml:"amount_available" yaml:"amount_available"`
+	RestrictionGroup string     `boiler:"restriction_group" boil:"restriction_group" json:"restriction_group" toml:"restriction_group" yaml:"restriction_group"`
 	Data             types.JSON `boiler:"data" boil:"data" json:"data" toml:"data" yaml:"data"`
-	DeletedAt        null.Time  `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	RefreshesAt      time.Time  `boiler:"refreshes_at" boil:"refreshes_at" json:"refreshesAt" toml:"refreshesAt" yaml:"refreshesAt"`
-	UpdatedAt        time.Time  `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt        time.Time  `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	DeletedAt        null.Time  `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	RefreshesAt      time.Time  `boiler:"refreshes_at" boil:"refreshes_at" json:"refreshes_at" toml:"refreshes_at" yaml:"refreshes_at"`
+	UpdatedAt        time.Time  `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt        time.Time  `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *storeItemR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L storeItemL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

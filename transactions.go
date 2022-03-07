@@ -18,27 +18,27 @@ type Transaction struct {
 	Debit                UserID            `json:"debit" db:"debit"`
 	Amount               BigInt            `json:"amount" db:"amount"`
 	Status               TransactionStatus `json:"status" db:"status"`
-	TransactionReference string            `json:"transactionReference" db:"transaction_reference"`
+	TransactionReference string            `json:"transaction_reference" db:"transaction_reference"`
 	Description          string            `json:"description" db:"description"`
 	Reason               *string           `json:"reason" db:"reason"`
 	CreatedAt            time.Time         `json:"created_at" db:"created_at"`
 	Group                TransactionGroup  `json:"group" db:"group"`
-	SubGroup             string            `json:"subGroup" db:"sub_group"`
+	SubGroup             string            `json:"sub_group" db:"sub_group"`
 
-	// Inner joined fields
+	// Inner joined fields4b4
 	To   User `json:"to"`
 	From User `json:"from"`
 }
 
 type ChainConfirmations struct {
 	Tx                 string     `json:"tx" db:"tx"`
-	TxID               string     `json:"txID" db:"tx_id"`
+	TxID               string     `json:"tx_id" db:"tx_id"`
 	Block              uint64     `json:"block" db:"block"`
-	ChainID            uint64     `json:"chainID" db:"chain_id"`
-	ConfirmedAt        *time.Time `json:"confirmedAt" db:"confirmed_at"`
-	CreatedAt          time.Time  `json:"createdAt" db:"created_at"`
-	ConfirmationAmount int        `json:"confirmationAmount" db:"confirmation_amount"`
-	UserID             UserID     `json:"userID" db:"user_id"`
+	ChainID            uint64     `json:"chain_id" db:"chain_id"`
+	ConfirmedAt        *time.Time `json:"confirmed_at" db:"confirmed_at"`
+	CreatedAt          time.Time  `json:"created_at" db:"created_at"`
+	ConfirmationAmount int        `json:"confirmation_amount" db:"confirmation_amount"`
+	UserID             UserID     `json:"user_id" db:"user_id"`
 }
 
 type TransactionReference string
@@ -48,10 +48,10 @@ type NewTransaction struct {
 	To                   UserID               `json:"credit" db:"credit"`
 	From                 UserID               `json:"debit" db:"debit"`
 	Amount               big.Int              `json:"amount" db:"amount"`
-	TransactionReference TransactionReference `json:"transactionReference" db:"transaction_reference"`
+	TransactionReference TransactionReference `json:"transaction_reference" db:"transaction_reference"`
 	Description          string               `json:"description" db:"description"`
 	Group                TransactionGroup     `json:"group" db:"group"`
-	SubGroup             string               `json:"subGroup" db:"sub_group"`
+	SubGroup             string               `json:"sub_group" db:"sub_group"`
 	NotSafe              bool                 `json:"not_safe" db:"-"`
 	Processed            bool                 `json:"processed" db:"-"`
 	CreatedAt            time.Time            `json:"created_at" db:"created_at"`
