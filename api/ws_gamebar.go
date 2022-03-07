@@ -59,7 +59,7 @@ func (gc *GamebarController) GetSessionIDHandler(ctx context.Context, hubc *hub.
 type AuthTwitchRingCheckRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		GameserverSessionID string `json:"gameserverSessionID"`
+		GameserverSessionID string `json:"gameserver_session_id"`
 	} `json:"payload"`
 }
 
@@ -145,7 +145,7 @@ const HubKeyGamebarUserSubscribe hub.HubCommandKey = "GAMEBAR:USER:SUBSCRIBE"
 type UserUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		SessionID string `json:"sessionID"`
+		SessionID string `json:"session_id"`
 	} `json:"payload"`
 }
 

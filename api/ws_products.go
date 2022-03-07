@@ -6,6 +6,7 @@ import (
 	"passport"
 	"passport/db"
 	"passport/helpers"
+
 	"github.com/ninja-software/log_helpers"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -47,12 +48,12 @@ const HubKeyProductList hub.HubCommandKey = "PRODUCT:LIST"
 type ProductListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		SortDir  db.SortByDir          `json:"sortDir"`
-		SortBy   db.ProductColumn      `json:"sortBy"`
+		SortDir  db.SortByDir          `json:"sort_dir"`
+		SortBy   db.ProductColumn      `json:"sort_by"`
 		Filter   *db.ListFilterRequest `json:"filter"`
 		Archived bool                  `json:"archived"`
 		Search   string                `json:"search"`
-		PageSize int                   `json:"pageSize"`
+		PageSize int                   `json:"page_size"`
 		Page     int                   `json:"page"`
 	} `json:"payload"`
 }
@@ -370,7 +371,7 @@ type NudgeImageListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		Search   string `json:"search"`
-		PageSize int    `json:"pageSize"`
+		PageSize int    `json:"page_size"`
 		Page     int    `json:"page"`
 	} `json:"payload"`
 }

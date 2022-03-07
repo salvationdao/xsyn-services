@@ -47,12 +47,12 @@ const HubKeyRoleList hub.HubCommandKey = "ROLE:LIST"
 type RoleListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		SortDir  db.SortByDir          `json:"sortDir"`
-		SortBy   db.RoleColumn         `json:"sortBy"`
+		SortDir  db.SortByDir          `json:"sort_dir"`
+		SortBy   db.RoleColumn         `json:"sort_by"`
 		Filter   *db.ListFilterRequest `json:"filter"`
 		Archived bool                  `json:"archived"`
 		Search   string                `json:"search"`
-		PageSize int                   `json:"pageSize"`
+		PageSize int                   `json:"page_size"`
 		Page     int                   `json:"page"`
 	} `json:"payload"`
 }

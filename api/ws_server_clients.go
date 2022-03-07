@@ -41,7 +41,7 @@ const HubKeyCheckTransactionList = hub.HubCommandKey("TRANSACTION:CHECK_LIST")
 type CheckTransactionsRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		TransactionReferences []string `json:"transactionReferences"`
+		TransactionReferences []string `json:"transaction_references"`
 	} `json:"payload"`
 }
 

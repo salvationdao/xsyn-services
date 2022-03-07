@@ -47,12 +47,12 @@ const HubKeyOrganisationList hub.HubCommandKey = "ORGANISATION:LIST"
 type OrganisationListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		SortDir  db.SortByDir          `json:"sortDir"`
-		SortBy   db.OrganisationColumn `json:"sortBy"`
+		SortDir  db.SortByDir          `json:"sort_dir"`
+		SortBy   db.OrganisationColumn `json:"sort_by"`
 		Filter   *db.ListFilterRequest `json:"filter"`
 		Archived bool                  `json:"archived"`
 		Search   string                `json:"search"`
-		PageSize int                   `json:"pageSize"`
+		PageSize int                   `json:"page_size"`
 		Page     int                   `json:"page"`
 	} `json:"payload"`
 }

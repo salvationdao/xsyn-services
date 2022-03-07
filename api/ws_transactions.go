@@ -63,11 +63,11 @@ func (tc *TransactionController) TransactionGroupsHandler(ctx context.Context, h
 type TransactionListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		SortDir  db.SortByDir          `json:"sortDir"`
-		SortBy   db.TransactionColumn  `json:"sortBy"`
+		SortDir  db.SortByDir          `json:"sort_dir"`
+		SortBy   db.TransactionColumn  `json:"sort_by"`
 		Filter   *db.ListFilterRequest `json:"filter,omitempty"`
 		Search   string                `json:"search"`
-		PageSize int                   `json:"pageSize"`
+		PageSize int                   `json:"page_size"`
 		Page     int                   `json:"page"`
 	} `json:"payload"`
 }
@@ -75,7 +75,7 @@ type TransactionListRequest struct {
 // TransactionListResponse is the response from get Transaction list
 type TransactionListResponse struct {
 	Total          int      `json:"total"`
-	TransactionIDs []string `json:"transactionIDs"`
+	TransactionIDs []string `json:"transaction_ids"`
 }
 
 const HubKeyTransactionList hub.HubCommandKey = "TRANSACTION:LIST"
@@ -133,7 +133,7 @@ const HubKeyTransactionSubscribe hub.HubCommandKey = "TRANSACTION:SUBSCRIBE"
 type TransactionSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		TransactionID string `json:"transactionID"`
+		TransactionID string `json:"transaction_id"`
 	} `json:"payload"`
 }
 

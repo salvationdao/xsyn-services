@@ -54,7 +54,7 @@ const HubKeyPurchaseItem = hub.HubCommandKey("STORE:PURCHASE")
 type PurchaseRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		StoreItemID passport.StoreItemID `json:"storeItemID"`
+		StoreItemID passport.StoreItemID `json:"store_item_id"`
 	} `json:"payload"`
 }
 
@@ -98,7 +98,7 @@ func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *hub.
 type PurchaseLootboxRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		FactionID passport.FactionID `json:"factionID"`
+		FactionID passport.FactionID `json:"faction_id"`
 	} `json:"payload"`
 }
 
@@ -170,7 +170,7 @@ type StoreListRequest struct {
 
 type StoreListResponse struct {
 	Total        int                    `json:"total"`
-	StoreItemIDs []passport.StoreItemID `json:"storeItemIDs"`
+	StoreItemIDs []passport.StoreItemID `json:"store_item_ids"`
 }
 
 func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
@@ -201,7 +201,7 @@ const HubKeyStoreItemSubscribe hub.HubCommandKey = "STORE:ITEM"
 type StoreItemSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		StoreItemID passport.StoreItemID `json:"storeItemID"`
+		StoreItemID passport.StoreItemID `json:"store_item_id"`
 	} `json:"payload"`
 }
 
