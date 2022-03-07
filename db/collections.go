@@ -8,8 +8,10 @@ import (
 	"passport/passdb"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 )
 
 func AICollection() (*boiler.Collection, error) {
@@ -61,6 +63,10 @@ func (cc CollectionColumn) IsValid() error {
 		return nil
 	}
 	return terror.Error(fmt.Errorf("invalid collection column type"))
+}
+
+func CollectionByMintAddress(mintAddr common.Address) (*boiler.Collection, error) {
+	return boiler.Collections(boiler.CollectionWhere.MintContract.EQ(null.StringFrom(mintAddr.Hex()))).One(passdb.StdConn)
 }
 
 // CollectionGet returns a collection by slug

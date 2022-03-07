@@ -83,7 +83,7 @@ func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *hub.
 
 	// broadcast available mech amount
 	go func() {
-		fsa, err := db.AssetSaleAvailable(ctx, sc.Conn)
+		fsa, err := db.StoreItemsAvailable()
 		if err != nil {
 			sc.API.Log.Err(err)
 			return
@@ -129,7 +129,7 @@ func (sc *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, hubc *h
 
 	// broadcast available mech amount
 	go func() {
-		fsa, err := db.AssetSaleAvailable(ctx, sc.Conn)
+		fsa, err := db.StoreItemsAvailable()
 		if err != nil {
 			sc.API.Log.Err(err)
 			return
@@ -194,59 +194,6 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Cli
 	if req.Payload.Page > 0 {
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
-
-	// genesisCollection, err := db.CollectionGet(ctx, sc.Conn, "supremacy-genesis")
-	// if err != nil {
-	// 	return terror.Error(err, "Error getting collection details, please contact support.")
-	// }
-
-	// collectionFilter := &db.ListFilterRequest{
-	// 	LinkOperator: db.LinkOperatorTypeAnd,
-	// 	Items: []*db.ListFilterRequestItem{{
-	// 		ColumnField:   string(db.StoreColumnCollectionID),
-	// 		OperatorValue: db.OperatorValueTypeEquals,
-	// 		Value:         genesisCollection.ID.String(),
-	// 	}},
-	// }
-
-	// megaFilter := &db.AttributeFilterRequest{
-	// 	LinkOperator: db.LinkOperatorTypeAnd,
-	// 	Items: []*db.AttributeFilterRequestItem{
-	// 		{
-	// 			Trait:         "Rarity",
-	// 			Value:         "Mega",
-	// 			OperatorValue: db.OperatorValueTypeEquals,
-	// 		},
-	// 	},
-	// }
-	// notMegaFilter := &db.AttributeFilterRequest{
-	// 	LinkOperator: db.LinkOperatorTypeAnd,
-	// 	Items: []*db.AttributeFilterRequestItem{
-	// 		{
-	// 			Trait:         "Rarity",
-	// 			Value:         "Mega",
-	// 			OperatorValue: db.OperatorValueTypeIsNot,
-	// 		},
-	// 	},
-	// }
-	// genesisMegaCount, _, err := db.AssetList(ctx, sc.Conn,
-	// 	"", false, nil, collectionFilter, megaFilter, 0, 5000, "", "")
-	// if err != nil {
-	// 	return terror.Error(err)
-	// }
-	// collectionFilter = &db.ListFilterRequest{
-	// 	LinkOperator: db.LinkOperatorTypeAnd,
-	// 	Items: []*db.ListFilterRequestItem{{
-	// 		ColumnField:   string(db.StoreColumnCollectionID),
-	// 		OperatorValue: db.OperatorValueTypeEquals,
-	// 		Value:         genesisCollection.ID.String(),
-	// 	}},
-	// }
-	// genesisNonMegaCount, _, err := db.AssetList(ctx, sc.Conn,
-	// 	"", false, nil, collectionFilter, notMegaFilter, 0, 5000, "", "")
-	// if err != nil {
-	// 	return terror.Error(err)
-	// }
 
 	total, storeItems, err := db.StoreList(
 		ctx, sc.Conn,
@@ -348,7 +295,7 @@ func (sc *StoreControllerWS) AvailableItemAmountSubscribeHandler(ctx context.Con
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
 
-	fsa, err := db.AssetSaleAvailable(ctx, sc.Conn)
+	fsa, err := db.StoreItemsAvailable()
 	if err != nil {
 		return "", "", terror.Error(err)
 	}

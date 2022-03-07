@@ -12,6 +12,7 @@ import (
 	"passport/rpcclient"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
@@ -58,6 +59,7 @@ func SyncPurchasedItems() error {
 				CollectionID:    collection.ID,
 				StoreItemID:     item.Mech.TemplateID,
 				OwnerID:         item.Mech.OwnerID,
+				Tier:            item.Mech.Tier,
 				ExternalTokenID: item.Mech.ExternalTokenID,
 				Hash:            item.Mech.Hash,
 				Data:            data,
@@ -82,6 +84,73 @@ func SyncPurchasedItems() error {
 	return nil
 }
 
+// PurchasedItemLock lock for five minutes after user receives a mint signature to prevent on-world/off-world split brain
+func PurchasedItemLock(itemID uuid.UUID) (*boiler.PurchasedItem, error) {
+	tx, err := passdb.StdConn.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("start tx: %w", err)
+	}
+	defer tx.Rollback()
+	item, err := boiler.FindPurchasedItem(tx, itemID.String())
+	if err != nil {
+		return nil, fmt.Errorf("start get item: %w", err)
+	}
+	item.UnlockedAt = time.Now().Add(5 * time.Minute)
+	_, err = item.Update(tx, boil.Infer())
+	if err != nil {
+		return nil, fmt.Errorf("start get item: %w", err)
+	}
+	tx.Commit()
+	return item, nil
+}
+func PurchasedItemIsOnWorld()  {}
+func PurchasedItemIsOffWorld() {}
+func PurchasedItemIsMinted(collectionAddr common.Address, tokenID int) (bool, error) {
+	collection, err := CollectionByMintAddress(collectionAddr)
+	if err != nil {
+		return false, err
+	}
+	count, err := boiler.ItemOnchainTransactions(
+		boiler.ItemOnchainTransactionWhere.CollectionID.EQ(collection.ID),
+		boiler.ItemOnchainTransactionWhere.ExternalTokenID.EQ(tokenID),
+	).Count(passdb.StdConn)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func PurchasedItemByMintContractAndTokenID(contractAddr common.Address, tokenID int) (*boiler.PurchasedItem, error) {
+	passlog.L.Debug().Str("fn", "PurchasedItemByHash").Msg("db func")
+	collection, err := CollectionByMintAddress(contractAddr)
+	if err != nil {
+		return nil, err
+	}
+	item, err := boiler.PurchasedItems(
+		boiler.PurchasedItemWhere.CollectionID.EQ(collection.ID),
+		boiler.PurchasedItemWhere.ExternalTokenID.EQ(tokenID),
+	).One(passdb.StdConn)
+	if err != nil {
+		return nil, fmt.Errorf("get purchased item: %w", err)
+	}
+	item, err = getPurchasedItem(uuid.Must(uuid.FromString(item.ID)))
+	if err != nil {
+		return nil, fmt.Errorf("get purchased item: %w", err)
+	}
+	return item, nil
+}
+func PurchasedItemByHash(hash string) (*boiler.PurchasedItem, error) {
+	passlog.L.Debug().Str("fn", "PurchasedItemByHash").Msg("db func")
+	item, err := boiler.PurchasedItems(boiler.PurchasedItemWhere.Hash.EQ(hash)).One(passdb.StdConn)
+	if err != nil {
+		return nil, fmt.Errorf("get purchased item: %w", err)
+	}
+	item, err = getPurchasedItem(uuid.Must(uuid.FromString(item.ID)))
+	if err != nil {
+		return nil, fmt.Errorf("get purchased item: %w", err)
+	}
+	return item, nil
+}
 func PurchasedItemsByOwnerID(ownerID uuid.UUID) ([]*boiler.PurchasedItem, error) {
 	passlog.L.Debug().Str("fn", "PurchasedItemsByOwnerID").Msg("db func")
 	items, err := boiler.PurchasedItems(boiler.PurchasedItemWhere.OwnerID.EQ(ownerID.String())).All(passdb.StdConn)
@@ -127,6 +196,7 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) (*boiler.Pu
 		StoreItemID:     resp.MechContainer.Mech.TemplateID,
 		ExternalTokenID: resp.MechContainer.Mech.ExternalTokenID,
 		Hash:            resp.MechContainer.Mech.Hash,
+		Tier:            resp.MechContainer.Mech.Tier,
 		CollectionID:    collection.ID,
 		OwnerID:         resp.MechContainer.Mech.OwnerID,
 		Data:            data,

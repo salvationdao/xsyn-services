@@ -2294,12 +2294,12 @@ func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx con
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
 
-	// get asset
-	asset, err := db.AssetGet(ctx, uc.Conn, req.Payload.AssetHash)
+	// get item
+	item, err := db.PurchasedItemByHash(req.Payload.AssetHash)
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
-	if asset == nil {
+	if item == nil {
 		return "", "", terror.Error(fmt.Errorf("asset doesn't exist"), "This asset does not exist.")
 	}
 
@@ -2312,7 +2312,7 @@ func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx con
 	userID := passport.UserID(uid)
 
 	// check if user owns asset
-	if *asset.UserID != userID {
+	if item.OwnerID != userID.String() {
 		return "", "", terror.Error(err, "Must own Asset to update it's name.")
 	}
 
@@ -2554,12 +2554,11 @@ func (uc *UserController) UserAssetListHandler(ctx context.Context, hubc *hub.Cl
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	assets, err := db.AssetGetByUserID(ctx, uc.Conn, userID)
+	items, err := db.PurchasedItemsByOwnerID(uuid.UUID(userID))
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Could not get assets")
 	}
-
-	reply(assets)
+	reply(items)
 
 	return nil
 }

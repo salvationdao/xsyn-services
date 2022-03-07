@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"passport"
 	"passport/db"
+	"passport/db/boiler"
 	"strconv"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -144,11 +145,6 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hu
 		network = bridge.NetworkEth
 	}
 
-	offset := 0
-	if req.Payload.Page > 0 {
-		offset = req.Payload.Page * req.Payload.PageSize
-	}
-
 	// get user
 	user, err := db.UserGetByUsername(ctx, ctrlr.Conn, req.Payload.Username)
 	if err != nil {
@@ -163,7 +159,7 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hu
 	}
 
 	// for each collection get all nfts
-	assets := make([]*passport.XsynMetadata, 0)
+	items := []*boiler.PurchasedItem{}
 	for _, c := range collections {
 		walletCollections, err := o.NFTOwners(common.HexToAddress(c.MintContract), network)
 		if err != nil {
@@ -180,38 +176,23 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hu
 					return terror.Error(err)
 				}
 
-				asset, err := db.AssetGetFromMintContractAndID(ctx, ctrlr.Conn, nft.TokenAddress, uint64(tokenID))
+				item, err := db.PurchasedItemByMintContractAndTokenID(common.HexToAddress(nft.TokenAddress), int(tokenID))
 				if err != nil {
 					return terror.Error(err)
 				}
-				if asset == nil {
-					continue
-				}
-				assets = append(assets, asset)
+				items = append(items, item)
 			}
 		}
 	}
 
-	total, filtered, err := FilterAssetList(
-		assets,
-		req.Payload.Search,
-		req.Payload.AttributeFilter,
-		offset,
-		req.Payload.PageSize,
-		req.Payload.SortBy,
-		req.Payload.SortDir,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-	assetHashes := make([]string, 0)
-	for _, s := range filtered {
-		assetHashes = append(assetHashes, s.Hash)
+	itemHashes := make([]string, 0)
+	for _, item := range items {
+		itemHashes = append(itemHashes, item.Hash)
 	}
 
 	resp := &WalletCollectionListResponse{
-		total,
-		assetHashes,
+		len(itemHashes),
+		itemHashes,
 	}
 	reply(resp)
 	return nil

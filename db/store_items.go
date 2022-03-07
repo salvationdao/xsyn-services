@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"passport"
 	"passport/db/boiler"
 	"passport/passdb"
 	"passport/passlog"
@@ -118,6 +119,7 @@ func SyncStoreItems() error {
 				CollectionID:     collection.ID,
 				FactionID:        template.Template.FactionID,
 				UsdCentCost:      priceCents,
+				Tier:             template.Template.Tier,
 				AmountSold:       count,
 				AmountAvailable:  amountAvailable,
 				RestrictionGroup: restrictionGroup,
@@ -146,6 +148,56 @@ func PurchasedItems() ([]*boiler.PurchasedItem, error) {
 	result, err := boiler.PurchasedItems().All(passdb.StdConn)
 	if err != nil {
 		return nil, err
+	}
+	return result, nil
+}
+
+func StoreItemsRemainingByFactionIDAndRestrictionGroup(factionID uuid.UUID, restrictionGroup string) (int, error) {
+	count, err := boiler.StoreItems(
+		boiler.StoreItemWhere.FactionID.EQ(factionID.String()),
+		boiler.StoreItemWhere.RestrictionGroup.EQ(restrictionGroup),
+	).Count(passdb.StdConn)
+	return int(count), err
+}
+func StoreItemsRemainingByFactionIDAndTier(factionID uuid.UUID, tier string) (int, error) {
+	count, err := boiler.StoreItems(
+		boiler.StoreItemWhere.FactionID.EQ(factionID.String()),
+		boiler.StoreItemWhere.Tier.EQ(tier),
+	).Count(passdb.StdConn)
+	return int(count), err
+}
+
+// StoreItemsAvailable return the total of available war machine in each faction
+func StoreItemsAvailable() ([]*passport.FactionSaleAvailable, error) {
+	factions, err := boiler.Factions().All(passdb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+	result := []*passport.FactionSaleAvailable{}
+
+	for _, faction := range factions {
+		theme := &passport.FactionTheme{}
+		err = faction.Theme.Unmarshal(theme)
+		if err != nil {
+			return nil, err
+		}
+		megaAmount, err := StoreItemsRemainingByFactionIDAndTier(uuid.Must(uuid.FromString(faction.ID)), "MEGA")
+		if err != nil {
+			return nil, err
+		}
+		lootboxAmount, err := StoreItemsRemainingByFactionIDAndRestrictionGroup(uuid.Must(uuid.FromString(faction.ID)), "LOOTBOX")
+		if err != nil {
+			return nil, err
+		}
+		record := &passport.FactionSaleAvailable{
+			ID:            passport.FactionID(uuid.Must(uuid.FromString(faction.ID))),
+			Label:         faction.Label,
+			LogoBlobID:    passport.BlobID(uuid.Must(uuid.FromString(faction.LogoBlobID))),
+			Theme:         theme,
+			MegaAmount:    int64(megaAmount),
+			LootboxAmount: int64(lootboxAmount),
+		}
+		result = append(result, record)
 	}
 	return result, nil
 }

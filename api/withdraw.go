@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -147,24 +148,24 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get collection.")
 	}
 
-	asset, err := db.AssetGetFromMintContractAndID(context.Background(), api.Conn, collection.MintContract, tokenIDuint64)
+	isMinted, err := db.PurchasedItemIsMinted(common.HexToAddress(collection.MintContract), int(tokenIDuint64))
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to check mint status.")
+	}
+	if isMinted {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("already minted: %s %s", collection.MintContract, tokenID), "NFT already minted")
+	}
+
+	item, err := db.PurchasedItemByMintContractAndTokenID(common.HexToAddress(collection.MintContract), int(tokenIDuint64))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
 	}
-	if asset == nil {
-		return http.StatusBadRequest, terror.Warn(err, "Asset doesn't exist")
-	}
-
-	if asset.Minted {
-		return http.StatusBadRequest, terror.Warn(err, "Asset already minted")
-	}
-
-	if asset.UserID != nil && *asset.UserID != user.ID {
+	if item.OwnerID != user.ID.String() {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("unable to validate ownership of asset"), "Unable to validate ownership of asset.")
 	}
 
-	if !asset.IsUsable() {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("asset is locked"), "Asset is locked.")
+	if item.UnlockedAt.After(time.Now()) {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("asset is locked"), "Asset is locked.")
 	}
 
 	tokenAsBigInt := big.NewInt(0)
@@ -179,22 +180,12 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to create withdraw signature, please try again or contact support.")
 	}
 
-	// mint lock asset
-	err = db.XsynAssetMintLock(context.Background(), api.Conn, asset.Hash, hexutil.Encode(messageSig), big.NewInt(expiry.Unix()).String())
+	item, err = db.PurchasedItemLock(uuid.Must(uuid.FromString(item.ID)))
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to generate signature, please try again.")
+		return http.StatusInternalServerError, terror.Error(err, "Could not lock item.")
 	}
 
-	// get updated asset
-	asset, err = db.AssetGetFromMintContractAndID(context.Background(), api.Conn, collection.MintContract, tokenIDuint64)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
-
-	}
-	if asset == nil {
-		return http.StatusBadRequest, terror.Warn(err, "Asset doesn't exist")
-	}
-	go api.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetSubscribe, tokenID)), asset)
+	go api.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetSubscribe, tokenID)), item)
 
 	err = json.NewEncoder(w).Encode(struct {
 		MessageSignature string `json:"messageSignature"`

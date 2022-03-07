@@ -28,9 +28,11 @@ type PurchasedItem struct {
 	CollectionID    string     `boiler:"collection_id" boil:"collection_id" json:"collectionID" toml:"collectionID" yaml:"collectionID"`
 	StoreItemID     string     `boiler:"store_item_id" boil:"store_item_id" json:"storeItemID" toml:"storeItemID" yaml:"storeItemID"`
 	ExternalTokenID int        `boiler:"external_token_id" boil:"external_token_id" json:"externalTokenID" toml:"externalTokenID" yaml:"externalTokenID"`
+	Tier            string     `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
 	Hash            string     `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
 	OwnerID         string     `boiler:"owner_id" boil:"owner_id" json:"ownerID" toml:"ownerID" yaml:"ownerID"`
 	Data            types.JSON `boiler:"data" boil:"data" json:"data" toml:"data" yaml:"data"`
+	UnlockedAt      time.Time  `boiler:"unlocked_at" boil:"unlocked_at" json:"unlockedAt" toml:"unlockedAt" yaml:"unlockedAt"`
 	MintedAt        null.Time  `boiler:"minted_at" boil:"minted_at" json:"mintedAt,omitempty" toml:"mintedAt" yaml:"mintedAt,omitempty"`
 	DeletedAt       null.Time  `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
 	RefreshesAt     time.Time  `boiler:"refreshes_at" boil:"refreshes_at" json:"refreshesAt" toml:"refreshesAt" yaml:"refreshesAt"`
@@ -46,9 +48,11 @@ var PurchasedItemColumns = struct {
 	CollectionID    string
 	StoreItemID     string
 	ExternalTokenID string
+	Tier            string
 	Hash            string
 	OwnerID         string
 	Data            string
+	UnlockedAt      string
 	MintedAt        string
 	DeletedAt       string
 	RefreshesAt     string
@@ -59,9 +63,11 @@ var PurchasedItemColumns = struct {
 	CollectionID:    "collection_id",
 	StoreItemID:     "store_item_id",
 	ExternalTokenID: "external_token_id",
+	Tier:            "tier",
 	Hash:            "hash",
 	OwnerID:         "owner_id",
 	Data:            "data",
+	UnlockedAt:      "unlocked_at",
 	MintedAt:        "minted_at",
 	DeletedAt:       "deleted_at",
 	RefreshesAt:     "refreshes_at",
@@ -74,9 +80,11 @@ var PurchasedItemTableColumns = struct {
 	CollectionID    string
 	StoreItemID     string
 	ExternalTokenID string
+	Tier            string
 	Hash            string
 	OwnerID         string
 	Data            string
+	UnlockedAt      string
 	MintedAt        string
 	DeletedAt       string
 	RefreshesAt     string
@@ -87,9 +95,11 @@ var PurchasedItemTableColumns = struct {
 	CollectionID:    "purchased_items.collection_id",
 	StoreItemID:     "purchased_items.store_item_id",
 	ExternalTokenID: "purchased_items.external_token_id",
+	Tier:            "purchased_items.tier",
 	Hash:            "purchased_items.hash",
 	OwnerID:         "purchased_items.owner_id",
 	Data:            "purchased_items.data",
+	UnlockedAt:      "purchased_items.unlocked_at",
 	MintedAt:        "purchased_items.minted_at",
 	DeletedAt:       "purchased_items.deleted_at",
 	RefreshesAt:     "purchased_items.refreshes_at",
@@ -104,9 +114,11 @@ var PurchasedItemWhere = struct {
 	CollectionID    whereHelperstring
 	StoreItemID     whereHelperstring
 	ExternalTokenID whereHelperint
+	Tier            whereHelperstring
 	Hash            whereHelperstring
 	OwnerID         whereHelperstring
 	Data            whereHelpertypes_JSON
+	UnlockedAt      whereHelpertime_Time
 	MintedAt        whereHelpernull_Time
 	DeletedAt       whereHelpernull_Time
 	RefreshesAt     whereHelpertime_Time
@@ -117,9 +129,11 @@ var PurchasedItemWhere = struct {
 	CollectionID:    whereHelperstring{field: "\"purchased_items\".\"collection_id\""},
 	StoreItemID:     whereHelperstring{field: "\"purchased_items\".\"store_item_id\""},
 	ExternalTokenID: whereHelperint{field: "\"purchased_items\".\"external_token_id\""},
+	Tier:            whereHelperstring{field: "\"purchased_items\".\"tier\""},
 	Hash:            whereHelperstring{field: "\"purchased_items\".\"hash\""},
 	OwnerID:         whereHelperstring{field: "\"purchased_items\".\"owner_id\""},
 	Data:            whereHelpertypes_JSON{field: "\"purchased_items\".\"data\""},
+	UnlockedAt:      whereHelpertime_Time{field: "\"purchased_items\".\"unlocked_at\""},
 	MintedAt:        whereHelpernull_Time{field: "\"purchased_items\".\"minted_at\""},
 	DeletedAt:       whereHelpernull_Time{field: "\"purchased_items\".\"deleted_at\""},
 	RefreshesAt:     whereHelpertime_Time{field: "\"purchased_items\".\"refreshes_at\""},
@@ -154,9 +168,9 @@ func (*purchasedItemR) NewStruct() *purchasedItemR {
 type purchasedItemL struct{}
 
 var (
-	purchasedItemAllColumns            = []string{"id", "collection_id", "store_item_id", "external_token_id", "hash", "owner_id", "data", "minted_at", "deleted_at", "refreshes_at", "updated_at", "created_at"}
-	purchasedItemColumnsWithoutDefault = []string{"collection_id", "store_item_id", "external_token_id", "hash", "owner_id", "data", "minted_at", "deleted_at"}
-	purchasedItemColumnsWithDefault    = []string{"id", "refreshes_at", "updated_at", "created_at"}
+	purchasedItemAllColumns            = []string{"id", "collection_id", "store_item_id", "external_token_id", "tier", "hash", "owner_id", "data", "unlocked_at", "minted_at", "deleted_at", "refreshes_at", "updated_at", "created_at"}
+	purchasedItemColumnsWithoutDefault = []string{"collection_id", "store_item_id", "external_token_id", "tier", "hash", "owner_id", "data", "minted_at", "deleted_at"}
+	purchasedItemColumnsWithDefault    = []string{"id", "unlocked_at", "refreshes_at", "updated_at", "created_at"}
 	purchasedItemPrimaryKeyColumns     = []string{"id"}
 )
 
