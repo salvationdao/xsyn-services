@@ -24,13 +24,13 @@ import (
 
 // State is an object representing the database table.
 type State struct {
-	LatestEthBlock        null.Int64          `boiler:"latest_eth_block" boil:"latest_eth_block" json:"latestEthBlock,omitempty" toml:"latestEthBlock" yaml:"latestEthBlock,omitempty"`
-	LatestBSCBlock        null.Int64          `boiler:"latest_bsc_block" boil:"latest_bsc_block" json:"latestBSCBlock,omitempty" toml:"latestBSCBlock" yaml:"latestBSCBlock,omitempty"`
-	EthToUsd              decimal.NullDecimal `boiler:"eth_to_usd" boil:"eth_to_usd" json:"ethToUsd,omitempty" toml:"ethToUsd" yaml:"ethToUsd,omitempty"`
-	BNBToUsd              decimal.NullDecimal `boiler:"bnb_to_usd" boil:"bnb_to_usd" json:"bnbToUsd,omitempty" toml:"bnbToUsd" yaml:"bnbToUsd,omitempty"`
-	SupToUsd              decimal.Decimal     `boiler:"sup_to_usd" boil:"sup_to_usd" json:"supToUsd" toml:"supToUsd" yaml:"supToUsd"`
-	LatestBlockEthTestnet null.Int64          `boiler:"latest_block_eth_testnet" boil:"latest_block_eth_testnet" json:"latestBlockEthTestnet,omitempty" toml:"latestBlockEthTestnet" yaml:"latestBlockEthTestnet,omitempty"`
-	LatestBlockBSCTestnet null.Int64          `boiler:"latest_block_bsc_testnet" boil:"latest_block_bsc_testnet" json:"latestBlockBSCTestnet,omitempty" toml:"latestBlockBSCTestnet" yaml:"latestBlockBSCTestnet,omitempty"`
+	LatestEthBlock        null.Int64          `boiler:"latest_eth_block" boil:"latest_eth_block" json:"latest_eth_block,omitempty" toml:"latest_eth_block" yaml:"latest_eth_block,omitempty"`
+	LatestBSCBlock        null.Int64          `boiler:"latest_bsc_block" boil:"latest_bsc_block" json:"latest_bsc_block,omitempty" toml:"latest_bsc_block" yaml:"latest_bsc_block,omitempty"`
+	EthToUsd              decimal.NullDecimal `boiler:"eth_to_usd" boil:"eth_to_usd" json:"eth_to_usd,omitempty" toml:"eth_to_usd" yaml:"eth_to_usd,omitempty"`
+	BNBToUsd              decimal.NullDecimal `boiler:"bnb_to_usd" boil:"bnb_to_usd" json:"bnb_to_usd,omitempty" toml:"bnb_to_usd" yaml:"bnb_to_usd,omitempty"`
+	SupToUsd              decimal.Decimal     `boiler:"sup_to_usd" boil:"sup_to_usd" json:"sup_to_usd" toml:"sup_to_usd" yaml:"sup_to_usd"`
+	LatestBlockEthTestnet null.Int64          `boiler:"latest_block_eth_testnet" boil:"latest_block_eth_testnet" json:"latest_block_eth_testnet,omitempty" toml:"latest_block_eth_testnet" yaml:"latest_block_eth_testnet,omitempty"`
+	LatestBlockBSCTestnet null.Int64          `boiler:"latest_block_bsc_testnet" boil:"latest_block_bsc_testnet" json:"latest_block_bsc_testnet,omitempty" toml:"latest_block_bsc_testnet" yaml:"latest_block_bsc_testnet,omitempty"`
 	ID                    string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 
 	R *stateR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
