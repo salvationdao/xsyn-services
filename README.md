@@ -20,6 +20,40 @@ make init / make init-docker
 make serve / make serve-arelo
 ```
 
+Due to data migration, both servers must be on for a spinup process which migrates data back and forth between the two servers
+
+```
+cd $GAMESERVER
+make db-reset
+make db-boiler
+cd server
+go run cmd/gameserver/main.go serve
+```
+
+```
+cd $PASSPORTSERVER
+make db-reset
+make db-boiler
+cd server
+go run cmd/gameserver/main.go serve
+```
+
+After both servers are running (and database setup), suck data in this order:
+
+- passport-server -> gameserver
+- gameserver -> passport-server
+
+```
+cd $GAMESERVER
+cd server
+go run cmd/gameserver/main.go sync
+```
+
+```
+cd $PASSPORTSERVER
+go run cmd/platform/main.go sync
+```
+
 ### envars
 
 Majority of these don't need to be set for dev, if you want google/facebook/metamask auth then the relative ones will
