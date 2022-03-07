@@ -5,26 +5,38 @@ import (
 	"passport"
 	"passport/db"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 )
 
 func (s *Seeder) SeedItemMetadata(ctx context.Context) (warMachines, abilities, weapons, utility []*passport.XsynMetadata, error error) {
-	supremacyCollection, err := db.CollectionGet(ctx, s.Conn, "supremacy")
+	supremacyCollectionBoiler, err := db.CollectionBySlug(ctx, s.Conn, "supremacy")
 	if err != nil {
 		return nil, nil, nil, nil, terror.Error(err)
 	}
 
-	utility, err = s.SeedUtility(ctx, supremacyCollection)
+	collection := &passport.Collection{
+		ID:            passport.CollectionID(uuid.Must(uuid.FromString(supremacyCollectionBoiler.ID))),
+		Name:          supremacyCollectionBoiler.Name,
+		Slug:          supremacyCollectionBoiler.Slug,
+		DeletedAt:     &supremacyCollectionBoiler.DeletedAt.Time,
+		UpdatedAt:     supremacyCollectionBoiler.UpdatedAt,
+		CreatedAt:     supremacyCollectionBoiler.CreatedAt,
+		MintContract:  supremacyCollectionBoiler.MintContract.String,
+		StakeContract: supremacyCollectionBoiler.StakeContract.String,
+	}
+
+	utility, err = s.SeedUtility(ctx, collection)
 	if err != nil {
 		return nil, nil, nil, nil, terror.Error(err)
 	}
 
-	weapons, err = s.SeedWeapons(ctx, supremacyCollection)
+	weapons, err = s.SeedWeapons(ctx, collection)
 	if err != nil {
 		return nil, nil, nil, nil, terror.Error(err)
 	}
 
-	warMachines, err = s.SeedWarMachine(ctx, weapons, abilities, supremacyCollection)
+	warMachines, err = s.SeedWarMachine(ctx, weapons, abilities, collection)
 	if err != nil {
 		return nil, nil, nil, nil, terror.Error(err)
 	}

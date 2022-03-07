@@ -31,6 +31,7 @@ type StoreItem struct {
 	AmountSold       int        `boiler:"amount_sold" boil:"amount_sold" json:"amountSold" toml:"amountSold" yaml:"amountSold"`
 	AmountAvailable  int        `boiler:"amount_available" boil:"amount_available" json:"amountAvailable" toml:"amountAvailable" yaml:"amountAvailable"`
 	RestrictionGroup string     `boiler:"restriction_group" boil:"restriction_group" json:"restrictionGroup" toml:"restrictionGroup" yaml:"restrictionGroup"`
+	IsDefault        bool       `boiler:"is_default" boil:"is_default" json:"isDefault" toml:"isDefault" yaml:"isDefault"`
 	Tier             string     `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
 	Data             types.JSON `boiler:"data" boil:"data" json:"data" toml:"data" yaml:"data"`
 	DeletedAt        null.Time  `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
@@ -50,6 +51,7 @@ var StoreItemColumns = struct {
 	AmountSold       string
 	AmountAvailable  string
 	RestrictionGroup string
+	IsDefault        string
 	Tier             string
 	Data             string
 	DeletedAt        string
@@ -64,6 +66,7 @@ var StoreItemColumns = struct {
 	AmountSold:       "amount_sold",
 	AmountAvailable:  "amount_available",
 	RestrictionGroup: "restriction_group",
+	IsDefault:        "is_default",
 	Tier:             "tier",
 	Data:             "data",
 	DeletedAt:        "deleted_at",
@@ -80,6 +83,7 @@ var StoreItemTableColumns = struct {
 	AmountSold       string
 	AmountAvailable  string
 	RestrictionGroup string
+	IsDefault        string
 	Tier             string
 	Data             string
 	DeletedAt        string
@@ -94,6 +98,7 @@ var StoreItemTableColumns = struct {
 	AmountSold:       "store_items.amount_sold",
 	AmountAvailable:  "store_items.amount_available",
 	RestrictionGroup: "store_items.restriction_group",
+	IsDefault:        "store_items.is_default",
 	Tier:             "store_items.tier",
 	Data:             "store_items.data",
 	DeletedAt:        "store_items.deleted_at",
@@ -112,6 +117,7 @@ var StoreItemWhere = struct {
 	AmountSold       whereHelperint
 	AmountAvailable  whereHelperint
 	RestrictionGroup whereHelperstring
+	IsDefault        whereHelperbool
 	Tier             whereHelperstring
 	Data             whereHelpertypes_JSON
 	DeletedAt        whereHelpernull_Time
@@ -126,6 +132,7 @@ var StoreItemWhere = struct {
 	AmountSold:       whereHelperint{field: "\"store_items\".\"amount_sold\""},
 	AmountAvailable:  whereHelperint{field: "\"store_items\".\"amount_available\""},
 	RestrictionGroup: whereHelperstring{field: "\"store_items\".\"restriction_group\""},
+	IsDefault:        whereHelperbool{field: "\"store_items\".\"is_default\""},
 	Tier:             whereHelperstring{field: "\"store_items\".\"tier\""},
 	Data:             whereHelpertypes_JSON{field: "\"store_items\".\"data\""},
 	DeletedAt:        whereHelpernull_Time{field: "\"store_items\".\"deleted_at\""},
@@ -161,8 +168,8 @@ func (*storeItemR) NewStruct() *storeItemR {
 type storeItemL struct{}
 
 var (
-	storeItemAllColumns            = []string{"id", "collection_id", "faction_id", "usd_cent_cost", "amount_sold", "amount_available", "restriction_group", "tier", "data", "deleted_at", "refreshes_at", "updated_at", "created_at"}
-	storeItemColumnsWithoutDefault = []string{"collection_id", "faction_id", "usd_cent_cost", "amount_sold", "amount_available", "restriction_group", "tier", "data", "deleted_at"}
+	storeItemAllColumns            = []string{"id", "collection_id", "faction_id", "usd_cent_cost", "amount_sold", "amount_available", "restriction_group", "is_default", "tier", "data", "deleted_at", "refreshes_at", "updated_at", "created_at"}
+	storeItemColumnsWithoutDefault = []string{"collection_id", "faction_id", "usd_cent_cost", "amount_sold", "amount_available", "restriction_group", "is_default", "tier", "data", "deleted_at"}
 	storeItemColumnsWithDefault    = []string{"id", "refreshes_at", "updated_at", "created_at"}
 	storeItemPrimaryKeyColumns     = []string{"id"}
 )

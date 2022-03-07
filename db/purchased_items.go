@@ -168,6 +168,26 @@ func PurchasedItemsByOwnerID(ownerID uuid.UUID) ([]*boiler.PurchasedItem, error)
 	return result, nil
 }
 
+func PurchasedItemsbyOwnerIDAndTier(ownerID uuid.UUID, tier string) (int, error) {
+	count, err := boiler.PurchasedItems(
+		boiler.PurchasedItemWhere.OwnerID.EQ(ownerID.String()),
+		boiler.PurchasedItemWhere.Tier.EQ(tier),
+	).Count(passdb.StdConn)
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
+// PurchasedItems for admin only
+func PurchasedItems() ([]*boiler.PurchasedItem, error) {
+	result, err := boiler.PurchasedItems().All(passdb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) (*boiler.PurchasedItem, error) {
 	passlog.L.Debug().Str("fn", "PurchasedItemRegister").Msg("db func")
 	req := rpcclient.MechRegisterReq{TemplateID: storeItemID, OwnerID: ownerID}

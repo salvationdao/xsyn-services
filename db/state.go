@@ -2,11 +2,19 @@ package db
 
 import (
 	"passport"
+	"passport/db/boiler"
+	"passport/passdb"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
+	"github.com/shopspring/decimal"
 	"golang.org/x/net/context"
 )
+
+func SupInCents() (decimal.Decimal, error) {
+	state, err := boiler.States().One(passdb.StdConn)
+	return state.SupToUsd.Mul(decimal.NewFromInt(100)), err
+}
 
 // StateGet gets the latest state
 func StateGet(ctx context.Context, isTestnetBlockchain bool, conn Conn) (*passport.State, error) {

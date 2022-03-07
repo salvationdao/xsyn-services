@@ -51,22 +51,14 @@ func NewCollectionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, 
 type CollectionListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID           passport.UserID       `json:"userID"`
-		SortDir          db.SortByDir          `json:"sortDir"`
-		SortBy           db.CollectionColumn   `json:"sortBy"`
-		IncludedTokenIDs []int                 `json:"includedTokenIDs"`
-		Filter           *db.ListFilterRequest `json:"filter"`
-		Archived         bool                  `json:"archived"`
-		Search           string                `json:"search"`
-		PageSize         int                   `json:"pageSize"`
-		Page             int                   `json:"page"`
+		UserID passport.UserID `json:"userID"`
 	} `json:"payload"`
 }
 
 // CollectionListResponse is the response from get collection list
 type CollectionListResponse struct {
-	Records []*passport.Collection `json:"records"`
-	Total   int                    `json:"total"`
+	Records []*boiler.Collection `json:"records"`
+	Total   int                  `json:"total"`
 }
 
 const HubKeyCollectionList hub.HubCommandKey = "COLLECTION:LIST"
@@ -77,33 +69,15 @@ func (ctrlr *CollectionController) CollectionsList(ctx context.Context, hubc *hu
 	if err != nil {
 		return terror.Error(err)
 	}
-
-	offset := 0
-	if req.Payload.Page > 0 {
-		offset = req.Payload.Page * req.Payload.PageSize
-	}
-
-	collections := []*passport.Collection{}
-	total, err := db.CollectionsList(
-		ctx, ctrlr.Conn, &collections,
-		req.Payload.Search,
-		req.Payload.Archived,
-		req.Payload.Filter,
-		offset,
-		req.Payload.PageSize,
-		req.Payload.SortBy,
-		req.Payload.SortDir,
-	)
+	collections, err := db.CollectionsList()
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	resp := &CollectionListResponse{
-		Total:   total,
+	reply(&CollectionListResponse{
 		Records: collections,
-	}
-
-	reply(resp)
+		Total:   len(collections),
+	})
 	return nil
 
 }
@@ -152,8 +126,7 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hu
 	}
 
 	// get all collections
-	collections := []*passport.Collection{}
-	_, err = db.CollectionsList(ctx, ctrlr.Conn, &collections, "", false, nil, 0, 100, "", db.SortByDirAsc)
+	collections, err := db.CollectionsList()
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -161,7 +134,7 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hu
 	// for each collection get all nfts
 	items := []*boiler.PurchasedItem{}
 	for _, c := range collections {
-		walletCollections, err := o.NFTOwners(common.HexToAddress(c.MintContract), network)
+		walletCollections, err := o.NFTOwners(common.HexToAddress(c.MintContract.String), network)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -247,7 +220,7 @@ func (ctrlr *CollectionController) CollectionUpdatedSubscribeHandler(ctx context
 		return req.TransactionID, "", terror.Error(err)
 	}
 
-	collection, err := db.CollectionGet(ctx, ctrlr.Conn, req.Payload.Slug)
+	collection, err := db.CollectionBySlug(ctx, ctrlr.Conn, req.Payload.Slug)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
 	}

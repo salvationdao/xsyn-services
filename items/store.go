@@ -8,6 +8,8 @@ import (
 	"math/rand"
 	"passport"
 	"passport/db"
+	"passport/db/boiler"
+	"passport/rpcclient"
 	"time"
 
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -26,9 +28,19 @@ import (
 )
 
 // Purchase attempts to make a purchase for a given user ID and a given
-func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
-	supPrice decimal.Decimal, ucmProcess func(*passport.NewTransaction) (*big.Int, *big.Int, string, error), user passport.User, storeItemID passport.StoreItemID, externalUrl string) error {
-	storeItem, err := db.StoreItemGet(ctx, conn, storeItemID)
+func Purchase(
+	ctx context.Context,
+	conn *pgxpool.Pool,
+	log *zerolog.Logger,
+	bus *messagebus.MessageBus,
+	busKey messagebus.BusKey,
+	supPrice decimal.Decimal,
+	ucmProcess func(*passport.NewTransaction) (*big.Int, *big.Int, string, error),
+	user passport.User,
+	storeItemID passport.StoreItemID,
+	externalUrl string,
+) error {
+	storeItem, err := db.StoreItem(uuid.UUID(storeItemID))
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -37,31 +49,34 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 		return terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
 	}
 
-	if !storeItem.FactionID.IsNil() && (user.FactionID == nil || user.FactionID.IsNil()) {
+	if user.FactionID == nil || user.FactionID.IsNil() {
 		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to purchase faction specific items.")
 	}
 
-	if !storeItem.FactionID.IsNil() && *user.FactionID != storeItem.FactionID {
+	if user.FactionID.String() != storeItem.FactionID {
 		return terror.Error(fmt.Errorf("user is wrong faction"), "You cannot buy items for another faction")
 	}
 
-	if storeItem.Restriction == "WHITELIST" || storeItem.Restriction == "LOOTBOX" {
+	if storeItem.RestrictionGroup == "WHITELIST" || storeItem.RestrictionGroup == "LOOTBOX" {
 		return terror.Error(fmt.Errorf("cannot purchase whitelist item or lootbox"), "Item currently not available.")
 	}
 
-	md, err := db.GetUserMetadata(ctx, conn, user.ID)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	if storeItem.UsdCentCost == 100 {
-		if md.BoughtStarterWarmachines >= 2 {
+	if storeItem.Tier == db.TierMega {
+		count, err := db.PurchasedItemsbyOwnerIDAndTier(uuid.UUID(user.ID), db.TierMega)
+		if err != nil {
+			return terror.Error(err)
+		}
+		if count >= 2 {
 			return terror.Warn(fmt.Errorf("user bought 2 starter mechs"), "You have reached your 2 Mega War Machine limit.")
 		}
 	}
 
-	txID := uuid.Must(uuid.NewV4())
-	txRef := fmt.Sprintf("PURCHASE OF %s %s %d", storeItem.Name, txID, time.Now().UnixNano())
+	template := &rpcclient.TemplateContainer{}
+	err = storeItem.Data.Unmarshal(template)
+	if err != nil {
+		return terror.Error(err)
+	}
+	txRef := fmt.Sprintf("PURCHASE OF %s | %d", template.BlueprintChassis.Label, time.Now().UnixNano())
 
 	supsAsCents := supPrice.Mul(decimal.New(100, 0))
 	priceAsCents := decimal.New(int64(storeItem.UsdCentCost), 0)
@@ -124,49 +139,10 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 		}
 	}(tx, ctx)
 
-	// create metadata object
-	newItem := &passport.XsynMetadata{
-		CollectionID: storeItem.CollectionID,
-		Description:  &storeItem.Description,
-		Image:        storeItem.Image,
-		Attributes:   storeItem.Attributes,
-		AnimationURL: storeItem.AnimationURL,
-		ImageAvatar:  storeItem.ImageAvatar,
-	}
-
-	// create item on metadata table
-	err = db.XsynMetadataInsert(ctx, tx, newItem, externalUrl)
+	purchasedItem, err := db.PurchasedItemRegister(uuid.Must(uuid.FromString(storeItem.ID)), uuid.UUID(user.ID))
 	if err != nil {
 		refund(err.Error())
-		return terror.Error(err)
-	}
-
-	// assign new item to user
-	err = db.XsynMetadataAssignUser(ctx, tx, newItem.Hash, user.ID, newItem.CollectionID, newItem.ExternalTokenID)
-	if err != nil {
-		refund(err.Error())
-		return terror.Error(err)
-	}
-
-	// update item amounts
-	err = db.StoreItemPurchased(ctx, tx, storeItem)
-	if err != nil {
-		refund(err.Error())
-		return terror.Error(err)
-	}
-
-	md, err = db.GetUserMetadata(ctx, tx, user.ID)
-	if err != nil {
-		refund(err.Error())
-		return terror.Error(err)
-	}
-
-	md.BoughtStarterWarmachines++
-
-	err = db.UpdateUserMetadata(ctx, tx, user.ID, md)
-	if err != nil {
-		refund(err.Error())
-		return terror.Error(err)
+		return err
 	}
 
 	err = tx.Commit(ctx)
@@ -175,9 +151,7 @@ func Purchase(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus 
 		return terror.Error(err)
 	}
 
-	storeItem.SupCost = priceAsSupsBigInt.String()
-
-	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), storeItem)
+	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), purchasedItem)
 	return nil
 }
 
@@ -195,27 +169,27 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	}
 
 	// get all faction items marked as loot box
-	mechs, err := db.StoreItemListByFactionLootbox(ctx, conn, factionID)
+	items, err := db.StoreItemsByFactionID(uuid.UUID(factionID))
 	if err != nil {
 		return "", terror.Error(err, "failed to get loot box items")
 	}
 
-	mechIDPool := []*passport.StoreItemID{}
-	for _, m := range mechs {
+	itemIDs := []passport.StoreItemID{}
+	for _, m := range items {
 		for i := 0; i < m.AmountAvailable-m.AmountSold; i++ {
-			mechIDPool = append(mechIDPool, &m.ID)
+			itemIDs = append(itemIDs, passport.StoreItemID(uuid.Must(uuid.FromString(m.ID))))
 		}
 	}
 
-	if len(mechs) == 0 {
+	if len(items) == 0 {
 		return "", terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
 	}
 
-	chosenIdx := rand.Intn(len(mechIDPool))
-	var storeItem *passport.StoreItem
+	chosenIdx := rand.Intn(len(itemIDs))
+	var storeItem *boiler.StoreItem
 
-	for _, m := range mechs {
-		if m.ID == *mechIDPool[chosenIdx] {
+	for _, m := range items {
+		if m.ID == itemIDs[chosenIdx].String() {
 			storeItem = m
 			continue
 		}
@@ -225,8 +199,12 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 		return "", terror.Error(fmt.Errorf("store item nil"), "Internal error, contact support or try again.")
 	}
 
-	txID := uuid.Must(uuid.NewV4())
-	txRef := fmt.Sprintf("Lootbox %s %s %d", storeItem.Name, txID, time.Now().UnixNano())
+	data := &rpcclient.TemplateContainer{}
+	err = storeItem.Data.Unmarshal(data)
+	if err != nil {
+		return "", terror.Error(err, "failed to get store item info")
+	}
+	txRef := fmt.Sprintf("Lootbox %s | %d", data.Template.Label, time.Now().UnixNano())
 
 	// resultChan := make(chan *passport.TransactionResult, 1)
 
@@ -292,51 +270,11 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 		}
 	}(tx, ctx)
 
-	// create metadata object
-	newItem := &passport.XsynMetadata{
-		CollectionID: storeItem.CollectionID,
-		Description:  &storeItem.Description,
-		Image:        storeItem.Image,
-		Attributes:   storeItem.Attributes,
-		AnimationURL: storeItem.AnimationURL,
-		ImageAvatar:  storeItem.ImageAvatar,
-	}
-
-	// create item on metadata table
-	err = db.XsynMetadataInsert(ctx, tx, newItem, externalURL)
+	newItem, err := db.PurchasedItemRegister(uuid.Must(uuid.FromString(storeItem.ID)), uuid.UUID(user.ID))
 	if err != nil {
 		refund(err.Error())
 		return "", terror.Error(err)
 	}
-
-	// assign new item to user
-	err = db.XsynMetadataAssignUser(ctx, tx, newItem.Hash, user.ID, newItem.CollectionID, newItem.ExternalTokenID)
-	if err != nil {
-		refund(err.Error())
-		return "", terror.Error(err)
-	}
-
-	// update item amounts
-	err = db.StoreItemPurchased(ctx, tx, storeItem)
-	if err != nil {
-		refund(err.Error())
-		return "", terror.Error(err)
-	}
-
-	md, err = db.GetUserMetadata(ctx, tx, user.ID)
-	if err != nil {
-		refund(err.Error())
-		return "", terror.Error(err)
-	}
-
-	md.BoughtLootboxes++
-
-	err = db.UpdateUserMetadata(ctx, tx, user.ID, md)
-	if err != nil {
-		refund(err.Error())
-		return "", terror.Error(err)
-	}
-
 	err = tx.Commit(ctx)
 	if err != nil {
 		refund(err.Error())
@@ -351,10 +289,10 @@ func LootboxAmountPerFaction(ctx context.Context, conn *pgxpool.Pool, log *zerol
 	factionID passport.FactionID) (int, error) {
 
 	// get all faction items marked as loot box
-	mechs, err := db.StoreItemListByFactionLootbox(ctx, conn, factionID)
+	remainingLootboxesForFaction, err := db.StoreItemsRemainingByFactionIDAndRestrictionGroup(uuid.UUID(factionID), db.RestrictionGroupLootbox)
 	if err != nil {
 		return -1, terror.Error(err, "failed to get loot box items")
 	}
 
-	return len(mechs), nil
+	return remainingLootboxesForFaction, nil
 }

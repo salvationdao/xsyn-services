@@ -28,6 +28,7 @@ type PurchasedItem struct {
 	CollectionID    string     `boiler:"collection_id" boil:"collection_id" json:"collectionID" toml:"collectionID" yaml:"collectionID"`
 	StoreItemID     string     `boiler:"store_item_id" boil:"store_item_id" json:"storeItemID" toml:"storeItemID" yaml:"storeItemID"`
 	ExternalTokenID int        `boiler:"external_token_id" boil:"external_token_id" json:"externalTokenID" toml:"externalTokenID" yaml:"externalTokenID"`
+	IsDefault       bool       `boiler:"is_default" boil:"is_default" json:"isDefault" toml:"isDefault" yaml:"isDefault"`
 	Tier            string     `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
 	Hash            string     `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
 	OwnerID         string     `boiler:"owner_id" boil:"owner_id" json:"ownerID" toml:"ownerID" yaml:"ownerID"`
@@ -48,6 +49,7 @@ var PurchasedItemColumns = struct {
 	CollectionID    string
 	StoreItemID     string
 	ExternalTokenID string
+	IsDefault       string
 	Tier            string
 	Hash            string
 	OwnerID         string
@@ -63,6 +65,7 @@ var PurchasedItemColumns = struct {
 	CollectionID:    "collection_id",
 	StoreItemID:     "store_item_id",
 	ExternalTokenID: "external_token_id",
+	IsDefault:       "is_default",
 	Tier:            "tier",
 	Hash:            "hash",
 	OwnerID:         "owner_id",
@@ -80,6 +83,7 @@ var PurchasedItemTableColumns = struct {
 	CollectionID    string
 	StoreItemID     string
 	ExternalTokenID string
+	IsDefault       string
 	Tier            string
 	Hash            string
 	OwnerID         string
@@ -95,6 +99,7 @@ var PurchasedItemTableColumns = struct {
 	CollectionID:    "purchased_items.collection_id",
 	StoreItemID:     "purchased_items.store_item_id",
 	ExternalTokenID: "purchased_items.external_token_id",
+	IsDefault:       "purchased_items.is_default",
 	Tier:            "purchased_items.tier",
 	Hash:            "purchased_items.hash",
 	OwnerID:         "purchased_items.owner_id",
@@ -114,6 +119,7 @@ var PurchasedItemWhere = struct {
 	CollectionID    whereHelperstring
 	StoreItemID     whereHelperstring
 	ExternalTokenID whereHelperint
+	IsDefault       whereHelperbool
 	Tier            whereHelperstring
 	Hash            whereHelperstring
 	OwnerID         whereHelperstring
@@ -129,6 +135,7 @@ var PurchasedItemWhere = struct {
 	CollectionID:    whereHelperstring{field: "\"purchased_items\".\"collection_id\""},
 	StoreItemID:     whereHelperstring{field: "\"purchased_items\".\"store_item_id\""},
 	ExternalTokenID: whereHelperint{field: "\"purchased_items\".\"external_token_id\""},
+	IsDefault:       whereHelperbool{field: "\"purchased_items\".\"is_default\""},
 	Tier:            whereHelperstring{field: "\"purchased_items\".\"tier\""},
 	Hash:            whereHelperstring{field: "\"purchased_items\".\"hash\""},
 	OwnerID:         whereHelperstring{field: "\"purchased_items\".\"owner_id\""},
@@ -168,8 +175,8 @@ func (*purchasedItemR) NewStruct() *purchasedItemR {
 type purchasedItemL struct{}
 
 var (
-	purchasedItemAllColumns            = []string{"id", "collection_id", "store_item_id", "external_token_id", "tier", "hash", "owner_id", "data", "unlocked_at", "minted_at", "deleted_at", "refreshes_at", "updated_at", "created_at"}
-	purchasedItemColumnsWithoutDefault = []string{"collection_id", "store_item_id", "external_token_id", "tier", "hash", "owner_id", "data", "minted_at", "deleted_at"}
+	purchasedItemAllColumns            = []string{"id", "collection_id", "store_item_id", "external_token_id", "is_default", "tier", "hash", "owner_id", "data", "unlocked_at", "minted_at", "deleted_at", "refreshes_at", "updated_at", "created_at"}
+	purchasedItemColumnsWithoutDefault = []string{"collection_id", "store_item_id", "external_token_id", "is_default", "tier", "hash", "owner_id", "data", "minted_at", "deleted_at"}
 	purchasedItemColumnsWithDefault    = []string{"id", "unlocked_at", "refreshes_at", "updated_at", "created_at"}
 	purchasedItemPrimaryKeyColumns     = []string{"id"}
 )

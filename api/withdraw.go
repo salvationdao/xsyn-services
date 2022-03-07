@@ -143,12 +143,11 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	}
 
 	// get collection details
-	collection, err := db.CollectionGet(context.Background(), api.Conn, collectionSlug)
+	collection, err := db.CollectionBySlug(context.Background(), api.Conn, collectionSlug)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get collection.")
 	}
-
-	isMinted, err := db.PurchasedItemIsMinted(common.HexToAddress(collection.MintContract), int(tokenIDuint64))
+	isMinted, err := db.PurchasedItemIsMinted(common.HexToAddress(collection.MintContract.String), int(tokenIDuint64))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to check mint status.")
 	}
@@ -156,7 +155,7 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("already minted: %s %s", collection.MintContract, tokenID), "NFT already minted")
 	}
 
-	item, err := db.PurchasedItemByMintContractAndTokenID(common.HexToAddress(collection.MintContract), int(tokenIDuint64))
+	item, err := db.PurchasedItemByMintContractAndTokenID(common.HexToAddress(collection.MintContract.String), int(tokenIDuint64))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
 	}
@@ -175,7 +174,7 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	expiry := time.Now().Add(5 * time.Minute)
 	signer := bridge.NewSigner(api.BridgeParams.SignerPrivateKey)
 
-	_, messageSig, err := signer.GenerateSignatureWithExpiryAndCollection(common.HexToAddress(address), common.HexToAddress(collection.MintContract), tokenAsBigInt, nonceBigInt, big.NewInt(expiry.Unix()))
+	_, messageSig, err := signer.GenerateSignatureWithExpiryAndCollection(common.HexToAddress(address), common.HexToAddress(collection.MintContract.String), tokenAsBigInt, nonceBigInt, big.NewInt(expiry.Unix()))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to create withdraw signature, please try again or contact support.")
 	}

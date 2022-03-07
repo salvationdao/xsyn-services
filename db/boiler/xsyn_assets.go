@@ -94,32 +94,6 @@ var XsynAssetTableColumns = struct {
 
 // Generated where
 
-type whereHelperdecimal_NullDecimal struct{ field string }
-
-func (w whereHelperdecimal_NullDecimal) EQ(x decimal.NullDecimal) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, false, x)
-}
-func (w whereHelperdecimal_NullDecimal) NEQ(x decimal.NullDecimal) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, true, x)
-}
-func (w whereHelperdecimal_NullDecimal) LT(x decimal.NullDecimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelperdecimal_NullDecimal) LTE(x decimal.NullDecimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelperdecimal_NullDecimal) GT(x decimal.NullDecimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelperdecimal_NullDecimal) GTE(x decimal.NullDecimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
-
-func (w whereHelperdecimal_NullDecimal) IsNull() qm.QueryMod { return qmhelper.WhereIsNull(w.field) }
-func (w whereHelperdecimal_NullDecimal) IsNotNull() qm.QueryMod {
-	return qmhelper.WhereIsNotNull(w.field)
-}
-
 var XsynAssetWhere = struct {
 	UserID           whereHelperstring
 	TransferredInAt  whereHelpertime_Time

@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"passport"
+	"passport/db/boiler"
 	"passport/helpers"
+	"passport/passdb"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
@@ -50,37 +52,8 @@ func XsynMetadataInsert(ctx context.Context, conn Conn, item *passport.XsynMetad
 	return nil
 }
 
-// XsynMetadataAssignUser assign a nft metadata to a user
-func XsynMetadataAssignUser(ctx context.Context, conn Conn, metadataHash string, userID passport.UserID, collectionID passport.CollectionID, externalTokenID uint64) error {
-	q := `
-		INSERT INTO 
-			xsyn_assets (metadata_hash, user_id, collection_id, external_token_id)
-		VALUES
-			($1, $2, $3, $4);
-	`
-
-	_, err := conn.Exec(ctx, q, metadataHash, userID, collectionID, externalTokenID)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
 // DefaultWarMachineGet return given amount of default war machines for given faction
-func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID) ([]*passport.XsynMetadata, error) {
-	nft := []*passport.XsynMetadata{}
-	q := `
-		SELECT xnm.hash, xnm.minted, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
-		FROM xsyn_metadata xnm
-	 	INNER JOIN xsyn_assets xa ON xa.metadata_hash = xnm.hash and xnm.collection_id = xa.collection_id
-		WHERE xa.user_id = $1
-		AND xnm.attributes @> '[{"value": "War Machine", "trait_type": "Asset Type"}]'
-	`
+func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID) ([]*boiler.PurchasedItem, error) {
+	return boiler.PurchasedItems(boiler.PurchasedItemWhere.IsDefault.EQ(true)).All(passdb.StdConn)
 
-	// TODO: find a better way to get the default warmachines out
-	err := pgxscan.Select(ctx, conn, &nft, q, userID)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-	return nft, nil
 }

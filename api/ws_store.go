@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"passport"
 	"passport/db"
+	"passport/db/boiler"
 	"passport/items"
 
 	"github.com/ninja-software/log_helpers"
@@ -164,23 +165,12 @@ const HubKeyStoreList = hub.HubCommandKey("STORE:LIST")
 type StoreListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID               passport.UserID            `json:"user_id"`
-		SortDir              db.SortByDir               `json:"sortDir"`
-		SortBy               db.StoreColumn             `json:"sortBy"`
-		IncludedStoreItemIDs []passport.StoreItemID     `json:"includedTokenIDs"`
-		Filter               *db.ListFilterRequest      `json:"filter,omitempty"`
-		AttributeFilter      *db.AttributeFilterRequest `json:"attributeFilter,omitempty"`
-		AssetType            string                     `json:"assetType"`
-		Archived             bool                       `json:"archived"`
-		Search               string                     `json:"search"`
-		PageSize             int                        `json:"pageSize"`
-		Page                 int                        `json:"page"`
 	} `json:"payload"`
 }
 
 type StoreListResponse struct {
-	Total        int                     `json:"total"`
-	StoreItemIDs []*passport.StoreItemID `json:"storeItemIDs"`
+	Total        int                    `json:"total"`
+	StoreItemIDs []passport.StoreItemID `json:"storeItemIDs"`
 }
 
 func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
@@ -190,39 +180,17 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Cli
 		return terror.Error(err, "Invalid request received")
 	}
 
-	offset := 0
-	if req.Payload.Page > 0 {
-		offset = req.Payload.Page * req.Payload.PageSize
-	}
-
-	total, storeItems, err := db.StoreList(
-		ctx, sc.Conn,
-		req.Payload.Search,
-		req.Payload.Archived,
-		req.Payload.IncludedStoreItemIDs,
-		req.Payload.Filter,
-		req.Payload.AttributeFilter,
-		offset,
-		req.Payload.PageSize,
-		req.Payload.SortBy,
-		req.Payload.SortDir,
-	)
+	storeItems, err := db.StoreItems()
 	if err != nil {
 		return terror.Error(err)
 	}
-	storeItemIDs := make([]*passport.StoreItemID, 0)
-	for _, s := range storeItems {
-		// if s.UsdCentCost == 100 && genesisMegaCount >= 2 {
-		// 	continue
-		// }
-		// if s.Restriction == "LOOTBOX" && genesisNonMegaCount >= 10 {
-		// 	continue
-		// }
-		storeItemIDs = append(storeItemIDs, &s.ID)
+	storeItemIDs := make([]passport.StoreItemID, 0)
+	for _, storeItem := range storeItems {
+		storeItemIDs = append(storeItemIDs, passport.StoreItemID(uuid.Must(uuid.FromString(storeItem.ID))))
 	}
 
 	reply(&StoreListResponse{
-		total,
+		len(storeItemIDs),
 		storeItemIDs,
 	})
 	return nil
@@ -244,15 +212,9 @@ func (sc *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, clie
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
 
-	item, err := db.StoreItemGet(ctx, sc.Conn, req.Payload.StoreItemID)
+	item, err := db.StoreItem(uuid.UUID(req.Payload.StoreItemID))
 	if err != nil {
 		return "", "", terror.Error(err)
-	}
-
-	// if item isn't faction specific, return item
-	if item.FactionID.IsNil() {
-		reply(item)
-		return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyStoreItemSubscribe, item.ID)), nil
 	}
 
 	if client.Identifier() == "" || client.Level < 1 {
@@ -273,16 +235,27 @@ func (sc *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, clie
 		return "", "", terror.Error(fmt.Errorf("user has no faction"), "Please select a syndicate to view this item.")
 	}
 
-	if *user.FactionID != item.FactionID {
+	if user.FactionID.String() != item.FactionID {
 		return "", "", terror.Warn(fmt.Errorf("user has wrong faction, need %s, got %s", item.FactionID, user.FactionID), "You do not belong to the correct faction.")
 	}
 
-	supsAsCents := sc.API.SupUSD.Mul(decimal.New(100, 0))
-	priceAsCents := decimal.New(int64(item.UsdCentCost), 0)
-	priceAsSups := priceAsCents.Div(supsAsCents)
-	item.SupCost = priceAsSups.Mul(decimal.New(1, 18)).BigInt().String()
+	supsAsCents, err := db.SupInCents()
+	if err != nil {
+		return "", "", terror.Error(err, "Could not get SUP price")
+	}
 
-	reply(item)
+	priceAsCents := decimal.New(int64(item.UsdCentCost), 0)
+	priceAsSups := priceAsCents.Div(supsAsCents).Mul(decimal.New(1, 18)).BigInt().String()
+
+	result := struct {
+		PriceInSUPS string
+		Item        *boiler.StoreItem
+	}{
+		PriceInSUPS: priceAsSups,
+		Item:        item,
+	}
+
+	reply(result)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyStoreItemSubscribe, item.ID)), nil
 }
 
