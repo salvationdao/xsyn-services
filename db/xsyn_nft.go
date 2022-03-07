@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"passport"
+	"passport/db/boiler"
 	"passport/helpers"
+	"passport/passdb"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
@@ -50,124 +52,8 @@ func XsynMetadataInsert(ctx context.Context, conn Conn, item *passport.XsynMetad
 	return nil
 }
 
-// XsynMetadataAssignUser assign a nft metadata to a user
-func XsynMetadataAssignUser(ctx context.Context, conn Conn, metadataHash string, userID passport.UserID, collectionID passport.CollectionID, externalTokenID uint64) error {
-	q := `
-		INSERT INTO 
-			xsyn_assets (metadata_hash, user_id, collection_id, external_token_id)
-		VALUES
-			($1, $2, $3, $4);
-	`
-
-	_, err := conn.Exec(ctx, q, metadataHash, userID, collectionID, externalTokenID)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// XsynAssetFreeze freeze a xsyn nft
-func XsynAssetFreeze(ctx context.Context, conn Conn, assetHash string, userID passport.UserID) error {
-	q := `
-		UPDATE 
-			xsyn_assets
-		SET
-			frozen_at = NOW(),
-			frozen_by_id = $2
-		WHERE
-			metadata_hash = $1 AND frozen_at ISNULL;
-	`
-	_, err := conn.Exec(ctx, q, assetHash, userID)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
-}
-
 // DefaultWarMachineGet return given amount of default war machines for given faction
-func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID) ([]*passport.XsynMetadata, error) {
-	nft := []*passport.XsynMetadata{}
-	q := `
-		SELECT xnm.hash, xnm.minted, xnm.collection_id, xnm.durability, xnm.name, xnm.description, xnm.external_url, xnm.image, xnm.attributes
-		FROM xsyn_metadata xnm
-	 	INNER JOIN xsyn_assets xa ON xa.metadata_hash = xnm.hash and xnm.collection_id = xa.collection_id
-		WHERE xa.user_id = $1
-		AND xnm.attributes @> '[{"value": "War Machine", "trait_type": "Asset Type"}]'
-	`
+func DefaultWarMachineGet(ctx context.Context, conn Conn, userID passport.UserID) ([]*boiler.PurchasedItem, error) {
+	return boiler.PurchasedItems(boiler.PurchasedItemWhere.IsDefault.EQ(true)).All(passdb.StdConn)
 
-	// TODO: find a better way to get the default warmachines out
-	err := pgxscan.Select(ctx, conn, &nft, q, userID)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-	return nft, nil
-}
-
-// XsynAssetLock locks a asset
-func XsynAssetLock(ctx context.Context, conn Conn, assetHash string, userID passport.UserID) error {
-	q := `
-		UPDATE 
-			xsyn_assets
-		SET
-			locked_by_id = $1
-		WHERE metadata_hash = $2`
-
-	_, err := conn.Exec(ctx, q, userID, assetHash)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
-}
-
-// XsynAssetMintLock sets minting_signature of an asset
-func XsynAssetMintLock(ctx context.Context, conn Conn, assetHash string, sig string, expiry string) error {
-	q := `
-		UPDATE 
-			xsyn_assets
-		SET
-			minting_signature = $1, signature_expiry = $2
-		WHERE metadata_hash = $3`
-
-	_, err := conn.Exec(ctx, q, sig, expiry, assetHash)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
-}
-
-// XsynAssetMintUnLock removed all mint locks from a users assets, should only be called when they complete another mint
-func XsynAssetMintUnLock(ctx context.Context, conn Conn, userID passport.UserID) error {
-	q := `
-		UPDATE 
-			xsyn_assets
-		SET
-			minting_signature = ''
-		WHERE user_id = $1`
-
-	_, err := conn.Exec(ctx, q, userID)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
-}
-
-// XsynAssetMinted marked as a
-func XsynAssetMinted(ctx context.Context, conn Conn, assetHash string) error {
-	q := `
-		UPDATE 
-			xsyn_metadata
-		SET
-			minted = true
-		WHERE hash = $1`
-
-	_, err := conn.Exec(ctx, q, assetHash)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
 }

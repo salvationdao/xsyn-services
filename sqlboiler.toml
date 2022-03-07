@@ -14,7 +14,7 @@ tag = ["boiler"]
   user   = "passport"
   pass   = "dev"
   schema = "public"
-  blacklist = ["migrations", "other", "state"]
+  blacklist = ["migrations", "other"]
   sslmode = "disable"
 
 # example for join table, so have correct singular/plural

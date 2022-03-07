@@ -25,17 +25,20 @@ import (
 // PurchasedItem is an object representing the database table.
 type PurchasedItem struct {
 	ID              string     `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	CollectionID    string     `boiler:"collection_id" boil:"collection_id" json:"collection_id" toml:"collection_id" yaml:"collection_id"`
-	StoreItemID     string     `boiler:"store_item_id" boil:"store_item_id" json:"store_item_id" toml:"store_item_id" yaml:"store_item_id"`
-	ExternalTokenID int        `boiler:"external_token_id" boil:"external_token_id" json:"external_token_id" toml:"external_token_id" yaml:"external_token_id"`
+	CollectionID    string     `boiler:"collection_id" boil:"collection_id" json:"collectionID" toml:"collectionID" yaml:"collectionID"`
+	StoreItemID     string     `boiler:"store_item_id" boil:"store_item_id" json:"storeItemID" toml:"storeItemID" yaml:"storeItemID"`
+	ExternalTokenID int        `boiler:"external_token_id" boil:"external_token_id" json:"externalTokenID" toml:"externalTokenID" yaml:"externalTokenID"`
+	IsDefault       bool       `boiler:"is_default" boil:"is_default" json:"isDefault" toml:"isDefault" yaml:"isDefault"`
+	Tier            string     `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
 	Hash            string     `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
 	OwnerID         string     `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
 	Data            types.JSON `boiler:"data" boil:"data" json:"data" toml:"data" yaml:"data"`
-	MintedAt        null.Time  `boiler:"minted_at" boil:"minted_at" json:"minted_at,omitempty" toml:"minted_at" yaml:"minted_at,omitempty"`
-	DeletedAt       null.Time  `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	RefreshesAt     time.Time  `boiler:"refreshes_at" boil:"refreshes_at" json:"refreshes_at" toml:"refreshes_at" yaml:"refreshes_at"`
-	UpdatedAt       time.Time  `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt       time.Time  `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UnlockedAt      time.Time  `boiler:"unlocked_at" boil:"unlocked_at" json:"unlockedAt" toml:"unlockedAt" yaml:"unlockedAt"`
+	MintedAt        null.Time  `boiler:"minted_at" boil:"minted_at" json:"mintedAt,omitempty" toml:"mintedAt" yaml:"mintedAt,omitempty"`
+	DeletedAt       null.Time  `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
+	RefreshesAt     time.Time  `boiler:"refreshes_at" boil:"refreshes_at" json:"refreshesAt" toml:"refreshesAt" yaml:"refreshesAt"`
+	UpdatedAt       time.Time  `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
+	CreatedAt       time.Time  `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
 
 	R *purchasedItemR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L purchasedItemL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -46,9 +49,12 @@ var PurchasedItemColumns = struct {
 	CollectionID    string
 	StoreItemID     string
 	ExternalTokenID string
+	IsDefault       string
+	Tier            string
 	Hash            string
 	OwnerID         string
 	Data            string
+	UnlockedAt      string
 	MintedAt        string
 	DeletedAt       string
 	RefreshesAt     string
@@ -59,9 +65,12 @@ var PurchasedItemColumns = struct {
 	CollectionID:    "collection_id",
 	StoreItemID:     "store_item_id",
 	ExternalTokenID: "external_token_id",
+	IsDefault:       "is_default",
+	Tier:            "tier",
 	Hash:            "hash",
 	OwnerID:         "owner_id",
 	Data:            "data",
+	UnlockedAt:      "unlocked_at",
 	MintedAt:        "minted_at",
 	DeletedAt:       "deleted_at",
 	RefreshesAt:     "refreshes_at",
@@ -74,9 +83,12 @@ var PurchasedItemTableColumns = struct {
 	CollectionID    string
 	StoreItemID     string
 	ExternalTokenID string
+	IsDefault       string
+	Tier            string
 	Hash            string
 	OwnerID         string
 	Data            string
+	UnlockedAt      string
 	MintedAt        string
 	DeletedAt       string
 	RefreshesAt     string
@@ -87,9 +99,12 @@ var PurchasedItemTableColumns = struct {
 	CollectionID:    "purchased_items.collection_id",
 	StoreItemID:     "purchased_items.store_item_id",
 	ExternalTokenID: "purchased_items.external_token_id",
+	IsDefault:       "purchased_items.is_default",
+	Tier:            "purchased_items.tier",
 	Hash:            "purchased_items.hash",
 	OwnerID:         "purchased_items.owner_id",
 	Data:            "purchased_items.data",
+	UnlockedAt:      "purchased_items.unlocked_at",
 	MintedAt:        "purchased_items.minted_at",
 	DeletedAt:       "purchased_items.deleted_at",
 	RefreshesAt:     "purchased_items.refreshes_at",
@@ -104,9 +119,12 @@ var PurchasedItemWhere = struct {
 	CollectionID    whereHelperstring
 	StoreItemID     whereHelperstring
 	ExternalTokenID whereHelperint
+	IsDefault       whereHelperbool
+	Tier            whereHelperstring
 	Hash            whereHelperstring
 	OwnerID         whereHelperstring
 	Data            whereHelpertypes_JSON
+	UnlockedAt      whereHelpertime_Time
 	MintedAt        whereHelpernull_Time
 	DeletedAt       whereHelpernull_Time
 	RefreshesAt     whereHelpertime_Time
@@ -117,9 +135,12 @@ var PurchasedItemWhere = struct {
 	CollectionID:    whereHelperstring{field: "\"purchased_items\".\"collection_id\""},
 	StoreItemID:     whereHelperstring{field: "\"purchased_items\".\"store_item_id\""},
 	ExternalTokenID: whereHelperint{field: "\"purchased_items\".\"external_token_id\""},
+	IsDefault:       whereHelperbool{field: "\"purchased_items\".\"is_default\""},
+	Tier:            whereHelperstring{field: "\"purchased_items\".\"tier\""},
 	Hash:            whereHelperstring{field: "\"purchased_items\".\"hash\""},
 	OwnerID:         whereHelperstring{field: "\"purchased_items\".\"owner_id\""},
 	Data:            whereHelpertypes_JSON{field: "\"purchased_items\".\"data\""},
+	UnlockedAt:      whereHelpertime_Time{field: "\"purchased_items\".\"unlocked_at\""},
 	MintedAt:        whereHelpernull_Time{field: "\"purchased_items\".\"minted_at\""},
 	DeletedAt:       whereHelpernull_Time{field: "\"purchased_items\".\"deleted_at\""},
 	RefreshesAt:     whereHelpertime_Time{field: "\"purchased_items\".\"refreshes_at\""},
@@ -129,23 +150,20 @@ var PurchasedItemWhere = struct {
 
 // PurchasedItemRels is where relationship names are stored.
 var PurchasedItemRels = struct {
-	Collection              string
-	Owner                   string
-	StoreItem               string
-	ItemOnchainTransactions string
+	Collection string
+	Owner      string
+	StoreItem  string
 }{
-	Collection:              "Collection",
-	Owner:                   "Owner",
-	StoreItem:               "StoreItem",
-	ItemOnchainTransactions: "ItemOnchainTransactions",
+	Collection: "Collection",
+	Owner:      "Owner",
+	StoreItem:  "StoreItem",
 }
 
 // purchasedItemR is where relationships are stored.
 type purchasedItemR struct {
-	Collection              *Collection                 `boiler:"Collection" boil:"Collection" json:"Collection" toml:"Collection" yaml:"Collection"`
-	Owner                   *User                       `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
-	StoreItem               *StoreItem                  `boiler:"StoreItem" boil:"StoreItem" json:"StoreItem" toml:"StoreItem" yaml:"StoreItem"`
-	ItemOnchainTransactions ItemOnchainTransactionSlice `boiler:"ItemOnchainTransactions" boil:"ItemOnchainTransactions" json:"ItemOnchainTransactions" toml:"ItemOnchainTransactions" yaml:"ItemOnchainTransactions"`
+	Collection *Collection `boiler:"Collection" boil:"Collection" json:"Collection" toml:"Collection" yaml:"Collection"`
+	Owner      *User       `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	StoreItem  *StoreItem  `boiler:"StoreItem" boil:"StoreItem" json:"StoreItem" toml:"StoreItem" yaml:"StoreItem"`
 }
 
 // NewStruct creates a new relationship struct
@@ -157,9 +175,9 @@ func (*purchasedItemR) NewStruct() *purchasedItemR {
 type purchasedItemL struct{}
 
 var (
-	purchasedItemAllColumns            = []string{"id", "collection_id", "store_item_id", "external_token_id", "hash", "owner_id", "data", "minted_at", "deleted_at", "refreshes_at", "updated_at", "created_at"}
-	purchasedItemColumnsWithoutDefault = []string{"collection_id", "store_item_id", "external_token_id", "hash", "owner_id", "data", "minted_at", "deleted_at"}
-	purchasedItemColumnsWithDefault    = []string{"id", "refreshes_at", "updated_at", "created_at"}
+	purchasedItemAllColumns            = []string{"id", "collection_id", "store_item_id", "external_token_id", "is_default", "tier", "hash", "owner_id", "data", "unlocked_at", "minted_at", "deleted_at", "refreshes_at", "updated_at", "created_at"}
+	purchasedItemColumnsWithoutDefault = []string{"collection_id", "store_item_id", "external_token_id", "is_default", "tier", "hash", "owner_id", "data", "minted_at", "deleted_at"}
+	purchasedItemColumnsWithDefault    = []string{"id", "unlocked_at", "refreshes_at", "updated_at", "created_at"}
 	purchasedItemPrimaryKeyColumns     = []string{"id"}
 )
 
@@ -443,28 +461,6 @@ func (o *PurchasedItem) StoreItem(mods ...qm.QueryMod) storeItemQuery {
 
 	query := StoreItems(queryMods...)
 	queries.SetFrom(query.Query, "\"store_items\"")
-
-	return query
-}
-
-// ItemOnchainTransactions retrieves all the item_onchain_transaction's ItemOnchainTransactions with an executor.
-func (o *PurchasedItem) ItemOnchainTransactions(mods ...qm.QueryMod) itemOnchainTransactionQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"item_onchain_transactions\".\"purchased_item_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"item_onchain_transactions\".\"deleted_at\""),
-	)
-
-	query := ItemOnchainTransactions(queryMods...)
-	queries.SetFrom(query.Query, "\"item_onchain_transactions\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"item_onchain_transactions\".*"})
-	}
 
 	return query
 }
@@ -784,105 +780,6 @@ func (purchasedItemL) LoadStoreItem(e boil.Executor, singular bool, maybePurchas
 	return nil
 }
 
-// LoadItemOnchainTransactions allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (purchasedItemL) LoadItemOnchainTransactions(e boil.Executor, singular bool, maybePurchasedItem interface{}, mods queries.Applicator) error {
-	var slice []*PurchasedItem
-	var object *PurchasedItem
-
-	if singular {
-		object = maybePurchasedItem.(*PurchasedItem)
-	} else {
-		slice = *maybePurchasedItem.(*[]*PurchasedItem)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &purchasedItemR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &purchasedItemR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`item_onchain_transactions`),
-		qm.WhereIn(`item_onchain_transactions.purchased_item_id in ?`, args...),
-		qmhelper.WhereIsNull(`item_onchain_transactions.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load item_onchain_transactions")
-	}
-
-	var resultSlice []*ItemOnchainTransaction
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice item_onchain_transactions")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on item_onchain_transactions")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for item_onchain_transactions")
-	}
-
-	if len(itemOnchainTransactionAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.ItemOnchainTransactions = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &itemOnchainTransactionR{}
-			}
-			foreign.R.PurchasedItem = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.PurchasedItemID {
-				local.R.ItemOnchainTransactions = append(local.R.ItemOnchainTransactions, foreign)
-				if foreign.R == nil {
-					foreign.R = &itemOnchainTransactionR{}
-				}
-				foreign.R.PurchasedItem = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // SetCollection of the purchasedItem to the related item.
 // Sets o.R.Collection to related.
 // Adds o to related.R.PurchasedItems.
@@ -1018,58 +915,6 @@ func (o *PurchasedItem) SetStoreItem(exec boil.Executor, insert bool, related *S
 		related.R.PurchasedItems = append(related.R.PurchasedItems, o)
 	}
 
-	return nil
-}
-
-// AddItemOnchainTransactions adds the given related objects to the existing relationships
-// of the purchased_item, optionally inserting them as new records.
-// Appends related to o.R.ItemOnchainTransactions.
-// Sets related.R.PurchasedItem appropriately.
-func (o *PurchasedItem) AddItemOnchainTransactions(exec boil.Executor, insert bool, related ...*ItemOnchainTransaction) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.PurchasedItemID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"item_onchain_transactions\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"purchased_item_id"}),
-				strmangle.WhereClause("\"", "\"", 2, itemOnchainTransactionPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.PurchasedItemID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &purchasedItemR{
-			ItemOnchainTransactions: related,
-		}
-	} else {
-		o.R.ItemOnchainTransactions = append(o.R.ItemOnchainTransactions, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &itemOnchainTransactionR{
-				PurchasedItem: o,
-			}
-		} else {
-			rel.R.PurchasedItem = o
-		}
-	}
 	return nil
 }
 

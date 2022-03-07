@@ -4,51 +4,68 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"passport"
 	"passport/db/boiler"
 	"passport/passdb"
 	"passport/passlog"
 	"passport/rpcclient"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gofrs/uuid"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 var RestrictionMap = map[string]string{
-	"COLOSSAL":        "LOOTBOX",
-	"DEUS_EX":         "LOOTBOX",
-	"ELITE_LEGENDARY": "LOOTBOX",
-	"EXOTIC":          "LOOTBOX",
-	"GUARDIAN":        "LOOTBOX",
-	"LEGENDARY":       "LOOTBOX",
-	"MEGA":            "NONE",
-	"MYTHIC":          "LOOTBOX",
-	"RARE":            "LOOTBOX",
-	"ULTRA_RARE":      "LOOTBOX",
+	TierColossal:       RestrictionGroupLootbox,
+	TierDeusEx:         RestrictionGroupLootbox,
+	TierEliteLegendary: RestrictionGroupLootbox,
+	TierExotic:         RestrictionGroupLootbox,
+	TierGuardian:       RestrictionGroupLootbox,
+	TierLegendary:      RestrictionGroupLootbox,
+	TierMega:           RestrictionGroupNone,
+	TierMythic:         RestrictionGroupLootbox,
+	TierRare:           RestrictionGroupLootbox,
+	TierUltraRare:      RestrictionGroupLootbox,
 }
+
+const RestrictionGroupLootbox = "LOOTBOX"
+const RestrictionGroupNone = "NONE"
+
+const TierMega = "MEGA"
+const TierColossal = "COLOSSAL"
+const TierRare = "RARE"
+const TierLegendary = "LEGENDARY"
+const TierEliteLegendary = "ELITE_LEGENDARY"
+const TierUltraRare = "ULTRA_RARE"
+const TierExotic = "EXOTIC"
+const TierGuardian = "GUARDIAN"
+const TierMythic = "MYTHIC"
+const TierDeusEx = "DEUS_EX"
+
 var AmountMap = map[string]int{
-	"COLOSSAL":        400,
-	"DEUS_EX":         3,
-	"ELITE_LEGENDARY": 100,
-	"EXOTIC":          40,
-	"GUARDIAN":        20,
-	"LEGENDARY":       200,
-	"MEGA":            500,
-	"MYTHIC":          10,
-	"RARE":            300,
-	"ULTRA_RARE":      60,
+	TierColossal:       400,
+	TierDeusEx:         3,
+	TierEliteLegendary: 100,
+	TierExotic:         40,
+	TierGuardian:       20,
+	TierLegendary:      200,
+	TierMega:           500,
+	TierMythic:         10,
+	TierRare:           300,
+	TierUltraRare:      60,
 }
 var PriceCentsMap = map[string]int{
-	"COLOSSAL":        100000,
-	"DEUS_EX":         100000,
-	"ELITE_LEGENDARY": 100000,
-	"EXOTIC":          100000,
-	"GUARDIAN":        100000,
-	"LEGENDARY":       100000,
-	"MEGA":            100,
-	"MYTHIC":          100000,
-	"RARE":            100000,
-	"ULTRA_RARE":      100000,
+	TierColossal:       100000,
+	TierDeusEx:         100000,
+	TierEliteLegendary: 100000,
+	TierExotic:         100000,
+	TierGuardian:       100000,
+	TierLegendary:      100000,
+	TierMega:           100,
+	TierMythic:         100000,
+	TierRare:           100000,
+	TierUltraRare:      100000,
 }
 
 func SyncStoreItems() error {
@@ -118,6 +135,7 @@ func SyncStoreItems() error {
 				CollectionID:     collection.ID,
 				FactionID:        template.Template.FactionID,
 				UsdCentCost:      priceCents,
+				Tier:             template.Template.Tier,
 				AmountSold:       count,
 				AmountAvailable:  amountAvailable,
 				RestrictionGroup: restrictionGroup,
@@ -126,6 +144,7 @@ func SyncStoreItems() error {
 			}
 			err = newStoreItem.Insert(tx, boil.Infer())
 			if err != nil {
+				spew.Dump(newStoreItem)
 				return fmt.Errorf("insert new store item: %w", err)
 			}
 		} else {
@@ -141,11 +160,52 @@ func SyncStoreItems() error {
 	return nil
 }
 
-// PurchasedItems for admin only
-func PurchasedItems() ([]*boiler.PurchasedItem, error) {
-	result, err := boiler.PurchasedItems().All(passdb.StdConn)
+func StoreItemsRemainingByFactionIDAndRestrictionGroup(factionID uuid.UUID, restrictionGroup string) (int, error) {
+	count, err := boiler.StoreItems(
+		boiler.StoreItemWhere.FactionID.EQ(factionID.String()),
+		boiler.StoreItemWhere.RestrictionGroup.EQ(restrictionGroup),
+	).Count(passdb.StdConn)
+	return int(count), err
+}
+func StoreItemsRemainingByFactionIDAndTier(factionID uuid.UUID, tier string) (int, error) {
+	count, err := boiler.StoreItems(
+		boiler.StoreItemWhere.FactionID.EQ(factionID.String()),
+		boiler.StoreItemWhere.Tier.EQ(tier),
+	).Count(passdb.StdConn)
+	return int(count), err
+}
+
+// StoreItemsAvailable return the total of available war machine in each faction
+func StoreItemsAvailable() ([]*passport.FactionSaleAvailable, error) {
+	factions, err := boiler.Factions().All(passdb.StdConn)
 	if err != nil {
 		return nil, err
+	}
+	result := []*passport.FactionSaleAvailable{}
+
+	for _, faction := range factions {
+		theme := &passport.FactionTheme{}
+		err = faction.Theme.Unmarshal(theme)
+		if err != nil {
+			return nil, err
+		}
+		megaAmount, err := StoreItemsRemainingByFactionIDAndTier(uuid.Must(uuid.FromString(faction.ID)), "MEGA")
+		if err != nil {
+			return nil, err
+		}
+		lootboxAmount, err := StoreItemsRemainingByFactionIDAndRestrictionGroup(uuid.Must(uuid.FromString(faction.ID)), "LOOTBOX")
+		if err != nil {
+			return nil, err
+		}
+		record := &passport.FactionSaleAvailable{
+			ID:            passport.FactionID(uuid.Must(uuid.FromString(faction.ID))),
+			Label:         faction.Label,
+			LogoBlobID:    passport.BlobID(uuid.Must(uuid.FromString(faction.LogoBlobID))),
+			Theme:         theme,
+			MegaAmount:    int64(megaAmount),
+			LootboxAmount: int64(lootboxAmount),
+		}
+		result = append(result, record)
 	}
 	return result, nil
 }
@@ -171,6 +231,15 @@ func StoreItemPurchasedCount(templateID uuid.UUID) (int, error) {
 	}
 	return resp.Count, nil
 }
+
+func StoreItemsByFactionIDAndRestrictionGroup(factionID uuid.UUID, restrictionGroup string) ([]*boiler.StoreItem, error) {
+	result, err := boiler.StoreItems(
+		boiler.StoreItemWhere.FactionID.EQ(factionID.String()),
+		boiler.StoreItemWhere.RestrictionGroup.EQ(restrictionGroup),
+	).All(passdb.StdConn)
+	return result, err
+}
+
 func StoreItemsByFactionID(factionID uuid.UUID) ([]*boiler.StoreItem, error) {
 	passlog.L.Debug().Str("fn", "StoreItemsByFactionID").Msg("db func")
 	storeItems, err := boiler.StoreItems(boiler.StoreItemWhere.FactionID.EQ(factionID.String())).All(passdb.StdConn)

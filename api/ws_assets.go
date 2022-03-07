@@ -90,7 +90,7 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	// check user own this asset, and it has not joined the queue yet
-	asset, err := db.AssetGet(ctx, ac.Conn, req.Payload.AssetHash)
+	asset, err := db.PurchasedItemByHash(req.Payload.AssetHash)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -98,26 +98,12 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 		return terror.Error(fmt.Errorf("asset doesn't exist"))
 	}
 
-	if asset.UserID == nil || *asset.UserID != userID {
+	if asset.OwnerID != userID.String() {
 		return terror.Error(terror.ErrForbidden)
 	}
 
 	warMachineMetadata := &passport.WarMachineMetadata{
 		OwnedByID: userID,
-	}
-
-	// parse metadata
-	for _, att := range asset.Attributes {
-		if att.TraitType != "Asset Type" {
-			continue
-		}
-
-		switch att.Value {
-		case string(passport.WarMachine):
-			passport.ParseWarMachineMetadata(asset, warMachineMetadata)
-		case string(passport.Weapon):
-		case string(passport.Utility):
-		}
 	}
 
 	// assign faction id
@@ -148,17 +134,7 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 type AssetsUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID              passport.UserID            `json:"user_id"`
-		SortDir             db.SortByDir               `json:"sort_dir"`
-		SortBy              db.AssetColumn             `json:"sort_by"`
-		IncludedAssetHashes []string                   `json:"included_asset_hashes"`
-		Filter              *db.ListFilterRequest      `json:"filter,omitempty"`
-		AttributeFilter     *db.AttributeFilterRequest `json:"attribute_filter,omitempty"`
-		AssetType           string                     `json:"asset_type"`
-		Archived            bool                       `json:"archived"`
-		Search              string                     `json:"search"`
-		PageSize            int                        `json:"page_size"`
-		Page                int                        `json:"page"`
+		UserID passport.UserID `json:"user_id"`
 	} `json:"payload"`
 }
 
@@ -178,35 +154,19 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Clien
 		return terror.Error(err)
 	}
 
-	offset := 0
-	if req.Payload.Page > 0 {
-		offset = req.Payload.Page * req.Payload.PageSize
-	}
-
-	total, assets, err := db.AssetList(
-		ctx, ac.Conn,
-		req.Payload.Search,
-		req.Payload.Archived,
-		req.Payload.IncludedAssetHashes,
-		req.Payload.Filter,
-		req.Payload.AttributeFilter,
-		offset,
-		req.Payload.PageSize,
-		req.Payload.SortBy,
-		req.Payload.SortDir,
-	)
+	items, err := db.PurchasedItemsByOwnerID(uuid.UUID(req.Payload.UserID))
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	assetHashes := make([]string, 0)
-	for _, s := range assets {
-		assetHashes = append(assetHashes, s.Hash)
+	itemHashes := make([]string, 0)
+	for _, s := range items {
+		itemHashes = append(itemHashes, s.Hash)
 	}
 
 	resp := &AssetListResponse{
-		total,
-		assetHashes,
+		len(itemHashes),
+		itemHashes,
 	}
 
 	reply(resp)
@@ -231,7 +191,7 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hub
 		return req.TransactionID, "", terror.Error(err)
 	}
 
-	asset, err := db.AssetGet(ctx, ac.Conn, req.Payload.AssetHash)
+	asset, err := db.PurchasedItemByHash(req.Payload.AssetHash)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
 	}
@@ -273,7 +233,7 @@ func (ac *AssetController) AssetRepairStatUpdateSubscriber(ctx context.Context, 
 
 	// check ownership
 	// get asset
-	asset, err := db.AssetGet(ctx, ac.Conn, req.Payload.AssetHash)
+	asset, err := db.PurchasedItemByHash(req.Payload.AssetHash)
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
@@ -282,7 +242,7 @@ func (ac *AssetController) AssetRepairStatUpdateSubscriber(ctx context.Context, 
 	}
 
 	// check if user owns asset
-	if *asset.UserID != userID {
+	if asset.OwnerID != userID.String() {
 		return "", "", terror.Error(err, "Must own Asset to repair it.")
 	}
 
@@ -381,13 +341,13 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 		return terror.Error(err, "Invalid request received")
 	}
 
-	// get asset
-	asset, err := db.AssetGet(ctx, ac.Conn, req.Payload.AssetHash)
+	// get item
+	item, err := db.PurchasedItemByHash(req.Payload.AssetHash)
 	if err != nil {
 		return terror.Error(err)
 	}
-	if asset == nil {
-		return terror.Error(fmt.Errorf("asset doesn't exist"), "This asset does not exist.")
+	if item == nil {
+		return terror.Error(fmt.Errorf("item doesn't exist"), "This item does not exist.")
 	}
 
 	// get user
@@ -399,23 +359,8 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 	userID := passport.UserID(uid)
 
 	// check if user owns asset
-	if *asset.UserID != userID {
-		return terror.Error(err, "Must own Asset to update it's name.")
-	}
-
-	// check if war machine
-	isWarMachine := false
-	for _, att := range asset.Attributes {
-		if att.TraitType != "Asset Type" {
-			continue
-		}
-		switch att.Value {
-		case string(passport.WarMachine):
-			isWarMachine = true
-		}
-	}
-	if !isWarMachine {
-		return terror.Error(err, "Asset must be a War Machine")
+	if item.OwnerID != userID.String() {
+		return terror.Error(err, "Must own Item to update it's name.")
 	}
 
 	name := bm.Sanitize(req.Payload.Name)
@@ -425,22 +370,13 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 	}
 
 	// update asset name
-	err = db.AssetUpdate(ctx, ac.Conn, asset.Hash, name)
+	item, err = db.PurchasedItemSetName(uuid.Must(uuid.FromString(item.ID)), name)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	// get asset
-	asset, err = db.AssetGet(ctx, ac.Conn, req.Payload.AssetHash)
-	if err != nil {
-		return terror.Error(err)
-	}
-	if asset == nil {
-		return terror.Error(fmt.Errorf("asset doesn't exist"), "This asset does not exist.")
-	}
+	go ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.AssetHash)), item)
 
-	go ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.AssetHash)), asset)
-
-	reply(asset)
+	reply(item)
 	return nil
 }

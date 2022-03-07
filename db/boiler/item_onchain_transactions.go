@@ -24,14 +24,17 @@ import (
 // ItemOnchainTransaction is an object representing the database table.
 type ItemOnchainTransaction struct {
 	ID              string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	PurchasedItemID string    `boiler:"purchased_item_id" boil:"purchased_item_id" json:"purchased_item_id" toml:"purchased_item_id" yaml:"purchased_item_id"`
-	TXID            string    `boiler:"tx_id" boil:"tx_id" json:"tx_id" toml:"tx_id" yaml:"tx_id"`
-	ContractAddr    string    `boiler:"contract_addr" boil:"contract_addr" json:"contract_addr" toml:"contract_addr" yaml:"contract_addr"`
-	FromAddr        string    `boiler:"from_addr" boil:"from_addr" json:"from_addr" toml:"from_addr" yaml:"from_addr"`
-	ToAddr          string    `boiler:"to_addr" boil:"to_addr" json:"to_addr" toml:"to_addr" yaml:"to_addr"`
-	DeletedAt       null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt       time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt       time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	CollectionID    string    `boiler:"collection_id" boil:"collection_id" json:"collectionID" toml:"collectionID" yaml:"collectionID"`
+	ExternalTokenID int       `boiler:"external_token_id" boil:"external_token_id" json:"externalTokenID" toml:"externalTokenID" yaml:"externalTokenID"`
+	TXID            string    `boiler:"tx_id" boil:"tx_id" json:"txID" toml:"txID" yaml:"txID"`
+	ContractAddr    string    `boiler:"contract_addr" boil:"contract_addr" json:"contractAddr" toml:"contractAddr" yaml:"contractAddr"`
+	FromAddr        string    `boiler:"from_addr" boil:"from_addr" json:"fromAddr" toml:"fromAddr" yaml:"fromAddr"`
+	ToAddr          string    `boiler:"to_addr" boil:"to_addr" json:"toAddr" toml:"toAddr" yaml:"toAddr"`
+	BlockNumber     int       `boiler:"block_number" boil:"block_number" json:"blockNumber" toml:"blockNumber" yaml:"blockNumber"`
+	BlockTimestamp  time.Time `boiler:"block_timestamp" boil:"block_timestamp" json:"blockTimestamp" toml:"blockTimestamp" yaml:"blockTimestamp"`
+	DeletedAt       null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
+	UpdatedAt       time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
+	CreatedAt       time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
 
 	R *itemOnchainTransactionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L itemOnchainTransactionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -39,21 +42,27 @@ type ItemOnchainTransaction struct {
 
 var ItemOnchainTransactionColumns = struct {
 	ID              string
-	PurchasedItemID string
+	CollectionID    string
+	ExternalTokenID string
 	TXID            string
 	ContractAddr    string
 	FromAddr        string
 	ToAddr          string
+	BlockNumber     string
+	BlockTimestamp  string
 	DeletedAt       string
 	UpdatedAt       string
 	CreatedAt       string
 }{
 	ID:              "id",
-	PurchasedItemID: "purchased_item_id",
+	CollectionID:    "collection_id",
+	ExternalTokenID: "external_token_id",
 	TXID:            "tx_id",
 	ContractAddr:    "contract_addr",
 	FromAddr:        "from_addr",
 	ToAddr:          "to_addr",
+	BlockNumber:     "block_number",
+	BlockTimestamp:  "block_timestamp",
 	DeletedAt:       "deleted_at",
 	UpdatedAt:       "updated_at",
 	CreatedAt:       "created_at",
@@ -61,21 +70,27 @@ var ItemOnchainTransactionColumns = struct {
 
 var ItemOnchainTransactionTableColumns = struct {
 	ID              string
-	PurchasedItemID string
+	CollectionID    string
+	ExternalTokenID string
 	TXID            string
 	ContractAddr    string
 	FromAddr        string
 	ToAddr          string
+	BlockNumber     string
+	BlockTimestamp  string
 	DeletedAt       string
 	UpdatedAt       string
 	CreatedAt       string
 }{
 	ID:              "item_onchain_transactions.id",
-	PurchasedItemID: "item_onchain_transactions.purchased_item_id",
+	CollectionID:    "item_onchain_transactions.collection_id",
+	ExternalTokenID: "item_onchain_transactions.external_token_id",
 	TXID:            "item_onchain_transactions.tx_id",
 	ContractAddr:    "item_onchain_transactions.contract_addr",
 	FromAddr:        "item_onchain_transactions.from_addr",
 	ToAddr:          "item_onchain_transactions.to_addr",
+	BlockNumber:     "item_onchain_transactions.block_number",
+	BlockTimestamp:  "item_onchain_transactions.block_timestamp",
 	DeletedAt:       "item_onchain_transactions.deleted_at",
 	UpdatedAt:       "item_onchain_transactions.updated_at",
 	CreatedAt:       "item_onchain_transactions.created_at",
@@ -85,21 +100,27 @@ var ItemOnchainTransactionTableColumns = struct {
 
 var ItemOnchainTransactionWhere = struct {
 	ID              whereHelperstring
-	PurchasedItemID whereHelperstring
+	CollectionID    whereHelperstring
+	ExternalTokenID whereHelperint
 	TXID            whereHelperstring
 	ContractAddr    whereHelperstring
 	FromAddr        whereHelperstring
 	ToAddr          whereHelperstring
+	BlockNumber     whereHelperint
+	BlockTimestamp  whereHelpertime_Time
 	DeletedAt       whereHelpernull_Time
 	UpdatedAt       whereHelpertime_Time
 	CreatedAt       whereHelpertime_Time
 }{
 	ID:              whereHelperstring{field: "\"item_onchain_transactions\".\"id\""},
-	PurchasedItemID: whereHelperstring{field: "\"item_onchain_transactions\".\"purchased_item_id\""},
+	CollectionID:    whereHelperstring{field: "\"item_onchain_transactions\".\"collection_id\""},
+	ExternalTokenID: whereHelperint{field: "\"item_onchain_transactions\".\"external_token_id\""},
 	TXID:            whereHelperstring{field: "\"item_onchain_transactions\".\"tx_id\""},
 	ContractAddr:    whereHelperstring{field: "\"item_onchain_transactions\".\"contract_addr\""},
 	FromAddr:        whereHelperstring{field: "\"item_onchain_transactions\".\"from_addr\""},
 	ToAddr:          whereHelperstring{field: "\"item_onchain_transactions\".\"to_addr\""},
+	BlockNumber:     whereHelperint{field: "\"item_onchain_transactions\".\"block_number\""},
+	BlockTimestamp:  whereHelpertime_Time{field: "\"item_onchain_transactions\".\"block_timestamp\""},
 	DeletedAt:       whereHelpernull_Time{field: "\"item_onchain_transactions\".\"deleted_at\""},
 	UpdatedAt:       whereHelpertime_Time{field: "\"item_onchain_transactions\".\"updated_at\""},
 	CreatedAt:       whereHelpertime_Time{field: "\"item_onchain_transactions\".\"created_at\""},
@@ -107,14 +128,14 @@ var ItemOnchainTransactionWhere = struct {
 
 // ItemOnchainTransactionRels is where relationship names are stored.
 var ItemOnchainTransactionRels = struct {
-	PurchasedItem string
+	Collection string
 }{
-	PurchasedItem: "PurchasedItem",
+	Collection: "Collection",
 }
 
 // itemOnchainTransactionR is where relationships are stored.
 type itemOnchainTransactionR struct {
-	PurchasedItem *PurchasedItem `boiler:"PurchasedItem" boil:"PurchasedItem" json:"PurchasedItem" toml:"PurchasedItem" yaml:"PurchasedItem"`
+	Collection *Collection `boiler:"Collection" boil:"Collection" json:"Collection" toml:"Collection" yaml:"Collection"`
 }
 
 // NewStruct creates a new relationship struct
@@ -126,8 +147,8 @@ func (*itemOnchainTransactionR) NewStruct() *itemOnchainTransactionR {
 type itemOnchainTransactionL struct{}
 
 var (
-	itemOnchainTransactionAllColumns            = []string{"id", "purchased_item_id", "tx_id", "contract_addr", "from_addr", "to_addr", "deleted_at", "updated_at", "created_at"}
-	itemOnchainTransactionColumnsWithoutDefault = []string{"purchased_item_id", "tx_id", "contract_addr", "from_addr", "to_addr", "deleted_at"}
+	itemOnchainTransactionAllColumns            = []string{"id", "collection_id", "external_token_id", "tx_id", "contract_addr", "from_addr", "to_addr", "block_number", "block_timestamp", "deleted_at", "updated_at", "created_at"}
+	itemOnchainTransactionColumnsWithoutDefault = []string{"collection_id", "external_token_id", "tx_id", "contract_addr", "from_addr", "to_addr", "block_number", "block_timestamp", "deleted_at"}
 	itemOnchainTransactionColumnsWithDefault    = []string{"id", "updated_at", "created_at"}
 	itemOnchainTransactionPrimaryKeyColumns     = []string{"id"}
 )
@@ -371,24 +392,24 @@ func (q itemOnchainTransactionQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// PurchasedItem pointed to by the foreign key.
-func (o *ItemOnchainTransaction) PurchasedItem(mods ...qm.QueryMod) purchasedItemQuery {
+// Collection pointed to by the foreign key.
+func (o *ItemOnchainTransaction) Collection(mods ...qm.QueryMod) collectionQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.PurchasedItemID),
+		qm.Where("\"id\" = ?", o.CollectionID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := PurchasedItems(queryMods...)
-	queries.SetFrom(query.Query, "\"purchased_items\"")
+	query := Collections(queryMods...)
+	queries.SetFrom(query.Query, "\"collections\"")
 
 	return query
 }
 
-// LoadPurchasedItem allows an eager lookup of values, cached into the
+// LoadCollection allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (itemOnchainTransactionL) LoadPurchasedItem(e boil.Executor, singular bool, maybeItemOnchainTransaction interface{}, mods queries.Applicator) error {
+func (itemOnchainTransactionL) LoadCollection(e boil.Executor, singular bool, maybeItemOnchainTransaction interface{}, mods queries.Applicator) error {
 	var slice []*ItemOnchainTransaction
 	var object *ItemOnchainTransaction
 
@@ -403,7 +424,7 @@ func (itemOnchainTransactionL) LoadPurchasedItem(e boil.Executor, singular bool,
 		if object.R == nil {
 			object.R = &itemOnchainTransactionR{}
 		}
-		args = append(args, object.PurchasedItemID)
+		args = append(args, object.CollectionID)
 
 	} else {
 	Outer:
@@ -413,12 +434,12 @@ func (itemOnchainTransactionL) LoadPurchasedItem(e boil.Executor, singular bool,
 			}
 
 			for _, a := range args {
-				if a == obj.PurchasedItemID {
+				if a == obj.CollectionID {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.PurchasedItemID)
+			args = append(args, obj.CollectionID)
 
 		}
 	}
@@ -428,9 +449,9 @@ func (itemOnchainTransactionL) LoadPurchasedItem(e boil.Executor, singular bool,
 	}
 
 	query := NewQuery(
-		qm.From(`purchased_items`),
-		qm.WhereIn(`purchased_items.id in ?`, args...),
-		qmhelper.WhereIsNull(`purchased_items.deleted_at`),
+		qm.From(`collections`),
+		qm.WhereIn(`collections.id in ?`, args...),
+		qmhelper.WhereIsNull(`collections.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -438,19 +459,19 @@ func (itemOnchainTransactionL) LoadPurchasedItem(e boil.Executor, singular bool,
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load PurchasedItem")
+		return errors.Wrap(err, "failed to eager load Collection")
 	}
 
-	var resultSlice []*PurchasedItem
+	var resultSlice []*Collection
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice PurchasedItem")
+		return errors.Wrap(err, "failed to bind eager loaded slice Collection")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for purchased_items")
+		return errors.Wrap(err, "failed to close results of eager load for collections")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for purchased_items")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for collections")
 	}
 
 	if len(itemOnchainTransactionAfterSelectHooks) != 0 {
@@ -467,9 +488,9 @@ func (itemOnchainTransactionL) LoadPurchasedItem(e boil.Executor, singular bool,
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.PurchasedItem = foreign
+		object.R.Collection = foreign
 		if foreign.R == nil {
-			foreign.R = &purchasedItemR{}
+			foreign.R = &collectionR{}
 		}
 		foreign.R.ItemOnchainTransactions = append(foreign.R.ItemOnchainTransactions, object)
 		return nil
@@ -477,10 +498,10 @@ func (itemOnchainTransactionL) LoadPurchasedItem(e boil.Executor, singular bool,
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.PurchasedItemID == foreign.ID {
-				local.R.PurchasedItem = foreign
+			if local.CollectionID == foreign.ID {
+				local.R.Collection = foreign
 				if foreign.R == nil {
-					foreign.R = &purchasedItemR{}
+					foreign.R = &collectionR{}
 				}
 				foreign.R.ItemOnchainTransactions = append(foreign.R.ItemOnchainTransactions, local)
 				break
@@ -491,10 +512,10 @@ func (itemOnchainTransactionL) LoadPurchasedItem(e boil.Executor, singular bool,
 	return nil
 }
 
-// SetPurchasedItem of the itemOnchainTransaction to the related item.
-// Sets o.R.PurchasedItem to related.
+// SetCollection of the itemOnchainTransaction to the related item.
+// Sets o.R.Collection to related.
 // Adds o to related.R.ItemOnchainTransactions.
-func (o *ItemOnchainTransaction) SetPurchasedItem(exec boil.Executor, insert bool, related *PurchasedItem) error {
+func (o *ItemOnchainTransaction) SetCollection(exec boil.Executor, insert bool, related *Collection) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -504,7 +525,7 @@ func (o *ItemOnchainTransaction) SetPurchasedItem(exec boil.Executor, insert boo
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"item_onchain_transactions\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"purchased_item_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"collection_id"}),
 		strmangle.WhereClause("\"", "\"", 2, itemOnchainTransactionPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -517,17 +538,17 @@ func (o *ItemOnchainTransaction) SetPurchasedItem(exec boil.Executor, insert boo
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.PurchasedItemID = related.ID
+	o.CollectionID = related.ID
 	if o.R == nil {
 		o.R = &itemOnchainTransactionR{
-			PurchasedItem: related,
+			Collection: related,
 		}
 	} else {
-		o.R.PurchasedItem = related
+		o.R.Collection = related
 	}
 
 	if related.R == nil {
-		related.R = &purchasedItemR{
+		related.R = &collectionR{
 			ItemOnchainTransactions: ItemOnchainTransactionSlice{o},
 		}
 	} else {

@@ -387,25 +387,6 @@ func ParseAbilityMetadata(metadata *XsynMetadata, abilityMetadata *AbilityMetada
 	}
 }
 
-// IsUsable returns true if the asset isn't locked in any way
-func (xsmd *XsynMetadata) IsUsable() bool {
-	if xsmd.DeletedAt != nil && !xsmd.DeletedAt.IsZero() {
-		return false
-	}
-
-	if xsmd.SignatureExpiry != "" {
-		intExp, _ := strconv.ParseInt(xsmd.SignatureExpiry, 10, 64)
-		tEXp := time.Unix(intExp, 0)
-		now := time.Now()
-
-		if now.Before((tEXp)) {
-			return false
-		}
-	}
-
-	return true
-}
-
 type WarMachineContract struct {
 	CurrentReward big.Int
 }
