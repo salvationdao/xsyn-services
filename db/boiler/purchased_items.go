@@ -129,23 +129,20 @@ var PurchasedItemWhere = struct {
 
 // PurchasedItemRels is where relationship names are stored.
 var PurchasedItemRels = struct {
-	Collection              string
-	Owner                   string
-	StoreItem               string
-	ItemOnchainTransactions string
+	Collection string
+	Owner      string
+	StoreItem  string
 }{
-	Collection:              "Collection",
-	Owner:                   "Owner",
-	StoreItem:               "StoreItem",
-	ItemOnchainTransactions: "ItemOnchainTransactions",
+	Collection: "Collection",
+	Owner:      "Owner",
+	StoreItem:  "StoreItem",
 }
 
 // purchasedItemR is where relationships are stored.
 type purchasedItemR struct {
-	Collection              *Collection                 `boiler:"Collection" boil:"Collection" json:"Collection" toml:"Collection" yaml:"Collection"`
-	Owner                   *User                       `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
-	StoreItem               *StoreItem                  `boiler:"StoreItem" boil:"StoreItem" json:"StoreItem" toml:"StoreItem" yaml:"StoreItem"`
-	ItemOnchainTransactions ItemOnchainTransactionSlice `boiler:"ItemOnchainTransactions" boil:"ItemOnchainTransactions" json:"ItemOnchainTransactions" toml:"ItemOnchainTransactions" yaml:"ItemOnchainTransactions"`
+	Collection *Collection `boiler:"Collection" boil:"Collection" json:"Collection" toml:"Collection" yaml:"Collection"`
+	Owner      *User       `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	StoreItem  *StoreItem  `boiler:"StoreItem" boil:"StoreItem" json:"StoreItem" toml:"StoreItem" yaml:"StoreItem"`
 }
 
 // NewStruct creates a new relationship struct
@@ -443,28 +440,6 @@ func (o *PurchasedItem) StoreItem(mods ...qm.QueryMod) storeItemQuery {
 
 	query := StoreItems(queryMods...)
 	queries.SetFrom(query.Query, "\"store_items\"")
-
-	return query
-}
-
-// ItemOnchainTransactions retrieves all the item_onchain_transaction's ItemOnchainTransactions with an executor.
-func (o *PurchasedItem) ItemOnchainTransactions(mods ...qm.QueryMod) itemOnchainTransactionQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"item_onchain_transactions\".\"purchased_item_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"item_onchain_transactions\".\"deleted_at\""),
-	)
-
-	query := ItemOnchainTransactions(queryMods...)
-	queries.SetFrom(query.Query, "\"item_onchain_transactions\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"item_onchain_transactions\".*"})
-	}
 
 	return query
 }
@@ -784,105 +759,6 @@ func (purchasedItemL) LoadStoreItem(e boil.Executor, singular bool, maybePurchas
 	return nil
 }
 
-// LoadItemOnchainTransactions allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (purchasedItemL) LoadItemOnchainTransactions(e boil.Executor, singular bool, maybePurchasedItem interface{}, mods queries.Applicator) error {
-	var slice []*PurchasedItem
-	var object *PurchasedItem
-
-	if singular {
-		object = maybePurchasedItem.(*PurchasedItem)
-	} else {
-		slice = *maybePurchasedItem.(*[]*PurchasedItem)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &purchasedItemR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &purchasedItemR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`item_onchain_transactions`),
-		qm.WhereIn(`item_onchain_transactions.purchased_item_id in ?`, args...),
-		qmhelper.WhereIsNull(`item_onchain_transactions.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load item_onchain_transactions")
-	}
-
-	var resultSlice []*ItemOnchainTransaction
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice item_onchain_transactions")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on item_onchain_transactions")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for item_onchain_transactions")
-	}
-
-	if len(itemOnchainTransactionAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.ItemOnchainTransactions = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &itemOnchainTransactionR{}
-			}
-			foreign.R.PurchasedItem = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.PurchasedItemID {
-				local.R.ItemOnchainTransactions = append(local.R.ItemOnchainTransactions, foreign)
-				if foreign.R == nil {
-					foreign.R = &itemOnchainTransactionR{}
-				}
-				foreign.R.PurchasedItem = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // SetCollection of the purchasedItem to the related item.
 // Sets o.R.Collection to related.
 // Adds o to related.R.PurchasedItems.
@@ -1018,58 +894,6 @@ func (o *PurchasedItem) SetStoreItem(exec boil.Executor, insert bool, related *S
 		related.R.PurchasedItems = append(related.R.PurchasedItems, o)
 	}
 
-	return nil
-}
-
-// AddItemOnchainTransactions adds the given related objects to the existing relationships
-// of the purchased_item, optionally inserting them as new records.
-// Appends related to o.R.ItemOnchainTransactions.
-// Sets related.R.PurchasedItem appropriately.
-func (o *PurchasedItem) AddItemOnchainTransactions(exec boil.Executor, insert bool, related ...*ItemOnchainTransaction) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.PurchasedItemID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"item_onchain_transactions\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"purchased_item_id"}),
-				strmangle.WhereClause("\"", "\"", 2, itemOnchainTransactionPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.PurchasedItemID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &purchasedItemR{
-			ItemOnchainTransactions: related,
-		}
-	} else {
-		o.R.ItemOnchainTransactions = append(o.R.ItemOnchainTransactions, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &itemOnchainTransactionR{
-				PurchasedItem: o,
-			}
-		} else {
-			rel.R.PurchasedItem = o
-		}
-	}
 	return nil
 }
 

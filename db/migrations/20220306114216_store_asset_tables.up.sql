@@ -34,11 +34,14 @@ CREATE TABLE purchased_items (
 
 CREATE TABLE item_onchain_transactions (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    purchased_item_id UUID NOT NULL REFERENCES purchased_items(id),
+    collection_id UUID NOT NULL REFERENCES collections(id),
+    external_token_id INTEGER NOT NULL,
     tx_id TEXT NOT NULL,
     contract_addr TEXT NOT NULL,
     from_addr TEXT NOT NULL,
     to_addr TEXT NOT NULL,
+    block_number INTEGER NOT NULL,
+    block_timestamp TIMESTAMPTZ NOT NULL,
     
     deleted_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

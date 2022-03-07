@@ -208,8 +208,7 @@ func main() {
 				},
 			},
 			{
-				Name:    "supermigrate",
-				Aliases: []string{"sm"},
+				Name: "sync",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "database_user", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
 					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{"PASSPORT_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
@@ -219,7 +218,7 @@ func main() {
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{"PASSPORT_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
 					&cli.StringFlag{Name: "gameserver_web_host_url", Value: "http://localhost:8084", EnvVars: []string{"GAMESERVER_HOST_URL"}, Usage: "The host for the gameserver, to allow it to connect"},
 				},
-				Usage: "sync items over from gameserver",
+				Usage: "sync items over from supremacy-gameserver",
 				Action: func(c *cli.Context) error {
 					return SuperMigrate(c)
 				},
@@ -399,6 +398,18 @@ func txConnect(
 	return conn, nil
 }
 func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) error {
+	genesisContract := common.HexToAddress("0x651d4424f34e6e918d8e4d2da4df3debdae83d0c")
+	nfttxes, err := payments.GetNFTTransactions(genesisContract)
+	if err != nil {
+		return err
+	}
+	nftskipped, nftsuccess, err := payments.UpsertNFTTransactions(genesisContract, nfttxes)
+	if err != nil {
+		return err
+	}
+
+	passlog.L.Info().Int("skipped", nftskipped).Int("success", nftsuccess).Msg("synced NFT records")
+
 	records1, err := payments.BNB(3)
 	if err != nil {
 		return err
@@ -508,7 +519,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 			continue
 		}
 
-		input, output, tokenDecimals, err := payments.ProcessValues(r.Sups, r.Value, r.JSON.TokenDecimal)
+		input, _, _, err := payments.ProcessValues(r.Sups, r.Value, r.JSON.TokenDecimal)
 		if err != nil {
 			return err
 		}
@@ -530,9 +541,6 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 			continue
 		}
 
-		outputStr := fmt.Sprintf("%s SUPS", output.Shift(-1*api.SUPSDecimals).StringFixed(4))
-		inputStr := fmt.Sprintf("%s %s", input.Shift(-1*int32(tokenDecimals)).StringFixed(4), strings.ToUpper(r.Symbol))
-		log.Info().Str("output", outputStr).Str("input", inputStr).Str("txid", r.TxHash).Msg("received payment")
 		successful++
 
 	}
@@ -758,23 +766,6 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		return terror.Error(err)
 	}
 
-	if enablePurchaseSubscription {
-		err := SyncFunc(ucm, pgxconn, log)
-		if err != nil {
-			log.Error().Err(err).Msg("sync")
-		}
-
-		go func() {
-			t := time.NewTicker(20 * time.Second)
-			for range t.C {
-				err := SyncFunc(ucm, pgxconn, log)
-				if err != nil {
-					log.Error().Err(err).Msg("sync")
-				}
-			}
-		}()
-	}
-
 	// API Server
 	api, routes := api.NewAPI(log,
 		pgxconn,
@@ -814,6 +805,23 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		}
 		os.Exit(1)
 	}()
+
+	if enablePurchaseSubscription {
+		err := SyncFunc(ucm, pgxconn, log)
+		if err != nil {
+			log.Error().Err(err).Msg("sync")
+		}
+
+		go func() {
+			t := time.NewTicker(20 * time.Second)
+			for range t.C {
+				err := SyncFunc(ucm, pgxconn, log)
+				if err != nil {
+					log.Error().Err(err).Msg("sync")
+				}
+			}
+		}()
+	}
 
 	go func() {
 		gameserverAddr := ctxCLI.String("gameserver_web_host_url")
