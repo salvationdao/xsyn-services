@@ -148,3 +148,5 @@ deploy/
 .vscode/settings.json
 .check-bad-files
 .check-bad-files2
+.env
+.export-env

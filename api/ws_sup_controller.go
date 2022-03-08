@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"passport"
@@ -146,7 +145,7 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 
 		_, _, _, err := sc.API.userCacheMap.Process(trans)
 		if err != nil {
-			sc.API.Log.Err(errors.New("failed to process user fund"))
+			sc.API.Log.Err(fmt.Errorf("failed to process user fund"))
 			return
 		}
 

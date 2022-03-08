@@ -227,7 +227,7 @@ func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.C
 	b2 := minuteBucket.Add(hubc.Identifier(), 1)
 
 	if b1 == 0 || b2 == 0 {
-		return terror.Error(errors.New("too many messages"), "too many message")
+		return terror.Error(fmt.Errorf("too many messages"), "too many message")
 	}
 
 	req := &FactionChatRequest{}

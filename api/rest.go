@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -47,6 +48,23 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) h
 		r.Body = ioutil.NopCloser(bytes.NewReader(contents))
 		defer r.Body.Close()
 		code, err := next(w, r)
+		if err != nil && errors.Is(err, sql.ErrNoRows) {
+			errStr := terror.Echo(err, true)
+			passlog.L.Warn().Err(err).Msg("rest record not found. " + errStr)
+
+			errObj := &ErrorObject{
+				Message:   "record not found",
+				ErrorCode: fmt.Sprintf("%d", http.StatusNotFound),
+			}
+			jsonErr, err := json.Marshal(errObj)
+			if err != nil {
+				terror.Echo(err)
+				http.Error(w, `{"message":"JSON failed, please contact IT.","error_code":"00001"}`, http.StatusInternalServerError)
+				return
+			}
+			http.Error(w, string(jsonErr), http.StatusNotFound)
+			return
+		}
 		if err != nil {
 			terror.Echo(err)
 			errObj := &ErrorObject{

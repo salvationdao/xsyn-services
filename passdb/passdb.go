@@ -2,7 +2,7 @@ package passdb
 
 import (
 	"database/sql"
-	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -12,10 +12,10 @@ var StdConn *sql.DB
 
 func New(conn *pgxpool.Pool, stdConn *sql.DB) error {
 	if Conn != nil {
-		return errors.New("db already initialised")
+		return fmt.Errorf("db already initialised")
 	}
 	if StdConn != nil {
-		return errors.New("db already initialised")
+		return fmt.Errorf("db already initialised")
 	}
 	StdConn = stdConn
 	Conn = conn

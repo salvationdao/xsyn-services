@@ -13,16 +13,45 @@ import (
 )
 
 func AICollection() (*boiler.Collection, error) {
-	return boiler.Collections(boiler.CollectionWhere.Name.EQ("Supremacy AI")).One(passdb.StdConn)
+	collection, err := boiler.Collections(
+		boiler.CollectionWhere.Name.EQ("Supremacy AI"),
+	).One(passdb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return collection, nil
 }
 func GenesisCollection() (*boiler.Collection, error) {
-	return boiler.Collections(boiler.CollectionWhere.Name.EQ("Supremacy Genesis")).One(passdb.StdConn)
+	collection, err := boiler.Collections(
+		boiler.CollectionWhere.Name.EQ("Supremacy Genesis"),
+	).One(passdb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return collection, nil
 }
 func Collection(id uuid.UUID) (*boiler.Collection, error) {
-	return boiler.FindCollection(passdb.StdConn, id.String())
+	collection, err := boiler.FindCollection(
+		passdb.StdConn,
+		id.String(),
+	)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return collection, nil
 }
 func CollectionByMintAddress(mintAddr common.Address) (*boiler.Collection, error) {
-	return boiler.Collections(boiler.CollectionWhere.MintContract.EQ(null.StringFrom(mintAddr.Hex()))).One(passdb.StdConn)
+	collection, err := boiler.Collections(
+		boiler.CollectionWhere.MintContract.EQ(
+			null.StringFrom(
+				mintAddr.Hex(),
+			),
+		),
+	).One(passdb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return collection, nil
 }
 
 // CollectionBySlug returns a collection by slug
@@ -30,7 +59,6 @@ func CollectionBySlug(ctx context.Context, conn Conn, slug string) (*boiler.Coll
 	collection, err := boiler.Collections(
 		boiler.CollectionWhere.Slug.EQ(slug),
 	).One(passdb.StdConn)
-
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting collection.")
 	}
