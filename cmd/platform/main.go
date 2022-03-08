@@ -398,21 +398,48 @@ func txConnect(
 	return conn, nil
 }
 func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) error {
+	withdrawRecords, err := payments.GetWithdraws(true)
+	if err != nil {
+		return fmt.Errorf("get withdraws: %w", err)
+	}
+	withdrawProcessSuccess, withdrawProcessSkipped, err := payments.ProcessWithdraws(withdrawRecords, ucm)
+	if err != nil {
+		return fmt.Errorf("process withdraws: %w", err)
+	}
+	passlog.L.Info().
+		Int("success", withdrawProcessSuccess).
+		Int("skipped", withdrawProcessSkipped).
+		Msg("processed withdraws")
+
+	depositRecords, err := payments.GetDeposits(true)
+	if err != nil {
+		return fmt.Errorf("get deposits: %w", err)
+	}
+	depositProcessSuccess, depositProcessSkipped, err := payments.ProcessDeposits(depositRecords, ucm)
+	if err != nil {
+		return fmt.Errorf("process deposits: %w", err)
+	}
+	passlog.L.Info().
+		Int("success", depositProcessSuccess).
+		Int("skipped", depositProcessSkipped).
+		Msg("processed deposits")
 	genesisContract := common.HexToAddress("0x651d4424f34e6e918d8e4d2da4df3debdae83d0c")
 	nfttxes, err := payments.GetNFTTransactions(genesisContract)
 	if err != nil {
-		return err
+		return fmt.Errorf("get nft transactions: %w", err)
 	}
 	nftskipped, nftsuccess, err := payments.UpsertNFTTransactions(genesisContract, nfttxes)
 	if err != nil {
-		return err
+		return fmt.Errorf("upsert nft transactions: %w", err)
 	}
 
-	passlog.L.Info().Int("skipped", nftskipped).Int("success", nftsuccess).Msg("synced NFT records")
+	passlog.L.Info().
+		Int("skipped", nftskipped).Int("success", nftsuccess).
+		Msg("synced NFT records")
 
-	records1, err := payments.BNB(3)
+	records1, err := payments.BNB()
 	if err != nil {
-		return err
+		return fmt.Errorf("get bnb payments: %w", err)
 	}
 
 	z := decimal.Zero
@@ -431,9 +458,9 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 	}
 	log.Info().Int("records", len(records1)).Str("sym", "BNB").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
 
-	records2, err := payments.BUSD(3)
+	records2, err := payments.BUSD()
 	if err != nil {
-		return err
+		return fmt.Errorf("get busd payments: %w", err)
 	}
 
 	z = decimal.Zero
@@ -452,9 +479,9 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 	}
 	log.Info().Int("records", len(records2)).Str("sym", "BUSD").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
 
-	records3, err := payments.ETH(3)
+	records3, err := payments.ETH()
 	if err != nil {
-		return err
+		return fmt.Errorf("get eth payments: %w", err)
 	}
 	totalSupsSold = decimal.Zero
 	z = decimal.Zero
@@ -471,9 +498,9 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 		z = z.Add(d)
 	}
 	log.Info().Int("records", len(records3)).Str("sym", "ETH").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
-	records4, err := payments.USDC(3)
+	records4, err := payments.USDC()
 	if err != nil {
-		return err
+		return fmt.Errorf("get usdc payments: %w", err)
 	}
 	totalSupsSold = decimal.Zero
 	z = decimal.Zero
@@ -530,7 +557,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 			continue
 		}
 
-		err = payments.StoreRecord(ctx, user, ucm, r)
+		err = payments.StoreRecord(ctx, passport.XsynSaleUserID, user.ID, ucm, r, true)
 		if err != nil && strings.Contains(err.Error(), "duplicate key") {
 			skipped++
 			continue

@@ -1,43 +1,63 @@
 package payments
 
 import (
+	"context"
+	"fmt"
+	"passport"
 	"passport/api"
-	"time"
+	"passport/passdb"
+
+	"github.com/rs/zerolog/log"
+	"github.com/shopspring/decimal"
 )
 
-type DepositRecord struct {
-	Symbol      string    `json:"symbol"`
-	Usd         float64   `json:"usd"`
-	Value       string    `json:"value"`
-	Sups        string    `json:"sups"`
-	Bucket      time.Time `json:"bucket"`
-	TxHash      string    `json:"tx_hash"`
-	Time        float64   `json:"time"`
-	ToAddress   string    `json:"to_address"`
-	FromAddress string    `json:"from_address"`
-	JSON        struct {
-		To                string `json:"to"`
-		Gas               string `json:"gas"`
-		From              string `json:"from"`
-		Hash              string `json:"hash"`
-		Input             string `json:"input"`
-		Nonce             string `json:"nonce"`
-		Value             string `json:"value"`
-		GasUsed           string `json:"gasUsed"`
-		GasPrice          string `json:"gasPrice"`
-		BlockHash         string `json:"blockHash"`
-		TimeStamp         string `json:"timeStamp"`
-		TokenName         string `json:"tokenName"`
-		BlockNumber       string `json:"blockNumber"`
-		TokenSymbol       string `json:"tokenSymbol"`
-		TokenDecimal      string `json:"tokenDecimal"`
-		Confirmations     string `json:"confirmations"`
-		ContractAddress   string `json:"contractAddress"`
-		TransactionIndex  string `json:"transactionIndex"`
-		CumulativeGasUsed string `json:"cumulativeGasUsed"`
-	} `json:"json"`
-}
+var latestDepositBlock = 0
 
-func GetDeposits() error                          { return nil }
-func InsertDeposits() error                       { return nil }
-func ProcessDeposits(ucm *api.UserCacheMap) error { return nil }
+func GetDeposits(testnet bool) ([]*Record, error) {
+	records, err := get("sups_deposit_txs", latestDepositBlock, testnet)
+	if err != nil {
+		return nil, err
+	}
+	latestBlock := latestBlockFromRecords(records)
+	latestDepositBlock = latestBlock
+	return records, nil
+}
+func ProcessDeposits(records []*Record, ucm *api.UserCacheMap) (int, int, error) {
+	ctx := context.Background()
+	success := 0
+	skipped := 0
+	for _, record := range records {
+		user, err := CreateOrGetUser(ctx, passdb.Conn, record.FromAddress)
+		if err != nil {
+			skipped++
+			log.Error().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("create or get user")
+			continue
+		}
+
+		value, err := decimal.NewFromString(record.JSON.Value)
+		if err != nil {
+			skipped++
+			log.Error().Str("txid", record.TxHash).Err(err).Msg("process decimal")
+			continue
+		}
+
+		msg := fmt.Sprintf("deposited %s SUPS", value.Shift(-1*api.SUPSDecimals).StringFixed(4))
+
+		trans := &passport.NewTransaction{
+			To:                   user.ID,
+			From:                 passport.XsynTreasuryUserID,
+			Amount:               *value.BigInt(),
+			TransactionReference: passport.TransactionReference(record.TxHash),
+			Description:          msg,
+			Group:                passport.TransactionGroupStore,
+		}
+
+		_, _, _, err = ucm.Process(trans)
+		if err != nil {
+			return success, skipped, fmt.Errorf("create tx entry for tx %s: %w", record.TxHash, err)
+		}
+		success++
+	}
+
+	return success, skipped, nil
+}
