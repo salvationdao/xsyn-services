@@ -10,6 +10,7 @@ import (
 	"passport"
 	"passport/api"
 	"passport/db"
+	"passport/passlog"
 	"strconv"
 	"strings"
 	"time"
@@ -62,6 +63,21 @@ const ETHSymbol Symbol = "eth_txs"
 const USDCSymbol Symbol = "usdc_txs"
 
 const SUPDecimals = 18
+
+func latestBlockFromRecords(records []*Record) int {
+	latestBlock := 0
+	for _, record := range records {
+		blockNumber, err := strconv.Atoi(record.JSON.BlockNumber)
+		if err != nil {
+			passlog.L.Err(err).Msg("could not parse blocknumber")
+			return 0
+		}
+		if blockNumber > latestNFTBlock {
+			latestBlock = blockNumber
+		}
+	}
+	return latestBlock
+}
 
 func CreateOrGetUser(ctx context.Context, conn *pgxpool.Pool, userAddr string) (*passport.User, error) {
 	from := common.HexToAddress(userAddr).Hex()
@@ -130,13 +146,18 @@ func StoreRecord(ctx context.Context, toUser *passport.User, ucm *api.UserCacheM
 	return nil
 }
 
-func get(sym Symbol, latestBlock int) ([]*Record, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://139.180.182.245:3001/api/%s", sym), nil)
+const baseURL = "http://v2.supremacy-api.avantdata.com:3001"
+
+func get(sym Symbol, latestBlock int, testnet bool) ([]*Record, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s", baseURL, sym), nil)
 	if err != nil {
 		return nil, err
 	}
 	q := req.URL.Query()
 	q.Add("since_block", strconv.Itoa(latestBlock))
+	if testnet {
+		q.Add("is_testnet", "true")
+	}
 	req.URL.RawQuery = q.Encode()
 
 	resp, err := http.DefaultClient.Do(req)
@@ -144,7 +165,7 @@ func get(sym Symbol, latestBlock int) ([]*Record, error) {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("non 200 response: %d", resp.StatusCode)
+		return nil, fmt.Errorf("non 200 response for %s: %d", req.URL.String(), resp.StatusCode)
 	}
 	defer resp.Body.Close()
 	b, err := ioutil.ReadAll(resp.Body)
@@ -161,9 +182,9 @@ func get(sym Symbol, latestBlock int) ([]*Record, error) {
 
 var LastBUSDBlock = 0
 
-func BUSD(requiredConfirmations int) ([]*Record, error) {
+func BUSD() ([]*Record, error) {
 	contractAddr := "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56"
-	records, err := get(BUSDSymbol, LastBUSDBlock)
+	records, err := get(BUSDSymbol, LastBUSDBlock, false)
 	if err != nil {
 		return nil, err
 	}
@@ -193,10 +214,10 @@ func BUSD(requiredConfirmations int) ([]*Record, error) {
 
 var LastUSDCBlock = 0
 
-func USDC(requiredConfirmations int) ([]*Record, error) {
+func USDC() ([]*Record, error) {
 	contractAddr := "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
 
-	records, err := get(USDCSymbol, LastUSDCBlock)
+	records, err := get(USDCSymbol, LastUSDCBlock, false)
 	if err != nil {
 		return nil, err
 	}
@@ -225,9 +246,9 @@ func USDC(requiredConfirmations int) ([]*Record, error) {
 
 var LastETHBlock = 0
 
-func ETH(requiredConfirmations int) ([]*Record, error) {
+func ETH() ([]*Record, error) {
 
-	records, err := get(ETHSymbol, LastETHBlock)
+	records, err := get(ETHSymbol, LastETHBlock, false)
 	if err != nil {
 		return nil, err
 	}
@@ -252,8 +273,8 @@ func ETH(requiredConfirmations int) ([]*Record, error) {
 
 var LastBNBBlock = 0
 
-func BNB(requiredConfirmations int) ([]*Record, error) {
-	records, err := get(BNBSymbol, LastBNBBlock)
+func BNB() ([]*Record, error) {
+	records, err := get(BNBSymbol, LastBNBBlock, false)
 	if err != nil {
 		return nil, err
 	}
