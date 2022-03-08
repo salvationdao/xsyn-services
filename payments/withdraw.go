@@ -10,7 +10,6 @@ import (
 	"passport/passlog"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/volatiletech/null/v8"
@@ -71,16 +70,16 @@ func ProcessWithdraws(records []*Record) (int, int, error) {
 	success := 0
 	skipped := 0
 	for _, record := range records {
-		u, err := CreateOrGetUser(ctx, passdb.Conn, record.FromAddress)
+		u, err := CreateOrGetUser(ctx, passdb.Conn, record.ToAddress)
 		if err != nil {
 			skipped++
-			log.Error().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("user by address")
+			passlog.L.Err(err).Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("user by address")
 			continue
 		}
 		value, err := decimal.NewFromString(record.JSON.Value)
 		if err != nil {
 			skipped++
-			log.Error().Str("txid", record.TxHash).Err(err).Msg("process decimal")
+			passlog.L.Err(err).Str("txid", record.TxHash).Err(err).Msg("process decimal")
 			continue
 		}
 
@@ -103,19 +102,17 @@ func ProcessWithdraws(records []*Record) (int, int, error) {
 		// check it hasn't expired
 		if result.RefundedAt.Before(time.Now()) || result.IsRefunded {
 			skipped++
-			passlog.L.Err(fmt.Errorf("refunded at is in the past")).Msg("already refunded")
 			continue
 		}
 		// check it hasn't been cancelled
 		if result.RefundCanceledAt.Valid {
 			skipped++
-			passlog.L.Err(fmt.Errorf("refund cancelled at is not null")).Msg("refund cancelled")
 			continue
 		}
 		// check it isn't deleted
 		if result.DeletedAt.Valid {
 			skipped++
-			passlog.L.Err(fmt.Errorf("refund deleted_at not null")).Msg("refund has been deleted")
+			passlog.L.Warn().Err(fmt.Errorf("refund deleted_at not null")).Msg("refund has been deleted")
 			continue
 		}
 
