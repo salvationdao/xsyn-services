@@ -1,11 +1,13 @@
 package payments
 
 import (
+	"context"
 	"fmt"
 	"passport/api"
-	"passport/passlog"
+	"passport/passdb"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/rs/zerolog/log"
+	"github.com/shopspring/decimal"
 )
 
 var latestWithdrawBlock = 0
@@ -17,19 +19,27 @@ func GetWithdraws(testnet bool) ([]*Record, error) {
 	}
 	latestBlock := latestBlockFromRecords(records)
 	latestWithdrawBlock = latestBlock
-	spew.Dump(records)
 	return records, nil
 }
 func ProcessWithdraws(records []*Record, ucm *api.UserCacheMap) (int, int, error) {
+	ctx := context.Background()
 	success := 0
 	skipped := 0
 	for _, record := range records {
-		in, out, decimal, err := ProcessValues(record.Sups, record.JSON.Input, record.JSON.TokenDecimal)
+		u, err := CreateOrGetUser(ctx, passdb.Conn, record.FromAddress)
 		if err != nil {
 			skipped++
-			passlog.L.Err(err).Msg("get withdraw decimal values")
+			log.Error().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("user by address")
+			continue
 		}
-		spew.Dump(in, out, decimal)
+		value, err := decimal.NewFromString(record.JSON.Value)
+		if err != nil {
+			skipped++
+			log.Error().Str("txid", record.TxHash).Err(err).Msg("process decimal")
+			continue
+		}
+
+		fmt.Printf("[TESTNET] WITHDRAW AMOUNT BY %s: %s\n", u.PublicAddress.String, value.Shift(-1*api.SUPSDecimals).StringFixed(4))
 
 		// HANDLE RECORD HERE
 

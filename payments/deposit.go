@@ -2,12 +2,13 @@ package payments
 
 import (
 	"context"
+	"fmt"
 	"passport"
 	"passport/api"
 	"passport/passdb"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/rs/zerolog/log"
+	"github.com/shopspring/decimal"
 )
 
 var latestDepositBlock = 0
@@ -19,25 +20,41 @@ func GetDeposits(testnet bool) ([]*Record, error) {
 	}
 	latestBlock := latestBlockFromRecords(records)
 	latestDepositBlock = latestBlock
-	spew.Dump(records)
 	return records, nil
 }
 func ProcessDeposits(records []*Record, ucm *api.UserCacheMap) (int, int, error) {
 	ctx := context.Background()
 	success := 0
 	skipped := 0
-	for _, r := range records {
-		user, err := CreateOrGetUser(ctx, passdb.Conn, r.FromAddress)
+	for _, record := range records {
+		user, err := CreateOrGetUser(ctx, passdb.Conn, record.FromAddress)
 		if err != nil {
 			skipped++
-			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("store record")
+			log.Error().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("create or get user")
 			continue
 		}
-		err = StoreRecord(ctx, passport.XsynTreasuryUserID, user.ID, ucm, r, false)
+
+		value, err := decimal.NewFromString(record.JSON.Value)
 		if err != nil {
 			skipped++
-			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("store record")
+			log.Error().Str("txid", record.TxHash).Err(err).Msg("process decimal")
 			continue
+		}
+
+		msg := fmt.Sprintf("deposited %s SUPS", value.Shift(-1*api.SUPSDecimals).StringFixed(4))
+
+		trans := &passport.NewTransaction{
+			To:                   user.ID,
+			From:                 passport.XsynTreasuryUserID,
+			Amount:               *value.BigInt(),
+			TransactionReference: passport.TransactionReference(record.TxHash),
+			Description:          msg,
+			Group:                passport.TransactionGroupStore,
+		}
+
+		_, _, _, err = ucm.Process(trans)
+		if err != nil {
+			return success, skipped, fmt.Errorf("create tx entry for tx %s: %w", record.TxHash, err)
 		}
 		success++
 	}
