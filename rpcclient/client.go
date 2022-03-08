@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jpillora/backoff"
+	"github.com/ninja-software/terror/v2"
 	"go.uber.org/atomic"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
@@ -75,6 +76,9 @@ func (c *C) GoCall(serviceMethod string, args interface{}, reply interface{}, ca
 }
 
 func (c *C) Call(serviceMethod string, args interface{}, reply interface{}) error {
+	if c == nil || c.clients == nil || len(c.clients) <= 0 {
+		return terror.Error(errors.New("rpc client not ready"), "The purchase system is currently not available. Please try again later.")
+	}
 	defer passlog.L.Debug().Str("fn", serviceMethod).Interface("args", args).Msg("rpc call")
 	span := tracer.StartSpan("rpc.call", tracer.ResourceName(serviceMethod))
 	defer span.Finish()
