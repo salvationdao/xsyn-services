@@ -11,7 +11,6 @@ import (
 	"passport/rpcclient"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gofrs/uuid"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
@@ -152,7 +151,6 @@ func SyncStoreItems() error {
 			passlog.L.Info().Str("id", template.Template.ID).Msg("inserting new store item")
 			err = newStoreItem.Insert(tx, boil.Infer())
 			if err != nil {
-				spew.Dump(newStoreItem)
 				return fmt.Errorf("insert new store item: %w", err)
 			}
 		} else {

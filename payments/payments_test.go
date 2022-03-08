@@ -5,7 +5,6 @@ import (
 	"passport/payments"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/shopspring/decimal"
 )
 
@@ -51,7 +50,6 @@ func TestProcessValues(t *testing.T) {
 	input, output, decimals, err := payments.ProcessValues(result.Sups, result.Value, result.JSON.TokenDecimal)
 	if err != nil {
 		t.Error(err)
-		spew.Dump(record)
 	}
 	if decimals == 0 {
 		t.Error("decimals is zero")

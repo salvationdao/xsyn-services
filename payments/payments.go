@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"passport"
-	"passport/api"
 	"passport/db"
 	"passport/passlog"
 	"strconv"
@@ -22,6 +22,10 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 )
+
+type UserCacheMap interface {
+	Process(nt *passport.NewTransaction) (*big.Int, *big.Int, string, error)
+}
 
 type Record struct {
 	Symbol      string    `json:"symbol"`
@@ -84,9 +88,6 @@ func CreateOrGetUser(ctx context.Context, conn *pgxpool.Pool, userAddr string) (
 	var user *passport.User
 	var err error
 	user, err = db.UserByPublicAddress(ctx, conn, from)
-	if err != nil {
-		return nil, err
-	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		user = &passport.User{}
 		user.Username = from
@@ -109,7 +110,7 @@ func ProcessValues(sups string, inputValue string, inputDecimalStr string) (deci
 	if err != nil {
 		return decimal.Zero, decimal.Zero, 0, err
 	}
-	bigOutputAmt := outputAmt.Shift(1 * api.SUPSDecimals)
+	bigOutputAmt := outputAmt.Shift(1 * passport.SUPSDecimals)
 	inputAmt, err := decimal.NewFromString(inputValue)
 	if err != nil {
 		return decimal.Zero, decimal.Zero, 0, err
@@ -126,15 +127,15 @@ func ProcessValues(sups string, inputValue string, inputDecimalStr string) (deci
 	return bigInputAmt, bigOutputAmt, tokenDecimal, nil
 }
 
-func StoreRecord(ctx context.Context, fromUserID passport.UserID, toUserID passport.UserID, ucm *api.UserCacheMap, record *Record, isPurchase bool) error {
+func StoreRecord(ctx context.Context, fromUserID passport.UserID, toUserID passport.UserID, ucm UserCacheMap, record *Record, isPurchase bool) error {
 	input, output, tokenDecimals, err := ProcessValues(record.Sups, record.Value, record.JSON.TokenDecimal)
 	if err != nil {
 		return err
 	}
 
-	msg := fmt.Sprintf("purchased %s SUPS for %s [%s]", output.Shift(-1*api.SUPSDecimals).StringFixed(4), input.Shift(-1*int32(tokenDecimals)).StringFixed(4), strings.ToUpper(record.Symbol))
+	msg := fmt.Sprintf("purchased %s SUPS for %s [%s]", output.Shift(-1*passport.SUPSDecimals).StringFixed(4), input.Shift(-1*int32(tokenDecimals)).StringFixed(4), strings.ToUpper(record.Symbol))
 	if isPurchase {
-		msg = fmt.Sprintf("deposited %s SUPS", output.Shift(-1*api.SUPSDecimals).StringFixed(4))
+		msg = fmt.Sprintf("deposited %s SUPS", output.Shift(-1*passport.SUPSDecimals).StringFixed(4))
 	}
 
 	trans := &passport.NewTransaction{

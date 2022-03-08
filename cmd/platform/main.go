@@ -169,6 +169,8 @@ func main() {
 					//router address for exchange rates
 					&cli.StringFlag{Name: "bsc_router_addr", Value: "0x10ED43C718714eb63d5aA57B78B54704E256024E", EnvVars: []string{envPrefix + "_BSC_ROUTER_ADDR"}, Usage: "BSC Router address"},
 					&cli.BoolFlag{Name: "enable_purchase_subscription", Value: false, EnvVars: []string{envPrefix + "_ENABLE_PURCHASE_SUBSCRIPTION"}, Usage: "Poll payments and price"},
+					&cli.BoolFlag{Name: "skip_update_users_mixed_case", Value: false, EnvVars: []string{envPrefix + "_SKIP_UPDATE_USERS_MIXED_CASE"}, Usage: "Set to true after users have been all updated as mixed case"},
+
 					//moralis key- set in env vars
 					//moralis key- set in env vars
 					//moralis key- set in env vars
@@ -402,7 +404,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 	if err != nil {
 		return fmt.Errorf("get withdraws: %w", err)
 	}
-	withdrawProcessSuccess, withdrawProcessSkipped, err := payments.ProcessWithdraws(withdrawRecords, ucm)
+	withdrawProcessSuccess, withdrawProcessSkipped, err := payments.ProcessWithdraws(withdrawRecords)
 	if err != nil {
 		return fmt.Errorf("process withdraws: %w", err)
 	}
@@ -410,6 +412,12 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 		Int("success", withdrawProcessSuccess).
 		Int("skipped", withdrawProcessSkipped).
 		Msg("processed withdraws")
+
+	// refundsSuccess, refundsSkipped, err := payments.ProcessPendingRefunds(ucm)
+	// if err != nil {
+	// 	return fmt.Errorf("process withdraws: %w", err)
+	// }
+	// passlog.L.Info().Int("success", refundsSuccess).Int("skipped", refundsSkipped).Msg("refunds processed")
 
 	depositRecords, err := payments.GetDeposits(true)
 	if err != nil {
@@ -530,7 +538,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 
 		exists, err := db.TransactionExists(ctx, conn, r.TxHash)
 		if err != nil {
-			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("store record")
+			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("insert payment record")
 			failed++
 			continue
 		}
@@ -542,7 +550,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 		user, err := payments.CreateOrGetUser(ctx, conn, r.FromAddress)
 		if err != nil {
 			failed++
-			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("store record")
+			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("insert payment record")
 			continue
 		}
 
@@ -564,7 +572,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 		}
 		if err != nil && !strings.Contains(err.Error(), "duplicate key") {
 			failed++
-			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("store record")
+			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("insert payment record")
 			continue
 		}
 
@@ -579,6 +587,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
 	sentryTraceRate := ctxCLI.Float64("sentry_sample_rate")
+	skipUpdateUsersMixedCase := ctxCLI.Bool("skip_update_users_mixed_case")
 	sentryRelease := fmt.Sprintf("%s@%s", SentryReleasePrefix, Version)
 	err := log_helpers.SentryInit(sentryDSNBackend, sentryServerName, sentryRelease, environment, sentryTraceRate, log)
 	switch errors.Unwrap(err) {
@@ -810,6 +819,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		enablePurchaseSubscription,
 	)
 
+	passlog.L.Info().Msg("start rpc server")
 	s := comms.NewServer(ucm, msgBus, api.SupremacyController.Txs, log, pgxconn, api.ClientMap)
 	err = comms.StartServer(s)
 	if err != nil {
@@ -873,6 +883,14 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		}
 		rpcclient.SetGlobalClient(rpcClient)
 	}()
+
+	if !skipUpdateUsersMixedCase {
+		passlog.L.Info().Msg("updating all users to mixed case")
+		err = db.UserMixedCaseUpdateAll()
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
 
 	api.Log.Info().Msg("Starting API")
 	return apiServer.ListenAndServe()

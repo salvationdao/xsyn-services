@@ -67,7 +67,7 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 	newFromBalance := big.NewInt(0)
 	newFromBalance.Add(newFromBalance, &fromBalance)
 	newFromBalance.Sub(newFromBalance, &nt.Amount)
-	if newFromBalance.Cmp(big.NewInt(0)) < 0 {
+	if nt.To != passport.OnChainUserID && newFromBalance.Cmp(big.NewInt(0)) < 0 {
 		return nil, nil, TransactionFailed, terror.Error(fmt.Errorf("from: not enough funds"), "Not enough funds.")
 	}
 
@@ -75,7 +75,7 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 	newToBalance := big.NewInt(0)
 	newToBalance.Add(newToBalance, &toBalance)
 	newToBalance.Add(newToBalance, &nt.Amount)
-	if newToBalance.Cmp(big.NewInt(0)) < 0 {
+	if nt.To != passport.OnChainUserID && newToBalance.Cmp(big.NewInt(0)) < 0 {
 		return nil, nil, TransactionFailed, terror.Error(fmt.Errorf("to: not enough funds"), "Not enough funds.")
 	}
 

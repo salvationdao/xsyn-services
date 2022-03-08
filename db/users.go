@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"passport"
+	"passport/db/boiler"
+	"passport/passdb"
+	"passport/passlog"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +16,8 @@ import (
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type UserColumn string
@@ -84,7 +89,7 @@ LEFT JOIN (
 // UserByPublicAddress returns a user by given public wallet address
 func UserByPublicAddress(ctx context.Context, conn Conn, publicAddress string) (*passport.User, error) {
 	user := &passport.User{}
-	q := UserGetQuery + ` WHERE users.public_address = LOWER($1)`
+	q := UserGetQuery + ` WHERE users.public_address = $1`
 	err := pgxscan.Get(ctx, conn, user, q, publicAddress)
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting user from Public Address.")
@@ -349,9 +354,10 @@ func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 
 	q := `--sql
 		INSERT INTO users (first_name, last_name, email, username, public_address, avatar_id, role_id, verified, facebook_id, google_id, twitch_id, twitter_id, discord_id)
-		VALUES ($1, $2, $3, $4, LOWER($5), $6, $7, $8, $9, $10, $11, $12, $13)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		RETURNING
 			id, role_id, first_name, last_name, email, username, avatar_id, created_at, updated_at, deleted_at, facebook_id, google_id, twitch_id, twitter_id, discord_id`
+
 	err = pgxscan.Get(ctx,
 		conn,
 		user,
@@ -360,7 +366,7 @@ func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 		user.LastName,
 		user.Email,
 		user.Username,
-		user.PublicAddress,
+		common.HexToAddress(user.PublicAddress.String).Hex(),
 		user.AvatarID,
 		user.RoleID,
 		user.Verified,
@@ -457,7 +463,7 @@ func UserAddWallet(ctx context.Context, conn Conn, user *passport.User, publicAd
 	q := `--sql
 		SELECT count(*)
 		FROM users
-		WHERE public_address = LOWER($1)`
+		WHERE public_address = $1`
 
 	err := pgxscan.Get(ctx, conn, &count, q, publicAddress)
 	if err != nil {
@@ -470,7 +476,7 @@ func UserAddWallet(ctx context.Context, conn Conn, user *passport.User, publicAd
 
 	q = `--sql
 		UPDATE users
-		SET public_address = LOWER($2)
+		SET public_address = $2
 		WHERE id = $1`
 	_, err = conn.Exec(ctx,
 		q,
@@ -1305,4 +1311,29 @@ func UserTransactionGetList(ctx context.Context, conn Conn, userID passport.User
 	}
 
 	return transactions, nil
+}
+
+func UserMixedCaseUpdateAll() error {
+	tx, err := passdb.StdConn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	users, err := boiler.Users().All(tx)
+	if err != nil {
+		return err
+	}
+	for _, u := range users {
+		if !u.PublicAddress.Valid || u.PublicAddress.String == "" {
+			continue
+		}
+		passlog.L.Info().Str("user_id", u.ID).Msg("updating user to mixed case")
+		u.PublicAddress = null.StringFrom(common.HexToAddress(u.PublicAddress.String).Hex())
+		_, err = u.Update(tx, boil.Whitelist(boiler.UserColumns.PublicAddress))
+		if err != nil {
+			return err
+		}
+	}
+	tx.Commit()
+	return nil
 }

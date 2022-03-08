@@ -69,7 +69,7 @@ func (tc *TransactionCache) commit() {
 				Str("to", tx.To.String()).
 				Str("txref", string(tx.TransactionReference)).
 				Msg("transaction cache lock")
-			if !tx.NotSafe {
+			if tx.NotSafe {
 				tc.IsLocked.Lock()
 				tc.IsLocked.isLocked = true
 				tc.IsLocked.Unlock()

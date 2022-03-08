@@ -12,6 +12,15 @@ const (
 	TransactionFailed  TransactionStatus = "failed"
 )
 
+const ETHSymbol = "ETH"
+const BNBSymbol = "BNB"
+const BUSDSymbol = "BUSD"
+const USDCSymbol = "USDC"
+
+const ETHDecimals = 18
+const BNBDecimals = 18
+const SUPSDecimals = 18
+
 type Transaction struct {
 	ID                   string            `json:"id" db:"id"`
 	Credit               UserID            `json:"credit" db:"credit"`
