@@ -142,6 +142,11 @@ db-migrate-up-one:
 db-boiler:
 	$(BIN)/sqlboiler $(BIN)/sqlboiler-psql --wipe --config sqlboiler.toml
 
+# make sure `make tools` is done
+.PHONY: db-boiler-windows
+db-boiler-windows:
+	cd $(BIN) && sqlboiler psql --config $(SERVER)/sqlboiler.toml
+
 .PHONY: db-seed
 db-seed:
 	go run cmd/platform/main.go db --seed
