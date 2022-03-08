@@ -8,6 +8,7 @@ import (
 	"passport/db"
 	"passport/db/boiler"
 	"strconv"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-chi/chi/v5"
@@ -56,7 +57,7 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 		return http.StatusBadRequest, terror.Warn(err, "get asset from db")
 	}
 
-	b, err := purchasedItemToOpenseaMetaData(item)
+	b, err := purchasedItemToOpenseaMetaData(api, item)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to convert to opensea metadata")
 	}
@@ -84,11 +85,11 @@ type openSeaMetaData struct {
 
 // purchasedItemMetaData shape of the purchased_items.metadata in the database
 type purchasedItemMetaData struct {
-	Mech     purchasedItemMetaDataMech          `json:"mech"`
-	Chassis  purchasedItemMetaDataChassis       `json:"chassis"`
-	Modules  purchasedItemMetaDataNestedModule  `json:"modules"`
-	Turrents purchasedItemMetaDataNestedTurrent `json:"turrents"`
-	Weapons  purchasedItemMetaDataNestedWeapon  `json:"weapons"`
+	Mech    purchasedItemMetaDataMech         `json:"mech"`
+	Chassis purchasedItemMetaDataChassis      `json:"chassis"`
+	Modules purchasedItemMetaDataNestedModule `json:"modules"`
+	Turrets purchasedItemMetaDataNestedTurret `json:"turrets"`
+	Weapons purchasedItemMetaDataNestedWeapon `json:"weapons"`
 }
 
 // purchasedItemMetaDataNestedModule shape of module, object not array
@@ -96,10 +97,10 @@ type purchasedItemMetaDataNestedModule struct {
 	Key0 purchasedItemMetaDataModule `json:"0"`
 }
 
-// purchasedItemMetaDataNestedTrurrent shape of turrent, object not array
-type purchasedItemMetaDataNestedTurrent struct {
-	Key0 purchasedItemMetaDataTurrent `json:"0"`
-	Key1 purchasedItemMetaDataTurrent `json:"1"`
+// purchasedItemMetaDataNestedTrurrent shape of turret, object not array
+type purchasedItemMetaDataNestedTurret struct {
+	Key0 purchasedItemMetaDataTurret `json:"0"`
+	Key1 purchasedItemMetaDataTurret `json:"1"`
 }
 
 // purchasedItemMetaDataNestedWeapon shape of weapon, object not array
@@ -115,6 +116,7 @@ type purchasedItemMetaDataMech struct {
 	AnimationURL string `json:"animation_url"`
 	AssetType    string `json:"asset_type"`
 	Tier         string `json:"tier"`
+	Slug         string `json:"slug"`
 }
 type purchasedItemMetaDataChassis struct {
 	Label string `json:"label"`
@@ -124,34 +126,33 @@ type purchasedItemMetaDataChassis struct {
 type purchasedItemMetaDataModule struct {
 	Label string `json:"label"`
 }
-type purchasedItemMetaDataTurrent struct {
+type purchasedItemMetaDataTurret struct {
 	Label string `json:"label"`
 }
 type purchasedItemMetaDataWeapon struct {
 	Label string `json:"label"`
 }
 
-func purchasedItemToOpenseaMetaData(item *boiler.PurchasedItem) (jb []byte, err error) {
+func purchasedItemToOpenseaMetaData(api *API, item *boiler.PurchasedItem) (jb []byte, err error) {
 	if item == nil {
 		return nil, terror.Error(fmt.Errorf("item is nil"))
 	}
 
 	itemMeta := purchasedItemMetaData{}
-	err = item.Data.Unmarshal(itemMeta)
+	err = item.Data.Unmarshal(&itemMeta)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
 	datOpensea := openSeaMetaData{}
 	datOpensea.Image = itemMeta.Mech.ImageURL
-	datOpensea.Description = itemMeta.Mech.Label // TODO use full brand name
+	datOpensea.Description = itemMeta.Mech.Label // ??? it contain brand name...?
 	datOpensea.AnimationURL = itemMeta.Mech.AnimationURL
 
+	// prepare attributes adding
 	attributes := []passport.Attribute{}
-
 	var str string
 	var atr passport.Attribute
-	datOpensea.Attributes = attributes
 
 	// asset type
 	str = itemMeta.Mech.AssetType
@@ -164,7 +165,23 @@ func purchasedItemToOpenseaMetaData(item *boiler.PurchasedItem) (jb []byte, err 
 	}
 
 	// brand
-	itemMeta.Chassis.BrandID == "id"
+	// HACK: cheat to do quick brand lookup
+	// TODO: may need to do db or rpc call in the future
+	// hint: itemMeta.Chassis.BrandID == "id"
+	if strings.Contains(itemMeta.Mech.Slug, "zaibatsu") {
+		str = "Zaibatsu Heavy Industries"
+	} else if strings.Contains(itemMeta.Mech.Slug, "mountain") {
+		str = "Red Mountain Offworld Mining Corporation"
+	} else if strings.Contains(itemMeta.Mech.Slug, "boston") {
+		str = "Boston Cybernetics"
+	}
+	if len(str) > 0 {
+		atr = passport.Attribute{
+			TraitType: "Brand",
+			Value:     str,
+		}
+		attributes = append(attributes, atr)
+	}
 
 	// model
 	str = itemMeta.Chassis.Model
@@ -197,20 +214,20 @@ func purchasedItemToOpenseaMetaData(item *boiler.PurchasedItem) (jb []byte, err 
 	}
 
 	// torrent 1
-	str = itemMeta.Turrents.Key0.Label
+	str = itemMeta.Turrets.Key0.Label
 	if len(str) > 0 {
 		atr = passport.Attribute{
-			TraitType: "Turrent One",
+			TraitType: "Turret One",
 			Value:     str,
 		}
 		attributes = append(attributes, atr)
 	}
 
 	// torrent 2
-	str = itemMeta.Turrents.Key1.Label
+	str = itemMeta.Turrets.Key1.Label
 	if len(str) > 0 {
 		atr = passport.Attribute{
-			TraitType: "Turrent Two",
+			TraitType: "Turret Two",
 			Value:     str,
 		}
 		attributes = append(attributes, atr)
@@ -245,6 +262,12 @@ func purchasedItemToOpenseaMetaData(item *boiler.PurchasedItem) (jb []byte, err 
 		}
 		attributes = append(attributes, atr)
 	}
+
+	// insert attributes
+	if len(attributes) < 10 {
+		api.Log.Warn().Err(fmt.Errorf("invalid opensea attributes length")).Msg("opensea attributes less than 10")
+	}
+	datOpensea.Attributes = attributes
 
 	// turn into json string
 	jb, err = json.Marshal(datOpensea)
