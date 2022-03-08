@@ -223,17 +223,14 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hub
 	}
 	txes := []*boiler.ItemOnchainTransaction{}
 	txCount, err := boiler.ItemOnchainTransactions(
-		boiler.ItemOnchainTransactionWhere.ExternalTokenID.EQ(asset.ExternalTokenID),
-		qm.And("collection_id = ?", collection.ID),
-		qm.OrderBy("block_number DESC"),
+		qm.Where("external_token_id = ? AND collection_id = ?", asset.ExternalTokenID, asset.CollectionID),
 	).Count(passdb.StdConn)
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
 	}
 	if txCount > 0 {
 		txes, err = boiler.ItemOnchainTransactions(
-			boiler.ItemOnchainTransactionWhere.ExternalTokenID.EQ(asset.ExternalTokenID),
-			qm.And("collection_id = ?", collection.ID),
+			qm.Where("external_token_id = ? AND collection_id = ?", asset.ExternalTokenID, asset.CollectionID),
 			qm.OrderBy("block_number DESC"),
 		).All(passdb.StdConn)
 		if err != nil {
