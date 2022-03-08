@@ -9,9 +9,11 @@ import (
 	"passport"
 	"passport/db"
 	"passport/db/boiler"
+	"passport/passdb"
 	"time"
 
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/volatiletech/sqlboiler/queries/qm"
 
 	"github.com/ninja-software/log_helpers"
 
@@ -186,9 +188,10 @@ type AssetUpdatedSubscribeRequest struct {
 }
 
 type AssetUpdatedSubscribeResponse struct {
-	CollectionSlug string                `json:"collection_slug"`
-	PurchasedItem  *boiler.PurchasedItem `json:"purchased_item"`
-	OwnerUsername  string                `json:"owner_username"`
+	ItemOnChainTransactions []*boiler.ItemOnchainTransaction `json:"item_on_chain_transactions"`
+	CollectionSlug          string                           `json:"collection_slug"`
+	PurchasedItem           *boiler.PurchasedItem            `json:"purchased_item"`
+	OwnerUsername           string                           `json:"owner_username"`
 }
 
 // 	rootHub.SecureCommand(HubKeyAssetSubscribe, AssetController.AssetSubscribe)
@@ -218,10 +221,30 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hub
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
 	}
+	txes := []*boiler.ItemOnchainTransaction{}
+	txCount, err := boiler.ItemOnchainTransactions(
+		boiler.ItemOnchainTransactionWhere.ExternalTokenID.EQ(asset.ExternalTokenID),
+		qm.And("collection_id = ?", collection.ID),
+		qm.OrderBy("block_number DESC"),
+	).Count(passdb.StdConn)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err)
+	}
+	if txCount > 0 {
+		txes, err = boiler.ItemOnchainTransactions(
+			boiler.ItemOnchainTransactionWhere.ExternalTokenID.EQ(asset.ExternalTokenID),
+			qm.And("collection_id = ?", collection.ID),
+			qm.OrderBy("block_number DESC"),
+		).All(passdb.StdConn)
+		if err != nil {
+			return req.TransactionID, "", terror.Error(err)
+		}
+	}
 	reply(&AssetUpdatedSubscribeResponse{
-		PurchasedItem:  asset,
-		OwnerUsername:  owner.Username,
-		CollectionSlug: collection.Slug,
+		ItemOnChainTransactions: txes,
+		PurchasedItem:           asset,
+		OwnerUsername:           owner.Username,
+		CollectionSlug:          collection.Slug,
 	})
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.Hash)), nil
 }
