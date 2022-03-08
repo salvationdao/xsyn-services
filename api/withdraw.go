@@ -7,8 +7,13 @@ import (
 	"math/big"
 	"net/http"
 	"passport/db"
+	"passport/db/boiler"
+	"passport/passdb"
+	"passport/payments"
 	"strconv"
 	"time"
+
+	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -80,12 +85,19 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 		return http.StatusInternalServerError, terror.Error(err, "Failed to create withdraw signature, please try again or contact support.")
 	}
 
+	refundID, err := payments.InsertPendingRefund(api.userCacheMap, user.ID, *amountBigInt, expiry)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to create withdraw signature, please try again or contact support.")
+	}
+
 	err = json.NewEncoder(w).Encode(struct {
 		MessageSignature string `json:"messageSignature"`
 		Expiry           int64  `json:"expiry"`
+		RefundID         string `json:"refundID"`
 	}{
 		MessageSignature: hexutil.Encode(messageSig),
 		Expiry:           expiry.Unix(),
+		RefundID:         refundID,
 	})
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
@@ -195,6 +207,30 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	})
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
+	}
+	return http.StatusOK, nil
+}
+
+func (api *API) UpdatePendingRefund(w http.ResponseWriter, r *http.Request) (int, error) {
+	refundID := chi.URLParam(r, "refundID")
+	if refundID == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing refund ID"), "Missing address.")
+	}
+
+	txHash := chi.URLParam(r, "txHash")
+	if txHash == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing tx hash"), "Missing nonce.")
+	}
+
+	pendingRefund, err := boiler.FindPendingRefund(passdb.StdConn, refundID)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing tx hash"), "Missing nonce.")
+	}
+
+	pendingRefund.TXHash = txHash
+	_, err = pendingRefund.Update(passdb.StdConn, boil.Whitelist(boiler.PendingRefundColumns.TXHash))
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing tx hash"), "Missing nonce.")
 	}
 	return http.StatusOK, nil
 }

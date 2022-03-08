@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"passport"
-	"passport/api"
 	"passport/passdb"
 
 	"github.com/rs/zerolog/log"
@@ -22,7 +21,7 @@ func GetDeposits(testnet bool) ([]*Record, error) {
 	latestDepositBlock = latestBlock
 	return records, nil
 }
-func ProcessDeposits(records []*Record, ucm *api.UserCacheMap) (int, int, error) {
+func ProcessDeposits(records []*Record, ucm UserCacheMap) (int, int, error) {
 	ctx := context.Background()
 	success := 0
 	skipped := 0
@@ -41,7 +40,7 @@ func ProcessDeposits(records []*Record, ucm *api.UserCacheMap) (int, int, error)
 			continue
 		}
 
-		msg := fmt.Sprintf("deposited %s SUPS", value.Shift(-1*api.SUPSDecimals).StringFixed(4))
+		msg := fmt.Sprintf("deposited %s SUPS", value.Shift(-1*passport.SUPSDecimals).StringFixed(4))
 
 		trans := &passport.NewTransaction{
 			To:                   user.ID,

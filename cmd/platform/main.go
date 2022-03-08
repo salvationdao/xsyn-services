@@ -402,7 +402,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 	if err != nil {
 		return fmt.Errorf("get withdraws: %w", err)
 	}
-	withdrawProcessSuccess, withdrawProcessSkipped, err := payments.ProcessWithdraws(withdrawRecords, ucm)
+	withdrawProcessSuccess, withdrawProcessSkipped, err := payments.ProcessWithdraws(withdrawRecords)
 	if err != nil {
 		return fmt.Errorf("process withdraws: %w", err)
 	}
@@ -410,6 +410,12 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 		Int("success", withdrawProcessSuccess).
 		Int("skipped", withdrawProcessSkipped).
 		Msg("processed withdraws")
+
+	// refundsSuccess, refundsSkipped, err := payments.ProcessPendingRefunds(ucm)
+	// if err != nil {
+	// 	return fmt.Errorf("process withdraws: %w", err)
+	// }
+	// passlog.L.Info().Int("success", refundsSuccess).Int("skipped", refundsSkipped).Msg("refunds processed")
 
 	depositRecords, err := payments.GetDeposits(true)
 	if err != nil {

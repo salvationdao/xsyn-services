@@ -22,15 +22,6 @@ import (
 	"github.com/sasha-s/go-deadlock"
 )
 
-const ETHSymbol = "ETH"
-const BNBSymbol = "BNB"
-const BUSDSymbol = "BUSD"
-const USDCSymbol = "USDC"
-
-const ETHDecimals = 18
-const BNBDecimals = 18
-const SUPSDecimals = 18
-
 type ChainClients struct {
 	isTestnetBlockchain bool
 	runBlockchainBridge bool
@@ -128,9 +119,9 @@ func NewChainClients(log *zerolog.Logger, api *API, p *passport.BridgeParams, is
 		switch symbol {
 		//case "SUPS":
 		//	cc.API.State.SUPtoUSD = amount
-		case ETHSymbol:
+		case passport.ETHSymbol:
 			cc.API.State.ETHtoUSD = amount
-		case BNBSymbol:
+		case passport.BNBSymbol:
 			cc.API.State.BNBtoUSD = amount
 		}
 
@@ -175,7 +166,7 @@ func (cc *ChainClients) runGoETHPriceListener(ctx context.Context) {
 				exchangeRateBackoff.Reset()
 
 				cc.updatePriceFuncMu.Lock()
-				cc.updatePriceFunc(ETHSymbol, result)
+				cc.updatePriceFunc(passport.ETHSymbol, result)
 				cc.updatePriceFuncMu.Unlock()
 
 				time.Sleep(10 * time.Second)
@@ -208,7 +199,7 @@ func (cc *ChainClients) runGoBNBPriceListener(ctx context.Context) {
 				exchangeRateBackoff.Reset()
 
 				cc.updatePriceFuncMu.Lock()
-				cc.updatePriceFunc(BNBSymbol, result)
+				cc.updatePriceFunc(passport.BNBSymbol, result)
 				cc.updatePriceFuncMu.Unlock()
 
 				time.Sleep(10 * time.Second)

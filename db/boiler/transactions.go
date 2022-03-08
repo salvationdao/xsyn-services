@@ -122,17 +122,20 @@ var TransactionWhere = struct {
 
 // TransactionRels is where relationship names are stored.
 var TransactionRels = struct {
-	CreditUser string
-	DebitUser  string
+	CreditUser                         string
+	DebitUser                          string
+	TransactionReferencePendingRefunds string
 }{
-	CreditUser: "CreditUser",
-	DebitUser:  "DebitUser",
+	CreditUser:                         "CreditUser",
+	DebitUser:                          "DebitUser",
+	TransactionReferencePendingRefunds: "TransactionReferencePendingRefunds",
 }
 
 // transactionR is where relationships are stored.
 type transactionR struct {
-	CreditUser *User `boiler:"CreditUser" boil:"CreditUser" json:"CreditUser" toml:"CreditUser" yaml:"CreditUser"`
-	DebitUser  *User `boiler:"DebitUser" boil:"DebitUser" json:"DebitUser" toml:"DebitUser" yaml:"DebitUser"`
+	CreditUser                         *User              `boiler:"CreditUser" boil:"CreditUser" json:"CreditUser" toml:"CreditUser" yaml:"CreditUser"`
+	DebitUser                          *User              `boiler:"DebitUser" boil:"DebitUser" json:"DebitUser" toml:"DebitUser" yaml:"DebitUser"`
+	TransactionReferencePendingRefunds PendingRefundSlice `boiler:"TransactionReferencePendingRefunds" boil:"TransactionReferencePendingRefunds" json:"TransactionReferencePendingRefunds" toml:"TransactionReferencePendingRefunds" yaml:"TransactionReferencePendingRefunds"`
 }
 
 // NewStruct creates a new relationship struct
@@ -419,6 +422,28 @@ func (o *Transaction) DebitUser(mods ...qm.QueryMod) userQuery {
 	return query
 }
 
+// TransactionReferencePendingRefunds retrieves all the pending_refund's PendingRefunds with an executor via transaction_reference column.
+func (o *Transaction) TransactionReferencePendingRefunds(mods ...qm.QueryMod) pendingRefundQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"pending_refund\".\"transaction_reference\"=?", o.TransactionReference),
+		qmhelper.WhereIsNull("\"pending_refund\".\"deleted_at\""),
+	)
+
+	query := PendingRefunds(queryMods...)
+	queries.SetFrom(query.Query, "\"pending_refund\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"pending_refund\".*"})
+	}
+
+	return query
+}
+
 // LoadCreditUser allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
@@ -629,6 +654,105 @@ func (transactionL) LoadDebitUser(e boil.Executor, singular bool, maybeTransacti
 	return nil
 }
 
+// LoadTransactionReferencePendingRefunds allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (transactionL) LoadTransactionReferencePendingRefunds(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
+	var slice []*Transaction
+	var object *Transaction
+
+	if singular {
+		object = maybeTransaction.(*Transaction)
+	} else {
+		slice = *maybeTransaction.(*[]*Transaction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &transactionR{}
+		}
+		args = append(args, object.TransactionReference)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &transactionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.TransactionReference {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.TransactionReference)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`pending_refund`),
+		qm.WhereIn(`pending_refund.transaction_reference in ?`, args...),
+		qmhelper.WhereIsNull(`pending_refund.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load pending_refund")
+	}
+
+	var resultSlice []*PendingRefund
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice pending_refund")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on pending_refund")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for pending_refund")
+	}
+
+	if len(pendingRefundAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.TransactionReferencePendingRefunds = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &pendingRefundR{}
+			}
+			foreign.R.TransactionReferenceTransaction = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.TransactionReference == foreign.TransactionReference {
+				local.R.TransactionReferencePendingRefunds = append(local.R.TransactionReferencePendingRefunds, foreign)
+				if foreign.R == nil {
+					foreign.R = &pendingRefundR{}
+				}
+				foreign.R.TransactionReferenceTransaction = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetCreditUser of the transaction to the related item.
 // Sets o.R.CreditUser to related.
 // Adds o to related.R.CreditTransactions.
@@ -718,6 +842,58 @@ func (o *Transaction) SetDebitUser(exec boil.Executor, insert bool, related *Use
 		related.R.DebitTransactions = append(related.R.DebitTransactions, o)
 	}
 
+	return nil
+}
+
+// AddTransactionReferencePendingRefunds adds the given related objects to the existing relationships
+// of the transaction, optionally inserting them as new records.
+// Appends related to o.R.TransactionReferencePendingRefunds.
+// Sets related.R.TransactionReferenceTransaction appropriately.
+func (o *Transaction) AddTransactionReferencePendingRefunds(exec boil.Executor, insert bool, related ...*PendingRefund) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.TransactionReference = o.TransactionReference
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"pending_refund\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"transaction_reference"}),
+				strmangle.WhereClause("\"", "\"", 2, pendingRefundPrimaryKeyColumns),
+			)
+			values := []interface{}{o.TransactionReference, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.TransactionReference = o.TransactionReference
+		}
+	}
+
+	if o.R == nil {
+		o.R = &transactionR{
+			TransactionReferencePendingRefunds: related,
+		}
+	} else {
+		o.R.TransactionReferencePendingRefunds = append(o.R.TransactionReferencePendingRefunds, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &pendingRefundR{
+				TransactionReferenceTransaction: o,
+			}
+		} else {
+			rel.R.TransactionReferenceTransaction = o
+		}
+	}
 	return nil
 }
 
