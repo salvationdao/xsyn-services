@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/volatiletech/sqlboiler/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ninja-software/log_helpers"
 
