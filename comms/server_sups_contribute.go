@@ -96,7 +96,7 @@ func (c *S) supremacyFeed() {
 	fund := big.NewInt(0)
 	fund, ok := fund.SetString("500000000000000000", 10)
 	if !ok {
-		c.Log.Err(errors.New("setting string not ok on fund big int")).Msg("too many strings")
+		c.Log.Err(fmt.Errorf("setting string not ok on fund big int")).Msg("too many strings")
 		return
 	}
 

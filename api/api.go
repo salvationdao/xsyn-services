@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"passport"
@@ -328,11 +327,11 @@ func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Request) (int, error) {
 	collectionAddress := chi.URLParam(r, "collection_address")
 	if collectionAddress == "" {
-		return http.StatusBadRequest, terror.Warn(errors.New("collection_address not provided in URL"), "metadata")
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("collection_address not provided in URL"), "metadata")
 	}
 	tokenIDStr := chi.URLParam(r, "token_id")
 	if tokenIDStr == "" {
-		return http.StatusBadRequest, terror.Warn(errors.New("token_id not provided in URL"), "metadata")
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("token_id not provided in URL"), "metadata")
 	}
 	tokenID, err := strconv.Atoi(tokenIDStr)
 	if err != nil {

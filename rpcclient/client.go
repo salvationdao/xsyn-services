@@ -77,7 +77,7 @@ func (c *C) GoCall(serviceMethod string, args interface{}, reply interface{}, ca
 
 func (c *C) Call(serviceMethod string, args interface{}, reply interface{}) error {
 	if c == nil || c.clients == nil || len(c.clients) <= 0 {
-		return terror.Error(errors.New("rpc client not ready"), "The purchase system is currently not available. Please try again later.")
+		return terror.Error(fmt.Errorf("rpc client not ready"), "The purchase system is currently not available. Please try again later.")
 	}
 	defer passlog.L.Debug().Str("fn", serviceMethod).Interface("args", args).Msg("rpc call")
 	span := tracer.StartSpan("rpc.call", tracer.ResourceName(serviceMethod))

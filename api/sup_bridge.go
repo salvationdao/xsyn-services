@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"passport"
@@ -98,7 +97,7 @@ func fetchPrice(symbol string) (decimal.Decimal, error) {
 		return decimal.Zero, err
 	}
 	if dec.Equal(decimal.Zero) {
-		return decimal.Zero, errors.New("0 price returned")
+		return decimal.Zero, fmt.Errorf("0 price returned")
 	}
 	return dec, nil
 }
