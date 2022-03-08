@@ -39,7 +39,7 @@ func NewGamebarController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Ga
 	}
 
 	api.Command(HubKeyGamebarSessionIDGet, gamebarHub.GetSessionIDHandler)
-	api.SecureCommand(HubKeyGamebarAuthRingCheck, gamebarHub.AuthTwitchRingCheck)
+	api.SecureCommand(HubKeyGamebarAuthRingCheck, gamebarHub.AuthRingCheck)
 	api.SubscribeCommand(HubKeyGamebarUserSubscribe, gamebarHub.UserUpdatedSubscribeHandler)
 
 	return gamebarHub
@@ -49,7 +49,6 @@ func NewGamebarController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Ga
 const HubKeyGamebarSessionIDGet hub.HubCommandKey = "GAMEBAR:SESSION:ID:GET"
 
 func (gc *GamebarController) GetSessionIDHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-
 	reply(hubc.SessionID)
 
 	return nil
@@ -65,7 +64,7 @@ type AuthTwitchRingCheckRequest struct {
 
 const HubKeyGamebarAuthRingCheck hub.HubCommandKey = "GAMEBAR:AUTH:RING:CHECK"
 
-func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (gc *GamebarController) AuthRingCheck(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &AuthTwitchRingCheckRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -117,11 +116,11 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 	}
 
 	var resp struct {
-		IsSuccess bool `json:"isSuccess"`
+		IsSuccess bool `json:"is_success"`
 	}
 	err = gc.API.GameserverRequest(http.MethodPost, "/auth_ring_check", struct {
 		User                *passport.User `json:"user"`
-		GameserverSessionID string         `json:"gameserverSessionID"`
+		GameserverSessionID string         `json:"gameserver_session_id"`
 	}{
 		User:                user,
 		GameserverSessionID: req.Payload.GameserverSessionID,
@@ -130,8 +129,10 @@ func (gc *GamebarController) AuthTwitchRingCheck(ctx context.Context, hubc *hub.
 		return terror.Error(err, err.Error())
 	}
 
-	if !resp.IsSuccess {
-		return terror.Error(errors.New("failed to pass ring check"))
+	if resp.IsSuccess {
+		// upgrade client level to 2
+		hubc.Level = 2
+		gc.Log.Info().Msgf("Client %s has passed the ring check and been upgraded to level 2 client")
 	}
 
 	reply(true)
