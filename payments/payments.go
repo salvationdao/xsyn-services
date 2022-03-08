@@ -123,16 +123,20 @@ func ProcessValues(sups string, inputValue string, inputDecimalStr string) (deci
 	return bigInputAmt, bigOutputAmt, tokenDecimal, nil
 }
 
-func StoreRecord(ctx context.Context, toUser *passport.User, ucm *api.UserCacheMap, record *Record) error {
+func StoreRecord(ctx context.Context, fromUserID passport.UserID, toUserID passport.UserID, ucm *api.UserCacheMap, record *Record, isPurchase bool) error {
 	input, output, tokenDecimals, err := ProcessValues(record.Sups, record.Value, record.JSON.TokenDecimal)
 	if err != nil {
 		return err
 	}
+
 	msg := fmt.Sprintf("purchased %s SUPS for %s [%s]", output.Shift(-1*api.SUPSDecimals).StringFixed(4), input.Shift(-1*int32(tokenDecimals)).StringFixed(4), strings.ToUpper(record.Symbol))
+	if isPurchase {
+		msg = fmt.Sprintf("deposited %s SUPS", output.Shift(-1*api.SUPSDecimals).StringFixed(4))
+	}
 
 	trans := &passport.NewTransaction{
-		To:                   toUser.ID,
-		From:                 passport.XsynSaleUserID,
+		To:                   toUserID,
+		From:                 fromUserID,
 		Amount:               *output.BigInt(),
 		TransactionReference: passport.TransactionReference(record.TxHash),
 		Description:          msg,

@@ -406,7 +406,10 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 	if err != nil {
 		return fmt.Errorf("process withdraws: %w", err)
 	}
-	passlog.L.Info().Int("success", withdrawProcessSuccess).Int("skipped", withdrawProcessSkipped).Msg("processed withdraws")
+	passlog.L.Info().
+		Int("success", withdrawProcessSuccess).
+		Int("skipped", withdrawProcessSkipped).
+		Msg("processed withdraws")
 
 	depositRecords, err := payments.GetDeposits(true)
 	if err != nil {
@@ -416,7 +419,10 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 	if err != nil {
 		return fmt.Errorf("process deposits: %w", err)
 	}
-	passlog.L.Info().Int("success", depositProcessSuccess).Int("skipped", depositProcessSkipped).Msg("processed deposits")
+	passlog.L.Info().
+		Int("success", depositProcessSuccess).
+		Int("skipped", depositProcessSkipped).
+		Msg("processed deposits")
 	genesisContract := common.HexToAddress("0x651d4424f34e6e918d8e4d2da4df3debdae83d0c")
 	nfttxes, err := payments.GetNFTTransactions(genesisContract)
 	if err != nil {
@@ -427,7 +433,9 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 		return fmt.Errorf("upsert nft transactions: %w", err)
 	}
 
-	passlog.L.Info().Int("skipped", nftskipped).Int("success", nftsuccess).Msg("synced NFT records")
+	passlog.L.Info().
+		Int("skipped", nftskipped).Int("success", nftsuccess).
+		Msg("synced NFT records")
 
 	records1, err := payments.BNB()
 	if err != nil {
@@ -549,7 +557,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 			continue
 		}
 
-		err = payments.StoreRecord(ctx, user, ucm, r)
+		err = payments.StoreRecord(ctx, passport.XsynSaleUserID, user.ID, ucm, r, true)
 		if err != nil && strings.Contains(err.Error(), "duplicate key") {
 			skipped++
 			continue
