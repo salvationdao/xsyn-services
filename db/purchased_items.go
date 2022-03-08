@@ -10,7 +10,6 @@ import (
 
 	"passport/rpcclient"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -36,10 +35,10 @@ func SyncPurchasedItems() error {
 	for _, item := range mechResp.MechContainers {
 		exists, err := boiler.PurchasedItemExists(tx, item.Mech.ID)
 		if err != nil {
+			passlog.L.Err(err).Str("id", item.Mech.ID).Msg("check if mech exists")
 			return terror.Error(err)
 		}
 		if !exists {
-			passlog.L.Info().Str("id", item.Mech.ID).Msg("creating new mech")
 			data, err := json.Marshal(item)
 			if err != nil {
 				return terror.Error(err)
@@ -55,17 +54,30 @@ func SyncPurchasedItems() error {
 				}
 			}
 
+			if item.Mech.Hash == "k8zlb6Yl1L" {
+				collection, err = RogueCollection()
+				if err != nil {
+					return terror.Error(err)
+				}
+			}
+
 			newItem := &boiler.PurchasedItem{
 				ID:              item.Mech.ID,
 				CollectionID:    collection.ID,
 				StoreItemID:     item.Mech.TemplateID,
 				OwnerID:         item.Mech.OwnerID,
-				Tier:            item.Mech.Tier,
 				ExternalTokenID: item.Mech.ExternalTokenID,
+				Tier:            item.Mech.Tier,
 				Hash:            item.Mech.Hash,
 				Data:            data,
 				RefreshesAt:     time.Now().Add(RefreshDuration),
 			}
+			passlog.L.Info().Str("id", item.Mech.ID).
+				Str("collection_id", collection.ID).
+				Str("store_item_id", item.Mech.TemplateID).
+				Str("owner_id", item.Mech.OwnerID).
+				Int("external_token_id", item.Mech.ExternalTokenID).
+				Msg("creating new mech")
 			err = newItem.Insert(tx, boil.Infer())
 			if err != nil {
 				return terror.Error(err)
@@ -161,7 +173,6 @@ func PurchasedItemsByOwnerID(ownerID uuid.UUID) ([]*boiler.PurchasedItem, error)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-	spew.Dump(items)
 	result := []*boiler.PurchasedItem{}
 	for _, item := range items {
 		item, err = getPurchasedItem(uuid.Must(uuid.FromString(item.ID)))
@@ -335,7 +346,6 @@ func setPurchasedItem(item *boiler.PurchasedItem) (*boiler.PurchasedItem, error)
 	if !exists {
 		err = item.Insert(passdb.StdConn, boil.Infer())
 		if err != nil {
-			spew.Dump(item)
 			return nil, terror.Error(err)
 		}
 	}

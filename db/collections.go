@@ -12,6 +12,15 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
+func RogueCollection() (*boiler.Collection, error) {
+	collection, err := boiler.Collections(
+		boiler.CollectionWhere.Name.EQ("Supremacy"),
+	).One(passdb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return collection, nil
+}
 func AICollection() (*boiler.Collection, error) {
 	collection, err := boiler.Collections(
 		boiler.CollectionWhere.Name.EQ("Supremacy AI"),

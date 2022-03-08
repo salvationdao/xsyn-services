@@ -1,7 +1,6 @@
 package payments
 
 import (
-	"context"
 	"fmt"
 	"math/big"
 	"passport"
@@ -66,37 +65,23 @@ func GetWithdraws(testnet bool) ([]*Record, error) {
 }
 
 func ProcessWithdraws(records []*Record) (int, int, error) {
-	ctx := context.Background()
+	// ctx := context.Background()
 	success := 0
 	skipped := 0
 	for _, record := range records {
-		u, err := CreateOrGetUser(ctx, passdb.Conn, record.ToAddress)
-		if err != nil {
-			skipped++
-			passlog.L.Err(err).Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("user by address")
-			continue
-		}
 		value, err := decimal.NewFromString(record.JSON.Value)
 		if err != nil {
 			skipped++
 			passlog.L.Err(err).Str("txid", record.TxHash).Err(err).Msg("process decimal")
 			continue
 		}
-
-		fmt.Printf("[TESTNET] WITHDRAW AMOUNT BY %s: %s\n", u.PublicAddress.String, value.Shift(-1*passport.SUPSDecimals).StringFixed(4))
-
 		// find out pending refund and mark it as refunded
 		result, err := boiler.PendingRefunds(
 			qm.Where("tx_hash ILIKE ?", record.TxHash),
 		).One(passdb.StdConn)
 		if err != nil {
 			skipped++
-			passlog.L.Err(err).Msg("finding pending refund")
-			continue
-		}
-		if result == nil {
-			skipped++
-			passlog.L.Err(fmt.Errorf("result is nil")).Msg("finding pending refund")
+			passlog.L.Warn().Err(err).Str("tx_id", record.TxHash).Str("amount", value.Shift(-1*SUPDecimals).StringFixed(4)).Msg("could not find matching tx_id in refund table")
 			continue
 		}
 		// check it hasn't expired
@@ -112,7 +97,7 @@ func ProcessWithdraws(records []*Record) (int, int, error) {
 		// check it isn't deleted
 		if result.DeletedAt.Valid {
 			skipped++
-			passlog.L.Warn().Err(fmt.Errorf("refund deleted_at not null")).Msg("refund has been deleted")
+			passlog.L.Warn().Err(fmt.Errorf("refund deleted_at not null")).Str("tx_id", record.TxHash).Str("amount", value.Shift(-1*SUPDecimals).StringFixed(4)).Msg("refund has been deleted")
 			continue
 		}
 
@@ -121,7 +106,7 @@ func ProcessWithdraws(records []*Record) (int, int, error) {
 		_, err = result.Update(passdb.StdConn, boil.Whitelist(boiler.PendingRefundColumns.RefundCanceledAt))
 		if err != nil {
 			skipped++
-			passlog.L.Err(err).Msg("updating pending refund table")
+			passlog.L.Err(err).Str("tx_id", record.TxHash).Str("amount", value.Shift(-1*SUPDecimals).StringFixed(4)).Msg("updating pending refund table")
 			continue
 		}
 

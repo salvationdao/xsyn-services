@@ -88,9 +88,6 @@ func CreateOrGetUser(ctx context.Context, conn *pgxpool.Pool, userAddr string) (
 	var user *passport.User
 	var err error
 	user, err = db.UserByPublicAddress(ctx, conn, from)
-	if err != nil {
-		return nil, err
-	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		user = &passport.User{}
 		user.Username = from
