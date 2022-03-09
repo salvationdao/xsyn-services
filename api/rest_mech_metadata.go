@@ -15,6 +15,16 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
+/***
+ *  # dev notes
+ *
+ *  test url:
+ *  http://localhost:8086/api/asset/0x651d4424f34e6e918d8e4d2da4df3debdae83d0c/682
+ *  https://opensea.io/assets/0x651d4424f34e6e918d8e4d2da4df3debdae83d0c/682
+ *  https://api.xsyn.io/api/asset/0x651d4424f34e6e918d8e4d2da4df3debdae83d0c/682
+ *
+ */
+
 // AssetGet grabs asset's metadata via token id
 func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 	// Get token id
@@ -76,11 +86,11 @@ type openSeaMetaData struct {
 	ImageData       string               `json:"image_data,omitempty"`       // raw image svg
 	ExternalURL     string               `json:"external_url,omitempty"`     // direct url link to image asset
 	Description     string               `json:"description,omitempty"`      // item description
+	Name            string               `json:"name,omitempty"`             // item name
 	Attributes      []passport.Attribute `json:"attributes,omitempty"`       // item attributes, custom    TODO
 	BackgroundColor string               `json:"background_color,omitempty"` // openseas page background
 	AnimationURL    string               `json:"animation_url,omitempty"`    // direct url link to video asset
 	YoutubeURL      string               `json:"youtube_url,omitempty"`      // url to youtube video
-	// Name            string `json:"name,omitempty"`          // item name, DO NOT INCLUDE
 }
 
 // purchasedItemMetaData shape of the purchased_items.metadata in the database
@@ -146,7 +156,8 @@ func purchasedItemToOpenseaMetaData(api *API, item *boiler.PurchasedItem) (jb []
 
 	datOpensea := openSeaMetaData{}
 	datOpensea.Image = itemMeta.Mech.ImageURL
-	datOpensea.Description = itemMeta.Mech.Label // ??? it contain brand name...?
+	datOpensea.Description = itemMeta.Mech.Label // TODO bring back when decided what to put
+	datOpensea.Name = itemMeta.Mech.Name
 	datOpensea.AnimationURL = itemMeta.Mech.AnimationURL
 
 	// prepare attributes adding
