@@ -44,14 +44,16 @@ After both servers are running (and database setup), suck data in this order:
 - gameserver -> passport-server
 
 ```
-cd $GAMESERVER
-cd server
-go run cmd/gameserver/main.go sync
-```
+GAMESERVER$ make db-reset
+GAMESERVER$ make db-boiler
+GAMESERVER$ make serve
 
-```
-cd $PASSPORTSERVER
-go run cmd/platform/main.go sync
+PASSPORT-SERVER$ make db-reset
+PASSPORT-SERVER$ make db-boiler
+PASSPORT-SERVER$ make serve
+
+GAMESERVER$ make sync
+PASSPORT-SERVER$ make sync
 ```
 
 ### envars
