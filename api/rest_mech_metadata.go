@@ -157,9 +157,6 @@ func purchasedItemToOpenseaMetaData(api *API, item *boiler.PurchasedItem) (jb []
 
 	datOpensea := openSeaMetaData{}
 	datOpensea.Image = itemMeta.Mech.ImageURL
-<<<<<<< HEAD
-	datOpensea.Description = itemMeta.Mech.Label // TODO bring back when decided what to put
-=======
 	datOpensea.Description = strings.Trim(itemMeta.Mech.Label, " ")
 	datOpensea.Name = strings.Trim(
 		strings.Join(
@@ -168,7 +165,6 @@ func purchasedItemToOpenseaMetaData(api *API, item *boiler.PurchasedItem) (jb []
 		),
 		" ",
 	)
->>>>>>> a204f4cf2a6c44e12a8f6895c3f23a3b53a26a81
 	datOpensea.AnimationURL = itemMeta.Mech.AnimationURL
 
 	// prepare attributes adding
