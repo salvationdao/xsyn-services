@@ -42,7 +42,7 @@ func (api *API) CheckUserEarlyContributor(w http.ResponseWriter, r *http.Request
 			return http.StatusInternalServerError, terror.Error(err, "Failed to check early contributor")
 		}
 		earlyContributorReturn := EarlyContributorReturn{Key: "is-early", Value: isEarly, Signed: false, Agreed: false}
-		if !user.Agree.Valid {
+		if user.Agree.Valid {
 			earlyContributorReturn.Agreed = user.Agree.Bool
 		}
 		if user.Message.Valid {
@@ -54,7 +54,7 @@ func (api *API) CheckUserEarlyContributor(w http.ResponseWriter, r *http.Request
 		return helpers.EncodeJSON(w, earlyContributorReturn)
 	}
 	earlyContributorReturn := EarlyContributorReturn{Key: "is-early", Value: isEarly, Signed: false, Agreed: false}
-	if !user.Agree.Valid {
+	if user.Agree.Valid {
 		earlyContributorReturn.Agreed = user.Agree.Bool
 	}
 	if user.Message.Valid {
@@ -114,7 +114,7 @@ func (api *API) EarlyContributorSignMessage(w http.ResponseWriter, r *http.Reque
 			return http.StatusInternalServerError, terror.Error(err, "Failed to check early contributor")
 		}
 		earlyContributorReturn := EarlyContributorReturn{Key: "is-early", Value: isEarly, Signed: false, Agreed: false}
-		if !user.Agree.Valid {
+		if user.Agree.Valid {
 			earlyContributorReturn.Agreed = user.Agree.Bool
 		}
 		if user.Message.Valid {
@@ -126,7 +126,7 @@ func (api *API) EarlyContributorSignMessage(w http.ResponseWriter, r *http.Reque
 		return helpers.EncodeJSON(w, earlyContributorReturn)
 	}
 	earlyContributorReturn := EarlyContributorReturn{Key: "is-early", Value: isEarly, Signed: false, Agreed: false}
-	if !user.Agree.Valid {
+	if user.Agree.Valid {
 		earlyContributorReturn.Agreed = user.Agree.Bool
 	}
 	if user.Message.Valid {
