@@ -211,6 +211,44 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	return http.StatusOK, nil
 }
 
+func (api *API) UpdateMintTX(w http.ResponseWriter, r *http.Request) (int, error) {
+	address := chi.URLParam(r, "address")
+	if address == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing address"), "Missing address.")
+	}
+	// check user owns this asset
+	user, err := db.UserByPublicAddress(context.Background(), api.Conn, address)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
+	}
+	tokenID := chi.URLParam(r, "externalTokenID")
+	if tokenID == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing tokenID"), "Missing tokenID.")
+	}
+	tokenIDuint64, err := strconv.ParseUint(tokenID, 10, 64)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to convert token id.")
+	}
+	collectionSlug := chi.URLParam(r, "collectionSlug")
+	if collectionSlug == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing collection slug"), "Missing Collection slug.")
+	}
+	// get collection details
+	collection, err := db.CollectionBySlug(context.Background(), api.Conn, collectionSlug)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get collection.")
+	}
+	item, err := db.PurchasedItemByMintContractAndTokenID(common.HexToAddress(collection.MintContract.String), int(tokenIDuint64))
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
+	}
+	if item.OwnerID != user.ID.String() {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("unable to validate ownership of asset"), "Unable to validate ownership of asset.")
+	}
+
+	return http.StatusNotImplemented, terror.ErrNotImplemented
+}
+
 func (api *API) UpdatePendingRefund(w http.ResponseWriter, r *http.Request) (int, error) {
 	refundID := chi.URLParam(r, "refundID")
 	if refundID == "" {
