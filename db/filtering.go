@@ -58,6 +58,7 @@ func GenerateListFilterSQL(column string, value string, operator OperatorValueTy
 	checkValue := value
 	condition := ""
 	indexStr := fmt.Sprintf("$%d", index)
+	column = fmt.Sprintf(`"%s"`, column)
 
 	switch operator {
 	case OperatorValueTypeContains, OperatorValueTypeStartsWith, OperatorValueTypeEndsWith:

@@ -40,6 +40,11 @@ func NewTransactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API)
 
 const HubKeyTransactionGroups hub.HubCommandKey = "TRANSACTION:GROUPS"
 
+type TransactionGroup struct {
+	Group     string   `json:"group"`
+	SubGroups []string `json:"sub_groups"`
+}
+
 // TransactionGroupsHandler returns a list of group IDs that the user's transactions exist in
 func (tc *TransactionController) TransactionGroupsHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	// get user
@@ -50,12 +55,12 @@ func (tc *TransactionController) TransactionGroupsHandler(ctx context.Context, h
 
 	userID := passport.UserID(uid)
 
-	groupIDs, err := db.UsersTransactionGroups(userID, ctx, tc.Conn)
+	groups, err := db.UsersTransactionGroups(userID, ctx, tc.Conn)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	reply(groupIDs)
+	reply(groups)
 	return nil
 }
 
