@@ -3,16 +3,12 @@ package api
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"passport"
 	"passport/db"
 	"passport/email"
-	"strconv"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ninja-software/log_helpers"
 
 	SentryTracer "github.com/ninja-syndicate/hub/ext/sentry"
@@ -22,7 +18,6 @@ import (
 	"nhooyr.io/websocket"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 
@@ -299,59 +294,4 @@ func (api *API) RecordUserActivity(
 	if err != nil {
 		api.Log.Err(err).Msg("issue saving user activity")
 	}
-}
-
-// AssetGet grabs asset's metadata via token id
-func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
-	// Get token id
-	hash := chi.URLParam(r, "hash")
-	if hash == "" {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("invalid asset hash"), "Invalid Asset Hash.")
-	}
-
-	// Get asset via token id
-
-	item, err := db.PurchasedItemByHash(hash)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset")
-	}
-	// Encode result
-	err = json.NewEncoder(w).Encode(item)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to encode JSON")
-	}
-
-	return http.StatusOK, nil
-}
-
-// AssetGet grabs asset's metadata via token id
-func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Request) (int, error) {
-	collectionAddress := chi.URLParam(r, "collection_address")
-	if collectionAddress == "" {
-		return http.StatusBadRequest, terror.Warn(fmt.Errorf("collection_address not provided in URL"), "metadata")
-	}
-	tokenIDStr := chi.URLParam(r, "token_id")
-	if tokenIDStr == "" {
-		return http.StatusBadRequest, terror.Warn(fmt.Errorf("token_id not provided in URL"), "metadata")
-	}
-	tokenID, err := strconv.Atoi(tokenIDStr)
-	if err != nil {
-		return http.StatusBadRequest, terror.Warn(err, "get asset from db")
-	}
-	item, err := db.PurchasedItemByMintContractAndTokenID(common.HexToAddress(collectionAddress), tokenID)
-	if err != nil {
-		return http.StatusBadRequest, terror.Warn(err, "get asset from db")
-	}
-	// Get asset via token id
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset")
-	}
-
-	// Encode result
-	err = json.NewEncoder(w).Encode(item)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to encode JSON")
-	}
-
-	return http.StatusOK, nil
 }
