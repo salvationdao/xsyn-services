@@ -888,10 +888,8 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 			fmt.Sprintf("%s:10012", hostname),
 			fmt.Sprintf("%s:10011", hostname),
 		}
-		rpcClient, err := rpcclient.NewClient(rpcAddrs...)
-		if err != nil {
-			passlog.L.Err(err).Msg("setup rpc client")
-			return
+		rpcClient := &rpcclient.XrpcClient{
+			Addrs: rpcAddrs,
 		}
 		rpcclient.SetGlobalClient(rpcClient)
 	}()
@@ -957,9 +955,8 @@ func SuperMigrate(c *cli.Context) error {
 		fmt.Sprintf("%s:10012", hostname),
 		fmt.Sprintf("%s:10011", hostname),
 	}
-	rpcClient, err := rpcclient.NewClient(rpcAddrs...)
-	if err != nil {
-		return terror.Panic(err)
+	rpcClient := &rpcclient.XrpcClient{
+		Addrs: rpcAddrs,
 	}
 	rpcclient.SetGlobalClient(rpcClient)
 	err = db.SyncStoreItems()
