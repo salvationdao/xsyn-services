@@ -221,6 +221,7 @@ func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebook
 }
 
 func (ug *UserGetter) PublicAddress(s string) (auth.SecureUser, error) {
+
 	ctx := context.Background()
 	user, err := db.UserByPublicAddress(ctx, ug.Conn, s)
 	if err != nil {
@@ -234,7 +235,6 @@ func (ug *UserGetter) PublicAddress(s string) (auth.SecureUser, error) {
 		}
 		user.Faction = faction
 	}
-
 	return &Secureuser{
 		User:   user,
 		Conn:   ug.Conn,
