@@ -123,6 +123,9 @@ func SyncStoreItems() error {
 			if template.BlueprintChassis.Skin == "Gold" {
 				restrictionGroup = RestrictionGroupPrize
 			}
+			if template.BlueprintChassis.Skin == "Slava Ukraini" {
+				restrictionGroup = RestrictionGroupPrize
+			}
 			amountAvailable, ok := AmountMap[template.Template.Tier]
 			if !ok {
 				return fmt.Errorf("amountAvailable not found for %s", template.Template.Tier)
