@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -23,15 +24,17 @@ import (
 
 // PendingRefund is an object representing the database table.
 type PendingRefund struct {
-	ID                   string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	RefundedAt           time.Time `boiler:"refunded_at" boil:"refunded_at" json:"refunded_at" toml:"refunded_at" yaml:"refunded_at"`
-	IsRefunded           bool      `boiler:"is_refunded" boil:"is_refunded" json:"is_refunded" toml:"is_refunded" yaml:"is_refunded"`
-	RefundCanceledAt     null.Time `boiler:"refund_canceled_at" boil:"refund_canceled_at" json:"refund_canceled_at,omitempty" toml:"refund_canceled_at" yaml:"refund_canceled_at,omitempty"`
-	TXHash               string    `boiler:"tx_hash" boil:"tx_hash" json:"tx_hash" toml:"tx_hash" yaml:"tx_hash"`
-	TransactionReference string    `boiler:"transaction_reference" boil:"transaction_reference" json:"transaction_reference" toml:"transaction_reference" yaml:"transaction_reference"`
-	DeletedAt            null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt            time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt            time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID                   string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	UserID               string          `boiler:"user_id" boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
+	AmountSups           decimal.Decimal `boiler:"amount_sups" boil:"amount_sups" json:"amount_sups" toml:"amount_sups" yaml:"amount_sups"`
+	RefundedAt           time.Time       `boiler:"refunded_at" boil:"refunded_at" json:"refunded_at" toml:"refunded_at" yaml:"refunded_at"`
+	IsRefunded           bool            `boiler:"is_refunded" boil:"is_refunded" json:"is_refunded" toml:"is_refunded" yaml:"is_refunded"`
+	RefundCanceledAt     null.Time       `boiler:"refund_canceled_at" boil:"refund_canceled_at" json:"refund_canceled_at,omitempty" toml:"refund_canceled_at" yaml:"refund_canceled_at,omitempty"`
+	TXHash               string          `boiler:"tx_hash" boil:"tx_hash" json:"tx_hash" toml:"tx_hash" yaml:"tx_hash"`
+	TransactionReference string          `boiler:"transaction_reference" boil:"transaction_reference" json:"transaction_reference" toml:"transaction_reference" yaml:"transaction_reference"`
+	DeletedAt            null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt            time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt            time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *pendingRefundR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L pendingRefundL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -39,6 +42,8 @@ type PendingRefund struct {
 
 var PendingRefundColumns = struct {
 	ID                   string
+	UserID               string
+	AmountSups           string
 	RefundedAt           string
 	IsRefunded           string
 	RefundCanceledAt     string
@@ -49,6 +54,8 @@ var PendingRefundColumns = struct {
 	CreatedAt            string
 }{
 	ID:                   "id",
+	UserID:               "user_id",
+	AmountSups:           "amount_sups",
 	RefundedAt:           "refunded_at",
 	IsRefunded:           "is_refunded",
 	RefundCanceledAt:     "refund_canceled_at",
@@ -61,6 +68,8 @@ var PendingRefundColumns = struct {
 
 var PendingRefundTableColumns = struct {
 	ID                   string
+	UserID               string
+	AmountSups           string
 	RefundedAt           string
 	IsRefunded           string
 	RefundCanceledAt     string
@@ -71,6 +80,8 @@ var PendingRefundTableColumns = struct {
 	CreatedAt            string
 }{
 	ID:                   "pending_refund.id",
+	UserID:               "pending_refund.user_id",
+	AmountSups:           "pending_refund.amount_sups",
 	RefundedAt:           "pending_refund.refunded_at",
 	IsRefunded:           "pending_refund.is_refunded",
 	RefundCanceledAt:     "pending_refund.refund_canceled_at",
@@ -85,6 +96,8 @@ var PendingRefundTableColumns = struct {
 
 var PendingRefundWhere = struct {
 	ID                   whereHelperstring
+	UserID               whereHelperstring
+	AmountSups           whereHelperdecimal_Decimal
 	RefundedAt           whereHelpertime_Time
 	IsRefunded           whereHelperbool
 	RefundCanceledAt     whereHelpernull_Time
@@ -95,6 +108,8 @@ var PendingRefundWhere = struct {
 	CreatedAt            whereHelpertime_Time
 }{
 	ID:                   whereHelperstring{field: "\"pending_refund\".\"id\""},
+	UserID:               whereHelperstring{field: "\"pending_refund\".\"user_id\""},
+	AmountSups:           whereHelperdecimal_Decimal{field: "\"pending_refund\".\"amount_sups\""},
 	RefundedAt:           whereHelpertime_Time{field: "\"pending_refund\".\"refunded_at\""},
 	IsRefunded:           whereHelperbool{field: "\"pending_refund\".\"is_refunded\""},
 	RefundCanceledAt:     whereHelpernull_Time{field: "\"pending_refund\".\"refund_canceled_at\""},
@@ -108,13 +123,16 @@ var PendingRefundWhere = struct {
 // PendingRefundRels is where relationship names are stored.
 var PendingRefundRels = struct {
 	TransactionReferenceTransaction string
+	User                            string
 }{
 	TransactionReferenceTransaction: "TransactionReferenceTransaction",
+	User:                            "User",
 }
 
 // pendingRefundR is where relationships are stored.
 type pendingRefundR struct {
 	TransactionReferenceTransaction *Transaction `boiler:"TransactionReferenceTransaction" boil:"TransactionReferenceTransaction" json:"TransactionReferenceTransaction" toml:"TransactionReferenceTransaction" yaml:"TransactionReferenceTransaction"`
+	User                            *User        `boiler:"User" boil:"User" json:"User" toml:"User" yaml:"User"`
 }
 
 // NewStruct creates a new relationship struct
@@ -126,8 +144,8 @@ func (*pendingRefundR) NewStruct() *pendingRefundR {
 type pendingRefundL struct{}
 
 var (
-	pendingRefundAllColumns            = []string{"id", "refunded_at", "is_refunded", "refund_canceled_at", "tx_hash", "transaction_reference", "deleted_at", "updated_at", "created_at"}
-	pendingRefundColumnsWithoutDefault = []string{"refunded_at", "refund_canceled_at", "transaction_reference", "deleted_at"}
+	pendingRefundAllColumns            = []string{"id", "user_id", "amount_sups", "refunded_at", "is_refunded", "refund_canceled_at", "tx_hash", "transaction_reference", "deleted_at", "updated_at", "created_at"}
+	pendingRefundColumnsWithoutDefault = []string{"user_id", "amount_sups", "refunded_at", "refund_canceled_at", "transaction_reference", "deleted_at"}
 	pendingRefundColumnsWithDefault    = []string{"id", "is_refunded", "tx_hash", "updated_at", "created_at"}
 	pendingRefundPrimaryKeyColumns     = []string{"id"}
 )
@@ -385,6 +403,21 @@ func (o *PendingRefund) TransactionReferenceTransaction(mods ...qm.QueryMod) tra
 	return query
 }
 
+// User pointed to by the foreign key.
+func (o *PendingRefund) User(mods ...qm.QueryMod) userQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.UserID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Users(queryMods...)
+	queries.SetFrom(query.Query, "\"users\"")
+
+	return query
+}
+
 // LoadTransactionReferenceTransaction allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (pendingRefundL) LoadTransactionReferenceTransaction(e boil.Executor, singular bool, maybePendingRefund interface{}, mods queries.Applicator) error {
@@ -489,6 +522,111 @@ func (pendingRefundL) LoadTransactionReferenceTransaction(e boil.Executor, singu
 	return nil
 }
 
+// LoadUser allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (pendingRefundL) LoadUser(e boil.Executor, singular bool, maybePendingRefund interface{}, mods queries.Applicator) error {
+	var slice []*PendingRefund
+	var object *PendingRefund
+
+	if singular {
+		object = maybePendingRefund.(*PendingRefund)
+	} else {
+		slice = *maybePendingRefund.(*[]*PendingRefund)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &pendingRefundR{}
+		}
+		args = append(args, object.UserID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &pendingRefundR{}
+			}
+
+			for _, a := range args {
+				if a == obj.UserID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.UserID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`users`),
+		qm.WhereIn(`users.id in ?`, args...),
+		qmhelper.WhereIsNull(`users.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load User")
+	}
+
+	var resultSlice []*User
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice User")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for users")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for users")
+	}
+
+	if len(pendingRefundAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.User = foreign
+		if foreign.R == nil {
+			foreign.R = &userR{}
+		}
+		foreign.R.PendingRefunds = append(foreign.R.PendingRefunds, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.UserID == foreign.ID {
+				local.R.User = foreign
+				if foreign.R == nil {
+					foreign.R = &userR{}
+				}
+				foreign.R.PendingRefunds = append(foreign.R.PendingRefunds, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetTransactionReferenceTransaction of the pendingRefund to the related item.
 // Sets o.R.TransactionReferenceTransaction to related.
 // Adds o to related.R.TransactionReferencePendingRefunds.
@@ -530,6 +668,52 @@ func (o *PendingRefund) SetTransactionReferenceTransaction(exec boil.Executor, i
 		}
 	} else {
 		related.R.TransactionReferencePendingRefunds = append(related.R.TransactionReferencePendingRefunds, o)
+	}
+
+	return nil
+}
+
+// SetUser of the pendingRefund to the related item.
+// Sets o.R.User to related.
+// Adds o to related.R.PendingRefunds.
+func (o *PendingRefund) SetUser(exec boil.Executor, insert bool, related *User) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"pending_refund\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
+		strmangle.WhereClause("\"", "\"", 2, pendingRefundPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.UserID = related.ID
+	if o.R == nil {
+		o.R = &pendingRefundR{
+			User: related,
+		}
+	} else {
+		o.R.User = related
+	}
+
+	if related.R == nil {
+		related.R = &userR{
+			PendingRefunds: PendingRefundSlice{o},
+		}
+	} else {
+		related.R.PendingRefunds = append(related.R.PendingRefunds, o)
 	}
 
 	return nil

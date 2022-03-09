@@ -1327,6 +1327,9 @@ func UserMixedCaseUpdateAll() error {
 		if !u.PublicAddress.Valid || u.PublicAddress.String == "" {
 			continue
 		}
+		if strings.Contains(u.PublicAddress.String, "bnb") {
+			continue
+		}
 		passlog.L.Info().Str("user_id", u.ID).Msg("updating user to mixed case")
 		u.PublicAddress = null.StringFrom(common.HexToAddress(u.PublicAddress.String).Hex())
 		_, err = u.Update(tx, boil.Whitelist(boiler.UserColumns.PublicAddress))

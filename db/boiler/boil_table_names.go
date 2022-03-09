@@ -18,6 +18,7 @@ var TableNames = struct {
 	Products                string
 	PurchasedItems          string
 	Roles                   string
+	SaftAgreements          string
 	SchemaMigrations        string
 	State                   string
 	StoreItems              string
@@ -45,6 +46,7 @@ var TableNames = struct {
 	Products:                "products",
 	PurchasedItems:          "purchased_items",
 	Roles:                   "roles",
+	SaftAgreements:          "saft_agreements",
 	SchemaMigrations:        "schema_migrations",
 	State:                   "state",
 	StoreItems:              "store_items",
