@@ -184,6 +184,10 @@ serve-arelo:
 test:
 	echo "first" && echo "second"
 
+.PHONY: sync
+sync:
+	go run cmd/platform/main.go sync
+
 .PHONY: lb
 lb:
 	cd $(BIN) && ./caddy run
