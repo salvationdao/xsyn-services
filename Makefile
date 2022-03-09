@@ -195,3 +195,29 @@ lb:
 .PHONY: wt
 wt:
 	wt --window 0 --tabColor #4747E2 --title "Boilerplate - Server" -p "PowerShell" -d ./server powershell -NoExit "${BIN}/arelo -p '**/*.go' -i '**/.*' -i '**/*_test.go' -i 'tools/*' -- go run cmd/platform/main.go serve" ; split-pane --tabColor #4747E2 --title "Boilerplate - Load Balancer" -p "PowerShell" -d ./ powershell -NoExit make lb ; split-pane -H -s 0.8 --tabColor #4747E2 --title "Boilerplate - Admin Frontend" --suppressApplicationTitle -p "PowerShell" -d ./web powershell -NoExit "$$env:BROWSER='none' \; npm run admin-start" ; split-pane -H -s 0.5 --tabColor #4747E2 --title "Boilerplate - Public Frontend" --suppressApplicationTitle -p "PowerShell" -d ./web powershell -NoExit "$$env:BROWSER='none' \; npm run public-start"
+
+docker-db-dump:
+	mkdir -p ./tmp
+	docker exec -it ${DOCKER_CONTAINER} /usr/local/bin/pg_dump -U ${LOCAL_DEV_DB_USER} > tmp/${LOCAL_DEV_DB_DATABASE}_dump.sql
+
+docker-db-restore:
+ifeq ("$(wildcard tmp/$(LOCAL_DEV_DB_DATABASE)_dump.sql)","")
+    $(error tmp/$(LOCAL_DEV_DB_DATABASE)_dump.sql is missing restore will fail)
+endif
+	docker exec -it ${DOCKER_CONTAINER} /usr/local/bin/psql -U ${LOCAL_DEV_DB_USER} -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND datname = '${LOCAL_DEV_DB_DATABASE}'"
+	docker exec -it ${DOCKER_CONTAINER} /usr/local/bin/psql -U ${LOCAL_DEV_DB_USER} -d postgres -c "DROP DATABASE $(LOCAL_DEV_DB_DATABASE)"
+	docker exec -i  ${DOCKER_CONTAINER} /usr/local/bin/psql -U ${LOCAL_DEV_DB_USER} -d postgres < init.sql
+	docker exec -i  ${DOCKER_CONTAINER} /usr/local/bin/psql -U ${LOCAL_DEV_DB_USER} -d $(LOCAL_DEV_DB_DATABASE) < tmp/${LOCAL_DEV_DB_DATABASE}_dump.sql
+
+db-dump:
+	mkdir -p ./tmp
+	pg_dump -U ${LOCAL_DEV_DB_USER} > tmp/${LOCAL_DEV_DB_DATABASE}_dump.sql
+
+db-restore:
+ifeq ("$(wildcard tmp/$(LOCAL_DEV_DB_DATABASE)_dump.sql)","")
+    $(error tmp/$(LOCAL_DEV_DB_DATABASE)_dump.sql is missing restore will fail)
+endif
+	psql -U ${LOCAL_DEV_DB_USER} -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND datname = '${LOCAL_DEV_DB_DATABASE}'"
+	psql -U ${LOCAL_DEV_DB_USER} -d postgres -c "DROP DATABASE $(LOCAL_DEV_DB_DATABASE)"
+	psql -U ${LOCAL_DEV_DB_USER} -d postgres < init.sql
+	psql -U ${LOCAL_DEV_DB_USER} -d $(LOCAL_DEV_DB_DATABASE) < tmp/${LOCAL_DEV_DB_DATABASE}_dump.sql
