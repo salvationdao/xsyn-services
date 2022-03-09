@@ -315,6 +315,11 @@ func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, err
 	if !ok {
 		return nil, fmt.Errorf("restriction not found for %s", resp.TemplateContainer.Template.Tier)
 	}
+
+	if resp.TemplateContainer.BlueprintChassis.Skin == "Slava Ukraini" {
+		restrictionGroup = RestrictionGroupPrize
+	}
+
 	// Golds are prizes only, not purchasable
 	if resp.TemplateContainer.BlueprintChassis.Skin == "Gold" {
 		restrictionGroup = RestrictionGroupPrize

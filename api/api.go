@@ -188,14 +188,7 @@ func NewAPI(
 
 	r.Handle("/metrics", promhttp.Handler())
 	r.Route("/api", func(r chi.Router) {
-		r.Route("/admin", func(r chi.Router) {
-			r.Get("/purchased_items", WithError(WithAdmin(ListPurchasedItems)))
-			r.Get("/store_items", WithError(WithAdmin(ListStoreItems)))
-			r.Get("/users", WithError(WithAdmin(ListUsers)))
-			r.Post("/purchased_items/register/{template_id}/{owner_id}", WithError(WithAdmin(PurchasedItemRegisterHandler)))
-			r.Post("/purchased_items/set_owner/{purchased_item_id}/{owner_id}", WithError(WithAdmin(PurchasedItemSetOwner)))
-			r.Get("/check", WithError(WithAdmin(AdminCheck)))
-		})
+		r.Mount("/admin", AdminRoutes(ucm))
 		r.Group(func(r chi.Router) {
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
 			r.Use(sentryHandler.Handle)
