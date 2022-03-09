@@ -212,6 +212,10 @@ func NewAPI(
 
 			r.Get("/whitelist/check", WithError(api.WhitelistOnlyWalletCheck))
 			r.Get("/faction-data", WithError(api.FactionGetData))
+			r.Route("/early", func(r chi.Router) {
+				r.Get("/check", WithError(api.CheckUserEarlyContributor))
+				r.Post("/sign", WithError(api.EarlyContributorSignMessage))
+			})
 		})
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
