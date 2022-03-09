@@ -26,6 +26,7 @@ const (
 	TransactionColumnReason               TransactionColumn = "reason"
 	TransactionColumnCreatedAt            TransactionColumn = "created_at"
 	TransactionColumnGroup                TransactionColumn = "group"
+	TransactionColumnSubGroup             TransactionColumn = "sub_group"
 )
 
 func (ic TransactionColumn) IsValid() error {
@@ -39,7 +40,8 @@ func (ic TransactionColumn) IsValid() error {
 		TransactionColumnStatus,
 		TransactionColumnReason,
 		TransactionColumnCreatedAt,
-		TransactionColumnGroup:
+		TransactionColumnGroup,
+		TransactionColumnSubGroup:
 		return nil
 	}
 	return terror.Error(fmt.Errorf("invalid transaction column type"))
@@ -58,7 +60,8 @@ transactions.debit,
 transactions.status,
 transactions.reason,
 transactions.created_at,
-transactions.group
+transactions.group,
+transactions.sub_group
 ` + TransactionGetQueryFrom
 
 const TransactionGetQueryFrom = `
@@ -72,22 +75,43 @@ func UsersTransactionGroups(
 	userID passport.UserID,
 	ctx context.Context,
 	conn Conn,
-) ([]string, error) {
-	// Get all transaction Group IDs
+) (map[string][]string, error) {
+	// Get all transactions with group IDs
 	q := `--sql
-		SELECT transactions.group
+		SELECT transactions.group, transactions.sub_group
 		from transactions
 		WHERE transactions.group is not null
 		AND (transactions.credit = $1 OR transactions.debit = $1)
-		group by transactions.group
 	`
 	var args []interface{}
 	args = append(args, userID.String())
 
-	result := make([]string, 0)
-	err := pgxscan.Select(ctx, conn, &result, q, args...)
+	rows := make([]struct {
+		Group    string
+		SubGroup string
+	}, 0)
+	err := pgxscan.Select(ctx, conn, &rows, q, args...)
 	if err != nil {
 		return nil, terror.Error(err)
+	}
+
+	m := make(map[string]map[string]struct{})
+	for _, g := range rows {
+		set := m[g.Group]
+		if set != nil {
+			set[g.SubGroup] = struct{}{}
+		} else {
+			set = map[string]struct{}{g.SubGroup: {}}
+		}
+		m[g.Group] = set
+	}
+
+	result := make(map[string][]string, 0)
+	for key, e := range m {
+		result[key] = make([]string, 0)
+		for s := range e {
+			result[key] = append(result[key], s)
+		}
 	}
 
 	return result, nil
