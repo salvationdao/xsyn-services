@@ -121,6 +121,7 @@ type purchasedItemMetaDataNestedWeapon struct {
 
 // labels that we only need
 type purchasedItemMetaDataMech struct {
+	Name         string `json:"name"`
 	Label        string `json:"label"`
 	ImageURL     string `json:"image_url"`
 	AnimationURL string `json:"animation_url"`
@@ -156,8 +157,14 @@ func purchasedItemToOpenseaMetaData(api *API, item *boiler.PurchasedItem) (jb []
 
 	datOpensea := openSeaMetaData{}
 	datOpensea.Image = itemMeta.Mech.ImageURL
-	datOpensea.Description = itemMeta.Mech.Label // TODO bring back when decided what to put
-	datOpensea.Name = itemMeta.Mech.Name
+	datOpensea.Description = strings.Trim(itemMeta.Mech.Label, " ")
+	datOpensea.Name = strings.Trim(
+		strings.Join(
+			[]string{itemMeta.Mech.Label, itemMeta.Mech.Name},
+			" ",
+		),
+		" ",
+	)
 	datOpensea.AnimationURL = itemMeta.Mech.AnimationURL
 
 	// prepare attributes adding
