@@ -157,7 +157,6 @@ func purchasedItemToOpenseaMetaData(api *API, item *boiler.PurchasedItem) (jb []
 	datOpensea := openSeaMetaData{}
 	datOpensea.Image = itemMeta.Mech.ImageURL
 	datOpensea.Description = itemMeta.Mech.Label // TODO bring back when decided what to put
-	datOpensea.Name = itemMeta.Mech.Name
 	datOpensea.AnimationURL = itemMeta.Mech.AnimationURL
 
 	// prepare attributes adding
