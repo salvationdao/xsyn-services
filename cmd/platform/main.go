@@ -169,6 +169,7 @@ func main() {
 					//router address for exchange rates
 					&cli.StringFlag{Name: "bsc_router_addr", Value: "0x10ED43C718714eb63d5aA57B78B54704E256024E", EnvVars: []string{envPrefix + "_BSC_ROUTER_ADDR"}, Usage: "BSC Router address"},
 					&cli.BoolFlag{Name: "enable_purchase_subscription", Value: false, EnvVars: []string{envPrefix + "_ENABLE_PURCHASE_SUBSCRIPTION"}, Usage: "Poll payments and price"},
+					&cli.BoolFlag{Name: "avant_testnet", Value: false, EnvVars: []string{envPrefix + "_AVANT_TESTNET"}, Usage: "Use testnet for Avant data scraper"},
 					&cli.BoolFlag{Name: "skip_update_users_mixed_case", Value: false, EnvVars: []string{envPrefix + "_SKIP_UPDATE_USERS_MIXED_CASE"}, Usage: "Set to true after users have been all updated as mixed case"},
 
 					//moralis key- set in env vars
@@ -399,8 +400,18 @@ func txConnect(
 
 	return conn, nil
 }
-func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) error {
-	withdrawRecords, err := payments.GetWithdraws(true)
+func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
+
+	nftOwnerStatuses, err := payments.AllNFTOwners(isTestnet)
+	if err != nil {
+		return fmt.Errorf("get nft owners: %w", err)
+	}
+
+	err = payments.UpdateOwners(nftOwnerStatuses, isTestnet)
+	if err != nil {
+		return fmt.Errorf("update nft owners: %w", err)
+	}
+	withdrawRecords, err := payments.GetWithdraws(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get withdraws: %w", err)
 	}
@@ -411,7 +422,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 	passlog.L.Info().
 		Int("success", withdrawProcessSuccess).
 		Int("skipped", withdrawProcessSkipped).
-		Msg("processed withdraws")
+		Msg("synced withdraws")
 
 	// refundsSuccess, refundsSkipped, err := payments.ProcessPendingRefunds(ucm)
 	// if err != nil {
@@ -419,7 +430,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 	// }
 	// passlog.L.Info().Int("success", refundsSuccess).Int("skipped", refundsSkipped).Msg("refunds processed")
 
-	depositRecords, err := payments.GetDeposits(true)
+	depositRecords, err := payments.GetDeposits(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get deposits: %w", err)
 	}
@@ -430,7 +441,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 	passlog.L.Info().
 		Int("success", depositProcessSuccess).
 		Int("skipped", depositProcessSkipped).
-		Msg("processed deposits")
+		Msg("synced deposits")
 	genesisContract := common.HexToAddress("0x651d4424f34e6e918d8e4d2da4df3debdae83d0c")
 	nfttxes, err := payments.GetNFTTransactions(genesisContract)
 	if err != nil {
@@ -443,7 +454,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 
 	passlog.L.Info().
 		Int("skipped", nftskipped).Int("success", nftsuccess).
-		Msg("synced NFT records")
+		Msg("synced nft transactions")
 
 	records1, err := payments.BNB()
 	if err != nil {
@@ -538,7 +549,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 
 		exists, err := db.TransactionExists(ctx, conn, r.TxHash)
 		if err != nil {
-			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("insert payment record")
+			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("check record exists")
 			failed++
 			continue
 		}
@@ -547,10 +558,10 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 			continue
 		}
 
-		user, err := payments.CreateOrGetUser(ctx, conn, r.FromAddress)
+		user, err := payments.CreateOrGetUser(ctx, conn, common.HexToAddress(r.FromAddress))
 		if err != nil {
 			failed++
-			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("insert payment record")
+			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("create new user for payment insertion")
 			continue
 		}
 
@@ -572,14 +583,14 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger) er
 		}
 		if err != nil && !strings.Contains(err.Error(), "duplicate key") {
 			failed++
-			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("insert payment record")
+			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("duplicate key when inserting payment record")
 			continue
 		}
 
 		successful++
 
 	}
-	log.Info().Int("skipped", skipped).Int("successful", successful).Int("failed", failed).Msg("Synced payments.")
+	log.Info().Int("skipped", skipped).Int("successful", successful).Int("failed", failed).Msg("synced payments")
 	return nil
 }
 func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
@@ -844,7 +855,8 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	}()
 
 	if enablePurchaseSubscription {
-		err := SyncFunc(ucm, pgxconn, log)
+		avantTestnet := ctxCLI.Bool("avant_testnet")
+		err := SyncFunc(ucm, pgxconn, log, avantTestnet)
 		if err != nil {
 			log.Error().Err(err).Msg("sync")
 		}
@@ -852,7 +864,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		go func() {
 			t := time.NewTicker(20 * time.Second)
 			for range t.C {
-				err := SyncFunc(ucm, pgxconn, log)
+				err := SyncFunc(ucm, pgxconn, log, avantTestnet)
 				if err != nil {
 					log.Error().Err(err).Msg("sync")
 				}

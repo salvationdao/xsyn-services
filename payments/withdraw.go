@@ -20,8 +20,6 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
-var latestWithdrawBlock = 0
-
 // InsertPendingRefund inserts a pending refund to the pending_refunds table
 func InsertPendingRefund(ucm UserCacheMap, userID passport.UserID, amount big.Int, expiry time.Time) (string, error) {
 	txRef := passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()))
@@ -54,13 +52,14 @@ func InsertPendingRefund(ucm UserCacheMap, userID passport.UserID, amount big.In
 	return txHold.ID, nil
 }
 
+var latestWithdrawBlock = 0
+
 func GetWithdraws(testnet bool) ([]*Record, error) {
 	records, err := get("sups_withdraw_txs", latestWithdrawBlock, testnet)
 	if err != nil {
 		return nil, fmt.Errorf("get withdraw txes: %w", err)
 	}
-	latestBlock := latestBlockFromRecords(records)
-	latestWithdrawBlock = latestBlock
+	latestWithdrawBlock = latestBlockFromRecords(latestWithdrawBlock, records)
 	return records, nil
 }
 

@@ -87,10 +87,10 @@ LEFT JOIN (
 `
 
 // UserByPublicAddress returns a user by given public wallet address
-func UserByPublicAddress(ctx context.Context, conn Conn, publicAddress string) (*passport.User, error) {
+func UserByPublicAddress(ctx context.Context, conn Conn, publicAddress common.Address) (*passport.User, error) {
 	user := &passport.User{}
 	q := UserGetQuery + ` WHERE users.public_address = $1`
-	err := pgxscan.Get(ctx, conn, user, q, publicAddress)
+	err := pgxscan.Get(ctx, conn, user, q, publicAddress.Hex())
 	if err != nil {
 		return nil, terror.Error(err, "Issue getting user from Public Address.")
 	}
@@ -366,7 +366,7 @@ func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 		user.LastName,
 		user.Email,
 		user.Username,
-		common.HexToAddress(user.PublicAddress.String).Hex(),
+		user.PublicAddress,
 		user.AvatarID,
 		user.RoleID,
 		user.Verified,

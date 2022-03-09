@@ -39,6 +39,7 @@ type PurchasedItem struct {
 	RefreshesAt     time.Time  `boiler:"refreshes_at" boil:"refreshes_at" json:"refreshes_at" toml:"refreshes_at" yaml:"refreshes_at"`
 	UpdatedAt       time.Time  `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt       time.Time  `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	OnChainStatus   string     `boiler:"on_chain_status" boil:"on_chain_status" json:"on_chain_status" toml:"on_chain_status" yaml:"on_chain_status"`
 
 	R *purchasedItemR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L purchasedItemL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -60,6 +61,7 @@ var PurchasedItemColumns = struct {
 	RefreshesAt     string
 	UpdatedAt       string
 	CreatedAt       string
+	OnChainStatus   string
 }{
 	ID:              "id",
 	CollectionID:    "collection_id",
@@ -76,6 +78,7 @@ var PurchasedItemColumns = struct {
 	RefreshesAt:     "refreshes_at",
 	UpdatedAt:       "updated_at",
 	CreatedAt:       "created_at",
+	OnChainStatus:   "on_chain_status",
 }
 
 var PurchasedItemTableColumns = struct {
@@ -94,6 +97,7 @@ var PurchasedItemTableColumns = struct {
 	RefreshesAt     string
 	UpdatedAt       string
 	CreatedAt       string
+	OnChainStatus   string
 }{
 	ID:              "purchased_items.id",
 	CollectionID:    "purchased_items.collection_id",
@@ -110,6 +114,7 @@ var PurchasedItemTableColumns = struct {
 	RefreshesAt:     "purchased_items.refreshes_at",
 	UpdatedAt:       "purchased_items.updated_at",
 	CreatedAt:       "purchased_items.created_at",
+	OnChainStatus:   "purchased_items.on_chain_status",
 }
 
 // Generated where
@@ -130,6 +135,7 @@ var PurchasedItemWhere = struct {
 	RefreshesAt     whereHelpertime_Time
 	UpdatedAt       whereHelpertime_Time
 	CreatedAt       whereHelpertime_Time
+	OnChainStatus   whereHelperstring
 }{
 	ID:              whereHelperstring{field: "\"purchased_items\".\"id\""},
 	CollectionID:    whereHelperstring{field: "\"purchased_items\".\"collection_id\""},
@@ -146,6 +152,7 @@ var PurchasedItemWhere = struct {
 	RefreshesAt:     whereHelpertime_Time{field: "\"purchased_items\".\"refreshes_at\""},
 	UpdatedAt:       whereHelpertime_Time{field: "\"purchased_items\".\"updated_at\""},
 	CreatedAt:       whereHelpertime_Time{field: "\"purchased_items\".\"created_at\""},
+	OnChainStatus:   whereHelperstring{field: "\"purchased_items\".\"on_chain_status\""},
 }
 
 // PurchasedItemRels is where relationship names are stored.
@@ -175,9 +182,9 @@ func (*purchasedItemR) NewStruct() *purchasedItemR {
 type purchasedItemL struct{}
 
 var (
-	purchasedItemAllColumns            = []string{"id", "collection_id", "store_item_id", "external_token_id", "is_default", "tier", "hash", "owner_id", "data", "unlocked_at", "minted_at", "deleted_at", "refreshes_at", "updated_at", "created_at"}
+	purchasedItemAllColumns            = []string{"id", "collection_id", "store_item_id", "external_token_id", "is_default", "tier", "hash", "owner_id", "data", "unlocked_at", "minted_at", "deleted_at", "refreshes_at", "updated_at", "created_at", "on_chain_status"}
 	purchasedItemColumnsWithoutDefault = []string{"collection_id", "store_item_id", "external_token_id", "is_default", "tier", "hash", "owner_id", "data", "minted_at", "deleted_at"}
-	purchasedItemColumnsWithDefault    = []string{"id", "unlocked_at", "refreshes_at", "updated_at", "created_at"}
+	purchasedItemColumnsWithDefault    = []string{"id", "unlocked_at", "refreshes_at", "updated_at", "created_at", "on_chain_status"}
 	purchasedItemPrimaryKeyColumns     = []string{"id"}
 )
 

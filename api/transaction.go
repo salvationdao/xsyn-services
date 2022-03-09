@@ -61,15 +61,15 @@ func (tc *TransactionCache) commit() {
 		)
 
 		if err != nil {
-			tc.
-				log.
-				Err(err).
-				Str("amt", tx.Amount.String()).
-				Str("from", tx.From.String()).
-				Str("to", tx.To.String()).
-				Str("txref", string(tx.TransactionReference)).
-				Msg("transaction cache lock")
 			if tx.NotSafe {
+				tc.
+					log.
+					Err(err).
+					Str("amt", tx.Amount.String()).
+					Str("from", tx.From.String()).
+					Str("to", tx.To.String()).
+					Str("txref", string(tx.TransactionReference)).
+					Msg("transaction cache lock")
 				tc.IsLocked.Lock()
 				tc.IsLocked.isLocked = true
 				tc.IsLocked.Unlock()

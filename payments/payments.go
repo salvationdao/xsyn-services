@@ -68,30 +68,29 @@ const USDCSymbol Symbol = "usdc_txs"
 
 const SUPDecimals = 18
 
-func latestBlockFromRecords(records []*Record) int {
-	latestBlock := 0
+func latestBlockFromRecords(currentLatestBlock int, records []*Record) int {
+	latestBlock := currentLatestBlock
 	for _, record := range records {
-		blockNumber, err := strconv.Atoi(record.JSON.BlockNumber)
+		recordBlockNumber, err := strconv.Atoi(record.JSON.BlockNumber)
 		if err != nil {
 			passlog.L.Err(err).Msg("could not parse blocknumber")
 			return 0
 		}
-		if blockNumber > latestNFTBlock {
-			latestBlock = blockNumber
+		if recordBlockNumber > latestBlock {
+			latestBlock = recordBlockNumber
 		}
 	}
 	return latestBlock
 }
 
-func CreateOrGetUser(ctx context.Context, conn *pgxpool.Pool, userAddr string) (*passport.User, error) {
-	from := common.HexToAddress(userAddr).Hex()
+func CreateOrGetUser(ctx context.Context, conn *pgxpool.Pool, userAddr common.Address) (*passport.User, error) {
 	var user *passport.User
 	var err error
-	user, err = db.UserByPublicAddress(ctx, conn, from)
+	user, err = db.UserByPublicAddress(ctx, conn, userAddr)
 	if errors.Is(err, pgx.ErrNoRows) {
 		user = &passport.User{}
-		user.Username = from
-		user.PublicAddress = null.NewString(from, true)
+		user.Username = userAddr.Hex()
+		user.PublicAddress = null.NewString(userAddr.Hex(), true)
 		user.RoleID = passport.UserRoleMemberID
 		err := db.UserCreate(ctx, conn, user)
 		if err != nil {
@@ -99,7 +98,7 @@ func CreateOrGetUser(ctx context.Context, conn *pgxpool.Pool, userAddr string) (
 		}
 	}
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, err
+		return nil, terror.Error(err)
 	}
 	return user, nil
 

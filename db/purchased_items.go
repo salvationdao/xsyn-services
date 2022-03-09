@@ -17,6 +17,25 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
+type OnChainStatus string
+
+const MINTABLE OnChainStatus = "MINTABLE"
+const STAKABLE OnChainStatus = "STAKABLE"
+const UNSTAKABLE OnChainStatus = "UNSTAKABLE"
+
+func PurchasedItemSetOnChainStatus(purchasedItemID uuid.UUID, status OnChainStatus) error {
+	item, err := boiler.FindPurchasedItem(passdb.StdConn, purchasedItemID.String())
+	if err != nil {
+		return err
+	}
+	item.OnChainStatus = string(status)
+	_, err = item.Update(passdb.StdConn, boil.Whitelist(boiler.PurchasedItemColumns.OnChainStatus))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 const RefreshDuration = 1 * time.Minute
 
 // SyncPurchasedItems against gameserver

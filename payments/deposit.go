@@ -6,6 +6,7 @@ import (
 	"passport"
 	"passport/passdb"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 )
@@ -17,8 +18,7 @@ func GetDeposits(testnet bool) ([]*Record, error) {
 	if err != nil {
 		return nil, err
 	}
-	latestBlock := latestBlockFromRecords(records)
-	latestDepositBlock = latestBlock
+	latestDepositBlock = latestBlockFromRecords(latestDepositBlock, records)
 	return records, nil
 }
 func ProcessDeposits(records []*Record, ucm UserCacheMap) (int, int, error) {
@@ -26,7 +26,7 @@ func ProcessDeposits(records []*Record, ucm UserCacheMap) (int, int, error) {
 	success := 0
 	skipped := 0
 	for _, record := range records {
-		user, err := CreateOrGetUser(ctx, passdb.Conn, record.FromAddress)
+		user, err := CreateOrGetUser(ctx, passdb.Conn, common.HexToAddress(record.FromAddress))
 		if err != nil {
 			skipped++
 			log.Error().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("create or get user")

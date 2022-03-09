@@ -64,7 +64,7 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 	}
 
 	// check balance
-	user, err := db.UserByPublicAddress(context.Background(), api.Conn, address)
+	user, err := db.UserByPublicAddress(context.Background(), api.Conn, common.HexToAddress(address))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
 	}
@@ -149,7 +149,7 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	}
 
 	// check user owns this asset
-	user, err := db.UserByPublicAddress(context.Background(), api.Conn, address)
+	user, err := db.UserByPublicAddress(context.Background(), api.Conn, common.HexToAddress(address))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
 	}
@@ -217,7 +217,7 @@ func (api *API) UpdateMintTX(w http.ResponseWriter, r *http.Request) (int, error
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing address"), "Missing address.")
 	}
 	// check user owns this asset
-	user, err := db.UserByPublicAddress(context.Background(), api.Conn, address)
+	user, err := db.UserByPublicAddress(context.Background(), api.Conn, common.HexToAddress(address))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
 	}

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -223,7 +224,7 @@ func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebook
 func (ug *UserGetter) PublicAddress(s string) (auth.SecureUser, error) {
 
 	ctx := context.Background()
-	user, err := db.UserByPublicAddress(ctx, ug.Conn, s)
+	user, err := db.UserByPublicAddress(ctx, ug.Conn, common.HexToAddress(s))
 	if err != nil {
 		return nil, terror.Error(err)
 	}
