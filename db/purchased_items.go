@@ -413,6 +413,7 @@ const (
 	PurchasedItemUsername        PurchasedItemColumn = "username"
 	PurchasedItemCollectionID    PurchasedItemColumn = "collection_id"
 	PurchasedItemAssetType       PurchasedItemColumn = "asset_type"
+	PurchasedItemOnChainStatus   PurchasedItemColumn = "on_chain_status"
 )
 
 func (ic PurchasedItemColumn) IsValid() error {
@@ -425,6 +426,7 @@ func (ic PurchasedItemColumn) IsValid() error {
 		PurchasedItemUsername,
 		PurchasedItemCollectionID,
 		PurchasedItemAssetType,
+		PurchasedItemOnChainStatus,
 		PurchasedItemHash:
 		return nil
 	}
@@ -560,9 +562,15 @@ func PurchaseItemsList(
 
 	// Order and Limit
 	orderBy := " ORDER BY created_at desc"
+
 	if sortBy != "" {
-		orderBy = fmt.Sprintf(" ORDER BY %s %s", sortBy, sortDir)
+		if sortBy == "name" {
+			orderBy = fmt.Sprintf(" ORDER BY purchased_items.data->'mech'->>'name' %s", sortDir)
+		} else {
+			orderBy = fmt.Sprintf(" ORDER BY %s %s", sortBy, sortDir)
+		}
 	}
+
 	limit := ""
 	if pageSize > 0 {
 		limit = fmt.Sprintf(" LIMIT %d OFFSET %d", pageSize, offset)
