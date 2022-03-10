@@ -30,7 +30,7 @@ func (c *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 
 	tx := &passport.NewTransaction{
 		From:                 passport.UserID(req.FromUserID),
-		To:                   passport.SupremacyGameUserID,
+		To:                   passport.UserID(req.ToUserID),
 		TransactionReference: req.TransactionReference,
 		Amount:               *amt.BigInt(),
 		Group:                req.Group,
@@ -39,14 +39,6 @@ func (c *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 
 	if req.NotSafe {
 		tx.NotSafe = true
-	}
-
-	if req.ToUserID != nil {
-		tx.To = passport.UserID(*req.ToUserID)
-	}
-
-	if req.Group == "Battle" {
-		tx.To = passport.SupremacyBattleUserID
 	}
 
 	_, _, txID, err := c.UserCacheMap.Process(tx)
