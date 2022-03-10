@@ -21,6 +21,7 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 
+	"errors"
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -250,7 +251,7 @@ func NewAPI(
 	api.Hub.Events.AddEventHandler(hub.EventOffline, api.ClientOffline, func(err error) {})
 
 	api.State, err = db.StateGet(context.Background(), isTestnetBlockchain, api.Conn)
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		log.Fatal().Err(err).Msgf("failed to init state object")
 	}
 	return api, r

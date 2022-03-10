@@ -31,16 +31,6 @@ func SetGlobalClient(c *XrpcClient) {
 	Client = c
 }
 
-// Gocall plan to deprecate if possible
-// func (c *XrpcClient) GoCall(serviceMethod string, args interface{}, reply interface{}, callback func(error)) {
-// 	go func() {
-// 		err := c.Call(serviceMethod, args, reply)
-// 		if callback != nil {
-// 			callback(err)
-// 		}
-// 	}()
-// }
-
 // Call calls RPC server and retry, also initialise if it is the first time
 func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interface{}) error {
 	span := tracer.StartSpan("rpc.Call", tracer.ResourceName(serviceMethod))
@@ -96,7 +86,7 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 
 		retryCall++
 		if retryCall > 6 {
-			return terror.Error(fmt.Errorf("call retry exceeded 6 times"))
+			return terror.Error(fmt.Errorf("call %s retry exceeded 6 times", serviceMethod))
 		}
 	}
 
