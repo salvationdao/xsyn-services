@@ -892,19 +892,6 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 			Addrs: rpcAddrs,
 		}
 		rpcclient.SetGlobalClient(rpcClient)
-		// TODO delete me after test
-		go func() {
-			for {
-				x := 0
-				time.Sleep(time.Second * 6)
-				for i := 0; i < 10; i++ {
-					var resp string
-					rpcClient.Call("S.Ping", true, &resp)
-					fmt.Printf("%d: %s\n", x, resp)
-					x++
-				}
-			}
-		}()
 	}()
 
 	if !skipUpdateUsersMixedCase {
