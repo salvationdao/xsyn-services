@@ -23,6 +23,7 @@ type Template struct {
 	IsDefault          bool      `json:"is_default"`
 	ImageURL           string    `json:"image_url"`
 	AnimationURL       string    `json:"animation_url"`
+	CardAnimationURL   string    `json:"card_animation_url"`
 	AvatarURL          string    `json:"avatar_url"`
 	AssetType          string    `json:"asset_type"`
 	DeletedAt          null.Time `json:"deleted_at"`

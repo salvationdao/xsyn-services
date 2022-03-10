@@ -407,10 +407,11 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, is
 		return fmt.Errorf("get nft owners: %w", err)
 	}
 
-	err = payments.UpdateOwners(nftOwnerStatuses, isTestnet)
+	ownerupdated, ownerskipped, err := payments.UpdateOwners(nftOwnerStatuses, isTestnet)
 	if err != nil {
 		return fmt.Errorf("update nft owners: %w", err)
 	}
+	passlog.L.Info().Int("updated", ownerupdated).Int("skipped", ownerskipped).Msg("synced nft ownerships")
 	withdrawRecords, err := payments.GetWithdraws(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get withdraws: %w", err)
@@ -442,19 +443,18 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, is
 		Int("success", depositProcessSuccess).
 		Int("skipped", depositProcessSkipped).
 		Msg("synced deposits")
-	genesisContract := common.HexToAddress("0x651d4424f34e6e918d8e4d2da4df3debdae83d0c")
-	nfttxes, err := payments.GetNFTTransactions(genesisContract)
-	if err != nil {
-		return fmt.Errorf("get nft transactions: %w", err)
-	}
-	nftskipped, nftsuccess, err := payments.UpsertNFTTransactions(genesisContract, nfttxes)
-	if err != nil {
-		return fmt.Errorf("upsert nft transactions: %w", err)
-	}
+	// nfttxes, err := payments.GetNFTTransactions(genesisContract, isTestnet)
+	// if err != nil {
+	// 	return fmt.Errorf("get nft transactions: %w", err)
+	// }
+	// nftskipped, nftsuccess, err := payments.UpsertNFTTransactions(genesisContract, nfttxes, isTestnet)
+	// if err != nil {
+	// 	return fmt.Errorf("upsert nft transactions: %w", err)
+	// }
 
-	passlog.L.Info().
-		Int("skipped", nftskipped).Int("success", nftsuccess).
-		Msg("synced nft transactions")
+	// passlog.L.Info().
+	// 	Int("skipped", nftskipped).Int("success", nftsuccess).
+	// 	Msg("synced nft transactions")
 
 	records1, err := payments.BNB()
 	if err != nil {

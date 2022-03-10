@@ -186,6 +186,7 @@ func StoreItemsRemainingByFactionIDAndTier(collectionID uuid.UUID, factionID uui
 	items, err := boiler.StoreItems(
 		boiler.StoreItemWhere.FactionID.EQ(factionID.String()),
 		boiler.StoreItemWhere.Tier.EQ(tier),
+		boiler.StoreItemWhere.RestrictionGroup.NEQ(RestrictionGroupPrize),
 		boiler.StoreItemWhere.IsDefault.EQ(false),
 	).All(passdb.StdConn)
 	count := 0
@@ -213,11 +214,11 @@ func StoreItemsAvailable() ([]*passport.FactionSaleAvailable, error) {
 		if err != nil {
 			return nil, err
 		}
-		megaAmount, err := StoreItemsRemainingByFactionIDAndTier(uuid.Must(uuid.FromString(collection.ID)), uuid.Must(uuid.FromString(faction.ID)), "MEGA")
+		megaAmount, err := StoreItemsRemainingByFactionIDAndTier(uuid.Must(uuid.FromString(collection.ID)), uuid.Must(uuid.FromString(faction.ID)), TierMega)
 		if err != nil {
 			return nil, err
 		}
-		lootboxAmount, err := StoreItemsRemainingByFactionIDAndRestrictionGroup(uuid.Must(uuid.FromString(collection.ID)), uuid.Must(uuid.FromString(faction.ID)), "LOOTBOX")
+		lootboxAmount, err := StoreItemsRemainingByFactionIDAndRestrictionGroup(uuid.Must(uuid.FromString(collection.ID)), uuid.Must(uuid.FromString(faction.ID)), RestrictionGroupLootbox)
 		if err != nil {
 			return nil, err
 		}

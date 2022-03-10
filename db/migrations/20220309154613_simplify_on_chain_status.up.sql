@@ -1,1 +1,2 @@
 ALTER TABLE purchased_items ADD COLUMN on_chain_status TEXT NOT NULL DEFAULT 'MINTABLE' CHECK (on_chain_status IN ('MINTABLE', 'STAKABLE', 'UNSTAKABLE'));
+ALTER TABLE collections ADD CONSTRAINT collections_unique_mint_address UNIQUE(mint_contract);
