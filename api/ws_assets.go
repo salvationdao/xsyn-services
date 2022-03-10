@@ -218,7 +218,6 @@ type AssetUpdatedSubscribeResponse struct {
 	OwnerUsername  string                `json:"owner_username"`
 }
 
-// 	rootHub.SecureCommand(HubKeyAssetSubscribe, AssetController.AssetSubscribe)
 const HubKeyAssetSubscribe hub.HubCommandKey = "ASSET:SUBSCRIBE"
 
 func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
@@ -389,6 +388,10 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
+	}
+
+	if profanityDetector.IsProfane(req.Payload.Name) {
+		return terror.Error(err, "Profanity is not allowed")
 	}
 
 	// get item
