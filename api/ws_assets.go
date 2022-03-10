@@ -136,7 +136,7 @@ type AssetsUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		UserID              passport.UserID            `json:"user_id"`
-		SortDir             db.SortByDir               `json:"sort_dir"`
+		SortDir             db.SortByDir               `json:"sortDir"`
 		SortBy              string                     `json:"sortBy"`
 		IncludedAssetHashes []string                   `json:"included_asset_hashes"`
 		Filter              *db.ListFilterRequest      `json:"filter,omitempty"`
