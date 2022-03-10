@@ -79,6 +79,7 @@ func AllNFTOwners(isTestnet bool) (map[int]*NFTOwnerStatus, error) {
 	q.Add("contract_address", NFTAddr.Hex())
 	q.Add("is_testnet", fmt.Sprintf("%v", isTestnet))
 	req.URL.RawQuery = q.Encode()
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
