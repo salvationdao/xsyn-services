@@ -32,6 +32,9 @@ type State struct {
 	LatestBlockEthTestnet null.Int64          `boiler:"latest_block_eth_testnet" boil:"latest_block_eth_testnet" json:"latest_block_eth_testnet,omitempty" toml:"latest_block_eth_testnet" yaml:"latest_block_eth_testnet,omitempty"`
 	LatestBlockBSCTestnet null.Int64          `boiler:"latest_block_bsc_testnet" boil:"latest_block_bsc_testnet" json:"latest_block_bsc_testnet,omitempty" toml:"latest_block_bsc_testnet" yaml:"latest_block_bsc_testnet,omitempty"`
 	ID                    string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	WithdrawStartAt       time.Time           `boiler:"withdraw_start_at" boil:"withdraw_start_at" json:"withdraw_start_at" toml:"withdraw_start_at" yaml:"withdraw_start_at"`
+	CliffEndAt            time.Time           `boiler:"cliff_end_at" boil:"cliff_end_at" json:"cliff_end_at" toml:"cliff_end_at" yaml:"cliff_end_at"`
+	DripStartAt           time.Time           `boiler:"drip_start_at" boil:"drip_start_at" json:"drip_start_at" toml:"drip_start_at" yaml:"drip_start_at"`
 
 	R *stateR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L stateL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -46,6 +49,9 @@ var StateColumns = struct {
 	LatestBlockEthTestnet string
 	LatestBlockBSCTestnet string
 	ID                    string
+	WithdrawStartAt       string
+	CliffEndAt            string
+	DripStartAt           string
 }{
 	LatestEthBlock:        "latest_eth_block",
 	LatestBSCBlock:        "latest_bsc_block",
@@ -55,6 +61,9 @@ var StateColumns = struct {
 	LatestBlockEthTestnet: "latest_block_eth_testnet",
 	LatestBlockBSCTestnet: "latest_block_bsc_testnet",
 	ID:                    "id",
+	WithdrawStartAt:       "withdraw_start_at",
+	CliffEndAt:            "cliff_end_at",
+	DripStartAt:           "drip_start_at",
 }
 
 var StateTableColumns = struct {
@@ -66,6 +75,9 @@ var StateTableColumns = struct {
 	LatestBlockEthTestnet string
 	LatestBlockBSCTestnet string
 	ID                    string
+	WithdrawStartAt       string
+	CliffEndAt            string
+	DripStartAt           string
 }{
 	LatestEthBlock:        "state.latest_eth_block",
 	LatestBSCBlock:        "state.latest_bsc_block",
@@ -75,6 +87,9 @@ var StateTableColumns = struct {
 	LatestBlockEthTestnet: "state.latest_block_eth_testnet",
 	LatestBlockBSCTestnet: "state.latest_block_bsc_testnet",
 	ID:                    "state.id",
+	WithdrawStartAt:       "state.withdraw_start_at",
+	CliffEndAt:            "state.cliff_end_at",
+	DripStartAt:           "state.drip_start_at",
 }
 
 // Generated where
@@ -138,6 +153,9 @@ var StateWhere = struct {
 	LatestBlockEthTestnet whereHelpernull_Int64
 	LatestBlockBSCTestnet whereHelpernull_Int64
 	ID                    whereHelperstring
+	WithdrawStartAt       whereHelpertime_Time
+	CliffEndAt            whereHelpertime_Time
+	DripStartAt           whereHelpertime_Time
 }{
 	LatestEthBlock:        whereHelpernull_Int64{field: "\"state\".\"latest_eth_block\""},
 	LatestBSCBlock:        whereHelpernull_Int64{field: "\"state\".\"latest_bsc_block\""},
@@ -147,6 +165,9 @@ var StateWhere = struct {
 	LatestBlockEthTestnet: whereHelpernull_Int64{field: "\"state\".\"latest_block_eth_testnet\""},
 	LatestBlockBSCTestnet: whereHelpernull_Int64{field: "\"state\".\"latest_block_bsc_testnet\""},
 	ID:                    whereHelperstring{field: "\"state\".\"id\""},
+	WithdrawStartAt:       whereHelpertime_Time{field: "\"state\".\"withdraw_start_at\""},
+	CliffEndAt:            whereHelpertime_Time{field: "\"state\".\"cliff_end_at\""},
+	DripStartAt:           whereHelpertime_Time{field: "\"state\".\"drip_start_at\""},
 }
 
 // StateRels is where relationship names are stored.
@@ -166,9 +187,9 @@ func (*stateR) NewStruct() *stateR {
 type stateL struct{}
 
 var (
-	stateAllColumns            = []string{"latest_eth_block", "latest_bsc_block", "eth_to_usd", "bnb_to_usd", "sup_to_usd", "latest_block_eth_testnet", "latest_block_bsc_testnet", "id"}
+	stateAllColumns            = []string{"latest_eth_block", "latest_bsc_block", "eth_to_usd", "bnb_to_usd", "sup_to_usd", "latest_block_eth_testnet", "latest_block_bsc_testnet", "id", "withdraw_start_at", "cliff_end_at", "drip_start_at"}
 	stateColumnsWithoutDefault = []string{"latest_eth_block", "latest_bsc_block", "eth_to_usd", "bnb_to_usd", "sup_to_usd", "latest_block_eth_testnet", "latest_block_bsc_testnet"}
-	stateColumnsWithDefault    = []string{"id"}
+	stateColumnsWithDefault    = []string{"id", "withdraw_start_at", "cliff_end_at", "drip_start_at"}
 	statePrimaryKeyColumns     = []string{"id"}
 )
 
