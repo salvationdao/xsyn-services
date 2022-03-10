@@ -120,3 +120,9 @@ func StartServer(s *S) error {
 
 	return nil
 }
+
+// Ping to make sure it works and healthy
+func (s *S) Ping(req bool, resp *string) error {
+	*resp = "PONG from PASSPORT"
+	return nil
+}
