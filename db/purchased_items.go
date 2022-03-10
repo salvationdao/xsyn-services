@@ -413,6 +413,7 @@ const (
 	PurchasedItemUsername        PurchasedItemColumn = "username"
 	PurchasedItemCollectionID    PurchasedItemColumn = "collection_id"
 	PurchasedItemAssetType       PurchasedItemColumn = "asset_type"
+	PurchasedItemOnChainStatus   PurchasedItemColumn = "on_chain_status"
 )
 
 func (ic PurchasedItemColumn) IsValid() error {
@@ -425,6 +426,7 @@ func (ic PurchasedItemColumn) IsValid() error {
 		PurchasedItemUsername,
 		PurchasedItemCollectionID,
 		PurchasedItemAssetType,
+		PurchasedItemOnChainStatus,
 		PurchasedItemHash:
 		return nil
 	}
