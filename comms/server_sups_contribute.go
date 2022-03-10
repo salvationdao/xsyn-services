@@ -29,7 +29,7 @@ func (c *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 	}
 
 	tx := &passport.NewTransaction{
-		From:                 req.FromUserID,
+		From:                 passport.UserID(req.FromUserID),
 		To:                   passport.SupremacyGameUserID,
 		TransactionReference: req.TransactionReference,
 		Amount:               *amt.BigInt(),
@@ -42,7 +42,7 @@ func (c *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 	}
 
 	if req.ToUserID != nil {
-		tx.To = *req.ToUserID
+		tx.To = passport.UserID(*req.ToUserID)
 	}
 
 	if req.Group == "Battle" {
