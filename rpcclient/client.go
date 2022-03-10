@@ -1,7 +1,10 @@
 package rpcclient
 
 import (
+	"errors"
 	"fmt"
+	"github.com/ninja-software/terror/v2"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"log"
 	"math"
 	"net/rpc"
@@ -9,9 +12,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/ninja-software/terror/v2"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 // XrpcClient is a basic RPC client with retry function and also support multiple addresses for increase through-put
