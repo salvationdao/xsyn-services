@@ -22,7 +22,7 @@ func (s *Seeder) EarlyContributors(ctx context.Context) error {
 		u.Username = k.Hex()
 		u.PublicAddress = null.NewString(k.Hex(), true)
 		u.RoleID = passport.UserRoleMemberID
-		err := db.UserCreate(ctx, s.Conn, u)
+		err := db.UserCreateNoRPC(ctx, s.Conn, u)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -37,15 +37,13 @@ func (s *Seeder) EarlyContributors(ctx context.Context) error {
 				TransactionReference: passport.TransactionReference(fmt.Sprintf("Supremacy early contributor dispersion #%04d", i)),
 			}
 
-
-
-		q := `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
+			q := `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
         				VALUES((SELECT count(*) from transactions), $1, $2, $3, $4, $5);`
 
-    	_, err = s.Conn.Exec(ctx, q, nt.Description, nt.TransactionReference, nt.Amount.String(), nt.To, nt.From)
-    	if err != nil {
-    		return terror.Error(err)
-    	}
+			_, err = s.Conn.Exec(ctx, q, nt.Description, nt.TransactionReference, nt.Amount.String(), nt.To, nt.From)
+			if err != nil {
+				return terror.Error(err)
+			}
 			i++
 		}
 	}

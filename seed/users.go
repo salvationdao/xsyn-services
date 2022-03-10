@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/georgysavva/scany/pgxscan"
-"math/big"
+	"math/big"
 	"net/http"
 	"passport"
 	"passport/crypto"
@@ -120,7 +120,7 @@ func (s *Seeder) RandomUsers(
 		}
 
 		// Insert
-		err = db.UserCreate(ctx, s.Conn, u)
+		err = db.UserCreateNoRPC(ctx, s.Conn, u)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
@@ -177,7 +177,6 @@ func (s *Seeder) XsynTreasuryUser(ctx context.Context) (*passport.User, error) {
 
 	}
 
-
 	txObj := &passport.NewTransaction{
 		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		From:                 passport.OnChainUserID,
@@ -229,13 +228,13 @@ func (s *Seeder) SupremacyUser(ctx context.Context) (*passport.User, error) {
 		TransactionReference: passport.TransactionReference(id),
 	}
 
-		q := `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
+	q := `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
         				VALUES((SELECT count(*) from transactions), $1, $2, $3, $4, $5);`
 
-    	_, err = s.Conn.Exec(ctx, q, txObj.Description, txObj.TransactionReference, txObj.Amount.String(), txObj.To, txObj.From)
-    	if err != nil {
-    		return nil, terror.Error(err)
-    	}
+	_, err = s.Conn.Exec(ctx, q, txObj.Description, txObj.TransactionReference, txObj.Amount.String(), txObj.To, txObj.From)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
 
 	return u, nil
 }
@@ -272,13 +271,13 @@ func (s *Seeder) XsynSaleUser(ctx context.Context) (*passport.User, error) {
 		TransactionReference: passport.TransactionReference(id),
 	}
 
-		q := `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
+	q := `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
         				VALUES((SELECT count(*) from transactions), $1, $2, $3, $4, $5);`
 
-    	_, err = s.Conn.Exec(ctx, q, txObj.Description, txObj.TransactionReference, txObj.Amount.String(), txObj.To, txObj.From)
-    	if err != nil {
-    		return nil, terror.Error(err)
-    	}
+	_, err = s.Conn.Exec(ctx, q, txObj.Description, txObj.TransactionReference, txObj.Amount.String(), txObj.To, txObj.From)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
 
 	return u, nil
 }
@@ -332,13 +331,12 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 	//	return nil, terror.Error(err)
 	//}
 
-		supremacyCollectionID := passport.CollectionID{}
-    	q:= `select id from collections where name ILIKE $1`
-    	err := pgxscan.Get(ctx, s.Conn, &supremacyCollectionID, q, "supremacy genesis")
-    	if err != nil {
-    		return nil, terror.Error(err)
-    	}
-
+	supremacyCollectionID := passport.CollectionID{}
+	q := `select id from collections where name ILIKE $1`
+	err := pgxscan.Get(ctx, s.Conn, &supremacyCollectionID, q, "supremacy genesis")
+	if err != nil {
+		return nil, terror.Error(err)
+	}
 
 	// Create user
 	u := &passport.User{
@@ -364,13 +362,13 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		TransactionReference: passport.TransactionReference("Initial supremacy Zaibatsu supply seed."),
 	}
 
-		q = `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
+	q = `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
         				VALUES((SELECT count(*) from transactions), $1, $2, $3, $4, $5);`
 
-    	_, err = s.Conn.Exec(ctx, q, txObj.Description, txObj.TransactionReference, txObj.Amount.String(), txObj.To, txObj.From)
-    	if err != nil {
-    		return nil, terror.Error(err)
-    	}
+	_, err = s.Conn.Exec(ctx, q, txObj.Description, txObj.TransactionReference, txObj.Amount.String(), txObj.To, txObj.From)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
 
 	// Create user
 	u = &passport.User{
@@ -395,13 +393,13 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		Description:          "Initial supremacy BostonCybernetics supply seed.",
 		TransactionReference: passport.TransactionReference("Initial supremacy BostonCybernetics supply seed."),
 	}
-		q = `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
+	q = `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
         				VALUES((SELECT count(*) from transactions), $1, $2, $3, $4, $5);`
 
-    	_, err = s.Conn.Exec(ctx, q, txObj.Description, txObj.TransactionReference, txObj.Amount.String(), txObj.To, txObj.From)
-    	if err != nil {
-    		return nil, terror.Error(err)
-    	}
+	_, err = s.Conn.Exec(ctx, q, txObj.Description, txObj.TransactionReference, txObj.Amount.String(), txObj.To, txObj.From)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
 
 	// Create user
 	u = &passport.User{
@@ -427,13 +425,13 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		TransactionReference: passport.TransactionReference("Initial supremacy RedMountain supply seed."),
 	}
 
-		q = `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
+	q = `INSERT INTO transactions(id, description, transaction_reference, amount, credit, debit)
         				VALUES((SELECT count(*) from transactions), $1, $2, $3, $4, $5);`
 
-    	_, err = s.Conn.Exec(ctx, q, txObj.Description, txObj.TransactionReference, txObj.Amount.String(), txObj.To, txObj.From)
-    	if err != nil {
-    		return nil, terror.Error(err)
-    	}
+	_, err = s.Conn.Exec(ctx, q, txObj.Description, txObj.TransactionReference, txObj.Amount.String(), txObj.To, txObj.From)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
 
 	err = s.SeedAndAssignZaibatsu(ctx, supremacyCollectionID)
 	if err != nil {
@@ -765,11 +763,10 @@ func (s *Seeder) SeedAndAssignZaibatsu(ctx context.Context, collectionID passpor
     			VALUES((SELECT nextval('token_id_seq')),$1, $2, $3, $4, $5, $6, $7, $8)
     			RETURNING token_id as external_token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata`
 
-    	err := pgxscan.Get(ctx, s.Conn, nft, q, nft.Name, nft.CollectionID, nft.GameObject, nft.Description, nft.Image, nft.AnimationURL, nft.Attributes, nft.AdditionalMetadata)
-    	if err != nil {
-    		return terror.Error(err)
-    	}
-
+		err := pgxscan.Get(ctx, s.Conn, nft, q, nft.Name, nft.CollectionID, nft.GameObject, nft.Description, nft.Image, nft.AnimationURL, nft.Attributes, nft.AdditionalMetadata)
+		if err != nil {
+			return terror.Error(err)
+		}
 
 		q = `INSERT INTO 
         			xsyn_assets (token_id, user_id)
@@ -1067,11 +1064,10 @@ func (s *Seeder) SeedAndAssignRedMountain(ctx context.Context, collectionID pass
     			VALUES((SELECT nextval('token_id_seq')),$1, $2, $3, $4, $5, $6, $7, $8)
     			RETURNING token_id as external_token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata`
 
-    	err := pgxscan.Get(ctx, s.Conn, nft, q, nft.Name, nft.CollectionID, nft.GameObject, nft.Description, nft.Image, nft.AnimationURL, nft.Attributes, nft.AdditionalMetadata)
-    	if err != nil {
-    		return terror.Error(err)
-    	}
-
+		err := pgxscan.Get(ctx, s.Conn, nft, q, nft.Name, nft.CollectionID, nft.GameObject, nft.Description, nft.Image, nft.AnimationURL, nft.Attributes, nft.AdditionalMetadata)
+		if err != nil {
+			return terror.Error(err)
+		}
 
 		q = `INSERT INTO 
         			xsyn_assets (token_id, user_id)
@@ -1330,11 +1326,10 @@ func (s *Seeder) SeedAndAssignBoston(ctx context.Context, collectionID passport.
     			VALUES((SELECT nextval('token_id_seq')),$1, $2, $3, $4, $5, $6, $7, $8)
     			RETURNING token_id as external_token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata`
 
-    	err := pgxscan.Get(ctx, s.Conn, nft, q, nft.Name, nft.CollectionID, nft.GameObject, nft.Description, nft.Image, nft.AnimationURL, nft.Attributes, nft.AdditionalMetadata)
-    	if err != nil {
-    		return terror.Error(err)
-    	}
-
+		err := pgxscan.Get(ctx, s.Conn, nft, q, nft.Name, nft.CollectionID, nft.GameObject, nft.Description, nft.Image, nft.AnimationURL, nft.Attributes, nft.AdditionalMetadata)
+		if err != nil {
+			return terror.Error(err)
+		}
 
 		q = `INSERT INTO 
         			xsyn_assets (token_id, user_id)

@@ -345,6 +345,47 @@ func UserUpdate2FAIsSet(ctx context.Context, conn Conn, userID passport.UserID, 
 }
 
 // UserCreate will create a new user
+func UserCreateNoRPC(ctx context.Context, conn Conn, user *passport.User) error {
+	usernameOK, err := UsernameAvailable(ctx, conn, user.Username, nil)
+	if err != nil {
+		return terror.Error(err)
+	}
+	if !usernameOK {
+		return terror.Error(fmt.Errorf("username is taken: %s", user.Username))
+	}
+
+	q := `--sql
+		INSERT INTO users (first_name, last_name, email, username, public_address, avatar_id, role_id, verified, facebook_id, google_id, twitch_id, twitter_id, discord_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		RETURNING
+			id, role_id, first_name, last_name, email, username, avatar_id, created_at, updated_at, deleted_at, facebook_id, google_id, twitch_id, twitter_id, discord_id`
+
+	err = pgxscan.Get(ctx,
+		conn,
+		user,
+		q,
+		user.FirstName,
+		user.LastName,
+		user.Email,
+		user.Username,
+		user.PublicAddress,
+		user.AvatarID,
+		user.RoleID,
+		user.Verified,
+		user.FacebookID,
+		user.GoogleID,
+		user.TwitchID,
+		user.TwitterID,
+		user.DiscordID,
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+// UserCreate will create a new user
 func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 	usernameOK, err := UsernameAvailable(ctx, conn, user.Username, nil)
 	if err != nil {
