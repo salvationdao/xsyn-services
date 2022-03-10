@@ -171,7 +171,7 @@ func (api *API) LockNFT(w http.ResponseWriter, r *http.Request) (int, error) {
 	}
 
 	// Lock item for 5 minutes
-	_, err = db.PurchasedItemLock(uuid.Must(uuid.FromString(item.ID)))
+	item, err = db.PurchasedItemLock(uuid.Must(uuid.FromString(item.ID)))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Could not lock item.")
 	}
