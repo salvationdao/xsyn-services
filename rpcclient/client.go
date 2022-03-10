@@ -6,9 +6,7 @@ import (
 	"net/rpc"
 	"passport/passlog"
 	"sync"
-	"time"
 
-	"github.com/jpillora/backoff"
 	"github.com/ninja-software/terror/v2"
 	"go.uber.org/atomic"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
@@ -31,44 +29,15 @@ func SetGlobalClient(c *XrpcClient) {
 	Client = c
 }
 
-func connect(addrs ...string) ([]*rpc.Client, error) {
-	b := &backoff.Backoff{
-		Min:    1 * time.Second,
-		Max:    10 * time.Second,
-		Factor: 2,
-	}
-	attempts := 0
-	var clients []*rpc.Client
-
-	for {
-		attempts++
-		passlog.L.Info().Int("attempt", attempts).Msg("connecting to gameserver")
-		clients = []*rpc.Client{}
-		for _, addr := range addrs {
-			passlog.L.Info().Str("addr", addr).Msg("registering RPC client")
-			client, err := rpc.Dial("tcp", addr)
-			if err != nil {
-				passlog.L.Err(err).Str("addr", addr).Msg("registering RPC client")
-				time.Sleep(b.Duration())
-				continue
-			}
-			clients = append(clients, client)
-		}
-
-		break
-	}
-	return clients, nil
-}
-
 // GoCall consider deprecate this function
-func (c *XrpcClient) GoCall(serviceMethod string, args interface{}, reply interface{}, callback func(error)) {
-	go func() {
-		err := c.Call(serviceMethod, args, reply)
-		if callback != nil {
-			callback(err)
-		}
-	}()
-}
+// func (c *XrpcClient) GoCall(serviceMethod string, args interface{}, reply interface{}, callback func(error)) {
+// 	go func() {
+// 		err := c.Call(serviceMethod, args, reply)
+// 		if callback != nil {
+// 			callback(err)
+// 		}
+// 	}()
+// }
 
 // Call calls RPC server and retry, also initialise if it is the first time
 func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interface{}) error {
@@ -100,8 +69,8 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 	var retryCall uint
 	for {
 		if client == nil {
-			// keep redialing until 30 times
-			client, err = dial(30, c.Addrs[i])
+			// keep redialing until rpc server comes back online
+			client, err = dial(-1, c.Addrs[i])
 			if err != nil {
 				return terror.Error(err)
 			}
