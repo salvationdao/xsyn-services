@@ -8,27 +8,33 @@ import (
 	"passport/db"
 	"passport/db/boiler"
 	"passport/passdb"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 func AdminRoutes(ucm *UserCacheMap) chi.Router {
 	r := chi.NewRouter()
+	r.Get("/check", WithError(WithAdmin(AdminCheck)))
+	r.Get("/users", WithError(WithAdmin(ListUsers)))
 	r.Get("/purchased_items", WithError(WithAdmin(ListPurchasedItems)))
 	r.Get("/store_items", WithError(WithAdmin(ListStoreItems)))
-	r.Get("/users", WithError(WithAdmin(ListUsers)))
+
 	r.Post("/purchased_items/register/{template_id}/{owner_id}", WithError(WithAdmin(PurchasedItemRegisterHandler)))
 	r.Post("/purchased_items/set_owner/{purchased_item_id}/{owner_id}", WithError(WithAdmin(PurchasedItemSetOwner)))
-	r.Get("/check", WithError(WithAdmin(AdminCheck)))
-	r.Post("/reverse_transaction/{transaction_id}", WithError(WithAdmin(ReverseUserTransaction((ucm)))))
+
+	r.Post("/transactions/create/{transaction_id}", WithError(WithAdmin(CreateTransaction((ucm)))))
+	r.Post("/transactions/reverse/{transaction_id}", WithError(WithAdmin(ReverseUserTransaction((ucm)))))
+	r.Get("/transactions/list/user/{public_address}", WithError(WithAdmin(ListUserTransactions)))
+
 	r.Post("/sync/store_items", WithError(WithAdmin(SyncStoreItems)))
 	r.Post("/sync/purchased_items", WithError(WithAdmin(SyncPurchasedItems)))
-	r.Get("/user_transactions/{public_address}", WithError(WithAdmin(ListUserTransactions)))
 	return r
 }
 
@@ -51,6 +57,40 @@ func WithAdmin(next func(w http.ResponseWriter, r *http.Request) (int, error)) f
 	}
 	return fn
 }
+
+type CreateTransactionRequest struct {
+	Amount decimal.Decimal `json:"amount"`
+	Credit uuid.UUID       `json:"credit"`
+	Debit  uuid.UUID       `json:"debit"`
+}
+
+func CreateTransaction(ucm *UserCacheMap) func(w http.ResponseWriter, r *http.Request) (int, error) {
+	fn := func(w http.ResponseWriter, r *http.Request) (int, error) {
+		req := &CreateTransactionRequest{}
+		err := json.NewDecoder(r.Body).Decode(req)
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err, "Could not decode json")
+		}
+
+		ref := fmt.Sprintf("TRANSFER FROM OVERSEER - %d", time.Now().UnixNano())
+		newTx := &passport.NewTransaction{
+			To:                   passport.UserID(req.Credit),
+			From:                 passport.UserID(req.Debit),
+			Amount:               *req.Amount.BigInt(),
+			TransactionReference: passport.TransactionReference(ref),
+			Description:          ref,
+			Group:                passport.TransactionGroupStore,
+			SubGroup:             "Transfer",
+		}
+		_, _, _, err = ucm.Process(newTx)
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err, "Could not get transaction")
+		}
+		return http.StatusOK, nil
+	}
+	return fn
+}
+
 func ReverseUserTransaction(ucm *UserCacheMap) func(w http.ResponseWriter, r *http.Request) (int, error) {
 	fn := func(w http.ResponseWriter, r *http.Request) (int, error) {
 		txID := chi.URLParam(r, "transaction_id")

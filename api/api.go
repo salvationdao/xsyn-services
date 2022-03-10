@@ -188,18 +188,18 @@ func NewAPI(
 
 	r.Handle("/metrics", promhttp.Handler())
 	r.Route("/api", func(r chi.Router) {
-		r.Mount("/admin", AdminRoutes(ucm))
 		r.Group(func(r chi.Router) {
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
 			r.Use(sentryHandler.Handle)
 			r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn))
 			r.Mount("/files", FileRouter(conn, api))
+			r.Mount("/nfts", api.NFTRoutes())
+			r.Mount("/admin", AdminRoutes(ucm))
+
 			r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", WithError(api.Auth.GetNonce))
 			r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSups))
 			r.Get("/withdraw-tx-hash/{refundID}/{txHash}", WithError(api.UpdatePendingRefund))
-
-			r.Get("/mint-nft/{owner_address}/{nonce}/{collection_slug}/{external_token_id}", WithError(api.MintAsset))
 
 			r.Get("/asset/{hash}", WithError(api.AssetGet))
 			r.Get("/asset/{collection_address}/{token_id}", WithError(api.AssetGetByCollectionAndTokenID))

@@ -101,7 +101,6 @@ func CreateOrGetUser(ctx context.Context, conn *pgxpool.Pool, userAddr common.Ad
 		return nil, terror.Error(err)
 	}
 	return user, nil
-
 }
 
 func ProcessValues(sups string, inputValue string, inputDecimalStr string) (decimal.Decimal, decimal.Decimal, int, error) {

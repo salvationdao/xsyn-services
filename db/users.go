@@ -8,12 +8,14 @@ import (
 	"passport/db/boiler"
 	"passport/passdb"
 	"passport/passlog"
+	"passport/rpcclient"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/georgysavva/scany/pgxscan"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
@@ -379,6 +381,16 @@ func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 	if err != nil {
 		return terror.Error(err)
 	}
+	err = rpcclient.PlayerRegister(uuid.UUID(user.ID), user.Username, uuid.UUID(*user.FactionID), common.HexToAddress(user.PublicAddress.String))
+	if err != nil {
+		passlog.L.Err(err).
+			Str("id", user.ID.String()).
+			Str("username", user.Username).
+			Str("faction_id", user.FactionID.String()).
+			Str("public_address", user.PublicAddress.String).
+			Msg("could not register player on gameserver")
+	}
+
 	return nil
 }
 

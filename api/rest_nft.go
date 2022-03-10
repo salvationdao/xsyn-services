@@ -19,6 +19,14 @@ import (
 	"github.com/ninja-syndicate/supremacy-bridge/bridge"
 )
 
+func (api *API) NFTRoutes() chi.Router {
+	r := chi.NewRouter()
+	r.Get("/check", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
+	r.Get("/owner_address/{owner_address}/nonce/{nonce}/collection_slug/{collection_slug}/token_id/{external_token_id}", WithError(api.MintAsset))
+	r.Post("/owner_address/{owner_address}/collection_slug/{collection_slug}/token_id/{external_token_id}", WithError(api.LockNFT))
+	return r
+}
+
 // MintAsset
 // Flow to mint asset
 // get nonce from nft contract (front end)
@@ -90,7 +98,6 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("unable to validate ownership of asset"), "Unable to validate ownership of asset.")
 	}
 
-	fmt.Println(item.UnlockedAt.Format(time.RFC3339), time.Now().Format(time.RFC3339))
 	if item.UnlockedAt.After(time.Now()) {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("asset is locked"), "Asset is locked.")
 	}
@@ -129,5 +136,56 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
+	return http.StatusOK, nil
+}
+
+func (api *API) LockNFT(w http.ResponseWriter, r *http.Request) (int, error) {
+	address := chi.URLParam(r, "owner_address")
+	if address == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing address"), "Missing address.")
+	}
+
+	collectionSlug := chi.URLParam(r, "collection_slug")
+	if collectionSlug == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing collection slug"), "Missing Collection slug.")
+	}
+
+	tokenIDStr := chi.URLParam(r, "external_token_id")
+	if tokenIDStr == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing tokenID"), "Missing tokenID.")
+	}
+
+	collection, err := db.CollectionBySlug(context.Background(), api.Conn, collectionSlug)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get collection.")
+	}
+
+	tokenID, err := strconv.Atoi(tokenIDStr)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to convert token id.")
+	}
+
+	item, err := db.PurchasedItemByMintContractAndTokenID(common.HexToAddress(collection.MintContract.String), tokenID)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
+	}
+
+	// Lock item for 5 minutes
+	item, err = db.PurchasedItemLock(uuid.Must(uuid.FromString(item.ID)))
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Could not lock item.")
+	}
+
+	// check user owns this asset
+	user, err := db.UserByPublicAddress(context.Background(), api.Conn, common.HexToAddress(address))
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
+	}
+
+	go api.MessageBus.Send(r.Context(), messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, item.Hash)), &AssetUpdatedSubscribeResponse{
+		PurchasedItem:  item,
+		OwnerUsername:  user.PublicAddress.String,
+		CollectionSlug: collection.Slug,
+	})
 	return http.StatusOK, nil
 }
