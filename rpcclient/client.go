@@ -6,7 +6,6 @@ import (
 	"math"
 	"net/rpc"
 	"passport/passlog"
-	"server/passlog"
 	"sync"
 	"sync/atomic"
 	"time"
