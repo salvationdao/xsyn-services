@@ -27,6 +27,7 @@ func AdminRoutes(ucm *UserCacheMap) chi.Router {
 	r.Get("/check", WithError(WithAdmin(AdminCheck)))
 	r.Post("/reverse_transaction/{transaction_id}", WithError(WithAdmin(ReverseUserTransaction((ucm)))))
 	r.Post("/sync/store_items", WithError(WithAdmin(SyncStoreItems)))
+	r.Post("/sync/purchased_items", WithError(WithAdmin(SyncPurchasedItems)))
 	r.Get("/user_transactions/{public_address}", WithError(WithAdmin(ListUserTransactions)))
 	return r
 }
@@ -81,7 +82,13 @@ func SyncStoreItems(w http.ResponseWriter, r *http.Request) (int, error) {
 	}
 	return http.StatusOK, nil
 }
-
+func SyncPurchasedItems(w http.ResponseWriter, r *http.Request) (int, error) {
+	err := db.SyncPurchasedItems()
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not sync purchased items")
+	}
+	return http.StatusOK, nil
+}
 func ListUserTransactions(w http.ResponseWriter, r *http.Request) (int, error) {
 	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
 	u, err := boiler.Users(boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex()))).One(passdb.StdConn)

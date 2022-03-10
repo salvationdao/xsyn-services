@@ -407,10 +407,11 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, is
 		return fmt.Errorf("get nft owners: %w", err)
 	}
 
-	err = payments.UpdateOwners(nftOwnerStatuses, isTestnet)
+	ownerupdated, ownerskipped, err := payments.UpdateOwners(nftOwnerStatuses, isTestnet)
 	if err != nil {
 		return fmt.Errorf("update nft owners: %w", err)
 	}
+	passlog.L.Info().Int("updated", ownerupdated).Int("skipped", ownerskipped).Msg("synced nft ownerships")
 	withdrawRecords, err := payments.GetWithdraws(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get withdraws: %w", err)

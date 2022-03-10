@@ -9,11 +9,9 @@ import (
 	"passport"
 	"passport/db"
 	"passport/db/boiler"
-	"passport/passdb"
 	"time"
 
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ninja-software/log_helpers"
 
@@ -188,10 +186,9 @@ type AssetUpdatedSubscribeRequest struct {
 }
 
 type AssetUpdatedSubscribeResponse struct {
-	ItemOnChainTransactions []*boiler.ItemOnchainTransaction `json:"item_on_chain_transactions"`
-	CollectionSlug          string                           `json:"collection_slug"`
-	PurchasedItem           *boiler.PurchasedItem            `json:"purchased_item"`
-	OwnerUsername           string                           `json:"owner_username"`
+	CollectionSlug string                `json:"collection_slug"`
+	PurchasedItem  *boiler.PurchasedItem `json:"purchased_item"`
+	OwnerUsername  string                `json:"owner_username"`
 }
 
 // 	rootHub.SecureCommand(HubKeyAssetSubscribe, AssetController.AssetSubscribe)
@@ -221,27 +218,10 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hub
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
 	}
-	txes := []*boiler.ItemOnchainTransaction{}
-	txCount, err := boiler.ItemOnchainTransactions(
-		qm.Where("external_token_id = ? AND collection_id = ?", asset.ExternalTokenID, asset.CollectionID),
-	).Count(passdb.StdConn)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err)
-	}
-	if txCount > 0 {
-		txes, err = boiler.ItemOnchainTransactions(
-			qm.Where("external_token_id = ? AND collection_id = ?", asset.ExternalTokenID, asset.CollectionID),
-			qm.OrderBy("block_number DESC"),
-		).All(passdb.StdConn)
-		if err != nil {
-			return req.TransactionID, "", terror.Error(err)
-		}
-	}
 	reply(&AssetUpdatedSubscribeResponse{
-		ItemOnChainTransactions: txes,
-		PurchasedItem:           asset,
-		OwnerUsername:           owner.Username,
-		CollectionSlug:          collection.Slug,
+		PurchasedItem:  asset,
+		OwnerUsername:  owner.Username,
+		CollectionSlug: collection.Slug,
 	})
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.Hash)), nil
 }

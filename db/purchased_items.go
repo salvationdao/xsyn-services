@@ -6,6 +6,7 @@ import (
 	"passport/db/boiler"
 	"passport/passdb"
 	"passport/passlog"
+	"strconv"
 	"time"
 
 	"passport/rpcclient"
@@ -86,6 +87,7 @@ func SyncPurchasedItems() error {
 				StoreItemID:     item.Mech.TemplateID,
 				OwnerID:         item.Mech.OwnerID,
 				ExternalTokenID: item.Mech.ExternalTokenID,
+				IsDefault:       item.Mech.IsDefault,
 				Tier:            item.Mech.Tier,
 				Hash:            item.Mech.Hash,
 				Data:            data,
@@ -138,22 +140,15 @@ func PurchasedItemLock(itemID uuid.UUID) (*boiler.PurchasedItem, error) {
 func PurchasedItemIsOnWorld()  {}
 func PurchasedItemIsOffWorld() {}
 func PurchasedItemIsMinted(collectionAddr common.Address, tokenID int) (bool, error) {
-	collection, err := CollectionByMintAddress(collectionAddr)
+	item, err := PurchasedItemByMintContractAndTokenID(collectionAddr, tokenID)
 	if err != nil {
 		return false, terror.Error(err)
 	}
-	count, err := boiler.ItemOnchainTransactions(
-		boiler.ItemOnchainTransactionWhere.CollectionID.EQ(collection.ID),
-		boiler.ItemOnchainTransactionWhere.ExternalTokenID.EQ(tokenID),
-	).Count(passdb.StdConn)
-	if err != nil {
-		return false, terror.Error(err)
-	}
-	return count > 0, nil
+	return item.OnChainStatus != string(MINTABLE), nil
 }
 
 func PurchasedItemByMintContractAndTokenID(contractAddr common.Address, tokenID int) (*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "PurchasedItemByMintContractAndTokenID").Msg("db func")
+	passlog.L.Debug().Str("fn", "PurchasedItemByMintContractAndTokenID").Strs("args", []string{contractAddr.Hex(), strconv.Itoa(tokenID)}).Msg("db func")
 	collection, err := CollectionByMintAddress(contractAddr)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -251,6 +246,7 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) (*boiler.Pu
 		StoreItemID:     resp.MechContainer.Mech.TemplateID,
 		ExternalTokenID: resp.MechContainer.Mech.ExternalTokenID,
 		Hash:            resp.MechContainer.Mech.Hash,
+		IsDefault:       resp.MechContainer.Mech.IsDefault,
 		Tier:            resp.MechContainer.Mech.Tier,
 		CollectionID:    collection.ID,
 		OwnerID:         resp.MechContainer.Mech.OwnerID,
