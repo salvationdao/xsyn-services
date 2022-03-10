@@ -77,6 +77,11 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 			break
 		}
 
+		if !errors.Is(err, rpc.ErrShutdown) {
+			passlog.L.Error().Err(err).Msg("RPC call has failed.")
+			return err
+		}
+
 		// clean up before retry
 		if client != nil {
 			// close first
