@@ -178,7 +178,6 @@ require (
 
 require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
-	github.com/davecgh/go-spew v1.1.1
 	github.com/ethereum/go-ethereum v1.10.16
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/friendsofgo/errors v0.9.2
