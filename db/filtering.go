@@ -114,28 +114,28 @@ type (
 )
 
 const (
-	TraitTypeRarity                TraitType = "Rarity"
-	TraitTypeBrand                 TraitType = "Brand"
-	TraitTypeModel                 TraitType = "Model"
-	TraitTypeSkin                  TraitType = "Skin"
-	TraitTypeName                  TraitType = "Name"
-	TraitTypeAssetType             TraitType = "Asset Type"
-	TraitTypeMaxStructureHitPoints TraitType = "Max Structure Hit Points"
-	TraitTypeMaxShieldHitPoints    TraitType = "Max Shield Hit Points"
-	TraitTypeSpeed                 TraitType = "Speed"
-	TraitTypeWeaponHardpoints      TraitType = "Weapon Hardpoints"
-	TraitTypeUtilitySlots          TraitType = "Utility Slots"
-	TraitTypeWeaponOne             TraitType = "Weapon One"
-	TraitTypeWeaponTwo             TraitType = "Weapon Two"
-	TraitTypeUtilityOne            TraitType = "Utility One"
-	TraitTypeAbilityOne            TraitType = "Ability One"
-	TraitTypeAbilityTwo            TraitType = "Ability Two"
+	TraitTypeTier                  TraitType = "tier"
+	TraitTypeBrand                 TraitType = "brand"
+	TraitTypeModel                 TraitType = "model"
+	TraitTypeSkin                  TraitType = "skin"
+	TraitTypeName                  TraitType = "name"
+	TraitTypeAssetType             TraitType = "asset_type"
+	TraitTypeMaxStructureHitPoints TraitType = "max_structure_hit_points"
+	TraitTypeMaxShieldHitPoints    TraitType = "max_shield_hit_points"
+	TraitTypeSpeed                 TraitType = "speed"
+	TraitTypeWeaponHardpoints      TraitType = "weapon_hardpoints"
+	TraitTypeUtilitySlots          TraitType = "utility_slots"
+	TraitTypeWeaponOne             TraitType = "weapon_one"
+	TraitTypeWeaponTwo             TraitType = "weapon_two"
+	TraitTypeUtilityOne            TraitType = "utility_one"
+	TraitTypeAbilityOne            TraitType = "ability_one"
+	TraitTypeAbilityTwo            TraitType = "ability_two"
 )
 
 func (t TraitType) IsValid() error {
 	switch t {
 	case
-		TraitTypeRarity,
+		TraitTypeTier,
 		TraitTypeBrand,
 		TraitTypeModel,
 		TraitTypeSkin,
@@ -173,6 +173,11 @@ type AttributeFilterRequestItem struct {
 func GenerateAttributeFilterSQL(trait string, value string, operator OperatorValueType, index int, tableName string) (*string, error) {
 	condition := fmt.Sprintf(`
 	%[1]s.attributes @> '[{"trait_type": "%[2]s", "value": "%[3]s"}]' `, tableName, trait, value)
-
 	return &condition, nil
+}
+
+// GenerateDataFilterSQL generates SQL for filtering a data column
+func GenerateDataFilterSQL(trait string, value string, index int, tableName string) string {
+	condition := fmt.Sprintf(`%[1]s."data"::text ILIKE '%%"%[2]s": "%[3]s%%'`, tableName, trait, value)
+	return condition
 }

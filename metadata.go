@@ -91,6 +91,26 @@ type XsynMetadata struct {
 	TxHistory          []string              `json:"tx_history" db:"tx_history"`
 }
 
+type PurchasedItem struct {
+	Hash            string       `json:"hash" db:"hash"`
+	UserID          *UserID      `json:"user_id" db:"user_id"`
+	Minted          bool         `json:"minted" db:"minted"`
+	Username        *string      `json:"username" db:"username,omitempty"`
+	ExternalTokenID uint64       `json:"external_token_id" db:"external_token_id"`
+	CollectionID    CollectionID `json:"collection_id" db:"collection_id"`
+	Collection      Collection   `json:"collection" db:"collection"`
+	GameObject      interface{}  `json:"game_object" db:"game_object"`
+	ExternalUrl     string       `json:"external_url" db:"external_url"`
+	Image           string       `json:"image" db:"image"`
+	ImageAvatar     string       `json:"image_avatar" db:"image_avatar"`
+	AnimationURL    string       `json:"animation_url" db:"animation_url"`
+	DeletedAt       *time.Time   `json:"deleted_at" db:"deleted_at"`
+	FrozenAt        *time.Time   `json:"frozen_at" db:"frozen_at"`
+	LockedByID      *UserID      `json:"locked_by_id" db:"locked_by_id"`
+	UpdatedAt       time.Time    `json:"updated_at" db:"updated_at"`
+	CreatedAt       time.Time    `json:"created_at" db:"created_at"`
+}
+
 type AssetType string
 
 const (

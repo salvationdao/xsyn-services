@@ -1,17 +1,22 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"passport"
 	"passport/db/boiler"
 	"passport/passdb"
 	"passport/passlog"
 	"strconv"
+	"strings"
 	"time"
 
 	"passport/rpcclient"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/georgysavva/scany/pgxscan"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -395,4 +400,194 @@ func PurchasedItem(itemID uuid.UUID) (*boiler.PurchasedItem, error) {
 		return nil, terror.Error(err)
 	}
 	return purchasedItem, nil
+}
+
+type PurchasedItemColumn string
+
+const (
+	PurchasedItemExternalTokenID PurchasedItemColumn = "external_token_id"
+	PurchasedItemDeletedAt       PurchasedItemColumn = "deleted_at"
+	PurchasedItemUpdatedAt       PurchasedItemColumn = "updated_at"
+	PurchasedItemCreatedAt       PurchasedItemColumn = "created_at"
+	PurchasedItemHash            PurchasedItemColumn = "hash"
+	PurchasedItemUsername        PurchasedItemColumn = "username"
+	PurchasedItemCollectionID    PurchasedItemColumn = "collection_id"
+	PurchasedItemAssetType       PurchasedItemColumn = "asset_type"
+)
+
+func (ic PurchasedItemColumn) IsValid() error {
+	switch ic {
+	case
+		PurchasedItemExternalTokenID,
+		PurchasedItemDeletedAt,
+		PurchasedItemUpdatedAt,
+		PurchasedItemCreatedAt,
+		PurchasedItemUsername,
+		PurchasedItemCollectionID,
+		PurchasedItemAssetType,
+		PurchasedItemHash:
+		return nil
+	}
+	return terror.Error(fmt.Errorf("invalid asset column type %s", ic))
+}
+
+const PurchaseGetQuery string = `
+SELECT 
+row_to_json(c) as collection,
+purchased_items.external_token_id,
+purchased_items.deleted_at,
+purchased_items.updated_at,
+purchased_items.created_at,
+purchased_items.hash,
+COALESCE(u.username, '') as username
+` + PurchaseGetFrom
+
+const PurchaseGetFrom = `
+FROM purchased_items 
+LEFT OUTER JOIN xsyn_assets ON purchased_items.external_token_id = xsyn_assets.external_token_id and purchased_items.collection_id = xsyn_assets.collection_id
+INNER JOIN (
+	SELECT  id,
+			name,
+			logo_blob_id as logoBlobID,
+			keywords,
+			slug,
+			deleted_at as deletedAt,  
+			mint_contract as "mintContract",
+			stake_contract as "stakeContract"
+	FROM collections _c
+) c ON purchased_items.collection_id = c.id
+INNER JOIN users u ON purchased_items.owner_id = u.id
+`
+
+//  PurchaseItemsList gets a list of purchased items depending on the filters
+func PurchaseItemsList(
+	ctx context.Context,
+	conn Conn,
+	search string,
+	archived bool,
+	includedAssetHashes []string,
+	filter *ListFilterRequest,
+	attributeFilter *AttributeFilterRequest,
+	offset int,
+	pageSize int,
+	sortBy string,
+	sortDir SortByDir,
+) (int, []*passport.PurchasedItem, error) {
+
+	// Prepare Filters
+	var args []interface{}
+
+	filterConditionsString := ""
+	argIndex := 0
+	if filter != nil {
+		filterConditions := []string{}
+		for _, f := range filter.Items {
+			column := PurchasedItemColumn(f.ColumnField)
+			err := column.IsValid()
+			if err != nil {
+				return 0, nil, terror.Error(err)
+			}
+
+			argIndex += 1
+			if f.ColumnField == string("collection_id") {
+				f.ColumnField = fmt.Sprintf("purchased_items.%s", "collection_id")
+			}
+			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, argIndex)
+			if condition != "" {
+				filterConditions = append(filterConditions, condition)
+				args = append(args, value)
+			}
+		}
+		if len(filterConditions) > 0 {
+			filterConditionsString = "AND (" + strings.Join(filterConditions, " "+string(filter.LinkOperator)+" ") + ")"
+		}
+	}
+
+	if attributeFilter != nil {
+		filterConditions := []string{}
+		for _, f := range attributeFilter.Items {
+			column := TraitType(f.Trait)
+			err := column.IsValid()
+			if err != nil {
+				return 0, nil, terror.Error(err)
+			}
+			condition := GenerateDataFilterSQL(f.Trait, f.Value, argIndex, "purchased_items")
+			filterConditions = append(filterConditions, condition)
+		}
+		if len(filterConditions) > 0 {
+			filterConditionsString += "AND (" + strings.Join(filterConditions, " "+string(attributeFilter.LinkOperator)+" ") + ")"
+		}
+	}
+
+	archiveCondition := "IS NULL"
+	if archived {
+		archiveCondition = "IS NOT NULL"
+	}
+
+	searchCondition := ""
+	if search != "" {
+		if len(search) > 0 {
+			conditionLabel := GenerateDataFilterSQL("label", search, argIndex, "purchased_items")
+			conditionName := GenerateDataFilterSQL("name", search, argIndex, "purchased_items")
+			conditionType := GenerateDataFilterSQL("asset_type", search, argIndex, "purchased_items")
+			conditionTier := GenerateDataFilterSQL("tier", search, argIndex, "purchased_items")
+			searchCondition = " AND " + fmt.Sprintf("(%s OR %s OR %s OR %s)", conditionLabel, conditionName, conditionType, conditionTier)
+		}
+	}
+
+	// Get Total Found
+	countQ := fmt.Sprintf(`--sql
+		SELECT COUNT(DISTINCT purchased_items.external_token_id)
+		%s
+		WHERE purchased_items.deleted_at %s
+			%s
+			%s
+		`,
+		PurchaseGetFrom,
+		archiveCondition,
+		filterConditionsString,
+		searchCondition,
+	)
+
+	var totalRows int
+	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
+	if err != nil {
+		return 0, nil, terror.Error(err)
+	}
+	if totalRows == 0 {
+		return 0, make([]*passport.PurchasedItem, 0), nil
+	}
+
+	// Order and Limit
+	orderBy := " ORDER BY created_at desc"
+	if sortBy != "" {
+		orderBy = fmt.Sprintf(" ORDER BY %s %s", sortBy, sortDir)
+	}
+	limit := ""
+	if pageSize > 0 {
+		limit = fmt.Sprintf(" LIMIT %d OFFSET %d", pageSize, offset)
+	}
+
+	// Get Paginated Result
+	q := fmt.Sprintf(
+		PurchaseGetQuery+`--sql
+		WHERE purchased_items.deleted_at %s
+			%s
+			%s
+		%s
+		%s`,
+		archiveCondition,
+		filterConditionsString,
+		searchCondition,
+		orderBy,
+		limit,
+	)
+
+	result := make([]*passport.PurchasedItem, 0)
+	err = pgxscan.Select(ctx, conn, &result, q, args...)
+	if err != nil {
+		return 0, nil, terror.Error(err)
+	}
+
+	return totalRows, result, nil
 }

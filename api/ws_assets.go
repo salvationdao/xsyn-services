@@ -135,6 +135,17 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 type AssetsUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
+		UserID              passport.UserID            `json:"user_id"`
+		SortDir             db.SortByDir               `json:"sort_dir"`
+		SortBy              string                     `json:"sortBy"`
+		IncludedAssetHashes []string                   `json:"included_asset_hashes"`
+		Filter              *db.ListFilterRequest      `json:"filter,omitempty"`
+		AttributeFilter     *db.AttributeFilterRequest `json:"attribute_filter,omitempty"`
+		AssetType           string                     `json:"asset_type"`
+		Archived            bool                       `json:"archived"`
+		Search              string                     `json:"search"`
+		PageSize            int                        `json:"page_size"`
+		Page                int                        `json:"page"`
 	} `json:"payload"`
 }
 
@@ -158,7 +169,23 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Clien
 		return terror.Error(fmt.Errorf("no auth: user ID %s", userID), "User not found")
 	}
 
-	items, err := db.PurchasedItemsByOwnerID(uuid.UUID(userID))
+	offset := 0
+	if req.Payload.Page > 0 {
+		offset = req.Payload.Page * req.Payload.PageSize
+	}
+
+	total, items, err := db.PurchaseItemsList(
+		ctx, ac.Conn,
+		req.Payload.Search,
+		req.Payload.Archived,
+		req.Payload.IncludedAssetHashes,
+		req.Payload.Filter,
+		req.Payload.AttributeFilter,
+		offset,
+		req.Payload.PageSize,
+		req.Payload.SortBy,
+		req.Payload.SortDir,
+	)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -169,7 +196,7 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	resp := &AssetListResponse{
-		len(itemHashes),
+		total,
 		itemHashes,
 	}
 
