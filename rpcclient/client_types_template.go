@@ -21,6 +21,7 @@ type Template struct {
 	Label              string    `json:"label"`
 	Slug               string    `json:"slug"`
 	IsDefault          bool      `json:"is_default"`
+	LargeImageURL      string    `json:"large_image_url"`
 	ImageURL           string    `json:"image_url"`
 	AnimationURL       string    `json:"animation_url"`
 	CardAnimationURL   string    `json:"card_animation_url"`
