@@ -462,6 +462,20 @@ func UserFactionEnlist(ctx context.Context, conn Conn, user *passport.User) erro
 	if err != nil {
 		return terror.Error(err)
 	}
+
+	err = rpcclient.PlayerEnlist(
+		uuid.UUID(user.ID),
+		uuid.UUID(*user.FactionID),
+	)
+	if err != nil {
+		passlog.L.Err(err).
+			Str("id", user.ID.String()).
+			Str("username", user.Username).
+			Str("public_address", user.PublicAddress.String).
+			Str("faction_id", user.FactionID.String()).
+			Msg("could not enlist player faction on gameserver")
+	}
+
 	return nil
 }
 
