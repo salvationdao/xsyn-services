@@ -11,8 +11,6 @@ import (
 
 	"github.com/ninja-software/log_helpers"
 
-	SentryTracer "github.com/ninja-syndicate/hub/ext/sentry"
-
 	"github.com/shopspring/decimal"
 
 	"nhooyr.io/websocket"
@@ -112,7 +110,7 @@ func NewAPI(
 				msgBus.UnsubAll(client)
 			},
 			Log:    zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
-			Tracer: SentryTracer.New(),
+			Tracer: &HubTracer{},
 			WelcomeMsg: &hub.WelcomeMsg{
 				Key:     "WELCOME",
 				Payload: nil,
