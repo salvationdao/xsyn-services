@@ -286,7 +286,7 @@ func PurchasedItemSetName(purchasedItemID uuid.UUID, name string) (*boiler.Purch
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-	refreshedItem, err := refreshItem(purchasedItemID, true)
+	refreshedItem, err := refreshItem(purchasedItemID, false)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -300,7 +300,7 @@ func PurchasedItemSetOwner(purchasedItemID uuid.UUID, ownerID uuid.UUID) (*boile
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-	refreshedItem, err := refreshItem(purchasedItemID, true)
+	refreshedItem, err := refreshItem(purchasedItemID, false)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -369,7 +369,7 @@ func setPurchasedItem(item *boiler.PurchasedItem) (*boiler.PurchasedItem, error)
 			return nil, terror.Error(err)
 		}
 	}
-	item, err = refreshItem(uuid.Must(uuid.FromString(item.ID)), true)
+	item, err = refreshItem(uuid.Must(uuid.FromString(item.ID)), false)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -384,7 +384,7 @@ func getPurchasedItem(itemID uuid.UUID) (*boiler.PurchasedItem, error) {
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-	refreshedItem, err := refreshItem(uuid.Must(uuid.FromString(item.ID)), true)
+	refreshedItem, err := refreshItem(uuid.Must(uuid.FromString(item.ID)), false)
 	if err != nil {
 		passlog.L.Err(err).Str("purchased_item_id", item.ID).Msg("could not refresh purchased item from gameserver, using cached purchased item")
 		return item, nil
