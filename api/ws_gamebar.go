@@ -89,34 +89,9 @@ func (gc *GamebarController) AuthRingCheck(ctx context.Context, hubc *hub.Client
 		return terror.Error(fmt.Errorf("user not found"), "User not found")
 	}
 
-	if os.Getenv("PASSPORT_ENVIRONMENT") == "development" || os.Getenv("PASSPORT_ENVIRONMENT") == "staging" {
-		oneSups := big.NewInt(1000000000000000000)
-		oneSups.Mul(oneSups, big.NewInt(100000))
-		tx := &passport.NewTransaction{
-			To:                   user.ID,
-			From:                 passport.XsynSaleUserID,
-			Amount:               *oneSups,
-			NotSafe:              true,
-			TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
-			Description:          "Give away for testing",
-			Group:                "Testing",
-		}
-		_, _, _, err := gc.API.userCacheMap.Process(tx)
-
-		if err != nil {
-			passlog.L.
-				Err(err).
-				Str("to", tx.To.String()).
-				Str("from", tx.From.String()).
-				Str("amount", tx.Amount.String()).
-				Str("description", tx.Description).
-				Str("transaction_reference", string(tx.TransactionReference)).
-				Msg("NO SUPS FOR YOU :p")
-		}
-	}
-
 	var resp struct {
-		IsSuccess bool `json:"is_success"`
+		IsSuccess     bool `json:"isSuccess"`
+		IsWhitelisted bool `json:"isWhitlisted"`
 	}
 	err = gc.API.GameserverRequest(http.MethodPost, "/auth_ring_check", struct {
 		User                *passport.User `json:"user"`
@@ -133,6 +108,34 @@ func (gc *GamebarController) AuthRingCheck(ctx context.Context, hubc *hub.Client
 		// upgrade client level to 2
 		hubc.Level = 2
 		gc.Log.Info().Msgf("Client %s has passed the ring check and been upgraded to level 2 client")
+	}
+
+	// give away sups if user is whitelisted
+	if resp.IsWhitelisted {
+		if os.Getenv("PASSPORT_ENVIRONMENT") == "development" || os.Getenv("PASSPORT_ENVIRONMENT") == "staging" {
+			oneSups := big.NewInt(1000000000000000000)
+			oneSups.Mul(oneSups, big.NewInt(1000))
+			tx := &passport.NewTransaction{
+				To:                   user.ID,
+				From:                 passport.XsynSaleUserID,
+				Amount:               *oneSups,
+				NotSafe:              true,
+				TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
+				Description:          "Give away for testing",
+				Group:                "Testing",
+			}
+			_, _, _, err := gc.API.userCacheMap.Process(tx)
+			if err != nil {
+				passlog.L.
+					Err(err).
+					Str("to", tx.To.String()).
+					Str("from", tx.From.String()).
+					Str("amount", tx.Amount.String()).
+					Str("description", tx.Description).
+					Str("transaction_reference", string(tx.TransactionReference)).
+					Msg("NO SUPS FOR YOU :p")
+			}
+		}
 	}
 
 	reply(true)
