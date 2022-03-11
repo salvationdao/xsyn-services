@@ -22,6 +22,7 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 
 	"errors"
+
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -106,6 +107,7 @@ func NewAPI(
 		},
 		MessageBus: msgBus,
 		Hub: hub.New(&hub.Config{
+			LoggingEnabled: true,
 			ClientOfflineFn: func(client *hub.Client) {
 				msgBus.UnsubAll(client)
 			},

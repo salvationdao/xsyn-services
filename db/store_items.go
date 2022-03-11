@@ -200,6 +200,20 @@ func StoreItemsRemainingByFactionIDAndTier(collectionID uuid.UUID, factionID uui
 	return count, err
 }
 
+func PurchasedLootboxesByUserID(userID uuid.UUID) (int, error) {
+	var result int
+	q := `
+SELECT COALESCE(count(pi.id), 0) FROM purchased_items pi 
+INNER JOIN store_items si ON si.id = pi.store_item_id 
+WHERE owner_id = $1 AND si.restriction_group = 'LOOTBOX';
+`
+	err := pgxscan.Get(context.Background(), passdb.Conn, &result, q, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result, nil
+}
+
 // StoreItemsAvailable return the total of available war machine in each faction
 func StoreItemsAvailable() ([]*passport.FactionSaleAvailable, error) {
 	collection, err := GenesisCollection()

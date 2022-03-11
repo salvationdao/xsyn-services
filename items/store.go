@@ -167,12 +167,11 @@ func Purchase(
 func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
 	ucmProcess func(*passport.NewTransaction) (*big.Int, *big.Int, string, error), user passport.User, factionID passport.FactionID, externalURL string) (string, error) {
 
-	md, err := db.GetUserMetadata(ctx, conn, user.ID)
+	boughtSoFar, err := db.PurchasedLootboxesByUserID(uuid.UUID(user.ID))
 	if err != nil {
-		return "", terror.Error(err)
+		return "", terror.Error(err, "Could not get purchased loot box count")
 	}
-
-	if md.BoughtLootboxes >= 10 {
+	if boughtSoFar >= 10 {
 		return "", terror.Warn(fmt.Errorf("user bought 10 lootboxes"), "You have reached your 10 lootbox limit.")
 	}
 
