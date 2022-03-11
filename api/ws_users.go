@@ -2293,7 +2293,6 @@ func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx con
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineQueueStatSubscribe, req.Payload.AssetHash)), terror.ErrNotImplemented
 
 	// get item
 	item, err := db.PurchasedItemByHash(req.Payload.AssetHash)
