@@ -90,8 +90,8 @@ func (gc *GamebarController) AuthRingCheck(ctx context.Context, hubc *hub.Client
 	}
 
 	var resp struct {
-		IsSuccess     bool `json:"isSuccess"`
-		IsWhitelisted bool `json:"isWhitlisted"`
+		IsSuccess     bool `json:"is_success"`
+		IsWhitelisted bool `json:"is_whitelisted"`
 	}
 	err = gc.API.GameserverRequest(http.MethodPost, "/auth_ring_check", struct {
 		User                *passport.User `json:"user"`
