@@ -286,7 +286,7 @@ func PurchasedItemSetName(purchasedItemID uuid.UUID, name string) (*boiler.Purch
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-	refreshedItem, err := refreshItem(purchasedItemID, false)
+	refreshedItem, err := refreshItem(purchasedItemID, true)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -300,7 +300,7 @@ func PurchasedItemSetOwner(purchasedItemID uuid.UUID, ownerID uuid.UUID) (*boile
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-	refreshedItem, err := refreshItem(purchasedItemID, false)
+	refreshedItem, err := refreshItem(purchasedItemID, true)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -369,7 +369,7 @@ func setPurchasedItem(item *boiler.PurchasedItem) (*boiler.PurchasedItem, error)
 			return nil, terror.Error(err)
 		}
 	}
-	item, err = refreshItem(uuid.Must(uuid.FromString(item.ID)), false)
+	item, err = refreshItem(uuid.Must(uuid.FromString(item.ID)), true)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
