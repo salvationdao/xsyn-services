@@ -18,9 +18,10 @@ type EarlyContributor struct {
 	SignatureHex      null.String `json:"signature_hex" db:"signature_hex"`
 	SignerAddressHex  null.String `json:"signer_address_hex" db:"signer_address_hex"`
 	Agree             null.Bool   `json:"agree" db:"agree"`
-	CreatedAt         time.Time   `json:"createdAt" db:"created_at"`
-	UpdatedAt         time.Time   `json:"updatedAt" db:"updated_at"`
-	DeletedAt         *time.Time  `json:"deletedAt" db:"deleted_at"`
+	SignedAt          time.Time   `json:"signed_at" db:"signed_at"`
+	CreatedAt         time.Time   `json:"created_at" db:"created_at"`
+	UpdatedAt         time.Time   `json:"updated_at" db:"updated_at"`
+	DeletedAt         *time.Time  `json:"deleted_at" db:"deleted_at"`
 }
 
 func IsUserEarlyContributor(ctx context.Context, conn Conn, address string) (bool, EarlyContributor, error) {
@@ -38,8 +39,8 @@ func IsUserEarlyContributor(ctx context.Context, conn Conn, address string) (boo
 }
 
 func UserSignMessage(ctx context.Context, conn Conn, address, message, signature, messageHex string, agree bool) error {
-	q := `UPDATE saft_agreements SET message = $2, signature_hex = $3, signer_address_hex = $4, agree = $5, message_hex = $6 WHERE user_public_address ILIKE $1;`
-	_, err := conn.Exec(ctx, q, address, message, signature, address, agree, messageHex)
+	q := `UPDATE saft_agreements SET message = $2, signature_hex = $3, signer_address_hex = $4, agree = $5, message_hex = $6, signed_at = $7 WHERE user_public_address ILIKE $1;`
+	_, err := conn.Exec(ctx, q, address, message, signature, address, agree, messageHex, time.Now())
 	if err != nil {
 		return err
 	}
