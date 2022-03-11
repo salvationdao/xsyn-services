@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v4"
+	"github.com/volatiletech/null/v8"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -18,6 +19,43 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+type InsertTransactionsResp struct {
+}
+type InsertTransactionsReq struct {
+	Transactions []*PendingTransaction
+}
+
+// PendingTransaction is an object representing the database table.
+type PendingTransaction struct {
+	ID                   string
+	FromUserID           string
+	ToUserID             string
+	Amount               decimal.Decimal
+	TransactionReference string
+	Group                string
+	Subgroup             string
+	ProcessedAt          null.Time
+	DeletedAt            null.Time
+	UpdatedAt            time.Time
+	CreatedAt            time.Time
+}
+
+func (c *S) InsertTransactions(req InsertTransactionsReq, resp *InsertTransactionsResp) error {
+	for _, tx := range req.Transactions {
+		_, _, _, err := c.UserCacheMap.Process(&passport.NewTransaction{
+			From:                 passport.UserID(uuid.Must(uuid.FromString(tx.FromUserID))),
+			To:                   passport.UserID(uuid.Must(uuid.FromString(tx.ToUserID))),
+			TransactionReference: passport.TransactionReference(tx.TransactionReference),
+			Amount:               *tx.Amount.BigInt(),
+			Group:                passport.TransactionGroup(tx.Group),
+			SubGroup:             tx.Subgroup,
+		})
+		if err != nil {
+			return fmt.Errorf("process tx in user cache map: %w", err)
+		}
+	}
+	return nil
+}
 func (c *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) error {
 	amt, err := decimal.NewFromString(req.Amount)
 	if err != nil {
@@ -30,7 +68,7 @@ func (c *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 
 	tx := &passport.NewTransaction{
 		From:                 passport.UserID(req.FromUserID),
-		To:                   passport.SupremacyGameUserID,
+		To:                   passport.UserID(req.ToUserID),
 		TransactionReference: req.TransactionReference,
 		Amount:               *amt.BigInt(),
 		Group:                req.Group,
@@ -39,14 +77,6 @@ func (c *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 
 	if req.NotSafe {
 		tx.NotSafe = true
-	}
-
-	if req.ToUserID != nil {
-		tx.To = passport.UserID(*req.ToUserID)
-	}
-
-	if req.Group == "Battle" {
-		tx.To = passport.SupremacyBattleUserID
 	}
 
 	_, _, txID, err := c.UserCacheMap.Process(tx)

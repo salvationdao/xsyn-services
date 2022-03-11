@@ -40,7 +40,7 @@ type FactionAllResp struct {
 type SpendSupsReq struct {
 	Amount               string                        `json:"amount"`
 	FromUserID           uuid.UUID                     `json:"from_user_id"`
-	ToUserID             *uuid.UUID                    `json:"to_user_id,omitempty"`
+	ToUserID             uuid.UUID                     `json:"to_user_id"`
 	TransactionReference passport.TransactionReference `json:"transaction_reference"`
 	Group                passport.TransactionGroup     `json:"group,omitempty"`
 	SubGroup             string                        `json:"sub_group"`   //TODO: send battle id
