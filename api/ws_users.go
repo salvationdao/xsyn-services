@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -328,7 +329,7 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 	}
 	if req.Payload.NewUsername != nil && req.Payload.Username != *req.Payload.NewUsername {
 		bm := bluemonday.StrictPolicy()
-		sanitizedUsername := bm.Sanitize(strings.TrimSpace(*req.Payload.NewUsername))
+		sanitizedUsername := html.UnescapeString(bm.Sanitize(strings.TrimSpace(*req.Payload.NewUsername)))
 
 		// Validate username
 		err = helpers.IsValidUsername(sanitizedUsername)

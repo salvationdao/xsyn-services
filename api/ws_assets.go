@@ -4,14 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/microcosm-cc/bluemonday"
+	"html"
 	"math/big"
 	"net/http"
 	"passport"
 	"passport/db"
 	"passport/db/boiler"
 	"time"
-
-	"github.com/microcosm-cc/bluemonday"
 
 	"github.com/ninja-software/log_helpers"
 
@@ -416,10 +416,10 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 		return terror.Error(err, "Must own Item to update it's name.")
 	}
 
-	name := bm.Sanitize(req.Payload.Name)
+	name := html.UnescapeString(bm.Sanitize(req.Payload.Name))
 
-	if len(name) > 10 {
-		return terror.Error(err, "Name must be less than 10 characters")
+	if len(name) > 25 {
+		return terror.Error(err, "Name must be less than 25 characters")
 	}
 
 	// update asset name
