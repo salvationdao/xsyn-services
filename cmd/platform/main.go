@@ -854,24 +854,6 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		os.Exit(1)
 	}()
 
-	if enablePurchaseSubscription {
-		avantTestnet := ctxCLI.Bool("avant_testnet")
-		err := SyncFunc(ucm, pgxconn, log, avantTestnet)
-		if err != nil {
-			log.Error().Err(err).Msg("sync")
-		}
-
-		go func() {
-			t := time.NewTicker(20 * time.Second)
-			for range t.C {
-				err := SyncFunc(ucm, pgxconn, log, avantTestnet)
-				if err != nil {
-					log.Error().Err(err).Msg("sync")
-				}
-			}
-		}()
-	}
-
 	go func() {
 		gameserverAddr := ctxCLI.String("gameserver_web_host_url")
 		gameserverURL, err := url.Parse(gameserverAddr)
@@ -893,6 +875,24 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		}
 		rpcclient.SetGlobalClient(rpcClient)
 	}()
+
+	if enablePurchaseSubscription {
+		avantTestnet := ctxCLI.Bool("avant_testnet")
+		err := SyncFunc(ucm, pgxconn, log, avantTestnet)
+		if err != nil {
+			log.Error().Err(err).Msg("sync")
+		}
+
+		go func() {
+			t := time.NewTicker(20 * time.Second)
+			for range t.C {
+				err := SyncFunc(ucm, pgxconn, log, avantTestnet)
+				if err != nil {
+					log.Error().Err(err).Msg("sync")
+				}
+			}
+		}()
+	}
 
 	if !skipUpdateUsersMixedCase {
 		passlog.L.Info().Msg("updating all users to mixed case")
