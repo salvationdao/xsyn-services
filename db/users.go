@@ -387,6 +387,14 @@ func UserCreateNoRPC(ctx context.Context, conn Conn, user *passport.User) error 
 
 // UserCreate will create a new user
 func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
+	addressAvailable, err := AddressAvailable(conn, common.HexToAddress(user.PublicAddress.String))
+	if err != nil {
+		return terror.Error(err)
+	}
+	if !addressAvailable {
+		return terror.Error(fmt.Errorf("address is unavailable: %s", common.HexToAddress(user.PublicAddress.String).Hex()))
+	}
+
 	usernameOK, err := UsernameAvailable(ctx, conn, user.Username, nil)
 	if err != nil {
 		return terror.Error(err)
@@ -422,7 +430,18 @@ func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 	if err != nil {
 		return terror.Error(err)
 	}
-	err = rpcclient.PlayerRegister(uuid.UUID(user.ID), user.Username, uuid.UUID(*user.FactionID), common.HexToAddress(user.PublicAddress.String))
+
+	fmt.Println("uuid.UUID(user.ID)", uuid.UUID(user.ID))
+	fmt.Println("user.Username", user.Username)
+	fmt.Println("uuid.UUID(*user.FactionID)", uuid.UUID(*user.FactionID))
+	fmt.Println("common.HexToAddress(user.PublicAddress.String)", common.HexToAddress(user.PublicAddress.String))
+
+	err = rpcclient.PlayerRegister(
+		uuid.UUID(user.ID),
+		user.Username,
+		uuid.UUID(*user.FactionID),
+		common.HexToAddress(user.PublicAddress.String),
+	)
 	if err != nil {
 		passlog.L.Err(err).
 			Str("id", user.ID.String()).
@@ -1151,6 +1170,21 @@ func EmailAvailable(ctx context.Context, conn Conn, emailToCheck string, userID 
 		return false, terror.Error(err)
 	}
 	return count == 0, nil
+}
+
+// AddressAvailable returns true if an address is free (case insensitive, very important!)
+func AddressAvailable(conn Conn, addr common.Address) (bool, error) {
+	count := 0
+
+	q := `
+SELECT count(*) FROM users
+WHERE LOWER(public_address) = LOWER($1);
+`
+	err := pgxscan.Get(context.Background(), conn, &count, q, addr.Hex())
+	if err != nil {
+		return false, terror.Error(err)
+	}
+	return count <= 0, nil
 }
 
 // UsernameAvailable returns true if a username is free

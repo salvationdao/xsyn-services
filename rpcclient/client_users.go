@@ -1,6 +1,7 @@
 package rpcclient
 
 import (
+	"errors"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -32,6 +33,9 @@ func PlayerRegister(
 	PublicAddress common.Address,
 ) error {
 	resp := &PlayerRegisterResp{}
+	if Client == nil {
+		return errors.New("rpc global client is not ready")
+	}
 	err := Client.Call("S.PlayerRegister", &PlayerRegisterReq{UserID, Username, FactionID, PublicAddress}, resp)
 	if err != nil {
 		return err

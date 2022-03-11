@@ -42,7 +42,7 @@ func PurchasedItemSetOnChainStatus(purchasedItemID uuid.UUID, status OnChainStat
 	return nil
 }
 
-const RefreshDuration = 1 * time.Minute
+const RefreshDuration = 30 * time.Minute
 
 // SyncPurchasedItems against gameserver
 func SyncPurchasedItems() error {
