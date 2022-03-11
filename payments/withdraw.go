@@ -39,9 +39,16 @@ func InsertPendingRefund(ucm UserCacheMap, userID passport.UserID, amount big.In
 		return "", terror.Error(err)
 	}
 
+	amountString, err := decimal.NewFromString(amount.String())
+	if err != nil {
+		return "", terror.Error(err)
+	}
+
 	txHold := boiler.PendingRefund{
+		UserID:               userID.String(),
 		RefundedAt:           expiry.Add(1 * time.Minute),
 		TransactionReference: string(txRef),
+		AmountSups:           amountString,
 	}
 
 	err = txHold.Insert(passdb.StdConn, boil.Infer())

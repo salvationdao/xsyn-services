@@ -199,6 +199,8 @@ func NewAPI(
 
 			r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", WithError(api.Auth.GetNonce))
+			r.Get("/withdraw/check/{address}", WithError(api.GetMaxWithdrawAmount))
+			r.Get("/withdraw/check", WithError(api.CheckCanWithdraw))
 			r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSups))
 			r.Get("/withdraw-tx-hash/{refundID}/{txHash}", WithError(api.UpdatePendingRefund))
 

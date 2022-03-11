@@ -165,6 +165,17 @@ const HubKeyStoreList = hub.HubCommandKey("STORE:LIST")
 type StoreListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
+		UserID              passport.UserID            `json:"user_id"`
+		SortDir             db.SortByDir               `json:"sort_dir"`
+		SortBy              string                     `json:"sortBy"`
+		IncludedAssetHashes []string                   `json:"included_asset_hashes"`
+		Filter              *db.ListFilterRequest      `json:"filter,omitempty"`
+		AttributeFilter     *db.AttributeFilterRequest `json:"attribute_filter,omitempty"`
+		AssetType           string                     `json:"asset_type"`
+		Archived            bool                       `json:"archived"`
+		Search              string                     `json:"search"`
+		PageSize            int                        `json:"page_size"`
+		Page                int                        `json:"page"`
 	} `json:"payload"`
 }
 
@@ -194,13 +205,30 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Cli
 		return terror.Error(fmt.Errorf("user not enlisted: %s", user.ID), "User is not enlisted")
 	}
 
-	storeItems, err := db.StoreItemsByFactionID(uuid.UUID(*user.FactionID))
+	offset := 0
+	if req.Payload.Page > 0 {
+		offset = req.Payload.Page * req.Payload.PageSize
+	}
+
+	total, items, err := db.StoreItemsList(
+		ctx, sc.Conn,
+		req.Payload.Search,
+		req.Payload.Archived,
+		req.Payload.IncludedAssetHashes,
+		req.Payload.Filter,
+		req.Payload.AttributeFilter,
+		offset,
+		req.Payload.PageSize,
+		req.Payload.SortBy,
+		req.Payload.SortDir,
+	)
 	if err != nil {
 		return terror.Error(err)
 	}
+
 	storeItemIDs := make([]passport.StoreItemID, 0)
 	// filter by megas for now
-	for _, storeItem := range storeItems {
+	for _, storeItem := range items {
 		if storeItem.RestrictionGroup == db.RestrictionGroupPrize {
 			continue
 		}
@@ -210,11 +238,11 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Cli
 		if storeItem.IsDefault {
 			continue
 		}
-		storeItemIDs = append(storeItemIDs, passport.StoreItemID(uuid.Must(uuid.FromString(storeItem.ID))))
+		storeItemIDs = append(storeItemIDs, storeItem.ID)
 	}
 
 	reply(&StoreListResponse{
-		len(storeItemIDs),
+		total,
 		storeItemIDs,
 	})
 	return nil

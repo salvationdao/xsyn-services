@@ -529,10 +529,16 @@ func PurchaseItemsList(
 	searchCondition := ""
 	if search != "" {
 		if len(search) > 0 {
-			conditionLabel := GenerateDataFilterSQL("label", search, argIndex, "purchased_items")
-			conditionName := GenerateDataFilterSQL("name", search, argIndex, "purchased_items")
-			conditionType := GenerateDataFilterSQL("asset_type", search, argIndex, "purchased_items")
-			conditionTier := GenerateDataFilterSQL("tier", search, argIndex, "purchased_items")
+			searchValueLabel, conditionLabel := GenerateDataSearchSQL("label", search, argIndex+1, "purchased_items")
+			searchValueName, conditionName := GenerateDataSearchSQL("name", search, argIndex+2, "purchased_items")
+			searchValueType, conditionType := GenerateDataSearchSQL("asset_type", search, argIndex+3, "purchased_items")
+			searchValueTier, conditionTier := GenerateDataSearchSQL("tier", search, argIndex+4, "purchased_items")
+			args = append(
+				args,
+				"%"+searchValueLabel+"%",
+				"%"+searchValueName+"%",
+				"%"+searchValueType+"%",
+				"%"+searchValueTier+"%")
 			searchCondition = " AND " + fmt.Sprintf("(%s OR %s OR %s OR %s)", conditionLabel, conditionName, conditionType, conditionTier)
 		}
 	}
