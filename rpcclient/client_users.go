@@ -1,7 +1,6 @@
 package rpcclient
 
 import (
-	"errors"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -17,7 +16,6 @@ type PlayerRegisterReq struct {
 }
 type PlayerRegisterResp struct {
 	ID            string
-	FactionID     null.String
 	Username      null.String
 	PublicAddress null.String
 	IsAi          bool
@@ -33,10 +31,26 @@ func PlayerRegister(
 	PublicAddress common.Address,
 ) error {
 	resp := &PlayerRegisterResp{}
-	if Client == nil {
-		return errors.New("rpc global client is not ready")
-	}
 	err := Client.Call("S.PlayerRegister", &PlayerRegisterReq{UserID, Username, FactionID, PublicAddress}, resp)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type PlayerEnlistReq struct {
+	UserID    uuid.UUID
+	FactionID uuid.UUID
+}
+type PlayerEnlistResp struct {
+}
+
+func PlayerEnlist(
+	UserID uuid.UUID,
+	FactionID uuid.UUID,
+) error {
+	err := Client.Call("S.PlayerEnlist", &PlayerEnlistReq{UserID, FactionID}, &PlayerEnlistResp{})
 	if err != nil {
 		return err
 	}

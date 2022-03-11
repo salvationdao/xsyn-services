@@ -431,22 +431,16 @@ func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 		return terror.Error(err)
 	}
 
-	fmt.Println("uuid.UUID(user.ID)", uuid.UUID(user.ID))
-	fmt.Println("user.Username", user.Username)
-	fmt.Println("uuid.UUID(*user.FactionID)", uuid.UUID(*user.FactionID))
-	fmt.Println("common.HexToAddress(user.PublicAddress.String)", common.HexToAddress(user.PublicAddress.String))
-
 	err = rpcclient.PlayerRegister(
 		uuid.UUID(user.ID),
 		user.Username,
-		uuid.UUID(*user.FactionID),
+		uuid.Nil, // no faction yet
 		common.HexToAddress(user.PublicAddress.String),
 	)
 	if err != nil {
 		passlog.L.Err(err).
 			Str("id", user.ID.String()).
 			Str("username", user.Username).
-			Str("faction_id", user.FactionID.String()).
 			Str("public_address", user.PublicAddress.String).
 			Msg("could not register player on gameserver")
 	}
