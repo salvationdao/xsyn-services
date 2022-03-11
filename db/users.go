@@ -463,9 +463,11 @@ func UserFactionEnlist(ctx context.Context, conn Conn, user *passport.User) erro
 		return terror.Error(err)
 	}
 
-	err = rpcclient.PlayerEnlist(
+	err = rpcclient.PlayerRegister(
 		uuid.UUID(user.ID),
+		user.Username,
 		uuid.UUID(*user.FactionID),
+		common.HexToAddress(user.PublicAddress.String),
 	)
 	if err != nil {
 		passlog.L.Err(err).
