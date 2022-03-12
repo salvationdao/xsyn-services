@@ -140,20 +140,24 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool) (int, int
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return 0, 0, fmt.Errorf("get purchased item: %w", err)
 		}
-		u, err := CreateOrGetUser(context.Background(), passdb.Conn, nftStatus.Owner)
+		onChainOwner, err := CreateOrGetUser(context.Background(), passdb.Conn, nftStatus.Owner)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return 0, 0, fmt.Errorf("get user: %w", err)
+			return 0, 0, fmt.Errorf("get or create onchain user: %w", err)
 		}
 
-		if nftStatus.Owner != common.HexToAddress(u.PublicAddress.String) {
+		offChainOwner, err := boiler.FindUser(passdb.StdConn, purchasedItem.OwnerID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return 0, 0, fmt.Errorf("get offchain user: %w", err)
+		}
+
+		if common.HexToAddress(offChainOwner.PublicAddress.String).Hex() != common.HexToAddress(onChainOwner.PublicAddress.String).Hex() {
 			itemID := uuid.Must(uuid.FromString(purchasedItem.ID))
-			userID := uuid.UUID(u.ID)
-			_, err = db.PurchasedItemSetOwner(itemID, userID)
+			newOffchainOwnerID := uuid.UUID(onChainOwner.ID)
+			_, err = db.PurchasedItemSetOwner(itemID, newOffchainOwnerID)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				return 0, 0, fmt.Errorf("set new nft owner: %w", err)
 			}
 			updated++
-
 		}
 
 		if nftStatus.Stakable && purchasedItem.OnChainStatus != string(db.STAKABLE) {
@@ -176,6 +180,7 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool) (int, int
 			}
 			updated++
 		}
+
 	}
 
 	return updated, skipped, nil
