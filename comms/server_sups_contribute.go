@@ -32,6 +32,7 @@ type PendingTransaction struct {
 	ToUserID             string
 	Amount               decimal.Decimal
 	TransactionReference string
+	Description          string
 	Group                string
 	Subgroup             string
 	ProcessedAt          null.Time
@@ -47,6 +48,7 @@ func (c *S) InsertTransactions(req InsertTransactionsReq, resp *InsertTransactio
 			To:                   passport.UserID(uuid.Must(uuid.FromString(tx.ToUserID))),
 			TransactionReference: passport.TransactionReference(tx.TransactionReference),
 			Amount:               *tx.Amount.BigInt(),
+			Description:          tx.Description,
 			Group:                passport.TransactionGroup(tx.Group),
 			SubGroup:             tx.Subgroup,
 		})
@@ -70,6 +72,7 @@ func (c *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 		From:                 passport.UserID(req.FromUserID),
 		To:                   passport.UserID(req.ToUserID),
 		TransactionReference: req.TransactionReference,
+		Description:          req.Description,
 		Amount:               *amt.BigInt(),
 		Group:                req.Group,
 		SubGroup:             req.SubGroup,
