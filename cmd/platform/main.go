@@ -175,6 +175,9 @@ func main() {
 					//moralis key- set in env vars
 					//moralis key- set in env vars
 					//moralis key- set in env vars
+					&cli.IntFlag{Name: "database_max_pool_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_POOL_CONNS"}, Usage: "Database max pool conns"},
+					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
+					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 					&cli.StringFlag{Name: "moralis_key", Value: "91Xp2ke5eOVMavAsqdOoiXN4lg0n0AieW5kTJoupdyQBhL2k9XvMQtFPSA4opX2s", EnvVars: []string{envPrefix + "_MORALIS_KEY"}, Usage: "Key to connect to moralis API"},
 				},
 
@@ -242,9 +245,17 @@ func main() {
 					&cli.BoolFlag{Name: "database_prod", Value: false, EnvVars: []string{"PASSPORT_DB_PROD", "DB_PROD"}, Usage: "seed the database (prod)"},
 					&cli.StringFlag{Name: "environment", Value: "development", DefaultText: "development", EnvVars: []string{"PASSPORT_ENVIRONMENT", "ENVIRONMENT"}, Usage: "This program environment (development, testing, training, staging, production), it sets the log levels"},
 					&cli.BoolFlag{Name: "seed", EnvVars: []string{"PASSPORT_DB_SEED", "DB_SEED"}, Usage: "seed the database"},
+
+					&cli.IntFlag{Name: "database_max_pool_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_POOL_CONNS"}, Usage: "Database max pool conns"},
+					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
+					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 				},
 				Usage: "seed the database",
 				Action: func(c *cli.Context) error {
+
+					databaseMaxPoolConns := c.Int("database_max_pool_conns")
+					databaseMaxIdleConns := c.Int("database_max_idle_conns")
+					databaseMaxOpenConns := c.Int("database_max_open_conns")
 					databaseUser := c.String("database_user")
 					databasePass := c.String("database_pass")
 					databaseTxUser := c.String("database_tx_user")
@@ -264,6 +275,7 @@ func main() {
 						databaseName,
 						databaseAppName,
 						Version,
+						databaseMaxPoolConns,
 					)
 					if err != nil {
 						return terror.Error(err)
@@ -275,6 +287,8 @@ func main() {
 						databaseHost,
 						databasePort,
 						databaseName,
+						databaseMaxIdleConns,
+						databaseMaxOpenConns,
 					)
 					if err != nil {
 						return terror.Panic(err)
@@ -313,6 +327,7 @@ func pgxconnect(
 	DatabaseName string,
 	DatabaseApplicationName string,
 	APIVersion string,
+	maxPool int,
 ) (*pgxpool.Pool, error) {
 	params := url.Values{}
 	params.Add("sslmode", "disable")
@@ -334,7 +349,7 @@ func pgxconnect(
 		return nil, terror.Panic(err, "could not initialise database")
 	}
 	poolConfig.ConnConfig.LogLevel = pgx.LogLevelTrace
-	poolConfig.MaxConns = 95
+	poolConfig.MaxConns = int32(maxPool)
 
 	ctx := context.Background()
 	conn, err := pgxpool.ConnectConfig(ctx, poolConfig)
@@ -351,6 +366,8 @@ func sqlConnect(
 	databaseHost string,
 	databasePort string,
 	databaseName string,
+	maxIdle int,
+	maxOpen int,
 ) (*sql.DB, error) {
 	params := url.Values{}
 	params.Add("sslmode", "disable")
@@ -370,6 +387,8 @@ func sqlConnect(
 	if err != nil {
 		return nil, err
 	}
+	conn.SetMaxIdleConns(maxIdle)
+	conn.SetMaxOpenConns(maxOpen)
 	return conn, nil
 
 }
@@ -380,6 +399,8 @@ func txConnect(
 	databaseHost string,
 	databasePort string,
 	databaseName string,
+	maxIdle int,
+	maxOpen int,
 ) (*sql.DB, error) {
 	params := url.Values{}
 	params.Add("sslmode", "disable")
@@ -397,7 +418,8 @@ func txConnect(
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-
+	conn.SetMaxIdleConns(maxIdle)
+	conn.SetMaxOpenConns(maxOpen)
 	return conn, nil
 }
 func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
@@ -594,6 +616,9 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, is
 	return nil
 }
 func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
+	databaseMaxPoolConns := ctxCLI.Int("database_max_pool_conns")
+	databaseMaxIdleConns := ctxCLI.Int("database_max_idle_conns")
+	databaseMaxOpenConns := ctxCLI.Int("database_max_open_conns")
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
@@ -752,6 +777,8 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		databaseHost,
 		databasePort,
 		databaseName,
+		databaseMaxIdleConns,
+		databaseMaxOpenConns,
 	)
 	if err != nil {
 		return terror.Panic(err)
@@ -765,6 +792,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		databaseName,
 		databaseAppName,
 		Version,
+		databaseMaxPoolConns,
 	)
 	if err != nil {
 		return terror.Panic(err)
@@ -776,6 +804,8 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		databaseHost,
 		databasePort,
 		databaseName,
+		databaseMaxIdleConns,
+		databaseMaxOpenConns,
 	)
 	if err != nil {
 		return terror.Panic(err)
@@ -907,6 +937,9 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 }
 
 func SuperMigrate(c *cli.Context) error {
+	databaseMaxPoolConns := c.Int("database_max_pool_conns")
+	databaseMaxIdleConns := c.Int("database_max_idle_conns")
+	databaseMaxOpenConns := c.Int("database_max_open_conns")
 	databaseUser := c.String("database_user")
 	databasePass := c.String("database_pass")
 	databaseHost := c.String("database_host")
@@ -923,6 +956,7 @@ func SuperMigrate(c *cli.Context) error {
 		databaseName,
 		databaseAppName,
 		Version,
+		databaseMaxPoolConns,
 	)
 	if err != nil {
 		return terror.Panic(err)
@@ -934,6 +968,8 @@ func SuperMigrate(c *cli.Context) error {
 		databaseHost,
 		databasePort,
 		databaseName,
+		databaseMaxIdleConns,
+		databaseMaxOpenConns,
 	)
 	if err != nil {
 		return terror.Panic(err)
