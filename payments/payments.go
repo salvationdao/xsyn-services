@@ -132,7 +132,7 @@ func StoreRecord(ctx context.Context, fromUserID passport.UserID, toUserID passp
 	}
 
 	msg := fmt.Sprintf("purchased %s SUPS for %s [%s]", output.Shift(-1*passport.SUPSDecimals).StringFixed(4), input.Shift(-1*int32(tokenDecimals)).StringFixed(4), strings.ToUpper(record.Symbol))
-	if isPurchase {
+	if !isPurchase {
 		msg = fmt.Sprintf("deposited %s SUPS", output.Shift(-1*passport.SUPSDecimals).StringFixed(4))
 	}
 
