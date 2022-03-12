@@ -971,13 +971,13 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		}()
 	}
 
-	if !skipUpdateUsersMixedCase {
-		passlog.L.Info().Msg("updating all users to mixed case")
-		err = db.UserMixedCaseUpdateAll()
-		if err != nil {
-			return terror.Error(err)
-		}
-	}
+	//if !skipUpdateUsersMixedCase {
+	//	passlog.L.Info().Msg("updating all users to mixed case")
+	//	err = db.UserMixedCaseUpdateAll()
+	//	if err != nil {
+	//		return terror.Error(err)
+	//	}
+	//}
 
 	api.Log.Info().Msg("Starting API")
 	return apiServer.ListenAndServe()
