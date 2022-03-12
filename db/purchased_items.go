@@ -340,6 +340,7 @@ func refreshItem(itemID uuid.UUID, force bool) (*boiler.PurchasedItem, error) {
 		return nil, terror.Error(err)
 	}
 
+	dbitem.OwnerID = resp.MechContainer.Mech.OwnerID
 	dbitem.Data = b
 	dbitem.RefreshesAt = time.Now().Add(RefreshDuration)
 	dbitem.UpdatedAt = time.Now()
