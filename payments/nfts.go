@@ -153,10 +153,11 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool) (int, int
 		}
 		offChainAddr := common.HexToAddress(offChainOwner.PublicAddress.String)
 		onChainAddr := common.HexToAddress(onChainOwner.PublicAddress.String)
-		l.Debug().Str("off_chain_user", offChainAddr.Hex()).Str("on_chain_user", onChainAddr.Hex()).Msg("check if nft owners match")
+		l.Debug().Str("off_chain_user", offChainAddr.Hex()).Str("on_chain_user", onChainAddr.Hex()).Bool("matches", offChainAddr.Hex() != onChainAddr.Hex()).Msg("check if nft owners match")
 		if offChainAddr.Hex() != onChainAddr.Hex() {
 			itemID := uuid.Must(uuid.FromString(purchasedItem.ID))
 			newOffchainOwnerID := uuid.UUID(onChainOwner.ID)
+			l.Debug().Str("new_owner", newOffchainOwnerID.String()).Str("item_id", itemID.String()).Msg("setting new nft owner")
 			_, err = db.PurchasedItemSetOwner(itemID, newOffchainOwnerID)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				return 0, 0, fmt.Errorf("set new nft owner: %w", err)
