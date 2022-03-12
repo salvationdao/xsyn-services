@@ -42,7 +42,7 @@ func PurchasedItemSetOnChainStatus(purchasedItemID uuid.UUID, status OnChainStat
 	return nil
 }
 
-const RefreshDuration = 1 * time.Minute
+const RefreshDuration = 30 * time.Minute
 
 // SyncPurchasedItems against gameserver
 func SyncPurchasedItems() error {
@@ -390,7 +390,7 @@ func getPurchasedItem(itemID uuid.UUID) (*boiler.PurchasedItem, error) {
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-	refreshedItem, err := refreshItem(uuid.Must(uuid.FromString(item.ID)), true)
+	refreshedItem, err := refreshItem(uuid.Must(uuid.FromString(item.ID)), false)
 	if err != nil {
 		passlog.L.Err(err).Str("purchased_item_id", item.ID).Msg("could not refresh purchased item from gameserver, using cached purchased item")
 		return item, nil
@@ -535,10 +535,16 @@ func PurchaseItemsList(
 	searchCondition := ""
 	if search != "" {
 		if len(search) > 0 {
-			conditionLabel := GenerateDataFilterSQL("label", search, argIndex, "purchased_items")
-			conditionName := GenerateDataFilterSQL("name", search, argIndex, "purchased_items")
-			conditionType := GenerateDataFilterSQL("asset_type", search, argIndex, "purchased_items")
-			conditionTier := GenerateDataFilterSQL("tier", search, argIndex, "purchased_items")
+			searchValueLabel, conditionLabel := GenerateDataSearchSQL("label", search, argIndex+1, "purchased_items")
+			searchValueName, conditionName := GenerateDataSearchSQL("name", search, argIndex+2, "purchased_items")
+			searchValueType, conditionType := GenerateDataSearchSQL("asset_type", search, argIndex+3, "purchased_items")
+			searchValueTier, conditionTier := GenerateDataSearchSQL("tier", search, argIndex+4, "purchased_items")
+			args = append(
+				args,
+				"%"+searchValueLabel+"%",
+				"%"+searchValueName+"%",
+				"%"+searchValueType+"%",
+				"%"+searchValueTier+"%")
 			searchCondition = " AND " + fmt.Sprintf("(%s OR %s OR %s OR %s)", conditionLabel, conditionName, conditionType, conditionTier)
 		}
 	}

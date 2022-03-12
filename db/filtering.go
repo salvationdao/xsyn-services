@@ -181,3 +181,17 @@ func GenerateDataFilterSQL(trait string, value string, index int, tableName stri
 	condition := fmt.Sprintf(`%[1]s."data"::text ILIKE '%%"%[2]s": "%[3]s%%'`, tableName, trait, value)
 	return condition
 }
+
+// GenerateDataFilterSQL generates SQL for filtering a data column
+func GenerateDataSearchSQL(trait string, search string, index int, tableName string) (string, string) {
+	indexStr := fmt.Sprintf("$%d", index)
+	condition := fmt.Sprintf(`(%[1]s."data"::json -> 'mech' -> '%[2]s')::text ILIKE %[3]s`, tableName, trait, indexStr)
+	return search, condition
+}
+
+// GenerateDataFilterSQL generates SQL for filtering a data column
+func GenerateDataSearchStoreItemsSQL(trait string, search string, index int, tableName string) (string, string) {
+	indexStr := fmt.Sprintf("$%d", index)
+	condition := fmt.Sprintf(`(%[1]s."data"::json -> 'template' -> '%[2]s')::text ILIKE %[3]s`, tableName, trait, indexStr)
+	return search, condition
+}

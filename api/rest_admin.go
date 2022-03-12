@@ -2,12 +2,14 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"passport"
 	"passport/db"
 	"passport/db/boiler"
 	"passport/passdb"
+	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -16,6 +18,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -28,6 +31,7 @@ func AdminRoutes(ucm *UserCacheMap) chi.Router {
 
 	r.Post("/purchased_items/register/{template_id}/{owner_id}", WithError(WithAdmin(PurchasedItemRegisterHandler)))
 	r.Post("/purchased_items/set_owner/{purchased_item_id}/{owner_id}", WithError(WithAdmin(PurchasedItemSetOwner)))
+	r.Post("/purchased_items/transfer/from/{from}/to/{to}/collection_id/{collection_id}/token_id/{token_id}", WithError(WithAdmin(TransferAsset())))
 
 	r.Post("/transactions/create/{transaction_id}", WithError(WithAdmin(CreateTransaction((ucm)))))
 	r.Post("/transactions/reverse/{transaction_id}", WithError(WithAdmin(ReverseUserTransaction((ucm)))))
@@ -54,6 +58,50 @@ func WithAdmin(next func(w http.ResponseWriter, r *http.Request) (int, error)) f
 			return http.StatusUnauthorized, terror.Error(fmt.Errorf("not admin key: %s", apiKey.Type), "Unauthorized.")
 		}
 		return next(w, r)
+	}
+	return fn
+}
+
+type TransferAssetRequest struct {
+	From           uuid.UUID      `json:"from"`
+	To             uuid.UUID      `json:"to"`
+	CollectionAddr common.Address `json:"collection_addr"`
+	TokenID        int            `json:"token_id"`
+}
+
+func TransferAsset() func(w http.ResponseWriter, r *http.Request) (int, error) {
+	fn := func(w http.ResponseWriter, r *http.Request) (int, error) {
+
+		from := chi.URLParam(r, "from")
+		to := chi.URLParam(r, "to")
+		collectionAddr := common.HexToAddress(chi.URLParam(r, "collection_addr"))
+		tokenIDStr := chi.URLParam(r, "token_id")
+		tokenID, err := strconv.Atoi(tokenIDStr)
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err, "Could not convert tokenID to int")
+		}
+
+		c, err := db.CollectionByMintAddress(collectionAddr)
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err, "Could not get collection")
+		}
+
+		item, err := boiler.PurchasedItems(
+			boiler.PurchasedItemWhere.ExternalTokenID.EQ(tokenID),
+			boiler.PurchasedItemWhere.CollectionID.EQ(c.ID),
+		).One(passdb.StdConn)
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err, "Could not get purchased item")
+		}
+		if item.OwnerID != from {
+			return http.StatusBadRequest, errors.New("from user does not own the asset")
+		}
+		item.OwnerID = to
+		_, err = item.Update(passdb.StdConn, boil.Whitelist(boiler.PurchasedItemColumns.OwnerID))
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err, "Could not update purchased item")
+		}
+		return http.StatusOK, nil
 	}
 	return fn
 }

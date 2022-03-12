@@ -7,6 +7,7 @@ CREATE TABLE saft_agreements(
     signature_hex TEXT,
     signer_address_hex TEXT,
     agree BOOLEAN,
+    signed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

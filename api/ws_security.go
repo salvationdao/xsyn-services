@@ -3,26 +3,21 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"passport"
+
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
-	"passport"
 )
 
 func (api *API) Command(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 	api.Hub.Handle(key, func(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-		span := tracer.StartSpan("ws.Command", tracer.ResourceName(string(key)))
-		defer span.Finish()
 		return fn(ctx, hubc, payload, reply)
 	})
 }
 
 func (api *API) SecureCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 	api.Hub.Handle(key, func(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-		span := tracer.StartSpan("ws.SecureCommand", tracer.ResourceName(string(key)))
-		span.SetTag("user", hubc.Identifier())
-		defer span.Finish()
 		uuidString := hubc.Identifier() // identifier gets set on auth by default, so no ident = not authed
 		if uuidString == "" {
 			return terror.Error(terror.ErrUnauthorised)
@@ -35,9 +30,6 @@ func (api *API) SecureCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 // SecureCommandWithPerm registers a command to the hub that will only run if the websocket has authenticated and the user has the specified permission
 func (api *API) SecureCommandWithPerm(key hub.HubCommandKey, fn hub.HubCommandFunc, perm passport.Perm) {
 	api.Hub.Handle(key, func(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-		span := tracer.StartSpan("ws.SecureCommandWithPerm", tracer.ResourceName(string(key)))
-		span.SetTag("user", hubc.Identifier())
-		defer span.Finish()
 		allowed := hubc.HasPermission(perm.String())
 		if !allowed {
 			return terror.Error(terror.ErrUnauthorised)

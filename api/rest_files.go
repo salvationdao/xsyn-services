@@ -42,6 +42,7 @@ func FileRouter(conn *pgxpool.Pool, api *API) chi.Router {
 
 	r := chi.NewRouter()
 	r.Get("/{id}", WithError(c.FileGet))
+	r.Get("/item/{name}", WithError(c.FileGetByName))
 	r.Post("/upload", WithError(WithUser(api, c.FileUpload)))
 
 	return r
@@ -90,7 +91,54 @@ func (c *FilesController) FileGet(w http.ResponseWriter, r *http.Request) (int, 
 	if blob.MimeType != "" && blob.MimeType != "unknown" {
 		w.Header().Add("Content-Type", blob.MimeType)
 	}
-	w.Header().Add("Content-Disposition", fmt.Sprintf("%s;filename=%s", disposition, blob.FileName))
+	w.Header().Add("Content-Disposition", fmt.Sprintf("%s;filename=%s.%s", disposition, blob.FileName, blob.Extension))
+	_, err = w.Write(blob.File)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
+	return http.StatusOK, nil
+}
+
+// FileGetByName retrives a file attachment
+func (c *FilesController) FileGetByName(w http.ResponseWriter, r *http.Request) (int, error) {
+	defer r.Body.Close()
+
+	// Get blob id
+	fileName := chi.URLParam(r, "name")
+	if fileName == "" {
+		return http.StatusBadRequest, terror.Error(terror.ErrInvalidInput, "no name provided")
+	}
+
+	// Get blob
+	blob, err := db.BlobGetByFilename(context.Background(), c.Conn, fileName)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return http.StatusNotFound, terror.Error(err, "attachment not found")
+		}
+		return http.StatusInternalServerError, terror.Error(err, "could not get attachment")
+	}
+
+	// Non-public image? check auth
+	if !blob.Public {
+		_, code, err := GetUserFromToken(c.API, r)
+		if err != nil {
+			return code, terror.Error(err)
+		}
+	}
+
+	// Get disposition
+	disposition := "attachment"
+	isViewDisposition := r.URL.Query().Get("view")
+	if isViewDisposition == "true" {
+		disposition = "inline"
+	}
+
+	// tell the browser the returned content should be downloaded/inline
+	if blob.MimeType != "" && blob.MimeType != "unknown" {
+		w.Header().Add("Content-Type", blob.MimeType)
+	}
+	w.Header().Add("Content-Disposition", fmt.Sprintf("%s;filename=%s.%s", disposition, blob.FileName, blob.Extension))
 	_, err = w.Write(blob.File)
 	if err != nil {
 		return http.StatusInternalServerError, err

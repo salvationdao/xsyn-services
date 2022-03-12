@@ -2,24 +2,96 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
 	"passport/db"
 	"passport/db/boiler"
+	"passport/helpers"
 	"passport/passdb"
 	"passport/payments"
 	"time"
 
+	"github.com/rs/zerolog/log"
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/go-chi/chi/v5"
+	"github.com/ninja-software/sale/dispersions"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/supremacy-bridge/bridge"
 )
+
+type MaxWithdrawResponse struct {
+	MaxWithdraw    string `json:"max_withdraw"`
+	TotalWithdrawn string `json:"total_withdrawn"`
+	Unlimited      bool   `json:"unlimited"`
+}
+
+type CheckWithdrawResponse struct {
+	CanWithdraw bool `json:"can_withdraw"`
+}
+
+func (api *API) GetMaxWithdrawAmount(w http.ResponseWriter, r *http.Request) (int, error) {
+	address := chi.URLParam(r, "address")
+	if address == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing address"), "Missing address.")
+	}
+	user, err := boiler.Users(
+		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(address)),
+	).One(passdb.StdConn)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to find users info")
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to find users info")
+	}
+
+	state, err := boiler.States().One(passdb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get state")
+	}
+
+	toAddress := common.HexToAddress(address)
+	amountCanRefund, infinite, err := dispersions.MaxWithdrawBefore(toAddress, time.Now(), state.WithdrawStartAt, state.CliffEndAt, state.DripStartAt)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get max withdraw amount")
+	}
+
+	maxWithdrawResponse := MaxWithdrawResponse{MaxWithdraw: "0", Unlimited: infinite}
+	if infinite {
+		return helpers.EncodeJSON(w, maxWithdrawResponse)
+	}
+	maxWithdrawResponse.MaxWithdraw = amountCanRefund.BigInt().String()
+	//amountCanRefund = decimal.NewFromBigInt(amountCanRefund.BigInt(), -18)
+
+	refunds, err := boiler.PendingRefunds(
+		qm.Where("user_id = ? AND is_refunded = false", user.ID),
+	).All(passdb.StdConn)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		maxWithdrawResponse.MaxWithdraw = amountCanRefund.BigInt().String()
+		return helpers.EncodeJSON(w, maxWithdrawResponse)
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		log.Info().Msg(err.Error())
+		return http.StatusInternalServerError, terror.Error(err, "Failed to find users refund details")
+	}
+	amt := decimal.Zero
+	for _, refund := range refunds {
+		amt = amt.Add(refund.AmountSups)
+	}
+
+	maxWithdrawResponse.TotalWithdrawn = amt.BigInt().String()
+
+	return helpers.EncodeJSON(w, maxWithdrawResponse)
+}
 
 // WithdrawSups
 // Flow to withdraw sups
@@ -80,6 +152,40 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to create withdraw signature, please try again or contact support.")
 	}
+	state, err := boiler.States().One(passdb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get state")
+	}
+
+	amountCanRefund, infinite, err := dispersions.MaxWithdrawBefore(toAddress, time.Now(), state.WithdrawStartAt, state.CliffEndAt, state.DripStartAt)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get max withdraw amount")
+	}
+
+	if !infinite {
+		amountCanRefund = decimal.NewFromBigInt(amountCanRefund.BigInt(), -18)
+		amt := decimal.Zero
+		refunds, err := boiler.PendingRefunds(
+			qm.Where("user_id = ? AND is_refunded = false", user.ID),
+		).All(passdb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return http.StatusInternalServerError, terror.Error(err, "Failed to find users refund details")
+		}
+		if err != nil && errors.Is(err, sql.ErrNoRows) {
+			if !decimal.NewFromBigInt(amountBigInt, -18).LessThan(amountCanRefund) {
+				return http.StatusInternalServerError, terror.Error(err, "Failed to withdraw amount")
+			}
+		} else {
+			for _, refund := range refunds {
+				amt = amt.Add(decimal.NewFromBigInt(refund.AmountSups.BigInt(), -18))
+			}
+			amt = amt.Add(decimal.NewFromBigInt(amountBigInt, -18))
+			log.Info().Msg(fmt.Sprintf("%v %v %v", amt, amountCanRefund, amountBigInt))
+			if !amt.LessThan(amountCanRefund) {
+				return http.StatusInternalServerError, terror.Error(err, "Failed to withdraw amount")
+			}
+		}
+	}
 
 	refundID, err := payments.InsertPendingRefund(api.userCacheMap, user.ID, *amountBigInt, expiry)
 	if err != nil {
@@ -99,6 +205,16 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 	return http.StatusOK, nil
+}
+
+func (api *API) CheckCanWithdraw(w http.ResponseWriter, r *http.Request) (int, error) {
+	state, err := boiler.States(qm.Select("*")).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get state")
+	}
+	canWithdraw := CheckWithdrawResponse{CanWithdraw: time.Now().After(state.WithdrawStartAt)}
+
+	return helpers.EncodeJSON(w, canWithdraw)
 }
 
 func (api *API) UpdatePendingRefund(w http.ResponseWriter, r *http.Request) (int, error) {

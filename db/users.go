@@ -387,6 +387,14 @@ func UserCreateNoRPC(ctx context.Context, conn Conn, user *passport.User) error 
 
 // UserCreate will create a new user
 func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
+	addressAvailable, err := AddressAvailable(conn, common.HexToAddress(user.PublicAddress.String))
+	if err != nil {
+		return terror.Error(err)
+	}
+	if !addressAvailable {
+		return terror.Error(fmt.Errorf("address is unavailable: %s", common.HexToAddress(user.PublicAddress.String).Hex()))
+	}
+
 	usernameOK, err := UsernameAvailable(ctx, conn, user.Username, nil)
 	if err != nil {
 		return terror.Error(err)
@@ -422,12 +430,17 @@ func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 	if err != nil {
 		return terror.Error(err)
 	}
-	err = rpcclient.PlayerRegister(uuid.UUID(user.ID), user.Username, uuid.UUID(*user.FactionID), common.HexToAddress(user.PublicAddress.String))
+
+	err = rpcclient.PlayerRegister(
+		uuid.UUID(user.ID),
+		user.Username,
+		uuid.Nil, // no faction yet
+		common.HexToAddress(user.PublicAddress.String),
+	)
 	if err != nil {
 		passlog.L.Err(err).
 			Str("id", user.ID.String()).
 			Str("username", user.Username).
-			Str("faction_id", user.FactionID.String()).
 			Str("public_address", user.PublicAddress.String).
 			Msg("could not register player on gameserver")
 	}
@@ -449,6 +462,22 @@ func UserFactionEnlist(ctx context.Context, conn Conn, user *passport.User) erro
 	if err != nil {
 		return terror.Error(err)
 	}
+
+	err = rpcclient.PlayerRegister(
+		uuid.UUID(user.ID),
+		user.Username,
+		uuid.UUID(*user.FactionID),
+		common.HexToAddress(user.PublicAddress.String),
+	)
+	if err != nil {
+		passlog.L.Err(err).
+			Str("id", user.ID.String()).
+			Str("username", user.Username).
+			Str("public_address", user.PublicAddress.String).
+			Str("faction_id", user.FactionID.String()).
+			Msg("could not enlist player faction on gameserver")
+	}
+
 	return nil
 }
 
@@ -1153,6 +1182,21 @@ func EmailAvailable(ctx context.Context, conn Conn, emailToCheck string, userID 
 	return count == 0, nil
 }
 
+// AddressAvailable returns true if an address is free (case insensitive, very important!)
+func AddressAvailable(conn Conn, addr common.Address) (bool, error) {
+	count := 0
+
+	q := `
+SELECT count(*) FROM users
+WHERE LOWER(public_address) = LOWER($1);
+`
+	err := pgxscan.Get(context.Background(), conn, &count, q, addr.Hex())
+	if err != nil {
+		return false, terror.Error(err)
+	}
+	return count <= 0, nil
+}
+
 // UsernameAvailable returns true if a username is free
 func UsernameAvailable(ctx context.Context, conn Conn, nameToCheck string, userID *passport.UserID) (bool, error) {
 	if nameToCheck == "" {
@@ -1282,29 +1326,6 @@ func IsUserDeathlisted(ctx context.Context, conn Conn, walletAddress string) (bo
 	}
 
 	return true, nil
-}
-
-func UpdateUserMetadata(ctx context.Context, conn Conn, userID passport.UserID, metadata *passport.UserMetadata) error {
-	q := "UPDATE users SET metadata = $1 WHERE id = $2"
-
-	_, err := conn.Exec(ctx, q, metadata, userID)
-	if err != nil {
-		return terror.Error(err, "Issue inserting user data.")
-	}
-
-	return nil
-}
-
-func GetUserMetadata(ctx context.Context, conn Conn, userID passport.UserID) (*passport.UserMetadata, error) {
-	md := &passport.User{}
-	q := "SELECT metadata FROM users WHERE id = $1"
-
-	err := pgxscan.Get(ctx, conn, md, q, userID)
-	if err != nil {
-		return nil, terror.Error(err, "Issue getting user metadata.")
-	}
-
-	return &md.Metadata, nil
 }
 
 func GetFactionIDByUsers(ctx context.Context, conn Conn, um map[passport.UserID]passport.FactionID) error {

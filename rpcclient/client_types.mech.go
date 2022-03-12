@@ -22,6 +22,7 @@ type Mech struct {
 	ExternalTokenID  int       `json:"external_token_id"`
 	Tier             string    `json:"tier"`
 	IsDefault        bool      `json:"is_default"`
+	LargeImageURL    string    `json:"large_image_url"`
 	ImageURL         string    `json:"image_url"`
 	AnimationURL     string    `json:"animation_url"`
 	CardAnimationURL string    `json:"card_animation_url"`
