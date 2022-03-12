@@ -98,28 +98,18 @@ func IsValidUsername(username string) error {
 		hasDisallowedSymbol = true
 	}
 
-	hasWhitespace := false
-	for _, r := range username {
-		if unicode.IsSpace(r) {
-			hasWhitespace = true
-		}
-	}
-
 	err := fmt.Errorf("username does not meet requirements")
 	if len(username) < 3 {
 		return terror.Error(err, "Invalid username. Your username must be at least 3 characters long.")
 	}
-	if len(username) > 15 {
-		return terror.Error(err, "Invalid username. Your username cannot be more than 15 characters long.")
+	if len(username) > 30 {
+		return terror.Error(err, "Invalid username. Your username cannot be more than 30 characters long.")
 	}
 	if strings.TrimSpace(username) == "" {
 		return terror.Error(err, "Invalid username. Your username cannot be empty.")
 	}
 	if hasDisallowedSymbol {
 		return terror.Error(err, "Invalid username. Your username contains a disallowed symbol.")
-	}
-	if hasWhitespace {
-		return terror.Error(err, "Invalid username. Your username cannot contain whitespace characters.")
 	}
 	if goaway.IsProfane(username) {
 		return terror.Error(err, "Invalid username. Your username contains profanity.")

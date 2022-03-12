@@ -11,8 +11,6 @@ import (
 
 	"github.com/ninja-software/log_helpers"
 
-	SentryTracer "github.com/ninja-syndicate/hub/ext/sentry"
-
 	"github.com/shopspring/decimal"
 
 	"nhooyr.io/websocket"
@@ -22,6 +20,7 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 
 	"errors"
+
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -106,11 +105,12 @@ func NewAPI(
 		},
 		MessageBus: msgBus,
 		Hub: hub.New(&hub.Config{
+			LoggingEnabled: true,
 			ClientOfflineFn: func(client *hub.Client) {
 				msgBus.UnsubAll(client)
 			},
 			Log:    zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
-			Tracer: SentryTracer.New(),
+			Tracer: &HubTracer{},
 			WelcomeMsg: &hub.WelcomeMsg{
 				Key:     "WELCOME",
 				Payload: nil,
@@ -199,6 +199,8 @@ func NewAPI(
 
 			r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", WithError(api.Auth.GetNonce))
+			r.Get("/withdraw/check/{address}", WithError(api.GetMaxWithdrawAmount))
+			r.Get("/withdraw/check", WithError(api.CheckCanWithdraw))
 			r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSups))
 			r.Get("/withdraw-tx-hash/{refundID}/{txHash}", WithError(api.UpdatePendingRefund))
 

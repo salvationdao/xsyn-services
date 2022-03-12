@@ -1,11 +1,8 @@
 package rpcclient
 
 import (
-	"time"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
-	null "github.com/volatiletech/null/v8"
 )
 
 type PlayerRegisterReq struct {
@@ -15,14 +12,7 @@ type PlayerRegisterReq struct {
 	PublicAddress common.Address
 }
 type PlayerRegisterResp struct {
-	ID            string
-	FactionID     null.String
-	Username      null.String
-	PublicAddress null.String
-	IsAi          bool
-	DeletedAt     null.Time
-	UpdatedAt     time.Time
-	CreatedAt     time.Time
+	ID uuid.UUID
 }
 
 func PlayerRegister(

@@ -11,6 +11,7 @@ import (
 	"passport"
 	"passport/db"
 	"passport/passlog"
+	"sync"
 	"time"
 
 	"github.com/ninja-software/log_helpers"
@@ -64,6 +65,8 @@ type AuthTwitchRingCheckRequest struct {
 
 const HubKeyGamebarAuthRingCheck hub.HubCommandKey = "GAMEBAR:AUTH:RING:CHECK"
 
+var cooldown = sync.Map{}
+
 func (gc *GamebarController) AuthRingCheck(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &AuthTwitchRingCheckRequest{}
 	err := json.Unmarshal(payload, req)
@@ -90,8 +93,8 @@ func (gc *GamebarController) AuthRingCheck(ctx context.Context, hubc *hub.Client
 	}
 
 	var resp struct {
-		IsSuccess     bool `json:"isSuccess"`
-		IsWhitelisted bool `json:"isWhitlisted"`
+		IsSuccess     bool `json:"is_success"`
+		IsWhitelisted bool `json:"is_whitelisted"`
 	}
 	err = gc.API.GameserverRequest(http.MethodPost, "/auth_ring_check", struct {
 		User                *passport.User `json:"user"`
@@ -113,27 +116,45 @@ func (gc *GamebarController) AuthRingCheck(ctx context.Context, hubc *hub.Client
 	// give away sups if user is whitelisted
 	if resp.IsWhitelisted {
 		if os.Getenv("PASSPORT_ENVIRONMENT") == "development" || os.Getenv("PASSPORT_ENVIRONMENT") == "staging" {
-			oneSups := big.NewInt(1000000000000000000)
-			oneSups.Mul(oneSups, big.NewInt(1000))
-			tx := &passport.NewTransaction{
-				To:                   user.ID,
-				From:                 passport.XsynSaleUserID,
-				Amount:               *oneSups,
-				NotSafe:              true,
-				TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
-				Description:          "Give away for testing",
-				Group:                "Testing",
+			t, notAllowed := cooldown.Load(user.ID)
+			if notAllowed {
+				tm, ok := t.(time.Time)
+				if !ok {
+					notAllowed = false
+				} else {
+					mins5ltr := tm.Add(time.Minute * 5)
+					if time.Now().After(mins5ltr) {
+						notAllowed = false
+					}
+				}
+				if !notAllowed {
+					cooldown.Delete(user.ID)
+				}
 			}
-			_, _, _, err := gc.API.userCacheMap.Process(tx)
-			if err != nil {
-				passlog.L.
-					Err(err).
-					Str("to", tx.To.String()).
-					Str("from", tx.From.String()).
-					Str("amount", tx.Amount.String()).
-					Str("description", tx.Description).
-					Str("transaction_reference", string(tx.TransactionReference)).
-					Msg("NO SUPS FOR YOU :p")
+			if !notAllowed {
+				cooldown.Store(user.ID, time.Now())
+				oneSups := big.NewInt(1000000000000000000)
+				oneSups.Mul(oneSups, big.NewInt(50))
+				tx := &passport.NewTransaction{
+					To:                   user.ID,
+					From:                 passport.XsynSaleUserID,
+					Amount:               *oneSups,
+					NotSafe:              true,
+					TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
+					Description:          "Give away for testing",
+					Group:                "Testing",
+				}
+				_, _, _, err := gc.API.userCacheMap.Process(tx)
+				if err != nil {
+					passlog.L.
+						Err(err).
+						Str("to", tx.To.String()).
+						Str("from", tx.From.String()).
+						Str("amount", tx.Amount.String()).
+						Str("description", tx.Description).
+						Str("transaction_reference", string(tx.TransactionReference)).
+						Msg("NO SUPS FOR YOU :p")
+				}
 			}
 		}
 	}

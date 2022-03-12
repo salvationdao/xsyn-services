@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,9 +10,12 @@ import (
 	"passport/passdb"
 	"passport/passlog"
 	"passport/rpcclient"
+	"strings"
 	"time"
 
+	"github.com/georgysavva/scany/pgxscan"
 	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
@@ -196,6 +200,20 @@ func StoreItemsRemainingByFactionIDAndTier(collectionID uuid.UUID, factionID uui
 	return count, err
 }
 
+func PurchasedLootboxesByUserID(userID uuid.UUID) (int, error) {
+	var result int
+	q := `
+SELECT COALESCE(count(pi.id), 0) FROM purchased_items pi 
+INNER JOIN store_items si ON si.id = pi.store_item_id 
+WHERE owner_id = $1 AND si.restriction_group = 'LOOTBOX';
+`
+	err := pgxscan.Get(context.Background(), passdb.Conn, &result, q, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result, nil
+}
+
 // StoreItemsAvailable return the total of available war machine in each faction
 func StoreItemsAvailable() ([]*passport.FactionSaleAvailable, error) {
 	collection, err := GenesisCollection()
@@ -372,4 +390,202 @@ func getStoreItem(storeItemID uuid.UUID) (*boiler.StoreItem, error) {
 		return item, nil
 	}
 	return refreshedItem, nil
+}
+
+type StoreItemColumn string
+
+const (
+	StoreItemExternalTokenID StoreItemColumn = "external_token_id"
+	StoreItemDeletedAt       StoreItemColumn = "deleted_at"
+	StoreItemUpdatedAt       StoreItemColumn = "updated_at"
+	StoreItemCreatedAt       StoreItemColumn = "created_at"
+	StoreItemHash            StoreItemColumn = "hash"
+	StoreItemUsername        StoreItemColumn = "username"
+	StoreItemCollectionID    StoreItemColumn = "collection_id"
+	StoreItemAssetType       StoreItemColumn = "asset_type"
+	StoreItemFactionID       StoreItemColumn = "faction_id"
+)
+
+func (ic StoreItemColumn) IsValid() error {
+	switch ic {
+	case
+		StoreItemExternalTokenID,
+		StoreItemDeletedAt,
+		StoreItemUpdatedAt,
+		StoreItemCreatedAt,
+		StoreItemHash,
+		StoreItemUsername,
+		StoreItemCollectionID,
+		StoreItemFactionID,
+		StoreItemAssetType:
+		return nil
+	}
+	return terror.Error(fmt.Errorf("invalid asset column type %s", ic))
+}
+
+const StoreItemGetQuery string = `
+SELECT 
+row_to_json(c) as collection,
+store_items.id,
+store_items.tier,
+store_items.restriction_group,
+store_items.deleted_at,
+store_items.updated_at,
+store_items.created_at
+` + StoreItemGetFrom
+
+const StoreItemGetFrom = `
+FROM store_items 
+INNER JOIN (
+	SELECT  id,
+			name,
+			logo_blob_id as logoBlobID,
+			keywords,
+			slug,
+			deleted_at as deletedAt,  
+			mint_contract as "mintContract",
+			stake_contract as "stakeContract"
+	FROM collections _c
+) c ON store_items.collection_id = c.id
+`
+
+//  StoreItemsList gets a list of store items depending on the filters
+func StoreItemsList(
+	ctx context.Context,
+	conn Conn,
+	search string,
+	archived bool,
+	includedAssetHashes []string,
+	filter *ListFilterRequest,
+	attributeFilter *AttributeFilterRequest,
+	offset int,
+	pageSize int,
+	sortBy string,
+	sortDir SortByDir,
+) (int, []*passport.StoreItem, error) {
+
+	// Prepare Filters
+	var args []interface{}
+
+	filterConditionsString := ""
+	argIndex := 0
+	if filter != nil {
+		filterConditions := []string{}
+		for _, f := range filter.Items {
+			column := StoreItemColumn(f.ColumnField)
+			err := column.IsValid()
+			if err != nil {
+				return 0, nil, terror.Error(err)
+			}
+
+			argIndex += 1
+			if f.ColumnField == string("collection_id") {
+				f.ColumnField = fmt.Sprintf("collection_id")
+			}
+			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, argIndex)
+			if condition != "" {
+				filterConditions = append(filterConditions, condition)
+				args = append(args, value)
+			}
+		}
+		if len(filterConditions) > 0 {
+			filterConditionsString = "AND (" + strings.Join(filterConditions, " "+string(filter.LinkOperator)+" ") + ")"
+		}
+	}
+
+	if attributeFilter != nil {
+		filterConditions := []string{}
+		for _, f := range attributeFilter.Items {
+			column := TraitType(f.Trait)
+			err := column.IsValid()
+			if err != nil {
+				return 0, nil, terror.Error(err)
+			}
+			condition := GenerateDataFilterSQL(f.Trait, f.Value, argIndex, "store_items")
+			filterConditions = append(filterConditions, condition)
+		}
+		if len(filterConditions) > 0 {
+			filterConditionsString += "AND (" + strings.Join(filterConditions, " "+string(attributeFilter.LinkOperator)+" ") + ")"
+		}
+	}
+
+	archiveCondition := "IS NULL"
+	if archived {
+		archiveCondition = "IS NOT NULL"
+	}
+
+	searchCondition := ""
+	if search != "" {
+		if len(search) > 0 {
+			searchValueLabel, conditionLabel := GenerateDataSearchStoreItemsSQL("label", search, argIndex+1, "store_items")
+			searchValueName, conditionName := GenerateDataSearchStoreItemsSQL("name", search, argIndex+2, "store_items")
+			searchValueType, conditionType := GenerateDataSearchStoreItemsSQL("asset_type", search, argIndex+3, "store_items")
+			searchValueTier, conditionTier := GenerateDataSearchStoreItemsSQL("tier", search, argIndex+4, "store_items")
+			args = append(
+				args,
+				"%"+searchValueLabel+"%",
+				"%"+searchValueName+"%",
+				"%"+searchValueType+"%",
+				"%"+searchValueTier+"%")
+			searchCondition = " AND " + fmt.Sprintf("(%s OR %s OR %s OR %s)", conditionLabel, conditionName, conditionType, conditionTier)
+
+		}
+
+	}
+
+	// Get Total Found
+	countQ := fmt.Sprintf(`--sql
+		SELECT COUNT(DISTINCT store_items.id)
+		%s
+		WHERE store_items.deleted_at %s
+			%s
+			%s
+		`,
+		StoreItemGetFrom,
+		archiveCondition,
+		filterConditionsString,
+		searchCondition,
+	)
+
+	var totalRows int
+	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
+	if err != nil {
+		return 0, nil, terror.Error(err)
+	}
+	if totalRows == 0 {
+		return 0, make([]*passport.StoreItem, 0), nil
+	}
+
+	// Order and Limit
+	orderBy := " ORDER BY created_at desc"
+	if sortBy != "" {
+		orderBy = fmt.Sprintf(" ORDER BY %s %s", sortBy, sortDir)
+	}
+	limit := ""
+	if pageSize > 0 {
+		limit = fmt.Sprintf(" LIMIT %d OFFSET %d", pageSize, offset)
+	}
+
+	// Get Paginated Result
+	q := fmt.Sprintf(
+		StoreItemGetQuery+`--sql
+		WHERE store_items.deleted_at %s
+			%s
+			%s
+		%s
+		%s`,
+		archiveCondition,
+		filterConditionsString,
+		searchCondition,
+		orderBy,
+		limit,
+	)
+
+	result := make([]*passport.StoreItem, 0)
+	err = pgxscan.Select(ctx, conn, &result, q, args...)
+	if err != nil {
+		return 0, nil, terror.Error(err)
+	}
+
+	return totalRows, result, nil
 }

@@ -3,8 +3,6 @@ package rpcclient
 import (
 	"errors"
 	"fmt"
-	"github.com/ninja-software/terror/v2"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"log"
 	"math"
 	"net/rpc"
@@ -12,6 +10,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/ninja-software/terror/v2"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 // XrpcClient is a basic RPC client with retry function and also support multiple addresses for increase through-put
@@ -33,7 +34,7 @@ func SetGlobalClient(c *XrpcClient) {
 
 // Call calls RPC server and retry, also initialise if it is the first time
 func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interface{}) error {
-	span := tracer.StartSpan("rpc.Call", tracer.ResourceName(serviceMethod))
+	span := tracer.StartSpan("rpc_client", tracer.ResourceName(serviceMethod))
 	defer span.Finish()
 
 	// used for the first time, initialise

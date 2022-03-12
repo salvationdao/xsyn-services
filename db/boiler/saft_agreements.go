@@ -30,6 +30,7 @@ type SaftAgreement struct {
 	SignatureHex      null.String `boiler:"signature_hex" boil:"signature_hex" json:"signature_hex,omitempty" toml:"signature_hex" yaml:"signature_hex,omitempty"`
 	SignerAddressHex  null.String `boiler:"signer_address_hex" boil:"signer_address_hex" json:"signer_address_hex,omitempty" toml:"signer_address_hex" yaml:"signer_address_hex,omitempty"`
 	Agree             null.Bool   `boiler:"agree" boil:"agree" json:"agree,omitempty" toml:"agree" yaml:"agree,omitempty"`
+	SignedAt          time.Time   `boiler:"signed_at" boil:"signed_at" json:"signed_at" toml:"signed_at" yaml:"signed_at"`
 	DeletedAt         null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt         time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt         time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
@@ -46,6 +47,7 @@ var SaftAgreementColumns = struct {
 	SignatureHex      string
 	SignerAddressHex  string
 	Agree             string
+	SignedAt          string
 	DeletedAt         string
 	UpdatedAt         string
 	CreatedAt         string
@@ -57,6 +59,7 @@ var SaftAgreementColumns = struct {
 	SignatureHex:      "signature_hex",
 	SignerAddressHex:  "signer_address_hex",
 	Agree:             "agree",
+	SignedAt:          "signed_at",
 	DeletedAt:         "deleted_at",
 	UpdatedAt:         "updated_at",
 	CreatedAt:         "created_at",
@@ -70,6 +73,7 @@ var SaftAgreementTableColumns = struct {
 	SignatureHex      string
 	SignerAddressHex  string
 	Agree             string
+	SignedAt          string
 	DeletedAt         string
 	UpdatedAt         string
 	CreatedAt         string
@@ -81,6 +85,7 @@ var SaftAgreementTableColumns = struct {
 	SignatureHex:      "saft_agreements.signature_hex",
 	SignerAddressHex:  "saft_agreements.signer_address_hex",
 	Agree:             "saft_agreements.agree",
+	SignedAt:          "saft_agreements.signed_at",
 	DeletedAt:         "saft_agreements.deleted_at",
 	UpdatedAt:         "saft_agreements.updated_at",
 	CreatedAt:         "saft_agreements.created_at",
@@ -120,6 +125,7 @@ var SaftAgreementWhere = struct {
 	SignatureHex      whereHelpernull_String
 	SignerAddressHex  whereHelpernull_String
 	Agree             whereHelpernull_Bool
+	SignedAt          whereHelpertime_Time
 	DeletedAt         whereHelpernull_Time
 	UpdatedAt         whereHelpertime_Time
 	CreatedAt         whereHelpertime_Time
@@ -131,6 +137,7 @@ var SaftAgreementWhere = struct {
 	SignatureHex:      whereHelpernull_String{field: "\"saft_agreements\".\"signature_hex\""},
 	SignerAddressHex:  whereHelpernull_String{field: "\"saft_agreements\".\"signer_address_hex\""},
 	Agree:             whereHelpernull_Bool{field: "\"saft_agreements\".\"agree\""},
+	SignedAt:          whereHelpertime_Time{field: "\"saft_agreements\".\"signed_at\""},
 	DeletedAt:         whereHelpernull_Time{field: "\"saft_agreements\".\"deleted_at\""},
 	UpdatedAt:         whereHelpertime_Time{field: "\"saft_agreements\".\"updated_at\""},
 	CreatedAt:         whereHelpertime_Time{field: "\"saft_agreements\".\"created_at\""},
@@ -153,9 +160,9 @@ func (*saftAgreementR) NewStruct() *saftAgreementR {
 type saftAgreementL struct{}
 
 var (
-	saftAgreementAllColumns            = []string{"id", "user_public_address", "message", "message_hex", "signature_hex", "signer_address_hex", "agree", "deleted_at", "updated_at", "created_at"}
+	saftAgreementAllColumns            = []string{"id", "user_public_address", "message", "message_hex", "signature_hex", "signer_address_hex", "agree", "signed_at", "deleted_at", "updated_at", "created_at"}
 	saftAgreementColumnsWithoutDefault = []string{"user_public_address", "message", "message_hex", "signature_hex", "signer_address_hex", "agree", "deleted_at"}
-	saftAgreementColumnsWithDefault    = []string{"id", "updated_at", "created_at"}
+	saftAgreementColumnsWithDefault    = []string{"id", "signed_at", "updated_at", "created_at"}
 	saftAgreementPrimaryKeyColumns     = []string{"id"}
 )
 

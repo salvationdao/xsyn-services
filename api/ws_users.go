@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -328,7 +329,7 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 	}
 	if req.Payload.NewUsername != nil && req.Payload.Username != *req.Payload.NewUsername {
 		bm := bluemonday.StrictPolicy()
-		sanitizedUsername := bm.Sanitize(strings.TrimSpace(*req.Payload.NewUsername))
+		sanitizedUsername := html.UnescapeString(bm.Sanitize(strings.TrimSpace(*req.Payload.NewUsername)))
 
 		// Validate username
 		err = helpers.IsValidUsername(sanitizedUsername)
@@ -2316,27 +2317,27 @@ func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx con
 		return "", "", terror.Error(err, "Must own Asset to update it's name.")
 	}
 
-	f, err := db.FactionGetByUserID(ctx, uc.Conn, userID)
-	if err != nil {
-		return "", "", terror.Error(err)
-	}
+	// f, err := db.FactionGetByUserID(ctx, uc.Conn, userID)
+	// if err != nil {
+	// 	return "", "", terror.Error(err)
+	// }
 
-	var resp struct {
-		Position       *int    `json:"position"`
-		ContractReward *string `json:"contract_reward"`
-	}
-	err = uc.API.GameserverRequest(http.MethodPost, "/war_machine_queue_position", struct {
-		AssetHash string             `json:"assethash"`
-		FactionID passport.FactionID `json:"faction_id"`
-	}{
-		AssetHash: req.Payload.AssetHash,
-		FactionID: f.ID,
-	}, &resp)
-	if err != nil {
-		return "", "", terror.Error(err)
-	}
+	// var resp struct {
+	// 	Position       *int    `json:"position"`
+	// 	ContractReward *string `json:"contract_reward"`
+	// }
+	// err = uc.API.GameserverRequest(http.MethodPost, "/war_machine_queue_position", struct {
+	// 	AssetHash string             `json:"assethash"`
+	// 	FactionID passport.FactionID `json:"faction_id"`
+	// }{
+	// 	AssetHash: req.Payload.AssetHash,
+	// 	FactionID: f.ID,
+	// }, &resp)
+	// if err != nil {
+	// 	return "", "", terror.Error(err)
+	// }
 
-	reply(resp)
+	// reply(resp)
 
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineQueueStatSubscribe, req.Payload.AssetHash))
 
