@@ -118,7 +118,10 @@ func SyncPurchasedItems() error {
 
 	}
 
-	tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	return nil
 }
@@ -139,7 +142,10 @@ func PurchasedItemLock(itemID uuid.UUID) (*boiler.PurchasedItem, error) {
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-	tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return nil, terror.Error(err)
+	}
 	return item, nil
 }
 func PurchasedItemIsOnWorld()  {}
