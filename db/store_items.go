@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
@@ -165,7 +166,10 @@ func SyncStoreItems() error {
 		}
 	}
 
-	tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	return nil
 }
@@ -353,7 +357,10 @@ func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, err
 		return nil, err
 	}
 
-	tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return nil, terror.Error(err)
+	}
 
 	return dbitem, nil
 
