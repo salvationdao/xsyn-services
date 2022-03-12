@@ -17,6 +17,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
@@ -317,6 +318,10 @@ func UpsertNFTTransactions(contractAddr common.Address, nftTxes []*NFTTransactio
 		success++
 	}
 
-	tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return 0, 0, terror.Error(err)
+	}
+
 	return skipped, success, nil
 }

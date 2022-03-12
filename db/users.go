@@ -1411,6 +1411,9 @@ func UserMixedCaseUpdateAll() error {
 			return err
 		}
 	}
-	tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(err)
+	}
 	return nil
 }
