@@ -105,7 +105,7 @@ func NewAPI(
 		},
 		MessageBus: msgBus,
 		Hub: hub.New(&hub.Config{
-			LoggingEnabled: true,
+			LoggingEnabled: false,
 			ClientOfflineFn: func(client *hub.Client) {
 				msgBus.UnsubAll(client)
 			},
