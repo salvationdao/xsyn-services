@@ -103,7 +103,7 @@ func (s *S) listen(addrStr ...string) ([]net.Listener, error) {
 }
 
 func StartServer(s *S) error {
-	listeners, err := s.listen("10000",
+	listeners, err := s.listen(
 		"10001",
 		"10002",
 		"10003",
@@ -137,7 +137,8 @@ func StartServer(s *S) error {
 		"10031",
 		"10032",
 		"10033",
-		"10034")
+		"10034",
+		"10035")
 	if err != nil {
 		return err
 	}
