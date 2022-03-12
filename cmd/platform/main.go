@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"log"
 	"net/http"
 	"net/url"
 	"os/signal"
@@ -17,8 +18,12 @@ import (
 	"passport/payments"
 	"passport/rpcclient"
 	"passport/seed"
+	"runtime"
 	"strings"
 	"time"
+
+	_ "net/http/pprof"
+	rpprof "runtime/pprof"
 
 	"github.com/jackc/pgx/v4/stdlib"
 
@@ -138,6 +143,9 @@ func main() {
 					&cli.BoolFlag{Name: "only_wallet", Value: true, EnvVars: []string{envPrefix + "_ONLY_WALLET"}, Usage: "Set passport to only accept wallet logins"},
 					&cli.StringFlag{Name: "whitelist_check_endpoint", Value: "https://stories.supremacy.game", EnvVars: []string{envPrefix + "_WHITELIST_ENDPOINT"}, Usage: "Endpoint to check if user is whitelisted"},
 
+					&cli.BoolFlag{Name: "pprof", Value: true, EnvVars: []string{envPrefix + "_PPROF"}, Usage: "record pprof at regular interval to help debug"},
+					&cli.IntFlag{Name: "pprof_second", Value: 10, EnvVars: []string{envPrefix + "_PPROF_SECOND"}, Usage: "record pprof at x second interval"},
+
 					// setup for webhook
 					&cli.StringFlag{Name: "gameserver_webhook_secret", Value: "e1BD3FF270804c6a9edJDzzDks87a8a4fde15c7=", EnvVars: []string{"GAMESERVER_WEBHOOK_SECRET"}, Usage: "Authorization key to passport webhook"},
 					&cli.StringFlag{Name: "gameserver_host_url", Value: "http://localhost:8084", EnvVars: []string{"GAMESERVER_HOST_URL"}, Usage: "Authorization key to passport webhook"},
@@ -199,6 +207,16 @@ func main() {
 						tracer.WithServiceVersion(Version),
 					)
 					defer tracer.Stop()
+
+					if c.Bool("pprof") {
+						pint := c.Int("pprof_second")
+						if pint < 10 {
+							pint = 10
+						}
+						// dumping pprof at period bases
+						pprofMonitor(pint)
+					}
+
 					g := &run.Group{}
 					// Listen for os.interrupt
 					g.Add(run.SignalHandler(ctx, os.Interrupt))
@@ -1004,4 +1022,61 @@ func SuperMigrate(c *cli.Context) error {
 		return terror.Panic(err)
 	}
 	return nil
+}
+
+// pprofMonitor monitor to help debug some invisible issues
+func pprofMonitor(intervalSecond int) {
+	if intervalSecond < 10 {
+		intervalSecond = 10
+	}
+
+	// auto record at interval
+	err := os.Mkdir("/tmp/passport-pprof", 0755)
+	if err != nil {
+		log.Println("ERROR pprof mkdir fail", err)
+	}
+
+	go func() {
+		lists := []string{
+			"allocs",
+			"block",
+			"goroutine",
+			"heap",
+			"mutex",
+			"threadcreate",
+			"goroutine",
+		}
+		for {
+			log.Printf("total goroutines %d\n", runtime.NumGoroutine())
+
+			for _, list := range lists {
+				t := time.Now().Format("2006-01-02T15:04:05")
+				fName := fmt.Sprintf("/tmp/passport-pprof/%s-%s.dump", t, list)
+
+				f, err := os.Create(fName)
+				if err != nil {
+					log.Println("ERROR failed to create pprof file", err)
+					continue
+				}
+
+				err = rpprof.Lookup(list).WriteTo(f, 1)
+				if err != nil {
+					log.Println("ERROR failed to write pprof file", err)
+					continue
+				}
+
+				err = f.Close()
+				if err != nil {
+					log.Println("ERROR failed to close pprof file", err)
+					continue
+				}
+			}
+
+			time.Sleep(time.Duration(intervalSecond) * time.Second)
+		}
+	}()
+	// pprof for quick web check
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 }
