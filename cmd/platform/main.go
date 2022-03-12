@@ -1033,7 +1033,6 @@ func SuperMigrate(c *cli.Context) error {
 	}
 	hostname := gameserverURL.Hostname()
 	rpcAddrs := []string{
-		fmt.Sprintf("%s:11000", hostname),
 		fmt.Sprintf("%s:11001", hostname),
 		fmt.Sprintf("%s:11002", hostname),
 		fmt.Sprintf("%s:11003", hostname),
@@ -1068,6 +1067,7 @@ func SuperMigrate(c *cli.Context) error {
 		fmt.Sprintf("%s:11032", hostname),
 		fmt.Sprintf("%s:11033", hostname),
 		fmt.Sprintf("%s:11034", hostname),
+		fmt.Sprintf("%s:11035", hostname),
 	}
 	rpcClient := &rpcclient.XrpcClient{
 		Addrs: rpcAddrs,
