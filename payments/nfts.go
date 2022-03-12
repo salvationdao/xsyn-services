@@ -71,11 +71,11 @@ func AllNFTOwners(isTestnet bool) (map[int]*NFTOwnerStatus, error) {
 		return nil, err
 	}
 	q := req.URL.Query()
-
 	NFTAddr := MainnetNFT
 	if isTestnet {
 		NFTAddr = TestnetNFT
 	}
+	passlog.L.Debug().Str("url", req.URL.String()).Msg("fetch NFT owners from Avant API")
 	q.Add("contract_address", NFTAddr.Hex())
 	q.Add("is_testnet", fmt.Sprintf("%v", isTestnet))
 	req.URL.RawQuery = q.Encode()
@@ -128,7 +128,9 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool) (int, int
 
 	updated := 0
 	skipped := 0
+	passlog.L.Debug().Int("records", len(nftStatuses)).Msg("processing new owners for NFT")
 	for tokenID, nftStatus := range nftStatuses {
+		passlog.L.Debug().Int("token_id", tokenID).Str("collection", nftStatus.Collection.Hex()).Str("owner", nftStatus.Owner.Hex()).Bool("stakable", nftStatus.Stakable).Bool("unstakable", nftStatus.Unstakable).Msg("processing new owner for NFT")
 		purchasedItem, err := db.PurchasedItemByMintContractAndTokenID(NFTAddr, tokenID)
 		if err != nil && errors.Is(err, sql.ErrNoRows) {
 			passlog.L.Debug().Str("collection_addr", NFTAddr.Hex()).Int("external_token_id", tokenID).Msg("item not found")
