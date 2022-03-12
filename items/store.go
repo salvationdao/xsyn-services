@@ -171,8 +171,8 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	if err != nil {
 		return "", terror.Error(err, "Could not get purchased loot box count")
 	}
-	if boughtSoFar >= 10 {
-		return "", terror.Warn(fmt.Errorf("user bought 10 lootboxes"), "You have reached your 10 lootbox limit.")
+	if boughtSoFar >= 15 {
+		return "", terror.Warn(fmt.Errorf("user bought 15 lootboxes"), "You have reached your 15 lootbox limit.")
 	}
 
 	// get all faction items marked as loot box

@@ -66,16 +66,17 @@ type NFTOwnerStatus struct {
 }
 
 func AllNFTOwners(isTestnet bool) (map[int]*NFTOwnerStatus, error) {
+	l := passlog.L.With().Str("svc", "avant_nft_ownership_update").Logger()
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s", baseURL, "nft_tokens"), nil)
 	if err != nil {
 		return nil, err
 	}
 	q := req.URL.Query()
-
 	NFTAddr := MainnetNFT
 	if isTestnet {
 		NFTAddr = TestnetNFT
 	}
+	l.Debug().Str("url", req.URL.String()).Msg("fetch NFT owners from Avant API")
 	q.Add("contract_address", NFTAddr.Hex())
 	q.Add("is_testnet", fmt.Sprintf("%v", isTestnet))
 	req.URL.RawQuery = q.Encode()
@@ -121,6 +122,7 @@ func AllNFTOwners(isTestnet bool) (map[int]*NFTOwnerStatus, error) {
 }
 
 func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool) (int, int, error) {
+	l := passlog.L.With().Str("svc", "avant_nft_ownership_update").Logger()
 	NFTAddr := MainnetNFT
 	if isTestnet {
 		NFTAddr = TestnetNFT
@@ -128,32 +130,42 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool) (int, int
 
 	updated := 0
 	skipped := 0
+	l.Debug().Int("records", len(nftStatuses)).Msg("processing new owners for NFT")
 	for tokenID, nftStatus := range nftStatuses {
+		l.Debug().Int("token_id", tokenID).Str("collection", nftStatus.Collection.Hex()).Str("owner", nftStatus.Owner.Hex()).Bool("stakable", nftStatus.Stakable).Bool("unstakable", nftStatus.Unstakable).Msg("processing new owner for NFT")
 		purchasedItem, err := db.PurchasedItemByMintContractAndTokenID(NFTAddr, tokenID)
 		if err != nil && errors.Is(err, sql.ErrNoRows) {
-			passlog.L.Debug().Str("collection_addr", NFTAddr.Hex()).Int("external_token_id", tokenID).Msg("item not found")
+			l.Debug().Str("collection_addr", NFTAddr.Hex()).Int("external_token_id", tokenID).Msg("item not found")
 			skipped++
 			continue
 		}
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return 0, 0, fmt.Errorf("get purchased item: %w", err)
 		}
-		u, err := CreateOrGetUser(context.Background(), passdb.Conn, nftStatus.Owner)
+		onChainOwner, err := CreateOrGetUser(context.Background(), passdb.Conn, nftStatus.Owner)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return 0, 0, fmt.Errorf("get user: %w", err)
+			return 0, 0, fmt.Errorf("get or create onchain user: %w", err)
 		}
 
-		if nftStatus.Owner != common.HexToAddress(u.PublicAddress.String) {
+		offChainOwner, err := boiler.FindUser(passdb.StdConn, purchasedItem.OwnerID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return 0, 0, fmt.Errorf("get offchain user: %w", err)
+		}
+		offChainAddr := common.HexToAddress(offChainOwner.PublicAddress.String)
+		onChainAddr := common.HexToAddress(onChainOwner.PublicAddress.String)
+		l.Debug().Str("off_chain_user", offChainAddr.Hex()).Str("on_chain_user", onChainAddr.Hex()).Bool("matches", offChainAddr.Hex() != onChainAddr.Hex()).Msg("check if nft owners match")
+		if offChainAddr.Hex() != onChainAddr.Hex() {
 			itemID := uuid.Must(uuid.FromString(purchasedItem.ID))
-			userID := uuid.UUID(u.ID)
-			_, err = db.PurchasedItemSetOwner(itemID, userID)
+			newOffchainOwnerID := uuid.UUID(onChainOwner.ID)
+			l.Debug().Str("new_owner", newOffchainOwnerID.String()).Str("item_id", itemID.String()).Msg("setting new nft owner")
+			_, err = db.PurchasedItemSetOwner(itemID, newOffchainOwnerID)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				return 0, 0, fmt.Errorf("set new nft owner: %w", err)
 			}
 			updated++
-
 		}
 
+		l.Debug().Str("off_chain_stakable", purchasedItem.OnChainStatus).Bool("on_chain_stakable", nftStatus.Stakable).Msg("check if nft stakable state matches")
 		if nftStatus.Stakable && purchasedItem.OnChainStatus != string(db.STAKABLE) {
 			itemID := uuid.Must(uuid.FromString(purchasedItem.ID))
 
@@ -164,7 +176,7 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool) (int, int
 
 			updated++
 		}
-
+		l.Debug().Str("off_chain_unstakable", purchasedItem.OnChainStatus).Bool("on_chain_unstakable", nftStatus.Unstakable).Msg("check if nft unstakable state matches")
 		if nftStatus.Unstakable && purchasedItem.OnChainStatus != string(db.UNSTAKABLE) {
 			itemID := uuid.Must(uuid.FromString(purchasedItem.ID))
 
@@ -174,6 +186,7 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool) (int, int
 			}
 			updated++
 		}
+
 	}
 
 	return updated, skipped, nil
