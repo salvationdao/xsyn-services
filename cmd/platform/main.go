@@ -911,7 +911,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		}
 		hostname := gameserverURL.Hostname()
 		rpcAddrs := []string{
-			fmt.Sprintf("%s:\11000", hostname),
+			fmt.Sprintf("%s:11000", hostname),
 			fmt.Sprintf("%s:11001", hostname),
 			fmt.Sprintf("%s:11002", hostname),
 			fmt.Sprintf("%s:11003", hostname),
