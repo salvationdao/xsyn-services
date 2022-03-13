@@ -104,19 +104,31 @@ type HoldingResp struct {
 func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error) {
 	address := common.HexToAddress(chi.URLParam(r, "public_address"))
 	u, err := db.UserByPublicAddress(r.Context(), passdb.Conn, address)
-	if err != nil {
-		return http.StatusBadRequest, nil
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return http.StatusBadRequest, err
+	}
+
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		err = json.NewEncoder(w).Encode(&HoldingResp{Amount: decimal.Zero.String()})
+		if err != nil {
+			return http.StatusInternalServerError, err
+		}
+		return http.StatusOK, nil
 	}
 
 	exists, err := boiler.PendingRefunds(
 		boiler.PendingRefundWhere.UserID.EQ(u.ID.String()),
 		boiler.PendingRefundWhere.IsRefunded.EQ(false),
 	).Exists(passdb.StdConn)
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return http.StatusInternalServerError, err
 	}
+
 	if !exists {
-		json.NewEncoder(w).Encode(&HoldingResp{Amount: decimal.Zero.String()})
+		err = json.NewEncoder(w).Encode(&HoldingResp{Amount: decimal.Zero.String()})
+		if err != nil {
+			return http.StatusInternalServerError, err
+		}
 	}
 
 	records, err := boiler.PendingRefunds(
@@ -131,8 +143,10 @@ func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error)
 		total.Add(record.AmountSups)
 	}
 
-	json.NewEncoder(w).Encode(&HoldingResp{Amount: total.String()})
-
+	err = json.NewEncoder(w).Encode(&HoldingResp{Amount: total.String()})
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
 	return http.StatusOK, nil
 }
 
