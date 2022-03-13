@@ -2,10 +2,15 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"github.com/gofrs/uuid"
 	"math/big"
 	"passport"
 	"passport/db"
+	"passport/passdb"
+	"passport/passlog"
+	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
@@ -15,16 +20,14 @@ import (
 
 type UserCacheMap struct {
 	deadlock.Map
-	conn             *pgxpool.Pool
-	TransactionCache *TransactionCache
-	MessageBus       *messagebus.MessageBus
+	conn       *pgxpool.Pool
+	MessageBus *messagebus.MessageBus
 }
 
-func NewUserCacheMap(conn *pgxpool.Pool, tc *TransactionCache, msgBus *messagebus.MessageBus) (*UserCacheMap, error) {
+func NewUserCacheMap(conn *pgxpool.Pool, msgBus *messagebus.MessageBus) (*UserCacheMap, error) {
 	ucm := &UserCacheMap{
 		deadlock.Map{},
 		conn,
-		tc,
 		msgBus,
 	}
 	balances, err := db.UserBalances(context.Background(), ucm.conn)
@@ -42,12 +45,6 @@ func NewUserCacheMap(conn *pgxpool.Pool, tc *TransactionCache, msgBus *messagebu
 var TransactionFailed = "TRANSACTION_FAILED"
 
 func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.Int, string, error) {
-	ucm.TransactionCache.IsLocked.RLock()
-	if ucm.TransactionCache.IsLocked.isLocked {
-		ucm.TransactionCache.IsLocked.RUnlock()
-		return nil, nil, TransactionFailed, terror.Error(fmt.Errorf("transactions are locked"), "Unable to process payment, please contact support.")
-	}
-	ucm.TransactionCache.IsLocked.RUnlock()
 	if nt.Amount.Cmp(big.NewInt(0)) < 1 {
 		return nil, nil, TransactionFailed, terror.Error(fmt.Errorf("amount should be a positive number: %s", nt.Amount.String()), "Amount should be greater than zero")
 	}
@@ -83,7 +80,16 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 	ucm.Store(nt.From.String(), *newFromBalance)
 	ucm.Store(nt.To.String(), *newToBalance)
 
-	transactionID := ucm.TransactionCache.Process(nt)
+	transactionID := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
+	nt.ID = transactionID
+
+	passlog.L.Info().Str("from", fromBalance.String()).Str("to", newToBalance.String()).Str("id", nt.ID).Msg("processing transaction")
+
+	err = CreateTransactionEntry(passdb.StdConn, nt)
+	if err != nil {
+		passlog.L.Error().Err(err).Str("from", fromBalance.String()).Str("to", newToBalance.String()).Str("id", nt.ID).Msg("transaction failed")
+		return nil, nil, TransactionFailed, terror.Error(err)
+	}
 
 	tx := &passport.Transaction{
 		ID:     transactionID,
@@ -128,3 +134,16 @@ func (ucm *UserCacheMap) Get(id string) (big.Int, error) {
 }
 
 type UserCacheFunc func(userCacheList UserCacheMap)
+
+// CreateTransactionEntry adds an entry to the transaction entry table
+func CreateTransactionEntry(conn *sql.DB, nt *passport.NewTransaction) error {
+	q := `INSERT INTO transactions(id ,description, transaction_reference, amount, credit, debit, "group", sub_group, created_at)
+				VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9);`
+
+	_, err := conn.Exec(q, nt.ID, nt.Description, nt.TransactionReference, nt.Amount.String(), nt.To, nt.From, nt.Group, nt.SubGroup, nt.CreatedAt)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
