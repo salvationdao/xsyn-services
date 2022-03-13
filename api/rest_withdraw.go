@@ -97,6 +97,45 @@ func (api *API) GetMaxWithdrawAmount(w http.ResponseWriter, r *http.Request) (in
 	return helpers.EncodeJSON(w, maxWithdrawResponse)
 }
 
+type HoldingResp struct {
+	Amount string `json:"amount"`
+}
+
+func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error) {
+	address := common.HexToAddress(chi.URLParam(r, "public_address"))
+	u, err := db.UserByPublicAddress(r.Context(), passdb.Conn, address)
+	if err != nil {
+		return http.StatusBadRequest, nil
+	}
+
+	exists, err := boiler.PendingRefunds(
+		boiler.PendingRefundWhere.UserID.EQ(u.ID.String()),
+		boiler.PendingRefundWhere.IsRefunded.EQ(false),
+	).Exists(passdb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+	if !exists {
+		json.NewEncoder(w).Encode(&HoldingResp{Amount: decimal.Zero.String()})
+	}
+
+	records, err := boiler.PendingRefunds(
+		boiler.PendingRefundWhere.UserID.EQ(u.ID.String()),
+		boiler.PendingRefundWhere.IsRefunded.EQ(false),
+	).All(passdb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+	total := decimal.Zero
+	for _, record := range records {
+		total.Add(record.AmountSups)
+	}
+
+	json.NewEncoder(w).Encode(&HoldingResp{Amount: total.String()})
+
+	return http.StatusOK, nil
+}
+
 // WithdrawSups
 // Flow to withdraw sups
 // get nonce from withdraw contract
