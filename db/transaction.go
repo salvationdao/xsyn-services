@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"passport"
+	"passport/passdb"
+	"passport/passlog"
 	"strings"
 	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
+	"github.com/shopspring/decimal"
 )
 
 type TransactionColumn string
@@ -69,6 +72,21 @@ FROM transactions
 INNER JOIN users t ON transactions.credit = t.id
 INNER JOIN users f ON transactions.debit = f.id
 `
+
+func ExtraWithdraw(userID passport.UserID) decimal.Decimal {
+	var extraRefund decimal.Decimal
+	q := `
+	SELECT 
+	(SELECT SUM(amount) FROM transactions WHERE credit = $1 AND transaction_reference NOT ILIKE '%early_contributor%') - 
+	(SELECT SUM(amount) FROM transactions WHERE debit = $1 AND transaction_reference NOT ILIKE '%early_contributor%') AS extra_refund;
+	`
+	err := pgxscan.Get(context.Background(), passdb.Conn, &extraRefund, q, userID)
+	if err != nil {
+		passlog.L.Err(err).Msg("could not get extra withdraw amount")
+		return decimal.Zero
+	}
+	return extraRefund
+}
 
 // UsersTransactionGroups returns details about the user's transactions that have group IDs
 func UsersTransactionGroups(
