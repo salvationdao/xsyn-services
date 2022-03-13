@@ -60,8 +60,7 @@ type API struct {
 	// sendToServerClients chan *ServerClientMessage
 
 	//tx stuff
-	transactionCache *TransactionCache
-	userCacheMap     *UserCacheMap
+	userCacheMap *UserCacheMap
 
 	walletOnlyConnect    bool
 	storeItemExternalUrl string
@@ -80,7 +79,6 @@ func NewAPI(
 	HTMLSanitize *bluemonday.Policy,
 	config *passport.Config,
 	externalUrl string,
-	tc *TransactionCache,
 	ucm *UserCacheMap,
 	isTestnetBlockchain bool,
 	runBlockchainBridge bool,
@@ -134,8 +132,7 @@ func NewAPI(
 		users: make(chan func(userList UserCacheMap)),
 
 		// object to hold transaction stuff
-		transactionCache: tc,
-		userCacheMap:     ucm,
+		userCacheMap: ucm,
 
 		walletOnlyConnect:    config.OnlyWalletConnect,
 		storeItemExternalUrl: externalUrl,

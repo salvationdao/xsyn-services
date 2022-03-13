@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 	"github.com/sasha-s/go-deadlock"
 )
@@ -99,17 +98,4 @@ func (tc *TransactionCache) Process(t *passport.NewTransaction) string {
 	tc.transactions = append(tc.transactions, t)
 
 	return t.ID
-}
-
-// CreateTransactionEntry adds an entry to the transaction entry table
-func CreateTransactionEntry(conn *sql.DB, nt *passport.NewTransaction) error {
-	q := `INSERT INTO transactions(id ,description, transaction_reference, amount, credit, debit, "group", sub_group, created_at)
-				VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9);`
-
-	_, err := conn.Exec(q, nt.ID, nt.Description, nt.TransactionReference, nt.Amount.String(), nt.To, nt.From, nt.Group, nt.SubGroup, nt.CreatedAt)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
 }
