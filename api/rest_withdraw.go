@@ -8,16 +8,13 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
-	"passport"
 	"passport/db"
 	"passport/db/boiler"
 	"passport/helpers"
 	"passport/passdb"
-	"passport/passlog"
 	"passport/payments"
 	"time"
 
-	"github.com/gofrs/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -68,9 +65,9 @@ func (api *API) GetMaxWithdrawAmount(w http.ResponseWriter, r *http.Request) (in
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get max withdraw amount")
 	}
 
-	extraWithdraw := db.ExtraWithdraw(passport.UserID(uuid.Must(uuid.FromString(user.ID))))
-	passlog.L.Debug().Str("amount", extraWithdraw.Shift(-18).StringFixed(4)).Str("user_id", user.ID).Msg("extra refund")
-	amountCanRefund = amountCanRefund.Add(extraWithdraw)
+	// extraWithdraw := db.ExtraWithdraw(passport.UserID(uuid.Must(uuid.FromString(user.ID))))
+	// passlog.L.Debug().Str("amount", extraWithdraw.Shift(-18).StringFixed(4)).Str("user_id", user.ID).Msg("extra refund")
+	// amountCanRefund = amountCanRefund.Add(extraWithdraw)
 
 	maxWithdrawResponse := MaxWithdrawResponse{MaxWithdraw: "0", Unlimited: infinite}
 	if infinite {
@@ -170,9 +167,9 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 	}
 
 	if !infinite {
-		extraWithdraw := db.ExtraWithdraw(user.ID)
-		passlog.L.Debug().Str("amount", extraWithdraw.Shift(-18).StringFixed(4)).Str("user_id", user.ID.String()).Msg("extra refund")
-		amountCanRefund = amountCanRefund.Add(extraWithdraw)
+		// extraWithdraw := db.ExtraWithdraw(user.ID)
+		// passlog.L.Debug().Str("amount", extraWithdraw.Shift(-18).StringFixed(4)).Str("user_id", user.ID.String()).Msg("extra refund")
+		// amountCanRefund = amountCanRefund.Add(extraWithdraw)
 
 		amountCanRefund = decimal.NewFromBigInt(amountCanRefund.BigInt(), -18)
 		amt := decimal.Zero
