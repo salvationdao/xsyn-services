@@ -851,12 +851,10 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	HTMLSanitizePolicy := bluemonday.UGCPolicy()
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
-	tc := api.NewTransactionCache(txConn, log)
-
 	msgBus := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
 
 	// initialise user cache map
-	ucm, err := api.NewUserCacheMap(pgxconn, tc, msgBus)
+	ucm, err := api.NewUserCacheMap(pgxconn, msgBus)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -870,7 +868,6 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		HTMLSanitizePolicy,
 		config,
 		externalURL,
-		tc,
 		ucm,
 		isTestnetBlockchain,
 		runBlockchainBridge,
