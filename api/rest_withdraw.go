@@ -193,7 +193,7 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 			amt = amt.Add(decimal.NewFromBigInt(amountBigInt, -18))
 			log.Info().Msg(fmt.Sprintf("%v %v %v", amt, amountCanRefund, amountBigInt))
 			if !amt.LessThan(amountCanRefund) {
-				return http.StatusInternalServerError, terror.Error(err, "Failed to withdraw amount")
+				return http.StatusInternalServerError, terror.Error(errors.New("total withdrawn amount exceeds allowable"), "Failed to withdraw amount")
 			}
 		}
 	}
