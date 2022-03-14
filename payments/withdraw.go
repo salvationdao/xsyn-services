@@ -109,7 +109,6 @@ func UpdateSuccessfulWithdrawsWithTxHash(records []*Record) (int, int) {
 			boiler.PendingRefundWhere.UserID.EQ(u.ID.String()),
 			boiler.PendingRefundWhere.AmountSups.EQ(val),
 			boiler.PendingRefundWhere.IsRefunded.EQ(false),
-			boiler.PendingRefundWhere.RefundedAt.GT(time.Now()), // RefundedAt is when the signature expires, txhashes won't happen after this time
 			boiler.PendingRefundWhere.RefundCanceledAt.IsNull(), // Not cancelled yet
 			boiler.PendingRefundWhere.DeletedAt.IsNull(),
 			boiler.PendingRefundWhere.TXHash.EQ(""),
