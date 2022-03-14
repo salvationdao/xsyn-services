@@ -200,7 +200,6 @@ func NewAPI(
 			r.Get("/withdraw/check/{address}", WithError(api.GetMaxWithdrawAmount))
 			r.Get("/withdraw/check", WithError(api.CheckCanWithdraw))
 			r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSups))
-			r.Get("/withdraw-tx-hash/{refundID}/{txHash}", WithError(api.UpdatePendingRefund))
 
 			r.Get("/asset/{hash}", WithError(api.AssetGet))
 			r.Get("/asset/{collection_address}/{token_id}", WithError(api.AssetGetByCollectionAndTokenID))

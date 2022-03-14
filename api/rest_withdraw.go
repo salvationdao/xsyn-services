@@ -20,7 +20,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -281,28 +280,4 @@ func (api *API) CheckCanWithdraw(w http.ResponseWriter, r *http.Request) (int, e
 	canWithdraw := CheckWithdrawResponse{CanWithdraw: time.Now().After(state.WithdrawStartAt)}
 
 	return helpers.EncodeJSON(w, canWithdraw)
-}
-
-func (api *API) UpdatePendingRefund(w http.ResponseWriter, r *http.Request) (int, error) {
-	refundID := chi.URLParam(r, "refundID")
-	if refundID == "" {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing refund ID"), "Missing address.")
-	}
-
-	txHash := chi.URLParam(r, "txHash")
-	if txHash == "" {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing tx hash"), "Missing nonce.")
-	}
-
-	pendingRefund, err := boiler.FindPendingRefund(passdb.StdConn, refundID)
-	if err != nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing tx hash"), "Missing nonce.")
-	}
-
-	pendingRefund.TXHash = txHash
-	_, err = pendingRefund.Update(passdb.StdConn, boil.Whitelist(boiler.PendingRefundColumns.TXHash))
-	if err != nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing tx hash"), "Missing nonce.")
-	}
-	return http.StatusOK, nil
 }

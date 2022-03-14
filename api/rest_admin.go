@@ -33,7 +33,7 @@ func AdminRoutes(ucm *UserCacheMap) chi.Router {
 	r.Post("/purchased_items/set_owner/{purchased_item_id}/{owner_id}", WithError(WithAdmin(PurchasedItemSetOwner)))
 	r.Post("/purchased_items/transfer/from/{from}/to/{to}/collection_id/{collection_id}/token_id/{token_id}", WithError(WithAdmin(TransferAsset())))
 
-	r.Post("/transactions/create/{transaction_id}", WithError(WithAdmin(CreateTransaction((ucm)))))
+	r.Post("/transactions/create", WithError(WithAdmin(CreateTransaction((ucm)))))
 	r.Post("/transactions/reverse/{transaction_id}", WithError(WithAdmin(ReverseUserTransaction((ucm)))))
 	r.Get("/transactions/list/user/{public_address}", WithError(WithAdmin(ListUserTransactions)))
 
@@ -120,7 +120,7 @@ func CreateTransaction(ucm *UserCacheMap) func(w http.ResponseWriter, r *http.Re
 			return http.StatusBadRequest, terror.Error(err, "Could not decode json")
 		}
 
-		ref := fmt.Sprintf("TRANSFER FROM OVERSEER - %d", time.Now().UnixNano())
+		ref := fmt.Sprintf("TRANSFER - %d", time.Now().UnixNano())
 		newTx := &passport.NewTransaction{
 			To:                   passport.UserID(req.Credit),
 			From:                 passport.UserID(req.Debit),

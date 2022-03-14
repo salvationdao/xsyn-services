@@ -1,14 +1,17 @@
 package payments
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"passport"
+	"passport/db"
 	"passport/db/boiler"
 	"passport/passdb"
 	"passport/passlog"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/volatiletech/null/v8"
@@ -46,7 +49,7 @@ func InsertPendingRefund(ucm UserCacheMap, userID passport.UserID, amount big.In
 
 	txHold := boiler.PendingRefund{
 		UserID:               userID.String(),
-		RefundedAt:           expiry.Add(1 * time.Minute),
+		RefundedAt:           expiry.Add(10 * time.Minute),
 		TransactionReference: string(txRef),
 		AmountSups:           amountString,
 	}
@@ -70,79 +73,122 @@ func GetWithdraws(testnet bool) ([]*Record, error) {
 	return records, nil
 }
 
-func ProcessWithdraws(records []*Record) (int, int, error) {
-	// ctx := context.Background()
-	success := 0
+func UpdateSuccessfulWithdrawsWithTxHash(records []*Record) (int, int) {
+	l := passlog.L.With().Str("svc", "avant_pending_refund_set_tx_hash").Logger()
+
 	skipped := 0
+	success := 0
 	for _, record := range records {
-		value, err := decimal.NewFromString(record.JSON.Value)
+		val, err := decimal.NewFromString(record.JSON.Value)
 		if err != nil {
+			l.Warn().
+				Str("user_addr", record.ToAddress).
+				Str("tx_hash", record.TxHash).
+				Err(err).
+				Msg("convert to decimal failed")
 			skipped++
-			passlog.L.Err(err).Str("txid", record.TxHash).Err(err).Msg("process decimal")
-			continue
-		}
-		// find out pending refund and mark it as refunded
-		result, err := boiler.PendingRefunds(
-			qm.Where("tx_hash ILIKE ?", record.TxHash),
-		).One(passdb.StdConn)
-		if err != nil {
-			skipped++
-			passlog.L.Warn().Err(err).Str("tx_id", record.TxHash).Str("amount", value.Shift(-1*SUPDecimals).StringFixed(4)).Msg("could not find matching tx_id in refund table")
-			continue
-		}
-		// check it hasn't expired
-		if result.RefundedAt.Before(time.Now()) || result.IsRefunded {
-			skipped++
-			continue
-		}
-		// check it hasn't been cancelled
-		if result.RefundCanceledAt.Valid {
-			skipped++
-			continue
-		}
-		// check it isn't deleted
-		if result.DeletedAt.Valid {
-			skipped++
-			passlog.L.Warn().Err(fmt.Errorf("refund deleted_at not null")).Str("tx_id", record.TxHash).Str("amount", value.Shift(-1*SUPDecimals).StringFixed(4)).Msg("refund has been deleted")
 			continue
 		}
 
-		result.RefundCanceledAt = null.TimeFrom(time.Now())
+		// Prepare logger with context
+		l = l.With().
+			Str("to_addr", record.ToAddress).
+			Str("from_addr", record.FromAddress).
+			Str("tx_hash", record.TxHash).
+			Str("value", val.Shift(-18).StringFixed(4)).
+			Logger()
 
-		_, err = result.Update(passdb.StdConn, boil.Whitelist(boiler.PendingRefundColumns.RefundCanceledAt))
+		u, err := db.UserByPublicAddress(context.Background(), passdb.Conn, common.HexToAddress(record.ToAddress))
 		if err != nil {
+			l.Warn().Err(err).Msg("user withdrawing does not exist")
 			skipped++
-			passlog.L.Err(err).Str("tx_id", record.TxHash).Str("amount", value.Shift(-1*SUPDecimals).StringFixed(4)).Msg("updating pending refund table")
 			continue
 		}
 
+		filter := []qm.QueryMod{
+			boiler.PendingRefundWhere.UserID.EQ(u.ID.String()),
+			boiler.PendingRefundWhere.AmountSups.EQ(val),
+			boiler.PendingRefundWhere.IsRefunded.EQ(false),
+			boiler.PendingRefundWhere.RefundedAt.GT(time.Now()), // RefundedAt is when the signature expires, txhashes won't happen after this time
+			boiler.PendingRefundWhere.RefundCanceledAt.IsNull(), // Not cancelled yet
+			boiler.PendingRefundWhere.DeletedAt.IsNull(),
+			boiler.PendingRefundWhere.TXHash.EQ(""),
+		}
+
+		count, err := boiler.PendingRefunds(filter...).Count(passdb.StdConn)
+		if err != nil {
+			l.Warn().Err(err).Msg("failed to get count")
+			skipped++
+			continue
+		}
+		if count <= 0 {
+			l.Warn().Err(err).Msg("user does not have any pending refunds matching the value")
+			skipped++
+			continue
+		}
+
+		// Get pending refunds for user that are ready to be confirmed as on chain
+		boil.DebugMode = true
+		filter = append(filter, qm.OrderBy("created_at ASC")) // Sort so we get the oldest one
+		pendingRefund, err := boiler.PendingRefunds(filter...).One(passdb.StdConn)
+		if err != nil {
+			l.Warn().Err(err).Msg("could not get matching single pending refund")
+			skipped++
+			continue
+		}
+		boil.DebugMode = false
+		pendingRefund.TXHash = record.TxHash
+		pendingRefund.RefundCanceledAt = null.TimeFrom(time.Now())
+
+		_, err = pendingRefund.Update(passdb.StdConn, boil.Whitelist(boiler.PendingRefundColumns.TXHash, boiler.PendingRefundColumns.RefundCanceledAt))
+		if err != nil {
+			l.Warn().Err(err).Msg("failed to update user pending refund with tx hash")
+			skipped++
+			continue
+		}
+
+		l.Info().Msg("successfully set tx hash, cancel refund")
 		success++
 	}
 
-	return success, skipped, nil
+	return success, skipped
 }
 
-func ProcessPendingRefunds(ucm UserCacheMap) (int, int, error) {
+// Rollback stale withdraws (dangerous if buggy, check very, very carefully)
+func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int, int, error) {
+	l := passlog.L.
+		With().
+		Str("svc", "avant_rollback_withdraw").
+		Bool("enable_withdraw_rollback", enableWithdrawRollback).
+		Logger()
+
 	success := 0
 	skipped := 0
-	refundsToProcess, err := boiler.PendingRefunds(
+
+	// Get refunds that can be marked as failed withdraws
+	filter := []qm.QueryMod{
 		boiler.PendingRefundWhere.RefundedAt.LT(time.Now()),
-		qm.And("refund_canceled_at IS NULL"),
-		qm.And("is_refunded = false"),
-		qm.And("deleted_at IS NULL"),
+		boiler.PendingRefundWhere.RefundCanceledAt.IsNull(),
+		boiler.PendingRefundWhere.IsRefunded.EQ(false),
+		boiler.PendingRefundWhere.DeletedAt.IsNull(),
+		boiler.PendingRefundWhere.TXHash.EQ(""),
 		qm.Load(boiler.PendingRefundRels.TransactionReferenceTransaction),
-	).All(passdb.StdConn)
+	}
+	boil.DebugMode = true
+	refundsToProcess, err := boiler.PendingRefunds(filter...).All(passdb.StdConn)
 	if err != nil {
 		return success, skipped, err
 	}
+	boil.DebugMode = false
 
 	for _, refund := range refundsToProcess {
 		userUUID, err := uuid.FromString(refund.R.TransactionReferenceTransaction.Debit)
 		if err != nil {
 			skipped++
-			passlog.L.Err(err).Msg("failed to convert to user uuid")
+			l.Warn().Err(err).Msg("failed to convert to user uuid")
 			continue
 		}
+
 		newTx := &passport.NewTransaction{
 			To:                   passport.UserID(userUUID),
 			From:                 passport.OnChainUserID,
@@ -152,12 +198,45 @@ func ProcessPendingRefunds(ucm UserCacheMap) (int, int, error) {
 			Group:                passport.TransactionGroup(refund.R.TransactionReferenceTransaction.Group),
 		}
 
-		_, _, _, err = ucm.Process(newTx)
-		if err != nil {
-			skipped++
-			passlog.L.Err(err).Msg("failed to process refund")
-			continue
+		refund.RefundCanceledAt = null.TimeFrom(time.Now())
+		refund.IsRefunded = true
+
+		l = l.With().
+			Str("refund.refund_id", refund.ID).
+			Str("refund.user_id", refund.UserID).
+			Str("refund.amount_sups", refund.AmountSups.Shift(-18).StringFixed(4)).
+			Str("refund.refunded_at", refund.RefundedAt.Format(time.RFC3339)).
+			Str("refund.refund_canceled_at", refund.RefundCanceledAt.Time.Format(time.RFC3339)).
+			Str("refund.tx_hash", refund.TXHash).
+			Str("refund.transaction_reference", refund.TransactionReference).
+			Bool("refund.is_refunded", refund.IsRefunded).
+			Str("reverse_tx.to", newTx.To.String()).
+			Str("reverse_tx.from", newTx.From.String()).
+			Str("reverse_tx.amount", newTx.Amount.String()).
+			Str("reverse_tx.transaction_reference", string(newTx.TransactionReference)).
+			Str("reverse_tx.description", newTx.Description).
+			Str("reverse_tx.group", string(newTx.Group)).
+			Logger()
+
+		if enableWithdrawRollback {
+			_, _, _, err = ucm.Process(newTx)
+			if err != nil {
+				skipped++
+				l.Warn().Err(err).Msg("failed to process refund")
+				continue
+			}
+
+			_, err = refund.Update(passdb.StdConn, boil.Infer())
+			if err != nil {
+				skipped++
+				l.Warn().Err(err).Msg("failed to process refund")
+				continue
+			}
+			l.Info().Msg("successfully reversed withdraw")
+		} else {
+			l.Info().Msg("successfully reversed withdraw (dry run)")
 		}
+
 		success++
 	}
 

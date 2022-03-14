@@ -180,6 +180,7 @@ func main() {
 					&cli.BoolFlag{Name: "avant_testnet", Value: false, EnvVars: []string{envPrefix + "_AVANT_TESTNET"}, Usage: "Use testnet for Avant data scraper"},
 					&cli.BoolFlag{Name: "skip_update_users_mixed_case", Value: false, EnvVars: []string{envPrefix + "_SKIP_UPDATE_USERS_MIXED_CASE"}, Usage: "Set to true after users have been all updated as mixed case"},
 
+					&cli.BoolFlag{Name: "enable_withdraw_rollback", Value: false, EnvVars: []string{envPrefix + "_ENABLE_WITHDRAW_ROLLBACK"}, Usage: "Enable automatic withdraw rollbacks"},
 					//moralis key- set in env vars
 					//moralis key- set in env vars
 					//moralis key- set in env vars
@@ -443,61 +444,8 @@ func txConnect(
 	conn.SetMaxOpenConns(maxOpen)
 	return conn, nil
 }
-func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
 
-	nftOwnerStatuses, err := payments.AllNFTOwners(isTestnet)
-	if err != nil {
-		return fmt.Errorf("get nft owners: %w", err)
-	}
-
-	ownerupdated, ownerskipped, err := payments.UpdateOwners(nftOwnerStatuses, isTestnet)
-	if err != nil {
-		return fmt.Errorf("update nft owners: %w", err)
-	}
-	passlog.L.Info().Int("updated", ownerupdated).Int("skipped", ownerskipped).Msg("synced nft ownerships")
-	withdrawRecords, err := payments.GetWithdraws(isTestnet)
-	if err != nil {
-		return fmt.Errorf("get withdraws: %w", err)
-	}
-	withdrawProcessSuccess, withdrawProcessSkipped, err := payments.ProcessWithdraws(withdrawRecords)
-	if err != nil {
-		return fmt.Errorf("process withdraws: %w", err)
-	}
-	passlog.L.Info().
-		Int("success", withdrawProcessSuccess).
-		Int("skipped", withdrawProcessSkipped).
-		Msg("synced withdraws")
-
-	// refundsSuccess, refundsSkipped, err := payments.ProcessPendingRefunds(ucm)
-	// if err != nil {
-	// 	return fmt.Errorf("process withdraws: %w", err)
-	// }
-	// passlog.L.Info().Int("success", refundsSuccess).Int("skipped", refundsSkipped).Msg("refunds processed")
-
-	depositRecords, err := payments.GetDeposits(isTestnet)
-	if err != nil {
-		return fmt.Errorf("get deposits: %w", err)
-	}
-	depositProcessSuccess, depositProcessSkipped, err := payments.ProcessDeposits(depositRecords, ucm)
-	if err != nil {
-		return fmt.Errorf("process deposits: %w", err)
-	}
-	passlog.L.Info().
-		Int("success", depositProcessSuccess).
-		Int("skipped", depositProcessSkipped).
-		Msg("synced deposits")
-	// nfttxes, err := payments.GetNFTTransactions(genesisContract, isTestnet)
-	// if err != nil {
-	// 	return fmt.Errorf("get nft transactions: %w", err)
-	// }
-	// nftskipped, nftsuccess, err := payments.UpsertNFTTransactions(genesisContract, nfttxes, isTestnet)
-	// if err != nil {
-	// 	return fmt.Errorf("upsert nft transactions: %w", err)
-	// }
-
-	// passlog.L.Info().
-	// 	Int("skipped", nftskipped).Int("success", nftsuccess).
-	// 	Msg("synced nft transactions")
+func SyncPayments(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
 
 	records1, err := payments.BNB()
 	if err != nil {
@@ -634,6 +582,83 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, is
 
 	}
 	log.Info().Int("skipped", skipped).Int("successful", successful).Int("failed", failed).Msg("synced payments")
+	return nil
+
+}
+func SyncDeposits(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
+	depositRecords, err := payments.GetDeposits(isTestnet)
+	if err != nil {
+		return fmt.Errorf("get deposits: %w", err)
+	}
+	depositProcessSuccess, depositProcessSkipped, err := payments.ProcessDeposits(depositRecords, ucm)
+	if err != nil {
+		return fmt.Errorf("process deposits: %w", err)
+	}
+	passlog.L.Info().
+		Int("success", depositProcessSuccess).
+		Int("skipped", depositProcessSkipped).
+		Msg("synced deposits")
+
+	return nil
+
+}
+func SyncWithdraw(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool) error {
+	// Update with TX hash first
+	withdrawRecords, err := payments.GetWithdraws(isTestnet)
+	if err != nil {
+		return fmt.Errorf("get withdraws: %w", err)
+	}
+	success, skipped := payments.UpdateSuccessfulWithdrawsWithTxHash(withdrawRecords)
+	passlog.L.Info().Int("success", success).Int("skipped", skipped).Msg("add tx hashes to pending refunds")
+
+	refundsSuccess, refundsSkipped, err := payments.ReverseFailedWithdraws(ucm, enableWithdrawRollback)
+	if err != nil {
+		return fmt.Errorf("process withdraws: %w", err)
+	}
+	passlog.L.Info().Int("success", refundsSuccess).Int("skipped", refundsSkipped).Msg("refunds processed")
+
+	return nil
+
+}
+func SyncNFTs(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
+	nftOwnerStatuses, err := payments.AllNFTOwners(isTestnet)
+	if err != nil {
+		return fmt.Errorf("get nft owners: %w", err)
+	}
+
+	ownerupdated, ownerskipped, err := payments.UpdateOwners(nftOwnerStatuses, isTestnet)
+	if err != nil {
+		return fmt.Errorf("update nft owners: %w", err)
+	}
+	passlog.L.Info().Int("updated", ownerupdated).Int("skipped", ownerskipped).Msg("synced nft ownerships")
+	return nil
+}
+
+func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool) error {
+	go func(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
+		err := SyncPayments(ucm, conn, log, isTestnet)
+		if err != nil {
+			passlog.L.Err(err).Msg("failed to sync payments")
+		}
+	}(ucm, conn, log, isTestnet)
+	go func(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
+		err := SyncDeposits(ucm, conn, log, isTestnet)
+		if err != nil {
+			passlog.L.Err(err).Msg("failed to sync deposits")
+		}
+	}(ucm, conn, log, isTestnet)
+	go func(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
+		err := SyncNFTs(ucm, conn, log, isTestnet)
+		if err != nil {
+			passlog.L.Err(err).Msg("failed to sync nf ts")
+		}
+	}(ucm, conn, log, isTestnet)
+	go func(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
+		err := SyncWithdraw(ucm, conn, log, isTestnet, enableWithdrawRollback)
+		if err != nil {
+			passlog.L.Err(err).Msg("failed to sync withdraw")
+		}
+	}(ucm, conn, log, isTestnet)
 	return nil
 }
 func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
@@ -955,7 +980,8 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 
 	if enablePurchaseSubscription {
 		avantTestnet := ctxCLI.Bool("avant_testnet")
-		err := SyncFunc(ucm, pgxconn, log, avantTestnet)
+		enableWithdrawRollback := ctxCLI.Bool("enable_withdraw_rollback")
+		err := SyncFunc(ucm, pgxconn, log, avantTestnet, enableWithdrawRollback)
 		if err != nil {
 			log.Error().Err(err).Msg("sync")
 		}
@@ -963,7 +989,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		go func() {
 			t := time.NewTicker(20 * time.Second)
 			for range t.C {
-				err := SyncFunc(ucm, pgxconn, log, avantTestnet)
+				err := SyncFunc(ucm, pgxconn, log, avantTestnet, enableWithdrawRollback)
 				if err != nil {
 					log.Error().Err(err).Msg("sync")
 				}
