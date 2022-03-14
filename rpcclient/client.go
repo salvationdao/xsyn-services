@@ -58,7 +58,7 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 	i := int(c.counter) % len(c.Addrs)
 	client := c.clients[i]
 
-	var err error
+	var err error = nil
 	var retryCall uint
 	for {
 		if client == nil {
@@ -74,7 +74,7 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 
 		err = client.Call(serviceMethod, args, reply)
 		if err == nil {
-			// done
+			passlog.L.Error().Err(err).Msg("RPC call has failed due to error.")
 			break
 		}
 
@@ -96,7 +96,7 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 		}
 	}
 
-	return nil
+	return err
 }
 
 // dial is primitive rpc dialer, short and simple
