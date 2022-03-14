@@ -27,6 +27,18 @@ const PersistChatMessageLimit = 20
 var profanityDetector = goaway.NewProfanityDetector().WithCustomDictionary(Profanities, []string{}, []string{})
 var bm = bluemonday.StrictPolicy()
 
+// ChatMessageSend contains chat message data to send.
+type ChatMessageSend struct {
+	Message           string           `json:"message"`
+	MessageColor      string           `json:"message_color"`
+	FromUserID        passport.UserID  `json:"from_user_id"`
+	FromUsername      string           `json:"from_username"`
+	FactionColour     *string          `json:"faction_colour,omitempty"`
+	FactionLogoBlobID *passport.BlobID `json:"faction_logo_blob_id,omitempty"`
+	AvatarID          *passport.BlobID `json:"avatar_id,omitempty"`
+	SentAt            time.Time        `json:"sent_at"`
+}
+
 // Chatroom holds a specific chat room
 type Chatroom struct {
 	deadlock.RWMutex
@@ -84,6 +96,7 @@ func NewChatController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, global
 		ZaibatsuChat:    zaibatsuChat,
 	}
 
+	api.Command(HubKeyChatPastMessages, chatHub.ChatPastMessagesHandler)
 	api.SecureCommand(HubKeyChatMessage, chatHub.ChatMessageHandler)
 
 	api.SubscribeCommand(HubKeyGlobalChatSubscribe, chatHub.GlobalChatUpdatedSubscribeHandler)
@@ -100,18 +113,6 @@ type FactionChatRequest struct {
 		MessageColor string             `json:"message_color"`
 		Message      string             `json:"message"`
 	} `json:"payload"`
-}
-
-// ChatMessageSend contains chat message data to send.
-type ChatMessageSend struct {
-	Message           string           `json:"message"`
-	MessageColor      string           `json:"message_color"`
-	FromUserID        passport.UserID  `json:"from_user_id"`
-	FromUsername      string           `json:"from_username"`
-	FactionColour     *string          `json:"faction_colour,omitempty"`
-	FactionLogoBlobID *passport.BlobID `json:"faction_logo_blob_id,omitempty"`
-	AvatarID          *passport.BlobID `json:"avatar_id,omitempty"`
-	SentAt            time.Time        `json:"sent_at"`
 }
 
 // rootHub.SecureCommand(HubKeyFactionChat, factionHub.ChatMessageHandler)
@@ -227,6 +228,52 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 	fc.GlobalChat.AddMessage(chatMessage)
 	fc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyGlobalChatSubscribe), chatMessage)
 	reply(true)
+
+	return nil
+}
+
+// ChatPastMessagesRequest sends chat message to specific faction.
+type ChatPastMessagesRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		FactionID passport.FactionID `json:"faction_id"`
+	} `json:"payload"`
+}
+
+const HubKeyChatPastMessages hub.HubCommandKey = "CHAT:PAST_MESSAGES"
+
+func (fc *ChatController) ChatPastMessagesHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &ChatPastMessagesRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	if !req.Payload.FactionID.IsNil() {
+		uuidString := hubc.Identifier() // identifier gets set on auth by default, so no ident = not authed
+		if uuidString == "" {
+			return terror.Error(terror.ErrUnauthorised)
+		}
+	}
+
+	resp := []*ChatMessageSend{}
+	chatRangeHandler := func(message *ChatMessageSend) bool {
+		resp = append(resp, message)
+		return true
+	}
+
+	switch req.Payload.FactionID {
+	case passport.RedMountainFactionID:
+		fc.RedMountainChat.Range(chatRangeHandler)
+	case passport.BostonCyberneticsFactionID:
+		fc.BostonChat.Range(chatRangeHandler)
+	case passport.ZaibatsuFactionID:
+		fc.ZaibatsuChat.Range(chatRangeHandler)
+	default:
+		fc.GlobalChat.Range(chatRangeHandler)
+	}
+
+	reply(resp)
 
 	return nil
 }
