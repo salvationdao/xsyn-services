@@ -12,9 +12,11 @@ import (
 	"passport/db/boiler"
 	"passport/helpers"
 	"passport/passdb"
+	"passport/passlog"
 	"passport/payments"
 	"time"
 
+	"github.com/jackc/pgx/v4"
 	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -102,13 +104,14 @@ type HoldingResp struct {
 }
 
 func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error) {
-	address := common.HexToAddress(chi.URLParam(r, "public_address"))
+	address := common.HexToAddress(chi.URLParam(r, "user_address"))
 	u, err := db.UserByPublicAddress(r.Context(), passdb.Conn, address)
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
+	if err != nil && errors.Is(err, pgx.ErrNoRows) {
+		passlog.L.Error().Str("user_address", address.Hex()).Err(err).Msg("failed to find user by public address")
 		return http.StatusBadRequest, err
 	}
 
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		err = json.NewEncoder(w).Encode(&HoldingResp{Amount: decimal.Zero.String()})
 		if err != nil {
 			return http.StatusInternalServerError, err
@@ -125,6 +128,7 @@ func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error)
 	}
 
 	if !exists {
+		log.Info().Msg("Error finding pending refunds")
 		err = json.NewEncoder(w).Encode(&HoldingResp{Amount: decimal.Zero.String()})
 		if err != nil {
 			return http.StatusInternalServerError, err
@@ -136,15 +140,16 @@ func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error)
 		boiler.PendingRefundWhere.IsRefunded.EQ(false),
 	).All(passdb.StdConn)
 	if err != nil {
+		passlog.L.Error().Str("pending_refunds", u.ID.String()).Err(err).Msg("failed to find pending refunds")
 		return http.StatusInternalServerError, err
 	}
 	total := decimal.Zero
 	for _, record := range records {
-		total.Add(record.AmountSups)
+		total = total.Add(record.AmountSups)
 	}
-
 	err = json.NewEncoder(w).Encode(&HoldingResp{Amount: total.String()})
 	if err != nil {
+		passlog.L.Error().Str("json_encode", err.Error()).Err(err).Msg("failed to encode json")
 		return http.StatusInternalServerError, err
 	}
 	return http.StatusOK, nil
