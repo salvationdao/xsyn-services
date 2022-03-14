@@ -220,6 +220,12 @@ func NewAPI(
 	if runBlockchainBridge {
 		_ = NewSupController(log, conn, api, cc)
 	}
+
+	globalChat := NewChatroom(nil)
+	redMountainChat := NewChatroom(&passport.RedMountainFactionID)
+	bostonChat := NewChatroom(&passport.BostonCyberneticsFactionID)
+	zaibatsuChat := NewChatroom(&passport.ZaibatsuFactionID)
+
 	_ = NewAssetController(log, conn, api)
 	_ = NewCollectionController(log, conn, api, isTestnetBlockchain)
 	_ = NewServerClientController(log, conn, api)
@@ -236,6 +242,7 @@ func NewAPI(
 	})
 	_ = NewTransactionController(log, conn, api)
 	_ = NewFactionController(log, conn, api)
+	_ = NewChatController(log, conn, api, globalChat, redMountainChat, bostonChat, zaibatsuChat)
 	_ = NewOrganisationController(log, conn, api)
 	_ = NewRoleController(log, conn, api)
 	_ = NewProductController(log, conn, api)

@@ -9,19 +9,12 @@ import (
 	"passport"
 	"passport/db"
 	"passport/helpers"
-	"time"
-
-	"golang.org/x/net/html"
-
-	goaway "github.com/TwiN/go-away"
 
 	"github.com/ninja-software/log_helpers"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	leakybucket "github.com/kevinms/leakybucket-go"
-	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -36,9 +29,6 @@ var Profanities = []string{
 	"rape",
 	"retard",
 }
-
-var profanityDetector = goaway.NewProfanityDetector().WithCustomDictionary(Profanities, []string{}, []string{})
-var bm = bluemonday.StrictPolicy()
 
 // FactionController holds handlers for roles
 type FactionController struct {
@@ -57,12 +47,9 @@ func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Fa
 
 	api.Command(HubKeyFactionAll, factionHub.FactionAllHandler)
 	api.SecureCommand(HubKeyFactionEnlist, factionHub.FactionEnlistHandler)
-	api.SecureCommand(HubKeyChatMessage, factionHub.ChatMessageHandler)
 
 	api.SubscribeCommand(HubKeyFactionUpdatedSubscribe, factionHub.FactionUpdatedSubscribeHandler)
 	api.SubscribeCommand(HubKeyFactionStatUpdatedSubscribe, factionHub.FactionStatUpdatedSubscribeHandler)
-	api.SubscribeCommand(HubKeyGlobalChatSubscribe, factionHub.GlobalChatUpdatedSubscribeHandler)
-	api.SecureUserSubscribeCommand(HubKeyFactionChatSubscribe, factionHub.FactionChatUpdatedSubscribeHandler)
 	// api.SecureUserSubscribeCommand(HubKeyFactionContractRewardSubscribe, factionHub.FactionContractRewardUpdateSubscriber)
 
 	return factionHub
@@ -182,132 +169,6 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 	return nil
 }
 
-// FactionChatRequest sends chat message to specific faction.
-type FactionChatRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		FactionID    passport.FactionID `json:"faction_id"`
-		MessageColor string             `json:"message_color"`
-		Message      string             `json:"message"`
-	} `json:"payload"`
-}
-
-// ChatMessageSend contains chat message data to send.
-type ChatMessageSend struct {
-	Message           string           `json:"message"`
-	MessageColor      string           `json:"message_color"`
-	FromUserID        passport.UserID  `json:"from_user_id"`
-	FromUsername      string           `json:"from_username"`
-	FactionColour     *string          `json:"faction_colour,omitempty"`
-	FactionLogoBlobID *passport.BlobID `json:"faction_logo_blob_id,omitempty"`
-	AvatarID          *passport.BlobID `json:"avatar_id,omitempty"`
-	SentAt            time.Time        `json:"sent_at"`
-}
-
-// rootHub.SecureCommand(HubKeyFactionChat, factionHub.ChatMessageHandler)
-const HubKeyChatMessage hub.HubCommandKey = "CHAT:MESSAGE"
-
-func firstN(s string, n int) string {
-	i := 0
-	for j := range s {
-		if i == n {
-			return s[:j]
-		}
-		i++
-	}
-	return s
-}
-
-var bucket = leakybucket.NewCollector(2, 10, true)
-var minuteBucket = leakybucket.NewCollector(0.5, 30, true)
-
-// ChatMessageHandler sends chat message from user
-func (fc *FactionController) ChatMessageHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	b1 := bucket.Add(hubc.Identifier(), 1)
-	b2 := minuteBucket.Add(hubc.Identifier(), 1)
-
-	if b1 == 0 || b2 == 0 {
-		return terror.Error(fmt.Errorf("too many messages"), "too many message")
-	}
-
-	req := &FactionChatRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received")
-	}
-
-	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
-	if userID.IsNil() {
-		return terror.Error(terror.ErrForbidden)
-	}
-
-	// get user
-	user, err := db.UserGet(ctx, fc.Conn, userID)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	// get faction primary colour from faction
-	var (
-		factionColour     *string
-		factionLogoBlobID *passport.BlobID
-	)
-	if user.FactionID != nil {
-		faction, err := db.FactionGet(ctx, fc.Conn, *user.FactionID)
-		if err != nil {
-			return terror.Error(err)
-		}
-		factionColour = &faction.Theme.Primary
-		factionLogoBlobID = &faction.LogoBlobID
-	}
-
-	msg := html.UnescapeString(bm.Sanitize(req.Payload.Message))
-	msg = profanityDetector.Censor(msg)
-	if len(msg) > 280 {
-		msg = firstN(msg, 280)
-	}
-
-	// check if the faction id is provided
-	if !req.Payload.FactionID.IsNil() {
-		if user.FactionID == nil || user.FactionID.IsNil() {
-			return terror.Error(terror.ErrInvalidInput, "Require to join a faction to send message")
-		}
-
-		if *user.FactionID != req.Payload.FactionID {
-			return terror.Error(terror.ErrForbidden, "Users are not allow to join the faction chat which they are not belong to")
-		}
-
-		// send message
-		fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID)), &ChatMessageSend{
-			Message:           msg,
-			MessageColor:      req.Payload.MessageColor,
-			FromUserID:        user.ID,
-			FromUsername:      user.Username,
-			AvatarID:          user.AvatarID,
-			SentAt:            time.Now(),
-			FactionColour:     factionColour,
-			FactionLogoBlobID: factionLogoBlobID,
-		})
-		reply(true)
-		return nil
-	}
-
-	// global message
-	fc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyGlobalChatSubscribe), &ChatMessageSend{
-		Message:           msg,
-		MessageColor:      req.Payload.MessageColor,
-		FromUserID:        user.ID,
-		FromUsername:      user.Username,
-		AvatarID:          user.AvatarID,
-		SentAt:            time.Now(),
-		FactionColour:     factionColour,
-		FactionLogoBlobID: factionLogoBlobID,
-	})
-	reply(true)
-
-	return nil
-}
-
 // FactionUpdatedSubscribeRequest subscribe to faction updates
 type FactionUpdatedSubscribeRequest struct {
 	*hub.HubCommandRequest
@@ -381,42 +242,6 @@ func (fc *FactionController) FactionStatUpdatedSubscribeHandler(ctx context.Cont
 
 	reply(factionStat)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionStatUpdatedSubscribe, req.Payload.FactionID)), nil
-}
-
-const HubKeyGlobalChatSubscribe hub.HubCommandKey = "GLOBAL:CHAT:SUBSCRIBE"
-
-func (fc *FactionController) GlobalChatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
-	}
-	return req.TransactionID, messagebus.BusKey(HubKeyGlobalChatSubscribe), nil
-}
-
-const HubKeyFactionChatSubscribe hub.HubCommandKey = "FACTION:CHAT:SUBSCRIBE"
-
-func (fc *FactionController) FactionChatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
-	}
-
-	// get user in valid faction
-	userID := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
-	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrForbidden)
-	}
-	user, err := db.UserGet(ctx, fc.Conn, userID)
-	if err != nil {
-		return "", "", terror.Error(err)
-	}
-	if user.FactionID == nil || user.FactionID.IsNil() {
-		return "", "", terror.Error(terror.ErrInvalidInput, "Require to join faction to receive")
-	}
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID)), nil
 }
 
 const HubKeyFactionContractRewardSubscribe hub.HubCommandKey = "FACTION:CONTRACT:REWARD:SUBSCRIBE"
