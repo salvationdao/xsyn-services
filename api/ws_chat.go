@@ -252,21 +252,6 @@ func (fc *ChatController) FactionChatUpdatedSubscribeHandler(ctx context.Context
 	if user.FactionID == nil || user.FactionID.IsNil() {
 		return "", "", terror.Error(terror.ErrInvalidInput, "Require to join faction to receive")
 	}
-
-	sendChatHistoryFn := func(chatMessage *ChatMessageSend) bool {
-		reply(chatMessage)
-		return true
-	}
-
-	switch *user.FactionID {
-	case passport.RedMountainFactionID:
-		fc.RedMountainChat.Range(sendChatHistoryFn)
-	case passport.BostonCyberneticsFactionID:
-		fc.BostonChat.Range(sendChatHistoryFn)
-	case passport.ZaibatsuFactionID:
-		fc.ZaibatsuChat.Range(sendChatHistoryFn)
-	}
-
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID)), nil
 }
 
@@ -278,11 +263,5 @@ func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context,
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
-
-	fc.GlobalChat.Range(func(chatMessage *ChatMessageSend) bool {
-		reply(chatMessage)
-		return true
-	})
-
 	return req.TransactionID, messagebus.BusKey(HubKeyGlobalChatSubscribe), nil
 }
