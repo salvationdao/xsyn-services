@@ -120,14 +120,14 @@ func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error)
 
 	exists, err := boiler.PendingRefunds(
 		boiler.PendingRefundWhere.UserID.EQ(u.ID.String()),
-		boiler.PendingRefundWhere.IsRefunded.EQ(false),
+		boiler.PendingRefundWhere.IsRefunded.EQ(false),      // Only those not refunded by avant scraper yet
+		boiler.PendingRefundWhere.RefundedAt.GT(time.Now()), // Only those with unexpired signatures
 	).Exists(passdb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return http.StatusInternalServerError, err
 	}
 
 	if !exists {
-		log.Info().Msg("Error finding pending refunds")
 		err = json.NewEncoder(w).Encode(&HoldingResp{Amount: decimal.Zero.String()})
 		if err != nil {
 			return http.StatusInternalServerError, err
@@ -136,7 +136,8 @@ func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error)
 
 	records, err := boiler.PendingRefunds(
 		boiler.PendingRefundWhere.UserID.EQ(u.ID.String()),
-		boiler.PendingRefundWhere.IsRefunded.EQ(false),
+		boiler.PendingRefundWhere.IsRefunded.EQ(false),      // Only those not refunded by avant scraper yet
+		boiler.PendingRefundWhere.RefundedAt.GT(time.Now()), // Only those with unexpired signatures
 	).All(passdb.StdConn)
 	if err != nil {
 		passlog.L.Error().Str("pending_refunds", u.ID.String()).Err(err).Msg("failed to find pending refunds")
