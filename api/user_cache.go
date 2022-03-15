@@ -4,13 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/gofrs/uuid"
 	"math/big"
 	"passport"
 	"passport/db"
 	"passport/passdb"
 	"passport/passlog"
 	"time"
+
+	"github.com/gofrs/uuid"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
@@ -138,9 +139,9 @@ type UserCacheFunc func(userCacheList UserCacheMap)
 // CreateTransactionEntry adds an entry to the transaction entry table
 func CreateTransactionEntry(conn *sql.DB, nt *passport.NewTransaction) error {
 	q := `INSERT INTO transactions(id ,description, transaction_reference, amount, credit, debit, "group", sub_group)
-				VALUES($1, $2, $3, $4, $5, $6, $7, $8);`
+				VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9);`
 
-	_, err := conn.Exec(q, nt.ID, nt.Description, nt.TransactionReference, nt.Amount.String(), nt.To, nt.From, nt.Group, nt.SubGroup)
+	_, err := conn.Exec(q, nt.ID, nt.Description, nt.TransactionReference, nt.Amount.String(), nt.To, nt.From, nt.Group, nt.SubGroup, time.Now())
 	if err != nil {
 		return terror.Error(err)
 	}
