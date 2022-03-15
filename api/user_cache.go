@@ -139,7 +139,7 @@ type UserCacheFunc func(userCacheList UserCacheMap)
 // CreateTransactionEntry adds an entry to the transaction entry table
 func CreateTransactionEntry(conn *sql.DB, nt *passport.NewTransaction) error {
 	now := time.Now()
-	q := `INSERT INTO transactions(id ,description, transaction_reference, amount, credit, debit, "group", sub_group)
+	q := `INSERT INTO transactions(id ,description, transaction_reference, amount, credit, debit, "group", sub_group, created_at)
 				VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9);`
 
 	_, err := conn.Exec(q, nt.ID, nt.Description, nt.TransactionReference, nt.Amount.String(), nt.To, nt.From, nt.Group, nt.SubGroup, now)
