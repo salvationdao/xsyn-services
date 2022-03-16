@@ -12,6 +12,7 @@ var TableNames = struct {
 	Factions                string
 	IssueTokens             string
 	ItemOnchainTransactions string
+	KV                      string
 	Organisations           string
 	PasswordHashes          string
 	PendingRefund           string
@@ -40,6 +41,7 @@ var TableNames = struct {
 	Factions:                "factions",
 	IssueTokens:             "issue_tokens",
 	ItemOnchainTransactions: "item_onchain_transactions",
+	KV:                      "kv",
 	Organisations:           "organisations",
 	PasswordHashes:          "password_hashes",
 	PendingRefund:           "pending_refund",
