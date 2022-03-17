@@ -132,6 +132,7 @@ func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error)
 		if err != nil {
 			return http.StatusInternalServerError, err
 		}
+		return http.StatusOK, nil
 	}
 
 	records, err := boiler.PendingRefunds(
