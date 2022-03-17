@@ -1,0 +1,1 @@
+CREATE INDEX idx_transactions_created_at ON transactions(created_at);

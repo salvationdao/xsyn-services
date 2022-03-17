@@ -74,7 +74,7 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 
 		err = client.Call(serviceMethod, args, reply)
 		if err == nil {
-			passlog.L.Error().Err(err).Msg("RPC call has failed due to error.")
+			// Successful RPC call, break the retry loop
 			break
 		}
 
@@ -82,6 +82,8 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 			passlog.L.Error().Err(err).Msg("RPC call has failed.")
 			return err
 		}
+
+		passlog.L.Error().Err(err).Msg("RPC call has failed due to error.")
 
 		// clean up before retry
 		if client != nil {
