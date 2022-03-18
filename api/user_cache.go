@@ -76,8 +76,6 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (decimal.Decimal, 
 		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(err, "failed to process transaction")
 	}
 
-	passlog.L.Info().Str("from", fromUser.ID).Str("to", toUser.ID).Str("id", nt.ID).Msg("processing transaction")
-
 	tx := &passport.Transaction{
 		ID:                   transactionID,
 		Credit:               nt.To,
@@ -89,6 +87,16 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (decimal.Decimal, 
 		Group:                nt.Group,
 		SubGroup:             nt.SubGroup,
 	}
+
+	passlog.L.Info().
+		Str("id", nt.ID).
+		Str("from.id", fromUser.ID).
+		Str("from.address", fromUser.PublicAddress.String).
+		Str("to.id", toUser.ID).
+		Str("to.address", toUser.PublicAddress.String).
+		Str("amount", tx.Amount.Shift(-18).StringFixed(4)).
+		Str("txref", tx.TransactionReference).
+		Msg("processing transaction")
 
 	blast := func(from *boiler.User, to *boiler.User, success bool) {
 		ctx := context.Background()
