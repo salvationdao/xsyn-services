@@ -40,10 +40,103 @@ func NewGamebarController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Ga
 	}
 
 	api.Command(HubKeyGamebarSessionIDGet, gamebarHub.GetSessionIDHandler)
+	api.SecureCommand(HubKeyGamebarGetFreeSups, gamebarHub.GetFreeSups)
 	api.SecureCommand(HubKeyGamebarAuthRingCheck, gamebarHub.AuthRingCheck)
 	api.SubscribeCommand(HubKeyGamebarUserSubscribe, gamebarHub.UserUpdatedSubscribeHandler)
 
 	return gamebarHub
+}
+
+var timeMap = sync.Map{}
+
+const HubKeyGamebarGetFreeSups = "GAMEBAR:GET:SUPS"
+
+func (gc *GamebarController) GetFreeSups(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput, "User is not logged in")
+	}
+
+	user, err := db.UserGet(ctx, gc.Conn, userID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return terror.Error(terror.ErrInvalidInput, "Failed to find the user detail")
+	}
+
+	if user == nil {
+		return terror.Error(fmt.Errorf("user not found"), "User not found")
+	}
+
+	if os.Getenv("PASSPORT_ENVIRONMENT") != "development" && os.Getenv("PASSPORT_ENVIRONMENT") != "staging" {
+		// If not development or staging
+		passlog.L.
+			Err(err).
+			Str("env", os.Getenv("PASSPORT_ENVIRONMENT")).
+			Msg("NO SUPS FOR YOU :p (not staging or development)")
+		reply(false)
+		return nil
+	}
+
+	cooldown := time.Hour
+	if os.Getenv("PASSPORT_ENVIRONMENT") == "development" {
+		cooldown = time.Second * 5
+	}
+
+	allowed := false
+	t, found := timeMap.Load(fmt.Sprintf("%s:GET_SUPS", userID))
+	// Get time til next claim
+	tm, ok := t.(time.Time)
+	if found {
+		// If user has claimed sups before
+		if ok && time.Now().After(tm) {
+			// If the current time is after time til next claim
+			allowed = true
+		}
+	} else {
+		// If user has not claimed sups before
+		allowed = true
+	}
+
+	if !allowed {
+		passlog.L.
+			Err(err).
+			Interface("timeUntilClaim", tm).
+			Msg(fmt.Sprintf("NO SUPS FOR YOU :p (on cooldown)"))
+		reply(tm)
+		return nil
+	}
+
+	// If user can claim free sups
+	// Give them 100 sups
+	oneSups := big.NewInt(1000000000000000000)
+	oneSups.Mul(oneSups, big.NewInt(100))
+	tx := &passport.NewTransaction{
+		To:                   user.ID,
+		From:                 passport.XsynSaleUserID,
+		Amount:               *oneSups,
+		NotSafe:              true,
+		TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
+		Description:          "100 SUPS giveaway for testing",
+		Group:                "Testing",
+	}
+	_, _, _, err = gc.API.userCacheMap.Process(tx)
+	if err != nil {
+		passlog.L.
+			Err(err).
+			Str("to", tx.To.String()).
+			Str("from", tx.From.String()).
+			Str("amount", tx.Amount.String()).
+			Str("description", tx.Description).
+			Str("transaction_reference", string(tx.TransactionReference)).
+			Msg("NO SUPS FOR YOU :p (transaction failed)")
+		reply(false)
+		return nil
+	}
+	// Set their timer to one hour from now (or whatever the cooldown is)
+	nextClaimTime := time.Now().Add(cooldown)
+	timeMap.Store(fmt.Sprintf("%s:GET_SUPS", userID), nextClaimTime)
+
+	reply(nextClaimTime)
+	return nil
 }
 
 // 	rootHub.SecureCommand(HubKeyUserGet, UserController.GetHandler)
@@ -64,8 +157,6 @@ type AuthTwitchRingCheckRequest struct {
 }
 
 const HubKeyGamebarAuthRingCheck hub.HubCommandKey = "GAMEBAR:AUTH:RING:CHECK"
-
-var cooldown = sync.Map{}
 
 func (gc *GamebarController) AuthRingCheck(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &AuthTwitchRingCheckRequest{}
@@ -116,7 +207,7 @@ func (gc *GamebarController) AuthRingCheck(ctx context.Context, hubc *hub.Client
 	// give away sups if user is whitelisted
 	if resp.IsWhitelisted {
 		if os.Getenv("PASSPORT_ENVIRONMENT") == "development" || os.Getenv("PASSPORT_ENVIRONMENT") == "staging" {
-			t, notAllowed := cooldown.Load(user.ID)
+			t, notAllowed := timeMap.Load(user.ID)
 			if notAllowed {
 				tm, ok := t.(time.Time)
 				if !ok {
@@ -128,11 +219,11 @@ func (gc *GamebarController) AuthRingCheck(ctx context.Context, hubc *hub.Client
 					}
 				}
 				if !notAllowed {
-					cooldown.Delete(user.ID)
+					timeMap.Delete(user.ID)
 				}
 			}
 			if !notAllowed {
-				cooldown.Store(user.ID, time.Now())
+				timeMap.Store(user.ID, time.Now())
 				oneSups := big.NewInt(1000000000000000000)
 				oneSups.Mul(oneSups, big.NewInt(50))
 				tx := &passport.NewTransaction{

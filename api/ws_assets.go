@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/microcosm-cc/bluemonday"
 	"html"
 	"math/big"
 	"net/http"
@@ -12,6 +11,8 @@ import (
 	"passport/db"
 	"passport/db/boiler"
 	"time"
+
+	"github.com/microcosm-cc/bluemonday"
 
 	"github.com/ninja-software/log_helpers"
 
