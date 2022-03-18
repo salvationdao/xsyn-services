@@ -179,7 +179,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 		}
 	}
 
-	if len(items) == 0 {
+	if len(itemIDs) == 0 {
 		return "", terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
 	}
 
