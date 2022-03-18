@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"passport"
 	"passport/db"
+	"passport/db/boiler"
 	"passport/passdb"
 	"passport/passlog"
 	"time"
@@ -77,20 +78,32 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 		return nil, nil, TransactionFailed, terror.Error(fmt.Errorf("to: not enough funds"), "Not enough funds.")
 	}
 
-	// store back to the map
-	ucm.Store(nt.From.String(), *newFromBalance)
-	ucm.Store(nt.To.String(), *newToBalance)
-
 	transactionID := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
 	nt.ID = transactionID
 
 	passlog.L.Info().Str("from", fromBalance.String()).Str("to", newToBalance.String()).Str("id", nt.ID).Msg("processing transaction")
+
+	fromUser, err := boiler.FindUser(passdb.StdConn, nt.From.String())
+	if err != nil {
+		passlog.L.Error().Err(err).Str("from", fromBalance.String()).Str("to", newToBalance.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
+		return nil, nil, TransactionFailed, terror.Error(err, "failed to process transaction")
+	}
+
+	toUser, err := boiler.FindUser(passdb.StdConn, nt.To.String())
+	if err != nil {
+		passlog.L.Error().Err(err).Str("from", fromBalance.String()).Str("to", newToBalance.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
+		return nil, nil, TransactionFailed, terror.Error(err, "failed to process transaction")
+	}
 
 	err = CreateTransactionEntry(passdb.StdConn, nt)
 	if err != nil {
 		passlog.L.Error().Err(err).Str("from", fromBalance.String()).Str("to", newToBalance.String()).Str("id", nt.ID).Msg("transaction failed")
 		return nil, nil, TransactionFailed, terror.Error(err)
 	}
+
+	// store back to the map
+	ucm.Store(fromUser.ID, fromUser.Sups)
+	ucm.Store(toUser.ID, toUser.Sups)
 
 	tx := &passport.Transaction{
 		ID:     transactionID,
