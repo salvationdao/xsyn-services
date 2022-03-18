@@ -200,11 +200,12 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
 	}
 
-	userSups, err := api.userCacheMap.Get(user.ID.String())
+	userSups, err := db.UserBalance(context.Background(), passdb.Conn, user.ID.String())
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to get users SUP balance.")
+		return http.StatusBadRequest, terror.Error(err, "Could not find SUPS balance")
 	}
-	if userSups.LessThan(decimal.New(0, 18)) {
+
+	if userSups.LessThan(decimal.NewFromBigInt(amountBigInt, 0)) {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("user has insufficient funds: %s, %s", userSups.String(), amountBigInt), "Insufficient funds.")
 	}
 
