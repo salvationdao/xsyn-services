@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"passport"
 	"passport/passdb"
+	"passport/passlog"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 )
 
@@ -22,6 +22,7 @@ func GetDeposits(testnet bool) ([]*Record, error) {
 	return records, nil
 }
 func ProcessDeposits(records []*Record, ucm UserCacheMap) (int, int, error) {
+	l := passlog.L.With().Str("svc", "avant_deposit_processor").Logger()
 	ctx := context.Background()
 	success := 0
 	skipped := 0
@@ -29,19 +30,19 @@ func ProcessDeposits(records []*Record, ucm UserCacheMap) (int, int, error) {
 		user, err := CreateOrGetUser(ctx, passdb.Conn, common.HexToAddress(record.FromAddress))
 		if err != nil {
 			skipped++
-			log.Error().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("create or get user")
+			l.Error().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("create or get user")
 			continue
 		}
 
 		value, err := decimal.NewFromString(record.JSON.Value)
 		if err != nil {
 			skipped++
-			log.Error().Str("txid", record.TxHash).Err(err).Msg("process decimal")
+			l.Error().Str("txid", record.TxHash).Err(err).Msg("process decimal")
 			continue
 		}
 
 		msg := fmt.Sprintf("deposited %s SUPS", value.Shift(-1*passport.SUPSDecimals).StringFixed(4))
-
+		l.Debug().Str("msg", msg).Str("txid", record.TxHash).Msg("insert deposit tx")
 		trans := &passport.NewTransaction{
 			To:                   user.ID,
 			From:                 passport.XsynTreasuryUserID,
@@ -53,7 +54,9 @@ func ProcessDeposits(records []*Record, ucm UserCacheMap) (int, int, error) {
 
 		_, _, _, err = ucm.Process(trans)
 		if err != nil {
-			return success, skipped, fmt.Errorf("create tx entry for tx %s: %w", record.TxHash, err)
+			l.Err(err).Str("txid", record.TxHash).Msg("failed to create tx entry for deposit")
+			skipped++
+			continue
 		}
 		success++
 	}
