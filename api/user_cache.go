@@ -4,15 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"math/big"
+	"github.com/shopspring/decimal"
 	"passport"
 	"passport/db"
 	"passport/db/boiler"
 	"passport/passdb"
 	"passport/passlog"
 	"time"
-
-	"github.com/shopspring/decimal"
 
 	"github.com/gofrs/uuid"
 
@@ -37,11 +35,12 @@ func NewUserCacheMap(conn *pgxpool.Pool, msgBus *messagebus.MessageBus) (*UserCa
 	balances, err := db.UserBalances(context.Background(), ucm.conn)
 
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to retrieve balances")
 		return nil, err
 	}
 
 	for _, b := range balances {
-		ucm.Store(b.ID.String(), b.Sups.Int)
+		ucm.Store(b.ID.String(), b.Sups)
 	}
 	return ucm, nil
 }
@@ -146,19 +145,19 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (decimal.Decimal, 
 	return fromUser.Sups, toUser.Sups, transactionID, nil
 }
 
-func (ucm *UserCacheMap) Get(id string) (big.Int, error) {
+func (ucm *UserCacheMap) Get(id string) (decimal.Decimal, error) {
 	result, ok := ucm.Load(id)
 	if ok {
-		return result.(big.Int), nil
+		return result.(decimal.Decimal), nil
 	}
 
 	balance, err := db.UserBalance(context.Background(), ucm.conn, id)
 	if err != nil {
-		return *big.NewInt(0), err
+		return decimal.New(0, 18), err
 	}
 
-	ucm.Store(id, balance.Int)
-	return balance.Int, err
+	ucm.Store(id, balance)
+	return balance, err
 }
 
 type UserCacheFunc func(userCacheList UserCacheMap)
