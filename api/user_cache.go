@@ -66,7 +66,7 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (decimal.Decimal, 
 	remaining := fromUser.Sups.Sub(nt.Amount)
 	if remaining.LessThan(zero) {
 		passlog.L.Info().Str("from_id", fromUser.ID).Str("to_user", nt.To.String()).Msg("account would go into negative")
-		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(ErrNotEnoughFunds, "failed to process transaction")
+		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(ErrNotEnoughFunds, "not enough funds")
 	}
 
 	toUser, err := boiler.FindUser(passdb.StdConn, nt.To.String())
