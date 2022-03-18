@@ -23,7 +23,7 @@ import (
 )
 
 type UserCacheMap interface {
-	Process(nt *passport.NewTransaction) (*decimal.Decimal, *decimal.Decimal, string, error)
+	Process(nt *passport.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error)
 }
 
 type Record struct {

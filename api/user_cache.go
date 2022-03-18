@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"math/big"
 	"passport"
 	"passport/db"
@@ -12,6 +11,8 @@ import (
 	"passport/passdb"
 	"passport/passlog"
 	"time"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/gofrs/uuid"
 
@@ -49,9 +50,9 @@ var TransactionFailed = "TRANSACTION_FAILED"
 var zero = decimal.New(0, 18)
 var ErrNotEnoughFunds = fmt.Errorf("account does not have enough funds")
 
-func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*decimal.Decimal, *decimal.Decimal, string, error) {
+func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error) {
 	if nt.Amount.LessThanOrEqual(zero) {
-		return nil, nil, TransactionFailed, terror.Error(fmt.Errorf("amount should be a positive number: %s", nt.Amount.String()), "Amount should be greater than zero")
+		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(fmt.Errorf("amount should be a positive number: %s", nt.Amount.String()), "Amount should be greater than zero")
 	}
 
 	transactionID := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
@@ -60,19 +61,19 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*decimal.Decimal,
 	fromUser, err := boiler.FindUser(passdb.StdConn, nt.From.String())
 	if err != nil {
 		passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
-		return nil, nil, TransactionFailed, terror.Error(err, "failed to process transaction")
+		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(err, "failed to process transaction")
 	}
 
 	remaining := fromUser.Sups.Sub(nt.Amount)
 	if remaining.LessThan(zero) {
 		passlog.L.Info().Str("from_id", fromUser.ID).Str("to_user", nt.To.String()).Msg("account would go into negative")
-		return nil, nil, TransactionFailed, terror.Error(ErrNotEnoughFunds, "failed to process transaction")
+		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(ErrNotEnoughFunds, "failed to process transaction")
 	}
 
 	toUser, err := boiler.FindUser(passdb.StdConn, nt.To.String())
 	if err != nil {
 		passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
-		return nil, nil, TransactionFailed, terror.Error(err, "failed to process transaction")
+		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(err, "failed to process transaction")
 	}
 
 	passlog.L.Info().Str("from", fromUser.ID).Str("to", toUser.ID).Str("id", nt.ID).Msg("processing transaction")
@@ -111,7 +112,7 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*decimal.Decimal,
 		ucm.Store(toUser.ID, toUser.Sups)
 		blast(fromUser, toUser, false)
 		passlog.L.Error().Err(err).Str("from", fromUser.ID).Str("to", toUser.ID).Str("id", nt.ID).Msg("transaction failed")
-		return nil, nil, TransactionFailed, terror.Error(err)
+		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(err)
 	}
 
 	didErr := false
@@ -134,7 +135,7 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*decimal.Decimal,
 		blast(fromUser, toUser, true)
 	}
 
-	return &fromUser.Sups, &toUser.Sups, transactionID, nil
+	return fromUser.Sups, toUser.Sups, transactionID, nil
 }
 
 func (ucm *UserCacheMap) Get(id string) (big.Int, error) {

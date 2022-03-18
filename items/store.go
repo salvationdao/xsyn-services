@@ -34,7 +34,7 @@ func Purchase(
 	bus *messagebus.MessageBus,
 	busKey messagebus.BusKey,
 	supPrice decimal.Decimal,
-	ucmProcess func(*passport.NewTransaction) (*decimal.Decimal, *decimal.Decimal, string, error),
+	ucmProcess func(*passport.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error),
 	user passport.User,
 	storeItemID passport.StoreItemID,
 	externalUrl string,
@@ -164,7 +164,7 @@ func Purchase(
 
 // PurchaseLootbox attempts to make a purchase for a given user ID and a given
 func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
-	ucmProcess func(*passport.NewTransaction) (*decimal.Decimal, *decimal.Decimal, string, error), user passport.User, factionID passport.FactionID, externalURL string) (string, error) {
+	ucmProcess func(*passport.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error), user passport.User, factionID passport.FactionID, externalURL string) (string, error) {
 
 	// get all faction items marked as loot box
 	items, err := db.StoreItemsByFactionIDAndRestrictionGroup(uuid.UUID(factionID), db.RestrictionGroupLootbox)
