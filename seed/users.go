@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/georgysavva/scany/pgxscan"
+	"github.com/shopspring/decimal"
 	"math/big"
 	"net/http"
 	"passport"
@@ -181,7 +182,7 @@ func (s *Seeder) XsynTreasuryUser(ctx context.Context) (*passport.User, error) {
 		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		From:                 passport.OnChainUserID,
 		To:                   u.ID,
-		Amount:               *amount,
+		Amount:               decimal.NewFromBigInt(amount, 0),
 		Description:          "Initial supply seed.",
 		TransactionReference: passport.TransactionReference("Initial supply seed."),
 	}
@@ -223,7 +224,7 @@ func (s *Seeder) SupremacyUser(ctx context.Context) (*passport.User, error) {
 		ID:                   id,
 		From:                 passport.XsynTreasuryUserID,
 		To:                   u.ID,
-		Amount:               *amount,
+		Amount:               decimal.NewFromBigInt(amount, 0),
 		Description:          "",
 		TransactionReference: passport.TransactionReference(id),
 	}
@@ -266,7 +267,7 @@ func (s *Seeder) XsynSaleUser(ctx context.Context) (*passport.User, error) {
 		ID:                   id,
 		From:                 passport.XsynTreasuryUserID,
 		To:                   u.ID,
-		Amount:               *amount,
+		Amount:               decimal.NewFromBigInt(amount, 0),
 		Description:          "",
 		TransactionReference: passport.TransactionReference(id),
 	}
@@ -357,7 +358,7 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		From:                 passport.XsynTreasuryUserID,
 		To:                   u.ID,
-		Amount:               *amount,
+		Amount:               decimal.NewFromBigInt(amount, 0),
 		Description:          "Initial supremacy Zaibatsu supply seed.",
 		TransactionReference: passport.TransactionReference("Initial supremacy Zaibatsu supply seed."),
 	}
@@ -389,7 +390,7 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		From:                 passport.XsynTreasuryUserID,
 		To:                   u.ID,
-		Amount:               *amount,
+		Amount:               decimal.NewFromBigInt(amount, 0),
 		Description:          "Initial supremacy BostonCybernetics supply seed.",
 		TransactionReference: passport.TransactionReference("Initial supremacy BostonCybernetics supply seed."),
 	}
@@ -419,7 +420,7 @@ func (s *Seeder) SupremacyFactionUsers(ctx context.Context) (*passport.User, err
 	txObj = &passport.NewTransaction{
 		ID:                   fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()),
 		From:                 passport.XsynTreasuryUserID,
-		Amount:               *amount,
+		Amount:               decimal.NewFromBigInt(amount, 0),
 		To:                   u.ID,
 		Description:          "Initial supremacy RedMountain supply seed.",
 		TransactionReference: passport.TransactionReference("Initial supremacy RedMountain supply seed."),

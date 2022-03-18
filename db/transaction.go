@@ -248,9 +248,6 @@ func TransactionList(
 	if err != nil {
 		return 0, nil, terror.Error(err)
 	}
-	for _, r := range result {
-		r.Amount.Init()
-	}
 	return totalRows, result, nil
 }
 
@@ -263,7 +260,6 @@ func TransactionGet(ctx context.Context, conn Conn, transactionID string) (*pass
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-	transaction.Amount.Init()
 
 	return transaction, nil
 }

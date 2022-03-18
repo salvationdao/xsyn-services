@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"math/big"
 	"passport"
 	"passport/db"
@@ -45,73 +46,42 @@ func NewUserCacheMap(conn *pgxpool.Pool, msgBus *messagebus.MessageBus) (*UserCa
 }
 
 var TransactionFailed = "TRANSACTION_FAILED"
+var zero = decimal.New(0, 18)
+var ErrNotEnoughFunds = fmt.Errorf("account does not have enough funds")
 
-func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.Int, string, error) {
-	if nt.Amount.Cmp(big.NewInt(0)) < 1 {
+func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*decimal.Decimal, *decimal.Decimal, string, error) {
+	if nt.Amount.LessThanOrEqual(zero) {
 		return nil, nil, TransactionFailed, terror.Error(fmt.Errorf("amount should be a positive number: %s", nt.Amount.String()), "Amount should be greater than zero")
-	}
-
-	// load balance first
-	fromBalance, err := ucm.Get(nt.From.String())
-	if err != nil {
-		return nil, nil, TransactionFailed, terror.Error(err, "Failed to read debit balance. Please contact support if this problem persists.")
-	}
-
-	toBalance, err := ucm.Get(nt.To.String())
-	if err != nil {
-		return nil, nil, TransactionFailed, terror.Error(err, "Failed to read credit balance. Please contact support if this problem persists.")
-	}
-
-	// do subtract
-	newFromBalance := big.NewInt(0)
-	newFromBalance.Add(newFromBalance, &fromBalance)
-	newFromBalance.Sub(newFromBalance, &nt.Amount)
-	if nt.To != passport.OnChainUserID && newFromBalance.Cmp(big.NewInt(0)) < 0 {
-		return nil, nil, TransactionFailed, terror.Error(fmt.Errorf("from: not enough funds"), "Not enough funds.")
-	}
-
-	// do add
-	newToBalance := big.NewInt(0)
-	newToBalance.Add(newToBalance, &toBalance)
-	newToBalance.Add(newToBalance, &nt.Amount)
-	if nt.To != passport.OnChainUserID && newToBalance.Cmp(big.NewInt(0)) < 0 {
-		return nil, nil, TransactionFailed, terror.Error(fmt.Errorf("to: not enough funds"), "Not enough funds.")
 	}
 
 	transactionID := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
 	nt.ID = transactionID
 
-	passlog.L.Info().Str("from", fromBalance.String()).Str("to", newToBalance.String()).Str("id", nt.ID).Msg("processing transaction")
-
 	fromUser, err := boiler.FindUser(passdb.StdConn, nt.From.String())
 	if err != nil {
-		passlog.L.Error().Err(err).Str("from", fromBalance.String()).Str("to", newToBalance.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
+		passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
 		return nil, nil, TransactionFailed, terror.Error(err, "failed to process transaction")
+	}
+
+	remaining := fromUser.Sups.Sub(nt.Amount)
+	if remaining.LessThan(zero) {
+		passlog.L.Info().Str("from_id", fromUser.ID).Str("to_user", nt.To.String()).Msg("account would go into negative")
+		return nil, nil, TransactionFailed, terror.Error(ErrNotEnoughFunds, "failed to process transaction")
 	}
 
 	toUser, err := boiler.FindUser(passdb.StdConn, nt.To.String())
 	if err != nil {
-		passlog.L.Error().Err(err).Str("from", fromBalance.String()).Str("to", newToBalance.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
+		passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
 		return nil, nil, TransactionFailed, terror.Error(err, "failed to process transaction")
 	}
 
-	err = CreateTransactionEntry(passdb.StdConn, nt)
-	if err != nil {
-		passlog.L.Error().Err(err).Str("from", fromBalance.String()).Str("to", newToBalance.String()).Str("id", nt.ID).Msg("transaction failed")
-		return nil, nil, TransactionFailed, terror.Error(err)
-	}
-
-	// store back to the map
-	ucm.Store(fromUser.ID, fromUser.Sups)
-	ucm.Store(toUser.ID, toUser.Sups)
+	passlog.L.Info().Str("from", fromUser.ID).Str("to", toUser.ID).Str("id", nt.ID).Msg("processing transaction")
 
 	tx := &passport.Transaction{
-		ID:     transactionID,
-		Credit: nt.To,
-		Debit:  nt.From,
-		Amount: passport.BigInt{
-			Int: nt.Amount,
-		},
+		ID:                   transactionID,
+		Credit:               nt.To,
+		Debit:                nt.From,
+		Amount:               nt.Amount,
 		TransactionReference: string(nt.TransactionReference),
 		Description:          nt.Description,
 		CreatedAt:            nt.CreatedAt,
@@ -119,17 +89,52 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (*big.Int, *big.In
 		SubGroup:             nt.SubGroup,
 	}
 
-	ctx := context.Background()
-	if !nt.From.IsSystemUser() {
-		go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, nt.From)), []*passport.Transaction{tx})
-		go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, nt.From)), newFromBalance.String())
-	}
-	if !nt.To.IsSystemUser() {
-		go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, nt.To)), []*passport.Transaction{tx})
-		go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, nt.To)), newToBalance.String())
+	blast := func(from *boiler.User, to *boiler.User, success bool) {
+		ctx := context.Background()
+		if !nt.From.IsSystemUser() {
+			if success {
+				go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, from.ID)), []*passport.Transaction{tx})
+			}
+			go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, from.ID)), from.Sups.String())
+		}
+		if !nt.To.IsSystemUser() {
+			if success {
+				go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, to.ID)), []*passport.Transaction{tx})
+			}
+			go ucm.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, to.ID)), to.Sups.String())
+		}
 	}
 
-	return newFromBalance, newToBalance, transactionID, nil
+	err = CreateTransactionEntry(passdb.StdConn, nt)
+	if err != nil {
+		ucm.Store(fromUser.ID, fromUser.Sups)
+		ucm.Store(toUser.ID, toUser.Sups)
+		blast(fromUser, toUser, false)
+		passlog.L.Error().Err(err).Str("from", fromUser.ID).Str("to", toUser.ID).Str("id", nt.ID).Msg("transaction failed")
+		return nil, nil, TransactionFailed, terror.Error(err)
+	}
+
+	didErr := false
+	fromUser, err = boiler.FindUser(passdb.StdConn, nt.From.String())
+	if err != nil {
+		passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
+		didErr = true
+	}
+
+	toUser, err = boiler.FindUser(passdb.StdConn, nt.To.String())
+	if err != nil {
+		passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
+		didErr = true
+	}
+
+	if !didErr {
+		// store back to the map
+		ucm.Store(fromUser.ID, fromUser.Sups)
+		ucm.Store(toUser.ID, toUser.Sups)
+		blast(fromUser, toUser, true)
+	}
+
+	return &fromUser.Sups, &toUser.Sups, transactionID, nil
 }
 
 func (ucm *UserCacheMap) Get(id string) (big.Int, error) {

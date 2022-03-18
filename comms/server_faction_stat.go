@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"math/big"
 	"passport"
 	"passport/api"
@@ -129,7 +130,7 @@ func (c *S) SupremacyRedeemFactionContractRewardHandler(req RedeemFactionContrac
 	tx := &passport.NewTransaction{
 		To:                   req.UserID,
 		TransactionReference: req.TransactionReference,
-		Amount:               *amount,
+		Amount:               decimal.NewFromBigInt(amount, 0),
 		Description:          "Contract Reward",
 		Group:                passport.TransactionGroupBattle,
 		SubGroup:             req.BattleID,

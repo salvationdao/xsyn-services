@@ -46,7 +46,7 @@ func ProcessDeposits(records []*Record, ucm UserCacheMap) (int, int, error) {
 		trans := &passport.NewTransaction{
 			To:                   user.ID,
 			From:                 passport.XsynTreasuryUserID,
-			Amount:               *value.BigInt(),
+			Amount:               value,
 			TransactionReference: passport.TransactionReference(record.TxHash),
 			Description:          msg,
 			Group:                passport.TransactionGroupStore,

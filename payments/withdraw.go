@@ -3,7 +3,6 @@ package payments
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"passport"
 	"passport/db"
 	"passport/db/boiler"
@@ -24,7 +23,7 @@ import (
 )
 
 // InsertPendingRefund inserts a pending refund to the pending_refunds table
-func InsertPendingRefund(ucm UserCacheMap, userID passport.UserID, amount big.Int, expiry time.Time) (string, error) {
+func InsertPendingRefund(ucm UserCacheMap, userID passport.UserID, amount decimal.Decimal, expiry time.Time) (string, error) {
 	txRef := passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()))
 	// remove sups
 
@@ -33,7 +32,7 @@ func InsertPendingRefund(ucm UserCacheMap, userID passport.UserID, amount big.In
 		From:                 userID,
 		Amount:               amount,
 		TransactionReference: txRef,
-		Description:          fmt.Sprintf("Withdraw of %s SUPS", decimal.NewFromBigInt(&amount, -18)),
+		Description:          fmt.Sprintf("Withdraw of %s SUPS", amount.Shift(-18).StringFixed(4)),
 		Group:                passport.TransactionGroupWithdrawal,
 	}
 
@@ -191,7 +190,7 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 		newTx := &passport.NewTransaction{
 			To:                   passport.UserID(userUUID),
 			From:                 passport.OnChainUserID,
-			Amount:               *refund.R.TransactionReferenceTransaction.Amount.BigInt(),
+			Amount:               refund.R.TransactionReferenceTransaction.Amount,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s", refund.R.TransactionReferenceTransaction.TransactionReference)),
 			Description:          fmt.Sprintf("REFUND %s", refund.R.TransactionReferenceTransaction.Description),
 			Group:                passport.TransactionGroup(refund.R.TransactionReferenceTransaction.Group),

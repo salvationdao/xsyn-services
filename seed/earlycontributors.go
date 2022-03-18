@@ -30,7 +30,7 @@ func (s *Seeder) EarlyContributors(ctx context.Context) error {
 			amt := decimal.New(int64(output.Output), 18)
 
 			nt := &passport.NewTransaction{
-				Amount:               *amt.BigInt(),
+				Amount:               amt,
 				From:                 passport.XsynSaleUserID,
 				To:                   u.ID,
 				Description:          "Supremacy early contributor dispersion.",

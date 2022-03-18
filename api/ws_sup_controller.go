@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"math/big"
 	"passport"
 	"passport/db"
@@ -113,7 +114,7 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 		To:                   passport.OnChainUserID,
 		From:                 userID,
 		NotSafe:              true,
-		Amount:               *withdrawAmount,
+		Amount:               decimal.NewFromBigInt(withdrawAmount, 0),
 		TransactionReference: passport.TransactionReference(txRef),
 		Description:          "Withdraw of SUPS.",
 		Group:                passport.TransactionGroupWithdrawal,
@@ -137,7 +138,7 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 			To:                   userID,
 			NotSafe:              true,
 			From:                 passport.OnChainUserID,
-			Amount:               *withdrawAmount,
+			Amount:               decimal.NewFromBigInt(withdrawAmount, 0),
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
 			Description:          "Refund of Withdraw of SUPS.",
 			Group:                passport.TransactionGroupWithdrawal,

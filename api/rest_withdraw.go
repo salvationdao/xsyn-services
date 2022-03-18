@@ -254,7 +254,7 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 		}
 	}
 
-	refundID, err := payments.InsertPendingRefund(api.userCacheMap, user.ID, *amountBigInt, expiry)
+	refundID, err := payments.InsertPendingRefund(api.userCacheMap, user.ID, decimal.NewFromBigInt(amountBigInt, 0), expiry)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to create withdraw signature, please try again or contact support.")
 	}

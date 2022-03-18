@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/big"
 	"math/rand"
 	"passport"
 	"passport/db"
@@ -35,7 +34,7 @@ func Purchase(
 	bus *messagebus.MessageBus,
 	busKey messagebus.BusKey,
 	supPrice decimal.Decimal,
-	ucmProcess func(*passport.NewTransaction) (*big.Int, *big.Int, string, error),
+	ucmProcess func(*passport.NewTransaction) (*decimal.Decimal, *decimal.Decimal, string, error),
 	user passport.User,
 	storeItemID passport.StoreItemID,
 	externalUrl string,
@@ -87,7 +86,7 @@ func Purchase(
 	trans := &passport.NewTransaction{
 		To:                   passport.XsynTreasuryUserID,
 		From:                 user.ID,
-		Amount:               *priceAsSupsBigInt,
+		Amount:               decimal.NewFromBigInt(priceAsSupsBigInt, 0),
 		TransactionReference: passport.TransactionReference(txRef),
 		Description:          "Purchase on Supremacy storefront.",
 		Group:                passport.TransactionGroupStore,
@@ -107,7 +106,7 @@ func Purchase(
 		trans := &passport.NewTransaction{
 			To:                   user.ID,
 			From:                 passport.XsynTreasuryUserID,
-			Amount:               *priceAsSupsBigInt,
+			Amount:               decimal.NewFromBigInt(priceAsSupsBigInt, 0),
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
 			Description:          "Refund of purchase on Supremacy storefront.",
 			Group:                passport.TransactionGroupStore,
@@ -165,7 +164,7 @@ func Purchase(
 
 // PurchaseLootbox attempts to make a purchase for a given user ID and a given
 func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
-	ucmProcess func(*passport.NewTransaction) (*big.Int, *big.Int, string, error), user passport.User, factionID passport.FactionID, externalURL string) (string, error) {
+	ucmProcess func(*passport.NewTransaction) (*decimal.Decimal, *decimal.Decimal, string, error), user passport.User, factionID passport.FactionID, externalURL string) (string, error) {
 
 	// get all faction items marked as loot box
 	items, err := db.StoreItemsByFactionIDAndRestrictionGroup(uuid.UUID(factionID), db.RestrictionGroupLootbox)
@@ -206,7 +205,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 
 	// resultChan := make(chan *passport.TransactionResult, 1)
 
-	price := *decimal.New(2500, 18).BigInt()
+	price := decimal.New(2500, 18)
 
 	trans := &passport.NewTransaction{
 		To:                   passport.XsynTreasuryUserID,
@@ -219,9 +218,9 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	}
 
 	// process user cache map
-	nfb, ntb, _, err := ucmProcess(trans)
-	if err != nil {
-		return "", terror.Error(err)
+	nfb, ntb, _, txerr := ucmProcess(trans)
+	if txerr != nil {
+		return "", terror.Error(txerr)
 	}
 
 	if !trans.From.IsSystemUser() {
@@ -234,6 +233,9 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 
 	// refund callback
 	refund := func(reason string) {
+		if txerr != nil {
+			return
+		}
 		trans := &passport.NewTransaction{
 			To:                   user.ID,
 			From:                 passport.XsynTreasuryUserID,

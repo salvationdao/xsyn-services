@@ -124,7 +124,7 @@ func CreateTransaction(ucm *UserCacheMap) func(w http.ResponseWriter, r *http.Re
 		newTx := &passport.NewTransaction{
 			To:                   passport.UserID(req.Credit),
 			From:                 passport.UserID(req.Debit),
-			Amount:               *req.Amount.BigInt(),
+			Amount:               req.Amount,
 			TransactionReference: passport.TransactionReference(ref),
 			Description:          ref,
 			Group:                passport.TransactionGroupStore,
@@ -149,7 +149,7 @@ func ReverseUserTransaction(ucm *UserCacheMap) func(w http.ResponseWriter, r *ht
 		refundTx := &passport.NewTransaction{
 			To:                   passport.UserID(uuid.Must(uuid.FromString(tx.Debit))),
 			From:                 passport.UserID(uuid.Must(uuid.FromString(tx.Credit))),
-			Amount:               *tx.Amount.BigInt(),
+			Amount:               tx.Amount,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND - %s", tx.TransactionReference)),
 			Description:          "Reverse transaction",
 			Group:                passport.TransactionGroupStore,

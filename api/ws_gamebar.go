@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"math/big"
 	"net/http"
 	"os"
@@ -112,7 +113,7 @@ func (gc *GamebarController) GetFreeSups(ctx context.Context, hubc *hub.Client, 
 	tx := &passport.NewTransaction{
 		To:                   user.ID,
 		From:                 passport.XsynSaleUserID,
-		Amount:               *oneSups,
+		Amount:               decimal.NewFromBigInt(oneSups, 0),
 		NotSafe:              true,
 		TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
 		Description:          "100 SUPS giveaway for testing",
@@ -229,7 +230,7 @@ func (gc *GamebarController) AuthRingCheck(ctx context.Context, hubc *hub.Client
 				tx := &passport.NewTransaction{
 					To:                   user.ID,
 					From:                 passport.XsynSaleUserID,
-					Amount:               *oneSups,
+					Amount:               decimal.NewFromBigInt(oneSups, 0),
 					NotSafe:              true,
 					TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
 					Description:          "Give away for testing",

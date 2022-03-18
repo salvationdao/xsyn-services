@@ -1,7 +1,7 @@
 package passport
 
 import (
-	"math/big"
+	"github.com/shopspring/decimal"
 	"time"
 )
 
@@ -25,7 +25,7 @@ type Transaction struct {
 	ID                   string            `json:"id" db:"id"`
 	Credit               UserID            `json:"credit" db:"credit"`
 	Debit                UserID            `json:"debit" db:"debit"`
-	Amount               BigInt            `json:"amount" db:"amount"`
+	Amount               decimal.Decimal   `json:"amount" db:"amount"`
 	Status               TransactionStatus `json:"status" db:"status"`
 	TransactionReference string            `json:"transaction_reference" db:"transaction_reference"`
 	Description          string            `json:"description" db:"description"`
@@ -56,7 +56,7 @@ type NewTransaction struct {
 	ID                   string               `json:"id" db:"id"`
 	To                   UserID               `json:"credit" db:"credit"`
 	From                 UserID               `json:"debit" db:"debit"`
-	Amount               big.Int              `json:"amount" db:"amount"`
+	Amount               decimal.Decimal      `json:"amount" db:"amount"`
 	TransactionReference TransactionReference `json:"transaction_reference" db:"transaction_reference"`
 	Description          string               `json:"description" db:"description"`
 	Group                TransactionGroup     `json:"group" db:"group"`

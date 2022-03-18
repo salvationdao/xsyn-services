@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"math/big"
 	"net/http"
 	"passport"
 	"passport/db"
@@ -24,7 +23,7 @@ import (
 )
 
 type UserCacheMap interface {
-	Process(nt *passport.NewTransaction) (*big.Int, *big.Int, string, error)
+	Process(nt *passport.NewTransaction) (*decimal.Decimal, *decimal.Decimal, string, error)
 }
 
 type Record struct {
@@ -139,7 +138,7 @@ func StoreRecord(ctx context.Context, fromUserID passport.UserID, toUserID passp
 	trans := &passport.NewTransaction{
 		To:                   toUserID,
 		From:                 fromUserID,
-		Amount:               *output.BigInt(),
+		Amount:               output,
 		TransactionReference: passport.TransactionReference(record.TxHash),
 		Description:          msg,
 		Group:                passport.TransactionGroupStore,

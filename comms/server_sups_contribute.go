@@ -47,7 +47,7 @@ func (c *S) InsertTransactions(req InsertTransactionsReq, resp *InsertTransactio
 			From:                 passport.UserID(uuid.Must(uuid.FromString(tx.FromUserID))),
 			To:                   passport.UserID(uuid.Must(uuid.FromString(tx.ToUserID))),
 			TransactionReference: passport.TransactionReference(tx.TransactionReference),
-			Amount:               *tx.Amount.BigInt(),
+			Amount:               tx.Amount,
 			Description:          tx.Description,
 			Group:                passport.TransactionGroup(tx.Group),
 			SubGroup:             tx.Subgroup,
@@ -73,7 +73,7 @@ func (c *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 		To:                   passport.UserID(req.ToUserID),
 		TransactionReference: req.TransactionReference,
 		Description:          req.Description,
-		Amount:               *amt.BigInt(),
+		Amount:               amt,
 		Group:                req.Group,
 		SubGroup:             req.SubGroup,
 	}
@@ -136,7 +136,7 @@ func (c *S) supremacyFeed() {
 	tx := &passport.NewTransaction{
 		From:                 passport.XsynTreasuryUserID,
 		To:                   passport.SupremacySupPoolUserID,
-		Amount:               *fund,
+		Amount:               decimal.NewFromBigInt(fund, 18),
 		TransactionReference: passport.TransactionReference(fmt.Sprintf("treasury|ticker|%s", time.Now())),
 	}
 
@@ -292,7 +292,7 @@ func (c *S) distributeFund(fundstr string, totalPoints int64, userMap map[int][]
 			tx := &passport.NewTransaction{
 				From:                 passport.SupremacySupPoolUserID,
 				To:                   user,
-				Amount:               *usersSups,
+				Amount:               decimal.NewFromBigInt(usersSups, 0),
 				TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|ticker|%s|%s", user, time.Now())),
 				Description:          "Ticker earnings.",
 				Group:                passport.TransactionGroupSupremacy,
@@ -423,7 +423,7 @@ func (c *S) newSupsTrickle(key string, totalTick int, supsPerTick *big.Int) {
 		tx := &passport.NewTransaction{
 			From:                 passport.SupremacyBattleUserID,
 			To:                   passport.SupremacySupPoolUserID,
-			Amount:               *supsPerTick,
+			Amount:               decimal.NewFromBigInt(supsPerTick, 0),
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|battle_sups_spend_transfer|%s", time.Now())),
 		}
 
