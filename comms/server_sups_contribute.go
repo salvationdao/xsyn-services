@@ -161,8 +161,8 @@ func (c *S) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 		newList := []passport.UserID{}
 
 		for _, userID := range userIDs {
-			amount, err := c.UserCacheMap.Get(userID.String())
-			if err != nil || amount.BitLen() == 0 {
+			_, err := c.UserCacheMap.Get(userID.String())
+			if err != nil {
 				// kick user out
 				continue
 			}
@@ -238,11 +238,11 @@ func (c *S) TickerTickHandler(req TickerTickReq, resp *TickerTickResp) error {
 	if err != nil {
 		return terror.Error(err)
 	}
-	supPool := big.NewInt(0)
-	supPool.Add(supPool, &supsForTick)
-	supPool.Div(supPool, big.NewInt(3))
+	supPool := decimal.NewFromInt32(0)
+	supPool = supPool.Add(supsForTick)
+	supPool = supPool.Div(decimal.NewFromInt32(3))
 
-	if supPool.Cmp(big.NewInt(0)) < 1 {
+	if supPool.LessThan(decimal.NewFromInt32(1)) {
 		return nil
 	}
 
@@ -322,9 +322,9 @@ func (c *S) SupremacyGetSpoilOfWarHandler(req GetSpoilOfWarReq, resp *GetSpoilOf
 		return terror.Error(err)
 	}
 
-	result := big.NewInt(0)
-	result.Add(result, &supsPoolUser)
-	result.Add(result, &battleUser)
+	result := decimal.NewFromInt32(0)
+	result = result.Add(supsPoolUser)
+	result = result.Add(battleUser)
 
 	resp.Amount = result.String()
 	return nil
@@ -365,12 +365,12 @@ func (c *S) TransferBattleFundToSupPoolHandler(req TransferBattleFundToSupPoolRe
 	}
 
 	// calc trickling sups for current round
-	supsForTrickle := big.NewInt(0)
-	supsForTrickle.Add(supsForTrickle, &battleUser)
+	supsForTrickle := decimal.NewFromInt32(0)
+	supsForTrickle = supsForTrickle.Add(battleUser)
 
 	// subtrack the sups that is trickling at the moment
 	for _, tricklingSups := range c.TickerPoolCache.TricklingAmountMap {
-		supsForTrickle.Sub(supsForTrickle, tricklingSups)
+		supsForTrickle = supsForTrickle.Sub(tricklingSups)
 	}
 
 	// transfer 10% of current spoil of war back to treasury
@@ -395,18 +395,18 @@ func (c *S) TransferBattleFundToSupPoolHandler(req TransferBattleFundToSupPoolRe
 
 	// so here we want to trickle the battle pool out over 5 minutes, so we create a ticker that ticks every 5 seconds with a max ticks of 300 / 5
 	ticksInFiveMinutes := 300 / 5
-	supsPerTick := big.NewInt(0)
-	supsPerTick.Div(supsForTrickle, big.NewInt(int64(ticksInFiveMinutes)))
+	supsPerTick := decimal.NewFromInt(0)
+	supsPerTick = supsPerTick.Div(decimal.NewFromInt(int64(ticksInFiveMinutes)))
 
 	// skip, if trickle amount is empty
-	if supsPerTick.BitLen() == 0 {
+	if supsPerTick.LessThanOrEqual(decimal.Zero) {
 		return nil
 	}
 
 	// append the amount set to the list
 	key := uuid.Must(uuid.NewV4()).String()
-	c.TickerPoolCache.TricklingAmountMap[key] = big.NewInt(0)
-	c.TickerPoolCache.TricklingAmountMap[key].Add(c.TickerPoolCache.TricklingAmountMap[key], supsForTrickle)
+	c.TickerPoolCache.TricklingAmountMap[key] = decimal.NewFromInt(0)
+	c.TickerPoolCache.TricklingAmountMap[key] = c.TickerPoolCache.TricklingAmountMap[key].Add(supsForTrickle)
 
 	// start a new go routine for current round
 	go c.newSupsTrickle(key, ticksInFiveMinutes, supsPerTick)
@@ -415,7 +415,7 @@ func (c *S) TransferBattleFundToSupPoolHandler(req TransferBattleFundToSupPoolRe
 }
 
 // trickle factory
-func (c *S) newSupsTrickle(key string, totalTick int, supsPerTick *big.Int) {
+func (c *S) newSupsTrickle(key string, totalTick int, supsPerTick decimal.Decimal) {
 	i := 0
 	for {
 		i++
@@ -423,7 +423,7 @@ func (c *S) newSupsTrickle(key string, totalTick int, supsPerTick *big.Int) {
 		tx := &passport.NewTransaction{
 			From:                 passport.SupremacyBattleUserID,
 			To:                   passport.SupremacySupPoolUserID,
-			Amount:               decimal.NewFromBigInt(supsPerTick, 0),
+			Amount:               supsPerTick,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|battle_sups_spend_transfer|%s", time.Now())),
 		}
 
@@ -438,7 +438,7 @@ func (c *S) newSupsTrickle(key string, totalTick int, supsPerTick *big.Int) {
 		// if the routine is not finished
 		if i < totalTick {
 			// update current trickling amount
-			c.TickerPoolCache.TricklingAmountMap[key].Sub(c.TickerPoolCache.TricklingAmountMap[key], supsPerTick)
+			c.TickerPoolCache.TricklingAmountMap[key] = c.TickerPoolCache.TricklingAmountMap[key].Sub(supsPerTick)
 
 			time.Sleep(5 * time.Second)
 			c.TickerPoolCache.Unlock()

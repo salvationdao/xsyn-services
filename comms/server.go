@@ -2,7 +2,7 @@ package comms
 
 import (
 	"fmt"
-	"math/big"
+	"github.com/shopspring/decimal"
 	"net"
 	"net/rpc"
 	"passport/api"
@@ -19,7 +19,7 @@ import (
 // for sups trickle handler
 type TickerPoolCache struct {
 	deadlock.Mutex
-	TricklingAmountMap map[string]*big.Int
+	TricklingAmountMap map[string]decimal.Decimal
 }
 
 type S struct {
@@ -50,7 +50,7 @@ func NewServer(
 		Conn:         conn,
 		TickerPoolCache: &TickerPoolCache{
 			deadlock.Mutex{},
-			make(map[string]*big.Int),
+			make(map[string]decimal.Decimal),
 		},
 		HubSessionIDMap: cm,
 	}

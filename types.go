@@ -3,6 +3,7 @@ package passport
 import (
 	"database/sql/driver"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"math/big"
 
 	"github.com/gofrs/uuid"
@@ -726,6 +727,6 @@ func (id *StoreItemID) Scan(src interface{}) error {
 }
 
 type UserBalance struct {
-	ID   UserID  `db:"id"`
-	Sups *BigInt `db:"sups"`
+	ID   UserID          `db:"id"`
+	Sups decimal.Decimal `db:"sups"`
 }

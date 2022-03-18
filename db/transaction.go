@@ -316,34 +316,32 @@ func UserBalances(ctx context.Context, conn Conn) ([]*passport.UserBalance, erro
 	for rows.Next() {
 		balance := &passport.UserBalance{
 			ID:   passport.UserID{},
-			Sups: &passport.BigInt{},
+			Sups: decimal.New(0, 18),
 		}
 		err := rows.Scan(
 			&balance.ID,
-			balance.Sups,
+			&balance.Sups,
 		)
 		if err != nil {
 			return balances, terror.Error(err)
 		}
-		balance.Sups.Init()
 		balances = append(balances, balance)
 	}
 
 	return balances, nil
 }
 
-func UserBalance(ctx context.Context, conn Conn, userID string) (*passport.BigInt, error) {
+func UserBalance(ctx context.Context, conn Conn, userID string) (decimal.Decimal, error) {
 	var wrap struct {
-		Sups passport.BigInt `db:"sups"`
+		Sups decimal.Decimal `db:"sups"`
 	}
 	q := `SELECT sups FROM users WHERE id = $1`
 
 	err := pgxscan.Get(ctx, conn, &wrap, q, userID)
 	if err != nil {
-		return nil, terror.Error(err)
+		return decimal.New(0, 18), terror.Error(err)
 	}
-	wrap.Sups.Init()
-	return &wrap.Sups, nil
+	return wrap.Sups, nil
 }
 
 // ChainConfirmationsForUserID returns a list of chain confirmations by userID
