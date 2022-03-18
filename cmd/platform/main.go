@@ -145,6 +145,7 @@ func main() {
 
 					&cli.BoolFlag{Name: "pprof", Value: true, EnvVars: []string{envPrefix + "_PPROF"}, Usage: "record pprof at regular interval to help debug"},
 					&cli.IntFlag{Name: "pprof_second", Value: 10, EnvVars: []string{envPrefix + "_PPROF_SECOND"}, Usage: "record pprof at x second interval"},
+					&cli.IntFlag{Name: "pprof_port", Value: 6060, EnvVars: []string{envPrefix + "_PPROF_PORT"}, Usage: "pprof local listening port"},
 
 					// setup for webhook
 					&cli.StringFlag{Name: "gameserver_webhook_secret", Value: "e1BD3FF270804c6a9edJDzzDks87a8a4fde15c7=", EnvVars: []string{"GAMESERVER_WEBHOOK_SECRET"}, Usage: "Authorization key to passport webhook"},
@@ -211,11 +212,9 @@ func main() {
 
 					if c.Bool("pprof") {
 						pint := c.Int("pprof_second")
-						if pint < 10 {
-							pint = 10
-						}
+						pport := c.Int("pprof_port")
 						// dumping pprof at period bases
-						pprofMonitor(pint)
+						pprofMonitor(pint, pport)
 					}
 
 					g := &run.Group{}
@@ -1111,9 +1110,12 @@ func SuperMigrate(c *cli.Context) error {
 }
 
 // pprofMonitor monitor to help debug some invisible issues
-func pprofMonitor(intervalSecond int) {
+func pprofMonitor(intervalSecond, listenPort int) {
 	if intervalSecond < 10 {
 		intervalSecond = 10
+	}
+	if listenPort <= 0 || listenPort >= 65535 {
+		listenPort = 6060
 	}
 
 	// auto record at interval
@@ -1163,6 +1165,11 @@ func pprofMonitor(intervalSecond int) {
 	}()
 	// pprof for quick web check
 	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
+		log.Println(
+			http.ListenAndServe(
+				fmt.Sprintf("localhost:%d", listenPort),
+				nil,
+			),
+		)
 	}()
 }
