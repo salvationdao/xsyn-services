@@ -81,4 +81,73 @@ curl -H "Authorization: token $TOKEN" \
      --location --remote-header-name -s -o $asset_name \
      https://api.github.com/repos/$REPO/releases/assets/$asset_id \
 
-echo $(pwd)/$asset_name
+echo "downloaded $(pwd)/$asset_name"
+
+#
+# USAGE
+#
+# Set all the variables inside the script, make sure you chmod +x it
+#
+#       change_version.sh <version>
+#
+# If your version/tag doesn't match, the script will exit with error.
+
+CLIENT="ninja_syndicate"
+PACKAGE="passport-api"
+TARGET="$(pwd)/${PACKAGE}_$1"
+
+cd /usr/share/$CLIENT
+
+if [ -z "$1" ]; then
+  echo "" >&2
+  echo " USAGE" >&2
+  echo "" >&2
+  echo "" >&2
+  echo " to bring an existing version online:" >&2
+  echo "" >&2
+  echo "     version_change target_dir" >&2
+  echo "" >&2
+  echo " If the directory doesn't exist and a tar does then it will be untared" >&2
+  exit 1
+fi;
+
+if [ ! -d $TARGET ] ; then
+  if [ -f $TARGET.tar.gz ];
+    then tar -xvf $TARGET.tar.gz;
+    else
+      echo "Nither '$TARGET' or '$TARGET.tar.gz' was found in '/usr/share/$CLIENT'" >&2
+      exit 2
+  fi;
+fi
+
+VER=$(grep -oP 'Version=\K[0-9]+' /usr/share/${CLIENT}/${PACKAGE}_online/BuildInfo.txt || echo "0")
+YMDHMS=$(date +'%Y%m%d%H%M%S')
+DBDIR="/usr/share/${CLIENT}/${PACKAGE}_online/db_copy"
+mkdir -p $DBDIR
+DBFILE="$DBDIR/$PACKAGE_$YMDHMS.sql"
+
+# Start the change over
+
+source ${PACKAGE}_online/init/${PACKAGE}.env
+cp ${PACKAGE}_online/init/${PACKAGE}.env $TARGET/init/${PACKAGE}.env
+
+source /home/ubuntu/.profile # load PGPASSWORD
+
+# Cant use the project default user due to adjusted permisions on some tables
+
+systemctl stop ${PACKAGE}
+$TARGET/migrate -database "postgres://${PASSPORT_DATABASE_USER}:${PASSPORT_DATABASE_PASS}@${PASSPORT_DATABASE_HOST}:${PASSPORT_DATABASE_PORT}/${PASSPORT_DATABASE_NAME}" -path $TARGET/migrations up
+
+ln -Tfsv $TARGET $(pwd)/${PACKAGE}_online
+
+# Ensure ownership
+chown -R ${PACKAGE}:${PACKAGE} .
+
+systemctl daemon-reload
+systemctl restart ${PACKAGE}
+nginx -t && nginx -s reload
+
+echo "passport ${VERSION} ready!"
+
+exit 0
+

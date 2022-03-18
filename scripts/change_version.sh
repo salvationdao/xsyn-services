@@ -4,14 +4,15 @@
 #
 # Set all the variables inside the script, make sure you chmod +x it
 #
-#     version_change target_dir
+#       change_version.sh <version>
 #
 # If your version/tag doesn't match, the script will exit with error.
+
 set -e
 
-TARGET=$(pwd)/$1
 CLIENT="ninja_syndicate"
 PACKAGE="passport-api"
+TARGET="$(pwd)/${PACKAGE}_$1"
 
 cd /usr/share/$CLIENT
 
@@ -33,7 +34,7 @@ if [ ! -d $TARGET ] ; then
     then tar -xvf $TARGET.tar.gz;
     else
       echo "Nither '$TARGET' or '$TARGET.tar.gz' was found in '/usr/share/$CLIENT'" >&2
-      exit 1
+      exit 2
   fi;
 fi
 
@@ -52,24 +53,18 @@ source /home/ubuntu/.profile # load PGPASSWORD
 
 # Cant use the project default user due to adjusted permisions on some tables
 pg_dump --dbname="$PASSPORT_DATABASE_NAME" --host="$PASSPORT_DATABASE_HOST" --port="$PASSPORT_DATABASE_PORT" --username="postgres" > ${DBFILE}
-echo "Saved ${DBFILE}"
-ls -lh ${DBFILE}
+
 if [ ! -s "${DBFILE}" ]; then
     echo "db copy is zero size" >&2
-    exit 2
+    exit 3
 fi
 
+ls -lh "${DBFILE}"
 echo "Proceed with migrations? (y/N)"
 read PROCEED
-if [[ $PROCEED != "y" ]]; then exit 1; fi
-
-nginx -s stop
-echo "Stopped nginx sleeping for 10 seconds"
-sleep 10
+if [[ $PROCEED != "y" ]]; then exit 4; fi
 
 systemctl stop ${PACKAGE}
-echo "Stopped ${PACKAGE} sleeping for 5 seconds"
-sleep 5
 $TARGET/migrate -database "postgres://${PASSPORT_DATABASE_USER}:${PASSPORT_DATABASE_PASS}@${PASSPORT_DATABASE_HOST}:${PASSPORT_DATABASE_PORT}/${PASSPORT_DATABASE_NAME}" -path $TARGET/migrations up
 
 ln -Tfsv $TARGET $(pwd)/${PACKAGE}_online
@@ -77,9 +72,6 @@ ln -Tfsv $TARGET $(pwd)/${PACKAGE}_online
 # Ensure ownership
 chown -R ${PACKAGE}:${PACKAGE} .
 
-nginx -t && nginx -s reload
-
 systemctl daemon-reload
 systemctl restart ${PACKAGE}
-
-systemctl status ${PACKAGE}
+nginx -t && nginx -s reload
