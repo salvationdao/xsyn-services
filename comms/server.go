@@ -2,9 +2,9 @@ package comms
 
 import (
 	"fmt"
-	"github.com/shopspring/decimal"
 	"net"
 	"net/rpc"
+	"passport"
 	"passport/api"
 	"passport/db"
 	"sync"
@@ -14,6 +14,7 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 	"github.com/sasha-s/go-deadlock"
+	"github.com/shopspring/decimal"
 )
 
 // for sups trickle handler
@@ -25,6 +26,7 @@ type TickerPoolCache struct {
 type S struct {
 	UserCacheMap *api.UserCacheMap
 	MessageBus   *messagebus.MessageBus
+	SMS          passport.SMS
 	Txs          *api.Transactions
 	Log          *zerolog.Logger
 	Conn         db.Conn
@@ -41,6 +43,7 @@ func NewServer(
 	log *zerolog.Logger,
 	conn *pgxpool.Pool,
 	cm *sync.Map,
+	sms passport.SMS,
 ) *S {
 	result := &S{
 		UserCacheMap: userCacheMap,
@@ -53,6 +56,7 @@ func NewServer(
 			make(map[string]decimal.Decimal),
 		},
 		HubSessionIDMap: cm,
+		SMS:             sms,
 	}
 
 	// run a ticker to clear up the client map

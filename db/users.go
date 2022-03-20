@@ -30,6 +30,7 @@ const (
 	UserColumnRoleID              UserColumn = "role_id"
 	UserColumnAvatarID            UserColumn = "avatar_id"
 	UserColumnEmail               UserColumn = "email"
+	UserColumnMobileNumber        UserColumn = "mobile_number"
 	UserColumnFirstName           UserColumn = "first_name"
 	UserColumnLastName            UserColumn = "last_name"
 	UserColumnVerified            UserColumn = "verified"
@@ -59,6 +60,7 @@ func (ic UserColumn) IsValid() error {
 		UserColumnUpdatedAt,
 		UserColumnCreatedAt,
 		UserColumnRoleName,
+		UserColumnMobileNumber,
 		UserColumnOrganisationName:
 		return nil
 	}
@@ -69,7 +71,7 @@ const UserGetQuery string = `--sql
 SELECT 
 	users.id, users.role_id, users.two_factor_authentication_activated, users.two_factor_authentication_is_set, users.first_name, users.last_name, users.email, users.username, users.avatar_id, users.verified, users.old_password_required,
 	users.created_at, sups, users.updated_at, users.deleted_at, users.facebook_id, users.google_id, users.twitch_id, users.twitter_id, users.discord_id, users.public_address, users.nonce, users.faction_id,
-	(SELECT COUNT(id) FROM user_recovery_codes urc WHERE urc.user_id = users.id) > 0 as has_recovery_code,
+	(SELECT COUNT(id) FROM user_recovery_codes urc WHERE urc.user_id = users.id) > 0 as has_recovery_code, users.mobile_number,
 	row_to_json(role) as role,
 	row_to_json(faction) as faction,
 	row_to_json(organisation) as organisation
@@ -501,9 +503,20 @@ func UserUpdate(ctx context.Context, conn Conn, user *passport.User) error {
 		}
 	}
 
+	// commented out by vinnie - unsure if mobile needs to be unique?
+	//if user.MobileNumber.String != "" {
+	//	mobileOK, err := MobileNumberAvailable(ctx, conn, user.MobileNumber.String, &user.ID)
+	//	if err != nil {
+	//		return terror.Error(err)
+	//	}
+	//	if !mobileOK {
+	//		return terror.Error(fmt.Errorf("mobile is taken: %s", user.MobileNumber.String), "Mobile number is already in use, please use another one.")
+	//	}
+	//}
+
 	q := `--sql
 		UPDATE users
-		SET first_name = $2, last_name = $3, email = $4, username = $5, avatar_id = $6, role_id = $7, two_factor_authentication_activated = $8
+		SET first_name = $2, last_name = $3, email = $4, username = $5, avatar_id = $6, role_id = $7, two_factor_authentication_activated = $8, mobile_number = $9
 		WHERE id = $1`
 	_, err = conn.Exec(ctx,
 		q,
@@ -515,6 +528,7 @@ func UserUpdate(ctx context.Context, conn Conn, user *passport.User) error {
 		user.AvatarID,
 		user.RoleID,
 		user.TwoFactorAuthenticationActivated,
+		user.MobileNumber,
 	)
 	if err != nil {
 		return terror.Error(err)
@@ -1416,4 +1430,31 @@ func UserMixedCaseUpdateAll() error {
 		return terror.Error(err)
 	}
 	return nil
+}
+
+// MobileNumberAvailable returns true if an mobile number is free
+func MobileNumberAvailable(ctx context.Context, conn Conn, numberToCheck string, userID *passport.UserID) (bool, error) {
+	count := 0
+
+	if userID != nil && !userID.IsNil() {
+		q := `
+        		SELECT count(*) FROM users
+        		WHERE mobile_number = $1 and id != $2
+        	`
+		err := pgxscan.Get(ctx, conn, &count, q, numberToCheck, userID)
+		if err != nil {
+			return false, terror.Error(err)
+		}
+		return count == 0, nil
+	}
+
+	q := `
+		SELECT count(*) FROM users
+		WHERE mobile_number = $1
+	`
+	err := pgxscan.Get(ctx, conn, &count, q, numberToCheck)
+	if err != nil {
+		return false, terror.Error(err)
+	}
+	return count == 0, nil
 }

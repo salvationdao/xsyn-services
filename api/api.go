@@ -41,6 +41,7 @@ type API struct {
 	Log                 *zerolog.Logger
 	Addr                string
 	Mailer              *email.Mailer
+	SMS                 passport.SMS
 	HTMLSanitize        *bluemonday.Policy
 	Hub                 *hub.Hub
 	Conn                *pgxpool.Pool
@@ -75,6 +76,7 @@ func NewAPI(
 	conn *pgxpool.Pool,
 	txConn *sql.DB,
 	mailer *email.Mailer,
+	twilio passport.SMS,
 	addr string,
 	HTMLSanitize *bluemonday.Policy,
 	config *passport.Config,
@@ -123,6 +125,7 @@ func NewAPI(
 		Conn:         conn,
 		Addr:         addr,
 		Mailer:       mailer,
+		SMS:          twilio,
 		HTMLSanitize: HTMLSanitize,
 		// server clients
 		// serverClients:       make(chan func(serverClients ServerClientsList)),

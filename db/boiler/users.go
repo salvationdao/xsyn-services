@@ -51,6 +51,7 @@ type User struct {
 	UpdatedAt                        time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt                        time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	Metadata                         null.JSON       `boiler:"metadata" boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
+	MobileNumber                     null.String     `boiler:"mobile_number" boil:"mobile_number" json:"mobile_number,omitempty" toml:"mobile_number" yaml:"mobile_number,omitempty"`
 
 	R *userR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -84,6 +85,7 @@ var UserColumns = struct {
 	UpdatedAt                        string
 	CreatedAt                        string
 	Metadata                         string
+	MobileNumber                     string
 }{
 	ID:                               "id",
 	Username:                         "username",
@@ -112,6 +114,7 @@ var UserColumns = struct {
 	UpdatedAt:                        "updated_at",
 	CreatedAt:                        "created_at",
 	Metadata:                         "metadata",
+	MobileNumber:                     "mobile_number",
 }
 
 var UserTableColumns = struct {
@@ -142,6 +145,7 @@ var UserTableColumns = struct {
 	UpdatedAt                        string
 	CreatedAt                        string
 	Metadata                         string
+	MobileNumber                     string
 }{
 	ID:                               "users.id",
 	Username:                         "users.username",
@@ -170,6 +174,7 @@ var UserTableColumns = struct {
 	UpdatedAt:                        "users.updated_at",
 	CreatedAt:                        "users.created_at",
 	Metadata:                         "users.metadata",
+	MobileNumber:                     "users.mobile_number",
 }
 
 // Generated where
@@ -202,6 +207,7 @@ var UserWhere = struct {
 	UpdatedAt                        whereHelpertime_Time
 	CreatedAt                        whereHelpertime_Time
 	Metadata                         whereHelpernull_JSON
+	MobileNumber                     whereHelpernull_String
 }{
 	ID:                               whereHelperstring{field: "\"users\".\"id\""},
 	Username:                         whereHelperstring{field: "\"users\".\"username\""},
@@ -230,6 +236,7 @@ var UserWhere = struct {
 	UpdatedAt:                        whereHelpertime_Time{field: "\"users\".\"updated_at\""},
 	CreatedAt:                        whereHelpertime_Time{field: "\"users\".\"created_at\""},
 	Metadata:                         whereHelpernull_JSON{field: "\"users\".\"metadata\""},
+	MobileNumber:                     whereHelpernull_String{field: "\"users\".\"mobile_number\""},
 }
 
 // UserRels is where relationship names are stored.
@@ -298,8 +305,8 @@ func (*userR) NewStruct() *userR {
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"id", "username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "sups", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata"}
-	userColumnsWithoutDefault = []string{"username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "public_address", "private_address", "nonce", "keywords", "deleted_at"}
+	userAllColumns            = []string{"id", "username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "sups", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata", "mobile_number"}
+	userColumnsWithoutDefault = []string{"username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "public_address", "private_address", "nonce", "keywords", "deleted_at", "mobile_number"}
 	userColumnsWithDefault    = []string{"id", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "sups", "updated_at", "created_at", "metadata"}
 	userPrimaryKeyColumns     = []string{"id"}
 )

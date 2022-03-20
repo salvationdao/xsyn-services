@@ -18,6 +18,7 @@ import (
 	"passport/payments"
 	"passport/rpcclient"
 	"passport/seed"
+	"passport/sms"
 	"runtime"
 	"strings"
 	"time"
@@ -122,6 +123,12 @@ func main() {
 					&cli.StringFlag{Name: "api_addr", Value: ":8086", EnvVars: []string{envPrefix + "_API_ADDR", "API_ADDR"}, Usage: "host:port to run the API"},
 					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{envPrefix + "_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
 					&cli.StringFlag{Name: "google_client_id", Value: "467953368642-8cobg822tej2i50ncfg4ge1pm4c5v033.apps.googleusercontent.com", EnvVars: []string{envPrefix + "_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google Client ID for OAuth functionaility."},
+
+					// SMS stuff
+					&cli.StringFlag{Name: "twilio_sid", Value: "", EnvVars: []string{envPrefix + "_TWILIO_ACCOUNT_SID"}, Usage: "Twilio account sid"},
+					&cli.StringFlag{Name: "twilio_api_key", Value: "", EnvVars: []string{envPrefix + "_TWILIO_API_KEY"}, Usage: "Twilio api key"},
+					&cli.StringFlag{Name: "twilio_api_secret", Value: "", EnvVars: []string{envPrefix + "_TWILIO_API_SECRET"}, Usage: "Twilio api secret"},
+					&cli.StringFlag{Name: "sms_from_number", Value: "", EnvVars: []string{envPrefix + "_SMS_FROM_NUMBER"}, Usage: "Number to send SMS from"},
 
 					&cli.StringFlag{Name: "mail_domain", Value: "njs.dev", EnvVars: []string{envPrefix + "_MAIL_DOMAIN", "MAIL_DOMAIN"}, Usage: "Domain used for MailGun"},
 					&cli.StringFlag{Name: "mail_apikey", Value: "", EnvVars: []string{envPrefix + "_MAIL_APIKEY", "MAIL_APIKEY"}, Usage: "MailGun API key"},
@@ -718,6 +725,10 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	mailDomain := ctxCLI.String("mail_domain")
 	mailAPIKey := ctxCLI.String("mail_apikey")
 	mailSender := ctxCLI.String("mail_sender")
+	twilioSid := ctxCLI.String("twilio_sid")
+	twilioApiKey := ctxCLI.String("twilio_api_key")
+	twilioApiSecrete := ctxCLI.String("twilio_api_secret")
+	smsFromNumber := ctxCLI.String("sms_from_number")
 	externalURL := ctxCLI.String("passport_web_host_url")
 	insecuritySkipVerify := false
 	if environment == "development" || environment == "testing" {
@@ -874,6 +885,12 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		return terror.Panic(err, "Mailer init failed")
 	}
 
+	// SMS
+	twilio, err := sms.NewTwilio(twilioSid, twilioApiKey, twilioApiSecrete, smsFromNumber, environment)
+	if err != nil {
+		return terror.Panic(err, "SMS init failed")
+	}
+
 	// HTML Sanitizer
 	HTMLSanitizePolicy := bluemonday.UGCPolicy()
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
@@ -891,6 +908,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		pgxconn,
 		txConn,
 		mailer,
+		twilio,
 		apiAddr,
 		HTMLSanitizePolicy,
 		config,
@@ -903,7 +921,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	)
 
 	passlog.L.Info().Msg("start rpc server")
-	s := comms.NewServer(ucm, msgBus, api.SupremacyController.Txs, log, pgxconn, api.ClientMap)
+	s := comms.NewServer(ucm, msgBus, api.SupremacyController.Txs, log, pgxconn, api.ClientMap, twilio)
 	err = comms.StartServer(s)
 	if err != nil {
 		return terror.Error(err)
