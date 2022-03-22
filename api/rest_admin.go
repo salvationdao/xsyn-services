@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,6 +27,7 @@ func AdminRoutes(ucm *UserCacheMap) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/check", WithError(WithAdmin(AdminCheck)))
 	r.Get("/users", WithError(WithAdmin(ListUsers)))
+	r.Get("/users/{public_address}", WithError(WithAdmin(UserHandler)))
 	r.Get("/purchased_items", WithError(WithAdmin(ListPurchasedItems)))
 	r.Get("/store_items", WithError(WithAdmin(ListStoreItems)))
 
@@ -163,6 +165,23 @@ func ReverseUserTransaction(ucm *UserCacheMap) func(w http.ResponseWriter, r *ht
 	}
 	return fn
 }
+func UserHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
+	u, err := boiler.Users(
+		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex())),
+	).One(passdb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return http.StatusBadRequest, terror.Error(err, "Could not get user")
+	}
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return http.StatusBadRequest, terror.Error(err, "User does not exist")
+	}
+	err = json.NewEncoder(w).Encode(u)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not marshal user")
+	}
+	return http.StatusOK, nil
+}
 func SyncStoreItems(w http.ResponseWriter, r *http.Request) (int, error) {
 	err := db.SyncStoreItems()
 	if err != nil {
@@ -195,7 +214,7 @@ func ListUserTransactions(w http.ResponseWriter, r *http.Request) (int, error) {
 }
 func ListUsers(w http.ResponseWriter, r *http.Request) (int, error) {
 	result := []*passport.User{}
-	_, err := db.UserList(r.Context(), passdb.Conn, &result, "", false, nil, 0, 1000, db.UserColumnUsername, db.SortByDirAsc)
+	_, err := db.UserList(r.Context(), passdb.Conn, &result, "", false, nil, 0, 20000, db.UserColumnUsername, db.SortByDirAsc)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not list users")
 	}
