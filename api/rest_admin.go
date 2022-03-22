@@ -28,6 +28,8 @@ func AdminRoutes(ucm *UserCacheMap) chi.Router {
 	r.Get("/check", WithError(WithAdmin(AdminCheck)))
 	r.Get("/users", WithError(WithAdmin(ListUsers)))
 	r.Get("/users/{public_address}", WithError(WithAdmin(UserHandler)))
+	r.Get("/chat_timeout_username/{username}/{minutes}", WithError(WithAdmin(ChatTimeoutUsername)))
+	r.Get("/chat_timeout_userid/{userID}/{minutes}", WithError(WithAdmin(ChatTimeoutUserID)))
 	r.Get("/purchased_items", WithError(WithAdmin(ListPurchasedItems)))
 	r.Get("/store_items", WithError(WithAdmin(ListStoreItems)))
 
@@ -225,6 +227,58 @@ func ListUsers(w http.ResponseWriter, r *http.Request) (int, error) {
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not encode JSON")
 	}
+	return http.StatusOK, nil
+}
+
+func ChatTimeoutUserID(w http.ResponseWriter, r *http.Request) (int, error) {
+	userID := chi.URLParam(r, "userID")
+	if userID == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("userID cannot be empty"), "Unable to find userID, userID empty.")
+	}
+	minutes := chi.URLParam(r, "minutes")
+	minutesInt, err := strconv.Atoi(minutes)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Unable to create int from minutes")
+	}
+
+	user, err := boiler.FindUser(passdb.StdConn, userID)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Unable to find user")
+	}
+
+	user.ChatBannedUntil = null.TimeFrom(time.Now().Add(time.Minute * time.Duration(minutesInt)))
+
+	_, err = user.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to update user chat banned time")
+	}
+
+	return http.StatusOK, nil
+}
+
+func ChatTimeoutUsername(w http.ResponseWriter, r *http.Request) (int, error) {
+	username := chi.URLParam(r, "username")
+	if username == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("username cannot be empty"), "Unable to find username, username empty.")
+	}
+	minutes := chi.URLParam(r, "minutes")
+	minutesInt, err := strconv.Atoi(minutes)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Unable to create int from minutes")
+	}
+
+	user, err := boiler.Users(boiler.UserWhere.Username.EQ(username)).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Unable to find user")
+	}
+
+	user.ChatBannedUntil = null.TimeFrom(time.Now().Add(time.Minute * time.Duration(minutesInt)))
+
+	_, err = user.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to update user chat banned time")
+	}
+
 	return http.StatusOK, nil
 }
 

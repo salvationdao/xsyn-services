@@ -419,7 +419,7 @@ func (organisationL) LoadUsers(e boil.Executor, singular bool, maybeOrganisation
 	}
 
 	query := NewQuery(
-		qm.Select("\"users\".id, \"users\".username, \"users\".role_id, \"users\".avatar_id, \"users\".facebook_id, \"users\".google_id, \"users\".twitch_id, \"users\".twitter_id, \"users\".discord_id, \"users\".faction_id, \"users\".email, \"users\".first_name, \"users\".last_name, \"users\".verified, \"users\".old_password_required, \"users\".two_factor_authentication_activated, \"users\".two_factor_authentication_secret, \"users\".two_factor_authentication_is_set, \"users\".sups, \"users\".public_address, \"users\".private_address, \"users\".nonce, \"users\".keywords, \"users\".deleted_at, \"users\".updated_at, \"users\".created_at, \"users\".metadata, \"users\".mobile_number, \"a\".\"organisation_id\""),
+		qm.Select("\"users\".id, \"users\".username, \"users\".role_id, \"users\".avatar_id, \"users\".facebook_id, \"users\".google_id, \"users\".twitch_id, \"users\".twitter_id, \"users\".discord_id, \"users\".faction_id, \"users\".email, \"users\".first_name, \"users\".last_name, \"users\".verified, \"users\".old_password_required, \"users\".two_factor_authentication_activated, \"users\".two_factor_authentication_secret, \"users\".two_factor_authentication_is_set, \"users\".sups, \"users\".public_address, \"users\".private_address, \"users\".nonce, \"users\".keywords, \"users\".deleted_at, \"users\".updated_at, \"users\".created_at, \"users\".metadata, \"users\".mobile_number, \"users\".chat_banned_until, \"a\".\"organisation_id\""),
 		qm.From("\"users\""),
 		qm.InnerJoin("\"user_organisations\" as \"a\" on \"users\".\"id\" = \"a\".\"user_id\""),
 		qm.WhereIn("\"a\".\"organisation_id\" in ?", args...),
@@ -441,7 +441,7 @@ func (organisationL) LoadUsers(e boil.Executor, singular bool, maybeOrganisation
 		one := new(User)
 		var localJoinCol string
 
-		err = results.Scan(&one.ID, &one.Username, &one.RoleID, &one.AvatarID, &one.FacebookID, &one.GoogleID, &one.TwitchID, &one.TwitterID, &one.DiscordID, &one.FactionID, &one.Email, &one.FirstName, &one.LastName, &one.Verified, &one.OldPasswordRequired, &one.TwoFactorAuthenticationActivated, &one.TwoFactorAuthenticationSecret, &one.TwoFactorAuthenticationIsSet, &one.Sups, &one.PublicAddress, &one.PrivateAddress, &one.Nonce, &one.Keywords, &one.DeletedAt, &one.UpdatedAt, &one.CreatedAt, &one.Metadata, &one.MobileNumber, &localJoinCol)
+		err = results.Scan(&one.ID, &one.Username, &one.RoleID, &one.AvatarID, &one.FacebookID, &one.GoogleID, &one.TwitchID, &one.TwitterID, &one.DiscordID, &one.FactionID, &one.Email, &one.FirstName, &one.LastName, &one.Verified, &one.OldPasswordRequired, &one.TwoFactorAuthenticationActivated, &one.TwoFactorAuthenticationSecret, &one.TwoFactorAuthenticationIsSet, &one.Sups, &one.PublicAddress, &one.PrivateAddress, &one.Nonce, &one.Keywords, &one.DeletedAt, &one.UpdatedAt, &one.CreatedAt, &one.Metadata, &one.MobileNumber, &one.ChatBannedUntil, &localJoinCol)
 		if err != nil {
 			return errors.Wrap(err, "failed to scan eager loaded results for users")
 		}
