@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"passport"
 	"passport/db"
+	"passport/db/boiler"
 	"passport/passdb"
 	"passport/passlog"
 
@@ -26,7 +27,21 @@ func ProcessDeposits(records []*Record, ucm UserCacheMap) (int, int, error) {
 	ctx := context.Background()
 	success := 0
 	skipped := 0
+
+	l.Info().Int("records", len(records)).Msg("processing deposits")
 	for _, record := range records {
+		exists, err := boiler.Transactions(boiler.TransactionWhere.TransactionReference.EQ(record.TxHash)).Exists(passdb.StdConn)
+		if err != nil {
+			skipped++
+			l.Debug().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("check if tx exists")
+			continue
+		}
+
+		if exists {
+			skipped++
+			l.Debug().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("tx already exists")
+			continue
+		}
 		user, err := CreateOrGetUser(ctx, passdb.Conn, common.HexToAddress(record.FromAddress))
 		if err != nil {
 			skipped++
@@ -41,6 +56,12 @@ func ProcessDeposits(records []*Record, ucm UserCacheMap) (int, int, error) {
 			continue
 		}
 
+		if value.Equal(decimal.Zero) {
+			l.Debug().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("skipping zero value deposit")
+			skipped++
+			continue
+		}
+
 		msg := fmt.Sprintf("deposited %s SUPS", value.Shift(-1*passport.SUPSDecimals).StringFixed(4))
 		l.Debug().Str("msg", msg).Str("txid", record.TxHash).Msg("insert deposit tx")
 		trans := &passport.NewTransaction{
@@ -51,7 +72,6 @@ func ProcessDeposits(records []*Record, ucm UserCacheMap) (int, int, error) {
 			Description:          msg,
 			Group:                passport.TransactionGroupStore,
 		}
-
 		_, _, _, err = ucm.Process(trans)
 		if err != nil {
 			l.Err(err).Str("txid", record.TxHash).Msg("failed to create tx entry for deposit")
@@ -60,6 +80,10 @@ func ProcessDeposits(records []*Record, ucm UserCacheMap) (int, int, error) {
 		}
 		success++
 	}
+	l.Info().
+		Int("success", success).
+		Int("skipped", skipped).
+		Msg("synced deposits")
 
 	return success, skipped, nil
 }

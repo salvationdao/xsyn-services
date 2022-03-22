@@ -588,14 +588,10 @@ func SyncDeposits(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger
 	if err != nil {
 		return fmt.Errorf("get deposits: %w", err)
 	}
-	depositProcessSuccess, depositProcessSkipped, err := payments.ProcessDeposits(depositRecords, ucm)
+	_, _, err = payments.ProcessDeposits(depositRecords, ucm)
 	if err != nil {
 		return fmt.Errorf("process deposits: %w", err)
 	}
-	passlog.L.Info().
-		Int("success", depositProcessSuccess).
-		Int("skipped", depositProcessSkipped).
-		Msg("synced deposits")
 
 	return nil
 
@@ -979,11 +975,13 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	if enablePurchaseSubscription {
 		l := passlog.L.With().Str("svc", "avant_scraper").Logger()
 		db.PutInt(db.KeyLatestWithdrawBlock, 0)
+		db.PutInt(db.KeyLatestDepositBlock, 0)
 		db.PutInt(db.KeyLatestETHBlock, 0)
 		db.PutInt(db.KeyLatestBNBBlock, 0)
 		db.PutInt(db.KeyLatestBUSDBlock, 0)
 		db.PutInt(db.KeyLatestUSDCBlock, 0)
-		enableWithdrawRollback := db.GetBool(db.KeyEnableWithdrawRollback)
+
+		enableWithdrawRollback := db.GetBoolWithDefault(db.KeyEnableWithdrawRollback, false)
 		if !enableWithdrawRollback {
 			l.Debug().Bool("enable_withdraw_rollback", enableWithdrawRollback).Msg("withdraw rollback is disabled")
 		} else {
@@ -998,7 +996,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		go func() {
 			t := time.NewTicker(20 * time.Second)
 			for range t.C {
-				enableWithdrawRollback := db.GetBool(db.KeyEnableWithdrawRollback)
+				enableWithdrawRollback := db.GetBoolWithDefault(db.KeyEnableWithdrawRollback, false)
 				if !enableWithdrawRollback {
 					l.Debug().Bool("enable_withdraw_rollback", enableWithdrawRollback).Msg("withdraw rollback is disabled")
 				} else {

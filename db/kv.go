@@ -53,6 +53,15 @@ func GetStr(key string) string {
 	return get(key)
 
 }
+func GetStrWithDefault(key string, defaultValue string) string {
+	vStr := get(key)
+	if vStr == "" {
+		PutStr(key, defaultValue)
+		return defaultValue
+	}
+
+	return GetStr(key)
+}
 func PutStr(key, value string) {
 	put(key, value)
 }
@@ -64,6 +73,16 @@ func GetBool(key string) bool {
 		return false
 	}
 	return b
+}
+
+func GetBoolWithDefault(key string, defaultValue bool) bool {
+	vStr := get(key)
+	if vStr == "" {
+		PutBool(key, defaultValue)
+		return defaultValue
+	}
+
+	return GetBool(key)
 }
 func PutBool(key string, value bool) {
 	put(key, strconv.FormatBool(value))
@@ -78,18 +97,38 @@ func GetInt(key string) int {
 	}
 	return v
 }
+
+func GetIntWithDefault(key string, defaultValue int) int {
+	vStr := get(key)
+	if vStr == "" {
+		PutInt(key, defaultValue)
+		return defaultValue
+	}
+
+	return GetInt(key)
+}
+
 func PutInt(key string, value int) {
 	put(key, strconv.Itoa(value))
 }
 
-func GetTime(key string) int {
+func GetTime(key string) time.Time {
 	vStr := get(key)
-	v, err := strconv.Atoi(vStr)
+	t, err := time.Parse(time.RFC3339, vStr)
 	if err != nil {
 		passlog.L.Err(err).Str("key", key).Str("val", vStr).Msg("could not parse time")
-		return 0
+		return time.Time{}
 	}
-	return v
+	return t
+}
+func GetTimeWithDefault(key string, defaultValue time.Time) time.Time {
+	vStr := get(key)
+	if vStr == "" {
+		PutTime(key, defaultValue)
+		return defaultValue
+	}
+
+	return GetTime(key)
 }
 func PutTime(key string, value time.Time) {
 	put(key, value.Format(time.RFC3339))
