@@ -68,6 +68,8 @@ type API struct {
 
 	// supremacy client map
 	ClientMap *sync.Map
+
+	JWTKey []byte
 }
 
 // NewAPI registers routes
@@ -86,6 +88,7 @@ func NewAPI(
 	runBlockchainBridge bool,
 	msgBus *messagebus.MessageBus,
 	enablePurchaseSubscription bool,
+	jwtKey []byte,
 ) (*API, chi.Router) {
 
 	api := &API{
@@ -141,6 +144,7 @@ func NewAPI(
 		storeItemExternalUrl: externalUrl,
 
 		ClientMap: &sync.Map{},
+		JWTKey:    jwtKey,
 	}
 
 	cc := NewChainClients(log, api, config.BridgeParams, isTestnetBlockchain, runBlockchainBridge, enablePurchaseSubscription)

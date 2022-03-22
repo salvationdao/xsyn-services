@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"errors"
 	"log"
 	"net/http"
@@ -157,6 +158,7 @@ func main() {
 					// setup for webhook
 					&cli.StringFlag{Name: "gameserver_webhook_secret", Value: "e1BD3FF270804c6a9edJDzzDks87a8a4fde15c7=", EnvVars: []string{"GAMESERVER_WEBHOOK_SECRET"}, Usage: "Authorization key to passport webhook"},
 					&cli.StringFlag{Name: "gameserver_host_url", Value: "http://localhost:8084", EnvVars: []string{"GAMESERVER_HOST_URL"}, Usage: "Authorization key to passport webhook"},
+					&cli.StringFlag{Name: "jwt_key", Value: "9a5b8421bbe14e5a904cfd150a9951d3", EnvVars: []string{"STREAM_SITE_JWT_KEY"}, Usage: "JWT Key for signing token on stream site"},
 
 					/****************************
 					 *		Bridge details		*
@@ -717,6 +719,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	isTestnetBlockchain := ctxCLI.Bool("is_testnet_blockchain")
 	runBlockchainBridge := ctxCLI.Bool("run_blockchain_bridge")
 
+	jwtKey := ctxCLI.String("jwt_key")
 	mailDomain := ctxCLI.String("mail_domain")
 	mailAPIKey := ctxCLI.String("mail_apikey")
 	mailSender := ctxCLI.String("mail_sender")
@@ -898,6 +901,11 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		return terror.Error(err)
 	}
 
+	jwtKeyByteArray, err := base64.StdEncoding.DecodeString(jwtKey)
+	if err != nil {
+		return terror.Error(err, "Failed to convert string to byte array")
+	}
+
 	// API Server
 	api, routes := api.NewAPI(log,
 		pgxconn,
@@ -913,6 +921,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		runBlockchainBridge,
 		msgBus,
 		enablePurchaseSubscription,
+		jwtKeyByteArray,
 	)
 
 	passlog.L.Info().Msg("start rpc server")
