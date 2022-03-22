@@ -210,6 +210,7 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Cli
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
+	// TODO: remove megas filters later (?)
 	total, items, err := db.StoreItemsList(
 		ctx, sc.Conn,
 		req.Payload.Search,
@@ -227,17 +228,7 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Cli
 	}
 
 	storeItemIDs := make([]passport.StoreItemID, 0)
-	// filter by megas for now
 	for _, storeItem := range items {
-		if storeItem.RestrictionGroup == db.RestrictionGroupPrize {
-			continue
-		}
-		if storeItem.Tier != db.TierMega {
-			continue
-		}
-		if storeItem.IsDefault {
-			continue
-		}
 		storeItemIDs = append(storeItemIDs, storeItem.ID)
 	}
 
