@@ -33,6 +33,7 @@ func AdminRoutes(ucm *UserCacheMap) chi.Router {
 	r.Get("/chat_timeout_userid/{userID}/{minutes}", WithError(WithAdmin(ChatTimeoutUserID)))
 	r.Get("/rename_ban_username/{username}/{banned}", WithError(WithAdmin(RenameBanUsername)))
 	r.Get("/rename_ban_userID/{userID}/{banned}", WithError(WithAdmin(RenameBanUserID)))
+	r.Get("/rename_asset/{hash}/{newName}", WithError(WithAdmin(RenameAsset)))
 	r.Get("/purchased_items", WithError(WithAdmin(ListPurchasedItems)))
 	r.Get("/store_items", WithError(WithAdmin(ListStoreItems)))
 
@@ -253,6 +254,33 @@ func RenameBanUserID(w http.ResponseWriter, r *http.Request) (int, error) {
 	_, err = user.Update(passdb.StdConn, boil.Infer())
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to update user renamed banned status")
+	}
+
+	return http.StatusOK, nil
+}
+
+func RenameAsset(w http.ResponseWriter, r *http.Request) (int, error) {
+	hash := chi.URLParam(r, "hash")
+	if hash == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("hash cannot be empty"), "Unable to find hash, hash empty.")
+	}
+	newName := chi.URLParam(r, "newName")
+	if newName == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("newName cannot be empty"), "Unable to find newName, newName empty.")
+	}
+
+	item, err := db.PurchasedItemByHash(hash)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Unable to find asset.")
+	}
+	if item == nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("asset is nil"), "Unable to find asset, asset nil.")
+	}
+
+	// update asset name
+	item, err = db.PurchasedItemSetName(uuid.Must(uuid.FromString(item.ID)), newName)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Unable to update asset name.")
 	}
 
 	return http.StatusOK, nil
