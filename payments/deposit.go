@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"passport"
+	"passport/db"
 	"passport/passdb"
 	"passport/passlog"
 
@@ -11,14 +12,13 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-var latestDepositBlock = 0
-
 func GetDeposits(testnet bool) ([]*Record, error) {
+	latestDepositBlock := db.GetInt(db.KeyLatestDepositBlock)
 	records, err := get("sups_deposit_txs", latestDepositBlock, testnet)
 	if err != nil {
 		return nil, err
 	}
-	latestDepositBlock = latestBlockFromRecords(latestDepositBlock, records)
+	db.PutInt(db.KeyLatestDepositBlock, latestBlockFromRecords(latestDepositBlock, records))
 	return records, nil
 }
 func ProcessDeposits(records []*Record, ucm UserCacheMap) (int, int, error) {

@@ -185,10 +185,9 @@ func get(sym Symbol, latestBlock int, testnet bool) ([]*Record, error) {
 	return result, nil
 }
 
-var LastBUSDBlock = 0
-
 func BUSD() ([]*Record, error) {
 	contractAddr := "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56"
+	LastBUSDBlock := db.GetInt(db.KeyLatestBUSDBlock)
 	records, err := get(BUSDSymbol, LastBUSDBlock, false)
 	if err != nil {
 		return nil, err
@@ -211,17 +210,15 @@ func BUSD() ([]*Record, error) {
 		results = append(results, record)
 	}
 	if latestBlock > LastBUSDBlock {
-		LastBUSDBlock = latestBlock
+		db.PutInt(db.KeyLatestBUSDBlock, latestBlock)
 	}
 
 	return results, nil
 }
 
-var LastUSDCBlock = 0
-
 func USDC() ([]*Record, error) {
 	contractAddr := "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
-
+	LastUSDCBlock := db.GetInt(db.KeyLatestUSDCBlock)
 	records, err := get(USDCSymbol, LastUSDCBlock, false)
 	if err != nil {
 		return nil, err
@@ -244,15 +241,13 @@ func USDC() ([]*Record, error) {
 		results = append(results, record)
 	}
 	if latestBlock > LastUSDCBlock {
-		LastUSDCBlock = latestBlock
+		db.PutInt(db.KeyLatestUSDCBlock, latestBlock)
 	}
 	return results, nil
 }
 
-var LastETHBlock = 0
-
 func ETH() ([]*Record, error) {
-
+	LastETHBlock := db.GetInt(db.KeyLatestETHBlock)
 	records, err := get(ETHSymbol, LastETHBlock, false)
 	if err != nil {
 		return nil, err
@@ -271,14 +266,13 @@ func ETH() ([]*Record, error) {
 		results = append(results, record)
 	}
 	if latestBlock > LastETHBlock {
-		LastETHBlock = latestBlock
+		db.PutInt(db.KeyLatestETHBlock, latestBlock)
 	}
 	return results, nil
 }
 
-var LastBNBBlock = 0
-
 func BNB() ([]*Record, error) {
+	LastBNBBlock := db.GetInt(db.KeyLatestBNBBlock)
 	records, err := get(BNBSymbol, LastBNBBlock, false)
 	if err != nil {
 		return nil, err
@@ -297,7 +291,7 @@ func BNB() ([]*Record, error) {
 		results = append(results, record)
 	}
 	if latestBlock > LastBNBBlock {
-		LastBNBBlock = latestBlock
+		db.PutInt(db.KeyLatestBNBBlock, latestBlock)
 	}
 	return results, nil
 }

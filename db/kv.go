@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"passport/db/boiler"
 	"passport/passdb"
 	"passport/passlog"
@@ -10,6 +11,14 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
+const KeyLatestWithdrawBlock = "latest_withdraw_block"
+const KeyLatestDepositBlock = "latest_deposit_block"
+const KeyLatestBUSDBlock = "latest_busd_block"
+const KeyLatestUSDCBlock = "latest_usdc_block"
+const KeyLatestETHBlock = "latest_eth_block"
+const KeyLatestBNBBlock = "latest_bnb_block"
+const KeyEnableWithdrawRollback = "enable_withdraw_rollback"
+
 func get(key string) string {
 	exists, err := boiler.KVS(boiler.KVWhere.Key.EQ(key)).Exists(passdb.StdConn)
 	if err != nil {
@@ -17,7 +26,7 @@ func get(key string) string {
 		return ""
 	}
 	if !exists {
-		passlog.L.Err(err).Str("key", key).Msg("kv does not exist")
+		passlog.L.Err(errors.New("kv does not exist")).Str("key", key).Msg("kv does not exist")
 		return ""
 	}
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(key)).One(passdb.StdConn)
@@ -27,6 +36,7 @@ func get(key string) string {
 	}
 	return kv.Value
 }
+
 func put(key, value string) {
 	kv := boiler.KV{
 		Key:   key,

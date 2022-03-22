@@ -64,11 +64,13 @@ func InsertPendingRefund(ucm UserCacheMap, userID passport.UserID, amount decima
 var latestWithdrawBlock = 0
 
 func GetWithdraws(testnet bool) ([]*Record, error) {
+	latestWithdrawBlock = db.GetInt(db.KeyLatestWithdrawBlock)
 	records, err := get("sups_withdraw_txs", latestWithdrawBlock, testnet)
 	if err != nil {
 		return nil, fmt.Errorf("get withdraw txes: %w", err)
 	}
-	latestWithdrawBlock = latestBlockFromRecords(latestWithdrawBlock, records)
+	newLatestWithdrawBlock := latestBlockFromRecords(latestWithdrawBlock, records)
+	db.PutInt("latest_withdraw_block", newLatestWithdrawBlock)
 	return records, nil
 }
 
@@ -99,7 +101,7 @@ func UpdateSuccessfulWithdrawsWithTxHash(records []*Record) (int, int) {
 
 		u, err := db.UserByPublicAddress(context.Background(), passdb.Conn, common.HexToAddress(record.ToAddress))
 		if err != nil {
-			l.Warn().Err(err).Msg("user withdrawing does not exist")
+			l.Debug().Err(err).Msg("user withdrawing does not exist")
 			skipped++
 			continue
 		}
@@ -111,6 +113,7 @@ func UpdateSuccessfulWithdrawsWithTxHash(records []*Record) (int, int) {
 			boiler.PendingRefundWhere.RefundCanceledAt.IsNull(), // Not cancelled yet
 			boiler.PendingRefundWhere.DeletedAt.IsNull(),
 			boiler.PendingRefundWhere.TXHash.EQ(""),
+			boiler.PendingRefundWhere.TXHash.NEQ(record.TxHash), // Ignore tx hash if already assigned to another pending refund
 		}
 
 		count, err := boiler.PendingRefunds(filter...).Count(passdb.StdConn)

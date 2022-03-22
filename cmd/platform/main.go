@@ -181,7 +181,6 @@ func main() {
 					&cli.BoolFlag{Name: "avant_testnet", Value: false, EnvVars: []string{envPrefix + "_AVANT_TESTNET"}, Usage: "Use testnet for Avant data scraper"},
 					&cli.BoolFlag{Name: "skip_update_users_mixed_case", Value: false, EnvVars: []string{envPrefix + "_SKIP_UPDATE_USERS_MIXED_CASE"}, Usage: "Set to true after users have been all updated as mixed case"},
 
-					&cli.BoolFlag{Name: "enable_withdraw_rollback", Value: false, EnvVars: []string{envPrefix + "_ENABLE_WITHDRAW_ROLLBACK"}, Usage: "Enable automatic withdraw rollbacks"},
 					//moralis key- set in env vars
 					//moralis key- set in env vars
 					//moralis key- set in env vars
@@ -978,8 +977,19 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	}()
 
 	if enablePurchaseSubscription {
+		l := passlog.L.With().Str("svc", "avant_scraper").Logger()
+		db.PutInt(db.KeyLatestWithdrawBlock, 0)
+		db.PutInt(db.KeyLatestETHBlock, 0)
+		db.PutInt(db.KeyLatestBNBBlock, 0)
+		db.PutInt(db.KeyLatestBUSDBlock, 0)
+		db.PutInt(db.KeyLatestUSDCBlock, 0)
+		enableWithdrawRollback := db.GetBool(db.KeyEnableWithdrawRollback)
+		if !enableWithdrawRollback {
+			l.Debug().Bool("enable_withdraw_rollback", enableWithdrawRollback).Msg("withdraw rollback is disabled")
+		} else {
+			l.Debug().Bool("enable_withdraw_rollback", enableWithdrawRollback).Msg("withdraw rollback is enabled")
+		}
 		avantTestnet := ctxCLI.Bool("avant_testnet")
-		enableWithdrawRollback := ctxCLI.Bool("enable_withdraw_rollback")
 		err := SyncFunc(ucm, pgxconn, log, avantTestnet, enableWithdrawRollback)
 		if err != nil {
 			log.Error().Err(err).Msg("sync")
@@ -988,6 +998,12 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		go func() {
 			t := time.NewTicker(20 * time.Second)
 			for range t.C {
+				enableWithdrawRollback := db.GetBool(db.KeyEnableWithdrawRollback)
+				if !enableWithdrawRollback {
+					l.Debug().Bool("enable_withdraw_rollback", enableWithdrawRollback).Msg("withdraw rollback is disabled")
+				} else {
+					l.Debug().Bool("enable_withdraw_rollback", enableWithdrawRollback).Msg("withdraw rollback is enabled")
+				}
 				err := SyncFunc(ucm, pgxconn, log, avantTestnet, enableWithdrawRollback)
 				if err != nil {
 					log.Error().Err(err).Msg("sync")
