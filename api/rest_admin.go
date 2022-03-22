@@ -10,6 +10,7 @@ import (
 	"passport/db"
 	"passport/db/boiler"
 	"passport/passdb"
+	"passport/passlog"
 	"strconv"
 	"strings"
 	"time"
@@ -41,8 +42,8 @@ func AdminRoutes(ucm *UserCacheMap) chi.Router {
 	r.Post("/purchased_items/set_owner/{purchased_item_id}/{owner_id}", WithError(WithAdmin(PurchasedItemSetOwner)))
 	r.Post("/purchased_items/transfer/from/{from}/to/{to}/collection_id/{collection_id}/token_id/{token_id}", WithError(WithAdmin(TransferAsset())))
 
-	r.Post("/transactions/create", WithError(WithAdmin(CreateTransaction((ucm)))))
-	r.Post("/transactions/reverse/{transaction_id}", WithError(WithAdmin(ReverseUserTransaction((ucm)))))
+	r.Post("/transactions/create", WithError(WithAdmin(CreateTransaction(ucm))))
+	r.Post("/transactions/reverse/{transaction_id}", WithError(WithAdmin(ReverseUserTransaction(ucm))))
 	r.Get("/transactions/list/user/{public_address}", WithError(WithAdmin(ListUserTransactions)))
 
 	r.Post("/sync/store_items", WithError(WithAdmin(SyncStoreItems)))
@@ -56,11 +57,13 @@ func WithAdmin(next func(w http.ResponseWriter, r *http.Request) (int, error)) f
 		apiKeyIDStr := r.Header.Get("X-Authorization")
 		apiKeyID, err := uuid.FromString(apiKeyIDStr)
 		if err != nil {
-			return http.StatusUnauthorized, terror.Error(err, "Unauthorized.")
+			passlog.L.Warn().Err(err).Str("apiKeyID", apiKeyIDStr).Msg("unauthed attempted at mod rest end point")
+			return http.StatusUnauthorized, terror.Error(terror.ErrUnauthorised, "Unauthorized.")
 		}
 		apiKey, err := db.APIKey(apiKeyID)
 		if err != nil {
-			return http.StatusUnauthorized, terror.Error(err, "Unauthorized.")
+			passlog.L.Warn().Err(err).Str("apiKeyID", apiKeyIDStr).Msg("unauthed attempted at mod rest end point")
+			return http.StatusUnauthorized, terror.Error(terror.ErrUnauthorised, "Unauthorized.")
 		}
 		if apiKey.Type != "ADMIN" {
 			return http.StatusUnauthorized, terror.Error(fmt.Errorf("not admin key: %s", apiKey.Type), "Unauthorized.")

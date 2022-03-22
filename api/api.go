@@ -200,6 +200,7 @@ func NewAPI(
 			r.Mount("/files", FileRouter(conn, api))
 			r.Mount("/nfts", api.NFTRoutes())
 			r.Mount("/admin", AdminRoutes(ucm))
+			r.Mount("/moderator", ModeratorRoutes())
 
 			r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", WithError(api.Auth.GetNonce))
