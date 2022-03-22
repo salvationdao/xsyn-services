@@ -654,6 +654,7 @@ func (o *User) IssueTokens(mods ...qm.QueryMod) issueTokenQuery {
 
 	queryMods = append(queryMods,
 		qm.Where("\"issue_tokens\".\"user_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"issue_tokens\".\"deleted_at\""),
 	)
 
 	query := IssueTokens(queryMods...)
@@ -1448,6 +1449,7 @@ func (userL) LoadIssueTokens(e boil.Executor, singular bool, maybeUser interface
 	query := NewQuery(
 		qm.From(`issue_tokens`),
 		qm.WhereIn(`issue_tokens.user_id in ?`, args...),
+		qmhelper.WhereIsNull(`issue_tokens.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
