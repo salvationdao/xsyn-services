@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -26,10 +25,6 @@ type IssueToken struct {
 	ID        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	UserID    string    `boiler:"user_id" boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
 	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UserAgent string    `boiler:"user_agent" boil:"user_agent" json:"user_agent" toml:"user_agent" yaml:"user_agent"`
-	ExpiresAt null.Time `boiler:"expires_at" boil:"expires_at" json:"expires_at,omitempty" toml:"expires_at" yaml:"expires_at,omitempty"`
-	UpdatedAt time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *issueTokenR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L issueTokenL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -39,36 +34,20 @@ var IssueTokenColumns = struct {
 	ID        string
 	UserID    string
 	CreatedAt string
-	UserAgent string
-	ExpiresAt string
-	UpdatedAt string
-	DeletedAt string
 }{
 	ID:        "id",
 	UserID:    "user_id",
 	CreatedAt: "created_at",
-	UserAgent: "user_agent",
-	ExpiresAt: "expires_at",
-	UpdatedAt: "updated_at",
-	DeletedAt: "deleted_at",
 }
 
 var IssueTokenTableColumns = struct {
 	ID        string
 	UserID    string
 	CreatedAt string
-	UserAgent string
-	ExpiresAt string
-	UpdatedAt string
-	DeletedAt string
 }{
 	ID:        "issue_tokens.id",
 	UserID:    "issue_tokens.user_id",
 	CreatedAt: "issue_tokens.created_at",
-	UserAgent: "issue_tokens.user_agent",
-	ExpiresAt: "issue_tokens.expires_at",
-	UpdatedAt: "issue_tokens.updated_at",
-	DeletedAt: "issue_tokens.deleted_at",
 }
 
 // Generated where
@@ -77,18 +56,10 @@ var IssueTokenWhere = struct {
 	ID        whereHelperstring
 	UserID    whereHelperstring
 	CreatedAt whereHelpertime_Time
-	UserAgent whereHelperstring
-	ExpiresAt whereHelpernull_Time
-	UpdatedAt whereHelpertime_Time
-	DeletedAt whereHelpernull_Time
 }{
 	ID:        whereHelperstring{field: "\"issue_tokens\".\"id\""},
 	UserID:    whereHelperstring{field: "\"issue_tokens\".\"user_id\""},
 	CreatedAt: whereHelpertime_Time{field: "\"issue_tokens\".\"created_at\""},
-	UserAgent: whereHelperstring{field: "\"issue_tokens\".\"user_agent\""},
-	ExpiresAt: whereHelpernull_Time{field: "\"issue_tokens\".\"expires_at\""},
-	UpdatedAt: whereHelpertime_Time{field: "\"issue_tokens\".\"updated_at\""},
-	DeletedAt: whereHelpernull_Time{field: "\"issue_tokens\".\"deleted_at\""},
 }
 
 // IssueTokenRels is where relationship names are stored.
@@ -112,9 +83,9 @@ func (*issueTokenR) NewStruct() *issueTokenR {
 type issueTokenL struct{}
 
 var (
-	issueTokenAllColumns            = []string{"id", "user_id", "created_at", "user_agent", "expires_at", "updated_at", "deleted_at"}
-	issueTokenColumnsWithoutDefault = []string{"id", "user_id", "expires_at", "deleted_at"}
-	issueTokenColumnsWithDefault    = []string{"created_at", "user_agent", "updated_at"}
+	issueTokenAllColumns            = []string{"id", "user_id", "created_at"}
+	issueTokenColumnsWithoutDefault = []string{"id", "user_id"}
+	issueTokenColumnsWithDefault    = []string{"created_at"}
 	issueTokenPrimaryKeyColumns     = []string{"id"}
 )
 
@@ -525,7 +496,7 @@ func (o *IssueToken) SetUser(exec boil.Executor, insert bool, related *User) err
 
 // IssueTokens retrieves all the records using an executor.
 func IssueTokens(mods ...qm.QueryMod) issueTokenQuery {
-	mods = append(mods, qm.From("\"issue_tokens\""), qmhelper.WhereIsNull("\"issue_tokens\".\"deleted_at\""))
+	mods = append(mods, qm.From("\"issue_tokens\""))
 	return issueTokenQuery{NewQuery(mods...)}
 }
 
@@ -539,7 +510,7 @@ func FindIssueToken(exec boil.Executor, iD string, selectCols ...string) (*Issue
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"issue_tokens\" where \"id\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"issue_tokens\" where \"id\"=$1", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -571,9 +542,6 @@ func (o *IssueToken) Insert(exec boil.Executor, columns boil.Columns) error {
 
 	if o.CreatedAt.IsZero() {
 		o.CreatedAt = currTime
-	}
-	if o.UpdatedAt.IsZero() {
-		o.UpdatedAt = currTime
 	}
 
 	if err := o.doBeforeInsertHooks(exec); err != nil {
@@ -649,10 +617,6 @@ func (o *IssueToken) Insert(exec boil.Executor, columns boil.Columns) error {
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
 func (o *IssueToken) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
-	currTime := time.Now().In(boil.GetLocation())
-
-	o.UpdatedAt = currTime
-
 	var err error
 	if err = o.doBeforeUpdateHooks(exec); err != nil {
 		return 0, err
@@ -786,7 +750,6 @@ func (o *IssueToken) Upsert(exec boil.Executor, updateOnConflict bool, conflictC
 	if o.CreatedAt.IsZero() {
 		o.CreatedAt = currTime
 	}
-	o.UpdatedAt = currTime
 
 	if err := o.doBeforeUpsertHooks(exec); err != nil {
 		return err
@@ -897,7 +860,7 @@ func (o *IssueToken) Upsert(exec boil.Executor, updateOnConflict bool, conflictC
 
 // Delete deletes a single IssueToken record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *IssueToken) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o *IssueToken) Delete(exec boil.Executor) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no IssueToken provided for delete")
 	}
@@ -906,26 +869,8 @@ func (o *IssueToken) Delete(exec boil.Executor, hardDelete bool) (int64, error) 
 		return 0, err
 	}
 
-	var (
-		sql  string
-		args []interface{}
-	)
-	if hardDelete {
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), issueTokenPrimaryKeyMapping)
-		sql = "DELETE FROM \"issue_tokens\" WHERE \"id\"=$1"
-	} else {
-		currTime := time.Now().In(boil.GetLocation())
-		o.DeletedAt = null.TimeFrom(currTime)
-		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"issue_tokens\" SET %s WHERE \"id\"=$2",
-			strmangle.SetParamNames("\"", "\"", 1, wl),
-		)
-		valueMapping, err := queries.BindMapping(issueTokenType, issueTokenMapping, append(wl, issueTokenPrimaryKeyColumns...))
-		if err != nil {
-			return 0, err
-		}
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
-	}
+	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), issueTokenPrimaryKeyMapping)
+	sql := "DELETE FROM \"issue_tokens\" WHERE \"id\"=$1"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -949,17 +894,12 @@ func (o *IssueToken) Delete(exec boil.Executor, hardDelete bool) (int64, error) 
 }
 
 // DeleteAll deletes all matching rows.
-func (q issueTokenQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (q issueTokenQuery) DeleteAll(exec boil.Executor) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no issueTokenQuery provided for delete all")
 	}
 
-	if hardDelete {
-		queries.SetDelete(q.Query)
-	} else {
-		currTime := time.Now().In(boil.GetLocation())
-		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
-	}
+	queries.SetDelete(q.Query)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -975,7 +915,7 @@ func (q issueTokenQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, 
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o IssueTokenSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o IssueTokenSlice) DeleteAll(exec boil.Executor) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -988,31 +928,14 @@ func (o IssueTokenSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, 
 		}
 	}
 
-	var (
-		sql  string
-		args []interface{}
-	)
-	if hardDelete {
-		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), issueTokenPrimaryKeyMapping)
-			args = append(args, pkeyArgs...)
-		}
-		sql = "DELETE FROM \"issue_tokens\" WHERE " +
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, issueTokenPrimaryKeyColumns, len(o))
-	} else {
-		currTime := time.Now().In(boil.GetLocation())
-		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), issueTokenPrimaryKeyMapping)
-			args = append(args, pkeyArgs...)
-			obj.DeletedAt = null.TimeFrom(currTime)
-		}
-		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"issue_tokens\" SET %s WHERE "+
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, issueTokenPrimaryKeyColumns, len(o)),
-			strmangle.SetParamNames("\"", "\"", 1, wl),
-		)
-		args = append([]interface{}{currTime}, args...)
+	var args []interface{}
+	for _, obj := range o {
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), issueTokenPrimaryKeyMapping)
+		args = append(args, pkeyArgs...)
 	}
+
+	sql := "DELETE FROM \"issue_tokens\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, issueTokenPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1066,8 +989,7 @@ func (o *IssueTokenSlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"issue_tokens\".* FROM \"issue_tokens\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, issueTokenPrimaryKeyColumns, len(*o)) +
-		"and \"deleted_at\" is null"
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, issueTokenPrimaryKeyColumns, len(*o))
 
 	q := queries.Raw(sql, args...)
 
@@ -1084,7 +1006,7 @@ func (o *IssueTokenSlice) ReloadAll(exec boil.Executor) error {
 // IssueTokenExists checks if the IssueToken row exists.
 func IssueTokenExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"issue_tokens\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"issue_tokens\" where \"id\"=$1 limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
