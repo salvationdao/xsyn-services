@@ -434,6 +434,7 @@ SELECT
 row_to_json(c) as collection,
 store_items.id,
 store_items.tier,
+store_items.is_default,
 store_items.restriction_group,
 store_items.deleted_at,
 store_items.updated_at,
@@ -539,6 +540,14 @@ func StoreItemsList(
 
 	}
 
+	// Filter by Megas for now
+	filterByMegasCondition := fmt.Sprintf(
+		`AND store_items.restriction_group != $%d AND store_items.tier = $%d AND store_items.is_default = false`,
+		len(args)+1,
+		len(args)+2,
+	)
+	args = append(args, RestrictionGroupPrize, TierMega)
+
 	// Get Total Found
 	countQ := fmt.Sprintf(`--sql
 		SELECT COUNT(DISTINCT store_items.id)
@@ -546,10 +555,12 @@ func StoreItemsList(
 		WHERE store_items.deleted_at %s
 			%s
 			%s
+			%s
 		`,
 		StoreItemGetFrom,
 		archiveCondition,
 		filterConditionsString,
+		filterByMegasCondition,
 		searchCondition,
 	)
 
@@ -578,10 +589,12 @@ func StoreItemsList(
 		WHERE store_items.deleted_at %s
 			%s
 			%s
+			%s
 		%s
 		%s`,
 		archiveCondition,
 		filterConditionsString,
+		filterByMegasCondition,
 		searchCondition,
 		orderBy,
 		limit,
