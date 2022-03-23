@@ -164,6 +164,7 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 		return terror.Error(fmt.Errorf("failed to enlist faction"))
 	}
 
+	// TODO: generate a new token and reply
 	reply(true)
 
 	return nil

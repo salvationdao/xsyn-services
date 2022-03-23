@@ -15,19 +15,19 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type UsersGetReq struct {
-	UserIDs []passport.UserID `json:"userIDs"`
+type UserGetReq struct {
+	UserID passport.UserID `json:"userID"`
 }
 
-type UsersGetResp struct {
-	Users []*passport.User `json:"users"`
+type UserGetResp struct {
+	User *passport.User `json:"user"`
 }
 
-func (c *S) SupremacyUsersGetHandler(req UsersGetReq, resp *UsersGetResp) error {
+func (c *S) SupremacyUserGetHandler(req UserGetReq, resp *UserGetResp) error {
 	ctx := context.Background()
 
 	var err error
-	resp.Users, err = db.UserGetByIDs(ctx, c.Conn, req.UserIDs)
+	resp.User, err = db.UserGet(ctx, c.Conn, req.UserID)
 	if err != nil {
 		return terror.Error(err)
 	}
