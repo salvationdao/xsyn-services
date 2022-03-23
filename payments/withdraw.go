@@ -61,26 +61,13 @@ func InsertPendingRefund(ucm UserCacheMap, userID passport.UserID, amount decima
 	return txHold.ID, nil
 }
 
-var latestWithdrawBlock = 0
-
-func GetWithdraws(testnet bool) ([]*Record, error) {
-	latestWithdrawBlock = db.GetInt(db.KeyLatestWithdrawBlock)
-	records, err := get("sups_withdraw_txs", latestWithdrawBlock, testnet)
-	if err != nil {
-		return nil, fmt.Errorf("get withdraw txes: %w", err)
-	}
-	newLatestWithdrawBlock := latestBlockFromRecords(latestWithdrawBlock, records)
-	db.PutInt("latest_withdraw_block", newLatestWithdrawBlock)
-	return records, nil
-}
-
-func UpdateSuccessfulWithdrawsWithTxHash(records []*Record) (int, int) {
+func UpdateSuccessfulWithdrawsWithTxHash(records []*SUPTransferRecord) (int, int) {
 	l := passlog.L.With().Str("svc", "avant_pending_refund_set_tx_hash").Logger()
 
 	skipped := 0
 	success := 0
 	for _, record := range records {
-		val, err := decimal.NewFromString(record.JSON.Value)
+		val, err := decimal.NewFromString(record.ValueInt)
 		if err != nil {
 			l.Warn().
 				Str("user_addr", record.ToAddress).
@@ -129,7 +116,6 @@ func UpdateSuccessfulWithdrawsWithTxHash(records []*Record) (int, int) {
 		}
 
 		// Get pending refunds for user that are ready to be confirmed as on chain
-		boil.DebugMode = true
 		filter = append(filter, qm.OrderBy("created_at ASC")) // Sort so we get the oldest one
 		pendingRefund, err := boiler.PendingRefunds(filter...).One(passdb.StdConn)
 		if err != nil {
@@ -137,7 +123,6 @@ func UpdateSuccessfulWithdrawsWithTxHash(records []*Record) (int, int) {
 			skipped++
 			continue
 		}
-		boil.DebugMode = false
 		pendingRefund.TXHash = record.TxHash
 		pendingRefund.RefundCanceledAt = null.TimeFrom(time.Now())
 
@@ -175,12 +160,11 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 		boiler.PendingRefundWhere.TXHash.EQ(""),
 		qm.Load(boiler.PendingRefundRels.TransactionReferenceTransaction),
 	}
-	boil.DebugMode = true
+
 	refundsToProcess, err := boiler.PendingRefunds(filter...).All(passdb.StdConn)
 	if err != nil {
 		return success, skipped, err
 	}
-	boil.DebugMode = false
 
 	for _, refund := range refundsToProcess {
 		userUUID, err := uuid.FromString(refund.R.TransactionReferenceTransaction.Debit)

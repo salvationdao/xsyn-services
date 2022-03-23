@@ -28,12 +28,12 @@ import (
 	rpprof "runtime/pprof"
 
 	"github.com/jackc/pgx/v4/stdlib"
+	"github.com/shopspring/decimal"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/oklog/run"
-	"github.com/shopspring/decimal"
 
 	_ "github.com/lib/pq" //postgres drivers for initialization
 
@@ -459,90 +459,37 @@ func SyncPayments(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger
 		return fmt.Errorf("get bnb payments: %w", err)
 	}
 
-	z := decimal.Zero
-	totalSupsSold := decimal.Zero
-	for _, r := range records1 {
-		sups, err := decimal.NewFromString(r.Sups)
-		if err != nil {
-			return err
-		}
-		totalSupsSold = totalSupsSold.Add(sups)
-		d, err := decimal.NewFromString(r.Value)
-		if err != nil {
-			log.Error().Err(err).Msg("parse decimal from string")
-		}
-		z = z.Add(d)
-	}
-	log.Info().Int("records", len(records1)).Str("sym", "BNB").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+	log.Info().Int("records", len(records1)).Str("sym", "BNB").Msg("fetch purchases")
 
 	records2, err := payments.BUSD()
 	if err != nil {
 		return fmt.Errorf("get busd payments: %w", err)
 	}
 
-	z = decimal.Zero
-	totalSupsSold = decimal.Zero
-	for _, r := range records2 {
-		sups, err := decimal.NewFromString(r.Sups)
-		if err != nil {
-			return err
-		}
-		totalSupsSold = totalSupsSold.Add(sups)
-		d, err := decimal.NewFromString(r.Value)
-		if err != nil {
-			log.Error().Err(err).Msg("parse decimal from string")
-		}
-		z = z.Add(d)
-	}
-	log.Info().Int("records", len(records2)).Str("sym", "BUSD").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+	log.Info().Int("records", len(records2)).Str("sym", "BUSD").Msg("fetch purchases")
 
 	records3, err := payments.ETH()
 	if err != nil {
 		return fmt.Errorf("get eth payments: %w", err)
 	}
-	totalSupsSold = decimal.Zero
-	z = decimal.Zero
-	for _, r := range records3 {
-		sups, err := decimal.NewFromString(r.Sups)
-		if err != nil {
-			return err
-		}
-		totalSupsSold = totalSupsSold.Add(sups)
-		d, err := decimal.NewFromString(r.Value)
-		if err != nil {
-			log.Error().Err(err).Msg("parse decimal from string")
-		}
-		z = z.Add(d)
-	}
-	log.Info().Int("records", len(records3)).Str("sym", "ETH").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+	log.Info().Int("records", len(records3)).Str("sym", "ETH").Msg("fetch purchases")
 	records4, err := payments.USDC()
 	if err != nil {
 		return fmt.Errorf("get usdc payments: %w", err)
 	}
-	totalSupsSold = decimal.Zero
-	z = decimal.Zero
-	for _, r := range records4 {
-		sups, err := decimal.NewFromString(r.Sups)
-		if err != nil {
-			return err
-		}
-		totalSupsSold = totalSupsSold.Add(sups)
-		d, err := decimal.NewFromString(r.Value)
-		if err != nil {
-			log.Error().Err(err).Msg("parse decimal from string")
-		}
-		z = z.Add(d)
-	}
-	log.Info().Int("records", len(records4)).Str("sym", "USDC").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+	log.Info().Int("records", len(records4)).Str("sym", "USDC").Msg("fetch purchases")
 
-	records1 = append(records1, records2...)
-	records1 = append(records1, records3...)
-	records1 = append(records1, records4...)
+	records := []*payments.PurchaseRecord{}
+	records = append(records, records1...)
+	records = append(records, records2...)
+	records = append(records, records3...)
+	records = append(records, records4...)
+
 	log.Info().Int("records", len(records1)).Msg("Syncing payments...")
 	successful := 0
 	skipped := 0
 	failed := 0
-	for _, r := range records1 {
+	for _, r := range records {
 		ctx := context.Background()
 
 		exists, err := db.TransactionExists(ctx, conn, r.TxHash)
@@ -563,7 +510,7 @@ func SyncPayments(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger
 			continue
 		}
 
-		input, _, _, err := payments.ProcessValues(r.Sups, r.Value, r.JSON.TokenDecimal)
+		input, _, err := payments.ProcessValues(r.Sups, r.ValueInt, r.ValueDecimals)
 		if err != nil {
 			return err
 		}
@@ -574,7 +521,7 @@ func SyncPayments(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger
 			continue
 		}
 
-		err = payments.StoreRecord(ctx, passport.XsynSaleUserID, user.ID, ucm, r, true)
+		err = payments.StoreRecord(ctx, passport.XsynSaleUserID, user.ID, ucm, r)
 		if err != nil && strings.Contains(err.Error(), "duplicate key") {
 			skipped++
 			continue
@@ -589,6 +536,7 @@ func SyncPayments(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger
 
 	}
 	log.Info().Int("skipped", skipped).Int("successful", successful).Int("failed", failed).Msg("synced payments")
+
 	return nil
 
 }
@@ -624,7 +572,7 @@ func SyncWithdraw(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger
 
 }
 func SyncNFTs(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
-	nftOwnerStatuses, err := payments.AllNFTOwners(isTestnet)
+	nftOwnerStatuses, err := payments.GetNFTOwnerRecords(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get nft owners: %w", err)
 	}
@@ -639,27 +587,35 @@ func SyncNFTs(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, is
 
 func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool) error {
 	go func(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
-		err := SyncPayments(ucm, conn, log, isTestnet)
-		if err != nil {
-			passlog.L.Err(err).Msg("failed to sync payments")
+		if db.GetBoolWithDefault(db.KeyEnableSyncPayments, false) {
+			err := SyncPayments(ucm, conn, log, isTestnet)
+			if err != nil {
+				passlog.L.Err(err).Msg("failed to sync payments")
+			}
 		}
 	}(ucm, conn, log, isTestnet)
 	go func(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
-		err := SyncDeposits(ucm, conn, log, isTestnet)
-		if err != nil {
-			passlog.L.Err(err).Msg("failed to sync deposits")
+		if db.GetBoolWithDefault(db.KeyEnableSyncDeposits, false) {
+			err := SyncDeposits(ucm, conn, log, isTestnet)
+			if err != nil {
+				passlog.L.Err(err).Msg("failed to sync deposits")
+			}
 		}
 	}(ucm, conn, log, isTestnet)
 	go func(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
-		err := SyncNFTs(ucm, conn, log, isTestnet)
-		if err != nil {
-			passlog.L.Err(err).Msg("failed to sync nf ts")
+		if db.GetBoolWithDefault(db.KeyEnableSyncNFTOwners, false) {
+			err := SyncNFTs(ucm, conn, log, isTestnet)
+			if err != nil {
+				passlog.L.Err(err).Msg("failed to sync nf ts")
+			}
 		}
 	}(ucm, conn, log, isTestnet)
 	go func(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
-		err := SyncWithdraw(ucm, conn, log, isTestnet, enableWithdrawRollback)
-		if err != nil {
-			passlog.L.Err(err).Msg("failed to sync withdraw")
+		if db.GetBoolWithDefault(db.KeyEnableSyncWithdraw, false) {
+			err := SyncWithdraw(ucm, conn, log, isTestnet, enableWithdrawRollback)
+			if err != nil {
+				passlog.L.Err(err).Msg("failed to sync withdraw")
+			}
 		}
 	}(ucm, conn, log, isTestnet)
 	return nil

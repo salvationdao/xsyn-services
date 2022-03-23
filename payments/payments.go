@@ -2,17 +2,11 @@ package payments
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"passport"
 	"passport/db"
-	"passport/passlog"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jackc/pgx/v4"
@@ -26,61 +20,7 @@ type UserCacheMap interface {
 	Process(nt *passport.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error)
 }
 
-type Record struct {
-	Symbol      string    `json:"symbol"`
-	Usd         float64   `json:"usd"`
-	Value       string    `json:"value"`
-	Sups        string    `json:"sups"`
-	Bucket      time.Time `json:"bucket"`
-	TxHash      string    `json:"tx_hash"`
-	Time        float64   `json:"time"`
-	ToAddress   string    `json:"to_address"`
-	FromAddress string    `json:"from_address"`
-	JSON        struct {
-		To                string `json:"to"`
-		Gas               string `json:"gas"`
-		From              string `json:"from"`
-		Hash              string `json:"hash"`
-		Input             string `json:"input"`
-		Nonce             string `json:"nonce"`
-		Value             string `json:"value"`
-		GasUsed           string `json:"gasUsed"`
-		GasPrice          string `json:"gasPrice"`
-		BlockHash         string `json:"blockHash"`
-		TimeStamp         string `json:"timeStamp"`
-		TokenName         string `json:"tokenName"`
-		BlockNumber       string `json:"blockNumber"`
-		TokenSymbol       string `json:"tokenSymbol"`
-		TokenDecimal      string `json:"tokenDecimal"`
-		Confirmations     string `json:"confirmations"`
-		ContractAddress   string `json:"contractAddress"`
-		TransactionIndex  string `json:"transactionIndex"`
-		CumulativeGasUsed string `json:"cumulativeGasUsed"`
-	} `json:"json"`
-}
-type Symbol string
-
-const BNBSymbol Symbol = "bnb_txs"
-const BUSDSymbol Symbol = "busd_txs"
-const ETHSymbol Symbol = "eth_txs"
-const USDCSymbol Symbol = "usdc_txs"
-
 const SUPDecimals = 18
-
-func latestBlockFromRecords(currentLatestBlock int, records []*Record) int {
-	latestBlock := currentLatestBlock
-	for _, record := range records {
-		recordBlockNumber, err := strconv.Atoi(record.JSON.BlockNumber)
-		if err != nil {
-			passlog.L.Err(err).Msg("could not parse blocknumber")
-			return 0
-		}
-		if recordBlockNumber > latestBlock {
-			latestBlock = recordBlockNumber
-		}
-	}
-	return latestBlock
-}
 
 func CreateOrGetUser(ctx context.Context, conn *pgxpool.Pool, userAddr common.Address) (*passport.User, error) {
 	var user *passport.User
@@ -102,39 +42,26 @@ func CreateOrGetUser(ctx context.Context, conn *pgxpool.Pool, userAddr common.Ad
 	return user, nil
 }
 
-func ProcessValues(sups string, inputValue string, inputDecimalStr string) (decimal.Decimal, decimal.Decimal, int, error) {
+func ProcessValues(sups string, inputValue string, inputTokenDecimals int) (decimal.Decimal, decimal.Decimal, error) {
 	outputAmt, err := decimal.NewFromString(sups)
 	if err != nil {
-		return decimal.Zero, decimal.Zero, 0, err
+		return decimal.Zero, decimal.Zero, err
 	}
 	bigOutputAmt := outputAmt.Shift(1 * passport.SUPSDecimals)
 	inputAmt, err := decimal.NewFromString(inputValue)
 	if err != nil {
-		return decimal.Zero, decimal.Zero, 0, err
+		return decimal.Zero, decimal.Zero, err
 	}
-	// Default decimal for natives
-	tokenDecimal := 18
-	if inputDecimalStr != "" {
-		tokenDecimal, err = strconv.Atoi(inputDecimalStr)
-		if err != nil {
-			return decimal.Zero, decimal.Zero, 0, fmt.Errorf("tokendecimal %s: %w", inputDecimalStr, err)
-		}
-	}
-	bigInputAmt := inputAmt.Shift(1 * int32(tokenDecimal))
-	return bigInputAmt, bigOutputAmt, tokenDecimal, nil
+	return inputAmt, bigOutputAmt, nil
 }
 
-func StoreRecord(ctx context.Context, fromUserID passport.UserID, toUserID passport.UserID, ucm UserCacheMap, record *Record, isPurchase bool) error {
-	input, output, tokenDecimals, err := ProcessValues(record.Sups, record.Value, record.JSON.TokenDecimal)
+func StoreRecord(ctx context.Context, fromUserID passport.UserID, toUserID passport.UserID, ucm UserCacheMap, record *PurchaseRecord) error {
+	input, output, err := ProcessValues(record.Sups, record.ValueInt, record.ValueDecimals)
 	if err != nil {
 		return err
 	}
 
-	msg := fmt.Sprintf("purchased %s SUPS for %s [%s]", output.Shift(-1*passport.SUPSDecimals).StringFixed(4), input.Shift(-1*int32(tokenDecimals)).StringFixed(4), strings.ToUpper(record.Symbol))
-	if !isPurchase {
-		msg = fmt.Sprintf("deposited %s SUPS", output.Shift(-1*passport.SUPSDecimals).StringFixed(4))
-	}
-
+	msg := fmt.Sprintf("purchased %s SUPS for %s [%s]", output.Shift(-1*passport.SUPSDecimals).StringFixed(4), input.Shift(-1*int32(record.ValueDecimals)).StringFixed(4), strings.ToUpper(record.Symbol))
 	trans := &passport.NewTransaction{
 		To:                   toUserID,
 		From:                 fromUserID,
@@ -151,147 +78,54 @@ func StoreRecord(ctx context.Context, fromUserID passport.UserID, toUserID passp
 	return nil
 }
 
-const baseURL = "http://v2.supremacy-api.avantdata.com:3001"
-
-func get(sym Symbol, latestBlock int, testnet bool) ([]*Record, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s", baseURL, sym), nil)
+func BUSD() ([]*PurchaseRecord, error) {
+	currentBlock := db.GetInt(db.KeyLatestBUSDBlock)
+	records, latestBlock, err := getPurchaseRecords(BUSDPurchasePath, currentBlock, false)
 	if err != nil {
 		return nil, err
 	}
-	q := req.URL.Query()
-	q.Add("since_block", strconv.Itoa(latestBlock))
-	if testnet {
-		q.Add("is_testnet", "true")
-	}
-	req.URL.RawQuery = q.Encode()
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("non 200 response for %s: %d", req.URL.String(), resp.StatusCode)
-	}
-	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	result := []*Record{}
-	err = json.Unmarshal(b, &result)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-func BUSD() ([]*Record, error) {
-	contractAddr := "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56"
-	LastBUSDBlock := db.GetInt(db.KeyLatestBUSDBlock)
-	records, err := get(BUSDSymbol, LastBUSDBlock, false)
-	if err != nil {
-		return nil, err
-	}
-
-	results := []*Record{}
-	latestBlock := 0
-	for _, record := range records {
-		if common.HexToAddress(record.JSON.ContractAddress).Hex() != common.HexToAddress(contractAddr).Hex() {
-			continue
-		}
-		blockNumber, err := strconv.Atoi(record.JSON.BlockNumber)
-		if err != nil {
-			fmt.Println("avant_scraper: could not parse blocknumber")
-			continue
-		}
-		if blockNumber > latestBlock {
-			latestBlock = blockNumber
-		}
-		results = append(results, record)
-	}
-	if latestBlock > LastBUSDBlock {
+	if latestBlock > currentBlock {
 		db.PutInt(db.KeyLatestBUSDBlock, latestBlock)
 	}
-
-	return results, nil
+	return records, nil
 }
 
-func USDC() ([]*Record, error) {
-	contractAddr := "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
-	LastUSDCBlock := db.GetInt(db.KeyLatestUSDCBlock)
-	records, err := get(USDCSymbol, LastUSDCBlock, false)
+func USDC() ([]*PurchaseRecord, error) {
+	currentBlock := db.GetInt(db.KeyLatestUSDCBlock)
+	records, latestBlock, err := getPurchaseRecords(USDCPurchasePath, currentBlock, false)
 	if err != nil {
 		return nil, err
 	}
 
-	results := []*Record{}
-	latestBlock := 0
-	for _, record := range records {
-		if common.HexToAddress(record.JSON.ContractAddress).Hex() != common.HexToAddress(contractAddr).Hex() {
-			continue
-		}
-		blockNumber, err := strconv.Atoi(record.JSON.BlockNumber)
-		if err != nil {
-			fmt.Println("avant_scraper: could not parse blocknumber")
-			continue
-		}
-		if blockNumber > latestBlock {
-			latestBlock = blockNumber
-		}
-		results = append(results, record)
-	}
-	if latestBlock > LastUSDCBlock {
+	if latestBlock > currentBlock {
 		db.PutInt(db.KeyLatestUSDCBlock, latestBlock)
 	}
-	return results, nil
+
+	return records, nil
 }
 
-func ETH() ([]*Record, error) {
-	LastETHBlock := db.GetInt(db.KeyLatestETHBlock)
-	records, err := get(ETHSymbol, LastETHBlock, false)
+func ETH() ([]*PurchaseRecord, error) {
+	currentBlock := db.GetInt(db.KeyLatestETHBlock)
+	records, latestBlock, err := getPurchaseRecords(ETHPurchasePath, currentBlock, false)
 	if err != nil {
 		return nil, err
 	}
-	results := []*Record{}
-	latestBlock := 0
-	for _, record := range records {
-		blockNumber, err := strconv.Atoi(record.JSON.BlockNumber)
-		if err != nil {
-			fmt.Println("avant_scraper: could not parse blocknumber")
-			continue
-		}
-		if blockNumber > latestBlock {
-			latestBlock = blockNumber
-		}
-		results = append(results, record)
-	}
-	if latestBlock > LastETHBlock {
+
+	if latestBlock > currentBlock {
 		db.PutInt(db.KeyLatestETHBlock, latestBlock)
 	}
-	return results, nil
+	return records, nil
 }
 
-func BNB() ([]*Record, error) {
-	LastBNBBlock := db.GetInt(db.KeyLatestBNBBlock)
-	records, err := get(BNBSymbol, LastBNBBlock, false)
+func BNB() ([]*PurchaseRecord, error) {
+	currentBlock := db.GetInt(db.KeyLatestBNBBlock)
+	records, latestBlock, err := getPurchaseRecords(BNBPurchasePath, currentBlock, false)
 	if err != nil {
 		return nil, err
 	}
-	results := []*Record{}
-	latestBlock := 0
-	for _, record := range records {
-		blockNumber, err := strconv.Atoi(record.JSON.BlockNumber)
-		if err != nil {
-			fmt.Println("avant_scraper: could not parse blocknumber")
-			continue
-		}
-		if blockNumber > latestBlock {
-			latestBlock = blockNumber
-		}
-		results = append(results, record)
-	}
-	if latestBlock > LastBNBBlock {
+	if latestBlock > currentBlock {
 		db.PutInt(db.KeyLatestBNBBlock, latestBlock)
 	}
-	return results, nil
+
+	return records, nil
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"passport"
-	"passport/db"
 	"passport/db/boiler"
 	"passport/passdb"
 	"passport/passlog"
@@ -13,16 +12,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-func GetDeposits(testnet bool) ([]*Record, error) {
-	latestDepositBlock := db.GetInt(db.KeyLatestDepositBlock)
-	records, err := get("sups_deposit_txs", latestDepositBlock, testnet)
-	if err != nil {
-		return nil, err
-	}
-	db.PutInt(db.KeyLatestDepositBlock, latestBlockFromRecords(latestDepositBlock, records))
-	return records, nil
-}
-func ProcessDeposits(records []*Record, ucm UserCacheMap) (int, int, error) {
+func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, error) {
 	l := passlog.L.With().Str("svc", "avant_deposit_processor").Logger()
 	ctx := context.Background()
 	success := 0
@@ -49,7 +39,7 @@ func ProcessDeposits(records []*Record, ucm UserCacheMap) (int, int, error) {
 			continue
 		}
 
-		value, err := decimal.NewFromString(record.JSON.Value)
+		value, err := decimal.NewFromString(record.ValueInt)
 		if err != nil {
 			skipped++
 			l.Error().Str("txid", record.TxHash).Err(err).Msg("process decimal")
