@@ -71,7 +71,7 @@ func (t Tokens) Save(tokenEncoded string) error {
 		ID:        tokenUUID.String(),
 		UserID:    userUUID.String(),
 		UserAgent: device,
-		ExpiresAt: null.TimeFrom(time.Now().AddDate(0, 0, 30)),
+		ExpiresAt: null.TimeFrom(time.Now().AddDate(0, 0, t.tokenExpirationDays)),
 	}
 	err = it.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
