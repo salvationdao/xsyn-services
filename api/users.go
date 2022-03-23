@@ -190,7 +190,7 @@ func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebook
 		TwitterID:     passport.NewString(twitterID),
 		DiscordID:     passport.NewString(discordID),
 		Email:         passport.NewString(email),
-		PublicAddress: passport.NewString(publicAddress),
+		PublicAddress: passport.NewString(common.HexToAddress(publicAddress).Hex()),
 		RoleID:        passport.UserRoleMemberID,
 		Verified:      throughOauth, // verify users directly if they go through Oauth
 	}

@@ -349,7 +349,7 @@ func UserCreateNoRPC(ctx context.Context, conn Conn, user *passport.User) error 
 		user.LastName,
 		user.Email,
 		user.Username,
-		user.PublicAddress,
+		common.HexToAddress(user.PublicAddress.String).Hex(),
 		user.AvatarID,
 		user.RoleID,
 		user.Verified,
@@ -398,7 +398,7 @@ func UserCreate(ctx context.Context, conn Conn, user *passport.User) error {
 		user.LastName,
 		user.Email,
 		user.Username,
-		user.PublicAddress,
+		common.HexToAddress(user.PublicAddress.String).Hex(),
 		user.AvatarID,
 		user.RoleID,
 		user.Verified,
@@ -540,7 +540,7 @@ func UserAddWallet(ctx context.Context, conn Conn, user *passport.User, publicAd
 		FROM users
 		WHERE public_address = $1`
 
-	err := pgxscan.Get(ctx, conn, &count, q, publicAddress)
+	err := pgxscan.Get(ctx, conn, &count, q, common.HexToAddress(publicAddress).Hex())
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -556,7 +556,7 @@ func UserAddWallet(ctx context.Context, conn Conn, user *passport.User, publicAd
 	_, err = conn.Exec(ctx,
 		q,
 		user.ID,
-		publicAddress,
+		common.HexToAddress(publicAddress).Hex(),
 	)
 	if err != nil {
 		return terror.Error(err)
