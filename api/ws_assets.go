@@ -218,6 +218,7 @@ type AssetUpdatedSubscribeResponse struct {
 	CollectionSlug string                `json:"collection_slug"`
 	PurchasedItem  *boiler.PurchasedItem `json:"purchased_item"`
 	OwnerUsername  string                `json:"owner_username"`
+	HostURL        string                `json:"host_url"`
 }
 
 const HubKeyAssetSubscribe hub.HubCommandKey = "ASSET:SUBSCRIBE"
@@ -250,6 +251,7 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hub
 		PurchasedItem:  asset,
 		OwnerUsername:  owner.Username,
 		CollectionSlug: collection.Slug,
+		HostURL:        ac.API.GameserverHostUrl,
 	})
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.Hash)), nil
 }
