@@ -88,7 +88,7 @@ func (api *API) ClientAuth(ctx context.Context, client *hub.Client) error {
 
 	// create jwt for users to auth gameserver
 	tokenID := uuid.Must(uuid.NewV4())
-	jwt, sign, err := auth.GenerateJWT(tokenID.String(), *user, client.Request.UserAgent(), 30, api.JWTKey)
+	jwt, sign, err := auth.GenerateJWT(tokenID.String(), *user, client.Request.UserAgent(), api.Tokens.tokenExpirationDays, api.JWTKey)
 	if err != nil {
 		passlog.L.Error().Str("user_id", user.ID.String()).Err(err).Msg("Unable to generate jwt")
 		return terror.Error(err, "Unable to generate jwt. Please try again")
@@ -105,7 +105,7 @@ func (api *API) ClientAuth(ctx context.Context, client *hub.Client) error {
 		ID:        tokenID.String(),
 		UserID:    user.ID.String(),
 		UserAgent: client.Request.UserAgent(),
-		ExpiresAt: null.TimeFrom(time.Now().AddDate(0, 0, 30)),
+		ExpiresAt: null.TimeFrom(time.Now().AddDate(0, 0, api.Tokens.tokenExpirationDays)),
 	}
 	err = it.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
