@@ -7,9 +7,18 @@ import (
 	"passport/db/boiler"
 	"passport/passdb"
 	"passport/passlog"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+)
+
+type DepositTransactionStatus string
+
+const (
+	DepositTransactionStatusPending   DepositTransactionStatus = "pending"
+	DepositTransactionStatusConfirmed DepositTransactionStatus = "confirmed"
 )
 
 func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, error) {
@@ -68,7 +77,24 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, 
 			skipped++
 			continue
 		}
+
 		success++
+
+		// Update deposit transaction's status in db from pending to success
+		dtx, err := boiler.DepositTransactions(boiler.DepositTransactionWhere.TXHash.EQ(record.TxHash)).One(passdb.StdConn)
+		if err != nil {
+			l.Err(err).Str("txid", record.TxHash).Msg("failed to find tx entry for deposit in db")
+			continue
+		}
+
+		dtx.Status = string(DepositTransactionStatusConfirmed)
+		dtx.UpdatedAt = time.Now()
+		_, err = dtx.Update(passdb.StdConn, boil.Infer())
+		if err != nil {
+			l.Err(err).Str("txid", record.TxHash).Msg("failed to update tx entry for deposit in db")
+			continue
+		}
+		l.Info().Str("txid", record.TxHash).Msg("successfully updated status of tx entry for deposit in db")
 	}
 	l.Info().
 		Int("success", success).

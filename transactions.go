@@ -1,8 +1,9 @@
 package passport
 
 import (
-	"github.com/shopspring/decimal"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 type TransactionStatus string
@@ -75,6 +76,7 @@ type TransactionGroup string
 
 const (
 	TransactionGroupStore           TransactionGroup = "Store"
+	TransactionGroupDeposit         TransactionGroup = "Deposit"
 	TransactionGroupWithdrawal      TransactionGroup = "Withdrawal"
 	TransactionGroupBattle          TransactionGroup = "Battle"
 	TransactionGroupSupremacy       TransactionGroup = "Supremacy"
