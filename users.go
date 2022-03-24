@@ -62,7 +62,7 @@ type User struct {
 	TwitterID                        null.String   `json:"twitter_id" db:"twitter_id"`
 	DiscordID                        null.String   `json:"discord_id" db:"discord_id"`
 	FactionID                        *FactionID    `json:"faction_id" db:"faction_id"`
-	MobileNumber                     null.String   `json:"mobile_number" db:"mobile_number"'`
+	MobileNumber                     null.String   `json:"mobile_number" db:"mobile_number"`
 	Faction                          *Faction      `json:"faction"`
 	Username                         string        `json:"username" db:"username"`
 	Verified                         bool          `json:"verified" db:"verified"`
