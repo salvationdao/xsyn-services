@@ -54,14 +54,14 @@ type API struct {
 	BridgeParams      *passport.BridgeParams
 
 	// online user cache
-	users chan func(userCacheList UserCacheMap)
+	users chan func(userCacheList Transactor)
 
 	// server clients
 	// serverClients       chan func(serverClients ServerClientsList)
 	// sendToServerClients chan *ServerClientMessage
 
 	//tx stuff
-	userCacheMap *UserCacheMap
+	userCacheMap *Transactor
 
 	walletOnlyConnect    bool
 	storeItemExternalUrl string
@@ -83,7 +83,7 @@ func NewAPI(
 	HTMLSanitize *bluemonday.Policy,
 	config *passport.Config,
 	externalUrl string,
-	ucm *UserCacheMap,
+	ucm *Transactor,
 	isTestnetBlockchain bool,
 	runBlockchainBridge bool,
 	msgBus *messagebus.MessageBus,
@@ -135,7 +135,7 @@ func NewAPI(
 		// sendToServerClients: make(chan *ServerClientMessage),
 		//382
 		// user cache map
-		users: make(chan func(userList UserCacheMap)),
+		users: make(chan func(userList Transactor)),
 
 		// object to hold transaction stuff
 		userCacheMap: ucm,

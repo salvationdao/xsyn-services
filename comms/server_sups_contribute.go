@@ -43,7 +43,7 @@ type PendingTransaction struct {
 
 func (c *S) InsertTransactions(req InsertTransactionsReq, resp *InsertTransactionsResp) error {
 	for _, tx := range req.Transactions {
-		_, _, _, err := c.UserCacheMap.Process(&passport.NewTransaction{
+		_, _, _, err := c.UserCacheMap.Transact(&passport.NewTransaction{
 			From:                 passport.UserID(uuid.Must(uuid.FromString(tx.FromUserID))),
 			To:                   passport.UserID(uuid.Must(uuid.FromString(tx.ToUserID))),
 			TransactionReference: passport.TransactionReference(tx.TransactionReference),
@@ -83,7 +83,7 @@ func (c *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 		tx.NotSafe = true
 	}
 
-	_, _, txID, err := c.UserCacheMap.Process(tx)
+	_, _, txID, err := c.UserCacheMap.Transact(tx)
 	if err != nil {
 		return terror.Error(err, "failed to process sups")
 	}
@@ -113,7 +113,7 @@ func (c *S) ReleaseTransactionsHandler(req ReleaseTransactionsReq, resp *Release
 			if txID != tx.ID {
 				continue
 			}
-			_, _, _, err := c.UserCacheMap.Process(tx)
+			_, _, _, err := c.UserCacheMap.Transact(tx)
 			if err != nil {
 				c.Log.Err(err).Msg("failed to process user sups fund")
 				continue
@@ -142,7 +142,7 @@ func (c *S) supremacyFeed() {
 	}
 
 	// process user cache map
-	_, _, _, err := c.UserCacheMap.Process(tx)
+	_, _, _, err := c.UserCacheMap.Transact(tx)
 	if err != nil {
 		c.Log.Err(err).Msg(err.Error())
 		return
@@ -300,7 +300,7 @@ func (c *S) distributeFund(fundstr string, totalPoints int64, userMap map[int][]
 				SubGroup:             "Ticker",
 			}
 
-			_, _, _, err := c.UserCacheMap.Process(tx)
+			_, _, _, err := c.UserCacheMap.Transact(tx)
 			if err != nil {
 				c.Log.Err(err).Msg("failed to process user fund")
 				return
@@ -387,7 +387,7 @@ func (c *S) TransferBattleFundToSupPoolHandler(req TransferBattleFundToSupPoolRe
 	// 	Amount:               *supsForTreasury,
 	// 	TransactionReference: passport.TransactionReference(fmt.Sprintf("supremacy|battle_sups_spend_transfer|%s", time.Now())),
 	// }
-	// _, _, _, err = c.UserCacheMap.Process(tx)
+	// _, _, _, err = c.Transactor.Transact(tx)
 	// if err != nil {
 	// 	return terror.Error(err, "Failed to transfer 10% spoil of war to treasury")
 	// }
@@ -430,7 +430,7 @@ func (c *S) newSupsTrickle(key string, totalTick int, supsPerTick decimal.Decima
 
 		c.TickerPoolCache.Lock()
 		// process user cache map
-		_, _, _, err := c.UserCacheMap.Process(tx)
+		_, _, _, err := c.UserCacheMap.Transact(tx)
 		if err != nil {
 			c.Log.Err(err).Msg("insufficient fund")
 			c.TickerPoolCache.Unlock()

@@ -24,7 +24,7 @@ type TickerPoolCache struct {
 }
 
 type S struct {
-	UserCacheMap *api.UserCacheMap
+	UserCacheMap *api.Transactor
 	MessageBus   *messagebus.MessageBus
 	SMS          passport.SMS
 	Txs          *api.Transactions
@@ -37,7 +37,7 @@ type S struct {
 }
 
 func NewServer(
-	userCacheMap *api.UserCacheMap,
+	userCacheMap *api.Transactor,
 	messageBus *messagebus.MessageBus,
 	txs *api.Transactions,
 	log *zerolog.Logger,

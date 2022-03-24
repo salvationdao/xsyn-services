@@ -219,7 +219,7 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 		Group:                passport.TransactionGroupWithdrawal,
 	}
 
-	nfb, ntb, _, err := sc.API.userCacheMap.Process(trans)
+	nfb, ntb, _, err := sc.API.userCacheMap.Transact(trans)
 	if err != nil {
 		return terror.Error(err, "failed to process user fund")
 	}
@@ -243,7 +243,7 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 			Group:                passport.TransactionGroupWithdrawal,
 		}
 
-		_, _, _, err := sc.API.userCacheMap.Process(trans)
+		_, _, _, err := sc.API.userCacheMap.Transact(trans)
 		if err != nil {
 			sc.API.Log.Err(fmt.Errorf("failed to process user fund"))
 			return

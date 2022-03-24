@@ -148,7 +148,7 @@ func (c *S) SupremacyRedeemFactionContractRewardHandler(req RedeemFactionContrac
 	}
 
 	// process user cache map
-	_, _, _, err := c.UserCacheMap.Process(tx)
+	_, _, _, err := c.UserCacheMap.Transact(tx)
 	if err != nil {
 		return terror.Error(err, "failed to process fund")
 	}

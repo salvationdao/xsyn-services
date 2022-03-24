@@ -25,7 +25,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-func AdminRoutes(ucm *UserCacheMap) chi.Router {
+func AdminRoutes(ucm *Transactor) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/check", WithError(WithAdmin(AdminCheck)))
 	r.Get("/users", WithError(WithAdmin(ListUsers)))
@@ -123,7 +123,7 @@ type CreateTransactionRequest struct {
 	Debit  uuid.UUID       `json:"debit"`
 }
 
-func CreateTransaction(ucm *UserCacheMap) func(w http.ResponseWriter, r *http.Request) (int, error) {
+func CreateTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Request) (int, error) {
 	fn := func(w http.ResponseWriter, r *http.Request) (int, error) {
 		req := &CreateTransactionRequest{}
 		err := json.NewDecoder(r.Body).Decode(req)
@@ -141,7 +141,7 @@ func CreateTransaction(ucm *UserCacheMap) func(w http.ResponseWriter, r *http.Re
 			Group:                passport.TransactionGroupStore,
 			SubGroup:             "Transfer",
 		}
-		_, _, _, err = ucm.Process(newTx)
+		_, _, _, err = ucm.Transact(newTx)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not get transaction")
 		}
@@ -150,7 +150,7 @@ func CreateTransaction(ucm *UserCacheMap) func(w http.ResponseWriter, r *http.Re
 	return fn
 }
 
-func ReverseUserTransaction(ucm *UserCacheMap) func(w http.ResponseWriter, r *http.Request) (int, error) {
+func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Request) (int, error) {
 	fn := func(w http.ResponseWriter, r *http.Request) (int, error) {
 		txID := chi.URLParam(r, "transaction_id")
 		tx, err := boiler.FindTransaction(passdb.StdConn, txID)
@@ -166,7 +166,7 @@ func ReverseUserTransaction(ucm *UserCacheMap) func(w http.ResponseWriter, r *ht
 			Group:                passport.TransactionGroupStore,
 			SubGroup:             "Refund",
 		}
-		_, _, _, err = ucm.Process(refundTx)
+		_, _, _, err = ucm.Transact(refundTx)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not get transaction")
 		}

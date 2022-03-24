@@ -452,7 +452,7 @@ func txConnect(
 	return conn, nil
 }
 
-func SyncPayments(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
+func SyncPayments(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
 
 	records1, err := payments.BNB()
 	if err != nil {
@@ -540,7 +540,7 @@ func SyncPayments(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger
 	return nil
 
 }
-func SyncDeposits(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
+func SyncDeposits(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
 	depositRecords, err := payments.GetDeposits(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get deposits: %w", err)
@@ -553,7 +553,7 @@ func SyncDeposits(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger
 	return nil
 
 }
-func SyncWithdraw(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool) error {
+func SyncWithdraw(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool) error {
 	// Update with TX hash first
 	withdrawRecords, err := payments.GetWithdraws(isTestnet)
 	if err != nil {
@@ -571,7 +571,7 @@ func SyncWithdraw(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger
 	return nil
 
 }
-func SyncNFTs(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
+func SyncNFTs(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
 	nftOwnerStatuses, err := payments.GetNFTOwnerRecords(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get nft owners: %w", err)
@@ -585,8 +585,8 @@ func SyncNFTs(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, is
 	return nil
 }
 
-func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool) error {
-	go func(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
+func SyncFunc(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool) error {
+	go func(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncPayments, false) {
 			err := SyncPayments(ucm, conn, log, isTestnet)
 			if err != nil {
@@ -594,7 +594,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, is
 			}
 		}
 	}(ucm, conn, log, isTestnet)
-	go func(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
+	go func(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncDeposits, false) {
 			err := SyncDeposits(ucm, conn, log, isTestnet)
 			if err != nil {
@@ -602,7 +602,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, is
 			}
 		}
 	}(ucm, conn, log, isTestnet)
-	go func(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
+	go func(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncNFTOwners, false) {
 			err := SyncNFTs(ucm, conn, log, isTestnet)
 			if err != nil {
@@ -610,7 +610,7 @@ func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, is
 			}
 		}
 	}(ucm, conn, log, isTestnet)
-	go func(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
+	go func(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncWithdraw, false) {
 			err := SyncWithdraw(ucm, conn, log, isTestnet, enableWithdrawRollback)
 			if err != nil {
@@ -852,7 +852,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	msgBus := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
 
 	// initialise user cache map
-	ucm, err := api.NewUserCacheMap(pgxconn, msgBus)
+	ucm, err := api.NewTX(pgxconn, msgBus)
 	if err != nil {
 		return terror.Error(err)
 	}
