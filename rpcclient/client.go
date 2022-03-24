@@ -63,7 +63,7 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 	for {
 		if client == nil {
 			// keep redialing until rpc server comes back online
-			client, err = dial(10, c.Addrs[i])
+			client, err = dial(5, c.Addrs[i])
 			if err != nil {
 				return terror.Error(err)
 			}

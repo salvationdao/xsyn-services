@@ -58,6 +58,7 @@ func (c *S) InsertTransactions(req InsertTransactionsReq, resp *InsertTransactio
 	}
 	return nil
 }
+
 func (c *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) error {
 	amt, err := decimal.NewFromString(req.Amount)
 	if err != nil {

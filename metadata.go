@@ -40,7 +40,7 @@ type StoreItem struct {
 	ID                   StoreItemID         `json:"id" db:"id"`
 	RestrictionGroup     string              `json:"restriction_group" db:"restriction_group"`
 	Name                 string              `json:"name" db:"name"`
-	IsDefault            bool                `json:"isDefault" db:"isDefault"`
+	IsDefault            bool                `json:"is_default" db:"is_default"`
 	Tier                 string              `json:"tier" db:"tier"`
 	WhitelistedAddresses []string            `json:"white_listed_addresses" db:"white_listed_addresses"`
 	Restriction          string              `json:"restriction" db:"restriction"`

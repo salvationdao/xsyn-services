@@ -1,0 +1,5 @@
+ALTER TABLE issue_tokens
+ADD user_agent TEXT NOT NULL DEFAULT '',
+ADD expires_at TIMESTAMPTZ,
+ADD updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+ADD deleted_at TIMESTAMPTZ;

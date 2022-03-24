@@ -276,6 +276,7 @@ type UpdateUserRequest struct {
 		NewUsername                      *string                  `json:"new_username"`
 		FirstName                        string                   `json:"first_name"`
 		LastName                         string                   `json:"last_name"`
+		MobileNumber                     string                   `json:"mobile_number"`
 		Email                            null.String              `json:"email"`
 		AvatarID                         *passport.BlobID         `json:"avatar_id"`
 		CurrentPassword                  *string                  `json:"current_password"`
@@ -375,12 +376,21 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 		}
 	}
 
-	if req.Payload.FirstName != "" {
-		user.FirstName = req.Payload.FirstName
+	user.FirstName = req.Payload.FirstName
+	user.LastName = req.Payload.LastName
+
+	if req.Payload.MobileNumber != "" && req.Payload.MobileNumber != user.MobileNumber.String {
+		number, err := uc.API.SMS.Lookup(req.Payload.MobileNumber)
+		if err != nil {
+			return terror.Warn(fmt.Errorf("invalid mobile number %s", req.Payload.MobileNumber), "Invalid mobile number, please insure correct country code.")
+		}
+
+		user.MobileNumber = null.StringFrom(number)
 	}
-	if req.Payload.LastName != "" {
-		user.LastName = req.Payload.LastName
+	if req.Payload.MobileNumber == "" {
+		user.MobileNumber = null.NewString("", false)
 	}
+
 	user.AvatarID = req.Payload.AvatarID
 
 	// Start transaction

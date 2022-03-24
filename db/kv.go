@@ -19,6 +19,11 @@ const KeyLatestETHBlock = "latest_eth_block"
 const KeyLatestBNBBlock = "latest_bnb_block"
 const KeyEnableWithdrawRollback = "enable_withdraw_rollback"
 
+const KeyEnableSyncPayments = "enable_sync_payments"
+const KeyEnableSyncDeposits = "enable_sync_deposits"
+const KeyEnableSyncNFTOwners = "enable_sync_nft_owners"
+const KeyEnableSyncWithdraw = "enable_sync_withdraw"
+
 func get(key string) string {
 	exists, err := boiler.KVS(boiler.KVWhere.Key.EQ(key)).Exists(passdb.StdConn)
 	if err != nil {

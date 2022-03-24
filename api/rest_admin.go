@@ -10,7 +10,9 @@ import (
 	"passport/db"
 	"passport/db/boiler"
 	"passport/passdb"
+	"passport/passlog"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -28,6 +30,11 @@ func AdminRoutes(ucm *UserCacheMap) chi.Router {
 	r.Get("/check", WithError(WithAdmin(AdminCheck)))
 	r.Get("/users", WithError(WithAdmin(ListUsers)))
 	r.Get("/users/{public_address}", WithError(WithAdmin(UserHandler)))
+	r.Get("/chat_timeout_username/{username}/{minutes}", WithError(WithAdmin(ChatTimeoutUsername)))
+	r.Get("/chat_timeout_userid/{userID}/{minutes}", WithError(WithAdmin(ChatTimeoutUserID)))
+	r.Get("/rename_ban_username/{username}/{banned}", WithError(WithAdmin(RenameBanUsername)))
+	r.Get("/rename_ban_userID/{userID}/{banned}", WithError(WithAdmin(RenameBanUserID)))
+	r.Get("/rename_asset/{hash}/{newName}", WithError(WithAdmin(RenameAsset)))
 	r.Get("/purchased_items", WithError(WithAdmin(ListPurchasedItems)))
 	r.Get("/store_items", WithError(WithAdmin(ListStoreItems)))
 
@@ -35,8 +42,8 @@ func AdminRoutes(ucm *UserCacheMap) chi.Router {
 	r.Post("/purchased_items/set_owner/{purchased_item_id}/{owner_id}", WithError(WithAdmin(PurchasedItemSetOwner)))
 	r.Post("/purchased_items/transfer/from/{from}/to/{to}/collection_id/{collection_id}/token_id/{token_id}", WithError(WithAdmin(TransferAsset())))
 
-	r.Post("/transactions/create", WithError(WithAdmin(CreateTransaction((ucm)))))
-	r.Post("/transactions/reverse/{transaction_id}", WithError(WithAdmin(ReverseUserTransaction((ucm)))))
+	r.Post("/transactions/create", WithError(WithAdmin(CreateTransaction(ucm))))
+	r.Post("/transactions/reverse/{transaction_id}", WithError(WithAdmin(ReverseUserTransaction(ucm))))
 	r.Get("/transactions/list/user/{public_address}", WithError(WithAdmin(ListUserTransactions)))
 
 	r.Post("/sync/store_items", WithError(WithAdmin(SyncStoreItems)))
@@ -50,11 +57,13 @@ func WithAdmin(next func(w http.ResponseWriter, r *http.Request) (int, error)) f
 		apiKeyIDStr := r.Header.Get("X-Authorization")
 		apiKeyID, err := uuid.FromString(apiKeyIDStr)
 		if err != nil {
-			return http.StatusUnauthorized, terror.Error(err, "Unauthorized.")
+			passlog.L.Warn().Err(err).Str("apiKeyID", apiKeyIDStr).Msg("unauthed attempted at mod rest end point")
+			return http.StatusUnauthorized, terror.Error(terror.ErrUnauthorised, "Unauthorized.")
 		}
 		apiKey, err := db.APIKey(apiKeyID)
 		if err != nil {
-			return http.StatusUnauthorized, terror.Error(err, "Unauthorized.")
+			passlog.L.Warn().Err(err).Str("apiKeyID", apiKeyIDStr).Msg("unauthed attempted at mod rest end point")
+			return http.StatusUnauthorized, terror.Error(terror.ErrUnauthorised, "Unauthorized.")
 		}
 		if apiKey.Type != "ADMIN" {
 			return http.StatusUnauthorized, terror.Error(fmt.Errorf("not admin key: %s", apiKey.Type), "Unauthorized.")
@@ -225,6 +234,135 @@ func ListUsers(w http.ResponseWriter, r *http.Request) (int, error) {
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not encode JSON")
 	}
+	return http.StatusOK, nil
+}
+
+func RenameBanUserID(w http.ResponseWriter, r *http.Request) (int, error) {
+	userID := chi.URLParam(r, "userID")
+	if userID == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("userID cannot be empty"), "Unable to find userID, userID empty.")
+	}
+	banned := chi.URLParam(r, "banned")
+	if banned == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("banned status cannot be empty"), "Unable to find banned status, banned status empty.")
+	}
+
+	user, err := boiler.FindUser(passdb.StdConn, userID)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Unable to find user")
+	}
+
+	user.RenameBanned = null.BoolFrom(strings.ToLower(banned) == "true")
+
+	_, err = user.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to update user renamed banned status")
+	}
+
+	return http.StatusOK, nil
+}
+
+func RenameAsset(w http.ResponseWriter, r *http.Request) (int, error) {
+	hash := chi.URLParam(r, "hash")
+	if hash == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("hash cannot be empty"), "Unable to find hash, hash empty.")
+	}
+	newName := chi.URLParam(r, "newName")
+	if newName == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("newName cannot be empty"), "Unable to find newName, newName empty.")
+	}
+
+	item, err := db.PurchasedItemByHash(hash)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Unable to find asset.")
+	}
+	if item == nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("asset is nil"), "Unable to find asset, asset nil.")
+	}
+
+	// update asset name
+	item, err = db.PurchasedItemSetName(uuid.Must(uuid.FromString(item.ID)), newName)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Unable to update asset name.")
+	}
+
+	return http.StatusOK, nil
+}
+
+func RenameBanUsername(w http.ResponseWriter, r *http.Request) (int, error) {
+	username := chi.URLParam(r, "username")
+	if username == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("username cannot be empty"), "Unable to find username, userID empty.")
+	}
+	banned := chi.URLParam(r, "banned")
+	if banned == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("banned status cannot be empty"), "Unable to find banned status, banned status empty.")
+	}
+
+	user, err := boiler.Users(boiler.UserWhere.Username.EQ(username)).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Unable to find user")
+	}
+
+	user.RenameBanned = null.BoolFrom(strings.ToLower(banned) == "true")
+
+	_, err = user.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to update user renamed banned status")
+	}
+
+	return http.StatusOK, nil
+}
+
+func ChatTimeoutUserID(w http.ResponseWriter, r *http.Request) (int, error) {
+	userID := chi.URLParam(r, "userID")
+	if userID == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("userID cannot be empty"), "Unable to find userID, userID empty.")
+	}
+	minutes := chi.URLParam(r, "minutes")
+	minutesInt, err := strconv.Atoi(minutes)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Unable to create int from minutes")
+	}
+
+	user, err := boiler.FindUser(passdb.StdConn, userID)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Unable to find user")
+	}
+
+	user.ChatBannedUntil = null.TimeFrom(time.Now().Add(time.Minute * time.Duration(minutesInt)))
+
+	_, err = user.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to update user chat banned time")
+	}
+
+	return http.StatusOK, nil
+}
+
+func ChatTimeoutUsername(w http.ResponseWriter, r *http.Request) (int, error) {
+	username := chi.URLParam(r, "username")
+	if username == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("username cannot be empty"), "Unable to find username, username empty.")
+	}
+	minutes := chi.URLParam(r, "minutes")
+	minutesInt, err := strconv.Atoi(minutes)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Unable to create int from minutes")
+	}
+
+	user, err := boiler.Users(boiler.UserWhere.Username.EQ(username)).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Unable to find user")
+	}
+
+	user.ChatBannedUntil = null.TimeFrom(time.Now().Add(time.Minute * time.Duration(minutesInt)))
+
+	_, err = user.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to update user chat banned time")
+	}
+
 	return http.StatusOK, nil
 }
 

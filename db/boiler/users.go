@@ -51,6 +51,9 @@ type User struct {
 	UpdatedAt                        time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt                        time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	Metadata                         null.JSON       `boiler:"metadata" boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
+	MobileNumber                     null.String     `boiler:"mobile_number" boil:"mobile_number" json:"mobile_number,omitempty" toml:"mobile_number" yaml:"mobile_number,omitempty"`
+	ChatBannedUntil                  null.Time       `boiler:"chat_banned_until" boil:"chat_banned_until" json:"chat_banned_until,omitempty" toml:"chat_banned_until" yaml:"chat_banned_until,omitempty"`
+	RenameBanned                     null.Bool       `boiler:"rename_banned" boil:"rename_banned" json:"rename_banned,omitempty" toml:"rename_banned" yaml:"rename_banned,omitempty"`
 
 	R *userR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -84,6 +87,9 @@ var UserColumns = struct {
 	UpdatedAt                        string
 	CreatedAt                        string
 	Metadata                         string
+	MobileNumber                     string
+	ChatBannedUntil                  string
+	RenameBanned                     string
 }{
 	ID:                               "id",
 	Username:                         "username",
@@ -112,6 +118,9 @@ var UserColumns = struct {
 	UpdatedAt:                        "updated_at",
 	CreatedAt:                        "created_at",
 	Metadata:                         "metadata",
+	MobileNumber:                     "mobile_number",
+	ChatBannedUntil:                  "chat_banned_until",
+	RenameBanned:                     "rename_banned",
 }
 
 var UserTableColumns = struct {
@@ -142,6 +151,9 @@ var UserTableColumns = struct {
 	UpdatedAt                        string
 	CreatedAt                        string
 	Metadata                         string
+	MobileNumber                     string
+	ChatBannedUntil                  string
+	RenameBanned                     string
 }{
 	ID:                               "users.id",
 	Username:                         "users.username",
@@ -170,6 +182,9 @@ var UserTableColumns = struct {
 	UpdatedAt:                        "users.updated_at",
 	CreatedAt:                        "users.created_at",
 	Metadata:                         "users.metadata",
+	MobileNumber:                     "users.mobile_number",
+	ChatBannedUntil:                  "users.chat_banned_until",
+	RenameBanned:                     "users.rename_banned",
 }
 
 // Generated where
@@ -202,6 +217,9 @@ var UserWhere = struct {
 	UpdatedAt                        whereHelpertime_Time
 	CreatedAt                        whereHelpertime_Time
 	Metadata                         whereHelpernull_JSON
+	MobileNumber                     whereHelpernull_String
+	ChatBannedUntil                  whereHelpernull_Time
+	RenameBanned                     whereHelpernull_Bool
 }{
 	ID:                               whereHelperstring{field: "\"users\".\"id\""},
 	Username:                         whereHelperstring{field: "\"users\".\"username\""},
@@ -230,6 +248,9 @@ var UserWhere = struct {
 	UpdatedAt:                        whereHelpertime_Time{field: "\"users\".\"updated_at\""},
 	CreatedAt:                        whereHelpertime_Time{field: "\"users\".\"created_at\""},
 	Metadata:                         whereHelpernull_JSON{field: "\"users\".\"metadata\""},
+	MobileNumber:                     whereHelpernull_String{field: "\"users\".\"mobile_number\""},
+	ChatBannedUntil:                  whereHelpernull_Time{field: "\"users\".\"chat_banned_until\""},
+	RenameBanned:                     whereHelpernull_Bool{field: "\"users\".\"rename_banned\""},
 }
 
 // UserRels is where relationship names are stored.
@@ -298,8 +319,8 @@ func (*userR) NewStruct() *userR {
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"id", "username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "sups", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata"}
-	userColumnsWithoutDefault = []string{"username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "public_address", "private_address", "nonce", "keywords", "deleted_at"}
+	userAllColumns            = []string{"id", "username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "sups", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata", "mobile_number", "chat_banned_until", "rename_banned"}
+	userColumnsWithoutDefault = []string{"username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "public_address", "private_address", "nonce", "keywords", "deleted_at", "mobile_number", "chat_banned_until", "rename_banned"}
 	userColumnsWithDefault    = []string{"id", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "sups", "updated_at", "created_at", "metadata"}
 	userPrimaryKeyColumns     = []string{"id"}
 )
@@ -633,6 +654,7 @@ func (o *User) IssueTokens(mods ...qm.QueryMod) issueTokenQuery {
 
 	queryMods = append(queryMods,
 		qm.Where("\"issue_tokens\".\"user_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"issue_tokens\".\"deleted_at\""),
 	)
 
 	query := IssueTokens(queryMods...)
@@ -1427,6 +1449,7 @@ func (userL) LoadIssueTokens(e boil.Executor, singular bool, maybeUser interface
 	query := NewQuery(
 		qm.From(`issue_tokens`),
 		qm.WhereIn(`issue_tokens.user_id in ?`, args...),
+		qmhelper.WhereIsNull(`issue_tokens.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

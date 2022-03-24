@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"errors"
 	"log"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	"passport/payments"
 	"passport/rpcclient"
 	"passport/seed"
+	"passport/sms"
 	"runtime"
 	"strings"
 	"time"
@@ -26,12 +28,12 @@ import (
 	rpprof "runtime/pprof"
 
 	"github.com/jackc/pgx/v4/stdlib"
+	"github.com/shopspring/decimal"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/oklog/run"
-	"github.com/shopspring/decimal"
 
 	_ "github.com/lib/pq" //postgres drivers for initialization
 
@@ -123,6 +125,12 @@ func main() {
 					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{envPrefix + "_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
 					&cli.StringFlag{Name: "google_client_id", Value: "467953368642-8cobg822tej2i50ncfg4ge1pm4c5v033.apps.googleusercontent.com", EnvVars: []string{envPrefix + "_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google Client ID for OAuth functionaility."},
 
+					// SMS stuff
+					&cli.StringFlag{Name: "twilio_sid", Value: "", EnvVars: []string{envPrefix + "_TWILIO_ACCOUNT_SID"}, Usage: "Twilio account sid"},
+					&cli.StringFlag{Name: "twilio_api_key", Value: "", EnvVars: []string{envPrefix + "_TWILIO_API_KEY"}, Usage: "Twilio api key"},
+					&cli.StringFlag{Name: "twilio_api_secret", Value: "", EnvVars: []string{envPrefix + "_TWILIO_API_SECRET"}, Usage: "Twilio api secret"},
+					&cli.StringFlag{Name: "sms_from_number", Value: "", EnvVars: []string{envPrefix + "_SMS_FROM_NUMBER"}, Usage: "Number to send SMS from"},
+
 					&cli.StringFlag{Name: "mail_domain", Value: "njs.dev", EnvVars: []string{envPrefix + "_MAIL_DOMAIN", "MAIL_DOMAIN"}, Usage: "Domain used for MailGun"},
 					&cli.StringFlag{Name: "mail_apikey", Value: "", EnvVars: []string{envPrefix + "_MAIL_APIKEY", "MAIL_APIKEY"}, Usage: "MailGun API key"},
 					&cli.StringFlag{Name: "mail_sender", Value: "Ninja Software <noreply@njs.dev>", EnvVars: []string{envPrefix + "_MAIL_SENDER", "MAIL_SENDER"}, Usage: "Default address emails are sent from"},
@@ -150,6 +158,7 @@ func main() {
 					// setup for webhook
 					&cli.StringFlag{Name: "gameserver_webhook_secret", Value: "e1BD3FF270804c6a9edJDzzDks87a8a4fde15c7=", EnvVars: []string{"GAMESERVER_WEBHOOK_SECRET"}, Usage: "Authorization key to passport webhook"},
 					&cli.StringFlag{Name: "gameserver_host_url", Value: "http://localhost:8084", EnvVars: []string{"GAMESERVER_HOST_URL"}, Usage: "Authorization key to passport webhook"},
+					&cli.StringFlag{Name: "jwt_key", Value: "9a5b8421bbe14e5a904cfd150a9951d3", EnvVars: []string{"STREAM_SITE_JWT_KEY"}, Usage: "JWT Key for signing token on stream site"},
 
 					/****************************
 					 *		Bridge details		*
@@ -450,90 +459,37 @@ func SyncPayments(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger
 		return fmt.Errorf("get bnb payments: %w", err)
 	}
 
-	z := decimal.Zero
-	totalSupsSold := decimal.Zero
-	for _, r := range records1 {
-		sups, err := decimal.NewFromString(r.Sups)
-		if err != nil {
-			return err
-		}
-		totalSupsSold = totalSupsSold.Add(sups)
-		d, err := decimal.NewFromString(r.Value)
-		if err != nil {
-			log.Error().Err(err).Msg("parse decimal from string")
-		}
-		z = z.Add(d)
-	}
-	log.Info().Int("records", len(records1)).Str("sym", "BNB").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+	log.Info().Int("records", len(records1)).Str("sym", "BNB").Msg("fetch purchases")
 
 	records2, err := payments.BUSD()
 	if err != nil {
 		return fmt.Errorf("get busd payments: %w", err)
 	}
 
-	z = decimal.Zero
-	totalSupsSold = decimal.Zero
-	for _, r := range records2 {
-		sups, err := decimal.NewFromString(r.Sups)
-		if err != nil {
-			return err
-		}
-		totalSupsSold = totalSupsSold.Add(sups)
-		d, err := decimal.NewFromString(r.Value)
-		if err != nil {
-			log.Error().Err(err).Msg("parse decimal from string")
-		}
-		z = z.Add(d)
-	}
-	log.Info().Int("records", len(records2)).Str("sym", "BUSD").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+	log.Info().Int("records", len(records2)).Str("sym", "BUSD").Msg("fetch purchases")
 
 	records3, err := payments.ETH()
 	if err != nil {
 		return fmt.Errorf("get eth payments: %w", err)
 	}
-	totalSupsSold = decimal.Zero
-	z = decimal.Zero
-	for _, r := range records3 {
-		sups, err := decimal.NewFromString(r.Sups)
-		if err != nil {
-			return err
-		}
-		totalSupsSold = totalSupsSold.Add(sups)
-		d, err := decimal.NewFromString(r.Value)
-		if err != nil {
-			log.Error().Err(err).Msg("parse decimal from string")
-		}
-		z = z.Add(d)
-	}
-	log.Info().Int("records", len(records3)).Str("sym", "ETH").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+	log.Info().Int("records", len(records3)).Str("sym", "ETH").Msg("fetch purchases")
 	records4, err := payments.USDC()
 	if err != nil {
 		return fmt.Errorf("get usdc payments: %w", err)
 	}
-	totalSupsSold = decimal.Zero
-	z = decimal.Zero
-	for _, r := range records4 {
-		sups, err := decimal.NewFromString(r.Sups)
-		if err != nil {
-			return err
-		}
-		totalSupsSold = totalSupsSold.Add(sups)
-		d, err := decimal.NewFromString(r.Value)
-		if err != nil {
-			log.Error().Err(err).Msg("parse decimal from string")
-		}
-		z = z.Add(d)
-	}
-	log.Info().Int("records", len(records4)).Str("sym", "USDC").Str("sups", totalSupsSold.StringFixed(4)).Str("total", z.StringFixed(4)).Str("total", z.StringFixed(4)).Msg("total inputs")
+	log.Info().Int("records", len(records4)).Str("sym", "USDC").Msg("fetch purchases")
 
-	records1 = append(records1, records2...)
-	records1 = append(records1, records3...)
-	records1 = append(records1, records4...)
+	records := []*payments.PurchaseRecord{}
+	records = append(records, records1...)
+	records = append(records, records2...)
+	records = append(records, records3...)
+	records = append(records, records4...)
+
 	log.Info().Int("records", len(records1)).Msg("Syncing payments...")
 	successful := 0
 	skipped := 0
 	failed := 0
-	for _, r := range records1 {
+	for _, r := range records {
 		ctx := context.Background()
 
 		exists, err := db.TransactionExists(ctx, conn, r.TxHash)
@@ -554,7 +510,7 @@ func SyncPayments(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger
 			continue
 		}
 
-		input, _, _, err := payments.ProcessValues(r.Sups, r.Value, r.JSON.TokenDecimal)
+		input, _, err := payments.ProcessValues(r.Sups, r.ValueInt, r.ValueDecimals)
 		if err != nil {
 			return err
 		}
@@ -565,7 +521,7 @@ func SyncPayments(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger
 			continue
 		}
 
-		err = payments.StoreRecord(ctx, passport.XsynSaleUserID, user.ID, ucm, r, true)
+		err = payments.StoreRecord(ctx, passport.XsynSaleUserID, user.ID, ucm, r)
 		if err != nil && strings.Contains(err.Error(), "duplicate key") {
 			skipped++
 			continue
@@ -580,6 +536,7 @@ func SyncPayments(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger
 
 	}
 	log.Info().Int("skipped", skipped).Int("successful", successful).Int("failed", failed).Msg("synced payments")
+
 	return nil
 
 }
@@ -615,7 +572,7 @@ func SyncWithdraw(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger
 
 }
 func SyncNFTs(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
-	nftOwnerStatuses, err := payments.AllNFTOwners(isTestnet)
+	nftOwnerStatuses, err := payments.GetNFTOwnerRecords(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get nft owners: %w", err)
 	}
@@ -630,27 +587,35 @@ func SyncNFTs(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, is
 
 func SyncFunc(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool) error {
 	go func(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
-		err := SyncPayments(ucm, conn, log, isTestnet)
-		if err != nil {
-			passlog.L.Err(err).Msg("failed to sync payments")
+		if db.GetBoolWithDefault(db.KeyEnableSyncPayments, false) {
+			err := SyncPayments(ucm, conn, log, isTestnet)
+			if err != nil {
+				passlog.L.Err(err).Msg("failed to sync payments")
+			}
 		}
 	}(ucm, conn, log, isTestnet)
 	go func(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
-		err := SyncDeposits(ucm, conn, log, isTestnet)
-		if err != nil {
-			passlog.L.Err(err).Msg("failed to sync deposits")
+		if db.GetBoolWithDefault(db.KeyEnableSyncDeposits, false) {
+			err := SyncDeposits(ucm, conn, log, isTestnet)
+			if err != nil {
+				passlog.L.Err(err).Msg("failed to sync deposits")
+			}
 		}
 	}(ucm, conn, log, isTestnet)
 	go func(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
-		err := SyncNFTs(ucm, conn, log, isTestnet)
-		if err != nil {
-			passlog.L.Err(err).Msg("failed to sync nf ts")
+		if db.GetBoolWithDefault(db.KeyEnableSyncNFTOwners, false) {
+			err := SyncNFTs(ucm, conn, log, isTestnet)
+			if err != nil {
+				passlog.L.Err(err).Msg("failed to sync nf ts")
+			}
 		}
 	}(ucm, conn, log, isTestnet)
 	go func(ucm *api.UserCacheMap, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
-		err := SyncWithdraw(ucm, conn, log, isTestnet, enableWithdrawRollback)
-		if err != nil {
-			passlog.L.Err(err).Msg("failed to sync withdraw")
+		if db.GetBoolWithDefault(db.KeyEnableSyncWithdraw, false) {
+			err := SyncWithdraw(ucm, conn, log, isTestnet, enableWithdrawRollback)
+			if err != nil {
+				passlog.L.Err(err).Msg("failed to sync withdraw")
+			}
 		}
 	}(ucm, conn, log, isTestnet)
 	return nil
@@ -710,9 +675,14 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	isTestnetBlockchain := ctxCLI.Bool("is_testnet_blockchain")
 	runBlockchainBridge := ctxCLI.Bool("run_blockchain_bridge")
 
+	jwtKey := ctxCLI.String("jwt_key")
 	mailDomain := ctxCLI.String("mail_domain")
 	mailAPIKey := ctxCLI.String("mail_apikey")
 	mailSender := ctxCLI.String("mail_sender")
+	twilioSid := ctxCLI.String("twilio_sid")
+	twilioApiKey := ctxCLI.String("twilio_api_key")
+	twilioApiSecrete := ctxCLI.String("twilio_api_secret")
+	smsFromNumber := ctxCLI.String("sms_from_number")
 	externalURL := ctxCLI.String("passport_web_host_url")
 	insecuritySkipVerify := false
 	if environment == "development" || environment == "testing" {
@@ -869,6 +839,12 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		return terror.Panic(err, "Mailer init failed")
 	}
 
+	// SMS
+	twilio, err := sms.NewTwilio(twilioSid, twilioApiKey, twilioApiSecrete, smsFromNumber, environment)
+	if err != nil {
+		return terror.Panic(err, "SMS init failed")
+	}
+
 	// HTML Sanitizer
 	HTMLSanitizePolicy := bluemonday.UGCPolicy()
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
@@ -881,11 +857,17 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		return terror.Error(err)
 	}
 
+	jwtKeyByteArray, err := base64.StdEncoding.DecodeString(jwtKey)
+	if err != nil {
+		return terror.Error(err, "Failed to convert string to byte array")
+	}
+
 	// API Server
 	api, routes := api.NewAPI(log,
 		pgxconn,
 		txConn,
 		mailer,
+		twilio,
 		apiAddr,
 		HTMLSanitizePolicy,
 		config,
@@ -895,10 +877,11 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		runBlockchainBridge,
 		msgBus,
 		enablePurchaseSubscription,
+		jwtKeyByteArray,
 	)
 
 	passlog.L.Info().Msg("start rpc server")
-	s := comms.NewServer(ucm, msgBus, api.SupremacyController.Txs, log, pgxconn, api.ClientMap)
+	s := comms.NewServer(ucm, msgBus, api.SupremacyController.Txs, log, pgxconn, api.ClientMap, twilio)
 	err = comms.StartServer(s)
 	if err != nil {
 		return terror.Error(err)

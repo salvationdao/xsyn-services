@@ -41,6 +41,7 @@ type API struct {
 	Log                 *zerolog.Logger
 	Addr                string
 	Mailer              *email.Mailer
+	SMS                 passport.SMS
 	HTMLSanitize        *bluemonday.Policy
 	Hub                 *hub.Hub
 	Conn                *pgxpool.Pool
@@ -67,6 +68,8 @@ type API struct {
 
 	// supremacy client map
 	ClientMap *sync.Map
+
+	JWTKey []byte
 }
 
 // NewAPI registers routes
@@ -75,6 +78,7 @@ func NewAPI(
 	conn *pgxpool.Pool,
 	txConn *sql.DB,
 	mailer *email.Mailer,
+	twilio passport.SMS,
 	addr string,
 	HTMLSanitize *bluemonday.Policy,
 	config *passport.Config,
@@ -84,6 +88,7 @@ func NewAPI(
 	runBlockchainBridge bool,
 	msgBus *messagebus.MessageBus,
 	enablePurchaseSubscription bool,
+	jwtKey []byte,
 ) (*API, chi.Router) {
 
 	api := &API{
@@ -123,6 +128,7 @@ func NewAPI(
 		Conn:         conn,
 		Addr:         addr,
 		Mailer:       mailer,
+		SMS:          twilio,
 		HTMLSanitize: HTMLSanitize,
 		// server clients
 		// serverClients:       make(chan func(serverClients ServerClientsList)),
@@ -138,6 +144,7 @@ func NewAPI(
 		storeItemExternalUrl: externalUrl,
 
 		ClientMap: &sync.Map{},
+		JWTKey:    jwtKey,
 	}
 
 	cc := NewChainClients(log, api, config.BridgeParams, isTestnetBlockchain, runBlockchainBridge, enablePurchaseSubscription)
@@ -193,6 +200,7 @@ func NewAPI(
 			r.Mount("/files", FileRouter(conn, api))
 			r.Mount("/nfts", api.NFTRoutes())
 			r.Mount("/admin", AdminRoutes(ucm))
+			r.Mount("/moderator", ModeratorRoutes())
 
 			r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", WithError(api.Auth.GetNonce))

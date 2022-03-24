@@ -7,6 +7,8 @@ import (
 	"html"
 	"passport"
 	"passport/db"
+	"passport/db/boiler"
+	"passport/passdb"
 	"time"
 
 	goaway "github.com/TwiN/go-away"
@@ -29,14 +31,14 @@ var bm = bluemonday.StrictPolicy()
 
 // ChatMessageSend contains chat message data to send.
 type ChatMessageSend struct {
-	Message           string           `json:"message"`
-	MessageColor      string           `json:"message_color"`
-	FromUserID        passport.UserID  `json:"from_user_id"`
-	FromUsername      string           `json:"from_username"`
-	FactionColour     *string          `json:"faction_colour,omitempty"`
-	FactionLogoBlobID *passport.BlobID `json:"faction_logo_blob_id,omitempty"`
-	AvatarID          *passport.BlobID `json:"avatar_id,omitempty"`
-	SentAt            time.Time        `json:"sent_at"`
+	Message           string    `json:"message"`
+	MessageColor      string    `json:"message_color"`
+	FromUserID        string    `json:"from_user_id"`
+	FromUsername      string    `json:"from_username"`
+	FactionColour     *string   `json:"faction_colour,omitempty"`
+	FactionLogoBlobID *string   `json:"faction_logo_blob_id,omitempty"`
+	AvatarID          *string   `json:"avatar_id,omitempty"`
+	SentAt            time.Time `json:"sent_at"`
 }
 
 // Chatroom holds a specific chat room
@@ -147,28 +149,34 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 		return terror.Error(err, "Invalid request received")
 	}
 
-	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
-	if userID.IsNil() {
-		return terror.Error(terror.ErrForbidden)
+	user, err := boiler.FindUser(passdb.StdConn, hubc.Identifier())
+	if err != nil {
+		return terror.Error(err, "Unable to find user, try again or contact support.")
 	}
 
-	// get user
-	user, err := db.UserGet(ctx, fc.Conn, userID)
-	if err != nil {
-		return terror.Error(err)
+	// if chat banned just return
+	if user.ChatBannedUntil.Valid && user.ChatBannedUntil.Time.After(time.Now()) {
+		reply(true)
+		return nil
 	}
 
 	// get faction primary colour from faction
 	var (
 		factionColour     *string
-		factionLogoBlobID *passport.BlobID
+		factionLogoBlobID *string
 	)
-	if user.FactionID != nil {
-		faction, err := db.FactionGet(ctx, fc.Conn, *user.FactionID)
+	if user.FactionID.Valid {
+		faction, err := user.Faction().One(passdb.StdConn)
 		if err != nil {
-			return terror.Error(err)
+			return terror.Error(err, "Issue sending message, try again or contact support.")
 		}
-		factionColour = &faction.Theme.Primary
+		theme := &passport.FactionTheme{}
+
+		err = faction.Theme.Unmarshal(theme)
+		if err != nil {
+			return terror.Error(err, "Issue sending message, try again or contact support.")
+		}
+		factionColour = &theme.Primary
 		factionLogoBlobID = &faction.LogoBlobID
 	}
 
@@ -180,11 +188,11 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 
 	// check if the faction id is provided
 	if !req.Payload.FactionID.IsNil() {
-		if user.FactionID == nil || user.FactionID.IsNil() {
-			return terror.Error(terror.ErrInvalidInput, "Require to join a faction to send message")
+		if !user.FactionID.Valid || user.FactionID.String == "" {
+			return terror.Error(terror.ErrInvalidInput, "Required to join a faction to send message.")
 		}
 
-		if *user.FactionID != req.Payload.FactionID {
+		if user.FactionID.String != req.Payload.FactionID.String() {
 			return terror.Error(terror.ErrForbidden, "Users are not allow to join the faction chat which they are not belong to")
 		}
 
@@ -193,23 +201,23 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 			MessageColor:      req.Payload.MessageColor,
 			FromUserID:        user.ID,
 			FromUsername:      user.Username,
-			AvatarID:          user.AvatarID,
+			AvatarID:          &user.AvatarID.String,
 			SentAt:            time.Now(),
 			FactionColour:     factionColour,
 			FactionLogoBlobID: factionLogoBlobID,
 		}
 
-		switch *user.FactionID {
-		case passport.RedMountainFactionID:
+		switch user.FactionID.String {
+		case passport.RedMountainFactionID.String():
 			fc.RedMountainChat.AddMessage(chatMessage)
-		case passport.BostonCyberneticsFactionID:
+		case passport.BostonCyberneticsFactionID.String():
 			fc.BostonChat.AddMessage(chatMessage)
-		case passport.ZaibatsuFactionID:
+		case passport.ZaibatsuFactionID.String():
 			fc.ZaibatsuChat.AddMessage(chatMessage)
 		}
 
 		// send message
-		fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID)), chatMessage)
+		fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID.String)), chatMessage)
 		reply(true)
 		return nil
 	}
@@ -220,7 +228,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 		MessageColor:      req.Payload.MessageColor,
 		FromUserID:        user.ID,
 		FromUsername:      user.Username,
-		AvatarID:          user.AvatarID,
+		AvatarID:          &user.AvatarID.String,
 		SentAt:            time.Now(),
 		FactionColour:     factionColour,
 		FactionLogoBlobID: factionLogoBlobID,

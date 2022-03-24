@@ -3,8 +3,9 @@ package passport
 import (
 	"database/sql/driver"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"math/big"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgtype"

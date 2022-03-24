@@ -4,9 +4,14 @@ import (
 	"context"
 	"fmt"
 	"passport"
+	"passport/db/boiler"
+	"passport/passdb"
+	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 func UserHasPassword(ctx context.Context, conn Conn, user *passport.User) (*bool, error) {
@@ -143,12 +148,15 @@ func AuthRemoveTokenWithID(ctx context.Context, conn Conn, id passport.IssueToke
 }
 
 // AuthSaveToken adds token to DB
-func AuthSaveToken(ctx context.Context, conn Conn, tokenID passport.IssueTokenID, userID passport.UserID) error {
-	q := `
-		INSERT INTO issue_tokens (id, user_id)
-		VALUES ($1, $2)`
+func AuthSaveToken(ctx context.Context, conn Conn, tokenID passport.IssueTokenID, userID passport.UserID, userAgent string, expiredAt time.Time) error {
+	it := boiler.IssueToken{
+		ID:        tokenID.String(),
+		UserID:    userID.String(),
+		UserAgent: userAgent,
+		ExpiresAt: null.TimeFrom(expiredAt),
+	}
 
-	_, err := conn.Exec(ctx, q, tokenID, userID)
+	err := it.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
 		return terror.Error(err)
 	}

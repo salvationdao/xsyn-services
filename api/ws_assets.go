@@ -10,6 +10,7 @@ import (
 	"passport"
 	"passport/db"
 	"passport/db/boiler"
+	"passport/passdb"
 	"time"
 
 	"github.com/microcosm-cc/bluemonday"
@@ -217,6 +218,7 @@ type AssetUpdatedSubscribeResponse struct {
 	CollectionSlug string                `json:"collection_slug"`
 	PurchasedItem  *boiler.PurchasedItem `json:"purchased_item"`
 	OwnerUsername  string                `json:"owner_username"`
+	HostURL        string                `json:"host_url"`
 }
 
 const HubKeyAssetSubscribe hub.HubCommandKey = "ASSET:SUBSCRIBE"
@@ -249,6 +251,7 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hub
 		PurchasedItem:  asset,
 		OwnerUsername:  owner.Username,
 		CollectionSlug: collection.Slug,
+		HostURL:        ac.API.GameserverHostUrl,
 	})
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, asset.Hash)), nil
 }
@@ -391,6 +394,16 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 		return terror.Error(err, "Invalid request received")
 	}
 
+	// get user
+	user, err := boiler.FindUser(passdb.StdConn, hubc.Identifier())
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	if user.RenameBanned.Valid && user.RenameBanned.Bool {
+		return terror.Warn(fmt.Errorf("user rename banned"), "You have been banned from renaming, asshole.")
+	}
+
 	if profanityDetector.IsProfane(req.Payload.Name) {
 		return terror.Error(err, "Profanity is not allowed")
 	}
@@ -404,16 +417,8 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 		return terror.Error(fmt.Errorf("item doesn't exist"), "This item does not exist.")
 	}
 
-	// get user
-	uid, err := uuid.FromString(hubc.Identifier())
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	userID := passport.UserID(uid)
-
 	// check if user owns asset
-	if item.OwnerID != userID.String() {
+	if item.OwnerID != user.ID {
 		return terror.Error(err, "Must own Item to update it's name.")
 	}
 
@@ -428,17 +433,14 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 	if err != nil {
 		return terror.Error(err)
 	}
-	u, err := db.UserGet(context.Background(), ac.Conn, userID)
-	if err != nil {
-		return terror.Error(err)
-	}
+
 	collection, err := db.Collection(uuid.Must(uuid.FromString(item.CollectionID)))
 	if err != nil {
 		return terror.Error(err)
 	}
 	go ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.AssetHash)), &AssetUpdatedSubscribeResponse{
 		PurchasedItem:  item,
-		OwnerUsername:  u.Username,
+		OwnerUsername:  user.Username,
 		CollectionSlug: collection.Slug,
 	})
 
