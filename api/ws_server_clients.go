@@ -55,7 +55,7 @@ func (ch *ServerClientControllerWS) CheckTransactionsHandler(ctx context.Context
 
 	list, err := db.TransactionGetList(ctx, ch.Conn, req.Payload.TransactionReferences)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Could not get transaction list, try again or contact support.")
 	}
 
 	reply(struct {

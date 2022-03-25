@@ -47,17 +47,18 @@ type TransactionGroup struct {
 
 // TransactionGroupsHandler returns a list of group IDs that the user's transactions exist in
 func (tc *TransactionController) TransactionGroupsHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Could not get user's group of transactions, try again or contact support."
 	// get user
 	uid, err := uuid.FromString(hubc.Identifier())
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	userID := passport.UserID(uid)
 
 	groups, err := db.UsersTransactionGroups(userID, ctx, tc.Conn)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	reply(groups)
@@ -86,6 +87,7 @@ type TransactionListResponse struct {
 const HubKeyTransactionList hub.HubCommandKey = "TRANSACTION:LIST"
 
 func (tc *TransactionController) TransactionListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Could not get list of user transactions, try again or contact support."
 	req := &TransactionListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -100,7 +102,7 @@ func (tc *TransactionController) TransactionListHandler(ctx context.Context, hub
 	// get user
 	uid, err := uuid.FromString(hubc.Identifier())
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	userID := passport.UserID(uid)
@@ -116,7 +118,7 @@ func (tc *TransactionController) TransactionListHandler(ctx context.Context, hub
 		req.Payload.SortDir,
 	)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	resultTransactionIDs := make([]string, 0)
@@ -143,6 +145,7 @@ type TransactionSubscribeRequest struct {
 }
 
 func (tc *TransactionController) TransactionSubscribeHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	errMsg := "Issue subscribing user to transactions lists, try again or contact support."
 	req := &TransactionSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -151,13 +154,13 @@ func (tc *TransactionController) TransactionSubscribeHandler(ctx context.Context
 
 	transaction, err := db.TransactionGet(ctx, tc.Conn, req.Payload.TransactionID)
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, errMsg)
 	}
 
 	// get user
 	uid, err := uuid.FromString(hubc.Identifier())
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, errMsg)
 	}
 
 	userID := passport.UserID(uid)
