@@ -2,6 +2,7 @@ package payments
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -23,6 +24,18 @@ const BNBPurchasePath Path = "bnb_txs"
 const BUSDPurchasePath Path = "busd_txs"
 const ETHPurchasePath Path = "eth_txs"
 const USDCPurchasePath Path = "usdc_txs"
+
+func Ping() error {
+	u := fmt.Sprintf("%s/ping", baseURL)
+	resp, err := http.Get(u)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("non 200 response: " + strconv.Itoa(resp.StatusCode))
+	}
+	return nil
+}
 
 func getPurchaseRecords(path Path, latestBlock int, testnet bool) ([]*PurchaseRecord, int, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s", baseURL, path), nil)
