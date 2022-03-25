@@ -881,7 +881,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	)
 
 	passlog.L.Info().Msg("start rpc server")
-	s := comms.NewServer(ucm, msgBus, api.SupremacyController.Txs, log, pgxconn, api.ClientMap, twilio)
+	s := comms.NewServer(ucm, msgBus, log, pgxconn, api.ClientMap, twilio)
 	err = comms.StartServer(s)
 	if err != nil {
 		return terror.Error(err)

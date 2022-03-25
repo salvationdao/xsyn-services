@@ -17,7 +17,6 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// for sups trickle handler
 type TickerPoolCache struct {
 	deadlock.Mutex
 	TricklingAmountMap map[string]decimal.Decimal
@@ -27,10 +26,10 @@ type S struct {
 	UserCacheMap *api.Transactor
 	MessageBus   *messagebus.MessageBus
 	SMS          passport.SMS
-	Txs          *api.Transactions
-	Log          *zerolog.Logger
-	Conn         db.Conn
-	DistLock     deadlock.Mutex
+	//Txs          *api.Transactions
+	Log      *zerolog.Logger
+	Conn     db.Conn
+	DistLock deadlock.Mutex
 
 	TickerPoolCache *TickerPoolCache // user for sup trickle process
 	HubSessionIDMap *sync.Map
@@ -39,7 +38,7 @@ type S struct {
 func NewServer(
 	userCacheMap *api.Transactor,
 	messageBus *messagebus.MessageBus,
-	txs *api.Transactions,
+	//txs *api.Transactions,
 	log *zerolog.Logger,
 	conn *pgxpool.Pool,
 	cm *sync.Map,
@@ -48,9 +47,9 @@ func NewServer(
 	result := &S{
 		UserCacheMap: userCacheMap,
 		MessageBus:   messageBus,
-		Txs:          txs,
-		Log:          log,
-		Conn:         conn,
+		//Txs:          txs,
+		Log:  log,
+		Conn: conn,
 		TickerPoolCache: &TickerPoolCache{
 			deadlock.Mutex{},
 			make(map[string]decimal.Decimal),

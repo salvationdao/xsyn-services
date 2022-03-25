@@ -21,7 +21,6 @@ type Faction struct {
 	Description      string        `json:"description" db:"description"`
 }
 
-// from game server
 type FactionStat struct {
 	Velocity      int64      `json:"velocity"`
 	RecruitNumber int64      `json:"recruit_number"`
