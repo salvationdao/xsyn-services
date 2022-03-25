@@ -127,7 +127,7 @@ func (uc *UserController) GetHandler(ctx context.Context, hubc *hub.Client, payl
 	req := &GetUserRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.ID.IsNil() && req.Payload.Username == "" {
 		return terror.Error(terror.ErrInvalidInput, "User ID or username is required")
@@ -291,7 +291,7 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 	req := &UpdateUserRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.ID.IsNil() {
 		return terror.Error(terror.ErrInvalidInput, "User ID is required")
@@ -543,7 +543,7 @@ func (uc *UserController) CreateHandler(ctx context.Context, hubc *hub.Client, p
 	req := &CreateUserRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	email := strings.TrimSpace(req.Payload.Email.String)
@@ -675,7 +675,7 @@ func (uc *UserController) ListHandler(ctx context.Context, hubc *hub.Client, pay
 	req := &ListHandlerRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	offset := 0
@@ -729,7 +729,7 @@ func (uc *UserController) ArchiveHandler(ctx context.Context, hubc *hub.Client, 
 	req := &UserArchiveRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Failed to unmarshal data")
+		return terror.Error(err, "Invalid request received.")
 	}
 	err = db.UserArchiveUpdate(ctx, uc.Conn, req.Payload.ID, true)
 	if err != nil {
@@ -763,7 +763,7 @@ func (uc *UserController) UnarchiveHandler(ctx context.Context, hubc *hub.Client
 	req := &UserArchiveRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Failed to unmarshal data")
+		return terror.Error(err, "Invalid request received.")
 	}
 	err = db.UserArchiveUpdate(ctx, uc.Conn, req.Payload.ID, false)
 	if err != nil {
@@ -809,7 +809,7 @@ func (uc *UserController) ChangePasswordHandler(ctx context.Context, hubc *hub.C
 	req := &UserChangePasswordRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.ID == passport.UserID(uuid.Nil) {
 		return terror.Error(terror.ErrInvalidInput, "User ID is required")
@@ -901,7 +901,7 @@ func (uc *UserController) ForceDisconnectHandler(ctx context.Context, hubc *hub.
 	req := &UserForceDisconnectRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.ID == passport.UserID(uuid.Nil) {
 		return terror.Error(terror.ErrInvalidInput, "User ID is required")
@@ -956,7 +956,7 @@ func (uc *UserController) ForceDisconnectedHandler(ctx context.Context, hubc *hu
 	req := &ForceDisconnectRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
+		return "", "", terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.ID == passport.UserID(uuid.Nil) {
 		return "", "", terror.Error(terror.ErrInvalidInput, "User ID is required")
@@ -982,12 +982,12 @@ func (uc *UserController) OnlineStatusSubscribeHandler(ctx context.Context, hubc
 	req := &HubKeyUserOnlineStatusRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	userID := req.Payload.ID
 	if userID.IsNil() && req.Payload.Username == "" {
-		return req.TransactionID, "", terror.Error(terror.ErrInvalidInput, "User ID or username is required")
+		return req.TransactionID, "", terror.Error(terror.ErrInvalidInput, "User ID or username is required.")
 	}
 	if userID.IsNil() {
 		id, err := db.UserIDFromUsername(ctx, uc.Conn, req.Payload.Username)
@@ -998,7 +998,7 @@ func (uc *UserController) OnlineStatusSubscribeHandler(ctx context.Context, hubc
 	}
 
 	if userID.IsNil() {
-		return req.TransactionID, "", terror.Error(fmt.Errorf("userID is still nil for %s %s", req.Payload.ID, req.Payload.Username), "Unable to load current user")
+		return req.TransactionID, "", terror.Error(fmt.Errorf("userID is still nil for %s %s", req.Payload.ID, req.Payload.Username), "Unable to load current user.")
 	}
 
 	// get current online status
@@ -1037,7 +1037,7 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hub.C
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.ID.IsNil() {
 		return terror.Error(terror.ErrInvalidInput, "User ID is required")
@@ -1111,7 +1111,7 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.Clie
 	req := &AddServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	if req.Payload.Token == "" {
@@ -1188,7 +1188,7 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.Cli
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.ID.IsNil() {
 		return terror.Error(terror.ErrInvalidInput, "User ID is required")
@@ -1262,7 +1262,7 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Client
 	req := &AddServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	if req.Payload.Token == "" {
@@ -1336,7 +1336,7 @@ func (uc *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.Cli
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.ID.IsNil() {
 		return terror.Error(terror.ErrInvalidInput, "User ID is required")
@@ -1418,7 +1418,7 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client
 	req := &AddTwitchRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	if req.Payload.Token == "" {
@@ -1524,7 +1524,7 @@ func (uc *UserController) RemoveTwitterHandler(ctx context.Context, hubc *hub.Cl
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.ID.IsNil() {
 		return terror.Error(terror.ErrInvalidInput, "User ID is required")
@@ -1606,7 +1606,7 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, hubc *hub.Clien
 	req := &AddTwitterRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	if req.Payload.OAuthToken == "" {
@@ -1713,7 +1713,7 @@ func (uc *UserController) RemoveDiscordHandler(ctx context.Context, hubc *hub.Cl
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.ID.IsNil() {
 		return terror.Error(terror.ErrInvalidInput, "User ID is required")
@@ -1795,7 +1795,7 @@ func (uc *UserController) AddDiscordHandler(ctx context.Context, hubc *hub.Clien
 	req := &AddDiscordRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	if req.Payload.Code == "" {
@@ -1926,7 +1926,7 @@ func (uc *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.Cli
 	req := &RemoveWalletRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.ID.IsNil() {
 		return terror.Error(terror.ErrInvalidInput, "User ID is required")
@@ -2028,7 +2028,7 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Client
 	req := &AddWalletRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.ID.IsNil() && req.Payload.Username == "" {
 		return terror.Error(terror.ErrInvalidInput, "User ID or Username is required")
@@ -2134,7 +2134,7 @@ func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, client *h
 	req := &UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	var user *passport.User
@@ -2170,12 +2170,12 @@ func (uc *UserController) UserSupsUpdatedSubscribeHandler(ctx context.Context, c
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	userID := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
 	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrForbidden)
+		return "", "", terror.Error(terror.ErrForbidden, "User is not logged in, access forbiddened.")
 	}
 
 	sups, err := uc.API.userCacheMap.Get(client.Identifier())
@@ -2194,7 +2194,7 @@ func (uc *UserController) UserSupsMultiplierUpdatedSubscribeHandler(ctx context.
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	var resp struct {
@@ -2220,7 +2220,7 @@ func (uc *UserController) UserStatUpdatedSubscribeHandler(ctx context.Context, c
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	resp := &passport.UserStat{}
@@ -2259,12 +2259,12 @@ func (uc *UserController) UserFactionUpdatedSubscribeHandler(ctx context.Context
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	userID := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
 	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrForbidden)
+		return "", "", terror.Error(terror.ErrForbidden, "User is not logged in, access forbiddened.")
 	}
 
 	// get user faction
@@ -2302,7 +2302,7 @@ func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx con
 	req := &WarMachineQueuePositionRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	// get item
@@ -2385,7 +2385,7 @@ func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, client *
 	req := &UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	sups, err := uc.API.userCacheMap.Get(passport.XsynSaleUserID.String())
@@ -2403,7 +2403,7 @@ func (uc *UserController) ExchangeRatesHandler(ctx context.Context, client *hub.
 	req := &UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	reply(uc.API.State)
@@ -2426,7 +2426,7 @@ func (uc *UserController) BlockConfirmationHandler(ctx context.Context, client *
 	req := &BlockConfirmationRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	var user *passport.User
@@ -2465,7 +2465,7 @@ func (uc *UserController) CheckCanAccessStore(ctx context.Context, hubc *hub.Cli
 	req := &CheckAllowedStoreAccess{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.WalletAddress == "" {
 		return terror.Error(terror.ErrInvalidInput, "Wallet address is required")
@@ -2473,7 +2473,7 @@ func (uc *UserController) CheckCanAccessStore(ctx context.Context, hubc *hub.Cli
 
 	loc, err := time.LoadLocation("Australia/Perth")
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// alpha
@@ -2557,12 +2557,12 @@ func (uc *UserController) UserAssetListHandler(ctx context.Context, hubc *hub.Cl
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return terror.Error(terror.ErrForbidden)
+		return terror.Error(terror.ErrForbidden, "User is not logged in, access forbiddened.")
 	}
 
 	items, err := db.PurchasedItemsByOwnerID(uuid.UUID(userID))
@@ -2581,12 +2581,12 @@ func (uc *UserController) UserTransactionsSubscribeHandler(ctx context.Context, 
 	req := &UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "User is not logged in, access forbiddened.")
 	}
 
 	// get users transactions
@@ -2603,12 +2603,12 @@ func (uc *UserController) UserLatestTransactionsSubscribeHandler(ctx context.Con
 	req := &UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "User is not logged in, access forbiddened.")
 	}
 
 	// get transaction

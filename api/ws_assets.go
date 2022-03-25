@@ -70,22 +70,23 @@ const HubKeyAssetQueueJoin hub.HubCommandKey = "ASSET:QUEUE:JOIN"
 
 // JoinQueueHandler join user's asset to queue
 func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue joining user's asset to queue, try again or contact support."
 	req := &AssetJoinQueueRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// parse user id
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput)
+		return terror.Error(terror.ErrInvalidInput, "User is not logged in, access forbiddened.")
 	}
 
 	// get user
 	user, err := db.UserGet(ctx, ac.Conn, userID)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	if user.FactionID == nil || user.FactionID.IsNil() {
@@ -95,14 +96,14 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	// check user own this asset, and it has not joined the queue yet
 	asset, err := db.PurchasedItemByHash(req.Payload.AssetHash)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 	if asset == nil {
-		return terror.Error(fmt.Errorf("asset doesn't exist"))
+		return terror.Error(fmt.Errorf("asset doesn't exist"), "Asset doesn't exist.")
 	}
 
 	if asset.OwnerID != userID.String() {
-		return terror.Error(terror.ErrForbidden)
+		return terror.Error(terror.ErrForbidden, "Asset is not owned by this user.")
 	}
 
 	warMachineMetadata := &passport.WarMachineMetadata{
@@ -125,7 +126,7 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 		NeedInsured:        req.Payload.NeedInsured,
 	}, &resp)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineQueueStatSubscribe, warMachineMetadata.Hash)), resp)
@@ -164,11 +165,11 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Clien
 	req := &AssetsUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Invalid request received.")
 	}
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return terror.Error(fmt.Errorf("no auth: user ID %s", userID), "User not found")
+		return terror.Error(fmt.Errorf("no auth: user ID %s", userID), "User is not logged in, access forbiddened.")
 	}
 
 	offset := 0
@@ -189,7 +190,7 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Clien
 		req.Payload.SortDir,
 	)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Could not get list of assets, try again or contact support.")
 	}
 
 	itemHashes := make([]string, 0)
@@ -224,28 +225,29 @@ type AssetUpdatedSubscribeResponse struct {
 const HubKeyAssetSubscribe hub.HubCommandKey = "ASSET:SUBSCRIBE"
 
 func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	errMsg := "Issue subscribing to asset updates, try again or contact support."
 	req := &AssetUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err)
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	asset, err := db.PurchasedItemByHash(req.Payload.AssetHash)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err)
+		return req.TransactionID, "", terror.Error(err, errMsg)
 	}
 	if asset == nil {
-		return req.TransactionID, "", terror.Error(fmt.Errorf("asset doesn't exist"))
+		return req.TransactionID, "", terror.Error(fmt.Errorf("asset doesn't exist"), "Asset doesn't exist.")
 	}
 
 	owner, err := db.UserGet(context.Background(), ac.Conn, passport.UserID(uuid.Must(uuid.FromString(asset.OwnerID))))
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err)
+		return req.TransactionID, "", terror.Error(err, errMsg)
 	}
 
 	collection, err := db.Collection(uuid.Must(uuid.FromString(asset.CollectionID)))
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err)
+		return req.TransactionID, "", terror.Error(err, errMsg)
 	}
 	reply(&AssetUpdatedSubscribeResponse{
 		PurchasedItem:  asset,
@@ -269,34 +271,35 @@ const HubKeyAssetRepairStatUpdate hub.HubCommandKey = "ASSET:DURABILITY:SUBSCRIB
 func (ac *AssetController) AssetRepairStatUpdateSubscriber(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	ac.Log.Debug().RawJSON("req", payload).Str("fn", "AssetRepairStatUpdateSubscriber").Msg("ws handler")
 
+	errMsg := "Issue subscribing to asset repair status updates, try again or contact support."
 	req := &AssetRepairStatUpdateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err)
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return req.TransactionID, "", terror.Error(fmt.Errorf("no auth"))
+		return req.TransactionID, "", terror.Error(fmt.Errorf("no auth"), "User is not logged in, access forbiddened.")
 	}
 
 	if req.Payload.AssetHash == "" {
-		return req.TransactionID, "", terror.Error(fmt.Errorf("empty asset hash"), "Issue subscripting to asset repair status.")
+		return req.TransactionID, "", terror.Error(fmt.Errorf("empty asset hash"), errMsg)
 	}
 
 	// check ownership
 	// get asset
 	asset, err := db.PurchasedItemByHash(req.Payload.AssetHash)
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, errMsg)
 	}
 	if asset == nil {
-		return "", "", terror.Error(fmt.Errorf("asset doesn't exist"), "This asset does not exist.")
+		return "", "", terror.Error(fmt.Errorf("asset doesn't exist"), "This asset does not exist, try again or contact support.")
 	}
 
 	// check if user owns asset
 	if asset.OwnerID != userID.String() {
-		return "", "", terror.Error(err, "Must own Asset to repair it.")
+		return "", "", terror.Error(err, "Must own asset to repair it, try again or contact support.")
 	}
 
 	// get repair stat from gameserver
@@ -310,7 +313,7 @@ func (ac *AssetController) AssetRepairStatUpdateSubscriber(ctx context.Context, 
 		Hash: req.Payload.AssetHash,
 	}, &resp)
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, errMsg)
 	}
 
 	if resp.AssetRepairRecord.Hash == req.Payload.AssetHash {
@@ -326,20 +329,21 @@ func (ac *AssetController) AssetRepairStatUpdateSubscriber(ctx context.Context, 
 const HubKeyAssetQueueCostUpdate hub.HubCommandKey = "ASSET:QUEUE:COST:UPDATE"
 
 func (ac *AssetController) AssetQueueCostUpdateSubscriber(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	errMsg := "Issue subscribing to asset queue cost updates, try again or contact support."
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err)
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrForbidden)
+		return "", "", terror.Error(terror.ErrForbidden, "User is not logged in, access forbiddened.")
 	}
 
 	faction, err := db.FactionGetByUserID(context.Background(), ac.Conn, userID)
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, errMsg)
 	}
 
 	var resp struct {
@@ -352,7 +356,7 @@ func (ac *AssetController) AssetQueueCostUpdateSubscriber(ctx context.Context, h
 		FactionID: faction.ID,
 	}, &resp)
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, errMsg)
 	}
 
 	cost := big.NewInt(1000000000000000000)
@@ -386,18 +390,19 @@ type AssetSetNameRequest struct {
 const HubKeyAssetUpdateName hub.HubCommandKey = "ASSET:UPDATE:NAME"
 
 func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue updating asset name, try again or contact support."
 	bm := bluemonday.StrictPolicy()
 
 	req := &AssetSetNameRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// get user
 	user, err := boiler.FindUser(passdb.StdConn, hubc.Identifier())
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	if user.RenameBanned.Valid && user.RenameBanned.Bool {
@@ -405,13 +410,13 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 	}
 
 	if profanityDetector.IsProfane(req.Payload.Name) {
-		return terror.Error(err, "Profanity is not allowed")
+		return terror.Error(err, "Profanity is not allowed.")
 	}
 
 	// get item
 	item, err := db.PurchasedItemByHash(req.Payload.AssetHash)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 	if item == nil {
 		return terror.Error(fmt.Errorf("item doesn't exist"), "This item does not exist.")
@@ -419,24 +424,24 @@ func (ac *AssetController) AssetUpdateNameHandler(ctx context.Context, hubc *hub
 
 	// check if user owns asset
 	if item.OwnerID != user.ID {
-		return terror.Error(err, "Must own Item to update it's name.")
+		return terror.Error(err, "User must own item to update it's name, try again or contact support.")
 	}
 
 	name := html.UnescapeString(bm.Sanitize(req.Payload.Name))
 
 	if len(name) > 25 {
-		return terror.Error(err, "Name must be less than 25 characters")
+		return terror.Error(err, "Name must be less than 25 characters.")
 	}
 
 	// update asset name
 	item, err = db.PurchasedItemSetName(uuid.Must(uuid.FromString(item.ID)), name)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	collection, err := db.Collection(uuid.Must(uuid.FromString(item.CollectionID)))
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 	go ac.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, req.Payload.AssetHash)), &AssetUpdatedSubscribeResponse{
 		PurchasedItem:  item,

@@ -62,7 +62,7 @@ func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *hub.
 	req := &PurchaseRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// get user
@@ -108,7 +108,7 @@ func (sc *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, hubc *h
 	req := &PurchaseLootboxRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// get user
@@ -147,7 +147,7 @@ func (sc *StoreControllerWS) LootboxAmountHandler(ctx context.Context, hubc *hub
 	req := &PurchaseLootboxRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	amount, err := items.LootboxAmountPerFaction(ctx, sc.Conn, sc.Log, sc.API.MessageBus, messagebus.BusKey(HubKeyLootboxAmount), req.Payload.FactionID)
@@ -188,7 +188,7 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Cli
 	req := &StoreListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// get user to check faction
@@ -257,7 +257,7 @@ func (sc *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, clie
 	req := &StoreItemSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	item, err := db.StoreItem(uuid.UUID(req.Payload.StoreItemID))
@@ -310,7 +310,7 @@ func (sc *StoreControllerWS) AvailableItemAmountSubscribeHandler(ctx context.Con
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	fsa, err := db.StoreItemsAvailable()

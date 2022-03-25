@@ -64,7 +64,7 @@ func (sc *SupController) DepositTransactionListHandler(ctx context.Context, hubc
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// get user
@@ -107,7 +107,7 @@ func (sc *SupController) DepositSupHandler(ctx context.Context, hubc *hub.Client
 	req := &SupDepositRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	if req.Payload.TransactionHash == "" {
@@ -156,7 +156,7 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 	req := &SupWithdrawRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	if sc.cc.SUPS == nil {
@@ -169,10 +169,10 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 	}
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return terror.Error(terror.ErrForbidden)
+		return terror.Error(terror.ErrForbidden, "User is not logged in, access forbiddened.")
 	}
 	user, err := db.UserGet(ctx, sc.Conn, userID)
-	if userID.IsNil() {
+	if err != nil {
 		return terror.Error(err)
 	}
 	if !user.PublicAddress.Valid || user.PublicAddress.String == "" {

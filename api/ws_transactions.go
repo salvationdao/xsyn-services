@@ -89,7 +89,7 @@ func (tc *TransactionController) TransactionListHandler(ctx context.Context, hub
 	req := &TransactionListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	offset := 0
@@ -146,7 +146,7 @@ func (tc *TransactionController) TransactionSubscribeHandler(ctx context.Context
 	req := &TransactionSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	transaction, err := db.TransactionGet(ctx, tc.Conn, req.Payload.TransactionID)

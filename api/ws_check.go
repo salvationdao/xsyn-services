@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/ninja-software/log_helpers"
+	"github.com/ninja-software/terror/v2"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-syndicate/hub"
@@ -41,7 +42,7 @@ func (ch *CheckControllerWS) Handler(ctx context.Context, hubc *hub.Client, payl
 	response := CheckResponse{Check: "ok"}
 	err := check(ctx, ch.Conn)
 	if err != nil {
-		response.Check = err.Error()
+		return terror.Error(err, "Server check failed, try again or contact support.")
 	}
 
 	reply(response)

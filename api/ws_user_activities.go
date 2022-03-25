@@ -68,7 +68,7 @@ func (hub *UserActivityController) UserActivityListHandler(ctx context.Context, 
 	req := &UserActivityListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	offset := 0
@@ -129,7 +129,7 @@ func (hub *UserActivityController) UserActivityCreateHandler(ctx context.Context
 	req := &UserActivityCreateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// Validation
@@ -193,7 +193,7 @@ func (hub *UserActivityController) UserActivityGetHandler(ctx context.Context, h
 	req := &UserActivityGetRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Failed to unmarshal data")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// Get userActivity
