@@ -9,6 +9,7 @@ var TableNames = struct {
 	ChainConfirmations      string
 	Collections             string
 	DeathAddresses          string
+	DepositTransactions     string
 	Factions                string
 	IssueTokens             string
 	ItemOnchainTransactions string
@@ -38,6 +39,7 @@ var TableNames = struct {
 	ChainConfirmations:      "chain_confirmations",
 	Collections:             "collections",
 	DeathAddresses:          "death_addresses",
+	DepositTransactions:     "deposit_transactions",
 	Factions:                "factions",
 	IssueTokens:             "issue_tokens",
 	ItemOnchainTransactions: "item_onchain_transactions",

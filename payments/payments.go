@@ -17,7 +17,7 @@ import (
 )
 
 type UserCacheMap interface {
-	Process(nt *passport.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error)
+	Transact(nt *passport.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error)
 }
 
 const SUPDecimals = 18
@@ -71,7 +71,7 @@ func StoreRecord(ctx context.Context, fromUserID passport.UserID, toUserID passp
 		Group:                passport.TransactionGroupStore,
 	}
 
-	_, _, _, err = ucm.Process(trans)
+	_, _, _, err = ucm.Transact(trans)
 	if err != nil {
 		return fmt.Errorf("create tx entry for tx %s: %w", record.TxHash, err)
 	}

@@ -36,7 +36,7 @@ func InsertPendingRefund(ucm UserCacheMap, userID passport.UserID, amount decima
 		Group:                passport.TransactionGroupWithdrawal,
 	}
 
-	_, _, _, err := ucm.Process(tx)
+	_, _, _, err := ucm.Transact(tx)
 	if err != nil {
 		return "", terror.Error(err)
 	}
@@ -204,7 +204,7 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 			Logger()
 
 		if enableWithdrawRollback {
-			_, _, _, err = ucm.Process(newTx)
+			_, _, _, err = ucm.Transact(newTx)
 			if err != nil {
 				skipped++
 				l.Warn().Err(err).Msg("failed to process refund")

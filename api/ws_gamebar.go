@@ -119,7 +119,7 @@ func (gc *GamebarController) GetFreeSups(ctx context.Context, hubc *hub.Client, 
 		Description:          "100 SUPS giveaway for testing",
 		Group:                "Testing",
 	}
-	_, _, _, err = gc.API.userCacheMap.Process(tx)
+	_, _, _, err = gc.API.userCacheMap.Transact(tx)
 	if err != nil {
 		passlog.L.
 			Err(err).
@@ -236,7 +236,7 @@ func (gc *GamebarController) AuthRingCheck(ctx context.Context, hubc *hub.Client
 					Description:          "Give away for testing",
 					Group:                "Testing",
 				}
-				_, _, _, err := gc.API.userCacheMap.Process(tx)
+				_, _, _, err := gc.API.userCacheMap.Transact(tx)
 				if err != nil {
 					passlog.L.
 						Err(err).

@@ -75,7 +75,7 @@ func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *hub.
 		return terror.Error(err)
 	}
 
-	err = items.Purchase(ctx, sc.Conn, sc.Log, sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), sc.API.userCacheMap.Process, *user, req.Payload.StoreItemID, sc.API.storeItemExternalUrl)
+	err = items.Purchase(ctx, sc.Conn, sc.Log, sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), sc.API.userCacheMap.Transact, *user, req.Payload.StoreItemID, sc.API.storeItemExternalUrl)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -121,7 +121,7 @@ func (sc *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, hubc *h
 		return terror.Error(err)
 	}
 
-	tokenID, err := items.PurchaseLootbox(ctx, sc.Conn, sc.Log, sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), sc.API.userCacheMap.Process, *user, req.Payload.FactionID, sc.API.storeItemExternalUrl)
+	tokenID, err := items.PurchaseLootbox(ctx, sc.Conn, sc.Log, sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), sc.API.userCacheMap.Transact, *user, req.Payload.FactionID, sc.API.storeItemExternalUrl)
 	if err != nil {
 		return terror.Error(err)
 	}

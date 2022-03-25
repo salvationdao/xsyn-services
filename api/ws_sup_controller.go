@@ -4,11 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"math/big"
 	"passport"
 	"passport/db"
+	"passport/db/boiler"
+	"passport/passdb"
+	"passport/passlog"
 	"time"
+
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ninja-software/log_helpers"
 
@@ -41,7 +47,100 @@ func NewSupController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, cc *Cha
 	}
 
 	api.SecureCommand(HubKeyWithdrawSups, supHub.WithdrawSupHandler)
+	api.SecureCommand(HubKeyDepositSups, supHub.DepositSupHandler)
+	api.SecureCommand(HubKeyDepositTransactionList, supHub.DepositTransactionListHandler)
 	return supHub
+}
+
+// DepositTransactionListResponse is the response from DepositTransactionList
+type DepositTransactionListResponse struct {
+	Total        int                            `json:"total"`
+	Transactions boiler.DepositTransactionSlice `json:"transactions"`
+}
+
+const HubKeyDepositTransactionList hub.HubCommandKey = "SUPS:DEPOSIT:LIST"
+
+func (sc *SupController) DepositTransactionListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// get user
+	uid, err := uuid.FromString(hubc.Identifier())
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	userID := passport.UserID(uid)
+
+	dtxs, err := boiler.DepositTransactions(boiler.DepositTransactionWhere.UserID.EQ(userID.String()), qm.Limit(10)).All(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	if dtxs == nil {
+		dtxs = make(boiler.DepositTransactionSlice, 0)
+	}
+
+	resp := &DepositTransactionListResponse{
+		len(dtxs),
+		dtxs,
+	}
+
+	reply(resp)
+	return nil
+}
+
+type SupDepositRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		TransactionHash string          `json:"transaction_hash"`
+		Amount          decimal.Decimal `json:"amount"`
+	} `json:"payload"`
+}
+
+const HubKeyDepositSups hub.HubCommandKey = "SUPS:DEPOSIT"
+
+func (sc *SupController) DepositSupHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SupDepositRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	if req.Payload.TransactionHash == "" {
+		passlog.L.Error().Str("func", "DepositSupHandler").Msg("deposit transaction hash was not provided")
+		return terror.Error(fmt.Errorf("transaction hash was not provided"))
+	}
+
+	if req.Payload.Amount.LessThan(decimal.NewFromInt(0)) {
+		passlog.L.Error().Str("func", "DepositSupHandler").Msg("deposit transaction amount is lower than the minimum required amount")
+		return terror.Error(fmt.Errorf("deposit transaction amount is lower than the minimum required amount"))
+	}
+
+	// get user
+	uid, err := uuid.FromString(hubc.Identifier())
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	userID := passport.UserID(uid)
+
+	dtx := boiler.DepositTransaction{
+		UserID: userID.String(),
+		TXHash: req.Payload.TransactionHash,
+		Amount: req.Payload.Amount,
+	}
+	err = dtx.Insert(passdb.StdConn, boil.Infer())
+	if err != nil {
+		passlog.L.Error().Str("func", "DepositSupHandler").Msg("failed to create deposit transaction in db")
+		return terror.Error(err)
+	}
+
+	reply(true)
+	return nil
 }
 
 type SupWithdrawRequest struct {
@@ -120,7 +219,7 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 		Group:                passport.TransactionGroupWithdrawal,
 	}
 
-	nfb, ntb, _, err := sc.API.userCacheMap.Process(trans)
+	nfb, ntb, _, err := sc.API.userCacheMap.Transact(trans)
 	if err != nil {
 		return terror.Error(err, "failed to process user fund")
 	}
@@ -144,7 +243,7 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 			Group:                passport.TransactionGroupWithdrawal,
 		}
 
-		_, _, _, err := sc.API.userCacheMap.Process(trans)
+		_, _, _, err := sc.API.userCacheMap.Transact(trans)
 		if err != nil {
 			sc.API.Log.Err(fmt.Errorf("failed to process user fund"))
 			return

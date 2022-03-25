@@ -20,14 +20,14 @@ import (
 	"github.com/sasha-s/go-deadlock"
 )
 
-type UserCacheMap struct {
+type Transactor struct {
 	deadlock.Map
 	conn       *pgxpool.Pool
 	MessageBus *messagebus.MessageBus
 }
 
-func NewUserCacheMap(conn *pgxpool.Pool, msgBus *messagebus.MessageBus) (*UserCacheMap, error) {
-	ucm := &UserCacheMap{
+func NewTX(conn *pgxpool.Pool, msgBus *messagebus.MessageBus) (*Transactor, error) {
+	ucm := &Transactor{
 		deadlock.Map{},
 		conn,
 		msgBus,
@@ -49,7 +49,7 @@ var TransactionFailed = "TRANSACTION_FAILED"
 var zero = decimal.New(0, 18)
 var ErrNotEnoughFunds = fmt.Errorf("account does not have enough funds")
 
-func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error) {
+func (ucm *Transactor) Transact(nt *passport.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error) {
 	if nt.Amount.LessThanOrEqual(zero) {
 		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(fmt.Errorf("amount should be a positive number: %s", nt.Amount.String()), "Amount should be greater than zero")
 	}
@@ -87,15 +87,15 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (decimal.Decimal, 
 		SubGroup:             nt.SubGroup,
 	}
 
-	passlog.L.Info().
-		Str("id", nt.ID).
-		Str("from.id", fromUser.ID).
-		Str("from.address", fromUser.PublicAddress.String).
-		Str("to.id", toUser.ID).
-		Str("to.address", toUser.PublicAddress.String).
-		Str("amount", tx.Amount.Shift(-18).StringFixed(4)).
-		Str("txref", tx.TransactionReference).
-		Msg("processing transaction")
+	//passlog.L.Info().
+	//	Str("id", nt.ID).
+	//	Str("from.id", fromUser.ID).
+	//	Str("from.address", fromUser.PublicAddress.String).
+	//	Str("to.id", toUser.ID).
+	//	Str("to.address", toUser.PublicAddress.String).
+	//	Str("amount", tx.Amount.Shift(-18).StringFixed(4)).
+	//	Str("txref", tx.TransactionReference).
+	//	Msg("processing transaction")
 
 	blast := func(from *boiler.User, to *boiler.User, success bool) {
 		ctx := context.Background()
@@ -145,7 +145,7 @@ func (ucm *UserCacheMap) Process(nt *passport.NewTransaction) (decimal.Decimal, 
 	return fromUser.Sups, toUser.Sups, transactionID, nil
 }
 
-func (ucm *UserCacheMap) Get(id string) (decimal.Decimal, error) {
+func (ucm *Transactor) Get(id string) (decimal.Decimal, error) {
 	result, ok := ucm.Load(id)
 	if ok {
 		return result.(decimal.Decimal), nil
@@ -160,7 +160,7 @@ func (ucm *UserCacheMap) Get(id string) (decimal.Decimal, error) {
 	return balance, err
 }
 
-type UserCacheFunc func(userCacheList UserCacheMap)
+type UserCacheFunc func(userCacheList Transactor)
 
 // CreateTransactionEntry adds an entry to the transaction entry table
 func CreateTransactionEntry(conn *sql.DB, nt *passport.NewTransaction) error {
