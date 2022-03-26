@@ -80,7 +80,7 @@ func (ac *AssetController) JoinQueueHandler(ctx context.Context, hubc *hub.Clien
 	// parse user id
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User is not logged in, access forbiddened.")
+		return terror.Error(terror.ErrInvalidInput, "User is not logged in, access forbidden.")
 	}
 
 	// get user
@@ -169,7 +169,7 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, hubc *hub.Clien
 	}
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return terror.Error(fmt.Errorf("no auth: user ID %s", userID), "User is not logged in, access forbiddened.")
+		return terror.Error(fmt.Errorf("no auth: user ID %s", userID), "User is not logged in, access forbidden.")
 	}
 
 	offset := 0
@@ -280,7 +280,7 @@ func (ac *AssetController) AssetRepairStatUpdateSubscriber(ctx context.Context, 
 
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return req.TransactionID, "", terror.Error(fmt.Errorf("no auth"), "User is not logged in, access forbiddened.")
+		return req.TransactionID, "", terror.Error(fmt.Errorf("no auth"), "User is not logged in, access forbidden.")
 	}
 
 	if req.Payload.AssetHash == "" {
@@ -338,7 +338,7 @@ func (ac *AssetController) AssetQueueCostUpdateSubscriber(ctx context.Context, h
 
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrForbidden, "User is not logged in, access forbiddened.")
+		return "", "", terror.Error(terror.ErrForbidden, "User is not logged in, access forbidden.")
 	}
 
 	faction, err := db.FactionGetByUserID(context.Background(), ac.Conn, userID)

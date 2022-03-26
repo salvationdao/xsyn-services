@@ -380,7 +380,7 @@ type ImageListResponse struct {
 
 // ImageListHandler gets a list of images in the system (excluding avatars)
 func (ctrlr *ProductController) ImageListHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
+	errMsg := "Could not get images, please try again or contact support."
 	req := &NudgeImageListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {

@@ -300,7 +300,7 @@ func (fc *ChatController) FactionChatUpdatedSubscribeHandler(ctx context.Context
 	// get user in valid faction
 	userID := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
 	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrForbidden, "User is not logged in, access forbiddened.")
+		return "", "", terror.Error(terror.ErrForbidden, "User is not logged in, access forbidden.")
 	}
 	user, err := db.UserGet(ctx, fc.Conn, userID)
 	if err != nil {

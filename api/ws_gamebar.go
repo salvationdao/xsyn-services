@@ -56,7 +56,7 @@ const HubKeyGamebarGetFreeSups = "GAMEBAR:GET:SUPS"
 func (gc *GamebarController) GetFreeSups(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User is not logged in, access forbiddened.")
+		return terror.Error(terror.ErrInvalidInput, "User is not logged in, access forbidden.")
 	}
 
 	user, err := db.UserGet(ctx, gc.Conn, userID)
@@ -173,7 +173,7 @@ func (gc *GamebarController) AuthRingCheck(ctx context.Context, hubc *hub.Client
 
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User is not logged in, access forbiddened.")
+		return terror.Error(terror.ErrInvalidInput, "User is not logged in, access forbidden.")
 	}
 
 	user, err := db.UserGet(ctx, gc.Conn, userID)

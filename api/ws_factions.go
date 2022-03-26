@@ -99,7 +99,7 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return terror.Error(terror.ErrForbidden, "User is not logged in, access forbiddened.")
+		return terror.Error(terror.ErrForbidden, "User is not logged in, access forbidden.")
 	}
 
 	// get user
@@ -261,7 +261,7 @@ func (fc *FactionController) FactionContractRewardUpdateSubscriber(ctx context.C
 
 	userID := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
 	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrForbidden, "User is not logged in, access forbiddened.")
+		return "", "", terror.Error(terror.ErrForbidden, "User is not logged in, access forbidden.")
 	}
 
 	// get user faction

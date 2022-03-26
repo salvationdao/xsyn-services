@@ -173,6 +173,7 @@ type UpdateUserUsernameRequest struct {
 const HubKeyUserUsernameUpdate hub.HubCommandKey = "USER:USERNAME:UPDATE"
 
 func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue updating username, try again or contact support."
 	req := &UpdateUserUsernameRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -189,18 +190,18 @@ func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, hubc *h
 	// Validate username
 	err = helpers.IsValidUsername(username)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	userID, err := uuid.FromString(hubc.Identifier())
 	if err != nil {
-		return terror.Error(err, "Something went wrong. Please try again.")
+		return terror.Error(err, errMsg)
 	}
 
 	// Get user
 	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
-		return terror.Error(err, "User does not exist.")
+		return terror.Error(err, errMsg)
 	}
 
 	// Activity tracking
@@ -213,10 +214,10 @@ func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, hubc *h
 
 	isAvailable, err := db.UsernameAvailable(ctx, uc.Conn, username, &user.ID)
 	if err != nil {
-		return terror.Error(err, "Something went wrong. Please try again.")
+		return terror.Error(err, errMsg)
 	}
 	if !isAvailable {
-		return terror.Error(fmt.Errorf("A user with that username already exists."))
+		return terror.Error(fmt.Errorf("A user with that username already exists."), "A user with that username already exists.")
 	}
 
 	// Update username
@@ -225,7 +226,7 @@ func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, hubc *h
 	// Update user
 	err = db.UserUpdate(ctx, uc.Conn, user)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	// Get user
@@ -288,31 +289,32 @@ type UpdateUserRequest struct {
 
 // UpdateHandler updates a user
 func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue updating user details, try again or contact support."
 	req := &UpdateUserRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.ID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User ID is required")
+		return terror.Error(terror.ErrInvalidInput, "User ID is required.")
 	}
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
 		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
-			return terror.Error(err, "Failed to get user")
+			return terror.Error(err, errMsg)
 		}
 	} else {
 		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
-			return terror.Error(err, "Failed to get user")
+			return terror.Error(err, errMsg)
 		}
 	}
 
 	// Trying to update user w/ higher role than you?
 	if user.ID.String() != hubc.Identifier() && (hubc.IsHigherOrSameLevel(user.Role.Tier) || !hubc.HasPermission(passport.PermUserUpdate.String())) {
-		return terror.Error(terror.ErrUnauthorised, "You do not have permission to update this user")
+		return terror.Error(terror.ErrUnauthorised, "You are unauthorised to update this user.")
 	}
 
 	// Setup user activity tracking
@@ -335,14 +337,14 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 		// Validate username
 		err = helpers.IsValidUsername(sanitizedUsername)
 		if err != nil {
-			return terror.Error(err)
+			return terror.Error(err, errMsg)
 		}
 
 		user.Username = sanitizedUsername
 	}
 	if req.Payload.NewPassword != nil && *req.Payload.NewPassword != "" {
 		if user.Email.String == "" && req.Payload.Email.String == "" {
-			return terror.Error(terror.ErrInvalidInput, "Email is required when assigning a new password to this user")
+			return terror.Error(terror.ErrInvalidInput, "Email is required when assigning a new password, input a valid email and try again.")
 		}
 
 		err = helpers.IsValidPassword(*req.Payload.NewPassword)
@@ -357,22 +359,22 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 
 		hasPassword, err := db.UserHasPassword(ctx, uc.Conn, user)
 		if err != nil {
-			return terror.Error(err, "Something went wrong. Please try again.")
+			return terror.Error(err, errMsg)
 		}
 		confirmPassword = req.Payload.ID.String() == hubc.Identifier() && user.OldPasswordRequired && *hasPassword
 	}
 
 	if confirmPassword {
 		if req.Payload.CurrentPassword == nil {
-			return terror.Error(terror.ErrInvalidInput, "Current Password is required")
+			return terror.Error(terror.ErrInvalidInput, "Current password is required.")
 		}
 		hashB64, err := db.HashByUserID(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
-			return terror.Error(err, "Current password is incorrect")
+			return terror.Error(err, "Current password is incorrect.")
 		}
 		err = crypto.ComparePassword(hashB64, *req.Payload.CurrentPassword)
 		if err != nil {
-			return terror.Error(err, "Current password is incorrect")
+			return terror.Error(err, "Current password is incorrect.")
 		}
 	}
 
@@ -394,7 +396,6 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 	user.AvatarID = req.Payload.AvatarID
 
 	// Start transaction
-	errMsg := "Unable to update user, please try again."
 	tx, err := uc.Conn.Begin(ctx)
 	if err != nil {
 		return terror.Error(err, errMsg)
@@ -418,19 +419,19 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 			// reset 2fa flag
 			err = db.UserUpdate2FAIsSet(ctx, tx, userID, false)
 			if err != nil {
-				return terror.Error(err)
+				return terror.Error(err, errMsg)
 			}
 
 			// clear 2fa secret
 			err = db.User2FASecretSet(ctx, tx, userID, "")
 			if err != nil {
-				return terror.Error(err)
+				return terror.Error(err, errMsg)
 			}
 
 			// delete recovery code
 			err = db.UserDeleteRecoveryCode(ctx, tx, userID)
 			if err != nil {
-				return terror.Error(err)
+				return terror.Error(err, errMsg)
 			}
 		}
 
@@ -440,7 +441,7 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 	// Update user
 	err = db.UserUpdate(ctx, tx, user)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	// Update password?
@@ -455,7 +456,7 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 	if req.Payload.OrganisationID != nil {
 		err = db.UserSetOrganisations(ctx, tx, user.ID, *req.Payload.OrganisationID)
 		if err != nil {
-			return terror.Error(err)
+			return terror.Error(err, errMsg)
 		}
 	}
 
@@ -474,7 +475,7 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 	if user.FactionID != nil && !user.FactionID.IsNil() {
 		faction, err := db.FactionGet(ctx, uc.Conn, *user.FactionID)
 		if err != nil {
-			return terror.Error(err)
+			return terror.Error(err, errMsg)
 		}
 		user.Faction = faction
 	}
@@ -506,7 +507,7 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 		User: user,
 	}, &resp)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	return nil
@@ -567,7 +568,7 @@ func (uc *UserController) CreateHandler(ctx context.Context, hubc *hub.Client, p
 	}
 	err = helpers.IsValidPassword(*req.Payload.NewPassword)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Password is invalid.")
 	}
 
 	// Start transaction
@@ -609,7 +610,7 @@ func (uc *UserController) CreateHandler(ctx context.Context, hubc *hub.Client, p
 	if req.Payload.OrganisationID != nil {
 		err = db.UserSetOrganisations(ctx, tx, user.ID, *req.Payload.OrganisationID)
 		if err != nil {
-			return terror.Error(err)
+			return terror.Error(err, errMsg)
 		}
 	}
 
@@ -670,7 +671,7 @@ type UserListResponse struct {
 
 // ListHandler lists users with pagination
 func (uc *UserController) ListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
+	errMsg := "Could not get users, try again or contact support."
 
 	req := &ListHandlerRequest{}
 	err := json.Unmarshal(payload, req)
@@ -726,6 +727,7 @@ const (
 
 // ArchiveHandler archives a user
 func (uc *UserController) ArchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue while archiving user, try again or contact support."
 	req := &UserArchiveRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -733,13 +735,13 @@ func (uc *UserController) ArchiveHandler(ctx context.Context, hubc *hub.Client, 
 	}
 	err = db.UserArchiveUpdate(ctx, uc.Conn, req.Payload.ID, true)
 	if err != nil {
-		return terror.Error(err, "Issue while updating User, please try again.")
+		return terror.Error(err, errMsg)
 	}
 
 	// Return user
 	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 	reply(user)
 
@@ -760,6 +762,7 @@ func (uc *UserController) ArchiveHandler(ctx context.Context, hubc *hub.Client, 
 
 // UnarchiveHandler unarchives a user
 func (uc *UserController) UnarchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue unarchiving user, try again or contact support."
 	req := &UserArchiveRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -767,13 +770,13 @@ func (uc *UserController) UnarchiveHandler(ctx context.Context, hubc *hub.Client
 	}
 	err = db.UserArchiveUpdate(ctx, uc.Conn, req.Payload.ID, false)
 	if err != nil {
-		return terror.Error(err, "Issue while updating User, please try again.")
+		return terror.Error(err, errMsg)
 	}
 
 	// Return user
 	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 	reply(user)
 
@@ -904,21 +907,21 @@ func (uc *UserController) ForceDisconnectHandler(ctx context.Context, hubc *hub.
 		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.ID == passport.UserID(uuid.Nil) {
-		return terror.Error(terror.ErrInvalidInput, "User ID is required")
+		return terror.Error(terror.ErrInvalidInput, "User ID is required.")
 	}
 
 	if req.Payload.ID.String() == hubc.Identifier() {
-		return terror.Error(terror.ErrForbidden, "You cannot force disconnect yourself")
+		return terror.Error(terror.ErrForbidden, "You cannot force disconnect yourself.")
 	}
 
 	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
 	if err != nil {
-		return terror.Error(err, "Unable to load current user")
+		return terror.Error(err, "Unable to load current user.")
 	}
 
 	// Trying to disconnect user w/ higher role than you?
 	if user.ID.String() != hubc.Identifier() && hubc.IsHigherOrSameLevel(user.Role.Tier) {
-		return terror.Error(terror.ErrUnauthorised, "You do not have permission to force disconnect this user")
+		return terror.Error(terror.ErrUnauthorised, "You do not have permission to force disconnect this user.")
 	}
 
 	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserForceDisconnected, user.ID.String())), nil)
@@ -927,7 +930,7 @@ func (uc *UserController) ForceDisconnectHandler(ctx context.Context, hubc *hub.
 	// Delete issue tokens
 	err = db.AuthRemoveTokensFromUserID(ctx, uc.Conn, req.Payload.ID)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Issue force disconnecting user.")
 	}
 
 	//Record user activity
@@ -992,7 +995,7 @@ func (uc *UserController) OnlineStatusSubscribeHandler(ctx context.Context, hubc
 	if userID.IsNil() {
 		id, err := db.UserIDFromUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
-			return req.TransactionID, "", terror.Error(err, "Unable to load current user")
+			return req.TransactionID, "", terror.Error(err, "Unable to load current user.")
 		}
 		userID = *id
 	}
@@ -1047,12 +1050,12 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hub.C
 	if !req.Payload.ID.IsNil() {
 		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
-			return terror.Error(err, "Failed to get user")
+			return terror.Error(err, "Failed to get user.")
 		}
 	} else {
 		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
-			return terror.Error(err, "Failed to get user")
+			return terror.Error(err, "Failed to get user.")
 		}
 	}
 
@@ -1122,7 +1125,7 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.Clie
 	errMsg := "There was a problem finding a user associated with the provided Facebook account, please check your details and try again."
 	r, err := http.Get("https://graph.facebook.com/me?&access_token=" + url.QueryEscape(req.Payload.Token))
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 	defer r.Body.Close()
 	resp := &struct {
@@ -1135,13 +1138,13 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.Clie
 
 	userID, err := uuid.FromString(hubc.Identifier())
 	if err != nil {
-		return terror.Error(err, "Could not convert user ID to UUID")
+		return terror.Error(err, errMsg)
 	}
 
 	// Get user
 	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
-		return terror.Error(err, "failed to query user")
+		return terror.Error(err, errMsg)
 	}
 
 	// Setup user activity tracking
@@ -1150,13 +1153,13 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.Clie
 	// Update user's Facebook ID
 	err = db.UserAddFacebook(ctx, uc.Conn, user, resp.ID)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	// Get user
 	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
-		return terror.Error(err, "Failed to query user")
+		return terror.Error(err, "Failed to query user.")
 	}
 
 	reply(user)
@@ -1283,13 +1286,13 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Client
 
 	userID, err := uuid.FromString(hubc.Identifier())
 	if err != nil {
-		return terror.Error(err, "Could not convert user ID to UUID")
+		return terror.Error(err, errMsg)
 	}
 
 	// Get user
 	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
-		return terror.Error(err, "failed to query user")
+		return terror.Error(err, errMsg)
 	}
 
 	// Setup user activity tracking
@@ -1298,13 +1301,13 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Client
 	// Update user's Google ID
 	err = db.UserAddGoogle(ctx, uc.Conn, user, googleID)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	// Get user
 	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
-		return terror.Error(err, "Failed to query user")
+		return terror.Error(err, errMsg)
 	}
 
 	reply(user)
@@ -1415,6 +1418,7 @@ type AddTwitchRequest struct {
 }
 
 func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue updating user's Twitch ID, try again or contact support."
 	req := &AddTwitchRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1422,7 +1426,7 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client
 	}
 
 	if req.Payload.Token == "" {
-		return terror.Error(terror.ErrInvalidInput, "Twitch JWT is empty")
+		return terror.Error(terror.ErrInvalidInput, errMsg)
 	}
 
 	twitchID := ""
@@ -1434,7 +1438,7 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client
 
 		token, err := oidcVerifier.Verify(ctx, req.Payload.Token)
 		if err != nil {
-			return terror.Error(err, "Failed to verify Twitch JWT")
+			return terror.Error(err, errMsg)
 		}
 
 		var claims struct {
@@ -1447,7 +1451,7 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client
 			Email string `json:"email"`
 		}
 		if err := token.Claims(&claims); err != nil {
-			return terror.Error(err, "Failed to get claims from token")
+			return terror.Error(err, errMsg)
 		}
 
 		twitchID = claims.Sub
@@ -1455,11 +1459,11 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client
 	} else {
 		claims, err := uc.API.Auth.GetClaimsFromTwitchExtensionToken(req.Payload.Token)
 		if err != nil {
-			return terror.Error(err, "Failed to parse twitch extension token")
+			return terror.Error(err, errMsg)
 		}
 
 		if !strings.HasPrefix(claims.OpaqueUserID, "U") {
-			return terror.Error(terror.ErrInvalidInput, "Twitch user is not login")
+			return terror.Error(terror.ErrInvalidInput, "Twitch user is not logged in, log in and try again.")
 		}
 
 		twitchID = claims.TwitchAccountID
@@ -1486,7 +1490,7 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client
 	// Update user's Twitch ID
 	err = db.UserAddTwitch(ctx, uc.Conn, user, twitchID)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	// Get user
@@ -1521,6 +1525,7 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client
 const HubKeyUserRemoveTwitter hub.HubCommandKey = "USER:REMOVE_TWITTER"
 
 func (uc *UserController) RemoveTwitterHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue removing user's twitter account, try again or contact support."
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1558,7 +1563,6 @@ func (uc *UserController) RemoveTwitterHandler(ctx context.Context, hubc *hub.Cl
 	}
 
 	// Update user
-	errMsg := "Unable to update user, please try again."
 	err = db.UserRemoveTwitter(ctx, uc.Conn, user)
 	if err != nil {
 		return terror.Error(err, errMsg)
@@ -1603,6 +1607,7 @@ type AddTwitterRequest struct {
 const HubKeyUserAddTwitter hub.HubCommandKey = "USER:ADD_TWITTER"
 
 func (uc *UserController) AddTwitterHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue updating user's twitter account, try again or contact support."
 	req := &AddTwitterRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1610,10 +1615,10 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	if req.Payload.OAuthToken == "" {
-		return terror.Error(terror.ErrInvalidInput, "Twitter OAuth token is empty")
+		return terror.Error(terror.ErrInvalidInput, "Twitter OAuth token is empty.")
 	}
 	if req.Payload.OAuthVerifier == "" {
-		return terror.Error(terror.ErrInvalidInput, "Twitter OAuth verifier is empty")
+		return terror.Error(terror.ErrInvalidInput, "Twitter OAuth verifier is empty.")
 	}
 
 	params := url.Values{}
@@ -1622,17 +1627,17 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, hubc *hub.Clien
 	client := &http.Client{}
 	r, err := http.NewRequest("GET", fmt.Sprintf("https://api.twitter.com/oauth/access_token?%s", params.Encode()), nil)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 	res, err := client.Do(r)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 	defer res.Body.Close()
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	resp := &struct {
@@ -1655,18 +1660,18 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, hubc *hub.Clien
 
 	twitterID := resp.UserID
 	if twitterID == "" {
-		return terror.Error(terror.ErrInvalidInput, "No Twitter account ID is provided")
+		return terror.Error(terror.ErrInvalidInput, "No Twitter account ID is provided.")
 	}
 
 	userID, err := uuid.FromString(hubc.Identifier())
 	if err != nil {
-		return terror.Error(err, "Could not convert user ID to UUID")
+		return terror.Error(err, errMsg)
 	}
 
 	// Get user
 	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
-		return terror.Error(err, "Failed to query user")
+		return terror.Error(err, "Failed to query user, try again or contact support.")
 	}
 
 	// Activity tracking
@@ -1675,13 +1680,13 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, hubc *hub.Clien
 	// Update user's Twitter ID
 	err = db.UserAddTwitter(ctx, uc.Conn, user, twitterID)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	// Get user
 	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
-		return terror.Error(err, "Failed to query user")
+		return terror.Error(err, "Failed to query user, try again or contact support.")
 	}
 
 	reply(user)
@@ -1710,25 +1715,26 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, hubc *hub.Clien
 const HubKeyUserRemoveDiscord hub.HubCommandKey = "USER:REMOVE_DISCORD"
 
 func (uc *UserController) RemoveDiscordHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue removing user's discord account, try again or contact support."
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.ID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User ID is required")
+		return terror.Error(terror.ErrInvalidInput, "User ID is required.")
 	}
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
 		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
-			return terror.Error(err, "Failed to get user")
+			return terror.Error(err, errMsg)
 		}
 	} else {
 		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
-			return terror.Error(err, "Failed to get user")
+			return terror.Error(err, errMsg)
 		}
 	}
 
@@ -1747,7 +1753,6 @@ func (uc *UserController) RemoveDiscordHandler(ctx context.Context, hubc *hub.Cl
 	}
 
 	// Update user
-	errMsg := "Unable to update user, please try again."
 	err = db.UserRemoveDiscord(ctx, uc.Conn, user)
 	if err != nil {
 		return terror.Error(err, errMsg)
@@ -1792,6 +1797,7 @@ type AddDiscordRequest struct {
 }
 
 func (uc *UserController) AddDiscordHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue adding user's discord account, try again or contact support."
 	req := &AddDiscordRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1799,7 +1805,7 @@ func (uc *UserController) AddDiscordHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	if req.Payload.Code == "" {
-		return terror.Error(terror.ErrInvalidInput, "Discord code is empty")
+		return terror.Error(terror.ErrInvalidInput, errMsg)
 	}
 
 	// Validate Discord code and get access token
@@ -1813,11 +1819,11 @@ func (uc *UserController) AddDiscordHandler(ctx context.Context, hubc *hub.Clien
 	req1.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(uc.Discord.ClientID+":"+uc.Discord.ClientSecret)))
 	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 	res, err := client.Do(req1)
 	if err != nil {
-		return terror.Error(err, "Failed to verify token")
+		return terror.Error(err, errMsg)
 	}
 	defer res.Body.Close()
 
@@ -1837,7 +1843,7 @@ func (uc *UserController) AddDiscordHandler(ctx context.Context, hubc *hub.Clien
 	client = &http.Client{}
 	req2, err := http.NewRequest("GET", "https://discord.com/api/oauth2/@me", nil)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 	req2.Header.Set("Authorization", "Bearer "+resp.AccessToken)
 	res2, err := client.Do(req2)
@@ -1858,18 +1864,18 @@ func (uc *UserController) AddDiscordHandler(ctx context.Context, hubc *hub.Clien
 
 	discordID := resp2.User.ID
 	if discordID == "" {
-		return terror.Error(terror.ErrInvalidInput, "No Discord account ID is provided")
+		return terror.Error(terror.ErrInvalidInput, errMsg)
 	}
 
 	userID, err := uuid.FromString(hubc.Identifier())
 	if err != nil {
-		return terror.Error(err, "Could not convert user ID to UUID")
+		return terror.Error(err, errMsg)
 	}
 
 	// Get user
 	user, err := db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
-		return terror.Error(err, "Failed to query user")
+		return terror.Error(err, errMsg)
 	}
 
 	// Activity tracking
@@ -1878,13 +1884,13 @@ func (uc *UserController) AddDiscordHandler(ctx context.Context, hubc *hub.Clien
 	// Update user's Discord ID
 	err = db.UserAddDiscord(ctx, uc.Conn, user, discordID)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	// Get user
 	user, err = db.UserGet(ctx, uc.Conn, passport.UserID(userID))
 	if err != nil {
-		return terror.Error(err, "Failed to query user")
+		return terror.Error(err, "Failed to query user.")
 	}
 
 	reply(user)
@@ -1923,25 +1929,26 @@ type RemoveWalletRequest struct {
 
 // RemoveWalletHandler removes a linked wallet address
 func (uc *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue removing user's wallet address, try again or contact support."
 	req := &RemoveWalletRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.ID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User ID is required")
+		return terror.Error(terror.ErrInvalidInput, "User ID is required.")
 	}
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
 		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
-			return terror.Error(err, "Failed to get user")
+			return terror.Error(err, errMsg)
 		}
 	} else {
 		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
-			return terror.Error(err, "Failed to get user")
+			return terror.Error(err, errMsg)
 		}
 	}
 	//// Permission check
@@ -1953,7 +1960,6 @@ func (uc *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.Cli
 	var oldUser passport.User = *user
 
 	// Start transaction
-	errMsg := "Unable to update user, please try again."
 	tx, err := uc.Conn.Begin(ctx)
 	if err != nil {
 		return terror.Error(err, errMsg)
@@ -2025,32 +2031,33 @@ type AddWalletRequest struct {
 
 // AddWalletHandler links a wallet address to a user
 func (uc *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue adding user's wallet address, try again or contact support."
 	req := &AddWalletRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.ID.IsNil() && req.Payload.Username == "" {
-		return terror.Error(terror.ErrInvalidInput, "User ID or Username is required")
+		return terror.Error(terror.ErrInvalidInput, "User ID or Username is required.")
 	}
 
 	if req.Payload.PublicAddress == "" {
-		return terror.Error(terror.ErrInvalidInput, "Public Address is required")
+		return terror.Error(terror.ErrInvalidInput, "Public Address is required.")
 	}
 	if req.Payload.Signature == "" {
-		return terror.Error(terror.ErrInvalidInput, "Signature is required")
+		return terror.Error(terror.ErrInvalidInput, "Signature is required.")
 	}
 
 	var user *passport.User
 	if !req.Payload.ID.IsNil() {
 		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
-			return terror.Error(err, "Failed to get user")
+			return terror.Error(err, errMsg)
 		}
 	} else {
 		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
-			return terror.Error(err, "Failed to get user")
+			return terror.Error(err, errMsg)
 		}
 	}
 
@@ -2065,13 +2072,13 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Client
 	// verify they signed it
 	err = uc.API.Auth.VerifySignature(req.Payload.Signature, user.Nonce.String, req.Payload.PublicAddress)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	// Start transaction
 	tx, err := uc.Conn.Begin(ctx)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 	defer func(tx pgx.Tx, ctx context.Context) {
 		err := tx.Rollback(ctx)
@@ -2083,19 +2090,19 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Client
 	// Update user
 	err = db.UserAddWallet(ctx, tx, user, req.Payload.PublicAddress)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	// Commit transaction
 	err = tx.Commit(ctx)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	// Get user
 	user, err = db.UserGet(ctx, uc.Conn, user.ID)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Could not get user, try again or contact support.")
 	}
 
 	reply(user)
@@ -2131,6 +2138,7 @@ type UpdatedSubscribeRequest struct {
 }
 
 func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	errMsg := "Issue subscribing to user updates, try again or contact support."
 	req := &UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -2142,17 +2150,17 @@ func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, client *h
 	if !req.Payload.ID.IsNil() {
 		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
-			return req.TransactionID, "", terror.Error(err)
+			return req.TransactionID, "", terror.Error(err, errMsg)
 		}
 	} else if req.Payload.Username != "" {
 		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
 		if err != nil {
-			return req.TransactionID, "", terror.Error(err)
+			return req.TransactionID, "", terror.Error(err, errMsg)
 		}
 	}
 
 	if user == nil {
-		return req.TransactionID, "", terror.Error(fmt.Errorf("unable to get user"))
+		return req.TransactionID, "", terror.Error(fmt.Errorf("unable to get user"), errMsg)
 	}
 
 	// Permission check
@@ -2175,13 +2183,13 @@ func (uc *UserController) UserSupsUpdatedSubscribeHandler(ctx context.Context, c
 
 	userID := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
 	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrForbidden, "User is not logged in, access forbiddened.")
+		return "", "", terror.Error(terror.ErrForbidden, "User is not logged in, access forbidden.")
 	}
 
 	sups, err := uc.API.userCacheMap.Get(client.Identifier())
 	// get current on world sups
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, "Issue subscribing to user SUPs updates, try again or contact support.")
 	}
 
 	reply(sups.String())
@@ -2206,7 +2214,7 @@ func (uc *UserController) UserSupsMultiplierUpdatedSubscribeHandler(ctx context.
 		UserID: passport.UserID(uuid.FromStringOrNil(client.Identifier())),
 	}, &resp)
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, "Issue subscribing to user SUPs multiplier updates, try again or contact support.")
 	}
 
 	reply(resp.UserMultipliers)
@@ -2232,7 +2240,7 @@ func (uc *UserController) UserStatUpdatedSubscribeHandler(ctx context.Context, c
 		SessionID: client.SessionID,
 	}, resp)
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, "Issue subscribing to user stats updates, try again or contact support.")
 	}
 
 	reply(resp)
@@ -2256,6 +2264,7 @@ type UserFactionDetail struct {
 const HubKeyUserFactionSubscribe hub.HubCommandKey = "USER:FACTION:SUBSCRIBE"
 
 func (uc *UserController) UserFactionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	errMsg := "Issue subscribing to user faction updates, try again or contact support."
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -2264,13 +2273,13 @@ func (uc *UserController) UserFactionUpdatedSubscribeHandler(ctx context.Context
 
 	userID := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
 	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrForbidden, "User is not logged in, access forbiddened.")
+		return "", "", terror.Error(terror.ErrForbidden, "User is not logged in, access forbidden.")
 	}
 
 	// get user faction
 	faction, err := db.FactionGetByUserID(ctx, uc.Conn, userID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, errMsg)
 	}
 
 	if faction != nil {
@@ -2299,6 +2308,7 @@ type WarMachineQueuePositionRequest struct {
 const HubKeyWarMachineQueueStatSubscribe hub.HubCommandKey = "WAR:MACHINE:QUEUE:POSITION:SUBSCRIBE"
 
 func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	errMsg := "Issue subscribing to user's War Machine queue position updates, try again or contact support."
 	req := &WarMachineQueuePositionRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -2308,7 +2318,7 @@ func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx con
 	// get item
 	item, err := db.PurchasedItemByHash(req.Payload.AssetHash)
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, errMsg)
 	}
 	if item == nil {
 		return "", "", terror.Error(fmt.Errorf("asset doesn't exist"), "This asset does not exist.")
@@ -2317,14 +2327,14 @@ func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx con
 	// get user
 	uid, err := uuid.FromString(client.Identifier())
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, errMsg)
 	}
 
 	userID := passport.UserID(uid)
 
 	// check if user owns asset
 	if item.OwnerID != userID.String() {
-		return "", "", terror.Error(err, "Must own Asset to update it's name.")
+		return "", "", terror.Error(err, "Must own asset to subscribe to updates.")
 	}
 
 	// f, err := db.FactionGetByUserID(ctx, uc.Conn, userID)
@@ -2390,7 +2400,7 @@ func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, client *
 
 	sups, err := uc.API.userCacheMap.Get(passport.XsynSaleUserID.String())
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, "Issue getting total SUPs remaining handler, try again or contact support.")
 	}
 
 	reply(sups.String())
@@ -2433,7 +2443,7 @@ func (uc *UserController) BlockConfirmationHandler(ctx context.Context, client *
 
 	user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Failed to get user")
+		return req.TransactionID, "", terror.Error(err, "Failed to get user.")
 	}
 
 	if req.Payload.GetInitialData {
@@ -2468,7 +2478,7 @@ func (uc *UserController) CheckCanAccessStore(ctx context.Context, hubc *hub.Cli
 		return terror.Error(err, "Invalid request received.")
 	}
 	if req.Payload.WalletAddress == "" {
-		return terror.Error(terror.ErrInvalidInput, "Wallet address is required")
+		return terror.Error(terror.ErrInvalidInput, "Wallet address is required.")
 	}
 
 	loc, err := time.LoadLocation("Australia/Perth")
@@ -2485,12 +2495,12 @@ func (uc *UserController) CheckCanAccessStore(ctx context.Context, hubc *hub.Cli
 
 	isWhitelisted, err := db.IsUserWhitelisted(ctx, uc.Conn, req.Payload.WalletAddress)
 	if err != nil {
-		return terror.Error(err, "whitelisted check error")
+		return terror.Error(err, "Whitelisted check error.")
 	}
 
 	isDeathlisted, err := db.IsUserDeathlisted(ctx, uc.Conn, req.Payload.WalletAddress)
 	if err != nil {
-		return terror.Error(err, "deathlisted check error")
+		return terror.Error(err, "Deathlisted check error.")
 	}
 
 	client, err := ethclient.Dial("wss://speedy-nodes-nyc.moralis.io/1375aa321ac8ac6cfba6aa9c/eth/mainnet/ws")
@@ -2525,7 +2535,7 @@ func (uc *UserController) CheckCanAccessStore(ctx context.Context, hubc *hub.Cli
 	if now.After(PHASE_ONE) && now.Before(PHASE_TWO) && !(isWhitelisted || isWinHolder || isEarly) {
 		resp := &CheckAllowedStoreAccessResponse{
 			IsAllowed: false,
-			Message:   "You must be Whitelisted to access the store",
+			Message:   "You must be Whitelisted to access the store.",
 		}
 		reply(resp)
 		return nil
@@ -2535,7 +2545,7 @@ func (uc *UserController) CheckCanAccessStore(ctx context.Context, hubc *hub.Cli
 	if now.After(PHASE_ONE) && now.Before(PHASE_THREE) && !(isWhitelisted || isWinHolder || isEarly || isDeathlisted) {
 		resp := &CheckAllowedStoreAccessResponse{
 			IsAllowed: false,
-			Message:   "You must be Whitelisted to access the store",
+			Message:   "You must be Whitelisted to access the store.",
 		}
 		reply(resp)
 		return nil
@@ -2562,12 +2572,12 @@ func (uc *UserController) UserAssetListHandler(ctx context.Context, hubc *hub.Cl
 
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return terror.Error(terror.ErrForbidden, "User is not logged in, access forbiddened.")
+		return terror.Error(terror.ErrForbidden, "User is not logged in, access forbidden.")
 	}
 
 	items, err := db.PurchasedItemsByOwnerID(uuid.UUID(userID))
 	if err != nil {
-		return terror.Error(err, "Could not get assets")
+		return terror.Error(err, "Issue getting user asset list, try again or contact support.")
 	}
 	reply(items)
 
@@ -2586,13 +2596,13 @@ func (uc *UserController) UserTransactionsSubscribeHandler(ctx context.Context, 
 
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return req.TransactionID, "", terror.Error(err, "User is not logged in, access forbiddened.")
+		return req.TransactionID, "", terror.Error(err, "User is not logged in, access forbidden.")
 	}
 
 	// get users transactions
 	list, err := db.UserTransactionGetList(ctx, uc.Conn, userID, 5)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "failed to get transactions")
+		return req.TransactionID, "", terror.Error(err, "Failed to get transactions, try again or contact support.")
 	}
 	reply(list)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserTransactionsSubscribe, userID.String())), nil
@@ -2608,13 +2618,13 @@ func (uc *UserController) UserLatestTransactionsSubscribeHandler(ctx context.Con
 
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return req.TransactionID, "", terror.Error(err, "User is not logged in, access forbiddened.")
+		return req.TransactionID, "", terror.Error(err, "User is not logged in, access forbidden.")
 	}
 
 	// get transaction
 	list, err := db.UserTransactionGetList(ctx, uc.Conn, userID, 1)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "failed to get transactions")
+		return req.TransactionID, "", terror.Error(err, "Failed to get transactions, try again or contact support.")
 	}
 	reply(list)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, userID.String())), nil
