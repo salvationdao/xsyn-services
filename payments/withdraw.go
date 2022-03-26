@@ -80,7 +80,6 @@ func UpdateSuccessfulWithdrawsWithTxHash(records []*SUPTransferRecord) (int, int
 
 		u, err := db.UserByPublicAddress(context.Background(), passdb.Conn, common.HexToAddress(record.ToAddress))
 		if err != nil {
-			l.Debug().Err(err).Msg("user withdrawing does not exist")
 			skipped++
 			continue
 		}
