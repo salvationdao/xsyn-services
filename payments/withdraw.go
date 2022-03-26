@@ -78,14 +78,6 @@ func UpdateSuccessfulWithdrawsWithTxHash(records []*SUPTransferRecord) (int, int
 			continue
 		}
 
-		// Prepare logger with context
-		l = l.With().
-			Str("to_addr", record.ToAddress).
-			Str("from_addr", record.FromAddress).
-			Str("tx_hash", record.TxHash).
-			Str("value", val.Shift(-18).StringFixed(4)).
-			Logger()
-
 		u, err := db.UserByPublicAddress(context.Background(), passdb.Conn, common.HexToAddress(record.ToAddress))
 		if err != nil {
 			l.Debug().Err(err).Msg("user withdrawing does not exist")
@@ -110,7 +102,8 @@ func UpdateSuccessfulWithdrawsWithTxHash(records []*SUPTransferRecord) (int, int
 			continue
 		}
 		if count <= 0 {
-			l.Warn().Err(err).Msg("user does not have any pending refunds matching the value")
+			//is this even an error? do we need to be warned about this?
+			//l.Warn().Err(err).Msg("user does not have any pending refunds matching the value")
 			skipped++
 			continue
 		}
@@ -133,7 +126,7 @@ func UpdateSuccessfulWithdrawsWithTxHash(records []*SUPTransferRecord) (int, int
 			continue
 		}
 
-		l.Info().Msg("successfully set tx hash, cancel refund")
+		//l.Info().Msg("successfully set tx hash, cancel refund")
 		success++
 	}
 
