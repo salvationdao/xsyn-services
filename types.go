@@ -102,12 +102,19 @@ func (id *UserID) UnmarshalText(text []byte) error {
 // Value aliases UUID.Value which implements the driver.Valuer interface.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Value.
 func (id UserID) Value() (driver.Value, error) {
+	if id.IsNil() {
+		return nil, nil
+	}
 	return uuid.UUID(id).Value()
 }
 
 // Scan implements the sql.Scanner interface.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Scan.
 func (id *UserID) Scan(src interface{}) error {
+	if src == nil {
+		*id = UserID(uuid.UUID{})
+		return nil
+	}
 	// Convert to uuid.UUID
 	uid := uuid.UUID(*id)
 	// Unmarshal as uuid.UUID

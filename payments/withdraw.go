@@ -173,6 +173,7 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s", refund.R.TransactionReferenceTransaction.TransactionReference)),
 			Description:          fmt.Sprintf("REFUND %s", refund.R.TransactionReferenceTransaction.Description),
 			Group:                passport.TransactionGroup(refund.R.TransactionReferenceTransaction.Group),
+			RelatedTransactionID: refund.R.TransactionReferenceTransaction.RelatedTransactionID,
 		}
 
 		refund.RefundCanceledAt = null.TimeFrom(time.Now())

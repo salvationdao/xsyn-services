@@ -2596,7 +2596,6 @@ func (uc *UserController) UserTransactionsSubscribeHandler(ctx context.Context, 
 	}
 	reply(list)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserTransactionsSubscribe, userID.String())), nil
-
 }
 
 func (uc *UserController) UserLatestTransactionsSubscribeHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {

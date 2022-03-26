@@ -1374,7 +1374,6 @@ func UserTransactionGetList(ctx context.Context, conn Conn, userID passport.User
 		if err != nil {
 			return nil, terror.Error(err)
 		}
-
 	}
 
 	return transactions, nil
