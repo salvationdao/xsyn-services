@@ -133,30 +133,30 @@ func (uc *UserController) GetHandler(ctx context.Context, hubc *hub.Client, payl
 		return terror.Error(terror.ErrInvalidInput, "User ID or username is required")
 	}
 
+	var user *passport.User
+
 	if !req.Payload.ID.IsNil() {
-		user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
+		usr, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, "Unable to load current user")
 		}
+		user = usr
+	} else {
+		usr, err := db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
+		if err != nil {
+			return terror.Error(err, "Unable to load current user")
+		}
+		user = usr
+	}
 
-		////// Permission check
-		//if user.ID.String() != hubc.Identifier() && !hubc.HasPermission(passport.PermUserRead.String()) {
-		//	return terror.Error(terror.ErrUnauthorised, "You do not have permission to look at other users.")
-		//}
-
-		reply(user)
+	// if hub user isn't requested user, clear private data
+	if user.ID.String() != hubc.Identifier() {
+		reply(&passport.User{
+			Username: user.Username,
+			Faction:  user.Faction,
+		})
 		return nil
 	}
-
-	user, err := db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
-	if err != nil {
-		return terror.Error(err, "Unable to load current user")
-	}
-
-	//// Permission check
-	//if user.ID.String() != hubc.Identifier() && !hubc.HasPermission(passport.PermUserRead.String()) {
-	//	return terror.Error(terror.ErrUnauthorised, "You do not have permission to look at other users.")
-	//}
 
 	reply(user)
 	return nil
