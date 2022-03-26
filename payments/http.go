@@ -200,7 +200,7 @@ func latestPurchaseBlockFromRecords(currentBlock int, records []*PurchaseRecord)
 }
 
 func latestSUPTransferBlockFromRecords(currentBlock int, records []*SUPTransferRecord) int {
-	latestBlock := 0
+	latestBlock := currentBlock
 	for _, record := range records {
 		if record.BlockNumber > latestBlock {
 			latestBlock = record.BlockNumber

@@ -32,13 +32,11 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, 
 		exists, err := boiler.Transactions(boiler.TransactionWhere.TransactionReference.EQ(record.TxHash)).Exists(passdb.StdConn)
 		if err != nil {
 			skipped++
-			l.Debug().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("check if tx exists")
 			continue
 		}
 
 		if exists {
 			skipped++
-			l.Debug().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("tx already exists")
 			continue
 		}
 		user, err := CreateOrGetUser(ctx, passdb.Conn, common.HexToAddress(record.FromAddress))
@@ -56,13 +54,11 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, 
 		}
 
 		if value.Equal(decimal.Zero) {
-			l.Debug().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("skipping zero value deposit")
 			skipped++
 			continue
 		}
 
 		msg := fmt.Sprintf("deposited %s SUPS", value.Shift(-1*passport.SUPSDecimals).StringFixed(4))
-		l.Debug().Str("msg", msg).Str("txid", record.TxHash).Msg("insert deposit tx")
 		trans := &passport.NewTransaction{
 			To:                   user.ID,
 			From:                 passport.XsynTreasuryUserID,
