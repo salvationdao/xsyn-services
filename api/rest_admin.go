@@ -165,6 +165,7 @@ func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http
 			Description:          "Reverse transaction",
 			Group:                passport.TransactionGroupStore,
 			SubGroup:             "Refund",
+			RelatedTransactionID: null.StringFrom(tx.ID),
 		}
 		_, _, _, err = ucm.Transact(refundTx)
 		if err != nil {

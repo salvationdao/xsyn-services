@@ -62,6 +62,8 @@ transactions.credit,
 transactions.debit,
 transactions.status,
 transactions.reason,
+transactions.service_id,
+transactions.related_transaction_id,
 transactions.created_at,
 transactions.group,
 transactions.sub_group
@@ -262,6 +264,18 @@ func TransactionGet(ctx context.Context, conn Conn, transactionID string) (*pass
 	}
 
 	return transaction, nil
+}
+
+// TransactionAddRelatedTransaction adds a refund transaction ID to a transaction
+func TransactionAddRelatedTransaction(ctx context.Context, conn Conn, transactionID string, refundTransactionID string) error {
+	q := "UPDATE transactions SET related_transaction_id = $2 WHERE id = $1"
+
+	_, err := conn.Exec(ctx, q, transactionID, refundTransactionID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
 }
 
 func TransactionExists(ctx context.Context, conn Conn, txhash string) (bool, error) {

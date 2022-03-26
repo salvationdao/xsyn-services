@@ -3,6 +3,8 @@ package passport
 import (
 	"time"
 
+	"github.com/volatiletech/null/v8"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -24,6 +26,8 @@ const SUPSDecimals = 18
 
 type Transaction struct {
 	ID                   string            `json:"id" db:"id"`
+	RelatedTransactionID null.String       `json:"related_transaction_id" db:"related_transaction_id"`
+	ServiceID            UserID            `json:"service_id" db:"service_id"`
 	Credit               UserID            `json:"credit" db:"credit"`
 	Debit                UserID            `json:"debit" db:"debit"`
 	Amount               decimal.Decimal   `json:"amount" db:"amount"`
@@ -55,6 +59,8 @@ type TransactionReference string
 
 type NewTransaction struct {
 	ID                   string               `json:"id" db:"id"`
+	RelatedTransactionID null.String               `json:"related_transaction_id" db:"related_transaction_id"`
+	ServiceID            UserID               `json:"service_id" db:"service_id"`
 	To                   UserID               `json:"credit" db:"credit"`
 	From                 UserID               `json:"debit" db:"debit"`
 	Amount               decimal.Decimal      `json:"amount" db:"amount"`

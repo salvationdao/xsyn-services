@@ -11,6 +11,8 @@ import (
 	"passport/rpcclient"
 	"time"
 
+	"github.com/volatiletech/null/v8"
+
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 
 	"github.com/rs/zerolog"
@@ -93,7 +95,7 @@ func Purchase(
 		SubGroup:             "Purchase",
 	}
 
-	nfb, ntb, _, err := ucmProcess(trans)
+	nfb, ntb, txID, err := ucmProcess(trans)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -105,6 +107,7 @@ func Purchase(
 	refund := func(reason string) {
 		trans := &passport.NewTransaction{
 			To:                   user.ID,
+			RelatedTransactionID: null.StringFrom(txID),
 			From:                 passport.XsynTreasuryUserID,
 			Amount:               decimal.NewFromBigInt(priceAsSupsBigInt, 0),
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
@@ -218,7 +221,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	}
 
 	// process user cache map
-	nfb, ntb, _, txerr := ucmProcess(trans)
+	nfb, ntb, txID, txerr := ucmProcess(trans)
 	if txerr != nil {
 		return "", terror.Error(txerr)
 	}
@@ -238,6 +241,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 		}
 		trans := &passport.NewTransaction{
 			To:                   user.ID,
+			RelatedTransactionID: null.StringFrom(txID),
 			From:                 passport.XsynTreasuryUserID,
 			Amount:               price,
 			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),

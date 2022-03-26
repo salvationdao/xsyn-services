@@ -4,13 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"passport"
 	"passport/db"
 	"passport/db/boiler"
 	"passport/passdb"
 	"passport/passlog"
 	"time"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/gofrs/uuid"
 
@@ -85,6 +86,8 @@ func (ucm *Transactor) Transact(nt *passport.NewTransaction) (decimal.Decimal, d
 		CreatedAt:            nt.CreatedAt,
 		Group:                nt.Group,
 		SubGroup:             nt.SubGroup,
+		RelatedTransactionID: nt.RelatedTransactionID,
+		ServiceID:            nt.ServiceID,
 	}
 
 	//passlog.L.Info().
@@ -121,6 +124,7 @@ func (ucm *Transactor) Transact(nt *passport.NewTransaction) (decimal.Decimal, d
 		passlog.L.Error().Err(err).Str("from", fromUser.ID).Str("to", toUser.ID).Str("id", nt.ID).Msg("transaction failed")
 		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(err)
 	}
+	tx.CreatedAt = nt.CreatedAt
 
 	didErr := false
 	fromUser, err = boiler.FindUser(passdb.StdConn, nt.From.String())
@@ -165,10 +169,34 @@ type UserCacheFunc func(userCacheList Transactor)
 // CreateTransactionEntry adds an entry to the transaction entry table
 func CreateTransactionEntry(conn *sql.DB, nt *passport.NewTransaction) error {
 	now := time.Now()
-	q := `INSERT INTO transactions(id ,description, transaction_reference, amount, credit, debit, "group", sub_group, created_at)
-				VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9);`
+	q := `INSERT INTO transactions(
+                         id, 
+                         description, 
+                         transaction_reference, 
+                         amount, 
+                         credit, 
+                         debit, 
+                         "group", 
+                         sub_group, 
+                         created_at, 
+                         service_id, 
+                         related_transaction_id
+                         )
+				VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`
 
-	_, err := conn.Exec(q, nt.ID, nt.Description, nt.TransactionReference, nt.Amount.String(), nt.To, nt.From, nt.Group, nt.SubGroup, now)
+	_, err := conn.Exec(q,
+		nt.ID,
+		nt.Description,
+		nt.TransactionReference,
+		nt.Amount.String(),
+		nt.To,
+		nt.From,
+		nt.Group,
+		nt.SubGroup,
+		now,
+		nt.ServiceID,
+		nt.RelatedTransactionID,
+	)
 	if err != nil {
 		return terror.Error(err)
 	}
