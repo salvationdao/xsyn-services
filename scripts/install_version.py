@@ -45,6 +45,7 @@ def main(argv):
     if TOKEN == "":
         log.error("Please set GITHUB_PAT environment variable")
         exit(2)
+
     log.debug("Parsing input")
     inputVersion = ''
     try:
@@ -69,10 +70,11 @@ def main(argv):
 
     log.debug("Finished parsing input")
 
+    # Download asset
     asset_meta = download_meta(inputVersion)
     log.debug(asset_meta)
-    file_name = download_asset(asset_meta)
-    log.info("Downloaded: %s", file_name)
+    rel_path = download_asset(asset_meta)
+    log.info("Downloaded: %s", os.path.abspath(rel_path))
 
 
 def download_meta(version: str):
@@ -142,7 +144,7 @@ def download_asset(asset_meta: dict):
                 progress_bar.update(len(chunk))
         progress_bar.close()
 
-    return os.path.abspath(file_name)
+    return file_name
 
 
 def yes_or_no(question):
