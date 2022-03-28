@@ -42,6 +42,9 @@ Get latest with verbose logging
 
 
 def main(argv):
+    if TOKEN == "":
+        log.error("Please set GITHUB_PAT environment variable")
+        exit(2)
     log.debug("Parsing input")
     inputVersion = ''
     try:
