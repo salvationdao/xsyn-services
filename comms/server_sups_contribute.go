@@ -332,18 +332,17 @@ func (c *S) SupremacyGetSpoilOfWarHandler(req GetSpoilOfWarReq, resp *GetSpoilOf
 }
 
 func (c *S) UserSupsMultiplierSendHandler(req UserSupsMultiplierSendReq, resp *UserSupsMultiplierSendResp) error {
-	ctx := context.Background()
 	for _, usm := range req.UserSupsMultiplierSends {
 		// broadcast to specific hub client if session id is provided
 		if usm.ToUserSessionID != nil && *usm.ToUserSessionID != "" {
-			go c.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyUserSupsMultiplierSubscribe, usm.ToUserID)), usm.SupsMultipliers, messagebus.BusSendFilterOption{
+			go c.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyUserSupsMultiplierSubscribe, usm.ToUserID)), usm.SupsMultipliers, messagebus.BusSendFilterOption{
 				SessionID: *usm.ToUserSessionID,
 			})
 			continue
 		}
 
 		// otherwise, broadcast to the target user
-		go c.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyUserSupsMultiplierSubscribe, usm.ToUserID)), usm.SupsMultipliers)
+		go c.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyUserSupsMultiplierSubscribe, usm.ToUserID)), usm.SupsMultipliers)
 	}
 	return nil
 }

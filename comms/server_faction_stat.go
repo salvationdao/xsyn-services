@@ -72,7 +72,7 @@ func (c *S) SupremacyFactionStatSendHandler(req FactionStatSendReq, resp *Factio
 		factionStatSend.FactionStat.SupsVoted = supsVoted.String()
 
 		// broadcast to all faction stat subscribers
-		c.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyFactionStatUpdatedSubscribe, factionStatSend.FactionStat.ID)), factionStatSend.FactionStat)
+		c.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyFactionStatUpdatedSubscribe, factionStatSend.FactionStat.ID)), factionStatSend.FactionStat)
 		continue
 	}
 
@@ -96,9 +96,8 @@ type FactionContractRewardUpdateResp struct {
 
 func (c *S) SupremacyFactionContractRewardUpdateHandler(req FactionContractRewardUpdateReq, resp *FactionContractRewardUpdateResp) error {
 	passlog.L.Trace().Str("fn", "SupremacyFactionContractRewardUpdateHandler").Msg("rpc handler")
-	ctx := context.Background()
 	for _, fcr := range req.FactionContractRewards {
-		c.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyFactionContractRewardSubscribe, fcr.FactionID)), fcr.ContractReward)
+		go c.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyFactionContractRewardSubscribe, fcr.FactionID)), fcr.ContractReward)
 	}
 
 	return nil
@@ -167,6 +166,6 @@ func (c *S) SupremacyFactionQueuingCostHandler(req FactionQueuingCostReq, resp *
 	cost := big.NewInt(1000000000000000000)
 	cost.Mul(cost, big.NewInt(int64(req.QueuingLength)+1))
 
-	c.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyAssetRepairStatUpdate, req.FactionID)), cost.String())
+	c.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyAssetRepairStatUpdate, req.FactionID)), cost.String())
 	return nil
 }

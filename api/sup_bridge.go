@@ -133,7 +133,7 @@ func NewChainClients(log *zerolog.Logger, api *API, p *passport.BridgeParams, is
 			Str(symbol, amount.String()).
 			Msg("update rate")
 
-		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeySUPSExchangeRates), cc.API.State)
+		go api.MessageBus.Send(messagebus.BusKey(HubKeySUPSExchangeRates), cc.API.State)
 	}
 
 	if runBlockchainBridge {

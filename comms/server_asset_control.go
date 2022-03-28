@@ -1,7 +1,6 @@
 package comms
 
 import (
-	"context"
 	"fmt"
 	"passport/api"
 
@@ -10,16 +9,15 @@ import (
 
 // AssetContractRewardRedeem redeem faction contract reward
 func (c *S) SupremacyAssetRepairStatUpdateHandler(req AssetRepairStatReq, resp *AssetRepairStatResp) error {
-	ctx := context.Background()
 
 	// if repair complete, send nil
 	if req.AssetRepairRecord.CompletedAt != nil {
-		c.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyAssetRepairStatUpdate, req.AssetRepairRecord.Hash)), nil)
+		c.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyAssetRepairStatUpdate, req.AssetRepairRecord.Hash)), nil)
 		return nil
 	}
 
 	// if repair not complete, send current record
-	c.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyAssetRepairStatUpdate, req.AssetRepairRecord.Hash)), req.AssetRepairRecord)
+	c.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyAssetRepairStatUpdate, req.AssetRepairRecord.Hash)), req.AssetRepairRecord)
 	return nil
 }
 
@@ -32,9 +30,8 @@ type SupremacyQueueUpdateReq struct {
 }
 
 func (c *S) SupremacyQueueUpdateHandler(req SupremacyQueueUpdateReq, resp *SupremacyQueueUpdateResp) error {
-	ctx := context.Background()
 
 	// if repair not complete, send current record
-	go c.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyWarMachineQueueStatSubscribe, req.Hash)), req)
+	go c.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyWarMachineQueueStatSubscribe, req.Hash)), req)
 	return nil
 }

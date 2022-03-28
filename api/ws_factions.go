@@ -143,7 +143,7 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 	)
 
 	// broadcast updated user to gamebar user
-	go fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	go fc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	var resp struct {
 		IsSuccess bool `json:"is_success"`

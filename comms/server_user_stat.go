@@ -47,12 +47,11 @@ type UserStatSend struct {
 type UserStatSendResp struct{}
 
 func (c *S) SupremacyUserStatSendHandler(req UserStatSendReq, resp *UserStatSendResp) error {
-	ctx := context.Background()
 	for _, userStatSend := range req.UserStatSends {
 
 		if userStatSend.ToUserSessionID == nil {
 			// broadcast to all faction stat subscribers
-			go c.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyUserStatSubscribe, userStatSend.Stat.ID)), userStatSend.Stat)
+			go c.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyUserStatSubscribe, userStatSend.Stat.ID)), userStatSend.Stat)
 			continue
 		}
 
@@ -62,7 +61,7 @@ func (c *S) SupremacyUserStatSendHandler(req UserStatSendReq, resp *UserStatSend
 			filterOption.SessionID = *userStatSend.ToUserSessionID
 		}
 
-		go c.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyUserStatSubscribe, userStatSend.Stat.ID)), userStatSend.Stat, filterOption)
+		go c.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", api.HubKeyUserStatSubscribe, userStatSend.Stat.ID)), userStatSend.Stat, filterOption)
 	}
 
 	return nil

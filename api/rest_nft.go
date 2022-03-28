@@ -120,7 +120,7 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err, "Could not lock item.")
 	}
 
-	go api.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetSubscribe, item.Hash)), &AssetUpdatedSubscribeResponse{
+	go api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetSubscribe, item.Hash)), &AssetUpdatedSubscribeResponse{
 		CollectionSlug: collectionSlug,
 		PurchasedItem:  item,
 		OwnerUsername:  address,
@@ -182,7 +182,7 @@ func (api *API) LockNFT(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
 	}
 
-	go api.MessageBus.Send(r.Context(), messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, item.Hash)), &AssetUpdatedSubscribeResponse{
+	go api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, item.Hash)), &AssetUpdatedSubscribeResponse{
 		PurchasedItem:  item,
 		OwnerUsername:  user.PublicAddress.String,
 		CollectionSlug: collection.Slug,

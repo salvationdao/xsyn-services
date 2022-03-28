@@ -217,7 +217,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 		}
 
 		// send message
-		fc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID.String)), chatMessage)
+		fc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID.String)), chatMessage)
 		reply(true)
 		return nil
 	}
@@ -234,7 +234,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 		FactionLogoBlobID: factionLogoBlobID,
 	}
 	fc.GlobalChat.AddMessage(chatMessage)
-	fc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyGlobalChatSubscribe), chatMessage)
+	fc.API.MessageBus.Send(messagebus.BusKey(HubKeyGlobalChatSubscribe), chatMessage)
 	reply(true)
 
 	return nil
