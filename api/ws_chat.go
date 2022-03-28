@@ -136,22 +136,23 @@ var minuteBucket = leakybucket.NewCollector(0.5, 30, true)
 
 // ChatMessageHandler sends chat message from user
 func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue sending message in chat, try again or contact support."
 	b1 := bucket.Add(hubc.Identifier(), 1)
 	b2 := minuteBucket.Add(hubc.Identifier(), 1)
 
 	if b1 == 0 || b2 == 0 {
-		return terror.Error(fmt.Errorf("too many messages"), "too many message")
+		return terror.Error(fmt.Errorf("too many messages"), "Too many messages.")
 	}
 
 	req := &FactionChatRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	user, err := boiler.FindUser(passdb.StdConn, hubc.Identifier())
 	if err != nil {
-		return terror.Error(err, "Unable to find user, try again or contact support.")
+		return terror.Error(err, errMsg)
 	}
 
 	// if chat banned just return
@@ -168,13 +169,13 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 	if user.FactionID.Valid {
 		faction, err := user.Faction().One(passdb.StdConn)
 		if err != nil {
-			return terror.Error(err, "Issue sending message, try again or contact support.")
+			return terror.Error(err, errMsg)
 		}
 		theme := &passport.FactionTheme{}
 
 		err = faction.Theme.Unmarshal(theme)
 		if err != nil {
-			return terror.Error(err, "Issue sending message, try again or contact support.")
+			return terror.Error(err, errMsg)
 		}
 		factionColour = &theme.Primary
 		factionLogoBlobID = &faction.LogoBlobID
@@ -189,11 +190,11 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 	// check if the faction id is provided
 	if !req.Payload.FactionID.IsNil() {
 		if !user.FactionID.Valid || user.FactionID.String == "" {
-			return terror.Error(terror.ErrInvalidInput, "Required to join a faction to send message.")
+			return terror.Error(terror.ErrInvalidInput, "Required to join a faction to send message, please enlist in a faction.")
 		}
 
 		if user.FactionID.String != req.Payload.FactionID.String() {
-			return terror.Error(terror.ErrForbidden, "Users are not allow to join the faction chat which they are not belong to")
+			return terror.Error(terror.ErrForbidden, "Users are not allow to join the faction chat which they are not belong to.")
 		}
 
 		chatMessage := &ChatMessageSend{
@@ -254,13 +255,13 @@ func (fc *ChatController) ChatPastMessagesHandler(ctx context.Context, hubc *hub
 	req := &ChatPastMessagesRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	if !req.Payload.FactionID.IsNil() {
 		uuidString := hubc.Identifier() // identifier gets set on auth by default, so no ident = not authed
 		if uuidString == "" {
-			return terror.Error(terror.ErrUnauthorised)
+			return terror.Error(terror.ErrUnauthorised, "Unauthorised access.")
 		}
 	}
 
@@ -289,23 +290,24 @@ func (fc *ChatController) ChatPastMessagesHandler(ctx context.Context, hubc *hub
 const HubKeyFactionChatSubscribe hub.HubCommandKey = "FACTION:CHAT:SUBSCRIBE"
 
 func (fc *ChatController) FactionChatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	errMsg := "Could not subscribe to faction chat updates, try again or contact support."
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	// get user in valid faction
 	userID := passport.UserID(uuid.FromStringOrNil(client.Identifier()))
 	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrForbidden)
+		return "", "", terror.Error(terror.ErrForbidden, "User is not logged in, access forbidden.")
 	}
 	user, err := db.UserGet(ctx, fc.Conn, userID)
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, errMsg)
 	}
 	if user.FactionID == nil || user.FactionID.IsNil() {
-		return "", "", terror.Error(terror.ErrInvalidInput, "Require to join faction to receive")
+		return "", "", terror.Error(terror.ErrInvalidInput, "Require to join faction to receive messages.")
 	}
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, user.FactionID)), nil
 }
@@ -316,7 +318,7 @@ func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context,
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Could not subscribe to global chat updates, try again or contact support.")
 	}
 	return req.TransactionID, messagebus.BusKey(HubKeyGlobalChatSubscribe), nil
 }

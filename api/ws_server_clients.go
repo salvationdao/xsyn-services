@@ -50,12 +50,12 @@ func (ch *ServerClientControllerWS) CheckTransactionsHandler(ctx context.Context
 	req := &CheckTransactionsRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	list, err := db.TransactionGetList(ctx, ch.Conn, req.Payload.TransactionReferences)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Could not get transaction list, try again or contact support.")
 	}
 
 	reply(struct {

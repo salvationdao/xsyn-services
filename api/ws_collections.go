@@ -64,14 +64,15 @@ type CollectionListResponse struct {
 const HubKeyCollectionList hub.HubCommandKey = "COLLECTION:LIST"
 
 func (ctrlr *CollectionController) CollectionsList(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Could not get list of collections, try again or contact support."
 	req := &CollectionListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Invalid request received.")
 	}
 	collections, err := db.CollectionsList()
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	reply(&CollectionListResponse{
@@ -106,10 +107,11 @@ type WalletCollectionListResponse struct {
 const HubKeyWalletCollectionList hub.HubCommandKey = "COLLECTION:WALLET:LIST"
 
 func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Failed to get user's NFT assets, try again or contact support."
 	req := &WalletCollectionsListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	o := bridge.NewOracle(ctrlr.API.BridgeParams.MoralisKey)
@@ -122,13 +124,13 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hu
 	// get user
 	user, err := db.UserGetByUsername(ctx, ctrlr.Conn, req.Payload.Username)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	// get all collections
 	collections, err := db.CollectionsList()
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	// for each collection get all nfts
@@ -136,7 +138,7 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hu
 	for _, c := range collections {
 		walletCollections, err := o.NFTOwners(common.HexToAddress(c.MintContract.String), network)
 		if err != nil {
-			return terror.Error(err)
+			return terror.Error(err, errMsg)
 		}
 
 		// for all nfts
@@ -146,12 +148,12 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hu
 			if nft.OwnerOf == user.PublicAddress.String {
 				tokenID, err := strconv.ParseInt(nft.TokenID, 10, 64)
 				if err != nil {
-					return terror.Error(err)
+					return terror.Error(err, errMsg)
 				}
 
 				item, err := db.PurchasedItemByMintContractAndTokenID(common.HexToAddress(nft.TokenAddress), int(tokenID))
 				if err != nil {
-					return terror.Error(err)
+					return terror.Error(err, errMsg)
 				}
 				items = append(items, item)
 			}
@@ -188,7 +190,7 @@ func FilterAssetList(
 				column := db.TraitType(f.Trait)
 				err := column.IsValid()
 				if err != nil {
-					return 0, nil, terror.Error(err)
+					return 0, nil, terror.Error(err, "Error filtering by attribute, try again or contact support.")
 				}
 				for _, att := range a.Attributes {
 					if !(att.TraitType == f.Trait && att.Value == f.Value) {
@@ -214,15 +216,16 @@ type CollectionUpdatedSubscribeRequest struct {
 const HubKeyCollectionSubscribe hub.HubCommandKey = "COLLECTION:SUBSCRIBE"
 
 func (ctrlr *CollectionController) CollectionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	errMsg := "Failed to subscribe to collection updates, try again or contact support."
 	req := &CollectionUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err)
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	collection, err := db.CollectionBySlug(ctx, ctrlr.Conn, req.Payload.Slug)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err)
+		return req.TransactionID, "", terror.Error(err, errMsg)
 	}
 
 	reply(collection)
