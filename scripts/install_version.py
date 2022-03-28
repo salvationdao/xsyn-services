@@ -7,6 +7,7 @@ import os
 import getopt
 import json
 import logging
+import shutil
 import re
 
 # Pip Installs
@@ -16,6 +17,7 @@ import requests
 REPO = 'ninja-syndicate/passport-server'
 BASE_URL = "https://api.github.com/repos/{repo}".format(repo=REPO)
 TOKEN = os.environ.get("GITHUB_PAT", "")
+PACKAGE = "passport-api"
 
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"),
@@ -74,14 +76,15 @@ def main(argv):
     asset_meta = download_meta(inputVersion)
     log.debug(asset_meta)
     rel_path = download_asset(asset_meta)
-    log.info("Downloaded: %s", os.path.abspath(rel_path))
 
     # Extract asset
     if not question("Extract {} or exit?".format(rel_path), 'extract', 'exit'):
         log.info("exiting")
         exit(0)
 
-    extract(rel_path)
+    new_ver_dir = extract(rel_path)
+
+    copy_env(new_ver_dir)
 
 
 def download_meta(version: str):
@@ -166,14 +169,24 @@ def extract(file_name: str):
     if os.path.exists(dest):
         if not question("Destination exists, overwrite?"):
             log.info("Skipping extraction")
-            return
+            return dest
 
     if file_name.endswith("tar.gz"):
         tar = tarfile.open(file_name, "r:gz")
         tar.extractall()
         tar.close
+        return dest
 
-def yes_or_no(question):
+
+def copy_env(target: str):
+    src = "{package}_online/init/{package}.env".format(package=PACKAGE)
+    dest = "{target}/init/{package}.env".format(target=target, package=PACKAGE)
+    log.debug("src: ", src)
+    log.debug("dest: ", dest)
+    shutil.copyfile(src, dest)
+    log.info("Coppied " + src+" to " + dest)
+
+
 def question(question, positive='y', negative='n'):
     question = question + \
         ' ({positive}/{negative}): '.format(positive=positive, negative=negative)
