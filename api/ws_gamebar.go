@@ -118,7 +118,7 @@ func (gc *GamebarController) GetFreeSups(ctx context.Context, hubc *hub.Client, 
 		NotSafe:              true,
 		TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
 		Description:          "100 SUPS giveaway for testing",
-		Group:                "Testing",
+		Group:                passport.TransactionGroupTesting,
 	}
 	_, _, _, err = gc.API.userCacheMap.Transact(tx)
 	if err != nil {
@@ -235,7 +235,7 @@ func (gc *GamebarController) AuthRingCheck(ctx context.Context, hubc *hub.Client
 					NotSafe:              true,
 					TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
 					Description:          "Give away for testing",
-					Group:                "Testing",
+					Group:                passport.TransactionGroupTesting,
 				}
 				_, _, _, err := gc.API.userCacheMap.Transact(tx)
 				if err != nil {

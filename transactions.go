@@ -59,7 +59,7 @@ type TransactionReference string
 
 type NewTransaction struct {
 	ID                   string               `json:"id" db:"id"`
-	RelatedTransactionID null.String               `json:"related_transaction_id" db:"related_transaction_id"`
+	RelatedTransactionID null.String          `json:"related_transaction_id" db:"related_transaction_id"`
 	ServiceID            UserID               `json:"service_id" db:"service_id"`
 	To                   UserID               `json:"credit" db:"credit"`
 	From                 UserID               `json:"debit" db:"debit"`
@@ -81,10 +81,11 @@ type TransactionResult struct {
 type TransactionGroup string
 
 const (
-	TransactionGroupStore           TransactionGroup = "Store"
-	TransactionGroupDeposit         TransactionGroup = "Deposit"
-	TransactionGroupWithdrawal      TransactionGroup = "Withdrawal"
-	TransactionGroupBattle          TransactionGroup = "Battle"
-	TransactionGroupSupremacy       TransactionGroup = "Supremacy"
-	TransactionGroupAssetManagement TransactionGroup = "Asset Management"
+	TransactionGroupStore           TransactionGroup = "STORE"
+	TransactionGroupDeposit         TransactionGroup = "DEPOSIT"
+	TransactionGroupWithdrawal      TransactionGroup = "WITHDRAWAL"
+	TransactionGroupBattle          TransactionGroup = "BATTLE"
+	TransactionGroupSupremacy       TransactionGroup = "SUPREMACY"
+	TransactionGroupAssetManagement TransactionGroup = "ASSET MANAGEMENT"
+	TransactionGroupTesting         TransactionGroup = "TESTING"
 )
