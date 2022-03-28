@@ -17,6 +17,7 @@ import requests
 REPO = 'ninja-syndicate/passport-server'
 BASE_URL = "https://api.github.com/repos/{repo}".format(repo=REPO)
 TOKEN = os.environ.get("GITHUB_PAT", "")
+CLIENT = "ninja_syndicate"
 PACKAGE = "passport-api"
 
 
@@ -44,6 +45,9 @@ Get latest with verbose logging
 
 
 def main(argv):
+    # Load Env
+    load_package_env("{package}_online/init/{package}.env".format(package=PACKAGE))
+
     if TOKEN == "":
         log.error("Please set GITHUB_PAT environment variable")
         exit(2)
@@ -176,6 +180,21 @@ def extract(file_name: str):
         tar.extractall()
         tar.close
         return dest
+
+
+def load_package_env(env_file):
+    with open(env_file) as f:
+        for line in f:
+            if line.startswith('#') or not line.strip():
+                continue
+            if 'export' in line:
+                # Remove leading `export `
+                line = line.removesuffix("export ")
+
+            key, value = line.strip().split('=', 1)
+            os.environ[key] = value  # Load to local environ
+
+    log.info("loaded env vars from %s", env_file)
 
 
 def copy_env(target: str):
