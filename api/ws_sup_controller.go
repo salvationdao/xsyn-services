@@ -174,7 +174,7 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 	}
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return terror.Error(terror.ErrForbidden, "User is not logged in, access forbiddened.")
+		return terror.Error(terror.ErrForbidden, "User is not logged in, access forbidden.")
 	}
 	user, err := db.UserGet(ctx, sc.Conn, userID)
 	if err != nil {
