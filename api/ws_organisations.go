@@ -65,12 +65,11 @@ type OrganisationListResponse struct {
 
 // ListHandler lists organisations with pagination
 func (ctrlr *OrganisationController) ListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
-
+	errMsg := "Could not get list of organisations, try again or contact support."
 	req := &OrganisationListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	offset := 0
@@ -117,11 +116,11 @@ type OrganisationGetRequest struct {
 
 // GetHandler to get an organisation
 func (ctrlr *OrganisationController) GetHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Organisation not found, check the URL and try again."
+	errMsg := "Organisation not found, check the URL and try again or contact support."
 	req := &OrganisationGetRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Failed to unmarshal data")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// Get organisation
@@ -159,12 +158,11 @@ type OrganisationCreateRequest struct {
 
 // CreateHandler to create an organisation
 func (ctrlr *OrganisationController) CreateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
-
+	errMsg := "Could not create organisation, try again or contact support."
 	req := &OrganisationCreateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// Validation
@@ -214,12 +212,11 @@ type OrganisationUpdateRequest struct {
 
 // UpdateHandler to update an organisation
 func (ctrlr *OrganisationController) UpdateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
-
+	errMsg := "Could not update organisation, try again or contact support."
 	req := &OrganisationUpdateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// Validation
@@ -283,12 +280,11 @@ type OrganisationToggleArchiveRequest struct {
 
 // ArchiveHandler archives an organisation
 func (ctrlr *OrganisationController) ArchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
-
+	errMsg := "Could not archive organisation, try again or contact support."
 	req := &OrganisationToggleArchiveRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// Unarchive
@@ -318,12 +314,11 @@ func (ctrlr *OrganisationController) ArchiveHandler(ctx context.Context, hubc *h
 
 // UnarchiveHandler unarchives an organisation
 func (ctrlr *OrganisationController) UnarchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
-
+	errMsg := "Could not unarchive organisation, try again or contact support."
 	req := &OrganisationToggleArchiveRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// Archive

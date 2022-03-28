@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"math/big"
 	"net/http"
 	"os"
@@ -14,6 +13,8 @@ import (
 	"passport/passlog"
 	"sync"
 	"time"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/ninja-software/log_helpers"
 
@@ -55,16 +56,16 @@ const HubKeyGamebarGetFreeSups = "GAMEBAR:GET:SUPS"
 func (gc *GamebarController) GetFreeSups(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User is not logged in")
+		return terror.Error(terror.ErrInvalidInput, "User is not logged in, access forbidden.")
 	}
 
 	user, err := db.UserGet(ctx, gc.Conn, userID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return terror.Error(terror.ErrInvalidInput, "Failed to find the user detail")
+		return terror.Error(terror.ErrInvalidInput, "Failed to find the user detail, try again or contact support.")
 	}
 
 	if user == nil {
-		return terror.Error(fmt.Errorf("user not found"), "User not found")
+		return terror.Error(fmt.Errorf("user not found"), "User not found, try again or contact support.")
 	}
 
 	if os.Getenv("PASSPORT_ENVIRONMENT") != "development" && os.Getenv("PASSPORT_ENVIRONMENT") != "staging" {
@@ -117,7 +118,7 @@ func (gc *GamebarController) GetFreeSups(ctx context.Context, hubc *hub.Client, 
 		NotSafe:              true,
 		TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
 		Description:          "100 SUPS giveaway for testing",
-		Group:                "Testing",
+		Group:                passport.TransactionGroupTesting,
 	}
 	_, _, _, err = gc.API.userCacheMap.Transact(tx)
 	if err != nil {
@@ -163,25 +164,25 @@ func (gc *GamebarController) AuthRingCheck(ctx context.Context, hubc *hub.Client
 	req := &AuthTwitchRingCheckRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	if req.Payload.GameserverSessionID == "" {
-		return terror.Error(terror.ErrInvalidInput, "Missing game site session id")
+		return terror.Error(terror.ErrInvalidInput, "Missing game site session ID, try again or contact support.")
 	}
 
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User is not logged in")
+		return terror.Error(terror.ErrInvalidInput, "User is not logged in, access forbidden.")
 	}
 
 	user, err := db.UserGet(ctx, gc.Conn, userID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return terror.Error(terror.ErrInvalidInput, "Failed to find the user detail")
+		return terror.Error(terror.ErrInvalidInput, "Failed to find the user detail, try again or contact support.")
 	}
 
 	if user == nil {
-		return terror.Error(fmt.Errorf("user not found"), "User not found")
+		return terror.Error(fmt.Errorf("user not found"), "User not found, try again or contact support.")
 	}
 
 	var resp struct {
@@ -196,7 +197,7 @@ func (gc *GamebarController) AuthRingCheck(ctx context.Context, hubc *hub.Client
 		GameserverSessionID: req.Payload.GameserverSessionID,
 	}, &resp)
 	if err != nil {
-		return terror.Error(err, err.Error())
+		return terror.Error(err, "Error requesting game server, try again or contact support.")
 	}
 
 	if resp.IsSuccess {
@@ -234,7 +235,7 @@ func (gc *GamebarController) AuthRingCheck(ctx context.Context, hubc *hub.Client
 					NotSafe:              true,
 					TransactionReference: passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
 					Description:          "Give away for testing",
-					Group:                "Testing",
+					Group:                passport.TransactionGroupTesting,
 				}
 				_, _, _, err := gc.API.userCacheMap.Transact(tx)
 				if err != nil {
@@ -270,7 +271,7 @@ func (gc *GamebarController) UserUpdatedSubscribeHandler(ctx context.Context, cl
 	req := &UserUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyGamebarUserSubscribe, req.Payload.SessionID)), nil

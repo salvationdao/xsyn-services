@@ -63,12 +63,12 @@ type UserActivityListResponse struct {
 
 // UserActivityListHandler lists userActivities with pagination
 func (hub *UserActivityController) UserActivityListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
+	errMsg := "Could not get user activities list, try again or contact support."
 
 	req := &UserActivityListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	offset := 0
@@ -124,12 +124,12 @@ type UserActivityCreateRequest struct {
 
 // UserActivityCreateHandler creates userActivities
 func (hub *UserActivityController) UserActivityCreateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
+	errMsg := "Issue creating user activity, please try again or contact support."
 
 	req := &UserActivityCreateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// Validation
@@ -148,7 +148,7 @@ func (hub *UserActivityController) UserActivityCreateHandler(ctx context.Context
 	defer func(tx pgx.Tx, ctx context.Context) {
 		err := tx.Rollback(ctx)
 		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			hub.Log.Err(err).Msg("error rolling back")
+			hub.Log.Err(err).Msg("error rolling back.")
 		}
 	}(tx, ctx)
 
@@ -189,11 +189,11 @@ type UserActivityGetRequest struct {
 
 // UserActivityGetHandler get userActivities
 func (hub *UserActivityController) UserActivityGetHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "User Activity not found, check the URL and try again."
+	errMsg := "User activity not found, check the URL and try again."
 	req := &UserActivityGetRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Failed to unmarshal data")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// Get userActivity

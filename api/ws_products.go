@@ -66,12 +66,11 @@ type ProductListResponse struct {
 
 // ListHandler lists products with pagination
 func (ctrlr *ProductController) ListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
-
+	errMsg := "Could not get list of products, try again or contact support."
 	req := &ProductListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	offset := 0
@@ -118,11 +117,11 @@ type ProductGetRequest struct {
 
 // GetHandler to get a product
 func (ctrlr *ProductController) GetHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Product not found, check the URL and try again."
+	errMsg := "Product not found, check the URL and try again or contact support."
 	req := &ProductGetRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Failed to unmarshal data")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// Get product
@@ -162,12 +161,11 @@ type ProductCreateRequest struct {
 
 // CreateHandler to create a product
 func (ctrlr *ProductController) CreateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
-
+	errMsg := "Could not create product, try again or contact support."
 	req := &ProductCreateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// Validation
@@ -222,12 +220,12 @@ type ProductUpdateRequest struct {
 
 // UpdateHandler to update a product
 func (ctrlr *ProductController) UpdateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
 
+	errMsg := "Could not update product, try again or contact support."
 	req := &ProductUpdateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// Validation
@@ -295,15 +293,14 @@ type ProductToggleArchiveRequest struct {
 
 // ArchiveHandler archives a product
 func (ctrlr *ProductController) ArchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
-
+	errMsg := "Could not archive product, try again or contact support."
 	req := &ProductToggleArchiveRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
-	// Unarchive
+	// Archive
 	err = db.ProductArchiveUpdate(ctx, ctrlr.Conn, req.Payload.ID, true)
 	if err != nil {
 		return terror.Error(err, errMsg)
@@ -330,15 +327,14 @@ func (ctrlr *ProductController) ArchiveHandler(ctx context.Context, hubc *hub.Cl
 
 // UnarchiveHandler unarchives a product
 func (ctrlr *ProductController) UnarchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
-
+	errMsg := "Could not unarchive product, try again or contact support."
 	req := &ProductToggleArchiveRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
-	// Archive
+	// Unarchive
 	err = db.ProductArchiveUpdate(ctx, ctrlr.Conn, req.Payload.ID, false)
 	if err != nil {
 		return terror.Error(err, errMsg)
@@ -384,10 +380,11 @@ type ImageListResponse struct {
 
 // ImageListHandler gets a list of images in the system (excluding avatars)
 func (ctrlr *ProductController) ImageListHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Could not get images, please try again or contact support."
 	req := &NudgeImageListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	offset := 0
@@ -397,7 +394,7 @@ func (ctrlr *ProductController) ImageListHandler(ctx context.Context, wsc *hub.C
 
 	total, images, err := db.BlobList(ctx, ctrlr.Conn, req.Payload.Search, offset, req.Payload.PageSize)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	resp := &ImageListResponse{

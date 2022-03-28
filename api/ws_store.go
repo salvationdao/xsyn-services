@@ -59,25 +59,26 @@ type PurchaseRequest struct {
 }
 
 func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue purchasing store item, try again or contact support."
 	req := &PurchaseRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// get user
 	uid, err := uuid.FromString(hubc.Identifier())
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 	user, err := db.UserGet(ctx, sc.Conn, passport.UserID(uid))
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	err = items.Purchase(ctx, sc.Conn, sc.Log, sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), sc.API.userCacheMap.Transact, *user, req.Payload.StoreItemID, sc.API.storeItemExternalUrl)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	reply(true)
@@ -105,25 +106,26 @@ type PurchaseLootboxRequest struct {
 const HubKeyLootbox = hub.HubCommandKey("STORE:LOOTBOX")
 
 func (sc *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue purchasing lootbox, try again or contact support."
 	req := &PurchaseLootboxRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// get user
 	uid, err := uuid.FromString(hubc.Identifier())
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Could not find user.")
 	}
 	user, err := db.UserGet(ctx, sc.Conn, passport.UserID(uid))
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Could not find user.")
 	}
 
 	tokenID, err := items.PurchaseLootbox(ctx, sc.Conn, sc.Log, sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), sc.API.userCacheMap.Transact, *user, req.Payload.FactionID, sc.API.storeItemExternalUrl)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	reply(tokenID)
@@ -147,12 +149,12 @@ func (sc *StoreControllerWS) LootboxAmountHandler(ctx context.Context, hubc *hub
 	req := &PurchaseLootboxRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	amount, err := items.LootboxAmountPerFaction(ctx, sc.Conn, sc.Log, sc.API.MessageBus, messagebus.BusKey(HubKeyLootboxAmount), req.Payload.FactionID)
 	if err != nil {
-		return terror.Error(err, "Could not get mystery crate amount")
+		return terror.Error(err, "Could not get mystery crate amount, try again or contact support.")
 	}
 
 	reply(amount)
@@ -185,24 +187,25 @@ type StoreListResponse struct {
 }
 
 func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue getting list of store items, try again or contact support."
 	req := &StoreListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// get user to check faction
 	uid, err := uuid.FromString(hubc.Identifier())
 	if err != nil {
-		return terror.Error(err, "Could not find user")
+		return terror.Error(err, "Could not find user.")
 	}
 	user, err := db.UserGet(ctx, sc.Conn, passport.UserID(uid))
 	if err != nil {
-		return terror.Error(err, "Could not find user")
+		return terror.Error(err, "Could not find user.")
 	}
 
 	if user.FactionID == nil {
-		return terror.Error(fmt.Errorf("user not enlisted: %s", user.ID), "User is not enlisted")
+		return terror.Error(fmt.Errorf("user not enlisted: %s", user.ID), "User is not enlisted, enlist in a faction to continue.")
 	}
 
 	offset := 0
@@ -224,7 +227,7 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Cli
 		req.Payload.SortDir,
 	)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	storeItemIDs := make([]passport.StoreItemID, 0)
@@ -257,12 +260,12 @@ func (sc *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, clie
 	req := &StoreItemSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	item, err := db.StoreItem(uuid.UUID(req.Payload.StoreItemID))
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, "Could not get store item, try again or contact support.")
 	}
 
 	if client.Identifier() == "" || client.Level < 1 {
@@ -272,11 +275,11 @@ func (sc *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, clie
 	// get user to check faction
 	uid, err := uuid.FromString(client.Identifier())
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, "Could not get user, try again or contact support.")
 	}
 	user, err := db.UserGet(ctx, sc.Conn, passport.UserID(uid))
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, "Could not get user, try again or contact support.")
 	}
 
 	if user.FactionID == nil || user.FactionID.IsNil() {
@@ -289,7 +292,7 @@ func (sc *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, clie
 
 	supsAsCents, err := db.SupInCents()
 	if err != nil {
-		return "", "", terror.Error(err, "Could not get SUP price")
+		return "", "", terror.Error(err, "Could not get SUP price, try again or contact support.")
 	}
 
 	priceAsCents := decimal.New(int64(item.UsdCentCost), 0)
@@ -310,12 +313,12 @@ func (sc *StoreControllerWS) AvailableItemAmountSubscribeHandler(ctx context.Con
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
 
 	fsa, err := db.StoreItemsAvailable()
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", terror.Error(err, "Could not get the available amount of this item, try again or contact support.")
 	}
 
 	reply(fsa)

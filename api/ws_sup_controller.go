@@ -61,23 +61,24 @@ type DepositTransactionListResponse struct {
 const HubKeyDepositTransactionList hub.HubCommandKey = "SUPS:DEPOSIT:LIST"
 
 func (sc *SupController) DepositTransactionListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue getting deposit transaction list, try again or contact support."
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// get user
 	uid, err := uuid.FromString(hubc.Identifier())
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	userID := passport.UserID(uid)
 
 	dtxs, err := boiler.DepositTransactions(boiler.DepositTransactionWhere.UserID.EQ(userID.String()), qm.Limit(10)).All(passdb.StdConn)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	if dtxs == nil {
@@ -104,20 +105,22 @@ type SupDepositRequest struct {
 const HubKeyDepositSups hub.HubCommandKey = "SUPS:DEPOSIT"
 
 func (sc *SupController) DepositSupHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue processing SUPs deposit transaction, try again or contact support."
+
 	req := &SupDepositRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	if req.Payload.TransactionHash == "" {
 		passlog.L.Error().Str("func", "DepositSupHandler").Msg("deposit transaction hash was not provided")
-		return terror.Error(fmt.Errorf("transaction hash was not provided"))
+		return terror.Error(fmt.Errorf("transaction hash was not provided"), errMsg)
 	}
 
 	if req.Payload.Amount.LessThan(decimal.NewFromInt(0)) {
 		passlog.L.Error().Str("func", "DepositSupHandler").Msg("deposit transaction amount is lower than the minimum required amount")
-		return terror.Error(fmt.Errorf("deposit transaction amount is lower than the minimum required amount"))
+		return terror.Error(fmt.Errorf("deposit transaction amount is lower than the minimum required amount"), "Deposit transaction amount is lower than the minimum required amount.")
 	}
 
 	// get user
@@ -136,7 +139,7 @@ func (sc *SupController) DepositSupHandler(ctx context.Context, hubc *hub.Client
 	err = dtx.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
 		passlog.L.Error().Str("func", "DepositSupHandler").Msg("failed to create deposit transaction in db")
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	reply(true)
@@ -153,10 +156,12 @@ type SupWithdrawRequest struct {
 const HubKeyWithdrawSups hub.HubCommandKey = "SUPS:WITHDRAW"
 
 func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue processing SUPs withdrawal transaction, try again or contact support."
+
 	req := &SupWithdrawRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	if sc.cc.SUPS == nil {
@@ -165,14 +170,14 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 
 	withdrawAmount := big.NewInt(0)
 	if _, ok := withdrawAmount.SetString(req.Payload.Amount, 10); !ok {
-		return terror.Error(fmt.Errorf("failed to create big int from amount"), "Issue getting amount.")
+		return terror.Error(fmt.Errorf("failed to create big int from amount"), errMsg)
 	}
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
 	if userID.IsNil() {
-		return terror.Error(terror.ErrForbidden)
+		return terror.Error(terror.ErrForbidden, "User is not logged in, access forbidden.")
 	}
 	user, err := db.UserGet(ctx, sc.Conn, userID)
-	if userID.IsNil() {
+	if err != nil {
 		return terror.Error(err)
 	}
 	if !user.PublicAddress.Valid || user.PublicAddress.String == "" {
@@ -185,7 +190,7 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 	// check withdraw wallet sups
 	balance, err := sc.cc.SUPS.Balance()
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	// if wallet sups balance too low
@@ -195,12 +200,13 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 	// check withdraw wallet gas
 	pendingBalance, err := sc.cc.BscClient.PendingBalanceAt(ctx, sc.cc.SUPS.PublicAddress)
 	if err != nil {
-		return terror.Error(err)
+		errMsg := "Issue creating SUPs deposit transaction, try again or contact support."
+		return terror.Error(err, errMsg)
 	}
 
 	suggestGasPrice, err := sc.cc.BscClient.SuggestGasPrice(ctx)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 	if pendingBalance.Cmp(suggestGasPrice) < 0 {
 		return terror.Error(fmt.Errorf("not enough gas funds in our withdraw wallet"), "Insufficient gas in withdraw wallet at this time.")
@@ -221,7 +227,7 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 
 	nfb, ntb, _, err := sc.API.userCacheMap.Transact(trans)
 	if err != nil {
-		return terror.Error(err, "failed to process user fund")
+		return terror.Error(err, errMsg)
 	}
 
 	if !trans.From.IsSystemUser() {
@@ -260,7 +266,7 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 	tx, err := sc.cc.SUPS.Transfer(ctx, common.HexToAddress(user.PublicAddress.String), withdrawAmount)
 	if err != nil {
 		refund(err.Error())
-		return terror.Error(err, "Withdraw failed: %s", txID.String())
+		return terror.Error(err, "Withdraw failed: %s. Try again or contact support.", txID.String())
 	}
 	errChan := make(chan error)
 	attemptsChan := make(chan int)
@@ -313,7 +319,7 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 		case err := <-errChan:
 			if err != nil {
 				refund(err.Error())
-				return terror.Warn(err, "Transaction failed: %s", err.Error())
+				return terror.Warn(err, "Transaction failed: %s. Try again or contact support.", err.Error())
 			}
 			reply(true)
 			return nil

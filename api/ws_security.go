@@ -77,7 +77,7 @@ func (api *API) SubscribeCommandWithPermission(key hub.HubCommandKey, fn HubSubs
 		req := &hub.HubCommandRequest{}
 		err := json.Unmarshal(payload, req)
 		if err != nil {
-			return terror.Error(err, "Invalid request received")
+			return terror.Error(err, "Invalid request received.")
 		}
 
 		// remove subscription from message bus
@@ -133,7 +133,7 @@ func (api *API) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSubsc
 		req := &hub.HubCommandRequest{}
 		err := json.Unmarshal(payload, req)
 		if err != nil {
-			return terror.Error(err, "Invalid request received")
+			return terror.Error(err, "Invalid request received.")
 		}
 
 		// remove subscription if buskey not empty from message bus

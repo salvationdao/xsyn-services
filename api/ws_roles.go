@@ -65,12 +65,11 @@ type RoleListResponse struct {
 
 // ListHandler lists roles with pagination
 func (ctrlr *RoleController) ListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
 
 	req := &RoleListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	offset := 0
@@ -91,7 +90,7 @@ func (ctrlr *RoleController) ListHandler(ctx context.Context, hubc *hub.Client, 
 		req.Payload.SortDir,
 	)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Could not get list of roles, try again or contact support.")
 	}
 
 	resp := &RoleListResponse{
@@ -117,11 +116,11 @@ type RoleGetRequest struct {
 
 // GetHandler to get a role
 func (ctrlr *RoleController) GetHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Role not found, check the URL and try again."
+	errMsg := "Role not found, check the URL and try again or contact support."
 	req := &RoleGetRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Failed to unmarshal data")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// Get role
@@ -160,12 +159,12 @@ type RoleCreateRequest struct {
 
 // CreateHandler to create a role
 func (ctrlr *RoleController) CreateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
+	errMsg := "Could not create role, try again or contact support."
 
 	req := &RoleCreateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// Validation
@@ -187,7 +186,7 @@ func (ctrlr *RoleController) CreateHandler(ctx context.Context, hubc *hub.Client
 				}
 			}
 			if !validPerm {
-				return terror.Error(terror.ErrInvalidInput, "Invalid permission")
+				return terror.Error(terror.ErrInvalidInput, "Invalid permission to create role.")
 			}
 		}
 		role.Permissions = *req.Payload.Permissions
@@ -236,12 +235,12 @@ type RoleUpdateRequest struct {
 
 // UpdateHandler to update a role
 func (ctrlr *RoleController) UpdateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
+	errMsg := "Could not update user role, try again or contact support."
 
 	req := &RoleUpdateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// Find Role
@@ -267,7 +266,7 @@ func (ctrlr *RoleController) UpdateHandler(ctx context.Context, hubc *hub.Client
 				}
 			}
 			if !validPerm {
-				return terror.Error(terror.ErrInvalidInput, "Invalid permission")
+				return terror.Error(terror.ErrInvalidInput, "Invalid permission to update role.")
 			}
 		}
 		role.Permissions = *req.Payload.Permissions
@@ -322,15 +321,15 @@ type RoleToggleArchiveRequest struct {
 
 // ArchiveHandler archives a role
 func (ctrlr *RoleController) ArchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
+	errMsg := "Could not archive role, try again or contact support."
 
 	req := &RoleToggleArchiveRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
-	// Unarchive
+	// Archive
 	err = db.RoleArchiveUpdate(ctx, ctrlr.Conn, req.Payload.ID, true)
 	if err != nil {
 		return terror.Error(err, errMsg)
@@ -357,15 +356,15 @@ func (ctrlr *RoleController) ArchiveHandler(ctx context.Context, hubc *hub.Clien
 
 // UnarchiveHandler unarchives a role
 func (ctrlr *RoleController) UnarchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Something went wrong, please try again."
+	errMsg := "Could not unarchive role, try again or contact support."
 
 	req := &RoleToggleArchiveRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid request received.")
 	}
 
-	// Archive
+	// Unarchive
 	err = db.RoleArchiveUpdate(ctx, ctrlr.Conn, req.Payload.ID, false)
 	if err != nil {
 		return terror.Error(err, errMsg)
