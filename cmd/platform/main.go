@@ -586,6 +586,30 @@ func SyncNFTs(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTe
 }
 
 func SyncFunc(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool) error {
+	go func() {
+		l := passlog.L.With().Str("svc", "avant_ping").Logger()
+		failureCount := db.GetIntWithDefault(db.KeyAvantFailureCount, 0)
+		successCount := db.GetIntWithDefault(db.KeyAvantSuccessCount, 0)
+		rollbackEnabled := db.GetBool(db.KeyEnableWithdrawRollback)
+		if failureCount > 5 {
+			l.Err(errors.New("avant data feed failure")).Int("failure_count", failureCount).Msg("avant data feed failed, stopping automatic withdraw rollbacks")
+			db.PutBool(db.KeyEnableWithdrawRollback, false)
+		} else if !rollbackEnabled && successCount > 10 {
+			l.Info().Int("failure_count", failureCount).Msg("avant data feed restored, resuming automatic withdraw rollbacks")
+			db.PutBool(db.KeyEnableWithdrawRollback, true)
+		}
+
+		l.Debug().Int("failure_count", failureCount).Msg("avant status check")
+		err := payments.Ping()
+		if err != nil {
+			l.Err(err).Int("failure_count", failureCount).Msg("avant ping fail")
+			db.PutInt(db.KeyAvantFailureCount, failureCount+1)
+			db.PutInt(db.KeyAvantSuccessCount, 0)
+			return
+		}
+		db.PutInt(db.KeyAvantSuccessCount, successCount+1)
+		db.PutInt(db.KeyAvantFailureCount, 0)
+	}()
 	go func(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncPayments, false) {
 			err := SyncPayments(ucm, conn, log, isTestnet)
@@ -881,7 +905,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	)
 
 	passlog.L.Info().Msg("start rpc server")
-	s := comms.NewServer(ucm, msgBus, api.SupremacyController.Txs, log, pgxconn, api.ClientMap, twilio)
+	s := comms.NewServer(ucm, msgBus, log, pgxconn, api.ClientMap, twilio)
 	err = comms.StartServer(s)
 	if err != nil {
 		return terror.Error(err)

@@ -35,6 +35,8 @@ type Transaction struct {
 	CreatedAt            time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	Group                string          `boiler:"group" boil:"group" json:"group" toml:"group" yaml:"group"`
 	SubGroup             null.String     `boiler:"sub_group" boil:"sub_group" json:"sub_group,omitempty" toml:"sub_group" yaml:"sub_group,omitempty"`
+	RelatedTransactionID null.String     `boiler:"related_transaction_id" boil:"related_transaction_id" json:"related_transaction_id,omitempty" toml:"related_transaction_id" yaml:"related_transaction_id,omitempty"`
+	ServiceID            null.String     `boiler:"service_id" boil:"service_id" json:"service_id,omitempty" toml:"service_id" yaml:"service_id,omitempty"`
 
 	R *transactionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L transactionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -52,6 +54,8 @@ var TransactionColumns = struct {
 	CreatedAt            string
 	Group                string
 	SubGroup             string
+	RelatedTransactionID string
+	ServiceID            string
 }{
 	ID:                   "id",
 	Description:          "description",
@@ -64,6 +68,8 @@ var TransactionColumns = struct {
 	CreatedAt:            "created_at",
 	Group:                "group",
 	SubGroup:             "sub_group",
+	RelatedTransactionID: "related_transaction_id",
+	ServiceID:            "service_id",
 }
 
 var TransactionTableColumns = struct {
@@ -78,6 +84,8 @@ var TransactionTableColumns = struct {
 	CreatedAt            string
 	Group                string
 	SubGroup             string
+	RelatedTransactionID string
+	ServiceID            string
 }{
 	ID:                   "transactions.id",
 	Description:          "transactions.description",
@@ -90,6 +98,8 @@ var TransactionTableColumns = struct {
 	CreatedAt:            "transactions.created_at",
 	Group:                "transactions.group",
 	SubGroup:             "transactions.sub_group",
+	RelatedTransactionID: "transactions.related_transaction_id",
+	ServiceID:            "transactions.service_id",
 }
 
 // Generated where
@@ -106,6 +116,8 @@ var TransactionWhere = struct {
 	CreatedAt            whereHelpertime_Time
 	Group                whereHelperstring
 	SubGroup             whereHelpernull_String
+	RelatedTransactionID whereHelpernull_String
+	ServiceID            whereHelpernull_String
 }{
 	ID:                   whereHelperstring{field: "\"transactions\".\"id\""},
 	Description:          whereHelperstring{field: "\"transactions\".\"description\""},
@@ -118,24 +130,35 @@ var TransactionWhere = struct {
 	CreatedAt:            whereHelpertime_Time{field: "\"transactions\".\"created_at\""},
 	Group:                whereHelperstring{field: "\"transactions\".\"group\""},
 	SubGroup:             whereHelpernull_String{field: "\"transactions\".\"sub_group\""},
+	RelatedTransactionID: whereHelpernull_String{field: "\"transactions\".\"related_transaction_id\""},
+	ServiceID:            whereHelpernull_String{field: "\"transactions\".\"service_id\""},
 }
 
 // TransactionRels is where relationship names are stored.
 var TransactionRels = struct {
 	CreditUser                         string
 	DebitUser                          string
+	RelatedTransaction                 string
+	Service                            string
 	TransactionReferencePendingRefunds string
+	RelatedTransactionTransactions     string
 }{
 	CreditUser:                         "CreditUser",
 	DebitUser:                          "DebitUser",
+	RelatedTransaction:                 "RelatedTransaction",
+	Service:                            "Service",
 	TransactionReferencePendingRefunds: "TransactionReferencePendingRefunds",
+	RelatedTransactionTransactions:     "RelatedTransactionTransactions",
 }
 
 // transactionR is where relationships are stored.
 type transactionR struct {
 	CreditUser                         *User              `boiler:"CreditUser" boil:"CreditUser" json:"CreditUser" toml:"CreditUser" yaml:"CreditUser"`
 	DebitUser                          *User              `boiler:"DebitUser" boil:"DebitUser" json:"DebitUser" toml:"DebitUser" yaml:"DebitUser"`
+	RelatedTransaction                 *Transaction       `boiler:"RelatedTransaction" boil:"RelatedTransaction" json:"RelatedTransaction" toml:"RelatedTransaction" yaml:"RelatedTransaction"`
+	Service                            *User              `boiler:"Service" boil:"Service" json:"Service" toml:"Service" yaml:"Service"`
 	TransactionReferencePendingRefunds PendingRefundSlice `boiler:"TransactionReferencePendingRefunds" boil:"TransactionReferencePendingRefunds" json:"TransactionReferencePendingRefunds" toml:"TransactionReferencePendingRefunds" yaml:"TransactionReferencePendingRefunds"`
+	RelatedTransactionTransactions     TransactionSlice   `boiler:"RelatedTransactionTransactions" boil:"RelatedTransactionTransactions" json:"RelatedTransactionTransactions" toml:"RelatedTransactionTransactions" yaml:"RelatedTransactionTransactions"`
 }
 
 // NewStruct creates a new relationship struct
@@ -147,8 +170,8 @@ func (*transactionR) NewStruct() *transactionR {
 type transactionL struct{}
 
 var (
-	transactionAllColumns            = []string{"id", "description", "transaction_reference", "amount", "credit", "debit", "status", "reason", "created_at", "group", "sub_group"}
-	transactionColumnsWithoutDefault = []string{"id", "amount", "credit", "debit"}
+	transactionAllColumns            = []string{"id", "description", "transaction_reference", "amount", "credit", "debit", "status", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
+	transactionColumnsWithoutDefault = []string{"id", "amount", "credit", "debit", "related_transaction_id", "service_id"}
 	transactionColumnsWithDefault    = []string{"description", "transaction_reference", "status", "reason", "created_at", "group", "sub_group"}
 	transactionPrimaryKeyColumns     = []string{"id"}
 )
@@ -422,6 +445,35 @@ func (o *Transaction) DebitUser(mods ...qm.QueryMod) userQuery {
 	return query
 }
 
+// RelatedTransaction pointed to by the foreign key.
+func (o *Transaction) RelatedTransaction(mods ...qm.QueryMod) transactionQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.RelatedTransactionID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Transactions(queryMods...)
+	queries.SetFrom(query.Query, "\"transactions\"")
+
+	return query
+}
+
+// Service pointed to by the foreign key.
+func (o *Transaction) Service(mods ...qm.QueryMod) userQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.ServiceID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Users(queryMods...)
+	queries.SetFrom(query.Query, "\"users\"")
+
+	return query
+}
+
 // TransactionReferencePendingRefunds retrieves all the pending_refund's PendingRefunds with an executor via transaction_reference column.
 func (o *Transaction) TransactionReferencePendingRefunds(mods ...qm.QueryMod) pendingRefundQuery {
 	var queryMods []qm.QueryMod
@@ -439,6 +491,27 @@ func (o *Transaction) TransactionReferencePendingRefunds(mods ...qm.QueryMod) pe
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"pending_refund\".*"})
+	}
+
+	return query
+}
+
+// RelatedTransactionTransactions retrieves all the transaction's Transactions with an executor via related_transaction_id column.
+func (o *Transaction) RelatedTransactionTransactions(mods ...qm.QueryMod) transactionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"transactions\".\"related_transaction_id\"=?", o.ID),
+	)
+
+	query := Transactions(queryMods...)
+	queries.SetFrom(query.Query, "\"transactions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"transactions\".*"})
 	}
 
 	return query
@@ -654,6 +727,223 @@ func (transactionL) LoadDebitUser(e boil.Executor, singular bool, maybeTransacti
 	return nil
 }
 
+// LoadRelatedTransaction allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (transactionL) LoadRelatedTransaction(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
+	var slice []*Transaction
+	var object *Transaction
+
+	if singular {
+		object = maybeTransaction.(*Transaction)
+	} else {
+		slice = *maybeTransaction.(*[]*Transaction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &transactionR{}
+		}
+		if !queries.IsNil(object.RelatedTransactionID) {
+			args = append(args, object.RelatedTransactionID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &transactionR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.RelatedTransactionID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.RelatedTransactionID) {
+				args = append(args, obj.RelatedTransactionID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`transactions`),
+		qm.WhereIn(`transactions.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Transaction")
+	}
+
+	var resultSlice []*Transaction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Transaction")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for transactions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions")
+	}
+
+	if len(transactionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.RelatedTransaction = foreign
+		if foreign.R == nil {
+			foreign.R = &transactionR{}
+		}
+		foreign.R.RelatedTransactionTransactions = append(foreign.R.RelatedTransactionTransactions, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.RelatedTransactionID, foreign.ID) {
+				local.R.RelatedTransaction = foreign
+				if foreign.R == nil {
+					foreign.R = &transactionR{}
+				}
+				foreign.R.RelatedTransactionTransactions = append(foreign.R.RelatedTransactionTransactions, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadService allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (transactionL) LoadService(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
+	var slice []*Transaction
+	var object *Transaction
+
+	if singular {
+		object = maybeTransaction.(*Transaction)
+	} else {
+		slice = *maybeTransaction.(*[]*Transaction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &transactionR{}
+		}
+		if !queries.IsNil(object.ServiceID) {
+			args = append(args, object.ServiceID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &transactionR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ServiceID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.ServiceID) {
+				args = append(args, obj.ServiceID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`users`),
+		qm.WhereIn(`users.id in ?`, args...),
+		qmhelper.WhereIsNull(`users.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load User")
+	}
+
+	var resultSlice []*User
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice User")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for users")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for users")
+	}
+
+	if len(transactionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Service = foreign
+		if foreign.R == nil {
+			foreign.R = &userR{}
+		}
+		foreign.R.ServiceTransactions = append(foreign.R.ServiceTransactions, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.ServiceID, foreign.ID) {
+				local.R.Service = foreign
+				if foreign.R == nil {
+					foreign.R = &userR{}
+				}
+				foreign.R.ServiceTransactions = append(foreign.R.ServiceTransactions, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadTransactionReferencePendingRefunds allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (transactionL) LoadTransactionReferencePendingRefunds(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
@@ -745,6 +1035,104 @@ func (transactionL) LoadTransactionReferencePendingRefunds(e boil.Executor, sing
 					foreign.R = &pendingRefundR{}
 				}
 				foreign.R.TransactionReferenceTransaction = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadRelatedTransactionTransactions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (transactionL) LoadRelatedTransactionTransactions(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
+	var slice []*Transaction
+	var object *Transaction
+
+	if singular {
+		object = maybeTransaction.(*Transaction)
+	} else {
+		slice = *maybeTransaction.(*[]*Transaction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &transactionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &transactionR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`transactions`),
+		qm.WhereIn(`transactions.related_transaction_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load transactions")
+	}
+
+	var resultSlice []*Transaction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice transactions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on transactions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions")
+	}
+
+	if len(transactionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.RelatedTransactionTransactions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &transactionR{}
+			}
+			foreign.R.RelatedTransaction = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.RelatedTransactionID) {
+				local.R.RelatedTransactionTransactions = append(local.R.RelatedTransactionTransactions, foreign)
+				if foreign.R == nil {
+					foreign.R = &transactionR{}
+				}
+				foreign.R.RelatedTransaction = local
 				break
 			}
 		}
@@ -845,6 +1233,164 @@ func (o *Transaction) SetDebitUser(exec boil.Executor, insert bool, related *Use
 	return nil
 }
 
+// SetRelatedTransaction of the transaction to the related item.
+// Sets o.R.RelatedTransaction to related.
+// Adds o to related.R.RelatedTransactionTransactions.
+func (o *Transaction) SetRelatedTransaction(exec boil.Executor, insert bool, related *Transaction) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"transactions\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"related_transaction_id"}),
+		strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.RelatedTransactionID, related.ID)
+	if o.R == nil {
+		o.R = &transactionR{
+			RelatedTransaction: related,
+		}
+	} else {
+		o.R.RelatedTransaction = related
+	}
+
+	if related.R == nil {
+		related.R = &transactionR{
+			RelatedTransactionTransactions: TransactionSlice{o},
+		}
+	} else {
+		related.R.RelatedTransactionTransactions = append(related.R.RelatedTransactionTransactions, o)
+	}
+
+	return nil
+}
+
+// RemoveRelatedTransaction relationship.
+// Sets o.R.RelatedTransaction to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *Transaction) RemoveRelatedTransaction(exec boil.Executor, related *Transaction) error {
+	var err error
+
+	queries.SetScanner(&o.RelatedTransactionID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("related_transaction_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.RelatedTransaction = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.RelatedTransactionTransactions {
+		if queries.Equal(o.RelatedTransactionID, ri.RelatedTransactionID) {
+			continue
+		}
+
+		ln := len(related.R.RelatedTransactionTransactions)
+		if ln > 1 && i < ln-1 {
+			related.R.RelatedTransactionTransactions[i] = related.R.RelatedTransactionTransactions[ln-1]
+		}
+		related.R.RelatedTransactionTransactions = related.R.RelatedTransactionTransactions[:ln-1]
+		break
+	}
+	return nil
+}
+
+// SetService of the transaction to the related item.
+// Sets o.R.Service to related.
+// Adds o to related.R.ServiceTransactions.
+func (o *Transaction) SetService(exec boil.Executor, insert bool, related *User) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"transactions\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"service_id"}),
+		strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.ServiceID, related.ID)
+	if o.R == nil {
+		o.R = &transactionR{
+			Service: related,
+		}
+	} else {
+		o.R.Service = related
+	}
+
+	if related.R == nil {
+		related.R = &userR{
+			ServiceTransactions: TransactionSlice{o},
+		}
+	} else {
+		related.R.ServiceTransactions = append(related.R.ServiceTransactions, o)
+	}
+
+	return nil
+}
+
+// RemoveService relationship.
+// Sets o.R.Service to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *Transaction) RemoveService(exec boil.Executor, related *User) error {
+	var err error
+
+	queries.SetScanner(&o.ServiceID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("service_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Service = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.ServiceTransactions {
+		if queries.Equal(o.ServiceID, ri.ServiceID) {
+			continue
+		}
+
+		ln := len(related.R.ServiceTransactions)
+		if ln > 1 && i < ln-1 {
+			related.R.ServiceTransactions[i] = related.R.ServiceTransactions[ln-1]
+		}
+		related.R.ServiceTransactions = related.R.ServiceTransactions[:ln-1]
+		break
+	}
+	return nil
+}
+
 // AddTransactionReferencePendingRefunds adds the given related objects to the existing relationships
 // of the transaction, optionally inserting them as new records.
 // Appends related to o.R.TransactionReferencePendingRefunds.
@@ -894,6 +1440,131 @@ func (o *Transaction) AddTransactionReferencePendingRefunds(exec boil.Executor, 
 			rel.R.TransactionReferenceTransaction = o
 		}
 	}
+	return nil
+}
+
+// AddRelatedTransactionTransactions adds the given related objects to the existing relationships
+// of the transaction, optionally inserting them as new records.
+// Appends related to o.R.RelatedTransactionTransactions.
+// Sets related.R.RelatedTransaction appropriately.
+func (o *Transaction) AddRelatedTransactionTransactions(exec boil.Executor, insert bool, related ...*Transaction) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.RelatedTransactionID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"transactions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"related_transaction_id"}),
+				strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.RelatedTransactionID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &transactionR{
+			RelatedTransactionTransactions: related,
+		}
+	} else {
+		o.R.RelatedTransactionTransactions = append(o.R.RelatedTransactionTransactions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &transactionR{
+				RelatedTransaction: o,
+			}
+		} else {
+			rel.R.RelatedTransaction = o
+		}
+	}
+	return nil
+}
+
+// SetRelatedTransactionTransactions removes all previously related items of the
+// transaction replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.RelatedTransaction's RelatedTransactionTransactions accordingly.
+// Replaces o.R.RelatedTransactionTransactions with related.
+// Sets related.R.RelatedTransaction's RelatedTransactionTransactions accordingly.
+func (o *Transaction) SetRelatedTransactionTransactions(exec boil.Executor, insert bool, related ...*Transaction) error {
+	query := "update \"transactions\" set \"related_transaction_id\" = null where \"related_transaction_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.RelatedTransactionTransactions {
+			queries.SetScanner(&rel.RelatedTransactionID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.RelatedTransaction = nil
+		}
+
+		o.R.RelatedTransactionTransactions = nil
+	}
+	return o.AddRelatedTransactionTransactions(exec, insert, related...)
+}
+
+// RemoveRelatedTransactionTransactions relationships from objects passed in.
+// Removes related items from R.RelatedTransactionTransactions (uses pointer comparison, removal does not keep order)
+// Sets related.R.RelatedTransaction.
+func (o *Transaction) RemoveRelatedTransactionTransactions(exec boil.Executor, related ...*Transaction) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.RelatedTransactionID, nil)
+		if rel.R != nil {
+			rel.R.RelatedTransaction = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("related_transaction_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.RelatedTransactionTransactions {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.RelatedTransactionTransactions)
+			if ln > 1 && i < ln-1 {
+				o.R.RelatedTransactionTransactions[i] = o.R.RelatedTransactionTransactions[ln-1]
+			}
+			o.R.RelatedTransactionTransactions = o.R.RelatedTransactionTransactions[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 

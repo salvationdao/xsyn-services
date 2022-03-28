@@ -18,6 +18,8 @@ const KeyLatestUSDCBlock = "latest_usdc_block"
 const KeyLatestETHBlock = "latest_eth_block"
 const KeyLatestBNBBlock = "latest_bnb_block"
 const KeyEnableWithdrawRollback = "enable_withdraw_rollback"
+const KeyAvantFailureCount = "avant_failure_count"
+const KeyAvantSuccessCount = "avant_success_count"
 
 const KeyEnableSyncPayments = "enable_sync_payments"
 const KeyEnableSyncDeposits = "enable_sync_deposits"
