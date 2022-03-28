@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # Standard Lib
-from fileinput import filename
+from datetime import datetime
 import tarfile
 import sys
 import os
@@ -8,16 +8,23 @@ import getopt
 import json
 import logging
 import shutil
+from enum import Enum
 import re
+import gzip
+import pathlib
 
 # Pip Installs
 from tqdm import tqdm
+import sh
 import requests
 
 REPO = 'ninja-syndicate/passport-server'
 BASE_URL = "https://api.github.com/repos/{repo}".format(repo=REPO)
 TOKEN = os.environ.get("GITHUB_PAT", "")
 CLIENT = "ninja_syndicate"
+# BASE_DIR = "/usr/share/{client}".format(client=CLIENT)
+# BASE_DIR = "/Users/nathan/Projects/ninja/syndicate/passport-server/scripts"
+BASE_DIR = "/scripts"
 PACKAGE = "passport-api"
 
 
@@ -46,7 +53,8 @@ Get latest with verbose logging
 
 def main(argv):
     # Load Env
-    load_package_env("{package}_online/init/{package}.env".format(package=PACKAGE))
+    load_package_env(
+        "{package}_online/init/{package}.env".format(package=PACKAGE))
 
     if TOKEN == "":
         log.error("Please set GITHUB_PAT environment variable")
@@ -82,13 +90,11 @@ def main(argv):
     rel_path = download_asset(asset_meta)
 
     # Extract asset
-    if not question("Extract {} or exit?".format(rel_path), 'extract', 'exit'):
-        log.info("exiting")
-        exit(0)
 
     new_ver_dir = extract(rel_path)
 
     copy_env(new_ver_dir)
+    dbdump()
 
 
 def download_meta(version: str):
@@ -168,6 +174,10 @@ def download_asset(asset_meta: dict):
 
 
 def extract(file_name: str):
+    if not question("Extract {} or exit?".format(file_name), negative='exit'):
+        log.info("exiting")
+        exit(0)
+
     log.info("Extract: {}".format(file_name))
     dest = file_name.strip("tar.gz")
     if os.path.exists(dest):
@@ -192,7 +202,7 @@ def load_package_env(env_file):
                 line = line.removesuffix("export ")
 
             key, value = line.strip().split('=', 1)
-            os.environ[key] = value  # Load to local environ
+            os.environ[key] = value.strip('"')  # Load to local environ
 
     log.info("loaded env vars from %s", env_file)
 
@@ -200,10 +210,53 @@ def load_package_env(env_file):
 def copy_env(target: str):
     src = "{package}_online/init/{package}.env".format(package=PACKAGE)
     dest = "{target}/init/{package}.env".format(target=target, package=PACKAGE)
-    log.debug("src: ", src)
-    log.debug("dest: ", dest)
+    log.debug("src: %s", src)
+    log.debug("dest: %s", dest)
     shutil.copyfile(src, dest)
-    log.info("Coppied " + src+" to " + dest)
+    log.info("Coppied " + src + " to " + dest)
+
+
+def dbdump():
+    dump_dir = "{base_dir}/{package}_online/db_copy".format(
+        base_dir=BASE_DIR, package=PACKAGE)
+    pathlib.Path(dump_dir).mkdir(parents=True, exist_ok=True)
+
+    now = datetime.now()
+    dump_file = "{dump_dir}/{package}_{now}.sql".format(
+        dump_dir=dump_dir,
+        package=PACKAGE,
+        now=now.strftime("%Y%m%d%H%M%S"))
+
+    with gzip.open(dump_file, 'wb') as file:
+        sh.pg_dump(
+            '--dbname=' + os.environ.get("PASSPORT_DATABASE_NAME"),
+            '--host=' + os.environ.get("PASSPORT_DATABASE_HOST"),
+            '--port=' + os.environ.get("PASSPORT_DATABASE_PORT"),
+            '--username=postgres',
+            _out=file
+        )
+
+
+def migrations():
+    log.exception("not implemented")
+
+
+def change_online_version():
+    log.exception("not implemented")
+
+
+class Action(Enum):
+    START = 1
+    STOP = 2
+    CHECK = 3
+
+
+def nginx_ctl(action: Action):
+    log.exception("not implemented")
+
+
+def sys_ctl(action: Action):
+    log.exception("not implemented")
 
 
 def question(question, positive='y', negative='n'):

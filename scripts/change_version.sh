@@ -14,20 +14,6 @@ CLIENT="ninja_syndicate"
 PACKAGE="passport-api"
 TARGET="$(pwd)/${PACKAGE}_$1"
 
-cd /usr/share/$CLIENT
-
-if [ -z "$1" ]; then
-  echo "" >&2
-  echo " USAGE" >&2
-  echo "" >&2
-  echo "" >&2
-  echo " to bring an existing version online:" >&2
-  echo "" >&2
-  echo "     version_change target_dir" >&2
-  echo "" >&2
-  echo " If the directory doesn't exist and a tar does then it will be untared" >&2
-  exit 1
-fi;
 
 if [ ! -d $TARGET ] ; then
   if [ -f $TARGET.tar.gz ];
@@ -38,18 +24,12 @@ if [ ! -d $TARGET ] ; then
   fi;
 fi
 
-VER=$(grep -oP 'Version=\K[0-9]+' /usr/share/${CLIENT}/${PACKAGE}_online/BuildInfo.txt || echo "0")
 YMDHMS=$(date +'%Y%m%d%H%M%S')
 DBDIR="/usr/share/${CLIENT}/${PACKAGE}_online/db_copy"
 mkdir -p $DBDIR
 DBFILE="$DBDIR/$PACKAGE_$YMDHMS.sql"
 
 # Start the change over
-
-source ${PACKAGE}_online/init/${PACKAGE}.env
-cp ${PACKAGE}_online/init/${PACKAGE}.env $TARGET/init/${PACKAGE}.env
-
-source /home/ubuntu/.profile # load PGPASSWORD
 
 # Cant use the project default user due to adjusted permisions on some tables
 pg_dump --dbname="$PASSPORT_DATABASE_NAME" --host="$PASSPORT_DATABASE_HOST" --port="$PASSPORT_DATABASE_PORT" --username="postgres" > ${DBFILE}
