@@ -42,9 +42,9 @@ func (api *API) ClientOffline(ctx context.Context, client *hub.Client) error {
 func (api *API) ClientLogout(ctx context.Context, client *hub.Client) error {
 
 	// broadcast logout to gamebar
-	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyGamebarUserSubscribe, client.SessionID)), nil)
+	go api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyGamebarUserSubscribe, client.SessionID)), nil)
 
-	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, client.Identifier())), false)
+	go api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, client.Identifier())), false)
 	api.MessageBus.Unsub("", client, "")
 
 	return nil
@@ -84,7 +84,7 @@ func (api *API) ClientAuth(ctx context.Context, client *hub.Client) error {
 	// add online user to our user cache
 	// go api.InsertUserToCache(ctx, user)
 	// broadcast user online status
-	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, user.ID.String())), true)
+	go api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, user.ID.String())), true)
 
 	// create jwt for users to auth gameserver
 	tokenID := uuid.Must(uuid.NewV4())
@@ -113,7 +113,7 @@ func (api *API) ClientAuth(ctx context.Context, client *hub.Client) error {
 	}
 
 	// broadcast user to gamebar
-	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyGamebarUserSubscribe, client.SessionID)), &ClientAuth{
+	go api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyGamebarUserSubscribe, client.SessionID)), &ClientAuth{
 		User:     *user,
 		JWTToken: tokenEncoded,
 	})

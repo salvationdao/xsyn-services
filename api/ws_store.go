@@ -90,7 +90,7 @@ func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *hub.
 			sc.API.Log.Err(err)
 			return
 		}
-		sc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyAvailableItemAmountSubscribe), fsa)
+		sc.API.MessageBus.Send(messagebus.BusKey(HubKeyAvailableItemAmountSubscribe), fsa)
 	}()
 
 	return nil
@@ -137,7 +137,7 @@ func (sc *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, hubc *h
 			sc.API.Log.Err(err)
 			return
 		}
-		sc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyAvailableItemAmountSubscribe), fsa)
+		sc.API.MessageBus.Send(messagebus.BusKey(HubKeyAvailableItemAmountSubscribe), fsa)
 	}()
 
 	return nil
