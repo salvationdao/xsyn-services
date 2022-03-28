@@ -28,6 +28,7 @@ var TableNames = struct {
 	UserActivities          string
 	UserOrganisations       string
 	UserRecoveryCodes       string
+	UsernameHistory         string
 	Users                   string
 	WhitelistedAddresses    string
 	XsynAssets              string
@@ -58,6 +59,7 @@ var TableNames = struct {
 	UserActivities:          "user_activities",
 	UserOrganisations:       "user_organisations",
 	UserRecoveryCodes:       "user_recovery_codes",
+	UsernameHistory:         "username_history",
 	Users:                   "users",
 	WhitelistedAddresses:    "whitelisted_addresses",
 	XsynAssets:              "xsyn_assets",

@@ -13,7 +13,10 @@ import (
 	"passport"
 	"passport/crypto"
 	"passport/db"
+	"passport/db/boiler"
 	"passport/helpers"
+	"passport/passdb"
+	"passport/passlog"
 	"strings"
 	"time"
 
@@ -28,6 +31,7 @@ import (
 	"github.com/jackc/pgx/v4"
 
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"google.golang.org/api/idtoken"
 
 	"github.com/ninja-software/terror/v2"
@@ -227,6 +231,19 @@ func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, hubc *h
 	err = db.UserUpdate(ctx, uc.Conn, user)
 	if err != nil {
 		return terror.Error(err, errMsg)
+	}
+
+	// Log username change
+	if oldUser.Username != user.Username {
+		uh := boiler.UsernameHistory{
+			UserID:      user.ID.String(),
+			OldUsername: oldUser.Username,
+			NewUsername: user.Username,
+		}
+		err := uh.Insert(passdb.StdConn, boil.Infer())
+		if err != nil {
+			passlog.L.Warn().Err(err).Str("old username", oldUser.Username).Str("new username", user.Username).Msg("Failed to log username change in db")
+		}
 	}
 
 	// Get user
@@ -464,6 +481,19 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 	err = tx.Commit(ctx)
 	if err != nil {
 		return terror.Error(err, errMsg)
+	}
+
+	// Log username change
+	if oldUser.Username != user.Username {
+		uh := boiler.UsernameHistory{
+			UserID:      user.ID.String(),
+			OldUsername: oldUser.Username,
+			NewUsername: user.Username,
+		}
+		err := uh.Insert(passdb.StdConn, boil.Infer())
+		if err != nil {
+			passlog.L.Warn().Err(err).Str("old username", oldUser.Username).Str("new username", user.Username).Msg("Failed to log username change in db")
+		}
 	}
 
 	// Get user
