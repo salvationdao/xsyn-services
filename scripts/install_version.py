@@ -77,7 +77,7 @@ def main(argv):
     log.info("Downloaded: %s", os.path.abspath(rel_path))
 
     # Extract asset
-    if not yes_or_no("Extract {} or exit?".format(rel_path)):
+    if not question("Extract {} or exit?".format(rel_path), 'extract', 'exit'):
         log.info("exiting")
         exit(0)
 
@@ -162,11 +162,15 @@ def extract(file_name: str):
         tar.close
 
 def yes_or_no(question):
+def question(question, positive='y', negative='n'):
+    question = question + \
+        ' ({positive}/{negative}): '.format(positive=positive, negative=negative)
     while "the answer is invalid":
-        reply = str(input(question+' (y/n): ')).lower().strip()
-        if reply[0] == 'y':
+        reply = str(input(question)).lower().strip()
+        log.debug("reply %s", reply)
+        if reply == positive:
             return True
-        if reply[0] == 'n':
+        if reply == negative:
             return False
 
 
