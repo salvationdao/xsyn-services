@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # Standard Lib
-from email.mime import base
 from fileinput import filename
+import tarfile
 import sys
 import os
 import getopt
@@ -76,6 +76,13 @@ def main(argv):
     rel_path = download_asset(asset_meta)
     log.info("Downloaded: %s", os.path.abspath(rel_path))
 
+    # Extract asset
+    if not yes_or_no("Extract {} or exit?".format(rel_path)):
+        log.info("exiting")
+        exit(0)
+
+    extract(rel_path)
+
 
 def download_meta(version: str):
     headers = {
@@ -146,6 +153,13 @@ def download_asset(asset_meta: dict):
 
     return file_name
 
+
+def extract(file_name: str):
+    log.info("Extract: {}".format(file_name))
+    if file_name.endswith("tar.gz"):
+        tar = tarfile.open(file_name, "r:gz")
+        tar.extractall()
+        tar.close
 
 def yes_or_no(question):
     while "the answer is invalid":
