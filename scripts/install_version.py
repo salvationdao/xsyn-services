@@ -141,6 +141,11 @@ def download_asset(asset_meta: dict):
         file_size = int(resp.headers.get("Content-Length"))
         d = resp.headers['content-disposition']
         fname = re.findall("filename=(.+)", d)[0]
+        if os.path.exists(fname):
+            if not question("{} exists, overwrite?".format(fname)):
+                log.info("Skipping Download")
+                return fname
+
         log.info("Downloading: %s", fname)
         log.debug("code: %s", resp.status_code)
         log.debug("headers: %s", resp.headers)
@@ -151,11 +156,18 @@ def download_asset(asset_meta: dict):
                 progress_bar.update(len(chunk))
         progress_bar.close()
 
+    log.info("Downloaded: %s", os.path.abspath(file_name))
     return file_name
 
 
 def extract(file_name: str):
     log.info("Extract: {}".format(file_name))
+    dest = file_name.strip("tar.gz")
+    if os.path.exists(dest):
+        if not question("Destination exists, overwrite?"):
+            log.info("Skipping extraction")
+            return
+
     if file_name.endswith("tar.gz"):
         tar = tarfile.open(file_name, "r:gz")
         tar.extractall()
