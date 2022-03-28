@@ -269,7 +269,7 @@ func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, hubc *h
 		},
 	)
 
-	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -525,7 +525,7 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 		},
 	)
 
-	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	var resp struct {
 		IsSuccess bool `json:"is_success"`
@@ -954,7 +954,7 @@ func (uc *UserController) ForceDisconnectHandler(ctx context.Context, hubc *hub.
 		return terror.Error(terror.ErrUnauthorised, "You do not have permission to force disconnect this user.")
 	}
 
-	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserForceDisconnected, user.ID.String())), nil)
+	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserForceDisconnected, user.ID.String())), nil)
 	reply(true)
 
 	// Delete issue tokens
@@ -1133,7 +1133,7 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hub.C
 		},
 	)
 
-	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -1209,7 +1209,7 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.Clie
 		},
 	)
 
-	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	return nil
 }
@@ -1284,7 +1284,7 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.Cli
 		},
 	)
 
-	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -1357,7 +1357,7 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Client
 		},
 	)
 
-	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	return nil
 }
@@ -1432,7 +1432,7 @@ func (uc *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.Cli
 		},
 	)
 
-	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -1546,7 +1546,7 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client
 		},
 	)
 
-	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	return nil
 }
@@ -1621,7 +1621,7 @@ func (uc *UserController) RemoveTwitterHandler(ctx context.Context, hubc *hub.Cl
 		},
 	)
 
-	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -1736,7 +1736,7 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, hubc *hub.Clien
 		},
 	)
 
-	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	return nil
 }
@@ -1811,7 +1811,7 @@ func (uc *UserController) RemoveDiscordHandler(ctx context.Context, hubc *hub.Cl
 		},
 	)
 
-	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -1940,7 +1940,7 @@ func (uc *UserController) AddDiscordHandler(ctx context.Context, hubc *hub.Clien
 		},
 	)
 
-	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 
 	return nil
 }
@@ -2042,7 +2042,7 @@ func (uc *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.Cli
 		},
 	)
 
-	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 
@@ -2152,7 +2152,7 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Client
 		},
 	)
 
-	go uc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
 	return nil
 }
 

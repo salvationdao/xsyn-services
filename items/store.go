@@ -100,8 +100,8 @@ func Purchase(
 		return terror.Error(err)
 	}
 
-	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
-	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.To)), ntb.String())
+	go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
+	go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.To)), ntb.String())
 
 	// refund callback
 	refund := func(reason string) {
@@ -122,8 +122,8 @@ func Purchase(
 			return
 		}
 
-		go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
-		go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.To)), ntb.String())
+		go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
+		go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.To)), ntb.String())
 
 	}
 
@@ -161,7 +161,7 @@ func Purchase(
 		Item:        storeItem,
 	}
 
-	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), resp)
+	go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), resp)
 	return nil
 }
 
@@ -227,11 +227,11 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	}
 
 	if !trans.From.IsSystemUser() {
-		go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
+		go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
 	}
 
 	if !trans.To.IsSystemUser() {
-		go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.To)), ntb.String())
+		go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.To)), ntb.String())
 	}
 
 	// refund callback
@@ -256,8 +256,8 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 			return
 		}
 
-		go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
-		go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.To)), ntb.String())
+		go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
+		go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.To)), ntb.String())
 	}
 
 	// let's assign the item.
@@ -285,7 +285,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 		return "", terror.Error(err)
 	}
 
-	go bus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), storeItem)
+	go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), storeItem)
 	return newItem.Hash, nil
 }
 
