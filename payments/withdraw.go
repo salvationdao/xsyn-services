@@ -27,7 +27,7 @@ func InsertPendingRefund(ucm UserCacheMap, userID passport.UserID, amount decima
 	txRef := passport.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()))
 	// remove sups
 
-	tx := &passport.NewTransaction{
+	newTx := &passport.NewTransaction{
 		To:                   passport.OnChainUserID,
 		From:                 userID,
 		Amount:               amount,
@@ -36,7 +36,12 @@ func InsertPendingRefund(ucm UserCacheMap, userID passport.UserID, amount decima
 		Group:                passport.TransactionGroupWithdrawal,
 	}
 
-	_, _, _, err := ucm.Transact(tx)
+	_, _, _, err := ucm.Transact(newTx)
+	if err != nil {
+		return "", terror.Error(err)
+	}
+
+	tx, err := boiler.Transactions(boiler.TransactionWhere.TransactionReference.EQ(string(newTx.TransactionReference))).One(passdb.StdConn)
 	if err != nil {
 		return "", terror.Error(err)
 	}
@@ -47,10 +52,11 @@ func InsertPendingRefund(ucm UserCacheMap, userID passport.UserID, amount decima
 	}
 
 	txHold := boiler.PendingRefund{
-		UserID:               userID.String(),
-		RefundedAt:           expiry.Add(10 * time.Minute),
-		TransactionReference: string(txRef),
-		AmountSups:           amountString,
+		UserID:                userID.String(),
+		RefundedAt:            expiry.Add(10 * time.Minute),
+		TransactionReference:  string(txRef),
+		AmountSups:            amountString,
+		WithdrawTransactionID: null.StringFrom(tx.ID),
 	}
 
 	err = txHold.Insert(passdb.StdConn, boil.Infer())
@@ -166,11 +172,12 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 			continue
 		}
 
+		txRef := passport.TransactionReference(fmt.Sprintf("REFUND %s", refund.R.TransactionReferenceTransaction.TransactionReference))
 		newTx := &passport.NewTransaction{
 			To:                   passport.UserID(userUUID),
 			From:                 passport.OnChainUserID,
 			Amount:               refund.R.TransactionReferenceTransaction.Amount,
-			TransactionReference: passport.TransactionReference(fmt.Sprintf("REFUND %s", refund.R.TransactionReferenceTransaction.TransactionReference)),
+			TransactionReference: txRef,
 			Description:          fmt.Sprintf("REFUND %s", refund.R.TransactionReferenceTransaction.Description),
 			Group:                passport.TransactionGroup(refund.R.TransactionReferenceTransaction.Group),
 			RelatedTransactionID: refund.R.TransactionReferenceTransaction.RelatedTransactionID,
@@ -197,12 +204,15 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 			Logger()
 
 		if enableWithdrawRollback {
-			_, _, _, err = ucm.Transact(newTx)
+			_, _, txID, err := ucm.Transact(newTx)
 			if err != nil {
 				skipped++
 				l.Warn().Err(err).Msg("failed to process refund")
 				continue
 			}
+
+			// Link withdrawal to transaction ID
+			refund.ReversalTransactionID = null.StringFrom(txID)
 
 			_, err = refund.Update(passdb.StdConn, boil.Infer())
 			if err != nil {
