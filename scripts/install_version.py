@@ -46,7 +46,8 @@ Get latest with verbose logging
 
 def main(argv):
     # Load Env
-    load_package_env("{package}_online/init/{package}.env".format(package=PACKAGE))
+    load_package_env(
+        "{package}_online/init/{package}.env".format(package=PACKAGE))
 
     if TOKEN == "":
         log.error("Please set GITHUB_PAT environment variable")
@@ -168,8 +169,12 @@ def download_asset(asset_meta: dict):
 
 
 def extract(file_name: str):
+    if not question("Extract {} or exit?".format(file_name), negative='exit'):
+        log.info("exiting")
+        exit(0)
+
     log.info("Extract: {}".format(file_name))
-    dest = file_name.strip("tar.gz")
+    dest = file_name.rstrip(".tar.gz")
     if os.path.exists(dest):
         if not question("Destination exists, overwrite?"):
             log.info("Skipping extraction")
@@ -183,16 +188,20 @@ def extract(file_name: str):
 
 
 def load_package_env(env_file):
-    with open(env_file) as f:
-        for line in f:
-            if line.startswith('#') or not line.strip():
-                continue
-            if 'export' in line:
-                # Remove leading `export `
-                line = line.removesuffix("export ")
+    try:
+        with open(env_file) as f:
+            for line in f:
+                if line.startswith('#') or not line.strip():
+                    continue
+                if 'export' in line:
+                    # Remove leading `export `
+                    line = line.removesuffix("export ")
 
-            key, value = line.strip().split('=', 1)
-            os.environ[key] = value  # Load to local environ
+                key, value = line.strip().split('=', 1)
+                os.environ[key] = value.strip('"')  # Load to local environ
+    except FileNotFoundError:
+        log.exception("environment file not found: %s", env_file)
+        exit(1)
 
     log.info("loaded env vars from %s", env_file)
 
@@ -200,10 +209,15 @@ def load_package_env(env_file):
 def copy_env(target: str):
     src = "{package}_online/init/{package}.env".format(package=PACKAGE)
     dest = "{target}/init/{package}.env".format(target=target, package=PACKAGE)
-    log.debug("src: ", src)
-    log.debug("dest: ", dest)
-    shutil.copyfile(src, dest)
-    log.info("Coppied " + src+" to " + dest)
+    log.debug("src: %s", src)
+    log.debug("target: %s", target)
+    log.debug("dest: %s", dest)
+    try:
+        shutil.copyfile(src, dest)
+    except FileNotFoundError:
+        log.exception("file not found")
+        exit(1)
+    log.info("Coppied " + src + " to " + dest)
 
 
 def question(question, positive='y', negative='n'):
