@@ -189,12 +189,46 @@ func PurchasedItemByHash(hash string) (*boiler.PurchasedItem, error) {
 	}
 	return item, nil
 }
-func PurchasedItemsByOwnerID(ownerID uuid.UUID) ([]*boiler.PurchasedItem, error) {
+func PurchasedItemsByOwnerID(ownerID uuid.UUID, limit int, afterExternalTokenID *int, includeAssetIDs, excludeAssetIDs []uuid.UUID) ([]*boiler.PurchasedItem, error) {
 	passlog.L.Debug().Str("fn", "PurchasedItemsByOwnerID").Msg("db func")
-	items, err := boiler.PurchasedItems(
+
+	orderBy := boiler.PurchasedItemColumns.ExternalTokenID + " ASC"
+	orderByArgs := []interface{}{}
+	queryMods := []qm.QueryMod{
 		boiler.PurchasedItemWhere.OwnerID.EQ(ownerID.String()),
-		qm.OrderBy("external_token_id ASC"),
-	).All(passdb.StdConn)
+		qm.Limit(limit),
+	}
+	if afterExternalTokenID != nil {
+		queryMods = append(queryMods, boiler.PurchasedItemWhere.ExternalTokenID.GT(*afterExternalTokenID))
+	}
+	if len(includeAssetIDs) > 0 {
+		queuePositions := []string{}
+		for i, assetID := range includeAssetIDs {
+			queuePositions = append(queuePositions, fmt.Sprintf("WHEN ? THEN %d", i))
+			orderByArgs = append(orderByArgs, assetID.String())
+		}
+
+		orderBy = fmt.Sprintf(
+			`(
+				CASE %s
+					%s
+				END
+			), %s`,
+			boiler.PurchasedItemColumns.ID,
+			strings.Join(queuePositions, "\n"),
+			orderBy,
+		)
+	}
+	if len(excludeAssetIDs) > 0 {
+		args := []string{}
+		for _, assetID := range excludeAssetIDs {
+			args = append(args, assetID.String())
+		}
+		queryMods = append(queryMods, boiler.PurchasedItemWhere.ID.NIN(args))
+	}
+	queryMods = append(queryMods, qm.OrderBy(orderBy, orderByArgs...))
+
+	items, err := boiler.PurchasedItems(queryMods...).All(passdb.StdConn)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
