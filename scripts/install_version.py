@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # Standard Lib
-from fileinput import filename
+from datetime import datetime
 import tarfile
 import sys
 import os
@@ -9,6 +9,10 @@ import json
 import logging
 import shutil
 import re
+import gzip
+import pathlib
+import subprocess
+
 
 # Pip Installs
 from tqdm import tqdm
@@ -18,6 +22,7 @@ REPO = 'ninja-syndicate/passport-server'
 BASE_URL = "https://api.github.com/repos/{repo}".format(repo=REPO)
 TOKEN = os.environ.get("GITHUB_PAT", "")
 CLIENT = "ninja_syndicate"
+BASE_DIR = "/usr/share/{client}".format(client=CLIENT)
 PACKAGE = "passport-api"
 
 
@@ -90,6 +95,7 @@ def main(argv):
     new_ver_dir = extract(rel_path)
 
     copy_env(new_ver_dir)
+    dbdump()
 
 
 def download_meta(version: str):
@@ -218,6 +224,47 @@ def copy_env(target: str):
         log.exception("file not found")
         exit(1)
     log.info("Coppied " + src + " to " + dest)
+
+
+def dbdump():
+    dump_dir = "{base_dir}/{package}_online/db_copy".format(
+        base_dir=BASE_DIR, package=PACKAGE)
+    pathlib.Path(dump_dir).mkdir(parents=True, exist_ok=True)
+
+    now = datetime.now()
+    dump_file = "{dump_dir}/{package}_{now}.sql.gz".format(
+        dump_dir=dump_dir,
+        package=PACKAGE,
+        now=now.strftime("%Y%m%d%H%M%S"))
+
+    command = 'pg_dump --dbname="{dbname}" --host="{host}" --port="{port}" --username="postgres" '.format(
+        dbname=os.environ.get("PASSPORT_DATABASE_NAME"),
+        host=os.environ.get("PASSPORT_DATABASE_HOST"),
+        port=os.environ.get("PASSPORT_DATABASE_PORT"))
+
+    try:
+        with gzip.open(dump_file, 'wb') as f:
+            popen = subprocess.Popen(
+                command, stdout=subprocess.PIPE, shell=True, universal_newlines=True)
+
+            for stdout_line in iter(popen.stdout.readline, ''):
+                f.write(stdout_line.encode('utf-8'))
+
+            popen.stdout.close()
+            popen.wait()
+    except FileNotFoundError as e:
+        log.exception("file not found: %s", e.filename)
+        exit(1)
+
+    log.info("Dumped database " +
+             os.environ.get("PASSPORT_DATABASE_NAME") + " into " + dump_file)
+
+    if not os.path.exists(dump_file):
+        log.error("Dump file doesn't exist")
+        exit(1)
+    if not os.path.getsize(dump_file) > 5e4:
+        log.error("Dump file smaller that expected")
+        exit(1)
 
 
 def question(question, positive='y', negative='n'):
