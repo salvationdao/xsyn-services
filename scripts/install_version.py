@@ -13,10 +13,10 @@ import gzip
 import pathlib
 import subprocess
 
-
 # Pip Installs
 from tqdm import tqdm
 import requests
+
 
 REPO = 'ninja-syndicate/passport-server'
 BASE_URL = "https://api.github.com/repos/{repo}".format(repo=REPO)
@@ -205,8 +205,8 @@ def load_package_env(env_file):
 
                 key, value = line.strip().split('=', 1)
                 os.environ[key] = value.strip('"')  # Load to local environ
-    except FileNotFoundError:
-        log.exception("environment file not found: %s", env_file)
+    except FileNotFoundError as e:
+        log.exception("file not found: %s", e.filename)
         exit(1)
 
     log.info("loaded env vars from %s", env_file)
@@ -220,8 +220,8 @@ def copy_env(target: str):
     log.debug("dest: %s", dest)
     try:
         shutil.copyfile(src, dest)
-    except FileNotFoundError:
-        log.exception("file not found")
+    except FileNotFoundError as e:
+        log.exception("file not found: %s", e.filename)
         exit(1)
     log.info("Coppied " + src + " to " + dest)
 
