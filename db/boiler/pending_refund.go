@@ -24,115 +24,135 @@ import (
 
 // PendingRefund is an object representing the database table.
 type PendingRefund struct {
-	ID                   string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	UserID               string          `boiler:"user_id" boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
-	AmountSups           decimal.Decimal `boiler:"amount_sups" boil:"amount_sups" json:"amount_sups" toml:"amount_sups" yaml:"amount_sups"`
-	RefundedAt           time.Time       `boiler:"refunded_at" boil:"refunded_at" json:"refunded_at" toml:"refunded_at" yaml:"refunded_at"`
-	IsRefunded           bool            `boiler:"is_refunded" boil:"is_refunded" json:"is_refunded" toml:"is_refunded" yaml:"is_refunded"`
-	RefundCanceledAt     null.Time       `boiler:"refund_canceled_at" boil:"refund_canceled_at" json:"refund_canceled_at,omitempty" toml:"refund_canceled_at" yaml:"refund_canceled_at,omitempty"`
-	TXHash               string          `boiler:"tx_hash" boil:"tx_hash" json:"tx_hash" toml:"tx_hash" yaml:"tx_hash"`
-	TransactionReference string          `boiler:"transaction_reference" boil:"transaction_reference" json:"transaction_reference" toml:"transaction_reference" yaml:"transaction_reference"`
-	DeletedAt            null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt            time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt            time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID                    string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	UserID                string          `boiler:"user_id" boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
+	AmountSups            decimal.Decimal `boiler:"amount_sups" boil:"amount_sups" json:"amount_sups" toml:"amount_sups" yaml:"amount_sups"`
+	RefundedAt            time.Time       `boiler:"refunded_at" boil:"refunded_at" json:"refunded_at" toml:"refunded_at" yaml:"refunded_at"`
+	IsRefunded            bool            `boiler:"is_refunded" boil:"is_refunded" json:"is_refunded" toml:"is_refunded" yaml:"is_refunded"`
+	RefundCanceledAt      null.Time       `boiler:"refund_canceled_at" boil:"refund_canceled_at" json:"refund_canceled_at,omitempty" toml:"refund_canceled_at" yaml:"refund_canceled_at,omitempty"`
+	TXHash                string          `boiler:"tx_hash" boil:"tx_hash" json:"tx_hash" toml:"tx_hash" yaml:"tx_hash"`
+	TransactionReference  string          `boiler:"transaction_reference" boil:"transaction_reference" json:"transaction_reference" toml:"transaction_reference" yaml:"transaction_reference"`
+	DeletedAt             null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt             time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt             time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	WithdrawTransactionID null.String     `boiler:"withdraw_transaction_id" boil:"withdraw_transaction_id" json:"withdraw_transaction_id,omitempty" toml:"withdraw_transaction_id" yaml:"withdraw_transaction_id,omitempty"`
+	ReversalTransactionID null.String     `boiler:"reversal_transaction_id" boil:"reversal_transaction_id" json:"reversal_transaction_id,omitempty" toml:"reversal_transaction_id" yaml:"reversal_transaction_id,omitempty"`
 
 	R *pendingRefundR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L pendingRefundL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var PendingRefundColumns = struct {
-	ID                   string
-	UserID               string
-	AmountSups           string
-	RefundedAt           string
-	IsRefunded           string
-	RefundCanceledAt     string
-	TXHash               string
-	TransactionReference string
-	DeletedAt            string
-	UpdatedAt            string
-	CreatedAt            string
+	ID                    string
+	UserID                string
+	AmountSups            string
+	RefundedAt            string
+	IsRefunded            string
+	RefundCanceledAt      string
+	TXHash                string
+	TransactionReference  string
+	DeletedAt             string
+	UpdatedAt             string
+	CreatedAt             string
+	WithdrawTransactionID string
+	ReversalTransactionID string
 }{
-	ID:                   "id",
-	UserID:               "user_id",
-	AmountSups:           "amount_sups",
-	RefundedAt:           "refunded_at",
-	IsRefunded:           "is_refunded",
-	RefundCanceledAt:     "refund_canceled_at",
-	TXHash:               "tx_hash",
-	TransactionReference: "transaction_reference",
-	DeletedAt:            "deleted_at",
-	UpdatedAt:            "updated_at",
-	CreatedAt:            "created_at",
+	ID:                    "id",
+	UserID:                "user_id",
+	AmountSups:            "amount_sups",
+	RefundedAt:            "refunded_at",
+	IsRefunded:            "is_refunded",
+	RefundCanceledAt:      "refund_canceled_at",
+	TXHash:                "tx_hash",
+	TransactionReference:  "transaction_reference",
+	DeletedAt:             "deleted_at",
+	UpdatedAt:             "updated_at",
+	CreatedAt:             "created_at",
+	WithdrawTransactionID: "withdraw_transaction_id",
+	ReversalTransactionID: "reversal_transaction_id",
 }
 
 var PendingRefundTableColumns = struct {
-	ID                   string
-	UserID               string
-	AmountSups           string
-	RefundedAt           string
-	IsRefunded           string
-	RefundCanceledAt     string
-	TXHash               string
-	TransactionReference string
-	DeletedAt            string
-	UpdatedAt            string
-	CreatedAt            string
+	ID                    string
+	UserID                string
+	AmountSups            string
+	RefundedAt            string
+	IsRefunded            string
+	RefundCanceledAt      string
+	TXHash                string
+	TransactionReference  string
+	DeletedAt             string
+	UpdatedAt             string
+	CreatedAt             string
+	WithdrawTransactionID string
+	ReversalTransactionID string
 }{
-	ID:                   "pending_refund.id",
-	UserID:               "pending_refund.user_id",
-	AmountSups:           "pending_refund.amount_sups",
-	RefundedAt:           "pending_refund.refunded_at",
-	IsRefunded:           "pending_refund.is_refunded",
-	RefundCanceledAt:     "pending_refund.refund_canceled_at",
-	TXHash:               "pending_refund.tx_hash",
-	TransactionReference: "pending_refund.transaction_reference",
-	DeletedAt:            "pending_refund.deleted_at",
-	UpdatedAt:            "pending_refund.updated_at",
-	CreatedAt:            "pending_refund.created_at",
+	ID:                    "pending_refund.id",
+	UserID:                "pending_refund.user_id",
+	AmountSups:            "pending_refund.amount_sups",
+	RefundedAt:            "pending_refund.refunded_at",
+	IsRefunded:            "pending_refund.is_refunded",
+	RefundCanceledAt:      "pending_refund.refund_canceled_at",
+	TXHash:                "pending_refund.tx_hash",
+	TransactionReference:  "pending_refund.transaction_reference",
+	DeletedAt:             "pending_refund.deleted_at",
+	UpdatedAt:             "pending_refund.updated_at",
+	CreatedAt:             "pending_refund.created_at",
+	WithdrawTransactionID: "pending_refund.withdraw_transaction_id",
+	ReversalTransactionID: "pending_refund.reversal_transaction_id",
 }
 
 // Generated where
 
 var PendingRefundWhere = struct {
-	ID                   whereHelperstring
-	UserID               whereHelperstring
-	AmountSups           whereHelperdecimal_Decimal
-	RefundedAt           whereHelpertime_Time
-	IsRefunded           whereHelperbool
-	RefundCanceledAt     whereHelpernull_Time
-	TXHash               whereHelperstring
-	TransactionReference whereHelperstring
-	DeletedAt            whereHelpernull_Time
-	UpdatedAt            whereHelpertime_Time
-	CreatedAt            whereHelpertime_Time
+	ID                    whereHelperstring
+	UserID                whereHelperstring
+	AmountSups            whereHelperdecimal_Decimal
+	RefundedAt            whereHelpertime_Time
+	IsRefunded            whereHelperbool
+	RefundCanceledAt      whereHelpernull_Time
+	TXHash                whereHelperstring
+	TransactionReference  whereHelperstring
+	DeletedAt             whereHelpernull_Time
+	UpdatedAt             whereHelpertime_Time
+	CreatedAt             whereHelpertime_Time
+	WithdrawTransactionID whereHelpernull_String
+	ReversalTransactionID whereHelpernull_String
 }{
-	ID:                   whereHelperstring{field: "\"pending_refund\".\"id\""},
-	UserID:               whereHelperstring{field: "\"pending_refund\".\"user_id\""},
-	AmountSups:           whereHelperdecimal_Decimal{field: "\"pending_refund\".\"amount_sups\""},
-	RefundedAt:           whereHelpertime_Time{field: "\"pending_refund\".\"refunded_at\""},
-	IsRefunded:           whereHelperbool{field: "\"pending_refund\".\"is_refunded\""},
-	RefundCanceledAt:     whereHelpernull_Time{field: "\"pending_refund\".\"refund_canceled_at\""},
-	TXHash:               whereHelperstring{field: "\"pending_refund\".\"tx_hash\""},
-	TransactionReference: whereHelperstring{field: "\"pending_refund\".\"transaction_reference\""},
-	DeletedAt:            whereHelpernull_Time{field: "\"pending_refund\".\"deleted_at\""},
-	UpdatedAt:            whereHelpertime_Time{field: "\"pending_refund\".\"updated_at\""},
-	CreatedAt:            whereHelpertime_Time{field: "\"pending_refund\".\"created_at\""},
+	ID:                    whereHelperstring{field: "\"pending_refund\".\"id\""},
+	UserID:                whereHelperstring{field: "\"pending_refund\".\"user_id\""},
+	AmountSups:            whereHelperdecimal_Decimal{field: "\"pending_refund\".\"amount_sups\""},
+	RefundedAt:            whereHelpertime_Time{field: "\"pending_refund\".\"refunded_at\""},
+	IsRefunded:            whereHelperbool{field: "\"pending_refund\".\"is_refunded\""},
+	RefundCanceledAt:      whereHelpernull_Time{field: "\"pending_refund\".\"refund_canceled_at\""},
+	TXHash:                whereHelperstring{field: "\"pending_refund\".\"tx_hash\""},
+	TransactionReference:  whereHelperstring{field: "\"pending_refund\".\"transaction_reference\""},
+	DeletedAt:             whereHelpernull_Time{field: "\"pending_refund\".\"deleted_at\""},
+	UpdatedAt:             whereHelpertime_Time{field: "\"pending_refund\".\"updated_at\""},
+	CreatedAt:             whereHelpertime_Time{field: "\"pending_refund\".\"created_at\""},
+	WithdrawTransactionID: whereHelpernull_String{field: "\"pending_refund\".\"withdraw_transaction_id\""},
+	ReversalTransactionID: whereHelpernull_String{field: "\"pending_refund\".\"reversal_transaction_id\""},
 }
 
 // PendingRefundRels is where relationship names are stored.
 var PendingRefundRels = struct {
+	ReversalTransaction             string
 	TransactionReferenceTransaction string
 	User                            string
+	WithdrawTransaction             string
 }{
+	ReversalTransaction:             "ReversalTransaction",
 	TransactionReferenceTransaction: "TransactionReferenceTransaction",
 	User:                            "User",
+	WithdrawTransaction:             "WithdrawTransaction",
 }
 
 // pendingRefundR is where relationships are stored.
 type pendingRefundR struct {
+	ReversalTransaction             *Transaction `boiler:"ReversalTransaction" boil:"ReversalTransaction" json:"ReversalTransaction" toml:"ReversalTransaction" yaml:"ReversalTransaction"`
 	TransactionReferenceTransaction *Transaction `boiler:"TransactionReferenceTransaction" boil:"TransactionReferenceTransaction" json:"TransactionReferenceTransaction" toml:"TransactionReferenceTransaction" yaml:"TransactionReferenceTransaction"`
 	User                            *User        `boiler:"User" boil:"User" json:"User" toml:"User" yaml:"User"`
+	WithdrawTransaction             *Transaction `boiler:"WithdrawTransaction" boil:"WithdrawTransaction" json:"WithdrawTransaction" toml:"WithdrawTransaction" yaml:"WithdrawTransaction"`
 }
 
 // NewStruct creates a new relationship struct
@@ -144,8 +164,8 @@ func (*pendingRefundR) NewStruct() *pendingRefundR {
 type pendingRefundL struct{}
 
 var (
-	pendingRefundAllColumns            = []string{"id", "user_id", "amount_sups", "refunded_at", "is_refunded", "refund_canceled_at", "tx_hash", "transaction_reference", "deleted_at", "updated_at", "created_at"}
-	pendingRefundColumnsWithoutDefault = []string{"user_id", "amount_sups", "refunded_at", "refund_canceled_at", "transaction_reference", "deleted_at"}
+	pendingRefundAllColumns            = []string{"id", "user_id", "amount_sups", "refunded_at", "is_refunded", "refund_canceled_at", "tx_hash", "transaction_reference", "deleted_at", "updated_at", "created_at", "withdraw_transaction_id", "reversal_transaction_id"}
+	pendingRefundColumnsWithoutDefault = []string{"user_id", "amount_sups", "refunded_at", "refund_canceled_at", "transaction_reference", "deleted_at", "withdraw_transaction_id", "reversal_transaction_id"}
 	pendingRefundColumnsWithDefault    = []string{"id", "is_refunded", "tx_hash", "updated_at", "created_at"}
 	pendingRefundPrimaryKeyColumns     = []string{"id"}
 )
@@ -389,6 +409,20 @@ func (q pendingRefundQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// ReversalTransaction pointed to by the foreign key.
+func (o *PendingRefund) ReversalTransaction(mods ...qm.QueryMod) transactionQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.ReversalTransactionID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Transactions(queryMods...)
+	queries.SetFrom(query.Query, "\"transactions\"")
+
+	return query
+}
+
 // TransactionReferenceTransaction pointed to by the foreign key.
 func (o *PendingRefund) TransactionReferenceTransaction(mods ...qm.QueryMod) transactionQuery {
 	queryMods := []qm.QueryMod{
@@ -416,6 +450,128 @@ func (o *PendingRefund) User(mods ...qm.QueryMod) userQuery {
 	queries.SetFrom(query.Query, "\"users\"")
 
 	return query
+}
+
+// WithdrawTransaction pointed to by the foreign key.
+func (o *PendingRefund) WithdrawTransaction(mods ...qm.QueryMod) transactionQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.WithdrawTransactionID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Transactions(queryMods...)
+	queries.SetFrom(query.Query, "\"transactions\"")
+
+	return query
+}
+
+// LoadReversalTransaction allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (pendingRefundL) LoadReversalTransaction(e boil.Executor, singular bool, maybePendingRefund interface{}, mods queries.Applicator) error {
+	var slice []*PendingRefund
+	var object *PendingRefund
+
+	if singular {
+		object = maybePendingRefund.(*PendingRefund)
+	} else {
+		slice = *maybePendingRefund.(*[]*PendingRefund)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &pendingRefundR{}
+		}
+		if !queries.IsNil(object.ReversalTransactionID) {
+			args = append(args, object.ReversalTransactionID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &pendingRefundR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ReversalTransactionID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.ReversalTransactionID) {
+				args = append(args, obj.ReversalTransactionID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`transactions`),
+		qm.WhereIn(`transactions.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Transaction")
+	}
+
+	var resultSlice []*Transaction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Transaction")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for transactions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions")
+	}
+
+	if len(pendingRefundAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.ReversalTransaction = foreign
+		if foreign.R == nil {
+			foreign.R = &transactionR{}
+		}
+		foreign.R.ReversalTransactionPendingRefunds = append(foreign.R.ReversalTransactionPendingRefunds, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.ReversalTransactionID, foreign.ID) {
+				local.R.ReversalTransaction = foreign
+				if foreign.R == nil {
+					foreign.R = &transactionR{}
+				}
+				foreign.R.ReversalTransactionPendingRefunds = append(foreign.R.ReversalTransactionPendingRefunds, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadTransactionReferenceTransaction allows an eager lookup of values, cached into the
@@ -627,6 +783,193 @@ func (pendingRefundL) LoadUser(e boil.Executor, singular bool, maybePendingRefun
 	return nil
 }
 
+// LoadWithdrawTransaction allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (pendingRefundL) LoadWithdrawTransaction(e boil.Executor, singular bool, maybePendingRefund interface{}, mods queries.Applicator) error {
+	var slice []*PendingRefund
+	var object *PendingRefund
+
+	if singular {
+		object = maybePendingRefund.(*PendingRefund)
+	} else {
+		slice = *maybePendingRefund.(*[]*PendingRefund)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &pendingRefundR{}
+		}
+		if !queries.IsNil(object.WithdrawTransactionID) {
+			args = append(args, object.WithdrawTransactionID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &pendingRefundR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.WithdrawTransactionID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.WithdrawTransactionID) {
+				args = append(args, obj.WithdrawTransactionID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`transactions`),
+		qm.WhereIn(`transactions.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Transaction")
+	}
+
+	var resultSlice []*Transaction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Transaction")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for transactions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions")
+	}
+
+	if len(pendingRefundAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.WithdrawTransaction = foreign
+		if foreign.R == nil {
+			foreign.R = &transactionR{}
+		}
+		foreign.R.WithdrawTransactionPendingRefunds = append(foreign.R.WithdrawTransactionPendingRefunds, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.WithdrawTransactionID, foreign.ID) {
+				local.R.WithdrawTransaction = foreign
+				if foreign.R == nil {
+					foreign.R = &transactionR{}
+				}
+				foreign.R.WithdrawTransactionPendingRefunds = append(foreign.R.WithdrawTransactionPendingRefunds, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// SetReversalTransaction of the pendingRefund to the related item.
+// Sets o.R.ReversalTransaction to related.
+// Adds o to related.R.ReversalTransactionPendingRefunds.
+func (o *PendingRefund) SetReversalTransaction(exec boil.Executor, insert bool, related *Transaction) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"pending_refund\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"reversal_transaction_id"}),
+		strmangle.WhereClause("\"", "\"", 2, pendingRefundPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.ReversalTransactionID, related.ID)
+	if o.R == nil {
+		o.R = &pendingRefundR{
+			ReversalTransaction: related,
+		}
+	} else {
+		o.R.ReversalTransaction = related
+	}
+
+	if related.R == nil {
+		related.R = &transactionR{
+			ReversalTransactionPendingRefunds: PendingRefundSlice{o},
+		}
+	} else {
+		related.R.ReversalTransactionPendingRefunds = append(related.R.ReversalTransactionPendingRefunds, o)
+	}
+
+	return nil
+}
+
+// RemoveReversalTransaction relationship.
+// Sets o.R.ReversalTransaction to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *PendingRefund) RemoveReversalTransaction(exec boil.Executor, related *Transaction) error {
+	var err error
+
+	queries.SetScanner(&o.ReversalTransactionID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("reversal_transaction_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.ReversalTransaction = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.ReversalTransactionPendingRefunds {
+		if queries.Equal(o.ReversalTransactionID, ri.ReversalTransactionID) {
+			continue
+		}
+
+		ln := len(related.R.ReversalTransactionPendingRefunds)
+		if ln > 1 && i < ln-1 {
+			related.R.ReversalTransactionPendingRefunds[i] = related.R.ReversalTransactionPendingRefunds[ln-1]
+		}
+		related.R.ReversalTransactionPendingRefunds = related.R.ReversalTransactionPendingRefunds[:ln-1]
+		break
+	}
+	return nil
+}
+
 // SetTransactionReferenceTransaction of the pendingRefund to the related item.
 // Sets o.R.TransactionReferenceTransaction to related.
 // Adds o to related.R.TransactionReferencePendingRefunds.
@@ -716,6 +1059,85 @@ func (o *PendingRefund) SetUser(exec boil.Executor, insert bool, related *User) 
 		related.R.PendingRefunds = append(related.R.PendingRefunds, o)
 	}
 
+	return nil
+}
+
+// SetWithdrawTransaction of the pendingRefund to the related item.
+// Sets o.R.WithdrawTransaction to related.
+// Adds o to related.R.WithdrawTransactionPendingRefunds.
+func (o *PendingRefund) SetWithdrawTransaction(exec boil.Executor, insert bool, related *Transaction) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"pending_refund\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"withdraw_transaction_id"}),
+		strmangle.WhereClause("\"", "\"", 2, pendingRefundPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.WithdrawTransactionID, related.ID)
+	if o.R == nil {
+		o.R = &pendingRefundR{
+			WithdrawTransaction: related,
+		}
+	} else {
+		o.R.WithdrawTransaction = related
+	}
+
+	if related.R == nil {
+		related.R = &transactionR{
+			WithdrawTransactionPendingRefunds: PendingRefundSlice{o},
+		}
+	} else {
+		related.R.WithdrawTransactionPendingRefunds = append(related.R.WithdrawTransactionPendingRefunds, o)
+	}
+
+	return nil
+}
+
+// RemoveWithdrawTransaction relationship.
+// Sets o.R.WithdrawTransaction to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *PendingRefund) RemoveWithdrawTransaction(exec boil.Executor, related *Transaction) error {
+	var err error
+
+	queries.SetScanner(&o.WithdrawTransactionID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("withdraw_transaction_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.WithdrawTransaction = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.WithdrawTransactionPendingRefunds {
+		if queries.Equal(o.WithdrawTransactionID, ri.WithdrawTransactionID) {
+			continue
+		}
+
+		ln := len(related.R.WithdrawTransactionPendingRefunds)
+		if ln > 1 && i < ln-1 {
+			related.R.WithdrawTransactionPendingRefunds[i] = related.R.WithdrawTransactionPendingRefunds[ln-1]
+		}
+		related.R.WithdrawTransactionPendingRefunds = related.R.WithdrawTransactionPendingRefunds[:ln-1]
+		break
+	}
 	return nil
 }
 

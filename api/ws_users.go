@@ -2592,12 +2592,26 @@ func (uc *UserController) CheckCanAccessStore(ctx context.Context, hubc *hub.Cli
 // 	rootHub.SecureCommand(HubKeyUserGet, UserController.GetHandler)
 const HubKeyUserAssetList hub.HubCommandKey = "USER:ASSET:LIST"
 
+type UserAssetListRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Limit                int         `json:"limit"`
+		IncludeAssetIDs      []uuid.UUID `json:"include_asset_ids"` // list of queues to show first in exact ordering
+		ExcludeAssetIDs      []uuid.UUID `json:"exclude_queue_asset_ids"`
+		AfterExternalTokenID *int        `json:"after_external_token_id"`
+	} `json:"payload"`
+}
+
 // UserAssetListHandler return a list of asset that user own
 func (uc *UserController) UserAssetListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &hub.HubCommandRequest{}
+	req := &UserAssetListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
+	}
+
+	if req.Payload.Limit <= 0 {
+		return terror.Error(err, "Limit is required")
 	}
 
 	userID := passport.UserID(uuid.FromStringOrNil(hubc.Identifier()))
@@ -2605,7 +2619,7 @@ func (uc *UserController) UserAssetListHandler(ctx context.Context, hubc *hub.Cl
 		return terror.Error(terror.ErrForbidden, "User is not logged in, access forbidden.")
 	}
 
-	items, err := db.PurchasedItemsByOwnerID(uuid.UUID(userID))
+	items, err := db.PurchasedItemsByOwnerID(uuid.UUID(userID), req.Payload.Limit, req.Payload.AfterExternalTokenID, req.Payload.IncludeAssetIDs, req.Payload.ExcludeAssetIDs)
 	if err != nil {
 		return terror.Error(err, "Issue getting user asset list, try again or contact support.")
 	}
