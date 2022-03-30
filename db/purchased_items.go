@@ -183,6 +183,10 @@ func PurchasedItemByHash(hash string) (*boiler.PurchasedItem, error) {
 	if err != nil && err != sql.ErrNoRows {
 		return nil, terror.Error(err)
 	}
+	if err != nil {
+		passlog.L.Error().Err(err).Msgf("unable to retrieve hash: %s", hash)
+		return nil, terror.Error(err)
+	}
 	item, err = getPurchasedItem(uuid.Must(uuid.FromString(item.ID)))
 	if err != nil {
 		return nil, terror.Error(err)
