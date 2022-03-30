@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"passport"
@@ -21,6 +22,7 @@ import (
 	"time"
 
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/shopspring/decimal"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -110,6 +112,9 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 	// sups multiplier
 	api.SecureUserSubscribeCommand(HubKeyUserSupsMultiplierSubscribe, userHub.UserSupsMultiplierUpdatedSubscribeHandler)
 	api.SecureUserSubscribeCommand(HubKeyUserStatSubscribe, userHub.UserStatUpdatedSubscribeHandler)
+
+	// user fingerprinting
+	api.Command(HubKeyUserFingerprint, userHub.UserFingerprintHandler)
 
 	return userHub
 }
@@ -2672,4 +2677,77 @@ func (uc *UserController) UserLatestTransactionsSubscribeHandler(ctx context.Con
 	reply(list)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, userID.String())), nil
 
+}
+
+type UserFingerprintRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Fingerprint auth.Fingerprint `json:"fingerprint"`
+	} `json:"payload"`
+}
+
+const HubKeyUserFingerprint hub.HubCommandKey = "USER:FINGERPRINT"
+
+// UserFingerprintHandler stores a fingerprint entry that may or may not be linked to a user yet
+func (uc *UserController) UserFingerprintHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &UserFingerprintRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	fingerprintExists, err := boiler.Fingerprints(boiler.FingerprintWhere.VisitorID.EQ(req.Payload.Fingerprint.VisitorID)).Exists(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	if !fingerprintExists {
+		newFingerprint := boiler.Fingerprint{
+			VisitorID:  req.Payload.Fingerprint.VisitorID,
+			OsCPU:      null.StringFrom(req.Payload.Fingerprint.OSCPU),
+			Platform:   null.StringFrom(req.Payload.Fingerprint.Platform),
+			Timezone:   null.StringFrom(req.Payload.Fingerprint.Timezone),
+			Confidence: decimal.NewNullDecimal(decimal.NewFromFloat32(req.Payload.Fingerprint.Confidence)),
+			UserAgent:  null.StringFrom(req.Payload.Fingerprint.UserAgent),
+		}
+		err = newFingerprint.Insert(passdb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
+
+	fingerprint, err := boiler.Fingerprints(boiler.FingerprintWhere.VisitorID.EQ(req.Payload.Fingerprint.VisitorID)).One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	ip := hubc.Request.Header.Get("X-Forwarded-For")
+	if ip == "" {
+		ipaddr, _, _ := net.SplitHostPort(hubc.Request.RemoteAddr)
+		userIP := net.ParseIP(ipaddr)
+		if userIP == nil {
+			ip = ipaddr
+		} else {
+			ip = userIP.String()
+		}
+	}
+
+	userIPExists, err := boiler.FingerprintIps(boiler.FingerprintIPWhere.IP.EQ(ip), boiler.FingerprintIPWhere.FingerprintID.EQ(fingerprint.ID)).Exists(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err)
+	}
+	if !userIPExists {
+		// IP not logged for this fingerprint yet; create one
+		newFingerprintIP := boiler.FingerprintIP{
+			IP:            ip,
+			FingerprintID: fingerprint.ID,
+		}
+		err = newFingerprintIP.Insert(passdb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
+
+	reply(true)
+	return nil
 }

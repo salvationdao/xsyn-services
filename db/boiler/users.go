@@ -268,6 +268,7 @@ var UserRels = struct {
 	DebitTransactions   string
 	ServiceTransactions string
 	UserActivities      string
+	UserFingerprints    string
 	Organisations       string
 	UserRecoveryCodes   string
 	UsernameHistories   string
@@ -288,6 +289,7 @@ var UserRels = struct {
 	DebitTransactions:   "DebitTransactions",
 	ServiceTransactions: "ServiceTransactions",
 	UserActivities:      "UserActivities",
+	UserFingerprints:    "UserFingerprints",
 	Organisations:       "Organisations",
 	UserRecoveryCodes:   "UserRecoveryCodes",
 	UsernameHistories:   "UsernameHistories",
@@ -311,6 +313,7 @@ type userR struct {
 	DebitTransactions   TransactionSlice        `boiler:"DebitTransactions" boil:"DebitTransactions" json:"DebitTransactions" toml:"DebitTransactions" yaml:"DebitTransactions"`
 	ServiceTransactions TransactionSlice        `boiler:"ServiceTransactions" boil:"ServiceTransactions" json:"ServiceTransactions" toml:"ServiceTransactions" yaml:"ServiceTransactions"`
 	UserActivities      UserActivitySlice       `boiler:"UserActivities" boil:"UserActivities" json:"UserActivities" toml:"UserActivities" yaml:"UserActivities"`
+	UserFingerprints    UserFingerprintSlice    `boiler:"UserFingerprints" boil:"UserFingerprints" json:"UserFingerprints" toml:"UserFingerprints" yaml:"UserFingerprints"`
 	Organisations       OrganisationSlice       `boiler:"Organisations" boil:"Organisations" json:"Organisations" toml:"Organisations" yaml:"Organisations"`
 	UserRecoveryCodes   UserRecoveryCodeSlice   `boiler:"UserRecoveryCodes" boil:"UserRecoveryCodes" json:"UserRecoveryCodes" toml:"UserRecoveryCodes" yaml:"UserRecoveryCodes"`
 	UsernameHistories   UsernameHistorySlice    `boiler:"UsernameHistories" boil:"UsernameHistories" json:"UsernameHistories" toml:"UsernameHistories" yaml:"UsernameHistories"`
@@ -821,6 +824,28 @@ func (o *User) UserActivities(mods ...qm.QueryMod) userActivityQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"user_activities\".*"})
+	}
+
+	return query
+}
+
+// UserFingerprints retrieves all the user_fingerprint's UserFingerprints with an executor.
+func (o *User) UserFingerprints(mods ...qm.QueryMod) userFingerprintQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"user_fingerprints\".\"user_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"user_fingerprints\".\"deleted_at\""),
+	)
+
+	query := UserFingerprints(queryMods...)
+	queries.SetFrom(query.Query, "\"user_fingerprints\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"user_fingerprints\".*"})
 	}
 
 	return query
@@ -2268,6 +2293,105 @@ func (userL) LoadUserActivities(e boil.Executor, singular bool, maybeUser interf
 	return nil
 }
 
+// LoadUserFingerprints allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadUserFingerprints(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`user_fingerprints`),
+		qm.WhereIn(`user_fingerprints.user_id in ?`, args...),
+		qmhelper.WhereIsNull(`user_fingerprints.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load user_fingerprints")
+	}
+
+	var resultSlice []*UserFingerprint
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice user_fingerprints")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on user_fingerprints")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_fingerprints")
+	}
+
+	if len(userFingerprintAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.UserFingerprints = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &userFingerprintR{}
+			}
+			foreign.R.User = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.UserID {
+				local.R.UserFingerprints = append(local.R.UserFingerprints, foreign)
+				if foreign.R == nil {
+					foreign.R = &userFingerprintR{}
+				}
+				foreign.R.User = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadOrganisations allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (userL) LoadOrganisations(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
@@ -3693,6 +3817,58 @@ func (o *User) AddUserActivities(exec boil.Executor, insert bool, related ...*Us
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &userActivityR{
+				User: o,
+			}
+		} else {
+			rel.R.User = o
+		}
+	}
+	return nil
+}
+
+// AddUserFingerprints adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.UserFingerprints.
+// Sets related.R.User appropriately.
+func (o *User) AddUserFingerprints(exec boil.Executor, insert bool, related ...*UserFingerprint) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.UserID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"user_fingerprints\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
+				strmangle.WhereClause("\"", "\"", 2, userFingerprintPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.UserID, rel.FingerprintID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.UserID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			UserFingerprints: related,
+		}
+	} else {
+		o.R.UserFingerprints = append(o.R.UserFingerprints, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &userFingerprintR{
 				User: o,
 			}
 		} else {

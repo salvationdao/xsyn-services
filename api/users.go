@@ -7,8 +7,10 @@ import (
 	"passport"
 	"passport/crypto"
 	"passport/db"
+	"passport/db/boiler"
 	"passport/email"
 	"passport/helpers"
+	"passport/passdb"
 	"strings"
 	"time"
 
@@ -21,6 +23,9 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
 	"github.com/rs/zerolog"
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type UserGetter struct {
@@ -219,6 +224,53 @@ func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebook
 		Conn:   ug.Conn,
 		Mailer: ug.Mailer,
 	}, nil
+}
+
+func (ug *UserGetter) FingerprintUpsert(fingerprint auth.Fingerprint, userID uuid.UUID) error {
+	// Attempt to find fingerprint or create one
+	fingerprintExists, err := boiler.Fingerprints(boiler.FingerprintWhere.VisitorID.EQ(fingerprint.VisitorID)).Exists(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	if !fingerprintExists {
+		newFingerprint := boiler.Fingerprint{
+			VisitorID:  fingerprint.VisitorID,
+			OsCPU:      null.StringFrom(fingerprint.OSCPU),
+			Platform:   null.StringFrom(fingerprint.Platform),
+			Timezone:   null.StringFrom(fingerprint.Timezone),
+			Confidence: decimal.NewNullDecimal(decimal.NewFromFloat32(fingerprint.Confidence)),
+			UserAgent:  null.StringFrom(fingerprint.UserAgent),
+		}
+		err = newFingerprint.Insert(passdb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
+
+	f, err := boiler.Fingerprints(boiler.FingerprintWhere.VisitorID.EQ(fingerprint.VisitorID)).One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// Link fingerprint to user
+	userFingerprintExists, err := boiler.UserFingerprints(boiler.UserFingerprintWhere.UserID.EQ(userID.String()), boiler.UserFingerprintWhere.FingerprintID.EQ(f.ID)).Exists(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err)
+	}
+	if !userFingerprintExists {
+		// User fingerprint does not exist; create one
+		newUserFingerprint := boiler.UserFingerprint{
+			UserID:        userID.String(),
+			FingerprintID: f.ID,
+		}
+		err = newUserFingerprint.Insert(passdb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
+
+	return nil
 }
 
 func (ug *UserGetter) PublicAddress(s string) (auth.SecureUser, error) {
