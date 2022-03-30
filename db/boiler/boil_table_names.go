@@ -11,6 +11,8 @@ var TableNames = struct {
 	DeathAddresses          string
 	DepositTransactions     string
 	Factions                string
+	FingerprintIps          string
+	Fingerprints            string
 	IssueTokens             string
 	ItemOnchainTransactions string
 	KV                      string
@@ -26,6 +28,7 @@ var TableNames = struct {
 	StoreItems              string
 	Transactions            string
 	UserActivities          string
+	UserFingerprints        string
 	UserOrganisations       string
 	UserRecoveryCodes       string
 	UsernameHistory         string
@@ -42,6 +45,8 @@ var TableNames = struct {
 	DeathAddresses:          "death_addresses",
 	DepositTransactions:     "deposit_transactions",
 	Factions:                "factions",
+	FingerprintIps:          "fingerprint_ips",
+	Fingerprints:            "fingerprints",
 	IssueTokens:             "issue_tokens",
 	ItemOnchainTransactions: "item_onchain_transactions",
 	KV:                      "kv",
@@ -57,6 +62,7 @@ var TableNames = struct {
 	StoreItems:              "store_items",
 	Transactions:            "transactions",
 	UserActivities:          "user_activities",
+	UserFingerprints:        "user_fingerprints",
 	UserOrganisations:       "user_organisations",
 	UserRecoveryCodes:       "user_recovery_codes",
 	UsernameHistory:         "username_history",
