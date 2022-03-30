@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"passport"
 	"passport/db"
+	"passport/passlog"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
@@ -114,6 +115,14 @@ func NewChainClients(log *zerolog.Logger, api *API, p *passport.BridgeParams, is
 
 	cc.updatePriceFunc = func(symbol string, amount decimal.Decimal) {
 		if !enablePurchaseSubscription {
+			return
+		}
+		if cc.API == nil {
+			passlog.L.Warn().Msg("API pointer is nil, likely a race condition in spin up")
+			return
+		}
+		if cc.API.State == nil {
+			passlog.L.Warn().Msg("API.State pointer is nil, likely a race condition in spin up")
 			return
 		}
 		switch symbol {
