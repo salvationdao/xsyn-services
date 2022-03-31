@@ -353,14 +353,14 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 		}
 	}
 	if req.Payload.NewUsername != nil && req.Payload.Username != *req.Payload.NewUsername {
-		bm := bluemonday.StrictPolicy()
-		sanitizedUsername := html.UnescapeString(bm.Sanitize(strings.TrimSpace(*req.Payload.NewUsername)))
-
 		// Validate username
-		err = helpers.IsValidUsername(sanitizedUsername)
+		err = helpers.IsValidUsername(*req.Payload.NewUsername)
 		if err != nil {
 			return terror.Error(err, errMsg)
 		}
+
+		bm := bluemonday.StrictPolicy()
+		sanitizedUsername := html.UnescapeString(bm.Sanitize(strings.TrimSpace(*req.Payload.NewUsername)))
 
 		user.Username = sanitizedUsername
 	}
