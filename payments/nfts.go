@@ -14,9 +14,7 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-var MainnetNFT = common.HexToAddress("0x651D4424F34e6e918D8e4D2Da4dF3DEbDAe83D0C")
 var MainnetStaking = common.HexToAddress("0x6476dB7cFfeeBf7Cc47Ed8D4996d1D60608AAf95")
-var TestnetNFT = common.HexToAddress("0xEEfaF47acaa803176F1711c1cE783e790E4E750D")
 var TestnetStaking = common.HexToAddress("0x0497e0F8FC07DaaAf2BC1da1eace3F5E60d008b8")
 
 type NFTOwnerStatus struct {
@@ -26,11 +24,30 @@ type NFTOwnerStatus struct {
 	Unstakable bool
 }
 
-func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool) (int, int, error) {
+func getNFTContract(collectionSlug string, isTestnet bool) (common.Address, error) {
+	switch collectionSlug {
+	case "supremacy-genesis":
+		if isTestnet {
+			return common.HexToAddress("0xEEfaF47acaa803176F1711c1cE783e790E4E750D"), nil
+		}
+		return common.HexToAddress("0x651D4424F34e6e918D8e4D2Da4dF3DEbDAe83D0C"), nil
+	case "supremacy-limited-release":
+		if isTestnet {
+			return common.HexToAddress("0x440e2CcE53F5a61Bb997ac67D8D45a2898daD27b"), nil
+		}
+		return common.HexToAddress("0xCA949036Ad7cb19C53b54BdD7b358cD12Cf0b810"), nil
+	default:
+		passlog.L.Warn().Str("svc", "collection slug doesn't exist").Msg(fmt.Sprintf("Collection slug '%s' doesn't exist", collectionSlug))
+		return common.HexToAddress("0"), fmt.Errorf("collection slug does not exist")
+	}
+
+}
+
+func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool, collectionSlug string) (int, int, error) {
 	l := passlog.L.With().Str("svc", "avant_nft_ownership_update").Logger()
-	NFTAddr := MainnetNFT
-	if isTestnet {
-		NFTAddr = TestnetNFT
+	NFTAddr, err := getNFTContract(collectionSlug, isTestnet)
+	if err != nil {
+		return 0, 0, err
 	}
 
 	updated := 0

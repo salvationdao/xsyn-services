@@ -572,16 +572,38 @@ func SyncWithdraw(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, 
 
 }
 func SyncNFTs(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
-	nftOwnerStatuses, err := payments.GetNFTOwnerRecords(isTestnet)
+	limitedReleaseCollection, err := db.LimitedReleaseCollection()
+	if err != nil {
+		return fmt.Errorf("failed to get limited release collection: %w", err)
+	}
+	nftOwnerStatusesLimited, err := payments.GetNFTOwnerRecords(isTestnet, limitedReleaseCollection.Slug)
 	if err != nil {
 		return fmt.Errorf("get nft owners: %w", err)
 	}
 
-	ownerupdated, ownerskipped, err := payments.UpdateOwners(nftOwnerStatuses, isTestnet)
+	genesisCollection, err := db.GenesisCollection()
+	if err != nil {
+		return fmt.Errorf("failed to get genesis collection: %w", err)
+	}
+	nftOwnerStatusesGenesis, err := payments.GetNFTOwnerRecords(isTestnet, genesisCollection.Slug)
+	if err != nil {
+		return fmt.Errorf("get nft owners: %w", err)
+	}
+
+	ownerUpdatedLimited, ownerSkippedLimited, err := payments.UpdateOwners(nftOwnerStatusesLimited, isTestnet, limitedReleaseCollection.Slug)
 	if err != nil {
 		return fmt.Errorf("update nft owners: %w", err)
 	}
-	passlog.L.Info().Int("updated", ownerupdated).Int("skipped", ownerskipped).Msg("synced nft ownerships")
+
+	ownerUpdatedGenesis, ownerSkippedGenesis, err := payments.UpdateOwners(nftOwnerStatusesGenesis, isTestnet, genesisCollection.Slug)
+	if err != nil {
+		return fmt.Errorf("update nft owners: %w", err)
+	}
+
+	totalUpdated := ownerUpdatedGenesis + ownerUpdatedLimited
+	totalSkipped := ownerSkippedGenesis + ownerSkippedLimited
+
+	passlog.L.Info().Int("updated", totalUpdated).Int("skipped", totalSkipped).Msg("synced nft ownerships")
 	return nil
 }
 
