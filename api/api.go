@@ -149,13 +149,15 @@ func NewAPI(
 
 	cc := NewChainClients(log, api, config.BridgeParams, isTestnetBlockchain, runBlockchainBridge, enablePurchaseSubscription)
 	r := chi.NewRouter()
+	r.Use(cors.New(
+		cors.Options{
+			AllowedOrigins:   []string{"https://*", "http://*"},
+			AllowedHeaders:   []string{"*"},
+			AllowCredentials: true,
+		}).Handler)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
-	r.Use(cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowCredentials: true,
-	}).Handler)
 
 	var err error
 	api.Auth, err = auth.New(api.Hub, &auth.Config{
@@ -191,6 +193,7 @@ func NewAPI(
 		log.Fatal().Msgf("failed to init hub auther: %s", err.Error())
 	}
 
+	r.Mount("/api/admin", AdminRoutes(ucm))
 	r.Handle("/metrics", promhttp.Handler())
 	r.Route("/api", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
@@ -199,7 +202,6 @@ func NewAPI(
 			r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn))
 			r.Mount("/files", FileRouter(conn, api))
 			r.Mount("/nfts", api.NFTRoutes())
-			r.Mount("/admin", AdminRoutes(ucm))
 			r.Mount("/moderator", ModeratorRoutes())
 
 			r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
