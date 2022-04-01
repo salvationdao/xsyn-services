@@ -241,6 +241,12 @@ def copy_env(target: str):
 
 
 def dbdump():
+    if question("Skip database dump"):
+        log.info("Skipping database dump")
+        return False
+
+    log.info("Starting database dump")
+
     dump_dir = "{base_dir}/{package}_online/db_copy".format(
         base_dir=BASE_DIR, package=PACKAGE)
     pathlib.Path(dump_dir).mkdir(parents=True, exist_ok=True)
