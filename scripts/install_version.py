@@ -12,10 +12,24 @@ import re
 import gzip
 import pathlib
 import subprocess
+try:
+    import pip
+except ImportError as e:
+    print('''
+    Install python3-pip
+    apt-get install python3-pip
+    ''')
+    exit(1)
 
 # Pip Installs
-from tqdm import tqdm
-import requests
+try:
+    import requests
+    from tqdm import tqdm
+except ImportError as e:
+    pip.main(['install', e.name])
+
+    print("\n Dependency installed rerun script")
+    exit(1)
 
 
 REPO = 'ninja-syndicate/passport-server'
