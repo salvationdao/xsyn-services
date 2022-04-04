@@ -1,4 +1,4 @@
-module passport
+module xsyn-services
 
 go 1.17
 
