@@ -118,32 +118,6 @@ func (w whereHelpernull_Int64) GTE(x null.Int64) qm.QueryMod {
 func (w whereHelpernull_Int64) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
 func (w whereHelpernull_Int64) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
-type whereHelperdecimal_NullDecimal struct{ field string }
-
-func (w whereHelperdecimal_NullDecimal) EQ(x decimal.NullDecimal) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, false, x)
-}
-func (w whereHelperdecimal_NullDecimal) NEQ(x decimal.NullDecimal) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, true, x)
-}
-func (w whereHelperdecimal_NullDecimal) LT(x decimal.NullDecimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelperdecimal_NullDecimal) LTE(x decimal.NullDecimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelperdecimal_NullDecimal) GT(x decimal.NullDecimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelperdecimal_NullDecimal) GTE(x decimal.NullDecimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
-
-func (w whereHelperdecimal_NullDecimal) IsNull() qm.QueryMod { return qmhelper.WhereIsNull(w.field) }
-func (w whereHelperdecimal_NullDecimal) IsNotNull() qm.QueryMod {
-	return qmhelper.WhereIsNotNull(w.field)
-}
-
 var StateWhere = struct {
 	LatestEthBlock        whereHelpernull_Int64
 	LatestBSCBlock        whereHelpernull_Int64

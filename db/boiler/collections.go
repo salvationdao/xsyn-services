@@ -33,6 +33,7 @@ type Collection struct {
 	Slug          string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
 	MintContract  null.String `boiler:"mint_contract" boil:"mint_contract" json:"mint_contract,omitempty" toml:"mint_contract" yaml:"mint_contract,omitempty"`
 	StakeContract null.String `boiler:"stake_contract" boil:"stake_contract" json:"stake_contract,omitempty" toml:"stake_contract" yaml:"stake_contract,omitempty"`
+	IsVisible     null.Bool   `boiler:"is_visible" boil:"is_visible" json:"is_visible,omitempty" toml:"is_visible" yaml:"is_visible,omitempty"`
 
 	R *collectionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L collectionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -49,6 +50,7 @@ var CollectionColumns = struct {
 	Slug          string
 	MintContract  string
 	StakeContract string
+	IsVisible     string
 }{
 	ID:            "id",
 	Name:          "name",
@@ -60,6 +62,7 @@ var CollectionColumns = struct {
 	Slug:          "slug",
 	MintContract:  "mint_contract",
 	StakeContract: "stake_contract",
+	IsVisible:     "is_visible",
 }
 
 var CollectionTableColumns = struct {
@@ -73,6 +76,7 @@ var CollectionTableColumns = struct {
 	Slug          string
 	MintContract  string
 	StakeContract string
+	IsVisible     string
 }{
 	ID:            "collections.id",
 	Name:          "collections.name",
@@ -84,9 +88,34 @@ var CollectionTableColumns = struct {
 	Slug:          "collections.slug",
 	MintContract:  "collections.mint_contract",
 	StakeContract: "collections.stake_contract",
+	IsVisible:     "collections.is_visible",
 }
 
 // Generated where
+
+type whereHelpernull_Bool struct{ field string }
+
+func (w whereHelpernull_Bool) EQ(x null.Bool) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_Bool) NEQ(x null.Bool) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_Bool) LT(x null.Bool) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_Bool) LTE(x null.Bool) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_Bool) GT(x null.Bool) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_Bool) GTE(x null.Bool) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelpernull_Bool) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_Bool) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
 var CollectionWhere = struct {
 	ID            whereHelperstring
@@ -99,6 +128,7 @@ var CollectionWhere = struct {
 	Slug          whereHelperstring
 	MintContract  whereHelpernull_String
 	StakeContract whereHelpernull_String
+	IsVisible     whereHelpernull_Bool
 }{
 	ID:            whereHelperstring{field: "\"collections\".\"id\""},
 	Name:          whereHelperstring{field: "\"collections\".\"name\""},
@@ -110,6 +140,7 @@ var CollectionWhere = struct {
 	Slug:          whereHelperstring{field: "\"collections\".\"slug\""},
 	MintContract:  whereHelpernull_String{field: "\"collections\".\"mint_contract\""},
 	StakeContract: whereHelpernull_String{field: "\"collections\".\"stake_contract\""},
+	IsVisible:     whereHelpernull_Bool{field: "\"collections\".\"is_visible\""},
 }
 
 // CollectionRels is where relationship names are stored.
@@ -148,9 +179,9 @@ func (*collectionR) NewStruct() *collectionR {
 type collectionL struct{}
 
 var (
-	collectionAllColumns            = []string{"id", "name", "logo_blob_id", "keywords", "deleted_at", "updated_at", "created_at", "slug", "mint_contract", "stake_contract"}
+	collectionAllColumns            = []string{"id", "name", "logo_blob_id", "keywords", "deleted_at", "updated_at", "created_at", "slug", "mint_contract", "stake_contract", "is_visible"}
 	collectionColumnsWithoutDefault = []string{"name", "logo_blob_id", "keywords", "deleted_at", "slug"}
-	collectionColumnsWithDefault    = []string{"id", "updated_at", "created_at", "mint_contract", "stake_contract"}
+	collectionColumnsWithDefault    = []string{"id", "updated_at", "created_at", "mint_contract", "stake_contract", "is_visible"}
 	collectionPrimaryKeyColumns     = []string{"id"}
 )
 

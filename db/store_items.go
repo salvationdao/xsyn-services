@@ -74,6 +74,7 @@ var PriceCentsMap = map[string]int{
 
 func SyncStoreItems() error {
 	passlog.L.Debug().Str("fn", "SyncStoreItems").Msg("db func")
+
 	tx, err := passdb.StdConn.Begin()
 	if err != nil {
 		return err
@@ -98,7 +99,14 @@ func SyncStoreItems() error {
 			if err != nil {
 				return err
 			}
-			collection, err := GenesisCollection()
+			var collection *boiler.Collection
+			var collectionSlug string
+			if !template.Template.CollectionSlug.Valid {
+				return fmt.Errorf("template collection slug not valid")
+			}
+
+			collectionSlug = template.Template.CollectionSlug.String
+			collection, err = CollectionBySlug(context.Background(), passdb.Conn, collectionSlug)
 			if err != nil {
 				return err
 			}
@@ -164,11 +172,11 @@ func SyncStoreItems() error {
 			passlog.L.Info().Str("id", template.Template.ID).Msg("updating existing store item")
 			_, err = refreshStoreItem(uuid.Must(uuid.FromString(template.Template.ID)), true)
 			if err != nil {
+
 				return err
 			}
 		}
 	}
-
 	err = tx.Commit()
 	if err != nil {
 		return terror.Error(err)

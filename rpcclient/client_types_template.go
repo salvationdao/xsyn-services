@@ -14,22 +14,23 @@ type TemplateContainer struct {
 	BlueprintModules map[int]*BlueprintModule `json:"blueprint_modules"`
 }
 type Template struct {
-	ID                 string    `json:"id"`
-	BlueprintChassisID string    `json:"blueprint_chassis_id"`
-	FactionID          string    `json:"faction_id"`
-	Tier               string    `json:"tier"`
-	Label              string    `json:"label"`
-	Slug               string    `json:"slug"`
-	IsDefault          bool      `json:"is_default"`
-	LargeImageURL      string    `json:"large_image_url"`
-	ImageURL           string    `json:"image_url"`
-	AnimationURL       string    `json:"animation_url"`
-	CardAnimationURL   string    `json:"card_animation_url"`
-	AvatarURL          string    `json:"avatar_url"`
-	AssetType          string    `json:"asset_type"`
-	DeletedAt          null.Time `json:"deleted_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
-	CreatedAt          time.Time `json:"created_at"`
+	ID                 string      `json:"id"`
+	BlueprintChassisID string      `json:"blueprint_chassis_id"`
+	FactionID          string      `json:"faction_id"`
+	Tier               string      `json:"tier"`
+	Label              string      `json:"label"`
+	Slug               string      `json:"slug"`
+	IsDefault          bool        `json:"is_default"`
+	LargeImageURL      string      `json:"large_image_url"`
+	ImageURL           string      `json:"image_url"`
+	AnimationURL       string      `json:"animation_url"`
+	CardAnimationURL   string      `json:"card_animation_url"`
+	AvatarURL          string      `json:"avatar_url"`
+	AssetType          string      `json:"asset_type"`
+	CollectionSlug     null.String `json:"collection_slug"`
+	DeletedAt          null.Time   `json:"deleted_at"`
+	UpdatedAt          time.Time   `json:"updated_at"`
+	CreatedAt          time.Time   `json:"created_at"`
 }
 type BlueprintChassis struct {
 	ID                 string    `json:"id"`

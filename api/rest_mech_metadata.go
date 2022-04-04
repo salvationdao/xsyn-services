@@ -131,9 +131,17 @@ type purchasedItemMetaDataMech struct {
 	Slug          string `json:"slug"`
 }
 type purchasedItemMetaDataChassis struct {
-	Label string `json:"label"`
-	Model string `json:"model"`
-	Skin  string `json:"skin"`
+	Label              string `json:"label"`
+	Model              string `json:"model"`
+	Skin               string `json:"skin"`
+	ShieldRechargeRate int    `json:"shield_recharge_rate"`
+	HealthRemaining    int    `json:"health_remaining"`
+	WeaponHardpoints   int    `json:"weapon_hardpoints"`
+	TurretHardpoints   int    `json:"turret_hardpoints"`
+	UtilitySlots       int    `json:"utility_slots"`
+	Speed              int    `json:"speed"`
+	MaxHitpoints       int    `json:"max_hitpoints"`
+	MaxShield          int    `json:"max_shield"`
 }
 type purchasedItemMetaDataModule struct {
 	Label string `json:"label"`
@@ -211,6 +219,57 @@ func purchasedItemToOpenseaMetaData(api *API, item *boiler.PurchasedItem) (jb []
 		}
 		attributes = append(attributes, atr)
 	}
+	str = strconv.Itoa(itemMeta.Chassis.ShieldRechargeRate)
+
+	atr = passport.Attribute{
+		TraitType: "Shield Recharge Rate",
+		Value:     str,
+	}
+	attributes = append(attributes, atr)
+
+	str = strconv.Itoa(itemMeta.Chassis.HealthRemaining)
+
+	atr = passport.Attribute{
+		TraitType: "Health Remaining",
+		Value:     str,
+	}
+	attributes = append(attributes, atr)
+
+	str = strconv.Itoa(itemMeta.Chassis.TurretHardpoints)
+
+	atr = passport.Attribute{
+		TraitType: "Turret Hardpoints",
+		Value:     str,
+	}
+	attributes = append(attributes, atr)
+
+	str = strconv.Itoa(itemMeta.Chassis.UtilitySlots)
+	atr = passport.Attribute{
+		TraitType: "Utility Slots",
+		Value:     str,
+	}
+	attributes = append(attributes, atr)
+
+	str = strconv.Itoa(itemMeta.Chassis.Speed)
+	atr = passport.Attribute{
+		TraitType: "Speed",
+		Value:     str,
+	}
+	attributes = append(attributes, atr)
+
+	str = strconv.Itoa(itemMeta.Chassis.MaxHitpoints)
+	atr = passport.Attribute{
+		TraitType: "Max Hitpoints",
+		Value:     str,
+	}
+	attributes = append(attributes, atr)
+
+	str = strconv.Itoa(itemMeta.Chassis.MaxShield)
+	atr = passport.Attribute{
+		TraitType: "Max Shield",
+		Value:     str,
+	}
+	attributes = append(attributes, atr)
 
 	// rarity
 	str = itemMeta.Mech.Tier

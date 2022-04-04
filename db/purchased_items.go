@@ -68,7 +68,14 @@ func SyncPurchasedItems() error {
 			if err != nil {
 				return terror.Error(err)
 			}
-			collection, err := GenesisCollection()
+			var collection *boiler.Collection
+			var collectionSlug string
+			if !item.Mech.CollectionSlug.Valid {
+				return terror.Error(fmt.Errorf("mech collection slug not valid"), "Mech collection slug not valid")
+			}
+
+			collectionSlug = item.Mech.CollectionSlug.String
+			collection, err = CollectionBySlug(context.Background(), passdb.Conn, collectionSlug)
 			if err != nil {
 				return terror.Error(err)
 			}
@@ -276,7 +283,16 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) (*boiler.Pu
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-	collection, err := GenesisCollection()
+
+	var collection *boiler.Collection
+	var collectionSlug string
+	if !resp.MechContainer.Mech.CollectionSlug.Valid {
+		return nil, terror.Error(fmt.Errorf("mech collection slug not valid"), "Mech collection slug not valid")
+	}
+
+	collectionSlug = resp.MechContainer.Mech.CollectionSlug.String
+
+	collection, err = CollectionBySlug(context.Background(), passdb.Conn, collectionSlug)
 	if err != nil {
 		return nil, terror.Error(err)
 	}

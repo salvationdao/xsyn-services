@@ -74,16 +74,16 @@ func getPurchaseRecords(path Path, latestBlock int, testnet bool) ([]*PurchaseRe
 
 const NFTTokens Path = "nft_tokens"
 
-func getNFTOwnerRecords(path Path, isTestnet bool) (map[int]*NFTOwnerStatus, error) {
+func getNFTOwnerRecords(path Path, isTestnet bool, collectionSlug string) (map[int]*NFTOwnerStatus, error) {
 	l := passlog.L.With().Str("svc", "avant_nft_ownership_update").Logger()
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s", baseURL, "nft_tokens"), nil)
 	if err != nil {
 		return nil, err
 	}
 	q := req.URL.Query()
-	NFTAddr := MainnetNFT
-	if isTestnet {
-		NFTAddr = TestnetNFT
+	NFTAddr, err := getNFTContract(collectionSlug, isTestnet)
+	if err != nil {
+		return nil, err
 	}
 	l.Debug().Str("url", req.URL.String()).Msg("fetch NFT owners from Avant API")
 	q.Add("contract_address", NFTAddr.Hex())
@@ -184,8 +184,8 @@ func GetDeposits(testnet bool) ([]*SUPTransferRecord, error) {
 	return records, nil
 }
 
-func GetNFTOwnerRecords(isTestnet bool) (map[int]*NFTOwnerStatus, error) {
-	return getNFTOwnerRecords(NFTOwnerPath, isTestnet)
+func GetNFTOwnerRecords(isTestnet bool, collectionSlug string) (map[int]*NFTOwnerStatus, error) {
+	return getNFTOwnerRecords(NFTOwnerPath, isTestnet, collectionSlug)
 }
 
 func latestPurchaseBlockFromRecords(currentBlock int, records []*PurchaseRecord) int {

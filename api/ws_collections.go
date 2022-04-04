@@ -70,7 +70,7 @@ func (ctrlr *CollectionController) CollectionsList(ctx context.Context, hubc *hu
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
-	collections, err := db.CollectionsList()
+	collections, err := db.CollectionsVisibleList()
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}

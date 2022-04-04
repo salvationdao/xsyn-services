@@ -39,6 +39,15 @@ func GenesisCollection() (*boiler.Collection, error) {
 	}
 	return collection, nil
 }
+func LimitedReleaseCollection() (*boiler.Collection, error) {
+	collection, err := boiler.Collections(
+		boiler.CollectionWhere.Name.EQ("Supremacy Limited Release"),
+	).One(passdb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return collection, nil
+}
 func Collection(id uuid.UUID) (*boiler.Collection, error) {
 	collection, err := boiler.FindCollection(
 		passdb.StdConn,
@@ -79,6 +88,19 @@ func CollectionsList() ([]*boiler.Collection, error) {
 	collections, err := boiler.Collections(
 		boiler.CollectionWhere.Slug.NEQ("supremacy-ai"),
 		qm.And("slug != ?", "supremacy"),
+	).All(passdb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return collections, nil
+}
+
+// CollectionsList gets a list of collections depending on the filters
+func CollectionsVisibleList() ([]*boiler.Collection, error) {
+	collections, err := boiler.Collections(
+		boiler.CollectionWhere.Slug.NEQ("supremacy-ai"),
+		qm.And("slug != ?", "supremacy"),
+		boiler.CollectionWhere.IsVisible.EQ(null.BoolFrom(true)),
 	).All(passdb.StdConn)
 	if err != nil {
 		return nil, terror.Error(err)

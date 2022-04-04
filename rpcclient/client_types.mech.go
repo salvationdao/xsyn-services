@@ -15,26 +15,27 @@ type MechContainer struct {
 }
 
 type Mech struct {
-	ID               string    `json:"id"`
-	OwnerID          string    `json:"owner_id"`
-	TemplateID       string    `json:"template_id"`
-	ChassisID        string    `json:"chassis_id"`
-	ExternalTokenID  int       `json:"external_token_id"`
-	Tier             string    `json:"tier"`
-	IsDefault        bool      `json:"is_default"`
-	LargeImageURL    string    `json:"large_image_url"`
-	ImageURL         string    `json:"image_url"`
-	AnimationURL     string    `json:"animation_url"`
-	CardAnimationURL string    `json:"card_animation_url"`
-	AvatarURL        string    `json:"avatar_url"`
-	Hash             string    `json:"hash"`
-	Name             string    `json:"name"`
-	Label            string    `json:"label"`
-	Slug             string    `json:"slug"`
-	AssetType        string    `json:"asset_type"`
-	DeletedAt        null.Time `json:"deleted_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	CreatedAt        time.Time `json:"created_at"`
+	ID               string      `json:"id"`
+	OwnerID          string      `json:"owner_id"`
+	TemplateID       string      `json:"template_id"`
+	ChassisID        string      `json:"chassis_id"`
+	ExternalTokenID  int         `json:"external_token_id"`
+	Tier             string      `json:"tier"`
+	IsDefault        bool        `json:"is_default"`
+	LargeImageURL    string      `json:"large_image_url"`
+	ImageURL         string      `json:"image_url"`
+	AnimationURL     string      `json:"animation_url"`
+	CardAnimationURL string      `json:"card_animation_url"`
+	AvatarURL        string      `json:"avatar_url"`
+	Hash             string      `json:"hash"`
+	Name             string      `json:"name"`
+	Label            string      `json:"label"`
+	Slug             string      `json:"slug"`
+	AssetType        string      `json:"asset_type"`
+	CollectionSlug   null.String `json:"collection_slug"`
+	DeletedAt        null.Time   `json:"deleted_at"`
+	UpdatedAt        time.Time   `json:"updated_at"`
+	CreatedAt        time.Time   `json:"created_at"`
 }
 type Chassis struct {
 	ID                 string    `json:"id"`
