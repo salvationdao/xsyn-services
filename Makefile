@@ -144,7 +144,7 @@ db-boiler:
 
 .PHONY: db-seed
 db-seed:
-	go run cmd/platform/main.go db --seed
+	go run passport/main.go db --seed
 
 .PHONY: db-reset
 db-reset: db-drop db-migrate-up-one  db-seed db-migrate
@@ -168,12 +168,12 @@ deps: go-mod-download
 
 .PHONY: serve
 serve:
-	${BIN}/air -c ./.air.toml
+	${BIN}/air -c ./passport/.air.toml
 
 # TODO: add linter with arelo
 .PHONY: serve-arelo
 serve-arelo:
-	${BIN}/arelo -p '**/*.go' -i '**/.*' -i '**/*_test.go' -i 'tools/*'  -- go run cmd/platform/main.go serve
+	${BIN}/arelo -p '**/*.go' -i '**/.*' -i '**/*_test.go' -i 'tools/*'  -- go run passport/main.go serve
 
 .PHONY: test
 test:
@@ -181,7 +181,7 @@ test:
 
 .PHONY: sync
 sync:
-	go run cmd/platform/main.go sync
+	go run passport/main.go sync
 
 .PHONY: lb
 lb:
