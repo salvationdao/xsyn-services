@@ -1,18 +1,71 @@
 # Github Actions
 
-## Build and Staging Deployment
+## Testing
+
+<https://github.com/nektos/act> allows you to run actions locally.
+It supports most steps that github can run.  
+Some steps like `uses: actions/upload-artifact@v2` can not be run but can be skipped in testing like so ...
+
+```yaml
+- name: save artifact
+  uses: actions/upload-artifact@v2
+  if: ${{ !env.ACT }} # if running in local test environment
+  with:
+    name: ${{ steps.artifact.outputs.filename }}
+    path: ${{ steps.artifact.outputs.filename }}
+```
+
+Some steps like `run: rsync ....` should not be run while testing and should be ignored like above.
+
+List jobs
+
+```sh
+$ act --list
+Stage  Job ID   Job name  Workflow name       Workflow file       Events
+0      build    build     Staging Deployment  deploy-staging.yml  push
+0      Release  Release   Publish Release     release.yml         push
+1      deploy   deploy    Staging Deployment  deploy-staging.yml  push
+```
+
+Run a specific job
+
+```sh
+$ act --job build # case sensitive
+[Staging Deployment/build] 🚀  Start image=ghcr.io/catthehacker/ubuntu:act-20.04
+...
+```
+
+### Common tests
+
+```sh
+# staging build job
+$ act --job build --secret GH_DEPLOY_BRIDGE_PK="$(cat ~/.ssh/work/GH_DEPLOY_BRIDGE_PK)" --secret GH_DEPLOY_HUB_PK="$(cat ~/.ssh/work/GH_DEPLOY_HUB_PK)" --secret GH_DEPLOY_LOGHELPERS_PK="$(cat ~/.ssh/work/GH_DEPLOY_LOGHELPERS_PK)" --secret GH_DEPLOY_SALE_PK="$(cat ~/.ssh/work/GH_DEPLOY_SALE_PK)"
+[Staging Deployment/build] 🚀  Start image=ghcr.io/catthehacker/ubuntu:act-20.04
+...
+```
+
+```sh
+# release job
+$ act --job Release --secret GH_DEPLOY_BRIDGE_PK="$(cat ~/.ssh/work/GH_DEPLOY_BRIDGE_PK)" --secret GH_DEPLOY_HUB_PK="$(cat ~/.ssh/work/GH_DEPLOY_HUB_PK)" --secret GH_DEPLOY_LOGHELPERS_PK="$(cat ~/.ssh/work/GH_DEPLOY_LOGHELPERS_PK)" --secret GH_DEPLOY_SALE_PK="$(cat ~/.ssh/work/GH_DEPLOY_SALE_PK)"
+[Staging Deployment/build] 🚀  Start image=ghcr.io/catthehacker/ubuntu:act-20.04
+...
+```
+
+## Build and Deploy Staging
 
 ### Required Secrets
 
 ```sh
 # Private Repo Access
 # Key pairs available in 1password / DevOps vault
-GH_DEPLOY_BRIDGE_PK # Deploy private key for https://github.com/ninja-syndicate/supremacy-bridge
-GH_DEPLOY_HUB_PK    # Deploy private key for https://github.com/ninja-syndicate/hub
+GH_DEPLOY_BRIDGE_PK     # Deploy private key for https://github.com/ninja-syndicate/supremacy-bridge
+GH_DEPLOY_HUB_PK        # Deploy private key for https://github.com/ninja-syndicate/hub
+GH_DEPLOY_LOGHELPERS_PK # Deploy private key for https://github.com/ninja-software/log_helpers
+GH_DEPLOY_SALE_PK       # Deploy private key for https://github.com/ninja-software/sale/
 
 # Deployment target
 STAGING_SSH_HOST # The host name of the target
-STAGING_SSH_KNOWN_HOSTS # ssh-keyscan -t ED25519 -p STAGING_SSH_PORT STAGING_SSH_HOST | tee github-key-temp | ssh-keygen -lf -
+STAGING_SSH_KNOWN_HOSTS # ssh-keyscan -t ED25519 -p STAGING_SSH_PORT STAGING_SSH_HOST
 STAGING_SSH_PKEY
 STAGING_SSH_PORT
 STAGING_SSH_USER
@@ -82,3 +135,42 @@ STAGING_SSH_USER
 9. Run migrate up
 
 10. Restart services
+
+## Publish Release
+
+### Required Secrets
+
+```sh
+# Private Repo Access
+# Key pairs available in 1password / DevOps vault
+GH_DEPLOY_BRIDGE_PK     # Deploy private key for https://github.com/ninja-syndicate/supremacy-bridge
+GH_DEPLOY_HUB_PK        # Deploy private key for https://github.com/ninja-syndicate/hub
+GH_DEPLOY_LOGHELPERS_PK # Deploy private key for https://github.com/ninja-software/log_helpers
+GH_DEPLOY_SALE_PK       # Deploy private key for https://github.com/ninja-software/sale/
+```
+
+### Jobs
+
+#### Release
+
+1. Set up private repo access using multiple deploy keys so the keys have read only access to the private repos.
+    [multi key private go repos](https://gist.github.com/jrapoport/d12f60029eef017354d0ec982b918258).
+
+    The basic steps are
+    1. Create a host alias for github in `.ssh/config` with the private key file location
+    2. Create the private key file
+    3. Add the full repo url (ie `https://github.com/ninja-syndicate/hub`) to the git config override
+
+2. Set private repo environment variables, build tools.  
+
+3. Copy required files like configs, samples and migrations.
+
+4. Get build metadata like current commit hash, build date, branch, commit tag
+
+5. Build API server with version related environment variables.
+
+6. Generate build info.
+
+7. tar.gz build result.
+
+9. Publish draft release with the tar.gz.
