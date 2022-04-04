@@ -8,6 +8,7 @@ import (
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
@@ -25,6 +26,14 @@ const KeyEnableSyncPayments = "enable_sync_payments"
 const KeyEnableSyncDeposits = "enable_sync_deposits"
 const KeyEnableSyncNFTOwners = "enable_sync_nft_owners"
 const KeyEnableSyncWithdraw = "enable_sync_withdraw"
+const KeyEnableSyncSale = "enable_sync_sale"
+
+const KeySupsToUSD = "sups_to_usd"
+const KeyBNBToUSD = "bnb_to_usd"
+const KeyEthToUSD = "eth_to_usd"
+
+const KeyPurchaseSupsFloorPrice = "purchase_sups_floor_price"
+const KeyPurchaseSupsMarketPriceMultiplier = "purchase_sups_market_price_multiplier"
 
 func get(key string) string {
 	exists, err := boiler.KVS(boiler.KVWhere.Key.EQ(key)).Exists(passdb.StdConn)
@@ -119,6 +128,28 @@ func PutInt(key string, value int) {
 	put(key, strconv.Itoa(value))
 }
 
+func GetDecimal(key string) decimal.Decimal {
+	vStr := get(key)
+	v, err := decimal.NewFromString(vStr)
+	if err != nil {
+		passlog.L.Err(err).Str("key", key).Str("val", vStr).Msg("could not parse decimal")
+		return decimal.Zero
+	}
+	return v
+}
+func GetDecimalWithDefault(key string, defaultValue decimal.Decimal) decimal.Decimal {
+	vStr := get(key)
+
+	if vStr == "" {
+		PutDecimal(key, defaultValue)
+		return defaultValue
+	}
+	return GetDecimal(key)
+}
+
+func PutDecimal(key string, value decimal.Decimal) {
+	put(key, value.String())
+}
 func GetTime(key string) time.Time {
 	vStr := get(key)
 	t, err := time.Parse(time.RFC3339, vStr)

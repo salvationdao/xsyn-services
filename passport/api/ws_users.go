@@ -19,6 +19,7 @@ import (
 	"xsyn-services/passport/helpers"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
+	"xsyn-services/passport/payments"
 	"xsyn-services/types"
 
 	"github.com/microcosm-cc/bluemonday"
@@ -2450,8 +2451,11 @@ func (uc *UserController) ExchangeRatesHandler(ctx context.Context, client *hub.
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
-
-	reply(uc.API.State)
+	exchangeRates, err := payments.FetchExchangeRates()
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Unable to fetch exchange rates.")
+	}
+	reply(exchangeRates)
 	return req.TransactionID, messagebus.BusKey(HubKeySUPSExchangeRates), nil
 }
 

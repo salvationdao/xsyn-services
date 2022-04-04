@@ -14,7 +14,7 @@ const (
 	TransactionSuccess TransactionStatus = "success"
 	TransactionFailed  TransactionStatus = "failed"
 )
-
+const SUPSSymbol = "SUPS"
 const ETHSymbol = "ETH"
 const BNBSymbol = "BNB"
 const BUSDSymbol = "BUSD"

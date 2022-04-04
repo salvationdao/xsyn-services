@@ -479,6 +479,14 @@ func SyncPayments(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, 
 	}
 	log.Info().Int("records", len(records4)).Str("sym", "USDC").Msg("fetch purchases")
 
+	exchangeRates, err := payments.FetchExchangeRates()
+	if err != nil {
+		return fmt.Errorf("get all exchange rates: %w", err)
+	}
+	log.Info().Int("records", len(records4)).Str("sym", "USDC").Msg("fetch exchange rates")
+
+	ucm.MessageBus.Send(messagebus.BusKey(api.HubKeySUPSExchangeRates), exchangeRates)
+
 	records := []*payments.PurchaseRecord{}
 	records = append(records, records1...)
 	records = append(records, records2...)
@@ -535,6 +543,7 @@ func SyncPayments(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, 
 		successful++
 
 	}
+
 	log.Info().Int("skipped", skipped).Int("successful", successful).Int("failed", failed).Msg("synced payments")
 
 	return nil
@@ -652,7 +661,7 @@ func SyncFunc(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTe
 		if db.GetBoolWithDefault(db.KeyEnableSyncNFTOwners, false) {
 			err := SyncNFTs(ucm, conn, log, isTestnet)
 			if err != nil {
-				passlog.L.Err(err).Msg("failed to sync nf ts")
+				passlog.L.Err(err).Msg("failed to sync nfts")
 			}
 		}
 	}(ucm, conn, log, isTestnet)
