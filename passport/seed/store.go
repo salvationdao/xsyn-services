@@ -280,7 +280,7 @@ func (s *Seeder) SeedCollections(ctx context.Context) ([]*types.Collection, erro
 
 func (s *Seeder) storeImages(ctx context.Context, filename string) (*types.Blob, error) {
 	// get read file from asset
-	storeImage, err := os.ReadFile(fmt.Sprintf("./asset/store/images/%s.png", strings.ToLower(filename)))
+	storeImage, err := os.ReadFile(fmt.Sprintf("./passport/asset/store/images/%s.png", strings.ToLower(filename)))
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -315,7 +315,7 @@ func (s *Seeder) storeImages(ctx context.Context, filename string) (*types.Blob,
 
 func (s *Seeder) storeWebM(ctx context.Context, filename string) (*types.Blob, error) {
 	// get read file from asset
-	storeWebM, err := os.ReadFile(fmt.Sprintf("./asset/store/webm/%s.webm", strings.ToLower(filename)))
+	storeWebM, err := os.ReadFile(fmt.Sprintf("./passport/asset/store/webm/%s.webm", strings.ToLower(filename)))
 	if err != nil {
 		return nil, terror.Error(err)
 	}

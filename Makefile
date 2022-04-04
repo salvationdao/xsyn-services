@@ -42,7 +42,7 @@ deploy-prep: clean tools build
 	cp -r ./init deploy/.
 	cp -r ./configs deploy/.
 	cp -r ./asset deploy/.
-	cp -r $(SERVER)/db/migrations deploy/.
+	cp -r $(CURDIR)/migrations deploy/.
 
 define BUILD_ERROR_GIT_VER
 
@@ -115,27 +115,27 @@ db-setup:
 
 .PHONY: db-version
 db-version:
-	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations version
+	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(CURDIR)/migrations version
 
 .PHONY: db-drop
 db-drop:
-	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations drop -f
+	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(CURDIR)/migrations drop -f
 
 .PHONY: db-migrate
 db-migrate:
-	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations up
+	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(CURDIR)/migrations up
 
 .PHONY: db-migrate-down
 db-migrate-down:
-	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations down
+	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(CURDIR)/migrations down
 
 .PHONY: db-migrate-down-one
 db-migrate-down-one:
-	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations down 1
+	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(CURDIR)/migrations down 1
 
 .PHONY: db-migrate-up-one
 db-migrate-up-one:
-	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations up 1
+	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(CURDIR)/migrations up 1
 
 # make sure `make tools` is done
 .PHONY: db-boiler

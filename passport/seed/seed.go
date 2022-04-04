@@ -176,7 +176,7 @@ func (s *Seeder) factions(ctx context.Context) ([]*types.Faction, error) {
 
 func (s *Seeder) factionLogo(ctx context.Context, filename string) (*types.Blob, error) {
 	// get read file from asset
-	factionLogo, err := os.ReadFile(fmt.Sprintf("./asset/%s.svg", filename))
+	factionLogo, err := os.ReadFile(fmt.Sprintf("./passport/asset/%s.svg", filename))
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -211,7 +211,7 @@ func (s *Seeder) factionLogo(ctx context.Context, filename string) (*types.Blob,
 
 func (s *Seeder) factionBackground(ctx context.Context, filename string) (*types.Blob, error) {
 	// get read file from asset
-	factionLogo, err := os.ReadFile(fmt.Sprintf("./asset/%s.webp", filename))
+	factionLogo, err := os.ReadFile(fmt.Sprintf("./passport/asset/%s.webp", filename))
 	if err != nil {
 		return nil, terror.Error(err)
 	}
