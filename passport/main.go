@@ -15,12 +15,10 @@ import (
 	"xsyn-services/passport/comms"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/email"
-	"xsyn-services/passport/helpers"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/payments"
 	"xsyn-services/passport/rpcclient"
-	"xsyn-services/passport/seed"
 	"xsyn-services/passport/sms"
 	"xsyn-services/types"
 
@@ -236,105 +234,6 @@ func main() {
 						err = terror.Warn(err)
 					}
 					log_helpers.TerrorEcho(ctx, err, log)
-					return nil
-				},
-			},
-			{
-				Name: "sync",
-				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "database_user", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
-					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{"PASSPORT_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
-					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{"PASSPORT_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
-					&cli.StringFlag{Name: "database_port", Value: "5432", EnvVars: []string{"PASSPORT_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
-					&cli.StringFlag{Name: "database_name", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
-					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{"PASSPORT_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
-					&cli.StringFlag{Name: "gameserver_web_host_url", Value: "http://localhost:8084", EnvVars: []string{"GAMESERVER_HOST_URL"}, Usage: "The host for the gameserver, to allow it to connect"},
-					&cli.IntFlag{Name: "database_max_pool_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_POOL_CONNS"}, Usage: "Database max pool conns"},
-					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
-					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
-				},
-				Usage: "sync items over from supremacy-gameserver",
-				Action: func(c *cli.Context) error {
-					return SuperMigrate(c)
-				},
-			},
-			{
-				Name: "db",
-				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "database_tx_user", Value: "passport_tx", EnvVars: []string{"PASSPORT_DATABASE_TX_USER", "DATABASE_TX_USER"}, Usage: "The database transaction user"},
-					&cli.StringFlag{Name: "database_tx_pass", Value: "dev-tx", EnvVars: []string{"PASSPORT_DATABASE_TX_PASS", "DATABASE_TX_PASS"}, Usage: "The database transaction pass"},
-
-					&cli.StringFlag{Name: "database_user", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
-					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{"PASSPORT_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
-					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{"PASSPORT_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
-					&cli.StringFlag{Name: "database_port", Value: "5432", EnvVars: []string{"PASSPORT_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
-					&cli.StringFlag{Name: "database_name", Value: "passport", EnvVars: []string{"PASSPORT_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
-					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{"PASSPORT_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
-					&cli.StringFlag{Name: "passport_web_host_url", Value: "http://localhost:8086", EnvVars: []string{"PASSPORT_WEB_HOST_URL"}, Usage: "The API Url where files are hosted"},
-					&cli.BoolFlag{Name: "database_prod", Value: false, EnvVars: []string{"PASSPORT_DB_PROD", "DB_PROD"}, Usage: "seed the database (prod)"},
-					&cli.StringFlag{Name: "environment", Value: "development", DefaultText: "development", EnvVars: []string{"PASSPORT_ENVIRONMENT", "ENVIRONMENT"}, Usage: "This program environment (development, testing, training, staging, production), it sets the log levels"},
-					&cli.BoolFlag{Name: "seed", EnvVars: []string{"PASSPORT_DB_SEED", "DB_SEED"}, Usage: "seed the database"},
-
-					&cli.IntFlag{Name: "database_max_pool_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_POOL_CONNS"}, Usage: "Database max pool conns"},
-					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
-					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
-				},
-				Usage: "seed the database",
-				Action: func(c *cli.Context) error {
-
-					databaseMaxPoolConns := c.Int("database_max_pool_conns")
-					databaseMaxIdleConns := c.Int("database_max_idle_conns")
-					databaseMaxOpenConns := c.Int("database_max_open_conns")
-					databaseUser := c.String("database_user")
-					databasePass := c.String("database_pass")
-					databaseTxUser := c.String("database_tx_user")
-					databaseTxPass := c.String("database_tx_pass")
-					databaseHost := c.String("database_host")
-					databasePort := c.String("database_port")
-					databaseName := c.String("database_name")
-					databaseAppName := c.String("database_application_name")
-					databaseProd := c.Bool("database_prod")
-					passportWebHostUrl := c.String("passport_web_host_url")
-
-					pgxconn, err := pgxconnect(
-						databaseUser,
-						databasePass,
-						databaseHost,
-						databasePort,
-						databaseName,
-						databaseAppName,
-						Version,
-						databaseMaxPoolConns,
-					)
-					if err != nil {
-						return terror.Error(err)
-					}
-
-					txConn, err := txConnect(
-						databaseTxUser,
-						databaseTxPass,
-						databaseHost,
-						databasePort,
-						databaseName,
-						databaseMaxIdleConns,
-						databaseMaxOpenConns,
-					)
-					if err != nil {
-						return terror.Panic(err)
-					}
-
-					seeder := seed.NewSeeder(pgxconn, txConn, passportWebHostUrl, passportWebHostUrl)
-					return seeder.Run(databaseProd)
-				},
-			},
-			{
-				Name:  "shortcodes",
-				Usage: "print shortcodes",
-				Action: func(c *cli.Context) error {
-					for i := 0; i < 9; i++ {
-						_, _ = helpers.GenerateMetadataHashID("9cdf55aa-217b-4821-aa77-bc8555195f23", i, true)
-					}
-
 					return nil
 				},
 			},
@@ -1060,105 +959,6 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 
 	api.Log.Info().Msg("Starting API")
 	return apiServer.ListenAndServe()
-}
-
-func SuperMigrate(c *cli.Context) error {
-	databaseMaxPoolConns := c.Int("database_max_pool_conns")
-	databaseMaxIdleConns := c.Int("database_max_idle_conns")
-	databaseMaxOpenConns := c.Int("database_max_open_conns")
-	databaseUser := c.String("database_user")
-	databasePass := c.String("database_pass")
-	databaseHost := c.String("database_host")
-	databasePort := c.String("database_port")
-	databaseName := c.String("database_name")
-	databaseAppName := c.String("database_application_name")
-	gameserverAddr := c.String("gameserver_web_host_url")
-	passlog.New("development", "InfoLevel")
-	pgxconn, err := pgxconnect(
-		databaseUser,
-		databasePass,
-		databaseHost,
-		databasePort,
-		databaseName,
-		databaseAppName,
-		Version,
-		databaseMaxPoolConns,
-	)
-	if err != nil {
-		return terror.Panic(err)
-	}
-
-	sqlConnect, err := sqlConnect(
-		databaseUser,
-		databasePass,
-		databaseHost,
-		databasePort,
-		databaseName,
-		databaseMaxIdleConns,
-		databaseMaxOpenConns,
-	)
-	if err != nil {
-		return terror.Panic(err)
-	}
-	err = passdb.New(pgxconn, sqlConnect)
-	if err != nil {
-		return terror.Panic(err)
-	}
-	gameserverURL, err := url.Parse(gameserverAddr)
-	if err != nil {
-		return terror.Panic(err)
-	}
-	hostname := gameserverURL.Hostname()
-	rpcAddrs := []string{
-		fmt.Sprintf("%s:11001", hostname),
-		fmt.Sprintf("%s:11002", hostname),
-		fmt.Sprintf("%s:11003", hostname),
-		fmt.Sprintf("%s:11004", hostname),
-		fmt.Sprintf("%s:11005", hostname),
-		fmt.Sprintf("%s:11006", hostname),
-		fmt.Sprintf("%s:11007", hostname),
-		fmt.Sprintf("%s:11008", hostname),
-		fmt.Sprintf("%s:11009", hostname),
-		fmt.Sprintf("%s:11010", hostname),
-		fmt.Sprintf("%s:11011", hostname),
-		fmt.Sprintf("%s:11012", hostname),
-		fmt.Sprintf("%s:11013", hostname),
-		fmt.Sprintf("%s:11014", hostname),
-		fmt.Sprintf("%s:11015", hostname),
-		fmt.Sprintf("%s:11016", hostname),
-		fmt.Sprintf("%s:11017", hostname),
-		fmt.Sprintf("%s:11018", hostname),
-		fmt.Sprintf("%s:11019", hostname),
-		fmt.Sprintf("%s:11020", hostname),
-		fmt.Sprintf("%s:11021", hostname),
-		fmt.Sprintf("%s:11022", hostname),
-		fmt.Sprintf("%s:11023", hostname),
-		fmt.Sprintf("%s:11024", hostname),
-		fmt.Sprintf("%s:11025", hostname),
-		fmt.Sprintf("%s:11026", hostname),
-		fmt.Sprintf("%s:11027", hostname),
-		fmt.Sprintf("%s:11028", hostname),
-		fmt.Sprintf("%s:11029", hostname),
-		fmt.Sprintf("%s:11030", hostname),
-		fmt.Sprintf("%s:11031", hostname),
-		fmt.Sprintf("%s:11032", hostname),
-		fmt.Sprintf("%s:11033", hostname),
-		fmt.Sprintf("%s:11034", hostname),
-		fmt.Sprintf("%s:11035", hostname),
-	}
-	rpcClient := &rpcclient.XrpcClient{
-		Addrs: rpcAddrs,
-	}
-	rpcclient.SetGlobalClient(rpcClient)
-	err = db.SyncStoreItems()
-	if err != nil {
-		return terror.Panic(err)
-	}
-	err = db.SyncPurchasedItems()
-	if err != nil {
-		return terror.Panic(err)
-	}
-	return nil
 }
 
 // pprofMonitor monitor to help debug some invisible issues

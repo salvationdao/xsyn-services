@@ -6,7 +6,6 @@ package boiler
 var TableNames = struct {
 	APIKeys                 string
 	Blobs                   string
-	ChainConfirmations      string
 	Collections             string
 	DeathAddresses          string
 	DepositTransactions     string
@@ -16,10 +15,8 @@ var TableNames = struct {
 	IssueTokens             string
 	ItemOnchainTransactions string
 	KV                      string
-	Organisations           string
 	PasswordHashes          string
 	PendingRefund           string
-	Products                string
 	PurchasedItems          string
 	Roles                   string
 	SaftAgreements          string
@@ -29,18 +26,13 @@ var TableNames = struct {
 	Transactions            string
 	UserActivities          string
 	UserFingerprints        string
-	UserOrganisations       string
 	UserRecoveryCodes       string
 	UsernameHistory         string
 	Users                   string
 	WhitelistedAddresses    string
-	XsynAssets              string
-	XsynMetadata            string
-	XsynStore               string
 }{
 	APIKeys:                 "api_keys",
 	Blobs:                   "blobs",
-	ChainConfirmations:      "chain_confirmations",
 	Collections:             "collections",
 	DeathAddresses:          "death_addresses",
 	DepositTransactions:     "deposit_transactions",
@@ -50,10 +42,8 @@ var TableNames = struct {
 	IssueTokens:             "issue_tokens",
 	ItemOnchainTransactions: "item_onchain_transactions",
 	KV:                      "kv",
-	Organisations:           "organisations",
 	PasswordHashes:          "password_hashes",
 	PendingRefund:           "pending_refund",
-	Products:                "products",
 	PurchasedItems:          "purchased_items",
 	Roles:                   "roles",
 	SaftAgreements:          "saft_agreements",
@@ -63,12 +53,8 @@ var TableNames = struct {
 	Transactions:            "transactions",
 	UserActivities:          "user_activities",
 	UserFingerprints:        "user_fingerprints",
-	UserOrganisations:       "user_organisations",
 	UserRecoveryCodes:       "user_recovery_codes",
 	UsernameHistory:         "username_history",
 	Users:                   "users",
 	WhitelistedAddresses:    "whitelisted_addresses",
-	XsynAssets:              "xsyn_assets",
-	XsynMetadata:            "xsyn_metadata",
-	XsynStore:               "xsyn_store",
 }
