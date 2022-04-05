@@ -377,6 +377,8 @@ func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, err
 	dbitem.Tier = resp.TemplateContainer.Template.Tier
 	dbitem.IsDefault = resp.TemplateContainer.Template.IsDefault
 
+	passlog.L.Info().Str("id", dbitem.ID).Interface("data", dbitem).Msg("updating store item")
+
 	_, err = dbitem.Update(tx, boil.Infer())
 	if err != nil {
 		return nil, err
