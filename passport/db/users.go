@@ -41,8 +41,7 @@ const (
 	UserColumnCreatedAt UserColumn = "created_at"
 
 	// Columns in the user list page
-	UserColumnRoleName         UserColumn = "role.name"
-	UserColumnOrganisationName UserColumn = "organisation.name"
+	UserColumnRoleName UserColumn = "role.name"
 )
 
 func (ic UserColumn) IsValid() error {
@@ -60,8 +59,7 @@ func (ic UserColumn) IsValid() error {
 		UserColumnUpdatedAt,
 		UserColumnCreatedAt,
 		UserColumnRoleName,
-		UserColumnMobileNumber,
-		UserColumnOrganisationName:
+		UserColumnMobileNumber:
 		return nil
 	}
 	return terror.Error(fmt.Errorf("invalid user column type"))
@@ -73,17 +71,11 @@ SELECT
 	users.created_at, sups, users.updated_at, users.deleted_at, users.facebook_id, users.google_id, users.twitch_id, users.twitter_id, users.discord_id, users.public_address, users.nonce, users.faction_id,
 	(SELECT COUNT(id) FROM user_recovery_codes urc WHERE urc.user_id = users.id) > 0 as has_recovery_code, users.mobile_number,
 	row_to_json(role) as role,
-	row_to_json(faction) as faction,
-	row_to_json(organisation) as organisation
+	row_to_json(faction) as faction
 ` + UserGetQueryFrom
 const UserGetQueryFrom string = `--sql
 FROM users
 LEFT JOIN (SELECT id, name, permissions, tier FROM roles) role ON role.id = users.role_id
-LEFT JOIN (
-	SELECT id, user_id, organisation_id, slug, name
-	FROM user_organisations
-	INNER JOIN organisations o ON o.id = organisation_id
-) organisation ON organisation.user_id = users.id
 LEFT JOIN (
     SELECT id, label, theme, logo_blob_id
     FROM factions
@@ -1014,44 +1006,6 @@ func UserExistsByEmail(ctx context.Context, conn Conn, email string) (bool, erro
 		return false, terror.Error(err)
 	}
 	return count > 0, nil
-}
-
-// UserSetOrganisations will set a user's organisations
-func UserSetOrganisations(ctx context.Context, conn Conn, userID types.UserID, organisations ...types.OrganisationID) error {
-	args := []interface{}{userID}
-	values := []string{}
-	removeValues := []string{}
-
-	for i, orgID := range organisations {
-		args = append(args, orgID)
-		values = append(values, fmt.Sprintf("($1, $%d)", i+2))
-		removeValues = append(removeValues, fmt.Sprintf("$%d", i+2))
-	}
-
-	// Add new organisations to user
-	insertQuery := fmt.Sprintf(`--sql
-		INSERT INTO user_organisations (user_id, organisation_id)
-		VALUES %s
-		ON CONFLICT (user_id, organisation_id) DO NOTHING`,
-		strings.Join(values, ", "),
-	)
-	_, err := conn.Exec(ctx, insertQuery, args...)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	// Remove old organisations from user
-	removeQuery := fmt.Sprintf(`--sql
-		DELETE FROM user_organisations
-		WHERE user_id = $1 AND organisation_id NOT IN (%s)`,
-		strings.Join(removeValues, ", "),
-	)
-	_, err = conn.Exec(ctx, removeQuery, args...)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
 }
 
 // UserSetRecoveryCodes set users' recovery codes

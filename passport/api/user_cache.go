@@ -61,19 +61,19 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (decimal.Decimal, deci
 	fromUser, err := boiler.FindUser(passdb.StdConn, nt.From.String())
 	if err != nil {
 		passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
-		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(err, "failed to process transaction")
+		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(err, "Failed to process transaction, try again or contact support.")
 	}
 
 	remaining := fromUser.Sups.Sub(nt.Amount)
 	if remaining.LessThan(zero) {
 		passlog.L.Info().Str("from_id", fromUser.ID).Str("to_user", nt.To.String()).Msg("account would go into negative")
-		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(ErrNotEnoughFunds, "not enough funds")
+		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(ErrNotEnoughFunds, "Insufficient funds.")
 	}
 
 	toUser, err := boiler.FindUser(passdb.StdConn, nt.To.String())
 	if err != nil {
 		passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
-		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(err, "failed to process transaction")
+		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(err, "Failed to process transaction, try again or contact support.")
 	}
 
 	tx := &types.Transaction{

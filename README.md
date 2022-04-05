@@ -1,19 +1,29 @@
-# passport-server
+# XSYN-Services
 
-[![Staging Deployment](https://github.com/ninja-syndicate/passport-server/actions/workflows/deploy-staging.yml/badge.svg)](https://github.com/ninja-syndicate/passport-server/actions/workflows/deploy-staging.yml)
-
-[CD Docs](.github/workflows/README.md)
+This repo holds the various xsyn services
 
 ### Setup to use private repo
-
-Hey.
-
 ```bash
 git config --global --add url."git@github.com:".insteadOf "https://github.com/"
 export GOPRIVATE="github.com/ninja-software/*,github.com/ninja-syndicate/*"
 ```
 
-### spinup
+## marketplace
+```
+TODO
+```
+
+
+
+## passport-server
+
+[![Staging Deployment](https://github.com/ninja-syndicate/passport-server/actions/workflows/deploy-staging.yml/badge.svg)](https://github.com/ninja-syndicate/passport-server/actions/workflows/deploy-staging.yml)
+
+[CD Docs](.github/workflows/README.md)
+
+
+
+### passport-server spinup
 
 Windows spinup may have issues
 

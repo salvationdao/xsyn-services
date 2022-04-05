@@ -19,6 +19,7 @@ import (
 	"xsyn-services/passport/helpers"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
+	"xsyn-services/passport/payments"
 	"xsyn-services/types"
 
 	"github.com/microcosm-cc/bluemonday"
@@ -294,18 +295,17 @@ const HubKeyUserUpdate hub.HubCommandKey = "USER:UPDATE"
 type UpdateUserRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		ID                               types.UserID          `json:"id"`
-		Username                         string                `json:"username"`
-		NewUsername                      *string               `json:"new_username"`
-		FirstName                        string                `json:"first_name"`
-		LastName                         string                `json:"last_name"`
-		MobileNumber                     string                `json:"mobile_number"`
-		Email                            null.String           `json:"email"`
-		AvatarID                         *types.BlobID         `json:"avatar_id"`
-		CurrentPassword                  *string               `json:"current_password"`
-		NewPassword                      *string               `json:"new_password"`
-		OrganisationID                   *types.OrganisationID `json:"organisation_id"`
-		TwoFactorAuthenticationActivated bool                  `json:"two_factor_authentication_activated"`
+		ID                               types.UserID  `json:"id"`
+		Username                         string        `json:"username"`
+		NewUsername                      *string       `json:"new_username"`
+		FirstName                        string        `json:"first_name"`
+		LastName                         string        `json:"last_name"`
+		MobileNumber                     string        `json:"mobile_number"`
+		Email                            null.String   `json:"email"`
+		AvatarID                         *types.BlobID `json:"avatar_id"`
+		CurrentPassword                  *string       `json:"current_password"`
+		NewPassword                      *string       `json:"new_password"`
+		TwoFactorAuthenticationActivated bool          `json:"two_factor_authentication_activated"`
 	} `json:"payload"`
 }
 
@@ -474,14 +474,6 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 		}
 	}
 
-	// Set Organisation
-	if req.Payload.OrganisationID != nil {
-		err = db.UserSetOrganisations(ctx, tx, user.ID, *req.Payload.OrganisationID)
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
-	}
-
 	// Commit transaction
 	err = tx.Commit(ctx)
 	if err != nil {
@@ -564,13 +556,12 @@ const HubKeyUserCreate hub.HubCommandKey = "USER:CREATE"
 type CreateUserRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		FirstName      string                `json:"first_name"`
-		LastName       string                `json:"last_name"`
-		Email          null.String           `json:"email"`
-		AvatarID       *types.BlobID         `json:"avatar_id"`
-		NewPassword    *string               `json:"new_password"`
-		RoleID         types.RoleID          `json:"role_id"`
-		OrganisationID *types.OrganisationID `json:"organisation_id"`
+		FirstName   string        `json:"first_name"`
+		LastName    string        `json:"last_name"`
+		Email       null.String   `json:"email"`
+		AvatarID    *types.BlobID `json:"avatar_id"`
+		NewPassword *string       `json:"new_password"`
+		RoleID      types.RoleID  `json:"role_id"`
 	} `json:"payload"`
 }
 
@@ -639,14 +630,6 @@ func (uc *UserController) CreateHandler(ctx context.Context, hubc *hub.Client, p
 	err = db.AuthSetPasswordHash(ctx, tx, user.ID, crypto.HashPassword(*req.Payload.NewPassword))
 	if err != nil {
 		return terror.Error(err, errMsg)
-	}
-
-	// Set Organisation
-	if req.Payload.OrganisationID != nil {
-		err = db.UserSetOrganisations(ctx, tx, user.ID, *req.Payload.OrganisationID)
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
 	}
 
 	// Commit transaction
@@ -2450,8 +2433,11 @@ func (uc *UserController) ExchangeRatesHandler(ctx context.Context, client *hub.
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
 	}
-
-	reply(uc.API.State)
+	exchangeRates, err := payments.FetchExchangeRates()
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Unable to fetch exchange rates.")
+	}
+	reply(exchangeRates)
 	return req.TransactionID, messagebus.BusKey(HubKeySUPSExchangeRates), nil
 }
 

@@ -48,6 +48,7 @@ jobs:
           git config --global --add url."git@loghelpers.github.com:ninja-software/log_helpers".insteadOf "https://github.com/ninja-software/log_helpers"
 
       - name: calculate version increment
+        if: ${{ !env.ACT }} # if running in local test environment
         run: |
           NEWVER=$(scripts/increment_git_ver.py)
           git tag "$NEWVER"
@@ -70,24 +71,25 @@ jobs:
           cp bin/migrate deploy/.
           cp -r ./init deploy/.
           cp -r ./scripts deploy/.
-          cp -r ./configs deploy/.
-          cp -r ./asset deploy/.
-          cp -r ./db/migrations deploy/.
+          cp -r ./passport/configs deploy/.
+          cp -r ./passport/asset deploy/.
+          cp -r ./migrations deploy/.
 
       - name: Build API server
         run: |
           go build \
             -ldflags "-X main.Version=${{env.GITVERSION}} -X main.GitHash=${{env.GITHASH}} -X main.GitBranch=${{env.GITBRANCH}} -X main.BuildDate=${{env.BUILDDATE}} -X main.UnCommittedFiles=${{env.GITSTATE}}" \
-            -gcflags=-trimpath=${{ github.workspace }} \
-            -asmflags=-trimpath=${{ github.workspace }} \
+            -gcflags=all=-trimpath=${{ github.workspace }} \
+            -asmflags=all=-trimpath=${{ github.workspace }} \
             -o deploy/passport-api \
-            cmd/platform/main.go
+            passport/main.go
 
       - name: Add info text
         run: |
           deploy/passport-api version --full > deploy/BuildInfo.txt
 
       - name: Update tags
+        if: ${{ !env.ACT }} # if running in local test environment\
         run: |
           git push
           git push --tags

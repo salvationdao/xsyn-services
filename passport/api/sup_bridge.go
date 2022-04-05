@@ -18,7 +18,6 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/ninja-syndicate/supremacy-bridge/bridge"
 	"github.com/sasha-s/go-deadlock"
 )
@@ -65,6 +64,7 @@ type CoinbaseResp struct {
 func fetchPrice(symbol string) (decimal.Decimal, error) {
 	// use ETH or BNB for symbol
 	req, err := http.NewRequest("GET", fmt.Sprintf(`https://api.coinbase.com/v2/exchange-rates?currency=%s`, symbol), nil)
+
 	if err != nil {
 		return decimal.Zero, err
 	}
@@ -126,8 +126,8 @@ func NewChainClients(log *zerolog.Logger, api *API, p *types.BridgeParams, isTes
 			return
 		}
 		switch symbol {
-		//case "SUPS":
-		//	cc.API.State.SUPtoUSD = amount
+		case types.SUPSSymbol:
+			cc.API.State.SUPtoUSD = amount
 		case types.ETHSymbol:
 			cc.API.State.ETHtoUSD = amount
 		case types.BNBSymbol:
@@ -142,7 +142,6 @@ func NewChainClients(log *zerolog.Logger, api *API, p *types.BridgeParams, isTes
 			Str(symbol, amount.String()).
 			Msg("update rate")
 
-		go api.MessageBus.Send(messagebus.BusKey(HubKeySUPSExchangeRates), cc.API.State)
 	}
 
 	if runBlockchainBridge {
