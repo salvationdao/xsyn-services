@@ -163,7 +163,7 @@ func SyncStoreItems() error {
 				Data:             data,
 				RefreshesAt:      time.Now().Add(RefreshDuration),
 			}
-			passlog.L.Info().Str("id", template.Template.ID).Msg("inserting new store item")
+			passlog.L.Info().Str("id", template.Template.ID).Interface("data", newStoreItem).Msg("inserting new store item")
 			err = newStoreItem.Insert(tx, boil.Infer())
 			if err != nil {
 				return fmt.Errorf("insert new store item: %w", err)
