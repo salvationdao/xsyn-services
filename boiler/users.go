@@ -255,59 +255,65 @@ var UserWhere = struct {
 
 // UserRels is where relationship names are stored.
 var UserRels = struct {
-	Avatar              string
-	Faction             string
-	Role                string
-	PasswordHash        string
-	APIKeys             string
-	DepositTransactions string
-	IssueTokens         string
-	PendingRefunds      string
-	OwnerPurchasedItems string
-	CreditTransactions  string
-	DebitTransactions   string
-	ServiceTransactions string
-	UserActivities      string
-	UserFingerprints    string
-	UserRecoveryCodes   string
-	UsernameHistories   string
+	Avatar                   string
+	Faction                  string
+	Role                     string
+	PasswordHash             string
+	APIKeys                  string
+	DepositTransactions      string
+	CreditFailedTransactions string
+	DebitFailedTransactions  string
+	IssueTokens              string
+	PendingRefunds           string
+	OwnerPurchasedItems      string
+	CreditTransactions       string
+	DebitTransactions        string
+	ServiceTransactions      string
+	UserActivities           string
+	UserFingerprints         string
+	UserRecoveryCodes        string
+	UsernameHistories        string
 }{
-	Avatar:              "Avatar",
-	Faction:             "Faction",
-	Role:                "Role",
-	PasswordHash:        "PasswordHash",
-	APIKeys:             "APIKeys",
-	DepositTransactions: "DepositTransactions",
-	IssueTokens:         "IssueTokens",
-	PendingRefunds:      "PendingRefunds",
-	OwnerPurchasedItems: "OwnerPurchasedItems",
-	CreditTransactions:  "CreditTransactions",
-	DebitTransactions:   "DebitTransactions",
-	ServiceTransactions: "ServiceTransactions",
-	UserActivities:      "UserActivities",
-	UserFingerprints:    "UserFingerprints",
-	UserRecoveryCodes:   "UserRecoveryCodes",
-	UsernameHistories:   "UsernameHistories",
+	Avatar:                   "Avatar",
+	Faction:                  "Faction",
+	Role:                     "Role",
+	PasswordHash:             "PasswordHash",
+	APIKeys:                  "APIKeys",
+	DepositTransactions:      "DepositTransactions",
+	CreditFailedTransactions: "CreditFailedTransactions",
+	DebitFailedTransactions:  "DebitFailedTransactions",
+	IssueTokens:              "IssueTokens",
+	PendingRefunds:           "PendingRefunds",
+	OwnerPurchasedItems:      "OwnerPurchasedItems",
+	CreditTransactions:       "CreditTransactions",
+	DebitTransactions:        "DebitTransactions",
+	ServiceTransactions:      "ServiceTransactions",
+	UserActivities:           "UserActivities",
+	UserFingerprints:         "UserFingerprints",
+	UserRecoveryCodes:        "UserRecoveryCodes",
+	UsernameHistories:        "UsernameHistories",
 }
 
 // userR is where relationships are stored.
 type userR struct {
-	Avatar              *Blob                   `boiler:"Avatar" boil:"Avatar" json:"Avatar" toml:"Avatar" yaml:"Avatar"`
-	Faction             *Faction                `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	Role                *Role                   `boiler:"Role" boil:"Role" json:"Role" toml:"Role" yaml:"Role"`
-	PasswordHash        *PasswordHash           `boiler:"PasswordHash" boil:"PasswordHash" json:"PasswordHash" toml:"PasswordHash" yaml:"PasswordHash"`
-	APIKeys             APIKeySlice             `boiler:"APIKeys" boil:"APIKeys" json:"APIKeys" toml:"APIKeys" yaml:"APIKeys"`
-	DepositTransactions DepositTransactionSlice `boiler:"DepositTransactions" boil:"DepositTransactions" json:"DepositTransactions" toml:"DepositTransactions" yaml:"DepositTransactions"`
-	IssueTokens         IssueTokenSlice         `boiler:"IssueTokens" boil:"IssueTokens" json:"IssueTokens" toml:"IssueTokens" yaml:"IssueTokens"`
-	PendingRefunds      PendingRefundSlice      `boiler:"PendingRefunds" boil:"PendingRefunds" json:"PendingRefunds" toml:"PendingRefunds" yaml:"PendingRefunds"`
-	OwnerPurchasedItems PurchasedItemSlice      `boiler:"OwnerPurchasedItems" boil:"OwnerPurchasedItems" json:"OwnerPurchasedItems" toml:"OwnerPurchasedItems" yaml:"OwnerPurchasedItems"`
-	CreditTransactions  TransactionSlice        `boiler:"CreditTransactions" boil:"CreditTransactions" json:"CreditTransactions" toml:"CreditTransactions" yaml:"CreditTransactions"`
-	DebitTransactions   TransactionSlice        `boiler:"DebitTransactions" boil:"DebitTransactions" json:"DebitTransactions" toml:"DebitTransactions" yaml:"DebitTransactions"`
-	ServiceTransactions TransactionSlice        `boiler:"ServiceTransactions" boil:"ServiceTransactions" json:"ServiceTransactions" toml:"ServiceTransactions" yaml:"ServiceTransactions"`
-	UserActivities      UserActivitySlice       `boiler:"UserActivities" boil:"UserActivities" json:"UserActivities" toml:"UserActivities" yaml:"UserActivities"`
-	UserFingerprints    UserFingerprintSlice    `boiler:"UserFingerprints" boil:"UserFingerprints" json:"UserFingerprints" toml:"UserFingerprints" yaml:"UserFingerprints"`
-	UserRecoveryCodes   UserRecoveryCodeSlice   `boiler:"UserRecoveryCodes" boil:"UserRecoveryCodes" json:"UserRecoveryCodes" toml:"UserRecoveryCodes" yaml:"UserRecoveryCodes"`
-	UsernameHistories   UsernameHistorySlice    `boiler:"UsernameHistories" boil:"UsernameHistories" json:"UsernameHistories" toml:"UsernameHistories" yaml:"UsernameHistories"`
+	Avatar                   *Blob                   `boiler:"Avatar" boil:"Avatar" json:"Avatar" toml:"Avatar" yaml:"Avatar"`
+	Faction                  *Faction                `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	Role                     *Role                   `boiler:"Role" boil:"Role" json:"Role" toml:"Role" yaml:"Role"`
+	PasswordHash             *PasswordHash           `boiler:"PasswordHash" boil:"PasswordHash" json:"PasswordHash" toml:"PasswordHash" yaml:"PasswordHash"`
+	APIKeys                  APIKeySlice             `boiler:"APIKeys" boil:"APIKeys" json:"APIKeys" toml:"APIKeys" yaml:"APIKeys"`
+	DepositTransactions      DepositTransactionSlice `boiler:"DepositTransactions" boil:"DepositTransactions" json:"DepositTransactions" toml:"DepositTransactions" yaml:"DepositTransactions"`
+	CreditFailedTransactions FailedTransactionSlice  `boiler:"CreditFailedTransactions" boil:"CreditFailedTransactions" json:"CreditFailedTransactions" toml:"CreditFailedTransactions" yaml:"CreditFailedTransactions"`
+	DebitFailedTransactions  FailedTransactionSlice  `boiler:"DebitFailedTransactions" boil:"DebitFailedTransactions" json:"DebitFailedTransactions" toml:"DebitFailedTransactions" yaml:"DebitFailedTransactions"`
+	IssueTokens              IssueTokenSlice         `boiler:"IssueTokens" boil:"IssueTokens" json:"IssueTokens" toml:"IssueTokens" yaml:"IssueTokens"`
+	PendingRefunds           PendingRefundSlice      `boiler:"PendingRefunds" boil:"PendingRefunds" json:"PendingRefunds" toml:"PendingRefunds" yaml:"PendingRefunds"`
+	OwnerPurchasedItems      PurchasedItemSlice      `boiler:"OwnerPurchasedItems" boil:"OwnerPurchasedItems" json:"OwnerPurchasedItems" toml:"OwnerPurchasedItems" yaml:"OwnerPurchasedItems"`
+	CreditTransactions       TransactionSlice        `boiler:"CreditTransactions" boil:"CreditTransactions" json:"CreditTransactions" toml:"CreditTransactions" yaml:"CreditTransactions"`
+	DebitTransactions        TransactionSlice        `boiler:"DebitTransactions" boil:"DebitTransactions" json:"DebitTransactions" toml:"DebitTransactions" yaml:"DebitTransactions"`
+	ServiceTransactions      TransactionSlice        `boiler:"ServiceTransactions" boil:"ServiceTransactions" json:"ServiceTransactions" toml:"ServiceTransactions" yaml:"ServiceTransactions"`
+	UserActivities           UserActivitySlice       `boiler:"UserActivities" boil:"UserActivities" json:"UserActivities" toml:"UserActivities" yaml:"UserActivities"`
+	UserFingerprints         UserFingerprintSlice    `boiler:"UserFingerprints" boil:"UserFingerprints" json:"UserFingerprints" toml:"UserFingerprints" yaml:"UserFingerprints"`
+	UserRecoveryCodes        UserRecoveryCodeSlice   `boiler:"UserRecoveryCodes" boil:"UserRecoveryCodes" json:"UserRecoveryCodes" toml:"UserRecoveryCodes" yaml:"UserRecoveryCodes"`
+	UsernameHistories        UsernameHistorySlice    `boiler:"UsernameHistories" boil:"UsernameHistories" json:"UsernameHistories" toml:"UsernameHistories" yaml:"UsernameHistories"`
 }
 
 // NewStruct creates a new relationship struct
@@ -662,6 +668,48 @@ func (o *User) DepositTransactions(mods ...qm.QueryMod) depositTransactionQuery 
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"deposit_transactions\".*"})
+	}
+
+	return query
+}
+
+// CreditFailedTransactions retrieves all the failed_transaction's FailedTransactions with an executor via credit column.
+func (o *User) CreditFailedTransactions(mods ...qm.QueryMod) failedTransactionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"failed_transactions\".\"credit\"=?", o.ID),
+	)
+
+	query := FailedTransactions(queryMods...)
+	queries.SetFrom(query.Query, "\"failed_transactions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"failed_transactions\".*"})
+	}
+
+	return query
+}
+
+// DebitFailedTransactions retrieves all the failed_transaction's FailedTransactions with an executor via debit column.
+func (o *User) DebitFailedTransactions(mods ...qm.QueryMod) failedTransactionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"failed_transactions\".\"debit\"=?", o.ID),
+	)
+
+	query := FailedTransactions(queryMods...)
+	queries.SetFrom(query.Query, "\"failed_transactions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"failed_transactions\".*"})
 	}
 
 	return query
@@ -1499,6 +1547,202 @@ func (userL) LoadDepositTransactions(e boil.Executor, singular bool, maybeUser i
 					foreign.R = &depositTransactionR{}
 				}
 				foreign.R.User = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadCreditFailedTransactions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadCreditFailedTransactions(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`failed_transactions`),
+		qm.WhereIn(`failed_transactions.credit in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load failed_transactions")
+	}
+
+	var resultSlice []*FailedTransaction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice failed_transactions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on failed_transactions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for failed_transactions")
+	}
+
+	if len(failedTransactionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.CreditFailedTransactions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &failedTransactionR{}
+			}
+			foreign.R.CreditUser = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.Credit {
+				local.R.CreditFailedTransactions = append(local.R.CreditFailedTransactions, foreign)
+				if foreign.R == nil {
+					foreign.R = &failedTransactionR{}
+				}
+				foreign.R.CreditUser = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadDebitFailedTransactions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadDebitFailedTransactions(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`failed_transactions`),
+		qm.WhereIn(`failed_transactions.debit in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load failed_transactions")
+	}
+
+	var resultSlice []*FailedTransaction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice failed_transactions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on failed_transactions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for failed_transactions")
+	}
+
+	if len(failedTransactionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.DebitFailedTransactions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &failedTransactionR{}
+			}
+			foreign.R.DebitUser = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.Debit {
+				local.R.DebitFailedTransactions = append(local.R.DebitFailedTransactions, foreign)
+				if foreign.R == nil {
+					foreign.R = &failedTransactionR{}
+				}
+				foreign.R.DebitUser = local
 				break
 			}
 		}
@@ -2877,6 +3121,110 @@ func (o *User) AddDepositTransactions(exec boil.Executor, insert bool, related .
 			}
 		} else {
 			rel.R.User = o
+		}
+	}
+	return nil
+}
+
+// AddCreditFailedTransactions adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.CreditFailedTransactions.
+// Sets related.R.CreditUser appropriately.
+func (o *User) AddCreditFailedTransactions(exec boil.Executor, insert bool, related ...*FailedTransaction) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.Credit = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"failed_transactions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"credit"}),
+				strmangle.WhereClause("\"", "\"", 2, failedTransactionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.Credit = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			CreditFailedTransactions: related,
+		}
+	} else {
+		o.R.CreditFailedTransactions = append(o.R.CreditFailedTransactions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &failedTransactionR{
+				CreditUser: o,
+			}
+		} else {
+			rel.R.CreditUser = o
+		}
+	}
+	return nil
+}
+
+// AddDebitFailedTransactions adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.DebitFailedTransactions.
+// Sets related.R.DebitUser appropriately.
+func (o *User) AddDebitFailedTransactions(exec boil.Executor, insert bool, related ...*FailedTransaction) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.Debit = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"failed_transactions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"debit"}),
+				strmangle.WhereClause("\"", "\"", 2, failedTransactionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.Debit = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			DebitFailedTransactions: related,
+		}
+	} else {
+		o.R.DebitFailedTransactions = append(o.R.DebitFailedTransactions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &failedTransactionR{
+				DebitUser: o,
+			}
+		} else {
+			rel.R.DebitUser = o
 		}
 	}
 	return nil

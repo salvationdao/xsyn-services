@@ -10,6 +10,7 @@ var TableNames = struct {
 	DeathAddresses          string
 	DepositTransactions     string
 	Factions                string
+	FailedTransactions      string
 	FingerprintIps          string
 	Fingerprints            string
 	IssueTokens             string
@@ -37,6 +38,7 @@ var TableNames = struct {
 	DeathAddresses:          "death_addresses",
 	DepositTransactions:     "deposit_transactions",
 	Factions:                "factions",
+	FailedTransactions:      "failed_transactions",
 	FingerprintIps:          "fingerprint_ips",
 	Fingerprints:            "fingerprints",
 	IssueTokens:             "issue_tokens",

@@ -61,7 +61,7 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, 
 		msg := fmt.Sprintf("deposited %s SUPS", value.Shift(-1*types.SUPSDecimals).StringFixed(4))
 		trans := &types.NewTransaction{
 			To:                   user.ID,
-			From:                 types.XsynTreasuryUserID,
+			From:                 types.OnChainUserID,
 			Amount:               value,
 			TransactionReference: types.TransactionReference(record.TxHash),
 			Description:          msg,

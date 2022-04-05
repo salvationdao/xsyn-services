@@ -12,6 +12,8 @@ import (
 	"xsyn-services/types"
 
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/gofrs/uuid"
 
@@ -51,29 +53,56 @@ var zero = decimal.New(0, 18)
 var ErrNotEnoughFunds = fmt.Errorf("account does not have enough funds")
 
 func (ucm *Transactor) Transact(nt *types.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error) {
-	if nt.Amount.LessThanOrEqual(zero) {
-		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(fmt.Errorf("amount should be a positive number: %s", nt.Amount.String()), "Amount should be greater than zero")
-	}
-
 	transactionID := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
 	nt.ID = transactionID
+	fromUser, toUser, msg, err := (func() (*boiler.User, *boiler.User, string, error) {
+		if nt.Amount.LessThanOrEqual(zero) {
+			return nil, nil, TransactionFailed, terror.Error(fmt.Errorf("amount should be a positive number: %s", nt.Amount.String()), "Amount should be greater than zero")
+		}
 
-	fromUser, err := boiler.FindUser(passdb.StdConn, nt.From.String())
+		fromUser, err := boiler.FindUser(passdb.StdConn, nt.From.String())
+		if err != nil {
+			passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
+			return nil, nil, TransactionFailed, terror.Error(err, "failed to process transaction")
+		}
+
+		toUser, err := boiler.FindUser(passdb.StdConn, nt.To.String())
+		if err != nil {
+			passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
+			return nil, nil, TransactionFailed, terror.Error(err, "failed to process transaction")
+		}
+
+		if fromUser.ID != types.OnChainUserID.String() {
+			remaining := fromUser.Sups.Sub(nt.Amount)
+			if remaining.LessThan(zero) {
+				passlog.L.Info().Str("from_id", fromUser.ID).Str("to_user", nt.To.String()).Msg("account would go into negative")
+				return fromUser, toUser, TransactionFailed, terror.Error(ErrNotEnoughFunds, "not enough funds")
+			}
+		}
+
+		return fromUser, toUser, "", nil
+	})()
+
 	if err != nil {
-		passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
-		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(err, "Failed to process transaction, try again or contact support.")
-	}
+		if toUser != nil || fromUser != nil {
+			failedTx := &boiler.FailedTransaction{
+				ID:              transactionID,
+				Credit:          toUser.ID,
+				Debit:           fromUser.ID,
+				Amount:          nt.Amount,
+				FailedReference: string(nt.TransactionReference),
+				Description:     nt.Description,
+				CreatedAt:       nt.CreatedAt,
+				Group:           null.StringFrom(string(nt.Group)),
+				SubGroup:        null.StringFrom(string(nt.SubGroup)),
+				ServiceID:       null.StringFrom(nt.ServiceID.String()),
+			}
 
-	remaining := fromUser.Sups.Sub(nt.Amount)
-	if remaining.LessThan(zero) {
-		passlog.L.Info().Str("from_id", fromUser.ID).Str("to_user", nt.To.String()).Msg("account would go into negative")
-		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(ErrNotEnoughFunds, "Insufficient funds.")
-	}
+			err := failedTx.Insert(passdb.StdConn, boil.Infer())
+			return decimal.Zero, decimal.Zero, msg, err
+		}
 
-	toUser, err := boiler.FindUser(passdb.StdConn, nt.To.String())
-	if err != nil {
-		passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
-		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(err, "Failed to process transaction, try again or contact support.")
+		return decimal.Zero, decimal.Zero, msg, err
 	}
 
 	tx := &types.Transaction{
