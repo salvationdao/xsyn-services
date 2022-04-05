@@ -163,7 +163,7 @@ func SyncStoreItems() error {
 				Data:             data,
 				RefreshesAt:      time.Now().Add(RefreshDuration),
 			}
-			passlog.L.Info().Str("id", template.Template.ID).Msg("inserting new store item")
+			passlog.L.Info().Str("id", template.Template.ID).Interface("data", newStoreItem).Msg("inserting new store item")
 			err = newStoreItem.Insert(tx, boil.Infer())
 			if err != nil {
 				return fmt.Errorf("insert new store item: %w", err)
@@ -376,6 +376,8 @@ func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, err
 	dbitem.AmountSold = count
 	dbitem.Tier = resp.TemplateContainer.Template.Tier
 	dbitem.IsDefault = resp.TemplateContainer.Template.IsDefault
+
+	passlog.L.Info().Str("id", dbitem.ID).Interface("data", dbitem).Msg("updating store item")
 
 	_, err = dbitem.Update(tx, boil.Infer())
 	if err != nil {
