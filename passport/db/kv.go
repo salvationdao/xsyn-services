@@ -12,50 +12,52 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-const KeyLatestWithdrawBlock = "latest_withdraw_block"
-const KeyLatestDepositBlock = "latest_deposit_block"
-const KeyLatestBUSDBlock = "latest_busd_block"
-const KeyLatestUSDCBlock = "latest_usdc_block"
-const KeyLatestETHBlock = "latest_eth_block"
-const KeyLatestBNBBlock = "latest_bnb_block"
-const KeyEnableWithdrawRollback = "enable_withdraw_rollback"
-const KeyAvantFailureCount = "avant_failure_count"
-const KeyAvantSuccessCount = "avant_success_count"
+type KVKey string
 
-const KeyEnableSyncPayments = "enable_sync_payments"
-const KeyEnableSyncDeposits = "enable_sync_deposits"
-const KeyEnableSyncNFTOwners = "enable_sync_nft_owners"
-const KeyEnableSyncWithdraw = "enable_sync_withdraw"
-const KeyEnableSyncSale = "enable_sync_sale"
+const KeyLatestWithdrawBlock KVKey = "latest_withdraw_block"
+const KeyLatestDepositBlock KVKey = "latest_deposit_block"
+const KeyLatestBUSDBlock KVKey = "latest_busd_block"
+const KeyLatestUSDCBlock KVKey = "latest_usdc_block"
+const KeyLatestETHBlock KVKey = "latest_eth_block"
+const KeyLatestBNBBlock KVKey = "latest_bnb_block"
+const KeyEnableWithdrawRollback KVKey = "enable_withdraw_rollback"
+const KeyAvantFailureCount KVKey = "avant_failure_count"
+const KeyAvantSuccessCount KVKey = "avant_success_count"
 
-const KeySupsToUSD = "sups_to_usd"
-const KeyBNBToUSD = "bnb_to_usd"
-const KeyEthToUSD = "eth_to_usd"
+const KeyEnableSyncPayments KVKey = "enable_sync_payments"
+const KeyEnableSyncDeposits KVKey = "enable_sync_deposits"
+const KeyEnableSyncNFTOwners KVKey = "enable_sync_nft_owners"
+const KeyEnableSyncWithdraw KVKey = "enable_sync_withdraw"
+const KeyEnableSyncSale KVKey = "enable_sync_sale"
 
-const KeyPurchaseSupsFloorPrice = "purchase_sups_floor_price"
-const KeyPurchaseSupsMarketPriceMultiplier = "purchase_sups_market_price_multiplier"
+const KeySupsToUSD KVKey = "sups_to_usd"
+const KeyBNBToUSD KVKey = "bnb_to_usd"
+const KeyEthToUSD KVKey = "eth_to_usd"
 
-func get(key string) string {
-	exists, err := boiler.KVS(boiler.KVWhere.Key.EQ(key)).Exists(passdb.StdConn)
+const KeyPurchaseSupsFloorPrice KVKey = "purchase_sups_floor_price"
+const KeyPurchaseSupsMarketPriceMultiplier KVKey = "purchase_sups_market_price_multiplier"
+
+func get(key KVKey) string {
+	exists, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).Exists(passdb.StdConn)
 	if err != nil {
-		passlog.L.Err(err).Str("key", key).Msg("could not check kv exists")
+		passlog.L.Err(err).Str("key", string(key)).Msg("could not check kv exists")
 		return ""
 	}
 	if !exists {
-		passlog.L.Err(errors.New("kv does not exist")).Str("key", key).Msg("kv does not exist")
+		passlog.L.Err(errors.New("kv does not exist")).Str("key", string(key)).Msg("kv does not exist")
 		return ""
 	}
-	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(key)).One(passdb.StdConn)
+	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(passdb.StdConn)
 	if err != nil {
-		passlog.L.Err(err).Str("key", key).Msg("could not get kv")
+		passlog.L.Err(err).Str("key", string(key)).Msg("could not get kv")
 		return ""
 	}
 	return kv.Value
 }
 
-func put(key, value string) {
+func put(key KVKey, value string) {
 	kv := boiler.KV{
-		Key:   key,
+		Key:   string(key),
 		Value: value,
 	}
 	err := kv.Upsert(passdb.StdConn, true, []string{boiler.KVColumns.Key}, boil.Whitelist(boiler.KVColumns.Value), boil.Infer())
@@ -65,11 +67,11 @@ func put(key, value string) {
 	}
 }
 
-func GetStr(key string) string {
+func GetStr(key KVKey) string {
 	return get(key)
 
 }
-func GetStrWithDefault(key string, defaultValue string) string {
+func GetStrWithDefault(key KVKey, defaultValue string) string {
 	vStr := get(key)
 	if vStr == "" {
 		PutStr(key, defaultValue)
@@ -78,20 +80,20 @@ func GetStrWithDefault(key string, defaultValue string) string {
 
 	return GetStr(key)
 }
-func PutStr(key, value string) {
+func PutStr(key KVKey, value string) {
 	put(key, value)
 }
-func GetBool(key string) bool {
+func GetBool(key KVKey) bool {
 	v := get(key)
 	b, err := strconv.ParseBool(v)
 	if err != nil {
-		passlog.L.Err(err).Str("key", key).Str("val", v).Msg("could not parse boolean")
+		passlog.L.Err(err).Str("key", string(key)).Str("val", v).Msg("could not parse boolean")
 		return false
 	}
 	return b
 }
 
-func GetBoolWithDefault(key string, defaultValue bool) bool {
+func GetBoolWithDefault(key KVKey, defaultValue bool) bool {
 	vStr := get(key)
 	if vStr == "" {
 		PutBool(key, defaultValue)
@@ -100,21 +102,21 @@ func GetBoolWithDefault(key string, defaultValue bool) bool {
 
 	return GetBool(key)
 }
-func PutBool(key string, value bool) {
+func PutBool(key KVKey, value bool) {
 	put(key, strconv.FormatBool(value))
 }
 
-func GetInt(key string) int {
+func GetInt(key KVKey) int {
 	vStr := get(key)
 	v, err := strconv.Atoi(vStr)
 	if err != nil {
-		passlog.L.Err(err).Str("key", key).Str("val", vStr).Msg("could not parse int")
+		passlog.L.Err(err).Str("key", string(key)).Str("val", vStr).Msg("could not parse int")
 		return 0
 	}
 	return v
 }
 
-func GetIntWithDefault(key string, defaultValue int) int {
+func GetIntWithDefault(key KVKey, defaultValue int) int {
 	vStr := get(key)
 	if vStr == "" {
 		PutInt(key, defaultValue)
@@ -124,20 +126,20 @@ func GetIntWithDefault(key string, defaultValue int) int {
 	return GetInt(key)
 }
 
-func PutInt(key string, value int) {
+func PutInt(key KVKey, value int) {
 	put(key, strconv.Itoa(value))
 }
 
-func GetDecimal(key string) decimal.Decimal {
+func GetDecimal(key KVKey) decimal.Decimal {
 	vStr := get(key)
 	v, err := decimal.NewFromString(vStr)
 	if err != nil {
-		passlog.L.Err(err).Str("key", key).Str("val", vStr).Msg("could not parse decimal")
+		passlog.L.Err(err).Str("key", string(key)).Str("val", vStr).Msg("could not parse decimal")
 		return decimal.Zero
 	}
 	return v
 }
-func GetDecimalWithDefault(key string, defaultValue decimal.Decimal) decimal.Decimal {
+func GetDecimalWithDefault(key KVKey, defaultValue decimal.Decimal) decimal.Decimal {
 	vStr := get(key)
 
 	if vStr == "" {
@@ -147,19 +149,19 @@ func GetDecimalWithDefault(key string, defaultValue decimal.Decimal) decimal.Dec
 	return GetDecimal(key)
 }
 
-func PutDecimal(key string, value decimal.Decimal) {
+func PutDecimal(key KVKey, value decimal.Decimal) {
 	put(key, value.String())
 }
-func GetTime(key string) time.Time {
+func GetTime(key KVKey) time.Time {
 	vStr := get(key)
 	t, err := time.Parse(time.RFC3339, vStr)
 	if err != nil {
-		passlog.L.Err(err).Str("key", key).Str("val", vStr).Msg("could not parse time")
+		passlog.L.Err(err).Str("key", string(key)).Str("val", vStr).Msg("could not parse time")
 		return time.Time{}
 	}
 	return t
 }
-func GetTimeWithDefault(key string, defaultValue time.Time) time.Time {
+func GetTimeWithDefault(key KVKey, defaultValue time.Time) time.Time {
 	vStr := get(key)
 	if vStr == "" {
 		PutTime(key, defaultValue)
@@ -168,6 +170,6 @@ func GetTimeWithDefault(key string, defaultValue time.Time) time.Time {
 
 	return GetTime(key)
 }
-func PutTime(key string, value time.Time) {
+func PutTime(key KVKey, value time.Time) {
 	put(key, value.Format(time.RFC3339))
 }
