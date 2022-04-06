@@ -163,7 +163,7 @@ func SyncStoreItems() error {
 				Data:             data,
 				RefreshesAt:      time.Now().Add(RefreshDuration),
 			}
-			passlog.L.Info().Str("id", template.Template.ID).Msg("inserting new store item")
+			passlog.L.Info().Str("id", template.Template.ID).Interface("data", newStoreItem).Msg("inserting new store item")
 			err = newStoreItem.Insert(tx, boil.Infer())
 			if err != nil {
 				return fmt.Errorf("insert new store item: %w", err)
@@ -341,41 +341,21 @@ func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, err
 		return nil, err
 	}
 
-	restrictionGroup, ok := RestrictionMap[resp.TemplateContainer.Template.Tier]
-	if !ok {
-		return nil, fmt.Errorf("restriction not found for %s", resp.TemplateContainer.Template.Tier)
-	}
-
-	if resp.TemplateContainer.BlueprintChassis.Skin == "Slava Ukraini" {
-		restrictionGroup = RestrictionGroupPrize
-	}
-
-	// Golds are prizes only, not purchasable
-	if resp.TemplateContainer.BlueprintChassis.Skin == "Gold" {
-		restrictionGroup = RestrictionGroupPrize
-	}
-	amountAvailable, ok := AmountMap[resp.TemplateContainer.Template.Tier]
-	if !ok {
-		return nil, fmt.Errorf("amountAvailable not found for %s", resp.TemplateContainer.Template.Tier)
-	}
-	priceCents, ok := PriceCentsMap[resp.TemplateContainer.Template.Tier]
-	if !ok {
-		return nil, fmt.Errorf("amountAvailable not found for %s", resp.TemplateContainer.Template.Tier)
-	}
-	count, err := StoreItemPurchasedCount(uuid.Must(uuid.FromString(resp.TemplateContainer.Template.ID)))
-	if err != nil {
-		return nil, fmt.Errorf("get purchase count: %w", err)
-	}
 	dbitem.Data = b
 	dbitem.FactionID = resp.TemplateContainer.Template.FactionID
 	dbitem.RefreshesAt = time.Now().Add(RefreshDuration)
 	dbitem.UpdatedAt = time.Now()
-	dbitem.RestrictionGroup = restrictionGroup
-	dbitem.AmountAvailable = amountAvailable
-	dbitem.UsdCentCost = priceCents
-	dbitem.AmountSold = count
+
+	// Not done on a refresh as it should never be updated via sync after initial insertion
+	// dbitem.RestrictionGroup = restrictionGroup
+	// dbitem.AmountAvailable = amountAvailable
+	// dbitem.UsdCentCost = priceCents
+	// dbitem.AmountSold = count
+
 	dbitem.Tier = resp.TemplateContainer.Template.Tier
 	dbitem.IsDefault = resp.TemplateContainer.Template.IsDefault
+
+	passlog.L.Info().Str("id", dbitem.ID).Interface("data", dbitem).Msg("updating store item")
 
 	_, err = dbitem.Update(tx, boil.Infer())
 	if err != nil {

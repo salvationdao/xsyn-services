@@ -76,7 +76,7 @@ func (sc *SupController) DepositTransactionListHandler(ctx context.Context, hubc
 
 	userID := types.UserID(uid)
 
-	dtxs, err := boiler.DepositTransactions(boiler.DepositTransactionWhere.UserID.EQ(userID.String()), qm.Limit(10)).All(passdb.StdConn)
+	dtxs, err := boiler.DepositTransactions(boiler.DepositTransactionWhere.UserID.EQ(userID.String()), qm.Limit(10), qm.OrderBy("created_at DESC")).All(passdb.StdConn)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}

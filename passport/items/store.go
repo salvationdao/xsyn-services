@@ -172,7 +172,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	// get all faction items marked as loot box
 	items, err := db.StoreItemsByFactionIDAndRestrictionGroup(uuid.UUID(factionID), db.RestrictionGroupLootbox)
 	if err != nil {
-		return "", terror.Error(err, "failed to get loot box items")
+		return "", terror.Error(err, "Failed to get loot box items.")
 	}
 	itemIDs := []types.StoreItemID{}
 	for _, m := range items {

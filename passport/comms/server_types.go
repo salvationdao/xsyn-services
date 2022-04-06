@@ -41,14 +41,6 @@ type GetAllMechsReq struct {
 	ApiKey string
 }
 
-type GetAll struct {
-	AssetPayload    types.JSON
-	MetadataPayload types.JSON
-	StorePayload    types.JSON
-	UserPayload     types.JSON
-	FactionPayload  types.JSON
-}
-
 type UserGetReq struct {
 	ApiKey string
 	UserID types2.UserID `json:"userID"`

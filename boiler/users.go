@@ -255,71 +255,65 @@ var UserWhere = struct {
 
 // UserRels is where relationship names are stored.
 var UserRels = struct {
-	Avatar              string
-	Faction             string
-	Role                string
-	PasswordHash        string
-	APIKeys             string
-	DepositTransactions string
-	IssueTokens         string
-	PendingRefunds      string
-	OwnerPurchasedItems string
-	CreditTransactions  string
-	DebitTransactions   string
-	ServiceTransactions string
-	UserActivities      string
-	UserFingerprints    string
-	Organisations       string
-	UserRecoveryCodes   string
-	UsernameHistories   string
-	FrozenByXsynAssets  string
-	LockedByXsynAssets  string
-	XsynAssets          string
+	Avatar                   string
+	Faction                  string
+	Role                     string
+	PasswordHash             string
+	APIKeys                  string
+	DepositTransactions      string
+	CreditFailedTransactions string
+	DebitFailedTransactions  string
+	IssueTokens              string
+	PendingRefunds           string
+	OwnerPurchasedItems      string
+	CreditTransactions       string
+	DebitTransactions        string
+	ServiceTransactions      string
+	UserActivities           string
+	UserFingerprints         string
+	UserRecoveryCodes        string
+	UsernameHistories        string
 }{
-	Avatar:              "Avatar",
-	Faction:             "Faction",
-	Role:                "Role",
-	PasswordHash:        "PasswordHash",
-	APIKeys:             "APIKeys",
-	DepositTransactions: "DepositTransactions",
-	IssueTokens:         "IssueTokens",
-	PendingRefunds:      "PendingRefunds",
-	OwnerPurchasedItems: "OwnerPurchasedItems",
-	CreditTransactions:  "CreditTransactions",
-	DebitTransactions:   "DebitTransactions",
-	ServiceTransactions: "ServiceTransactions",
-	UserActivities:      "UserActivities",
-	UserFingerprints:    "UserFingerprints",
-	Organisations:       "Organisations",
-	UserRecoveryCodes:   "UserRecoveryCodes",
-	UsernameHistories:   "UsernameHistories",
-	FrozenByXsynAssets:  "FrozenByXsynAssets",
-	LockedByXsynAssets:  "LockedByXsynAssets",
-	XsynAssets:          "XsynAssets",
+	Avatar:                   "Avatar",
+	Faction:                  "Faction",
+	Role:                     "Role",
+	PasswordHash:             "PasswordHash",
+	APIKeys:                  "APIKeys",
+	DepositTransactions:      "DepositTransactions",
+	CreditFailedTransactions: "CreditFailedTransactions",
+	DebitFailedTransactions:  "DebitFailedTransactions",
+	IssueTokens:              "IssueTokens",
+	PendingRefunds:           "PendingRefunds",
+	OwnerPurchasedItems:      "OwnerPurchasedItems",
+	CreditTransactions:       "CreditTransactions",
+	DebitTransactions:        "DebitTransactions",
+	ServiceTransactions:      "ServiceTransactions",
+	UserActivities:           "UserActivities",
+	UserFingerprints:         "UserFingerprints",
+	UserRecoveryCodes:        "UserRecoveryCodes",
+	UsernameHistories:        "UsernameHistories",
 }
 
 // userR is where relationships are stored.
 type userR struct {
-	Avatar              *Blob                   `boiler:"Avatar" boil:"Avatar" json:"Avatar" toml:"Avatar" yaml:"Avatar"`
-	Faction             *Faction                `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	Role                *Role                   `boiler:"Role" boil:"Role" json:"Role" toml:"Role" yaml:"Role"`
-	PasswordHash        *PasswordHash           `boiler:"PasswordHash" boil:"PasswordHash" json:"PasswordHash" toml:"PasswordHash" yaml:"PasswordHash"`
-	APIKeys             APIKeySlice             `boiler:"APIKeys" boil:"APIKeys" json:"APIKeys" toml:"APIKeys" yaml:"APIKeys"`
-	DepositTransactions DepositTransactionSlice `boiler:"DepositTransactions" boil:"DepositTransactions" json:"DepositTransactions" toml:"DepositTransactions" yaml:"DepositTransactions"`
-	IssueTokens         IssueTokenSlice         `boiler:"IssueTokens" boil:"IssueTokens" json:"IssueTokens" toml:"IssueTokens" yaml:"IssueTokens"`
-	PendingRefunds      PendingRefundSlice      `boiler:"PendingRefunds" boil:"PendingRefunds" json:"PendingRefunds" toml:"PendingRefunds" yaml:"PendingRefunds"`
-	OwnerPurchasedItems PurchasedItemSlice      `boiler:"OwnerPurchasedItems" boil:"OwnerPurchasedItems" json:"OwnerPurchasedItems" toml:"OwnerPurchasedItems" yaml:"OwnerPurchasedItems"`
-	CreditTransactions  TransactionSlice        `boiler:"CreditTransactions" boil:"CreditTransactions" json:"CreditTransactions" toml:"CreditTransactions" yaml:"CreditTransactions"`
-	DebitTransactions   TransactionSlice        `boiler:"DebitTransactions" boil:"DebitTransactions" json:"DebitTransactions" toml:"DebitTransactions" yaml:"DebitTransactions"`
-	ServiceTransactions TransactionSlice        `boiler:"ServiceTransactions" boil:"ServiceTransactions" json:"ServiceTransactions" toml:"ServiceTransactions" yaml:"ServiceTransactions"`
-	UserActivities      UserActivitySlice       `boiler:"UserActivities" boil:"UserActivities" json:"UserActivities" toml:"UserActivities" yaml:"UserActivities"`
-	UserFingerprints    UserFingerprintSlice    `boiler:"UserFingerprints" boil:"UserFingerprints" json:"UserFingerprints" toml:"UserFingerprints" yaml:"UserFingerprints"`
-	Organisations       OrganisationSlice       `boiler:"Organisations" boil:"Organisations" json:"Organisations" toml:"Organisations" yaml:"Organisations"`
-	UserRecoveryCodes   UserRecoveryCodeSlice   `boiler:"UserRecoveryCodes" boil:"UserRecoveryCodes" json:"UserRecoveryCodes" toml:"UserRecoveryCodes" yaml:"UserRecoveryCodes"`
-	UsernameHistories   UsernameHistorySlice    `boiler:"UsernameHistories" boil:"UsernameHistories" json:"UsernameHistories" toml:"UsernameHistories" yaml:"UsernameHistories"`
-	FrozenByXsynAssets  XsynAssetSlice          `boiler:"FrozenByXsynAssets" boil:"FrozenByXsynAssets" json:"FrozenByXsynAssets" toml:"FrozenByXsynAssets" yaml:"FrozenByXsynAssets"`
-	LockedByXsynAssets  XsynAssetSlice          `boiler:"LockedByXsynAssets" boil:"LockedByXsynAssets" json:"LockedByXsynAssets" toml:"LockedByXsynAssets" yaml:"LockedByXsynAssets"`
-	XsynAssets          XsynAssetSlice          `boiler:"XsynAssets" boil:"XsynAssets" json:"XsynAssets" toml:"XsynAssets" yaml:"XsynAssets"`
+	Avatar                   *Blob                   `boiler:"Avatar" boil:"Avatar" json:"Avatar" toml:"Avatar" yaml:"Avatar"`
+	Faction                  *Faction                `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	Role                     *Role                   `boiler:"Role" boil:"Role" json:"Role" toml:"Role" yaml:"Role"`
+	PasswordHash             *PasswordHash           `boiler:"PasswordHash" boil:"PasswordHash" json:"PasswordHash" toml:"PasswordHash" yaml:"PasswordHash"`
+	APIKeys                  APIKeySlice             `boiler:"APIKeys" boil:"APIKeys" json:"APIKeys" toml:"APIKeys" yaml:"APIKeys"`
+	DepositTransactions      DepositTransactionSlice `boiler:"DepositTransactions" boil:"DepositTransactions" json:"DepositTransactions" toml:"DepositTransactions" yaml:"DepositTransactions"`
+	CreditFailedTransactions FailedTransactionSlice  `boiler:"CreditFailedTransactions" boil:"CreditFailedTransactions" json:"CreditFailedTransactions" toml:"CreditFailedTransactions" yaml:"CreditFailedTransactions"`
+	DebitFailedTransactions  FailedTransactionSlice  `boiler:"DebitFailedTransactions" boil:"DebitFailedTransactions" json:"DebitFailedTransactions" toml:"DebitFailedTransactions" yaml:"DebitFailedTransactions"`
+	IssueTokens              IssueTokenSlice         `boiler:"IssueTokens" boil:"IssueTokens" json:"IssueTokens" toml:"IssueTokens" yaml:"IssueTokens"`
+	PendingRefunds           PendingRefundSlice      `boiler:"PendingRefunds" boil:"PendingRefunds" json:"PendingRefunds" toml:"PendingRefunds" yaml:"PendingRefunds"`
+	OwnerPurchasedItems      PurchasedItemSlice      `boiler:"OwnerPurchasedItems" boil:"OwnerPurchasedItems" json:"OwnerPurchasedItems" toml:"OwnerPurchasedItems" yaml:"OwnerPurchasedItems"`
+	CreditTransactions       TransactionSlice        `boiler:"CreditTransactions" boil:"CreditTransactions" json:"CreditTransactions" toml:"CreditTransactions" yaml:"CreditTransactions"`
+	DebitTransactions        TransactionSlice        `boiler:"DebitTransactions" boil:"DebitTransactions" json:"DebitTransactions" toml:"DebitTransactions" yaml:"DebitTransactions"`
+	ServiceTransactions      TransactionSlice        `boiler:"ServiceTransactions" boil:"ServiceTransactions" json:"ServiceTransactions" toml:"ServiceTransactions" yaml:"ServiceTransactions"`
+	UserActivities           UserActivitySlice       `boiler:"UserActivities" boil:"UserActivities" json:"UserActivities" toml:"UserActivities" yaml:"UserActivities"`
+	UserFingerprints         UserFingerprintSlice    `boiler:"UserFingerprints" boil:"UserFingerprints" json:"UserFingerprints" toml:"UserFingerprints" yaml:"UserFingerprints"`
+	UserRecoveryCodes        UserRecoveryCodeSlice   `boiler:"UserRecoveryCodes" boil:"UserRecoveryCodes" json:"UserRecoveryCodes" toml:"UserRecoveryCodes" yaml:"UserRecoveryCodes"`
+	UsernameHistories        UsernameHistorySlice    `boiler:"UsernameHistories" boil:"UsernameHistories" json:"UsernameHistories" toml:"UsernameHistories" yaml:"UsernameHistories"`
 }
 
 // NewStruct creates a new relationship struct
@@ -679,6 +673,48 @@ func (o *User) DepositTransactions(mods ...qm.QueryMod) depositTransactionQuery 
 	return query
 }
 
+// CreditFailedTransactions retrieves all the failed_transaction's FailedTransactions with an executor via credit column.
+func (o *User) CreditFailedTransactions(mods ...qm.QueryMod) failedTransactionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"failed_transactions\".\"credit\"=?", o.ID),
+	)
+
+	query := FailedTransactions(queryMods...)
+	queries.SetFrom(query.Query, "\"failed_transactions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"failed_transactions\".*"})
+	}
+
+	return query
+}
+
+// DebitFailedTransactions retrieves all the failed_transaction's FailedTransactions with an executor via debit column.
+func (o *User) DebitFailedTransactions(mods ...qm.QueryMod) failedTransactionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"failed_transactions\".\"debit\"=?", o.ID),
+	)
+
+	query := FailedTransactions(queryMods...)
+	queries.SetFrom(query.Query, "\"failed_transactions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"failed_transactions\".*"})
+	}
+
+	return query
+}
+
 // IssueTokens retrieves all the issue_token's IssueTokens with an executor.
 func (o *User) IssueTokens(mods ...qm.QueryMod) issueTokenQuery {
 	var queryMods []qm.QueryMod
@@ -851,28 +887,6 @@ func (o *User) UserFingerprints(mods ...qm.QueryMod) userFingerprintQuery {
 	return query
 }
 
-// Organisations retrieves all the organisation's Organisations with an executor.
-func (o *User) Organisations(mods ...qm.QueryMod) organisationQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.InnerJoin("\"user_organisations\" on \"organisations\".\"id\" = \"user_organisations\".\"organisation_id\""),
-		qm.Where("\"user_organisations\".\"user_id\"=?", o.ID),
-	)
-
-	query := Organisations(queryMods...)
-	queries.SetFrom(query.Query, "\"organisations\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"organisations\".*"})
-	}
-
-	return query
-}
-
 // UserRecoveryCodes retrieves all the user_recovery_code's UserRecoveryCodes with an executor.
 func (o *User) UserRecoveryCodes(mods ...qm.QueryMod) userRecoveryCodeQuery {
 	var queryMods []qm.QueryMod
@@ -910,69 +924,6 @@ func (o *User) UsernameHistories(mods ...qm.QueryMod) usernameHistoryQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"username_history\".*"})
-	}
-
-	return query
-}
-
-// FrozenByXsynAssets retrieves all the xsyn_asset's XsynAssets with an executor via frozen_by_id column.
-func (o *User) FrozenByXsynAssets(mods ...qm.QueryMod) xsynAssetQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"xsyn_assets\".\"frozen_by_id\"=?", o.ID),
-	)
-
-	query := XsynAssets(queryMods...)
-	queries.SetFrom(query.Query, "\"xsyn_assets\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"xsyn_assets\".*"})
-	}
-
-	return query
-}
-
-// LockedByXsynAssets retrieves all the xsyn_asset's XsynAssets with an executor via locked_by_id column.
-func (o *User) LockedByXsynAssets(mods ...qm.QueryMod) xsynAssetQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"xsyn_assets\".\"locked_by_id\"=?", o.ID),
-	)
-
-	query := XsynAssets(queryMods...)
-	queries.SetFrom(query.Query, "\"xsyn_assets\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"xsyn_assets\".*"})
-	}
-
-	return query
-}
-
-// XsynAssets retrieves all the xsyn_asset's XsynAssets with an executor.
-func (o *User) XsynAssets(mods ...qm.QueryMod) xsynAssetQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"xsyn_assets\".\"user_id\"=?", o.ID),
-	)
-
-	query := XsynAssets(queryMods...)
-	queries.SetFrom(query.Query, "\"xsyn_assets\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"xsyn_assets\".*"})
 	}
 
 	return query
@@ -1596,6 +1547,202 @@ func (userL) LoadDepositTransactions(e boil.Executor, singular bool, maybeUser i
 					foreign.R = &depositTransactionR{}
 				}
 				foreign.R.User = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadCreditFailedTransactions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadCreditFailedTransactions(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`failed_transactions`),
+		qm.WhereIn(`failed_transactions.credit in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load failed_transactions")
+	}
+
+	var resultSlice []*FailedTransaction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice failed_transactions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on failed_transactions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for failed_transactions")
+	}
+
+	if len(failedTransactionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.CreditFailedTransactions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &failedTransactionR{}
+			}
+			foreign.R.CreditUser = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.Credit {
+				local.R.CreditFailedTransactions = append(local.R.CreditFailedTransactions, foreign)
+				if foreign.R == nil {
+					foreign.R = &failedTransactionR{}
+				}
+				foreign.R.CreditUser = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadDebitFailedTransactions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadDebitFailedTransactions(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`failed_transactions`),
+		qm.WhereIn(`failed_transactions.debit in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load failed_transactions")
+	}
+
+	var resultSlice []*FailedTransaction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice failed_transactions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on failed_transactions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for failed_transactions")
+	}
+
+	if len(failedTransactionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.DebitFailedTransactions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &failedTransactionR{}
+			}
+			foreign.R.DebitUser = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.Debit {
+				local.R.DebitFailedTransactions = append(local.R.DebitFailedTransactions, foreign)
+				if foreign.R == nil {
+					foreign.R = &failedTransactionR{}
+				}
+				foreign.R.DebitUser = local
 				break
 			}
 		}
@@ -2392,122 +2539,6 @@ func (userL) LoadUserFingerprints(e boil.Executor, singular bool, maybeUser inte
 	return nil
 }
 
-// LoadOrganisations allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadOrganisations(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
-	var slice []*User
-	var object *User
-
-	if singular {
-		object = maybeUser.(*User)
-	} else {
-		slice = *maybeUser.(*[]*User)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &userR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &userR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.Select("\"organisations\".id, \"organisations\".slug, \"organisations\".name, \"organisations\".keywords, \"organisations\".deleted_at, \"organisations\".updated_at, \"organisations\".created_at, \"a\".\"user_id\""),
-		qm.From("\"organisations\""),
-		qm.InnerJoin("\"user_organisations\" as \"a\" on \"organisations\".\"id\" = \"a\".\"organisation_id\""),
-		qm.WhereIn("\"a\".\"user_id\" in ?", args...),
-		qmhelper.WhereIsNull("\"organisations\".\"deleted_at\""),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load organisations")
-	}
-
-	var resultSlice []*Organisation
-
-	var localJoinCols []string
-	for results.Next() {
-		one := new(Organisation)
-		var localJoinCol string
-
-		err = results.Scan(&one.ID, &one.Slug, &one.Name, &one.Keywords, &one.DeletedAt, &one.UpdatedAt, &one.CreatedAt, &localJoinCol)
-		if err != nil {
-			return errors.Wrap(err, "failed to scan eager loaded results for organisations")
-		}
-		if err = results.Err(); err != nil {
-			return errors.Wrap(err, "failed to plebian-bind eager loaded slice organisations")
-		}
-
-		resultSlice = append(resultSlice, one)
-		localJoinCols = append(localJoinCols, localJoinCol)
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on organisations")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for organisations")
-	}
-
-	if len(organisationAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.Organisations = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &organisationR{}
-			}
-			foreign.R.Users = append(foreign.R.Users, object)
-		}
-		return nil
-	}
-
-	for i, foreign := range resultSlice {
-		localJoinCol := localJoinCols[i]
-		for _, local := range slice {
-			if local.ID == localJoinCol {
-				local.R.Organisations = append(local.R.Organisations, foreign)
-				if foreign.R == nil {
-					foreign.R = &organisationR{}
-				}
-				foreign.R.Users = append(foreign.R.Users, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // LoadUserRecoveryCodes allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (userL) LoadUserRecoveryCodes(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
@@ -2694,300 +2725,6 @@ func (userL) LoadUsernameHistories(e boil.Executor, singular bool, maybeUser int
 				local.R.UsernameHistories = append(local.R.UsernameHistories, foreign)
 				if foreign.R == nil {
 					foreign.R = &usernameHistoryR{}
-				}
-				foreign.R.User = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadFrozenByXsynAssets allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadFrozenByXsynAssets(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
-	var slice []*User
-	var object *User
-
-	if singular {
-		object = maybeUser.(*User)
-	} else {
-		slice = *maybeUser.(*[]*User)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &userR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &userR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`xsyn_assets`),
-		qm.WhereIn(`xsyn_assets.frozen_by_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load xsyn_assets")
-	}
-
-	var resultSlice []*XsynAsset
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice xsyn_assets")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on xsyn_assets")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for xsyn_assets")
-	}
-
-	if len(xsynAssetAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.FrozenByXsynAssets = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &xsynAssetR{}
-			}
-			foreign.R.FrozenBy = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.FrozenByID) {
-				local.R.FrozenByXsynAssets = append(local.R.FrozenByXsynAssets, foreign)
-				if foreign.R == nil {
-					foreign.R = &xsynAssetR{}
-				}
-				foreign.R.FrozenBy = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadLockedByXsynAssets allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadLockedByXsynAssets(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
-	var slice []*User
-	var object *User
-
-	if singular {
-		object = maybeUser.(*User)
-	} else {
-		slice = *maybeUser.(*[]*User)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &userR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &userR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`xsyn_assets`),
-		qm.WhereIn(`xsyn_assets.locked_by_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load xsyn_assets")
-	}
-
-	var resultSlice []*XsynAsset
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice xsyn_assets")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on xsyn_assets")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for xsyn_assets")
-	}
-
-	if len(xsynAssetAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.LockedByXsynAssets = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &xsynAssetR{}
-			}
-			foreign.R.LockedBy = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.LockedByID) {
-				local.R.LockedByXsynAssets = append(local.R.LockedByXsynAssets, foreign)
-				if foreign.R == nil {
-					foreign.R = &xsynAssetR{}
-				}
-				foreign.R.LockedBy = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadXsynAssets allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadXsynAssets(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
-	var slice []*User
-	var object *User
-
-	if singular {
-		object = maybeUser.(*User)
-	} else {
-		slice = *maybeUser.(*[]*User)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &userR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &userR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`xsyn_assets`),
-		qm.WhereIn(`xsyn_assets.user_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load xsyn_assets")
-	}
-
-	var resultSlice []*XsynAsset
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice xsyn_assets")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on xsyn_assets")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for xsyn_assets")
-	}
-
-	if len(xsynAssetAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.XsynAssets = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &xsynAssetR{}
-			}
-			foreign.R.User = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.UserID {
-				local.R.XsynAssets = append(local.R.XsynAssets, foreign)
-				if foreign.R == nil {
-					foreign.R = &xsynAssetR{}
 				}
 				foreign.R.User = local
 				break
@@ -3384,6 +3121,110 @@ func (o *User) AddDepositTransactions(exec boil.Executor, insert bool, related .
 			}
 		} else {
 			rel.R.User = o
+		}
+	}
+	return nil
+}
+
+// AddCreditFailedTransactions adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.CreditFailedTransactions.
+// Sets related.R.CreditUser appropriately.
+func (o *User) AddCreditFailedTransactions(exec boil.Executor, insert bool, related ...*FailedTransaction) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.Credit = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"failed_transactions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"credit"}),
+				strmangle.WhereClause("\"", "\"", 2, failedTransactionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.Credit = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			CreditFailedTransactions: related,
+		}
+	} else {
+		o.R.CreditFailedTransactions = append(o.R.CreditFailedTransactions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &failedTransactionR{
+				CreditUser: o,
+			}
+		} else {
+			rel.R.CreditUser = o
+		}
+	}
+	return nil
+}
+
+// AddDebitFailedTransactions adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.DebitFailedTransactions.
+// Sets related.R.DebitUser appropriately.
+func (o *User) AddDebitFailedTransactions(exec boil.Executor, insert bool, related ...*FailedTransaction) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.Debit = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"failed_transactions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"debit"}),
+				strmangle.WhereClause("\"", "\"", 2, failedTransactionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.Debit = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			DebitFailedTransactions: related,
+		}
+	} else {
+		o.R.DebitFailedTransactions = append(o.R.DebitFailedTransactions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &failedTransactionR{
+				DebitUser: o,
+			}
+		} else {
+			rel.R.DebitUser = o
 		}
 	}
 	return nil
@@ -3878,147 +3719,6 @@ func (o *User) AddUserFingerprints(exec boil.Executor, insert bool, related ...*
 	return nil
 }
 
-// AddOrganisations adds the given related objects to the existing relationships
-// of the user, optionally inserting them as new records.
-// Appends related to o.R.Organisations.
-// Sets related.R.Users appropriately.
-func (o *User) AddOrganisations(exec boil.Executor, insert bool, related ...*Organisation) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		}
-	}
-
-	for _, rel := range related {
-		query := "insert into \"user_organisations\" (\"user_id\", \"organisation_id\") values ($1, $2)"
-		values := []interface{}{o.ID, rel.ID}
-
-		if boil.DebugMode {
-			fmt.Fprintln(boil.DebugWriter, query)
-			fmt.Fprintln(boil.DebugWriter, values)
-		}
-		_, err = exec.Exec(query, values...)
-		if err != nil {
-			return errors.Wrap(err, "failed to insert into join table")
-		}
-	}
-	if o.R == nil {
-		o.R = &userR{
-			Organisations: related,
-		}
-	} else {
-		o.R.Organisations = append(o.R.Organisations, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &organisationR{
-				Users: UserSlice{o},
-			}
-		} else {
-			rel.R.Users = append(rel.R.Users, o)
-		}
-	}
-	return nil
-}
-
-// SetOrganisations removes all previously related items of the
-// user replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.Users's Organisations accordingly.
-// Replaces o.R.Organisations with related.
-// Sets related.R.Users's Organisations accordingly.
-func (o *User) SetOrganisations(exec boil.Executor, insert bool, related ...*Organisation) error {
-	query := "delete from \"user_organisations\" where \"user_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	removeOrganisationsFromUsersSlice(o, related)
-	if o.R != nil {
-		o.R.Organisations = nil
-	}
-	return o.AddOrganisations(exec, insert, related...)
-}
-
-// RemoveOrganisations relationships from objects passed in.
-// Removes related items from R.Organisations (uses pointer comparison, removal does not keep order)
-// Sets related.R.Users.
-func (o *User) RemoveOrganisations(exec boil.Executor, related ...*Organisation) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	query := fmt.Sprintf(
-		"delete from \"user_organisations\" where \"user_id\" = $1 and \"organisation_id\" in (%s)",
-		strmangle.Placeholders(dialect.UseIndexPlaceholders, len(related), 2, 1),
-	)
-	values := []interface{}{o.ID}
-	for _, rel := range related {
-		values = append(values, rel.ID)
-	}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err = exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-	removeOrganisationsFromUsersSlice(o, related)
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.Organisations {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.Organisations)
-			if ln > 1 && i < ln-1 {
-				o.R.Organisations[i] = o.R.Organisations[ln-1]
-			}
-			o.R.Organisations = o.R.Organisations[:ln-1]
-			break
-		}
-	}
-
-	return nil
-}
-
-func removeOrganisationsFromUsersSlice(o *User, related []*Organisation) {
-	for _, rel := range related {
-		if rel.R == nil {
-			continue
-		}
-		for i, ri := range rel.R.Users {
-			if o.ID != ri.ID {
-				continue
-			}
-
-			ln := len(rel.R.Users)
-			if ln > 1 && i < ln-1 {
-				rel.R.Users[i] = rel.R.Users[ln-1]
-			}
-			rel.R.Users = rel.R.Users[:ln-1]
-			break
-		}
-	}
-}
-
 // AddUserRecoveryCodes adds the given related objects to the existing relationships
 // of the user, optionally inserting them as new records.
 // Appends related to o.R.UserRecoveryCodes.
@@ -4114,308 +3814,6 @@ func (o *User) AddUsernameHistories(exec boil.Executor, insert bool, related ...
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &usernameHistoryR{
-				User: o,
-			}
-		} else {
-			rel.R.User = o
-		}
-	}
-	return nil
-}
-
-// AddFrozenByXsynAssets adds the given related objects to the existing relationships
-// of the user, optionally inserting them as new records.
-// Appends related to o.R.FrozenByXsynAssets.
-// Sets related.R.FrozenBy appropriately.
-func (o *User) AddFrozenByXsynAssets(exec boil.Executor, insert bool, related ...*XsynAsset) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			queries.Assign(&rel.FrozenByID, o.ID)
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"xsyn_assets\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"frozen_by_id"}),
-				strmangle.WhereClause("\"", "\"", 2, xsynAssetPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.MetadataHash}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			queries.Assign(&rel.FrozenByID, o.ID)
-		}
-	}
-
-	if o.R == nil {
-		o.R = &userR{
-			FrozenByXsynAssets: related,
-		}
-	} else {
-		o.R.FrozenByXsynAssets = append(o.R.FrozenByXsynAssets, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &xsynAssetR{
-				FrozenBy: o,
-			}
-		} else {
-			rel.R.FrozenBy = o
-		}
-	}
-	return nil
-}
-
-// SetFrozenByXsynAssets removes all previously related items of the
-// user replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.FrozenBy's FrozenByXsynAssets accordingly.
-// Replaces o.R.FrozenByXsynAssets with related.
-// Sets related.R.FrozenBy's FrozenByXsynAssets accordingly.
-func (o *User) SetFrozenByXsynAssets(exec boil.Executor, insert bool, related ...*XsynAsset) error {
-	query := "update \"xsyn_assets\" set \"frozen_by_id\" = null where \"frozen_by_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.FrozenByXsynAssets {
-			queries.SetScanner(&rel.FrozenByID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.FrozenBy = nil
-		}
-
-		o.R.FrozenByXsynAssets = nil
-	}
-	return o.AddFrozenByXsynAssets(exec, insert, related...)
-}
-
-// RemoveFrozenByXsynAssets relationships from objects passed in.
-// Removes related items from R.FrozenByXsynAssets (uses pointer comparison, removal does not keep order)
-// Sets related.R.FrozenBy.
-func (o *User) RemoveFrozenByXsynAssets(exec boil.Executor, related ...*XsynAsset) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.FrozenByID, nil)
-		if rel.R != nil {
-			rel.R.FrozenBy = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("frozen_by_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.FrozenByXsynAssets {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.FrozenByXsynAssets)
-			if ln > 1 && i < ln-1 {
-				o.R.FrozenByXsynAssets[i] = o.R.FrozenByXsynAssets[ln-1]
-			}
-			o.R.FrozenByXsynAssets = o.R.FrozenByXsynAssets[:ln-1]
-			break
-		}
-	}
-
-	return nil
-}
-
-// AddLockedByXsynAssets adds the given related objects to the existing relationships
-// of the user, optionally inserting them as new records.
-// Appends related to o.R.LockedByXsynAssets.
-// Sets related.R.LockedBy appropriately.
-func (o *User) AddLockedByXsynAssets(exec boil.Executor, insert bool, related ...*XsynAsset) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			queries.Assign(&rel.LockedByID, o.ID)
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"xsyn_assets\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"locked_by_id"}),
-				strmangle.WhereClause("\"", "\"", 2, xsynAssetPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.MetadataHash}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			queries.Assign(&rel.LockedByID, o.ID)
-		}
-	}
-
-	if o.R == nil {
-		o.R = &userR{
-			LockedByXsynAssets: related,
-		}
-	} else {
-		o.R.LockedByXsynAssets = append(o.R.LockedByXsynAssets, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &xsynAssetR{
-				LockedBy: o,
-			}
-		} else {
-			rel.R.LockedBy = o
-		}
-	}
-	return nil
-}
-
-// SetLockedByXsynAssets removes all previously related items of the
-// user replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.LockedBy's LockedByXsynAssets accordingly.
-// Replaces o.R.LockedByXsynAssets with related.
-// Sets related.R.LockedBy's LockedByXsynAssets accordingly.
-func (o *User) SetLockedByXsynAssets(exec boil.Executor, insert bool, related ...*XsynAsset) error {
-	query := "update \"xsyn_assets\" set \"locked_by_id\" = null where \"locked_by_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.LockedByXsynAssets {
-			queries.SetScanner(&rel.LockedByID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.LockedBy = nil
-		}
-
-		o.R.LockedByXsynAssets = nil
-	}
-	return o.AddLockedByXsynAssets(exec, insert, related...)
-}
-
-// RemoveLockedByXsynAssets relationships from objects passed in.
-// Removes related items from R.LockedByXsynAssets (uses pointer comparison, removal does not keep order)
-// Sets related.R.LockedBy.
-func (o *User) RemoveLockedByXsynAssets(exec boil.Executor, related ...*XsynAsset) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.LockedByID, nil)
-		if rel.R != nil {
-			rel.R.LockedBy = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("locked_by_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.LockedByXsynAssets {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.LockedByXsynAssets)
-			if ln > 1 && i < ln-1 {
-				o.R.LockedByXsynAssets[i] = o.R.LockedByXsynAssets[ln-1]
-			}
-			o.R.LockedByXsynAssets = o.R.LockedByXsynAssets[:ln-1]
-			break
-		}
-	}
-
-	return nil
-}
-
-// AddXsynAssets adds the given related objects to the existing relationships
-// of the user, optionally inserting them as new records.
-// Appends related to o.R.XsynAssets.
-// Sets related.R.User appropriately.
-func (o *User) AddXsynAssets(exec boil.Executor, insert bool, related ...*XsynAsset) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.UserID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"xsyn_assets\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
-				strmangle.WhereClause("\"", "\"", 2, xsynAssetPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.MetadataHash}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.UserID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &userR{
-			XsynAssets: related,
-		}
-	} else {
-		o.R.XsynAssets = append(o.R.XsynAssets, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &xsynAssetR{
 				User: o,
 			}
 		} else {

@@ -144,10 +144,10 @@ db-boiler:
 
 .PHONY: db-seed
 db-seed:
-	go run passport/main.go db --seed
+	go run seed/main.go db
 
 .PHONY: db-reset
-db-reset: db-drop db-migrate-up-one  db-seed db-migrate
+db-reset: db-drop db-migrate db-boiler db-seed
 
 .PHONY: go-mod-download
 go-mod-download:

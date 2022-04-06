@@ -15,7 +15,6 @@ require (
 	github.com/go-chi/cors v1.2.0
 	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/golang-migrate/migrate/v4 v4.14.1
-	github.com/gosimple/slug v1.12.0
 	github.com/h2non/filetype v1.1.3
 	github.com/jackc/pgconn v1.10.1
 	github.com/jackc/pgx/v4 v4.14.1
@@ -38,13 +37,13 @@ require (
 	github.com/speps/go-hashids/v2 v2.0.1
 	github.com/twilio/twilio-go v0.22.2
 	github.com/urfave/cli/v2 v2.3.0
+	github.com/victorspringer/http-cache v0.0.0-20220131145941-ef3624e6666f
 	github.com/volatiletech/null/v8 v8.1.2
 	github.com/volatiletech/sqlboiler/v4 v4.8.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.0.0-20220210151621-f4118a5b28e2
 	google.golang.org/api v0.63.0
 	nhooyr.io/websocket v1.8.7
-	syreclabs.com/go/faker v1.2.3
 )
 
 require (
@@ -82,7 +81,6 @@ require (
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect

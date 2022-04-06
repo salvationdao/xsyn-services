@@ -190,6 +190,10 @@ func PurchasedItemByHash(hash string) (*boiler.PurchasedItem, error) {
 	if err != nil && err != sql.ErrNoRows {
 		return nil, terror.Error(err)
 	}
+	if err != nil {
+		passlog.L.Error().Err(err).Msgf("unable to retrieve hash: %s", hash)
+		return nil, terror.Error(err)
+	}
 	item, err = getPurchasedItem(uuid.Must(uuid.FromString(item.ID)))
 	if err != nil {
 		return nil, terror.Error(err)
@@ -503,7 +507,6 @@ COALESCE(u.username, '') as username
 
 const PurchaseGetFrom = `
 FROM purchased_items 
-LEFT OUTER JOIN xsyn_assets ON purchased_items.external_token_id = xsyn_assets.external_token_id and purchased_items.collection_id = xsyn_assets.collection_id
 INNER JOIN (
 	SELECT  id,
 			name,

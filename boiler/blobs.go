@@ -219,13 +219,11 @@ var BlobRels = struct {
 	LogoBlobCollections    string
 	BackgroundBlobFactions string
 	LogoBlobFactions       string
-	ImageProducts          string
 	AvatarUsers            string
 }{
 	LogoBlobCollections:    "LogoBlobCollections",
 	BackgroundBlobFactions: "BackgroundBlobFactions",
 	LogoBlobFactions:       "LogoBlobFactions",
-	ImageProducts:          "ImageProducts",
 	AvatarUsers:            "AvatarUsers",
 }
 
@@ -234,7 +232,6 @@ type blobR struct {
 	LogoBlobCollections    CollectionSlice `boiler:"LogoBlobCollections" boil:"LogoBlobCollections" json:"LogoBlobCollections" toml:"LogoBlobCollections" yaml:"LogoBlobCollections"`
 	BackgroundBlobFactions FactionSlice    `boiler:"BackgroundBlobFactions" boil:"BackgroundBlobFactions" json:"BackgroundBlobFactions" toml:"BackgroundBlobFactions" yaml:"BackgroundBlobFactions"`
 	LogoBlobFactions       FactionSlice    `boiler:"LogoBlobFactions" boil:"LogoBlobFactions" json:"LogoBlobFactions" toml:"LogoBlobFactions" yaml:"LogoBlobFactions"`
-	ImageProducts          ProductSlice    `boiler:"ImageProducts" boil:"ImageProducts" json:"ImageProducts" toml:"ImageProducts" yaml:"ImageProducts"`
 	AvatarUsers            UserSlice       `boiler:"AvatarUsers" boil:"AvatarUsers" json:"AvatarUsers" toml:"AvatarUsers" yaml:"AvatarUsers"`
 }
 
@@ -556,28 +553,6 @@ func (o *Blob) LogoBlobFactions(mods ...qm.QueryMod) factionQuery {
 	return query
 }
 
-// ImageProducts retrieves all the product's Products with an executor via image_id column.
-func (o *Blob) ImageProducts(mods ...qm.QueryMod) productQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"products\".\"image_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"products\".\"deleted_at\""),
-	)
-
-	query := Products(queryMods...)
-	queries.SetFrom(query.Query, "\"products\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"products\".*"})
-	}
-
-	return query
-}
-
 // AvatarUsers retrieves all the user's Users with an executor via avatar_id column.
 func (o *Blob) AvatarUsers(mods ...qm.QueryMod) userQuery {
 	var queryMods []qm.QueryMod
@@ -887,105 +862,6 @@ func (blobL) LoadLogoBlobFactions(e boil.Executor, singular bool, maybeBlob inte
 					foreign.R = &factionR{}
 				}
 				foreign.R.LogoBlob = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadImageProducts allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (blobL) LoadImageProducts(e boil.Executor, singular bool, maybeBlob interface{}, mods queries.Applicator) error {
-	var slice []*Blob
-	var object *Blob
-
-	if singular {
-		object = maybeBlob.(*Blob)
-	} else {
-		slice = *maybeBlob.(*[]*Blob)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &blobR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &blobR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`products`),
-		qm.WhereIn(`products.image_id in ?`, args...),
-		qmhelper.WhereIsNull(`products.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load products")
-	}
-
-	var resultSlice []*Product
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice products")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on products")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for products")
-	}
-
-	if len(productAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.ImageProducts = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &productR{}
-			}
-			foreign.R.Image = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.ImageID) {
-				local.R.ImageProducts = append(local.R.ImageProducts, foreign)
-				if foreign.R == nil {
-					foreign.R = &productR{}
-				}
-				foreign.R.Image = local
 				break
 			}
 		}
@@ -1319,131 +1195,6 @@ func (o *Blob) AddLogoBlobFactions(exec boil.Executor, insert bool, related ...*
 			rel.R.LogoBlob = o
 		}
 	}
-	return nil
-}
-
-// AddImageProducts adds the given related objects to the existing relationships
-// of the blob, optionally inserting them as new records.
-// Appends related to o.R.ImageProducts.
-// Sets related.R.Image appropriately.
-func (o *Blob) AddImageProducts(exec boil.Executor, insert bool, related ...*Product) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			queries.Assign(&rel.ImageID, o.ID)
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"products\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"image_id"}),
-				strmangle.WhereClause("\"", "\"", 2, productPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			queries.Assign(&rel.ImageID, o.ID)
-		}
-	}
-
-	if o.R == nil {
-		o.R = &blobR{
-			ImageProducts: related,
-		}
-	} else {
-		o.R.ImageProducts = append(o.R.ImageProducts, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &productR{
-				Image: o,
-			}
-		} else {
-			rel.R.Image = o
-		}
-	}
-	return nil
-}
-
-// SetImageProducts removes all previously related items of the
-// blob replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.Image's ImageProducts accordingly.
-// Replaces o.R.ImageProducts with related.
-// Sets related.R.Image's ImageProducts accordingly.
-func (o *Blob) SetImageProducts(exec boil.Executor, insert bool, related ...*Product) error {
-	query := "update \"products\" set \"image_id\" = null where \"image_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.ImageProducts {
-			queries.SetScanner(&rel.ImageID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.Image = nil
-		}
-
-		o.R.ImageProducts = nil
-	}
-	return o.AddImageProducts(exec, insert, related...)
-}
-
-// RemoveImageProducts relationships from objects passed in.
-// Removes related items from R.ImageProducts (uses pointer comparison, removal does not keep order)
-// Sets related.R.Image.
-func (o *Blob) RemoveImageProducts(exec boil.Executor, related ...*Product) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.ImageID, nil)
-		if rel.R != nil {
-			rel.R.Image = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("image_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.ImageProducts {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.ImageProducts)
-			if ln > 1 && i < ln-1 {
-				o.R.ImageProducts[i] = o.R.ImageProducts[ln-1]
-			}
-			o.R.ImageProducts = o.R.ImageProducts[:ln-1]
-			break
-		}
-	}
-
 	return nil
 }
 

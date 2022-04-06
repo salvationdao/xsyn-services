@@ -186,7 +186,7 @@ func fetchPrice(symbol string) (decimal.Decimal, error) {
 	}
 	return dec, nil
 }
-func catchPriceFetchError(symbol string, dbKey string) (decimal.Decimal, error) {
+func catchPriceFetchError(symbol string, dbKey db.KVKey) (decimal.Decimal, error) {
 	passlog.L.Warn().Msg(fmt.Sprintf("could not fetch %s price", symbol))
 	dec, err := decimal.NewFromString(db.GetStr(dbKey))
 	if err != nil {
