@@ -107,6 +107,7 @@ def main(argv):
     db_dumped = dbdump()
     stop_service()
     migrate(db_dumped, new_ver_dir)
+    change_online_version(new_ver_dir)
     start_service()
     nginx_start()
 
@@ -321,6 +322,22 @@ def migrate(db_dumped: bool, new_ver_dir: str):
         log.exception("command not found: %s", e.filename)
         exit(1)
 
+
+def change_online_version(target: str):
+    log.info("Changing online symlink")
+
+    command = "ln -Tfsv {base_dir}/{target} {base_dir}/{package}_online ".format(
+        base_dir=BASE_DIR, package=PACKAGE, target=target)
+
+    try:
+        popen = subprocess.Popen(
+            command, stdout=subprocess.PIPE, shell=True, universal_newlines=True)
+
+        popen.stdout.close()
+        popen.wait()
+    except FileNotFoundError as e:
+        log.exception("command not found: %s", e.filename)
+        exit(1)   
 
 def nginx_stop():
     if not question("Drain Connections? (stop nginx)"):
