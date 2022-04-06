@@ -104,7 +104,9 @@ def main(argv):
     new_ver_dir = extract(rel_path)
     copy_env(new_ver_dir)
     nginx_stop()
+    db_dumped = dbdump()
     stop_service()
+    migrate(db_dumped, new_ver_dir)
     start_service()
     nginx_start()
 
@@ -282,6 +284,36 @@ def dbdump():
     if not os.path.getsize(dump_file) > 5e4:
         log.error("Dump file smaller that expected")
         exit(1)
+
+def migrate(db_dumped: bool, new_ver_dir: str):
+    if not question("Run Migrations"):
+        log.info("Skipping migrations")
+        return
+
+    if not db_dumped:
+        # you should probably dump the db
+        # so ask again
+        dbdump()
+
+    command = '{target}/migrate -database "postgres://{user}:{pword}@{host}:{port}/{dbname}" -path {target}/migrations up'.format(
+        target=new_ver_dir,
+        dbname=os.environ.get("PASSPORT_DATABASE_NAME"),
+        host=os.environ.get("PASSPORT_DATABASE_HOST"),
+        port=os.environ.get("PASSPORT_DATABASE_PORT"),
+        user=os.environ.get("PASSPORT_DATABASE_USER"),
+        pword=os.environ.get("PASSPORT_DATABASE_PASS")
+    )
+    print(command)
+    try:
+        popen = subprocess.Popen(
+            command, stdout=subprocess.PIPE, shell=True, universal_newlines=True)
+
+        popen.stdout.close()
+        popen.wait()
+    except FileNotFoundError as e:
+        log.exception("command not found: %s", e.filename)
+        exit(1)
+
 
 def nginx_stop():
     if not question("Drain Connections? (stop nginx)"):
