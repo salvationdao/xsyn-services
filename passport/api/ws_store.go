@@ -78,7 +78,7 @@ func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *hub.
 
 	err = items.Purchase(ctx, sc.Conn, sc.Log, sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), sc.API.userCacheMap.Transact, *user, req.Payload.StoreItemID, sc.API.storeItemExternalUrl)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err)
 	}
 
 	reply(true)
