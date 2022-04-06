@@ -236,6 +236,10 @@ def copy_env(target: str):
     except FileNotFoundError as e:
         log.exception("file not found: %s", e.filename)
         exit(1)
+    except shutil.SameFileError as e:
+        log.info(src + " and " + dest + " are the same file, proceding without copying")
+        return
+
     log.info("Coppied " + src + " to " + dest)
 
 
@@ -284,6 +288,9 @@ def dbdump():
     if not os.path.getsize(dump_file) > 5e4:
         log.error("Dump file smaller that expected")
         exit(1)
+
+    return True
+
 
 def migrate(db_dumped: bool, new_ver_dir: str):
     if not question("Run Migrations"):
