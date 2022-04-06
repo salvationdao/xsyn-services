@@ -13,6 +13,7 @@ import (
 	"xsyn-services/passport/passdb"
 	"xsyn-services/types"
 
+	goaway "github.com/TwiN/go-away"
 	"github.com/microcosm-cc/bluemonday"
 
 	"github.com/ninja-software/log_helpers"
@@ -24,6 +25,8 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 )
+
+var profanityDetector = goaway.NewProfanityDetector().WithCustomDictionary(Profanities, []string{}, []string{})
 
 // AssetController holds handlers for as
 type AssetController struct {

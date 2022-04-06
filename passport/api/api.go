@@ -230,11 +230,6 @@ func NewAPI(
 		_ = NewSupController(log, conn, api, cc)
 	}
 
-	globalChat := NewChatroom(nil)
-	redMountainChat := NewChatroom(&types.RedMountainFactionID)
-	bostonChat := NewChatroom(&types.BostonCyberneticsFactionID)
-	zaibatsuChat := NewChatroom(&types.ZaibatsuFactionID)
-
 	_ = NewAssetController(log, conn, api)
 	_ = NewCollectionController(log, conn, api, isTestnetBlockchain)
 	_ = NewServerClientController(log, conn, api)
@@ -251,7 +246,6 @@ func NewAPI(
 	})
 	_ = NewTransactionController(log, conn, api)
 	_ = NewFactionController(log, conn, api)
-	_ = NewChatController(log, conn, api, globalChat, redMountainChat, bostonChat, zaibatsuChat)
 	_ = NewRoleController(log, conn, api)
 	sc := NewSupremacyController(log, conn, api)
 	_ = NewGamebarController(log, conn, api)
