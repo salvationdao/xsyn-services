@@ -101,15 +101,8 @@ def main(argv):
     log.debug(asset_meta)
     rel_path = download_asset(asset_meta)
 
-    # Extract asset
-    if not question("Extract {} or exit?".format(rel_path), 'extract', 'exit'):
-        log.info("exiting")
-        exit(0)
-
     new_ver_dir = extract(rel_path)
-
     copy_env(new_ver_dir)
-    dbdump()
 
 
 def download_meta(version: str):
