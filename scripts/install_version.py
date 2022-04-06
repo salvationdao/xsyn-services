@@ -108,6 +108,7 @@ def main(argv):
     stop_service()
     migrate(db_dumped, new_ver_dir)
     change_online_version(new_ver_dir)
+    change_owner()
     start_service()
     nginx_start()
 
@@ -238,7 +239,8 @@ def copy_env(target: str):
         log.exception("file not found: %s", e.filename)
         exit(1)
     except shutil.SameFileError as e:
-        log.info(src + " and " + dest + " are the same file, proceding without copying")
+        log.info(src + " and " + dest +
+                 " are the same file, proceding without copying")
         return
 
     log.info("Coppied " + src + " to " + dest)
@@ -337,7 +339,25 @@ def change_online_version(target: str):
         popen.wait()
     except FileNotFoundError as e:
         log.exception("command not found: %s", e.filename)
-        exit(1)   
+        exit(1)
+
+
+def change_owner():
+    log.info("Ensuring ownership")
+
+    command = "chown -R {package}:{package} .".format(
+        package=PACKAGE)
+
+    try:
+        popen = subprocess.Popen(
+            command, stdout=subprocess.PIPE, shell=True, universal_newlines=True)
+
+        popen.stdout.close()
+        popen.wait()
+    except FileNotFoundError as e:
+        log.exception("command not found: %s", e.filename)
+        exit(1)
+
 
 def nginx_stop():
     if not question("Drain Connections? (stop nginx)"):
@@ -360,7 +380,7 @@ def nginx_stop():
 
 def nginx_start():
     command = 'nginx -t && systemctl start nginx'
-    log.info("Checking and starting nginx") 
+    log.info("Checking and starting nginx")
 
     try:
         popen = subprocess.Popen(

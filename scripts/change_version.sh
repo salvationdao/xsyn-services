@@ -1,4 +1,0 @@
-
-
-
-chown -R ${PACKAGE}:${PACKAGE} .
