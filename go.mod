@@ -37,6 +37,7 @@ require (
 	github.com/speps/go-hashids/v2 v2.0.1
 	github.com/twilio/twilio-go v0.22.2
 	github.com/urfave/cli/v2 v2.3.0
+	github.com/victorspringer/http-cache v0.0.0-20220131145941-ef3624e6666f
 	github.com/volatiletech/null/v8 v8.1.2
 	github.com/volatiletech/sqlboiler/v4 v4.8.0
 	go.uber.org/zap v1.21.0

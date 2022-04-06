@@ -14,6 +14,7 @@ import (
 
 type KVKey string
 
+const KeyCannyApiKey KVKey = "api_key_canny"
 const KeyLatestWithdrawBlock KVKey = "latest_withdraw_block"
 const KeyLatestDepositBlock KVKey = "latest_deposit_block"
 const KeyLatestBUSDBlock KVKey = "latest_busd_block"

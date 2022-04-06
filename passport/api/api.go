@@ -193,7 +193,12 @@ func NewAPI(
 		log.Fatal().Msgf("failed to init hub auther: %s", err.Error())
 	}
 
+	roadmapRoutes, err := RoadmapRoutes()
+	if err != nil {
+		log.Fatal().Msgf("failed to roadmap routes: %s", err.Error())
+	}
 	r.Mount("/api/admin", AdminRoutes(ucm))
+	r.Mount("/api/roadmap", roadmapRoutes)
 	r.Handle("/metrics", promhttp.Handler())
 	r.Route("/api", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
