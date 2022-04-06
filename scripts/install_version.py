@@ -104,6 +104,8 @@ def main(argv):
     new_ver_dir = extract(rel_path)
     copy_env(new_ver_dir)
     nginx_stop()
+    stop_service()
+    start_service()
     nginx_start()
 
 
@@ -311,6 +313,40 @@ def nginx_start():
         popen.stdout.close()
         popen.wait()
         log.info("Finished starting nginx")
+    except FileNotFoundError as e:
+        log.exception("command not found: %s", e.filename)
+        exit(1)
+
+
+def stop_service():
+    log.info('Stopping {}'.format(PACKAGE))
+
+    command = 'systemctl stop {}'.format(PACKAGE)
+
+    try:
+        popen = subprocess.Popen(
+            command, stdout=subprocess.PIPE, shell=True, universal_newlines=True)
+
+        popen.stdout.close()
+        popen.wait()
+        log.info('Stopped {}'.format(PACKAGE))
+    except FileNotFoundError as e:
+        log.exception("command not found: %s", e.filename)
+        exit(1)
+
+
+def start_service():
+    log.info('Reloading systemctl daemon and starting {}'.format(PACKAGE))
+
+    command = 'systemctl daemon-reload && systemctl stop {}'.format(PACKAGE)
+
+    try:
+        popen = subprocess.Popen(
+            command, stdout=subprocess.PIPE, shell=True, universal_newlines=True)
+
+        popen.stdout.close()
+        popen.wait()
+        log.info('Started {}'.format(PACKAGE))
     except FileNotFoundError as e:
         log.exception("command not found: %s", e.filename)
         exit(1)
