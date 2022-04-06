@@ -38,6 +38,7 @@ TOKEN = os.environ.get("GITHUB_PAT", "")
 CLIENT = "ninja_syndicate"
 BASE_DIR = "/usr/share/{client}".format(client=CLIENT)
 PACKAGE = "passport-api"
+ENV_PREFIX = "PASSPORT"
 
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"),
@@ -264,9 +265,9 @@ def dbdump():
         now=now.strftime("%Y%m%d%H%M%S"))
 
     command = 'pg_dump --dbname="{dbname}" --host="{host}" --port="{port}" --username="postgres" '.format(
-        dbname=os.environ.get("PASSPORT_DATABASE_NAME"),
-        host=os.environ.get("PASSPORT_DATABASE_HOST"),
-        port=os.environ.get("PASSPORT_DATABASE_PORT"))
+        dbname=os.environ.get("{}_DATABASE_NAME".format(ENV_PREFIX)),
+        host=os.environ.get("{}_DATABASE_HOST".format(ENV_PREFIX)),
+        port=os.environ.get("{}_DATABASE_PORT".format(ENV_PREFIX)))
 
     try:
         with gzip.open(dump_file, 'wb') as f:
@@ -283,7 +284,7 @@ def dbdump():
         exit(1)
 
     log.info("Dumped database " +
-             os.environ.get("PASSPORT_DATABASE_NAME") + " into " + dump_file)
+             os.environ.get("{}_DATABASE_NAME".format(ENV_PREFIX)) + " into " + dump_file)
 
     if not os.path.exists(dump_file):
         log.error("Dump file doesn't exist")
@@ -307,11 +308,11 @@ def migrate(db_dumped: bool, new_ver_dir: str):
 
     command = '{target}/migrate -database "postgres://{user}:{pword}@{host}:{port}/{dbname}" -path {target}/migrations up'.format(
         target=new_ver_dir,
-        dbname=os.environ.get("PASSPORT_DATABASE_NAME"),
-        host=os.environ.get("PASSPORT_DATABASE_HOST"),
-        port=os.environ.get("PASSPORT_DATABASE_PORT"),
-        user=os.environ.get("PASSPORT_DATABASE_USER"),
-        pword=os.environ.get("PASSPORT_DATABASE_PASS")
+        dbname=os.environ.get("{}_DATABASE_NAME".format(ENV_PREFIX)),
+        host=os.environ.get("{}_DATABASE_HOST".format(ENV_PREFIX)),
+        port=os.environ.get("{}_DATABASE_PORT".format(ENV_PREFIX)),
+        user=os.environ.get("{}_DATABASE_USER".format(ENV_PREFIX)),
+        pword=os.environ.get("{}_DATABASE_PASS".format(ENV_PREFIX))
     )
     print(command)
     try:
