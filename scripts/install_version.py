@@ -103,6 +103,8 @@ def main(argv):
 
     new_ver_dir = extract(rel_path)
     copy_env(new_ver_dir)
+    nginx_stop()
+    nginx_start()
 
 
 def download_meta(version: str):
@@ -277,6 +279,40 @@ def dbdump():
         exit(1)
     if not os.path.getsize(dump_file) > 5e4:
         log.error("Dump file smaller that expected")
+        exit(1)
+
+def nginx_stop():
+    if not question("Drain Connections? (stop nginx)"):
+        log.info("Skipping nginx stop")
+        return
+
+    log.info("Stopping nginx")
+    command = 'nginx -s stop'
+
+    try:
+        popen = subprocess.Popen(
+            command, stdout=subprocess.PIPE, shell=True, universal_newlines=True)
+
+        popen.stdout.close()
+        popen.wait()
+    except FileNotFoundError as e:
+        log.exception("command not found: %s", e.filename)
+        exit(1)
+
+
+def nginx_start():
+    command = 'nginx -t && systemctl start nginx'
+    log.info("Checking and starting nginx") 
+
+    try:
+        popen = subprocess.Popen(
+            command, stdout=subprocess.PIPE, shell=True, universal_newlines=True)
+
+        popen.stdout.close()
+        popen.wait()
+        log.info("Finished starting nginx")
+    except FileNotFoundError as e:
+        log.exception("command not found: %s", e.filename)
         exit(1)
 
 
