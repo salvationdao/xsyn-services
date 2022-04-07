@@ -53,3 +53,5 @@ CREATE TRIGGER trigger_check_balance
     ON transactions
     FOR EACH ROW
 EXECUTE PROCEDURE check_balances();
+
+ALTER TABLE transactions DROP COLUMN status cascade;
