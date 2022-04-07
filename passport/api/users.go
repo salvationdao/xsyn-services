@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/crypto"
@@ -168,7 +167,7 @@ func (ug *UserGetter) UserCreator(firstName, lastName, username, email, facebook
 		}
 	}
 
-	trimmedUsername := strings.TrimSpace(username)
+	trimmedUsername := helpers.TrimUsername(username)
 	bm := bluemonday.StrictPolicy()
 	sanitizedUsername := bm.Sanitize(trimmedUsername)
 

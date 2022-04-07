@@ -3,7 +3,6 @@ package helpers
 import (
 	"fmt"
 	"regexp"
-	"strings"
 	"unicode"
 
 	goaway "github.com/TwiN/go-away"
@@ -88,10 +87,22 @@ func IsValidPassword(password string) error {
 	return nil
 }
 
+// PrintableLen counts how many printable characters are in a string.
+func PrintableLen(s string) int {
+	sLen := 0
+	runes := []rune(s)
+	for _, r := range runes {
+		if unicode.IsPrint(r) {
+			sLen += 1
+		}
+	}
+	return sLen
+}
+
 func IsValidUsername(username string) error {
 	// Must contain at least 3 characters
 	// Cannot contain more than 15 characters
-	// Cannot conain profanity
+	// Cannot contain profanity
 	// Can only contain the following symbols: _
 	hasDisallowedSymbol := false
 	if UsernameRegExp.Match([]byte(username)) {
@@ -99,14 +110,14 @@ func IsValidUsername(username string) error {
 	}
 
 	err := fmt.Errorf("username does not meet requirements")
-	if len(strings.TrimSpace(username)) < 3 {
+	if TrimUsername(username) == "" {
+		return terror.Error(err, "Invalid username. Your username cannot be empty.")
+	}
+	if PrintableLen(TrimUsername(username)) < 3 {
 		return terror.Error(err, "Invalid username. Your username must be at least 3 characters long.")
 	}
-	if len(strings.TrimSpace(username)) > 30 {
+	if PrintableLen(TrimUsername(username)) > 30 {
 		return terror.Error(err, "Invalid username. Your username cannot be more than 30 characters long.")
-	}
-	if strings.TrimSpace(username) == "" {
-		return terror.Error(err, "Invalid username. Your username cannot be empty.")
 	}
 	if hasDisallowedSymbol {
 		return terror.Error(err, "Invalid username. Your username contains a disallowed symbol.")
