@@ -193,7 +193,12 @@ func NewAPI(
 		log.Fatal().Msgf("failed to init hub auther: %s", err.Error())
 	}
 
+	roadmapRoutes, err := RoadmapRoutes()
+	if err != nil {
+		log.Fatal().Msgf("failed to roadmap routes: %s", err.Error())
+	}
 	r.Mount("/api/admin", AdminRoutes(ucm))
+	r.Mount("/api/roadmap", roadmapRoutes)
 	r.Handle("/metrics", promhttp.Handler())
 	r.Route("/api", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
@@ -230,11 +235,6 @@ func NewAPI(
 		_ = NewSupController(log, conn, api, cc)
 	}
 
-	globalChat := NewChatroom(nil)
-	redMountainChat := NewChatroom(&types.RedMountainFactionID)
-	bostonChat := NewChatroom(&types.BostonCyberneticsFactionID)
-	zaibatsuChat := NewChatroom(&types.ZaibatsuFactionID)
-
 	_ = NewAssetController(log, conn, api)
 	_ = NewCollectionController(log, conn, api, isTestnetBlockchain)
 	_ = NewServerClientController(log, conn, api)
@@ -251,7 +251,6 @@ func NewAPI(
 	})
 	_ = NewTransactionController(log, conn, api)
 	_ = NewFactionController(log, conn, api)
-	_ = NewChatController(log, conn, api, globalChat, redMountainChat, bostonChat, zaibatsuChat)
 	_ = NewRoleController(log, conn, api)
 	sc := NewSupremacyController(log, conn, api)
 	_ = NewGamebarController(log, conn, api)

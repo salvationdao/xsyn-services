@@ -78,7 +78,7 @@ func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *hub.
 
 	err = items.Purchase(ctx, sc.Conn, sc.Log, sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), sc.API.userCacheMap.Transact, *user, req.Payload.StoreItemID, sc.API.storeItemExternalUrl)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err)
 	}
 
 	reply(true)
@@ -253,6 +253,7 @@ type StoreItemSubscribeRequest struct {
 type StoreItemSubscribeResponse struct {
 	PriceInSUPS string            `json:"price_in_sups"`
 	Item        *boiler.StoreItem `json:"item"`
+	HostURL     string            `json:"host_url"`
 }
 
 func (sc *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
@@ -300,6 +301,7 @@ func (sc *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, clie
 	result := &StoreItemSubscribeResponse{
 		PriceInSUPS: priceAsSups,
 		Item:        item,
+		HostURL:     sc.API.GameserverHostUrl,
 	}
 
 	reply(result)
