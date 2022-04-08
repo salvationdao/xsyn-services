@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"crypto/md5"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -66,7 +67,7 @@ func (c *FilesController) FileGet(w http.ResponseWriter, r *http.Request) (int, 
 	// Get blob
 	blob, err := db.BlobGet(context.Background(), c.Conn, blobID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return http.StatusNotFound, terror.Error(err, "attachment not found")
 		}
 		return http.StatusInternalServerError, terror.Error(err, "could not get attachment")
