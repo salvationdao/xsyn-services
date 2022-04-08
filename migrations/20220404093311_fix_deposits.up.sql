@@ -17,8 +17,6 @@ CREATE TABLE failed_transactions (
 INSERT INTO failed_transactions(id, description, failed_reference, amount, credit, debit, "group", sub_group, service_id) 
 SELECT t.id, t.description, t.transaction_reference, t.amount, t.credit, t.debit, t.group, t.sub_group, t.service_id FROM transactions t WHERE t.status = 'failed';
 
-ALTER TABLE transactions DROP COLUMN status;
-
 CREATE OR REPLACE FUNCTION check_balances() RETURNS TRIGGER AS
 $check_balances$
 DECLARE
@@ -55,3 +53,5 @@ CREATE TRIGGER trigger_check_balance
     ON transactions
     FOR EACH ROW
 EXECUTE PROCEDURE check_balances();
+
+ALTER TABLE transactions DROP COLUMN status cascade;
