@@ -63,20 +63,20 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (decimal.Decimal, deci
 		fromUser, err := boiler.FindUser(passdb.StdConn, nt.From.String())
 		if err != nil {
 			passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
-			return nil, nil, TransactionFailed, terror.Error(err, "failed to process transaction")
+			return nil, nil, TransactionFailed, terror.Error(err, "Failed to process transaction.")
 		}
 
 		toUser, err := boiler.FindUser(passdb.StdConn, nt.To.String())
 		if err != nil {
 			passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
-			return nil, nil, TransactionFailed, terror.Error(err, "failed to process transaction")
+			return nil, nil, TransactionFailed, terror.Error(err, "Failed to process transaction.")
 		}
 
 		if fromUser.ID != types.OnChainUserID.String() {
 			remaining := fromUser.Sups.Sub(nt.Amount)
 			if remaining.LessThan(zero) {
 				passlog.L.Info().Str("from_id", fromUser.ID).Str("to_user", nt.To.String()).Msg("account would go into negative")
-				return fromUser, toUser, TransactionFailed, terror.Error(ErrNotEnoughFunds, "not enough funds")
+				return fromUser, toUser, TransactionFailed, terror.Error(ErrNotEnoughFunds, "Not enough funds.")
 			}
 		}
 
@@ -98,10 +98,11 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (decimal.Decimal, deci
 				ServiceID:       null.StringFrom(nt.ServiceID.String()),
 			}
 
-			err := failedTx.Insert(passdb.StdConn, boil.Infer())
-			return decimal.Zero, decimal.Zero, msg, err
+			errFailedTx := failedTx.Insert(passdb.StdConn, boil.Infer())
+			if errFailedTx != nil {
+				passlog.L.Error().Err(err).Msg("failed to insert failed transaction")
+			}
 		}
-
 		return decimal.Zero, decimal.Zero, msg, err
 	}
 
