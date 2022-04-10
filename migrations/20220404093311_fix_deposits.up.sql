@@ -38,7 +38,6 @@ BEGIN
         RETURN NEW;
     ELSE
         RAISE EXCEPTION 'not enough funds';
-        RETURN NULL;
     END IF;
     -- if not enough funds,
 END
