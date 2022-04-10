@@ -24,8 +24,7 @@ DECLARE
 BEGIN
     -- check its not a transaction to themselves
     IF NEW.debit = NEW.credit THEN
-        INSERT INTO failed_transactions(id, description, failed_reference, amount, credit, debit, "group", sub_group, service_id) VALUES (NEW.id, NEW.description, NEW.transaction_reference, NEW.amount, NEW.credit, NEW.debit, NEW.group, NEW.sub_group, NEW.service_id);
-        RETURN NULL;
+        RAISE EXCEPTION 'unable to transfer to self';
     END IF;
     -- checks if the debtor is the on chain / off world account since that is the only account allow to go negative.
     SELECT NEW.debit = '2fa1a63e-a4fa-4618-921f-4b4d28132069' OR (SELECT sups >= NEW.amount
@@ -38,13 +37,13 @@ BEGIN
         UPDATE users SET sups = sups - NEW.amount WHERE id = NEW.debit;
         RETURN NEW;
     ELSE
-        INSERT INTO failed_transactions(id, description, failed_reference, amount, credit, debit, "group", sub_group, service_id) VALUES (NEW.id, NEW.description, NEW.transaction_reference, NEW.amount, NEW.credit, NEW.debit, NEW.group, NEW.sub_group, NEW.service_id);
+        RAISE EXCEPTION 'not enough funds';
         RETURN NULL;
     END IF;
     -- if not enough funds,
 END
-$check_balances$ 
-LANGUAGE plpgsql;
+$check_balances$
+    LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trigger_check_balance
   ON transactions;
