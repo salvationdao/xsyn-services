@@ -28,7 +28,7 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, 
 	ctx := context.Background()
 	success := 0
 	skipped := 0
-	supContract := db.GetStr(db.KeySUPSPurchaseContract)
+	supContract := db.GetStrWithDefault(db.KeySUPSPurchaseContract, "0x52b38626D3167e5357FE7348624352B7062fE271")
 
 	l.Info().Int("records", len(records)).Msg("processing deposits")
 	for _, record := range records {
