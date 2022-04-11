@@ -171,9 +171,6 @@ func main() {
 					// wallet/contract addresses
 					&cli.StringFlag{Name: "operator_addr", Value: "0xc01c2f6DD7cCd2B9F8DB9aa1Da9933edaBc5079E", EnvVars: []string{envPrefix + "_OPERATOR_WALLET_ADDR"}, Usage: "Wallet address for administration"},
 					&cli.StringFlag{Name: "signer_private_key", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing (usually operator)"},
-					&cli.StringFlag{Name: "purchase_addr", Value: "0x52b38626D3167e5357FE7348624352B7062fE271", EnvVars: []string{envPrefix + "_PURCHASE_WALLET_ADDR"}, Usage: "Wallet address to receive payments and deposits"},
-
-					&cli.StringFlag{Name: "withdraw_addr", Value: "0x9DAcEA338E4DDd856B152Ce553C7540DF920Bb15", EnvVars: []string{envPrefix + "_WITHDRAW_CONTRACT_ADDR"}, Usage: "Withdraw contract address"},
 
 					// chain id
 					&cli.Int64Flag{Name: "bsc_chain_id", Value: 97, EnvVars: []string{envPrefix + "_BSC_CHAIN_ID"}, Usage: "BSC Chain ID"},
@@ -614,8 +611,6 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	UsdcAddr := ctxCLI.String("usdc_addr")
 	BusdAddr := ctxCLI.String("busd_addr")
 	SupAddr := ctxCLI.String("sup_addr")
-	PurchaseAddr := ctxCLI.String("purchase_addr")
-	WithdrawAddr := ctxCLI.String("withdraw_addr")
 	OperatorAddr := ctxCLI.String("operator_addr")
 	SignerPrivateKey := ctxCLI.String("signer_private_key")
 	BscNodeAddr := ctxCLI.String("bsc_node_addr")
@@ -707,8 +702,6 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 			UsdcAddr:         common.HexToAddress(UsdcAddr),
 			BusdAddr:         common.HexToAddress(BusdAddr),
 			SupAddr:          common.HexToAddress(SupAddr),
-			PurchaseAddr:     common.HexToAddress(PurchaseAddr),
-			WithdrawAddr:     common.HexToAddress(WithdrawAddr),
 			SignerPrivateKey: SignerPrivateKey,
 			BscNodeAddr:      BscNodeAddr,
 			EthNodeAddr:      EthNodeAddr,

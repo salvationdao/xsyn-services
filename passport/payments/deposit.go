@@ -3,8 +3,10 @@ package payments
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
@@ -26,9 +28,14 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, 
 	ctx := context.Background()
 	success := 0
 	skipped := 0
+	supContract := db.GetStr(db.KeySUPSPurchaseContract)
 
 	l.Info().Int("records", len(records)).Msg("processing deposits")
 	for _, record := range records {
+		if strings.EqualFold(record.FromAddress, supContract) {
+			skipped++
+			continue
+		}
 		exists, err := boiler.Transactions(boiler.TransactionWhere.TransactionReference.EQ(record.TxHash)).Exists(passdb.StdConn)
 		if err != nil {
 			skipped++

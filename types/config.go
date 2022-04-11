@@ -27,8 +27,6 @@ type BridgeParams struct {
 	BusdAddr         common.Address
 	SupAddr          common.Address
 	DepositAddr      common.Address
-	PurchaseAddr     common.Address
-	WithdrawAddr     common.Address
 	SignerPrivateKey string
 	BscNodeAddr      string
 	EthNodeAddr      string
