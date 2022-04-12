@@ -3,6 +3,7 @@ package payments
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
@@ -72,7 +73,14 @@ func UpdateSuccessfulWithdrawsWithTxHash(records []*SUPTransferRecord) (int, int
 
 	skipped := 0
 	success := 0
+	supWithdrawContract := db.GetStrWithDefault(db.KeySUPSWithdrawContract, "0x6476db7cffeebf7cc47ed8d4996d1d60608aaf95")
+
 	for _, record := range records {
+		if !strings.EqualFold(record.FromAddress, supWithdrawContract) {
+			skipped++
+			continue
+		}
+
 		val, err := decimal.NewFromString(record.ValueInt)
 		if err != nil {
 			l.Warn().

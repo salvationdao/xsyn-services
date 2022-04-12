@@ -38,6 +38,9 @@ const KeyEthToUSD KVKey = "eth_to_usd"
 const KeyPurchaseSupsFloorPrice KVKey = "purchase_sups_floor_price"
 const KeyPurchaseSupsMarketPriceMultiplier KVKey = "purchase_sups_market_price_multiplier"
 
+const KeySUPSPurchaseContract KVKey = "contract_purchase_address"
+const KeySUPSWithdrawContract KVKey = "contract_withdraw_address"
+
 func get(key KVKey) string {
 	exists, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).Exists(passdb.StdConn)
 	if err != nil {
