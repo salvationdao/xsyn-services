@@ -19,7 +19,6 @@ require (
 	github.com/jackc/pgconn v1.10.1
 	github.com/jackc/pgx/v4 v4.14.1
 	github.com/jpillora/backoff v1.0.0
-	github.com/kevinms/leakybucket-go v0.0.0-20200115003610-082473db97ca
 	github.com/lestrrat-go/jwx v1.2.15
 	github.com/lib/pq v1.10.4
 	github.com/mailgun/mailgun-go/v4 v4.6.0
@@ -158,6 +157,7 @@ require (
 )
 
 require (
+	github.com/DataDog/gostackparse v0.5.0
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/ethereum/go-ethereum v1.10.16
 	github.com/fatih/color v1.13.0 // indirect
