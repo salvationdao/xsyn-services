@@ -18,6 +18,7 @@ import (
 	"github.com/lestrrat-go/jwx/jwt/openid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub/ext/auth"
+	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 )
 
 type ErrorMessage string
@@ -60,8 +61,10 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) h
 			if err != nil {
 				terror.Echo(err)
 				http.Error(w, `{"message":"JSON failed, please contact IT.","error_code":"00001"}`, http.StatusInternalServerError)
+				DatadogTracer.HttpFinishSpan(r.Context(), http.StatusInternalServerError, err)
 				return
 			}
+			DatadogTracer.HttpFinishSpan(r.Context(), http.StatusNotFound, err)
 			http.Error(w, string(jsonErr), http.StatusNotFound)
 			return
 		}
@@ -113,13 +116,16 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) h
 			jsonErr, err := json.Marshal(errObj)
 			if err != nil {
 				terror.Echo(err)
+				DatadogTracer.HttpFinishSpan(r.Context(), code, err)
 				http.Error(w, `{"message":"JSON failed, please contact IT.","error_code":"00001"}`, code)
 				return
 			}
 
+			DatadogTracer.HttpFinishSpan(r.Context(), code, bErr)
 			http.Error(w, string(jsonErr), code)
 			return
 		}
+		DatadogTracer.HttpFinishSpan(r.Context(), code, nil)
 	}
 	return fn
 }
