@@ -7,6 +7,7 @@ import (
 	"sync"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/email"
+	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
 	"github.com/ninja-software/log_helpers"
@@ -158,7 +159,7 @@ func NewAPI(
 		}).Handler)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
+	r.Use(passlog.ChiLogger(zerolog.InfoLevel))
 	r.Use(DatadogTracer.Middleware())
 
 	var err error
