@@ -9,14 +9,6 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
-type AssetOnChainStatusReq struct {
-	AssetID string `json:"asset_ID"`
-}
-
-type AssetOnChainStatusResp struct {
-	OnChainStatus string `json:"on_chain_status"`
-}
-
 func (s *S) AssetOnChainStatusHandler(req AssetOnChainStatusReq, resp *AssetOnChainStatusResp) error {
 	item, err := boiler.PurchasedItems(boiler.PurchasedItemWhere.ID.EQ(req.AssetID)).One(passdb.StdConn)
 	if err != nil {
@@ -26,14 +18,6 @@ func (s *S) AssetOnChainStatusHandler(req AssetOnChainStatusReq, resp *AssetOnCh
 
 	resp.OnChainStatus = item.OnChainStatus
 	return nil
-}
-
-type AssetsOnChainStatusReq struct {
-	AssetIDs []string `json:"asset_IDs"`
-}
-
-type AssetsOnChainStatusResp struct {
-	OnChainStatuses map[string]string `json:"on_chain_statuses"`
 }
 
 func (s *S) AssetsOnChainStatusHandler(req AssetsOnChainStatusReq, resp *AssetsOnChainStatusResp) error {
