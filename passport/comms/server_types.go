@@ -60,7 +60,7 @@ type UserBalanceGetResp struct {
 }
 
 type AssetOnChainStatusReq struct {
-	AssetID string `json:"asset_ID"`
+	AssetID string `json:"asset_id"`
 }
 
 type AssetOnChainStatusResp struct {
@@ -68,7 +68,7 @@ type AssetOnChainStatusResp struct {
 }
 
 type AssetsOnChainStatusReq struct {
-	AssetIDs []string `json:"asset_IDs"`
+	AssetIDs []string `json:"asset_ids"`
 }
 
 type AssetsOnChainStatusResp struct {
