@@ -1,36 +1,26 @@
 package comms
 
 import (
-
-"github.com/ninja-software/terror/v2"
-"strings"
-"xsyn-services/boiler"
-"xsyn-services/passport/passdb"
-"xsyn-services/passport/passlog"
-)"xsyn-services/passport/passlog"
-
-
-)types2 "xsyn-services/types"
-
+	"strings"
+	"xsyn-services/boiler"
+	"xsyn-services/passport/passdb"
+	"xsyn-services/passport/passlog"
 
 	"github.com/ninja-software/terror/v2"
 )
 
-
-
 type AssetOnChainStatusReq struct {
-	AssetHash string `json:"asset_hash"`
+	AssetID string `json:"asset_ID"`
 }
-
 
 type AssetOnChainStatusResp struct {
 	OnChainStatus string `json:"on_chain_status"`
 }
 
-func (s *S) AssetOnChainStatus(req AssetOnChainStatusReq, resp *AssetOnChainStatusResp) error {
-	item, err := boiler.PurchasedItems(boiler.PurchasedItemWhere.Hash.EQ(req.AssetHash)).One(passdb.StdConn)
+func (s *S) AssetOnChainStatusHandler(req AssetOnChainStatusReq, resp *AssetOnChainStatusResp) error {
+	item, err := boiler.PurchasedItems(boiler.PurchasedItemWhere.ID.EQ(req.AssetID)).One(passdb.StdConn)
 	if err != nil {
-		passlog.L.Error().Str("req.AssetHash", req.AssetHash).Err(err).Msg("failed to get asset")
+		passlog.L.Error().Str("req.AssetID", req.AssetID).Err(err).Msg("failed to get asset")
 		return terror.Error(err)
 	}
 
@@ -38,26 +28,24 @@ func (s *S) AssetOnChainStatus(req AssetOnChainStatusReq, resp *AssetOnChainStat
 	return nil
 }
 
-
 type AssetsOnChainStatusReq struct {
-	AssetHashes []string `json:"asset_hashes"`
+	AssetIDs []string `json:"asset_IDs"`
 }
-
 
 type AssetsOnChainStatusResp struct {
 	OnChainStatuses map[string]string `json:"on_chain_statuses"`
 }
 
-func (s *S) AssetsOnChainStatus(req AssetsOnChainStatusReq, resp *AssetsOnChainStatusResp) error {
-	items, err := boiler.PurchasedItems(boiler.PurchasedItemWhere.Hash.IN(req.AssetHashes)).All(passdb.StdConn)
+func (s *S) AssetsOnChainStatusHandler(req AssetsOnChainStatusReq, resp *AssetsOnChainStatusResp) error {
+	items, err := boiler.PurchasedItems(boiler.PurchasedItemWhere.ID.IN(req.AssetIDs)).All(passdb.StdConn)
 	if err != nil {
-		passlog.L.Error().Str("req.AssetHashes", strings.Join(req.AssetHashes, ", ")).Err(err).Msg("failed to get assets")
+		passlog.L.Error().Str("req.AssetIDs", strings.Join(req.AssetIDs, ", ")).Err(err).Msg("failed to get assets")
 		return terror.Error(err)
 	}
 
 	assetMap := make(map[string]string)
 	for _, asset := range items {
-		assetMap[asset.Hash] = asset.OnChainStatus
+		assetMap[asset.ID] = asset.OnChainStatus
 	}
 
 	resp.OnChainStatuses = assetMap
