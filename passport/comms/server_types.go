@@ -58,3 +58,19 @@ type UserBalanceGetReq struct {
 type UserBalanceGetResp struct {
 	Balance decimal.Decimal `json:"balance"`
 }
+
+type AssetOnChainStatusReq struct {
+	AssetID string `json:"asset_id"`
+}
+
+type AssetOnChainStatusResp struct {
+	OnChainStatus string `json:"on_chain_status"`
+}
+
+type AssetsOnChainStatusReq struct {
+	AssetIDs []string `json:"asset_ids"`
+}
+
+type AssetsOnChainStatusResp struct {
+	OnChainStatuses map[string]string `json:"on_chain_statuses"`
+}
