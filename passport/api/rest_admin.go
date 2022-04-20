@@ -30,6 +30,8 @@ func AdminRoutes(ucm *Transactor) chi.Router {
 	r.Get("/check", WithError(WithAdmin(AdminCheck)))
 	r.Get("/users", WithError(WithAdmin(ListUsers)))
 	r.Get("/users/{public_address}", WithError(WithAdmin(UserHandler)))
+	r.Get("/find_by_userid/{userID}", WithError(WithAdmin(GetUserByUserID)))
+	r.Get("/find_by_username/{username}", WithError(WithAdmin(GetUserByUsername)))
 	r.Get("/chat_timeout_username/{username}/{minutes}", WithError(WithAdmin(ChatTimeoutUsername)))
 	r.Get("/chat_timeout_userid/{userID}/{minutes}", WithError(WithAdmin(ChatTimeoutUserID)))
 	r.Get("/rename_ban_username/{username}/{banned}", WithError(WithAdmin(RenameBanUsername)))
@@ -192,6 +194,49 @@ func UserHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	}
 	return http.StatusOK, nil
 }
+
+func GetUserByUserID(w http.ResponseWriter, r *http.Request) (int, error) {
+	userID := chi.URLParam(r, "userID")
+	if userID == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("userID cannot be empty"), "Unable to find userID, userID empty.")
+	}
+	u, err := boiler.Users(
+		boiler.UserWhere.ID.EQ(userID),
+	).One(passdb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return http.StatusBadRequest, terror.Error(err, "Could not get user")
+	}
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return http.StatusBadRequest, terror.Error(err, "User does not exist")
+	}
+	err = json.NewEncoder(w).Encode(u)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not marshal user")
+	}
+	return http.StatusOK, nil
+}
+
+func GetUserByUsername(w http.ResponseWriter, r *http.Request) (int, error) {
+	username := chi.URLParam(r, "username")
+	if username == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("username cannot be empty"), "Unable to find username, username empty.")
+	}
+	u, err := boiler.Users(
+		boiler.UserWhere.Username.EQ(username),
+	).One(passdb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return http.StatusBadRequest, terror.Error(err, "Could not get user")
+	}
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return http.StatusBadRequest, terror.Error(err, "User does not exist")
+	}
+	err = json.NewEncoder(w).Encode(u)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not marshal user")
+	}
+	return http.StatusOK, nil
+}
+
 func SyncStoreItems(w http.ResponseWriter, r *http.Request) (int, error) {
 	err := db.SyncStoreItems()
 	if err != nil {
