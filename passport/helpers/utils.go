@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/terror/v2"
@@ -107,7 +108,6 @@ func FloatPointer(value float32) *float32 {
 	return &value
 }
 
-
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func RandStringBytes(n int) string {
@@ -116,4 +116,28 @@ func RandStringBytes(n int) string {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
 	return string(b)
+}
+
+// TrimUsername removes misuse of invisible characters.
+func TrimUsername(username string) string {
+	// Check if entire string is nothing not non-printable characters
+	isEmpty := true
+	runes := []rune(username)
+	for _, r := range runes {
+		if unicode.IsPrint(r) && !unicode.IsSpace(r) {
+			isEmpty = false
+			break
+		}
+	}
+	if isEmpty {
+		return ""
+	}
+
+	// Remove Spaces like characters Around String (keep mark ones)
+	output := strings.Trim(username, " \u00A0\u180E\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u200B\u202F\u205F\u3000\uFEFF\u2423\u2422\u2420")
+
+	// Enforce one Space like characters between words
+	output = strings.Join(strings.Fields(output), " ")
+
+	return output
 }

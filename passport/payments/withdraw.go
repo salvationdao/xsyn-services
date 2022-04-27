@@ -37,17 +37,7 @@ func InsertPendingRefund(ucm UserCacheMap, userID types.UserID, amount decimal.D
 		Group:                types.TransactionGroupWithdrawal,
 	}
 
-	_, _, _, err := ucm.Transact(newTx)
-	if err != nil {
-		return "", terror.Error(err)
-	}
-
-	tx, err := boiler.Transactions(boiler.TransactionWhere.TransactionReference.EQ(string(newTx.TransactionReference))).One(passdb.StdConn)
-	if err != nil {
-		return "", terror.Error(err)
-	}
-
-	amountString, err := decimal.NewFromString(amount.String())
+	_, _, txID, err := ucm.Transact(newTx)
 	if err != nil {
 		return "", terror.Error(err)
 	}
@@ -56,8 +46,8 @@ func InsertPendingRefund(ucm UserCacheMap, userID types.UserID, amount decimal.D
 		UserID:                userID.String(),
 		RefundedAt:            expiry.Add(10 * time.Minute),
 		TransactionReference:  string(txRef),
-		AmountSups:            amountString,
-		WithdrawTransactionID: null.StringFrom(tx.ID),
+		AmountSups:            amount,
+		WithdrawTransactionID: null.StringFrom(txID),
 	}
 
 	err = txHold.Insert(passdb.StdConn, boil.Infer())

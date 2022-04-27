@@ -7,6 +7,7 @@ import (
 	"sync"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/email"
+	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
 	"github.com/ninja-software/log_helpers"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub"
+	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 
 	"errors"
@@ -113,7 +115,7 @@ func NewAPI(
 				msgBus.UnsubAll(client)
 			},
 			Log:    zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
-			Tracer: &HubTracer{},
+			Tracer: DatadogTracer.New(),
 			WelcomeMsg: &hub.WelcomeMsg{
 				Key:     "WELCOME",
 				Payload: nil,
@@ -157,7 +159,8 @@ func NewAPI(
 		}).Handler)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
+	r.Use(passlog.ChiLogger(zerolog.InfoLevel))
+	r.Use(DatadogTracer.Middleware())
 
 	var err error
 	api.Auth, err = auth.New(api.Hub, &auth.Config{

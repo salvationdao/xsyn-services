@@ -312,6 +312,7 @@ func StoreItemsByFactionID(factionID uuid.UUID) ([]*boiler.StoreItem, error) {
 }
 
 func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, error) {
+	ctx := context.Background()
 	passlog.L.Debug().Str("fn", "refreshStoreItem").Msg("db func")
 	tx, err := passdb.StdConn.Begin()
 	if err != nil {
@@ -334,6 +335,14 @@ func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, err
 	err = rpcclient.Client.Call("S.Template", rpcclient.TemplateReq{TemplateID: storeItemID}, resp)
 	if err != nil {
 		return nil, err
+	}
+
+	if resp.TemplateContainer.Template.CollectionSlug.Valid {
+		collection, err := CollectionBySlug(ctx, passdb.Conn, resp.TemplateContainer.Template.CollectionSlug.String)
+		if err != nil {
+			return nil, err
+		}
+		dbitem.CollectionID = collection.ID
 	}
 
 	b, err := json.Marshal(resp.TemplateContainer)
