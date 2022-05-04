@@ -81,9 +81,9 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) h
 
 				switch bErr.Level {
 				case terror.ErrLevelWarn:
-					passlog.L.Warn().Err(err).Msg("rest error")
+					passlog.L.Warn().Err(err).Str("stack trace", terror.Echo(bErr, false)).Msg("rest error")
 				default:
-					passlog.L.Err(err).Msg("rest error")
+					passlog.L.Err(err).Str("stack trace", terror.Echo(bErr, false)).Msg("rest error")
 				}
 
 				// set generic messages if friendly message not set making genric messages overrideable
