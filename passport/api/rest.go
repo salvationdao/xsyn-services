@@ -81,7 +81,7 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) h
 
 				switch bErr.Level {
 				case terror.ErrLevelWarn:
-					passlog.L.Warn().Err(err).Str("stack trace", terror.Echo(bErr, false)).CallerSkipFrame(3).Msg("rest error")
+					passlog.L.Warn().Err(err).Str("stack trace", terror.Echo(bErr, false)).Msg("rest error")
 				default:
 					passlog.L.Err(err).Str("stack trace", terror.Echo(bErr, false)).Msg("rest error")
 				}
