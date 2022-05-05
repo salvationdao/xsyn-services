@@ -6,10 +6,10 @@ After=network.target
 Type=simple
 Restart=always
 User=passport-api
-LimitNOFILE=100000000
 WorkingDirectory=/usr/share/ninja_syndicate/passport-api_online
 ExecStart=/usr/share/ninja_syndicate/passport-api_online/passport-api serve
 EnvironmentFile=/usr/share/ninja_syndicate/passport-api_online/init/passport-api.env
+LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target
