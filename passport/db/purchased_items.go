@@ -407,6 +407,11 @@ func refreshItem(itemID uuid.UUID, force bool) (*boiler.PurchasedItem, error) {
 
 	_, err = dbitem.Update(tx, boil.Infer())
 	if err != nil {
+		passlog.L.Error().Err(err).
+			Interface("dbitem", dbitem).
+			Interface("resp", resp).
+			Interface("b", b).
+			Msg("issue updating item")
 		return nil, terror.Error(err)
 	}
 
