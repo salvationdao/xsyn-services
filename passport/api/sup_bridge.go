@@ -138,7 +138,7 @@ func NewChainClients(log *zerolog.Logger, api *API, p *types.BridgeParams, isTes
 		if err != nil {
 			api.Log.Err(err).Msg("failed to update exchange rates")
 		}
-		cc.Log.Debug().
+		cc.Log.Info().
 			Str(symbol, amount.String()).
 			Msg("update rate")
 

@@ -46,7 +46,7 @@ const RefreshDuration = 24 * time.Hour
 
 // SyncPurchasedItems against gameserver
 func SyncPurchasedItems() error {
-	passlog.L.Debug().Str("fn", "SyncPurchasedItems").Msg("db func")
+	passlog.L.Trace().Str("fn", "SyncPurchasedItems").Msg("db func")
 	tx, err := passdb.StdConn.Begin()
 	if err != nil {
 		return terror.Error(err)
@@ -166,7 +166,7 @@ func PurchasedItemIsMinted(collectionAddr common.Address, tokenID int) (bool, er
 }
 
 func PurchasedItemByMintContractAndTokenID(contractAddr common.Address, tokenID int) (*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "PurchasedItemByMintContractAndTokenID").Strs("args", []string{contractAddr.Hex(), strconv.Itoa(tokenID)}).Msg("db func")
+	passlog.L.Trace().Str("fn", "PurchasedItemByMintContractAndTokenID").Strs("args", []string{contractAddr.Hex(), strconv.Itoa(tokenID)}).Msg("db func")
 	collection, err := CollectionByMintAddress(contractAddr)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -185,7 +185,7 @@ func PurchasedItemByMintContractAndTokenID(contractAddr common.Address, tokenID 
 	return item, nil
 }
 func PurchasedItemByHash(hash string) (*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "PurchasedItemByHash").Msg("db func")
+	passlog.L.Trace().Str("fn", "PurchasedItemByHash").Msg("db func")
 	item, err := boiler.PurchasedItems(boiler.PurchasedItemWhere.Hash.EQ(hash)).One(passdb.StdConn)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, terror.Error(err)
@@ -201,7 +201,7 @@ func PurchasedItemByHash(hash string) (*boiler.PurchasedItem, error) {
 	return item, nil
 }
 func PurchasedItemsByOwnerID(ownerID uuid.UUID, limit int, afterExternalTokenID *int, includeAssetIDs, excludeAssetIDs []uuid.UUID) ([]*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "PurchasedItemsByOwnerID").Msg("db func")
+	passlog.L.Trace().Str("fn", "PurchasedItemsByOwnerID").Msg("db func")
 
 	orderBy := boiler.PurchasedItemColumns.ExternalTokenID + " ASC"
 	orderByArgs := []interface{}{}
@@ -275,7 +275,7 @@ func PurchasedItems() ([]*boiler.PurchasedItem, error) {
 }
 
 func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) (*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "PurchasedItemRegister").Msg("db func")
+	passlog.L.Trace().Str("fn", "PurchasedItemRegister").Msg("db func")
 	req := rpcclient.MechRegisterReq{TemplateID: storeItemID, OwnerID: ownerID}
 	resp := &rpcclient.MechRegisterResp{}
 	err := rpcclient.Client.Call("S.MechRegister", req, resp)
@@ -339,7 +339,7 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) (*boiler.Pu
 	return newItem, nil
 }
 func PurchasedItemSetName(purchasedItemID uuid.UUID, name string) (*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "PurchasedItemSetName").Msg("db func")
+	passlog.L.Trace().Str("fn", "PurchasedItemSetName").Msg("db func")
 	req := rpcclient.MechSetNameReq{MechID: purchasedItemID, Name: name}
 	resp := &rpcclient.MechSetNameResp{}
 	err := rpcclient.Client.Call("S.MechSetName", req, resp)
@@ -353,7 +353,7 @@ func PurchasedItemSetName(purchasedItemID uuid.UUID, name string) (*boiler.Purch
 	return refreshedItem, nil
 }
 func PurchasedItemSetOwner(purchasedItemID uuid.UUID, ownerID uuid.UUID) (*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "PurchasedItemSetOwner").Msg("db func")
+	passlog.L.Trace().Str("fn", "PurchasedItemSetOwner").Msg("db func")
 	req := rpcclient.MechSetOwnerReq{MechID: purchasedItemID, OwnerID: ownerID}
 	resp := &rpcclient.MechSetOwnerResp{}
 	err := rpcclient.Client.Call("S.MechSetOwner", req, resp)
@@ -368,7 +368,7 @@ func PurchasedItemSetOwner(purchasedItemID uuid.UUID, ownerID uuid.UUID) (*boile
 }
 
 func refreshItem(itemID uuid.UUID, force bool) (*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "refreshItem").Msg("db func")
+	passlog.L.Trace().Str("fn", "refreshItem").Msg("db func")
 	if itemID == uuid.Nil {
 		return nil, terror.Error(terror.ErrNilUUID)
 	}
@@ -424,7 +424,7 @@ func refreshItem(itemID uuid.UUID, force bool) (*boiler.PurchasedItem, error) {
 // setPurchasedItem sets the item, inserting it on the fly if it doesn't exist
 // Does not obey TTL, can be heavy to run
 func setPurchasedItem(item *boiler.PurchasedItem) (*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "setPurchasedItem").Msg("db func")
+	passlog.L.Trace().Str("fn", "setPurchasedItem").Msg("db func")
 	exists, err := boiler.PurchasedItemExists(passdb.StdConn, item.ID)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -445,7 +445,7 @@ func setPurchasedItem(item *boiler.PurchasedItem) (*boiler.PurchasedItem, error)
 
 // getPurchasedItem fetches the item, obeying TTL
 func getPurchasedItem(itemID uuid.UUID) (*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "getPurchasedItem").Msg("db func")
+	passlog.L.Trace().Str("fn", "getPurchasedItem").Msg("db func")
 	item, err := boiler.FindPurchasedItem(passdb.StdConn, itemID.String())
 	if err != nil {
 		return nil, terror.Error(err)
@@ -460,7 +460,7 @@ func getPurchasedItem(itemID uuid.UUID) (*boiler.PurchasedItem, error) {
 
 // PurchasedItem fetches the item, with the db as a fallback cache
 func PurchasedItem(itemID uuid.UUID) (*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "PurchasedItem").Msg("db func")
+	passlog.L.Trace().Str("fn", "PurchasedItem").Msg("db func")
 	purchasedItem, err := getPurchasedItem(itemID)
 	if err != nil {
 		return nil, terror.Error(err)
