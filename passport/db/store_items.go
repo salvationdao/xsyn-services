@@ -73,7 +73,7 @@ var PriceCentsMap = map[string]int{
 }
 
 func SyncStoreItems() error {
-	passlog.L.Debug().Str("fn", "SyncStoreItems").Msg("db func")
+	passlog.L.Trace().Str("fn", "SyncStoreItems").Msg("db func")
 
 	tx, err := passdb.StdConn.Begin()
 	if err != nil {
@@ -273,11 +273,11 @@ func StoreItems() ([]*boiler.StoreItem, error) {
 	return result, nil
 }
 func StoreItem(storeItemID uuid.UUID) (*boiler.StoreItem, error) {
-	passlog.L.Debug().Str("fn", "StoreItem").Msg("db func")
+	passlog.L.Trace().Str("fn", "StoreItem").Msg("db func")
 	return getStoreItem(storeItemID)
 }
 func StoreItemPurchasedCount(templateID uuid.UUID) (int, error) {
-	passlog.L.Debug().Str("fn", "StoreItemPurchasedCount").Msg("db func")
+	passlog.L.Trace().Str("fn", "StoreItemPurchasedCount").Msg("db func")
 	resp := &rpcclient.TemplatePurchasedCountResp{}
 	err := rpcclient.Client.Call("S.TemplatePurchasedCount", rpcclient.TemplatePurchasedCountReq{TemplateID: templateID}, resp)
 	if err != nil {
@@ -295,7 +295,7 @@ func StoreItemsByFactionIDAndRestrictionGroup(factionID uuid.UUID, restrictionGr
 }
 
 func StoreItemsByFactionID(factionID uuid.UUID) ([]*boiler.StoreItem, error) {
-	passlog.L.Debug().Str("fn", "StoreItemsByFactionID").Msg("db func")
+	passlog.L.Trace().Str("fn", "StoreItemsByFactionID").Msg("db func")
 	storeItems, err := boiler.StoreItems(boiler.StoreItemWhere.FactionID.EQ(factionID.String())).All(passdb.StdConn)
 	if err != nil {
 		return nil, err
@@ -313,7 +313,7 @@ func StoreItemsByFactionID(factionID uuid.UUID) ([]*boiler.StoreItem, error) {
 
 func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, error) {
 	ctx := context.Background()
-	passlog.L.Debug().Str("fn", "refreshStoreItem").Msg("db func")
+	passlog.L.Trace().Str("fn", "refreshStoreItem").Msg("db func")
 	tx, err := passdb.StdConn.Begin()
 	if err != nil {
 		return nil, err
@@ -382,7 +382,7 @@ func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, err
 
 // getStoreItem fetches the item, obeying TTL
 func getStoreItem(storeItemID uuid.UUID) (*boiler.StoreItem, error) {
-	passlog.L.Debug().Str("fn", "getStoreItem").Msg("db func")
+	passlog.L.Trace().Str("fn", "getStoreItem").Msg("db func")
 	item, err := boiler.FindStoreItem(passdb.StdConn, storeItemID.String())
 	if err != nil {
 		return nil, err
