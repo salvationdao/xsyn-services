@@ -415,12 +415,14 @@ func refreshItem(itemID uuid.UUID, force bool) (*boiler.PurchasedItem, error) {
 				Msg("issue updating item")
 			return nil, terror.Error(err)
 		}
+		return dbitem, nil
 	}
-
 	tx.Commit()
-
-	return dbitem, nil
-
+	oldDBitem, err := boiler.FindPurchasedItem(tx, itemID.String())
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return oldDBitem, nil
 }
 
 // setPurchasedItem sets the item, inserting it on the fly if it doesn't exist
