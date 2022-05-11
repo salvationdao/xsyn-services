@@ -159,7 +159,7 @@ func NewAPI(
 		}).Handler)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
-	r.Use(passlog.ChiLogger(zerolog.InfoLevel))
+	r.Use(passlog.ChiLogger(zerolog.DebugLevel))
 	r.Use(DatadogTracer.Middleware())
 
 	var err error
