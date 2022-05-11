@@ -415,6 +415,7 @@ func refreshItem(itemID uuid.UUID, force bool) (*boiler.PurchasedItem, error) {
 				Msg("issue updating item")
 			return nil, terror.Error(err)
 		}
+		tx.Commit()
 		return dbitem, nil
 	}
 	tx.Commit()
