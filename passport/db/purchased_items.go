@@ -405,20 +405,24 @@ func refreshItem(itemID uuid.UUID, force bool) (*boiler.PurchasedItem, error) {
 	dbitem.RefreshesAt = time.Now().Add(RefreshDuration)
 	dbitem.UpdatedAt = time.Now()
 
-	_, err = dbitem.Update(tx, boil.Infer())
+	if dbitem.OwnerID != "" && dbitem.OwnerID != uuid.Nil.String() {
+		_, err = dbitem.Update(tx, boil.Infer())
+		if err != nil {
+			passlog.L.Error().Err(err).
+				Interface("dbitem", dbitem).
+				Interface("resp", resp).
+				Interface("b", b).
+				Msg("issue updating item")
+			return nil, terror.Error(err)
+		}
+		return dbitem, nil
+	}
+	tx.Commit()
+	oldDBitem, err := boiler.FindPurchasedItem(tx, itemID.String())
 	if err != nil {
-		passlog.L.Error().Err(err).
-			Interface("dbitem", dbitem).
-			Interface("resp", resp).
-			Interface("b", b).
-			Msg("issue updating item")
 		return nil, terror.Error(err)
 	}
-
-	tx.Commit()
-
-	return dbitem, nil
-
+	return oldDBitem, nil
 }
 
 // setPurchasedItem sets the item, inserting it on the fly if it doesn't exist
