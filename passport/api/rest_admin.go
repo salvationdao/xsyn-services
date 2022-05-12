@@ -50,6 +50,8 @@ func AdminRoutes(ucm *Transactor) chi.Router {
 
 	r.Post("/sync/store_items", WithError(WithAdmin(SyncStoreItems)))
 	r.Post("/sync/purchased_items", WithError(WithAdmin(SyncPurchasedItems)))
+
+	r.Get("/users/unlock/{public_address}", WithError(WithAdmin(UnlockAddress)))
 	return r
 }
 
@@ -490,4 +492,29 @@ func PurchasedItemSetOwner(w http.ResponseWriter, r *http.Request) (int, error) 
 func AdminCheck(w http.ResponseWriter, r *http.Request) (int, error) {
 	w.Write([]byte("ok"))
 	return http.StatusOK, nil
+}
+
+func UnlockAddress(w http.ResponseWriter, r *http.Request) (int, error) {
+	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
+	u, err := boiler.Users(
+		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex())),
+	).One(passdb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return http.StatusBadRequest, terror.Error(err, "Could not get user")
+	}
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return http.StatusBadRequest, terror.Error(err, "Bad owner ID")
+	}
+
+	u.WithdrawLock = false
+	u.MintLock = false
+	u.TotalLock = false
+
+	_, err = u.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	return http.StatusOK, nil
+
 }
