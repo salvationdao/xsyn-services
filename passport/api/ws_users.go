@@ -2762,16 +2762,28 @@ func (uc *UserController) LockHandler(ctx context.Context, hubc *hub.Client, pay
 	}
 
 	if req.Payload.Type == "account" {
+		if user.TotalLock == true {
+			return terror.Error(fmt.Errorf("user: %s: has already locked account", user.ID), "Account is already locked.")
+		}
+
 		user.TotalLock = true
 		user.WithdrawLock = true
 		user.MintLock = true
 	}
 
 	if req.Payload.Type == "minting" {
+		if user.MintLock == true {
+			return terror.Error(fmt.Errorf("user: %s: has already locked minting", user.ID), "Minting is already locked.")
+		}
+
 		user.MintLock = true
 	}
 
 	if req.Payload.Type == "withdrawals" {
+		if user.WithdrawLock == true {
+			return terror.Error(fmt.Errorf("user: %s: has already locked withdrawals", user.ID), "Withdrawals is already locked.")
+		}
+
 		user.WithdrawLock = true
 	}
 
