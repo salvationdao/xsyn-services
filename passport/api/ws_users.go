@@ -2761,18 +2761,18 @@ func (uc *UserController) LockHandler(ctx context.Context, hubc *hub.Client, pay
 		return terror.Error(err, "Could not get user.")
 	}
 
-	if req.Payload.Type == "total" {
-		user.TotalLock = null.BoolFrom(true)
-		user.WithdrawLock = null.BoolFrom(true)
-		user.MintLock = null.BoolFrom(true)
+	if req.Payload.Type == "account" {
+		user.TotalLock = true
+		user.WithdrawLock = true
+		user.MintLock = true
 	}
 
-	if req.Payload.Type == "mint" {
-		user.MintLock = null.BoolFrom(true)
+	if req.Payload.Type == "minting" {
+		user.MintLock = true
 	}
 
-	if req.Payload.Type == "withdraw" {
-		user.WithdrawLock = null.BoolFrom(true)
+	if req.Payload.Type == "withdrawals" {
+		user.WithdrawLock = true
 	}
 
 	columns, err := user.Update(passdb.StdConn, boil.Infer())
