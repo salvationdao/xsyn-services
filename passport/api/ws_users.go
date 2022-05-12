@@ -85,6 +85,7 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 	api.SecureCommand(HubKeyUserRemoveWallet, userHub.RemoveWalletHandler)     // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserAddWallet, userHub.AddWalletHandler)           // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserCreate, userHub.CreateHandler)
+	api.SecureCommand(HubKeyUserLock, userHub.LockHandler)
 	api.SecureCommandWithPerm(HubKeyUserList, userHub.ListHandler, types.PermUserList)
 	api.SecureCommandWithPerm(HubKeyUserArchive, userHub.ArchiveHandler, types.PermUserArchive)
 	api.SecureCommandWithPerm(HubKeyUserUnarchive, userHub.UnarchiveHandler, types.PermUserUnarchive)
@@ -2735,5 +2736,54 @@ func (uc *UserController) UserFingerprintHandler(ctx context.Context, hubc *hub.
 	}
 
 	reply(true)
+	return nil
+}
+
+const HubKeyUserLock hub.HubCommandKey = "USER:LOCK"
+
+type UserLockRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Type string `json:"type"`
+	} `json:"payload"`
+}
+
+// UserAssetListHandler return a list of asset that user own
+func (uc *UserController) LockHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &UserLockRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	user, err := boiler.FindUser(passdb.StdConn, hubc.Identifier())
+	if err != nil {
+		return terror.Error(err, "Could not get user.")
+	}
+
+	if req.Payload.Type == "total" {
+		user.TotalLock = null.BoolFrom(true)
+		user.WithdrawLock = null.BoolFrom(true)
+		user.MintLock = null.BoolFrom(true)
+	}
+
+	if req.Payload.Type == "mint" {
+		user.MintLock = null.BoolFrom(true)
+	}
+
+	if req.Payload.Type == "withdraw" {
+		user.WithdrawLock = null.BoolFrom(true)
+	}
+
+	columns, err := user.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Could not update account lock settings.")
+	}
+	if columns < 1 {
+		return terror.Error(fmt.Errorf("Did not update user columns"), "Could not update account lock settings.")
+	}
+
+	reply(true)
+
 	return nil
 }
