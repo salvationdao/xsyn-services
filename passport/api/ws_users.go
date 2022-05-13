@@ -2748,7 +2748,7 @@ type UserLockRequest struct {
 	} `json:"payload"`
 }
 
-// UserAssetListHandler return a list of asset that user own
+// LockHandler return updates user table to lock account according to requested level
 func (uc *UserController) LockHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &UserLockRequest{}
 	err := json.Unmarshal(payload, req)
