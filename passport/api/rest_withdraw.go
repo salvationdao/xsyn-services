@@ -200,9 +200,9 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
 	}
 
-	isLocked := helpers.CheckAddressIsLocked("withdrawals", user)
+	isLocked := user.CheckUserIsLocked("withdrawals")
 	if isLocked {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("user: %s, attempting to withdraw while account is locked.", user.ID), "Withdrawals is locked, contact admin to unlock.")
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("user: %s, attempting to withdraw while account is locked.", user.ID), "Withdrawals is locked, contact support to unlock.")
 	}
 
 	userSups, err := db.UserBalance(context.Background(), passdb.Conn, user.ID.String())

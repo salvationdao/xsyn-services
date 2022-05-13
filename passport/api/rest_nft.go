@@ -16,7 +16,6 @@ import (
 	"strconv"
 	"time"
 	"xsyn-services/passport/db"
-	"xsyn-services/passport/helpers"
 )
 
 func (api *API) NFTRoutes() chi.Router {
@@ -77,9 +76,9 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
 	}
 
-	isLocked := helpers.CheckAddressIsLocked("minting", user)
+	isLocked := user.CheckUserIsLocked("minting")
 	if isLocked {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("user: %s, attempting to mint while account is locked.", user.ID), "Minting assets is locked, contact admin to unlock.")
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("user: %s, attempting to mint while account is locked.", user.ID), "Minting assets is locked, contact support to unlock.")
 	}
 
 	// get collection details

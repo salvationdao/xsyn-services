@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
-	"xsyn-services/types"
 )
 
 // EncodeJSON will encode json to response writer and return status ok.
@@ -140,20 +139,4 @@ func TrimUsername(username string) string {
 	output = strings.Join(strings.Fields(output), " ")
 
 	return output
-}
-
-func CheckAddressIsLocked(level string, user *types.User) bool {
-	if level == "withdrawals" && user.WithdrawLock {
-		return true
-	}
-
-	if level == "minting" && user.MintLock {
-		return true
-	}
-
-	if level == "account" && user.TotalLock {
-		return true
-	}
-
-	return false
 }
