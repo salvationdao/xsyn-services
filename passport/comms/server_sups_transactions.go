@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"xsyn-services/passport/db"
+	"xsyn-services/passport/helpers"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
@@ -92,6 +93,13 @@ func (s *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 	amt, err := decimal.NewFromString(req.Amount)
 	if err != nil {
 		return terror.Error(err)
+	}
+
+	user, err := db.UserGet(context.Background(), passdb.Conn, types.UserID(req.FromUserID))
+
+	isLocked := helpers.CheckAddressIsLocked("account", user)
+	if isLocked {
+		return terror.Error(fmt.Errorf("user: %s attempting to purchase on Supremacy while locked", user.ID), "This account is locked, contact admin to unlock.")
 	}
 
 	if amt.LessThan(decimal.Zero) {
