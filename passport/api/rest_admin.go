@@ -51,7 +51,10 @@ func AdminRoutes(ucm *Transactor) chi.Router {
 	r.Post("/sync/store_items", WithError(WithAdmin(SyncStoreItems)))
 	r.Post("/sync/purchased_items", WithError(WithAdmin(SyncPurchasedItems)))
 
-	r.Get("/users/unlock/{public_address}", WithError(WithAdmin(UnlockAddress)))
+	r.Get("/users/unlock_account/{public_address}", WithError(WithAdmin(UnlockAccount)))
+	r.Get("/users/unlock_withdraw/{public_address}", WithError(WithAdmin(UnlockWithdraw)))
+	r.Get("/users/unlock_mint/{public_address}", WithError(WithAdmin(UnlockMint)))
+
 	return r
 }
 
@@ -494,7 +497,7 @@ func AdminCheck(w http.ResponseWriter, r *http.Request) (int, error) {
 	return http.StatusOK, nil
 }
 
-func UnlockAddress(w http.ResponseWriter, r *http.Request) (int, error) {
+func UnlockAccount(w http.ResponseWriter, r *http.Request) (int, error) {
 	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
 	u, err := boiler.Users(
 		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex())),
@@ -502,13 +505,48 @@ func UnlockAddress(w http.ResponseWriter, r *http.Request) (int, error) {
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return http.StatusBadRequest, terror.Error(err, "Could not get user")
 	}
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return http.StatusBadRequest, terror.Error(err, "Bad owner ID")
-	}
 
 	u.WithdrawLock = false
 	u.MintLock = false
 	u.TotalLock = false
+
+	_, err = u.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not update user to unlock account.")
+	}
+
+	return http.StatusOK, nil
+}
+
+func UnlockWithdraw(w http.ResponseWriter, r *http.Request) (int, error) {
+	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
+	u, err := boiler.Users(
+		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex())),
+	).One(passdb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return http.StatusBadRequest, terror.Error(err, "Could not get user")
+	}
+
+	u.WithdrawLock = false
+
+	_, err = u.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not update user to unlock account.")
+	}
+
+	return http.StatusOK, nil
+}
+
+func UnlockMint(w http.ResponseWriter, r *http.Request) (int, error) {
+	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
+	u, err := boiler.Users(
+		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex())),
+	).One(passdb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return http.StatusBadRequest, terror.Error(err, "Could not get user")
+	}
+
+	u.MintLock = false
 
 	_, err = u.Update(passdb.StdConn, boil.Infer())
 	if err != nil {
