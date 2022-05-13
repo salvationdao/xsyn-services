@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
@@ -12,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
-	"xsyn-services/boiler"
+	"xsyn-services/types"
 )
 
 // EncodeJSON will encode json to response writer and return status ok.
@@ -143,13 +142,7 @@ func TrimUsername(username string) string {
 	return output
 }
 
-func CheckAddressIsLocked(level string, user *boiler.User) bool {
-	fmt.Println("---------------------------------")
-
-	fmt.Println(level, user)
-
-	fmt.Println("---------------------------------")
-
+func CheckAddressIsLocked(level string, user *types.User) bool {
 	if level == "withdrawals" && user.WithdrawLock {
 		return true
 	}

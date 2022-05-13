@@ -84,6 +84,9 @@ type User struct {
 	UpdatedAt                        time.Time    `json:"updated_at" db:"updated_at"`
 	DeletedAt                        *time.Time   `json:"deleted_at" db:"deleted_at"`
 	Metadata                         UserMetadata `json:"metadata" db:"metadata"`
+	WithdrawLock                     bool         `json:"withdraw_lock" db:"withdraw_lock"`
+	MintLock                         bool         `json:"mint_lock" db:"mint_lock"`
+	TotalLock                        bool         `json:"total_lock" db:"total_lock"`
 }
 
 type UserBrief struct {

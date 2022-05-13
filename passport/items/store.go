@@ -9,7 +9,6 @@ import (
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/helpers"
-	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/rpcclient"
 	"xsyn-services/types"
 
@@ -48,12 +47,7 @@ func Purchase(
 		return terror.Error(err)
 	}
 
-	u, err := boiler.FindUser(passdb.StdConn, user.ID.String())
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	isLocked := helpers.CheckAddressIsLocked("account", u)
+	isLocked := helpers.CheckAddressIsLocked("account", &user)
 	if isLocked {
 		return terror.Error(fmt.Errorf("user: %s, attempting to purchase item while account is locked", user.ID), "Account is locked, contact admin to unlock.")
 	}
