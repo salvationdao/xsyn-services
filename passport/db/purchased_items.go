@@ -670,3 +670,39 @@ func PurchaseItemsList(
 
 	return totalRows, result, nil
 }
+
+
+func ChangePurchasedItemID(oldID, newID string) error {
+	query := `
+		UPDATE purchased_items SET id = $1 WHERE id = $2
+		`
+
+	_, err := passdb.StdConn.Exec(query, newID, oldID)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to update purchased item id")
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+func ChangeStoreItemsTemplateID(oldID, newID string) error {
+	query := `
+		WITH old AS (
+			UPDATE store_items SET id = $1
+			WHERE id =  $2
+			RETURNING $1::uuid as new, $2::uuid as old
+		) UPDATE purchased_items
+		SET store_item_id = old.new
+		FROM old
+		WHERE store_item_id = old.old;
+		`
+
+	_, err := passdb.StdConn.Exec(query, newID, oldID)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to update store item id")
+		return terror.Error(err)
+	}
+
+	return nil
+}
