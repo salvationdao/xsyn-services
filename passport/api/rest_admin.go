@@ -531,7 +531,7 @@ func UnlockWithdraw(w http.ResponseWriter, r *http.Request) (int, error) {
 
 	_, err = u.Update(passdb.StdConn, boil.Infer())
 	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Could not update user to unlock account.")
+		return http.StatusBadRequest, terror.Error(err, "Could not update user to unlock withdrawals.")
 	}
 
 	return http.StatusOK, nil
@@ -550,7 +550,7 @@ func UnlockMint(w http.ResponseWriter, r *http.Request) (int, error) {
 
 	_, err = u.Update(passdb.StdConn, boil.Infer())
 	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Could not update user to unlock account.")
+		return http.StatusBadRequest, terror.Error(err, "Could not update user to unlock minting.")
 	}
 
 	return http.StatusOK, nil
