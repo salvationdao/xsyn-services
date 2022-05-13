@@ -502,7 +502,7 @@ func UnlockAccount(w http.ResponseWriter, r *http.Request) (int, error) {
 	u, err := boiler.Users(
 		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex())),
 	).One(passdb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not get user")
 	}
 
@@ -523,7 +523,7 @@ func UnlockWithdraw(w http.ResponseWriter, r *http.Request) (int, error) {
 	u, err := boiler.Users(
 		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex())),
 	).One(passdb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not get user")
 	}
 
@@ -542,7 +542,7 @@ func UnlockMint(w http.ResponseWriter, r *http.Request) (int, error) {
 	u, err := boiler.Users(
 		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex())),
 	).One(passdb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not get user")
 	}
 
