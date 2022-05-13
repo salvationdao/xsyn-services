@@ -2,16 +2,17 @@ package helpers
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/microcosm-cc/bluemonday"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 	"math/rand"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
-
-	"github.com/microcosm-cc/bluemonday"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
+	"xsyn-services/boiler"
 )
 
 // EncodeJSON will encode json to response writer and return status ok.
@@ -140,4 +141,26 @@ func TrimUsername(username string) string {
 	output = strings.Join(strings.Fields(output), " ")
 
 	return output
+}
+
+func CheckAddressIsLocked(level string, user *boiler.User) bool {
+	fmt.Println("---------------------------------")
+
+	fmt.Println(level, user)
+
+	fmt.Println("---------------------------------")
+
+	if level == "withdrawals" && user.WithdrawLock {
+		return true
+	}
+
+	if level == "minting" && user.MintLock {
+		return true
+	}
+
+	if level == "account" && user.TotalLock {
+		return true
+	}
+
+	return false
 }

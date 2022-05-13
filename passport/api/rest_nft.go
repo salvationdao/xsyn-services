@@ -4,12 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/big"
-	"net/http"
-	"strconv"
-	"time"
-	"xsyn-services/passport/db"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/go-chi/chi/v5"
@@ -17,6 +11,14 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/ninja-syndicate/supremacy-bridge/bridge"
+	"math/big"
+	"net/http"
+	"strconv"
+	"time"
+	"xsyn-services/boiler"
+	"xsyn-services/passport/db"
+	"xsyn-services/passport/helpers"
+	"xsyn-services/passport/passdb"
 )
 
 func (api *API) NFTRoutes() chi.Router {
@@ -75,6 +77,16 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	user, err := db.UserByPublicAddress(context.Background(), api.Conn, common.HexToAddress(address))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
+	}
+
+	u, err := boiler.FindUser(passdb.StdConn, user.ID.String())
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
+
+	isLocked := helpers.CheckAddressIsLocked("minting", u)
+	if isLocked {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("user: %s, attempting to mint while account is locked.", user.ID), "Minting assets is locked, contact admin to unlock.")
 	}
 
 	// get collection details
