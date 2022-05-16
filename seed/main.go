@@ -83,7 +83,7 @@ func main() {
 						50,
 					)
 					if err != nil {
-						return terror.Error(err)
+						return err
 					}
 
 					return Seed(dbConn, SeedSQL)
@@ -148,11 +148,11 @@ func Seed(conn *sql.DB, seedSQL embed.FS) error {
 	for _, file := range seedFiles {
 		fileData, err := seedSQL.ReadFile(file)
 		if err != nil {
-			return terror.Error(err)
+			return err
 		}
 		_, err = conn.Exec(string(fileData))
 		if err != nil {
-			return terror.Error(err)
+			return err
 		}
 	}
 

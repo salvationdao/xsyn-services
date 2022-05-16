@@ -1,18 +1,15 @@
-package api
+package tokens
 
 import (
-	"context"
 	"encoding/base64"
 	"fmt"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
-	"xsyn-services/passport/email"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/types"
 
 	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lestrrat-go/jwx/jwt/openid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub/ext/auth"
@@ -20,24 +17,16 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-type Tokens struct {
-	Conn                *pgxpool.Pool
-	Mailer              *email.Mailer
-	encryptToken        bool
-	tokenExpirationDays int
-	encryptTokenKey     string
-}
-
 // Save takes a jwt token, pulls out the token uuid and user uuid and saves it the issue_token table
-func (t Tokens) Save(tokenEncoded string) error {
+func Save(tokenEncoded string, tokenExpirationDays int, encryptKey []byte) error {
 	tokenStr, err := base64.StdEncoding.DecodeString(tokenEncoded)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
-	token, err := auth.ReadJWT(tokenStr, t.EncryptToken(), t.EncryptTokenKey())
+	token, err := auth.ReadJWT(tokenStr, true, encryptKey)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	userID, ok := token.Get("user-id")
 	if !ok {
@@ -71,7 +60,7 @@ func (t Tokens) Save(tokenEncoded string) error {
 		ID:        tokenUUID.String(),
 		UserID:    userUUID.String(),
 		UserAgent: device,
-		ExpiresAt: null.TimeFrom(time.Now().AddDate(0, 0, t.tokenExpirationDays)),
+		ExpiresAt: null.TimeFrom(time.Now().AddDate(0, 0, tokenExpirationDays)),
 	}
 	err = it.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
@@ -80,41 +69,30 @@ func (t Tokens) Save(tokenEncoded string) error {
 	return nil
 }
 
-func (t Tokens) Retrieve(uuid uuid.UUID) (auth.Token, auth.SecureUser, error) {
-	ctx := context.Background()
-	token, err := db.AuthFindToken(ctx, t.Conn, types.IssueTokenID(uuid))
+func Retrieve(id uuid.UUID) (auth.Token, *boiler.User, error) {
+	token, err := boiler.FindIssueToken(passdb.StdConn, id.String())
 	if err != nil {
 		return nil, nil, terror.Error(err, "Failed to find auth token")
 	}
 
-	user, err := db.UserGet(ctx, t.Conn, token.UserID)
+	user, err := boiler.FindUser(passdb.StdConn, token.UserID)
 	if err != nil {
 		return nil, nil, terror.Error(err, "Failed to get user from database")
 	}
 
-	return token, &Secureuser{
-		User:   user,
-		Conn:   t.Conn,
-		Mailer: t.Mailer,
-	}, nil
+	tk := &types.IssueToken{
+		ID:     types.IssueTokenID(uuid.FromStringOrNil(token.ID)),
+		UserID: token.UserID,
+	}
+
+	return tk, user, nil
 }
 
-func (t Tokens) Remove(uuid uuid.UUID) error {
-	ctx := context.Background()
-	err := db.AuthRemoveTokenWithID(ctx, t.Conn, types.IssueTokenID(uuid))
+func Remove(uuid uuid.UUID) error {
+	err := db.AuthRemoveTokenWithID(types.IssueTokenID(uuid))
 	if err != nil {
 		return terror.Error(err, "Failed to remove token with ID")
 	}
 
 	return nil
-}
-
-func (t Tokens) TokenExpirationDays() int {
-	return t.tokenExpirationDays
-}
-func (t Tokens) EncryptToken() bool {
-	return t.encryptToken
-}
-func (t Tokens) EncryptTokenKey() []byte {
-	return []byte(t.encryptTokenKey)
 }

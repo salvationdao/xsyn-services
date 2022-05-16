@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"crypto/md5"
 	"database/sql"
 	"encoding/hex"
@@ -11,15 +10,19 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"xsyn-services/passport/db"
+	"xsyn-services/boiler"
 	"xsyn-services/passport/helpers"
+	"xsyn-services/passport/passdb"
 	"xsyn-services/types"
+
+	"github.com/volatiletech/sqlboiler/v4/boil"
+
+	"github.com/volatiletech/null/v8"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/h2non/filetype"
 	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -30,15 +33,13 @@ var (
 
 // FilesController holds connection data for handlers
 type FilesController struct {
-	Conn db.Conn
-	API  *API
+	API *API
 }
 
 // FileRouter returns a new router for handling File requests
-func FileRouter(conn *pgxpool.Pool, api *API) chi.Router {
+func FileRouter(api *API) chi.Router {
 	c := &FilesController{
-		Conn: conn,
-		API:  api,
+		API: api,
 	}
 
 	r := chi.NewRouter()
@@ -65,7 +66,7 @@ func (c *FilesController) FileGet(w http.ResponseWriter, r *http.Request) (int, 
 	}
 
 	// Get blob
-	blob, err := db.BlobGet(context.Background(), c.Conn, blobID)
+	blob, err := boiler.FindBlob(passdb.StdConn, blobID.String())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return http.StatusNotFound, terror.Error(err, "attachment not found")
@@ -77,7 +78,7 @@ func (c *FilesController) FileGet(w http.ResponseWriter, r *http.Request) (int, 
 	if !blob.Public {
 		_, code, err := GetUserFromToken(c.API, r)
 		if err != nil {
-			return code, terror.Error(err)
+			return code, err
 		}
 	}
 
@@ -112,7 +113,9 @@ func (c *FilesController) FileGetByName(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Get blob
-	blob, err := db.BlobGetByFilename(context.Background(), c.Conn, fileName)
+	blob, err := boiler.Blobs(
+		boiler.BlobWhere.FileName.EQ(fileName),
+	).One(passdb.StdConn)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return http.StatusNotFound, terror.Error(err, "attachment not found")
@@ -124,7 +127,7 @@ func (c *FilesController) FileGetByName(w http.ResponseWriter, r *http.Request) 
 	if !blob.Public {
 		_, code, err := GetUserFromToken(c.API, r)
 		if err != nil {
-			return code, terror.Error(err)
+			return code, err
 		}
 	}
 
@@ -149,7 +152,7 @@ func (c *FilesController) FileGetByName(w http.ResponseWriter, r *http.Request) 
 }
 
 // FileUpload retrives a file attachment
-func (c *FilesController) FileUpload(w http.ResponseWriter, r *http.Request, user *types.User) (int, error) {
+func (c *FilesController) FileUpload(w http.ResponseWriter, r *http.Request, user *boiler.User) (int, error) {
 	defer r.Body.Close()
 
 	// Get blob
@@ -173,13 +176,16 @@ func (c *FilesController) FileUpload(w http.ResponseWriter, r *http.Request, use
 
 	// File with the same size and hash exists? return that
 	if blob.Hash != nil {
-		existingBlob, err := db.BlobGetByHash(context.Background(), c.Conn, *blob.Hash, blob.FileSizeBytes)
+		existingBlob, err := boiler.Blobs(
+			boiler.BlobWhere.Hash.EQ(null.StringFromPtr(blob.Hash)),
+			boiler.BlobWhere.FileSizeBytes.EQ(blob.FileSizeBytes),
+		).One(passdb.StdConn)
 
 		if err == nil {
 			if existingBlob != nil && !existingBlob.Public && blob.Public {
 				// Make existing blob public
 				existingBlob.Public = true
-				err = db.BlobUpdate(context.Background(), c.Conn, existingBlob)
+				_, err = existingBlob.Update(passdb.StdConn, boil.Whitelist(boiler.BlobColumns.Public, boiler.BlobColumns.FileName))
 				if err != nil {
 					return http.StatusInternalServerError, terror.Error(err, "failed to upload")
 				}
@@ -187,13 +193,22 @@ func (c *FilesController) FileUpload(w http.ResponseWriter, r *http.Request, use
 
 			// Return existing blob
 			return helpers.EncodeJSON(w, struct {
-				ID types.BlobID `json:"id"`
+				ID string `json:"id"`
 			}{ID: existingBlob.ID})
 		}
 	}
 
 	// Insert blob
-	err = db.BlobInsert(context.Background(), c.Conn, blob)
+	bb := boiler.Blob{
+		FileName:      blob.FileName,
+		MimeType:      blob.MimeType,
+		FileSizeBytes: blob.FileSizeBytes,
+		Extension:     blob.Extension,
+		File:          blob.File,
+		Hash:          null.StringFromPtr(blob.Hash),
+		Public:        blob.Public,
+	}
+	err = bb.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "failed to upload")
 	}

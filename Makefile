@@ -219,3 +219,6 @@ db-restore:
 		psql -U ${LOCAL_DEV_DB_USER} -d postgres -c "DROP DATABASE $(LOCAL_DEV_DB_DATABASE)"
 		psql -U ${LOCAL_DEV_DB_USER} -d postgres < init.sql
 		psql -U ${LOCAL_DEV_DB_USER} -d $(LOCAL_DEV_DB_DATABASE) < tmp/${LOCAL_DEV_DB_DATABASE}_dump.sql
+
+dev_tool:
+	go run ./passport/devtool/*.go

@@ -27,7 +27,7 @@ type MechsByOwnerIDResp struct {
 
 type MechRegisterReq struct {
 	TemplateID uuid.UUID
-	OwnerID    uuid.UUID
+	OwnerID    string
 }
 type MechRegisterResp struct {
 	MechContainer *MechContainer

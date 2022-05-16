@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -8,10 +9,11 @@ import (
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/helpers"
 
+	"github.com/friendsofgo/errors"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog/log"
 )
@@ -35,10 +37,9 @@ func (api *API) CheckUserEarlyContributor(w http.ResponseWriter, r *http.Request
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("url query param not given"), "Failed to provide address")
 	}
 	lowerAddress := strings.ToLower(address[0])
-	isEarly, user, err := db.IsUserEarlyContributor(r.Context(), api.Conn, lowerAddress)
+	isEarly, user, err := db.IsUserEarlyContributor(lowerAddress)
 	if err != nil {
-		found := pgxscan.NotFound(err)
-		if !found {
+		if !errors.Is(err, sql.ErrNoRows) {
 			return http.StatusInternalServerError, terror.Error(err, "Failed to check early contributor")
 		}
 		earlyContributorReturn := EarlyContributorReturn{Key: "is-early", Value: isEarly, Signed: false, Agreed: false}
@@ -102,15 +103,14 @@ func (api *API) EarlyContributorSignMessage(w http.ResponseWriter, r *http.Reque
 		return http.StatusInternalServerError, terror.Error(err, "Error parsing agreement boolean")
 	}
 
-	err = db.UserSignMessage(r.Context(), api.Conn, lowerAddress, message[0], signature[0], messageHex[0], agreed)
+	err = db.UserSignMessage(lowerAddress, message[0], signature[0], messageHex[0], agreed)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
+		return http.StatusInternalServerError, err
 	}
 
-	isEarly, user, err := db.IsUserEarlyContributor(r.Context(), api.Conn, lowerAddress)
+	isEarly, user, err := db.IsUserEarlyContributor(lowerAddress)
 	if err != nil {
-		found := pgxscan.NotFound(err)
-		if !found {
+		if !errors.Is(err, sql.ErrNoRows) {
 			return http.StatusInternalServerError, terror.Error(err, "Failed to check early contributor")
 		}
 		earlyContributorReturn := EarlyContributorReturn{Key: "is-early", Value: isEarly, Signed: false, Agreed: false}
