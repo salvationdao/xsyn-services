@@ -1,6 +1,6 @@
 module xsyn-services
 
-go 1.17
+go 1.18
 
 require (
 	github.com/TwiN/go-away v1.6.0

@@ -24,22 +24,22 @@ import (
 
 // PurchasedItem is an object representing the database table.
 type PurchasedItem struct {
-	ID              string     `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	CollectionID    string     `boiler:"collection_id" boil:"collection_id" json:"collection_id" toml:"collection_id" yaml:"collection_id"`
-	StoreItemID     string     `boiler:"store_item_id" boil:"store_item_id" json:"store_item_id" toml:"store_item_id" yaml:"store_item_id"`
-	ExternalTokenID int        `boiler:"external_token_id" boil:"external_token_id" json:"external_token_id" toml:"external_token_id" yaml:"external_token_id"`
-	IsDefault       bool       `boiler:"is_default" boil:"is_default" json:"is_default" toml:"is_default" yaml:"is_default"`
-	Tier            string     `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	Hash            string     `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
-	OwnerID         string     `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	Data            types.JSON `boiler:"data" boil:"data" json:"data" toml:"data" yaml:"data"`
-	UnlockedAt      time.Time  `boiler:"unlocked_at" boil:"unlocked_at" json:"unlocked_at" toml:"unlocked_at" yaml:"unlocked_at"`
-	MintedAt        null.Time  `boiler:"minted_at" boil:"minted_at" json:"minted_at,omitempty" toml:"minted_at" yaml:"minted_at,omitempty"`
-	DeletedAt       null.Time  `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	RefreshesAt     time.Time  `boiler:"refreshes_at" boil:"refreshes_at" json:"refreshes_at" toml:"refreshes_at" yaml:"refreshes_at"`
-	UpdatedAt       time.Time  `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt       time.Time  `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	OnChainStatus   string     `boiler:"on_chain_status" boil:"on_chain_status" json:"on_chain_status" toml:"on_chain_status" yaml:"on_chain_status"`
+	ID              string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	CollectionID    string      `boiler:"collection_id" boil:"collection_id" json:"collection_id" toml:"collection_id" yaml:"collection_id"`
+	StoreItemID     null.String `boiler:"store_item_id" boil:"store_item_id" json:"store_item_id,omitempty" toml:"store_item_id" yaml:"store_item_id,omitempty"`
+	ExternalTokenID int         `boiler:"external_token_id" boil:"external_token_id" json:"external_token_id" toml:"external_token_id" yaml:"external_token_id"`
+	IsDefault       bool        `boiler:"is_default" boil:"is_default" json:"is_default" toml:"is_default" yaml:"is_default"`
+	Tier            string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	Hash            string      `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
+	OwnerID         string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	Data            types.JSON  `boiler:"data" boil:"data" json:"data" toml:"data" yaml:"data"`
+	UnlockedAt      time.Time   `boiler:"unlocked_at" boil:"unlocked_at" json:"unlocked_at" toml:"unlocked_at" yaml:"unlocked_at"`
+	MintedAt        null.Time   `boiler:"minted_at" boil:"minted_at" json:"minted_at,omitempty" toml:"minted_at" yaml:"minted_at,omitempty"`
+	DeletedAt       null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	RefreshesAt     time.Time   `boiler:"refreshes_at" boil:"refreshes_at" json:"refreshes_at" toml:"refreshes_at" yaml:"refreshes_at"`
+	UpdatedAt       time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt       time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	OnChainStatus   string      `boiler:"on_chain_status" boil:"on_chain_status" json:"on_chain_status" toml:"on_chain_status" yaml:"on_chain_status"`
 
 	R *purchasedItemR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L purchasedItemL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -122,7 +122,7 @@ var PurchasedItemTableColumns = struct {
 var PurchasedItemWhere = struct {
 	ID              whereHelperstring
 	CollectionID    whereHelperstring
-	StoreItemID     whereHelperstring
+	StoreItemID     whereHelpernull_String
 	ExternalTokenID whereHelperint
 	IsDefault       whereHelperbool
 	Tier            whereHelperstring
@@ -139,7 +139,7 @@ var PurchasedItemWhere = struct {
 }{
 	ID:              whereHelperstring{field: "\"purchased_items\".\"id\""},
 	CollectionID:    whereHelperstring{field: "\"purchased_items\".\"collection_id\""},
-	StoreItemID:     whereHelperstring{field: "\"purchased_items\".\"store_item_id\""},
+	StoreItemID:     whereHelpernull_String{field: "\"purchased_items\".\"store_item_id\""},
 	ExternalTokenID: whereHelperint{field: "\"purchased_items\".\"external_token_id\""},
 	IsDefault:       whereHelperbool{field: "\"purchased_items\".\"is_default\""},
 	Tier:            whereHelperstring{field: "\"purchased_items\".\"tier\""},
@@ -699,7 +699,9 @@ func (purchasedItemL) LoadStoreItem(e boil.Executor, singular bool, maybePurchas
 		if object.R == nil {
 			object.R = &purchasedItemR{}
 		}
-		args = append(args, object.StoreItemID)
+		if !queries.IsNil(object.StoreItemID) {
+			args = append(args, object.StoreItemID)
+		}
 
 	} else {
 	Outer:
@@ -709,12 +711,14 @@ func (purchasedItemL) LoadStoreItem(e boil.Executor, singular bool, maybePurchas
 			}
 
 			for _, a := range args {
-				if a == obj.StoreItemID {
+				if queries.Equal(a, obj.StoreItemID) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.StoreItemID)
+			if !queries.IsNil(obj.StoreItemID) {
+				args = append(args, obj.StoreItemID)
+			}
 
 		}
 	}
@@ -773,7 +777,7 @@ func (purchasedItemL) LoadStoreItem(e boil.Executor, singular bool, maybePurchas
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.StoreItemID == foreign.ID {
+			if queries.Equal(local.StoreItemID, foreign.ID) {
 				local.R.StoreItem = foreign
 				if foreign.R == nil {
 					foreign.R = &storeItemR{}
@@ -905,7 +909,7 @@ func (o *PurchasedItem) SetStoreItem(exec boil.Executor, insert bool, related *S
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.StoreItemID = related.ID
+	queries.Assign(&o.StoreItemID, related.ID)
 	if o.R == nil {
 		o.R = &purchasedItemR{
 			StoreItem: related,
@@ -922,6 +926,39 @@ func (o *PurchasedItem) SetStoreItem(exec boil.Executor, insert bool, related *S
 		related.R.PurchasedItems = append(related.R.PurchasedItems, o)
 	}
 
+	return nil
+}
+
+// RemoveStoreItem relationship.
+// Sets o.R.StoreItem to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *PurchasedItem) RemoveStoreItem(exec boil.Executor, related *StoreItem) error {
+	var err error
+
+	queries.SetScanner(&o.StoreItemID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("store_item_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.StoreItem = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.PurchasedItems {
+		if queries.Equal(o.StoreItemID, ri.StoreItemID) {
+			continue
+		}
+
+		ln := len(related.R.PurchasedItems)
+		if ln > 1 && i < ln-1 {
+			related.R.PurchasedItems[i] = related.R.PurchasedItems[ln-1]
+		}
+		related.R.PurchasedItems = related.R.PurchasedItems[:ln-1]
+		break
+	}
 	return nil
 }
 

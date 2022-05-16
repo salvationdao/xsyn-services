@@ -47,88 +47,89 @@ const RefreshDuration = 24 * time.Hour
 // SyncPurchasedItems against gameserver
 func SyncPurchasedItems() error {
 	passlog.L.Debug().Str("fn", "SyncPurchasedItems").Msg("db func")
-	tx, err := passdb.StdConn.Begin()
-	if err != nil {
-		return terror.Error(err)
-	}
-	defer tx.Rollback()
-	mechResp := &rpcclient.MechsResp{}
-	err = rpcclient.Client.Call("S.Mechs", rpcclient.MechsReq{}, mechResp)
-	if err != nil {
-		return terror.Error(err)
-	}
-	for _, item := range mechResp.MechContainers {
-		exists, err := boiler.PurchasedItemExists(tx, item.Mech.ID)
-		if err != nil {
-			passlog.L.Err(err).Str("id", item.Mech.ID).Msg("check if mech exists")
-			return terror.Error(err)
-		}
-		if !exists {
-			data, err := json.Marshal(item)
-			if err != nil {
-				return terror.Error(err)
-			}
-			var collection *boiler.Collection
-			var collectionSlug string
-			if !item.Mech.CollectionSlug.Valid {
-				return terror.Error(fmt.Errorf("mech collection slug not valid"), "Mech collection slug not valid")
-			}
-
-			collectionSlug = item.Mech.CollectionSlug.String
-			collection, err = CollectionBySlug(context.Background(), passdb.Conn, collectionSlug)
-			if err != nil {
-				return terror.Error(err)
-			}
-			if item.Mech.IsDefault {
-				collection, err = AICollection()
-				if err != nil {
-					return terror.Error(err)
-				}
-			}
-
-			if item.Mech.Hash == "k8zlb6Yl1L" {
-				collection, err = RogueCollection()
-				if err != nil {
-					return terror.Error(err)
-				}
-			}
-
-			newItem := &boiler.PurchasedItem{
-				ID:              item.Mech.ID,
-				CollectionID:    collection.ID,
-				StoreItemID:     item.Mech.TemplateID,
-				OwnerID:         item.Mech.OwnerID,
-				ExternalTokenID: item.Mech.ExternalTokenID,
-				IsDefault:       item.Mech.IsDefault,
-				Tier:            item.Mech.Tier,
-				Hash:            item.Mech.Hash,
-				Data:            data,
-				RefreshesAt:     time.Now().Add(RefreshDuration),
-			}
-			passlog.L.Info().Str("id", item.Mech.ID).
-				Str("collection_id", collection.ID).
-				Str("store_item_id", item.Mech.TemplateID).
-				Str("owner_id", item.Mech.OwnerID).
-				Int("external_token_id", item.Mech.ExternalTokenID).
-				Msg("creating new mech")
-			err = newItem.Insert(tx, boil.Infer())
-			if err != nil {
-				return terror.Error(err)
-			}
-		} else {
-			passlog.L.Info().Str("id", item.Mech.ID).Msg("updating existing mech")
-			_, err = refreshItem(uuid.Must(uuid.FromString(item.Mech.ID)), true)
-			if err != nil {
-				return terror.Error(err)
-			}
-		}
-
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return terror.Error(err)
-	}
+	// TODO: Vinnie fix
+	//tx, err := passdb.StdConn.Begin()
+	//if err != nil {
+	//	return terror.Error(err)
+	//}
+	//defer tx.Rollback()
+	//mechResp := &rpcclient.MechsResp{}
+	//err = rpcclient.Client.Call("S.Mechs", rpcclient.MechsReq{}, mechResp)
+	//if err != nil {
+	//	return terror.Error(err)
+	//}
+	//for _, item := range mechResp.MechContainers {
+	//	exists, err := boiler.PurchasedItemExists(tx, item.Mech.ID)
+	//	if err != nil {
+	//		passlog.L.Err(err).Str("id", item.Mech.ID).Msg("check if mech exists")
+	//		return terror.Error(err)
+	//	}
+	//	if !exists {
+	//		data, err := json.Marshal(item)
+	//		if err != nil {
+	//			return terror.Error(err)
+	//		}
+	//		var collection *boiler.Collection
+	//		var collectionSlug string
+	//		if !item.Mech.CollectionSlug.Valid {
+	//			return terror.Error(fmt.Errorf("mech collection slug not valid"), "Mech collection slug not valid")
+	//		}
+	//
+	//		collectionSlug = item.Mech.CollectionSlug.String
+	//		collection, err = CollectionBySlug(context.Background(), passdb.Conn, collectionSlug)
+	//		if err != nil {
+	//			return terror.Error(err)
+	//		}
+	//		if item.Mech.IsDefault {
+	//			collection, err = AICollection()
+	//			if err != nil {
+	//				return terror.Error(err)
+	//			}
+	//		}
+	//
+	//		if item.Mech.Hash == "k8zlb6Yl1L" {
+	//			collection, err = RogueCollection()
+	//			if err != nil {
+	//				return terror.Error(err)
+	//			}
+	//		}
+	//
+	//		newItem := &boiler.PurchasedItem{
+	//			ID:              item.Mech.ID,
+	//			CollectionID:    collection.ID,
+	//			StoreItemID:     item.Mech.TemplateID,
+	//			OwnerID:         item.Mech.OwnerID,
+	//			ExternalTokenID: item.Mech.ExternalTokenID,
+	//			IsDefault:       item.Mech.IsDefault,
+	//			Tier:            item.Mech.Tier,
+	//			Hash:            item.Mech.Hash,
+	//			Data:            data,
+	//			RefreshesAt:     time.Now().Add(RefreshDuration),
+	//		}
+	//		passlog.L.Info().Str("id", item.Mech.ID).
+	//			Str("collection_id", collection.ID).
+	//			Str("store_item_id", item.Mech.TemplateID).
+	//			Str("owner_id", item.Mech.OwnerID).
+	//			Int("external_token_id", item.Mech.ExternalTokenID).
+	//			Msg("creating new mech")
+	//		err = newItem.Insert(tx, boil.Infer())
+	//		if err != nil {
+	//			return terror.Error(err)
+	//		}
+	//	} else {
+	//		passlog.L.Info().Str("id", item.Mech.ID).Msg("updating existing mech")
+	//		_, err = refreshItem(uuid.Must(uuid.FromString(item.Mech.ID)), true)
+	//		if err != nil {
+	//			return terror.Error(err)
+	//		}
+	//	}
+	//
+	//}
+	//
+	//err = tx.Commit()
+	//if err != nil {
+	//	return terror.Error(err)
+	//}
 
 	return nil
 }
@@ -254,7 +255,7 @@ func PurchasedItemsByOwnerID(ownerID uuid.UUID, limit int, afterExternalTokenID 
 	return result, nil
 }
 
-func PurchasedItemsbyOwnerIDAndTier(ownerID uuid.UUID, tier string) (int, error) {
+func PurchasedItemsByOwnerIDAndTier(ownerID uuid.UUID, tier string) (int, error) {
 	count, err := boiler.PurchasedItems(
 		boiler.PurchasedItemWhere.OwnerID.EQ(ownerID.String()),
 		boiler.PurchasedItemWhere.Tier.EQ(tier),
@@ -274,69 +275,63 @@ func PurchasedItems() ([]*boiler.PurchasedItem, error) {
 	return result, nil
 }
 
-func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) (*boiler.PurchasedItem, error) {
+func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*boiler.PurchasedItem, error) {
 	passlog.L.Debug().Str("fn", "PurchasedItemRegister").Msg("db func")
-	req := rpcclient.MechRegisterReq{TemplateID: storeItemID, OwnerID: ownerID}
-	resp := &rpcclient.MechRegisterResp{}
-	err := rpcclient.Client.Call("S.MechRegister", req, resp)
+	req := rpcclient.TemplateRegisterReq{TemplateID: storeItemID, OwnerID: ownerID}
+	resp := &rpcclient.TemplateRegisterResp{}
+	err := rpcclient.Client.Call("S.TemplateRegister", req, resp)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-
-	data, err := json.Marshal(resp.MechContainer)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	var collection *boiler.Collection
-	var collectionSlug string
-	if !resp.MechContainer.Mech.CollectionSlug.Valid {
-		return nil, terror.Error(fmt.Errorf("mech collection slug not valid"), "Mech collection slug not valid")
-	}
-
-	collectionSlug = resp.MechContainer.Mech.CollectionSlug.String
-
-	collection, err = CollectionBySlug(context.Background(), passdb.Conn, collectionSlug)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-	if resp.MechContainer.Mech.IsDefault {
-		collection, err = AICollection()
+	var newItems []*boiler.PurchasedItem
+	// for each asset, assign it on our database
+	for _, itm := range resp.Assets {
+		data, err := json.Marshal(itm.Data)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
-	}
-	newItem := &boiler.PurchasedItem{
-		ID:              resp.MechContainer.Mech.ID,
-		StoreItemID:     resp.MechContainer.Mech.TemplateID,
-		ExternalTokenID: resp.MechContainer.Mech.ExternalTokenID,
-		Hash:            resp.MechContainer.Mech.Hash,
-		IsDefault:       resp.MechContainer.Mech.IsDefault,
-		Tier:            resp.MechContainer.Mech.Tier,
-		CollectionID:    collection.ID,
-		OwnerID:         resp.MechContainer.Mech.OwnerID,
-		Data:            data,
-		RefreshesAt:     time.Now().Add(RefreshDuration),
-	}
-	newItem, err = setPurchasedItem(newItem)
-	if err != nil {
-		return nil, terror.Error(err)
+
+		// get collection
+		collection, err := CollectionBySlug(context.Background(), passdb.Conn, itm.CollectionSlug)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+
+		newItem := &boiler.PurchasedItem{
+			ID:              itm.ID,
+			ExternalTokenID: itm.TokenID,
+			Hash:            itm.Hash,
+			Tier:            itm.Tier,
+			CollectionID:    collection.ID,
+			OwnerID:         itm.OwnerID,
+			Data:            data,
+			RefreshesAt:     time.Now().Add(RefreshDuration),
+		}
+		newItem, err = setPurchasedItem(newItem)
+		if err != nil {
+			passlog.L.Error().Err(err).Interface("newItem", newItem).Msg("failed to purchase")
+			return nil, terror.Error(err)
+		}
+
+		newItems = append(newItems, newItem)
+
+		// TODO: Vinnie - figure how we want to handle store counts, separate store counts? joint?
+		//storeItem, err := boiler.FindStoreItem(passdb.StdConn, resp.MechContainer.Mech.TemplateID)
+		//if err != nil {
+		//	return nil, terror.Error(err)
+		//}
+		//newCount, err := StoreItemPurchasedCount(uuid.Must(uuid.FromString(resp.MechContainer.Mech.TemplateID)))
+		//if err != nil {
+		//	return nil, terror.Error(err)
+		//}
+		//storeItem.AmountSold = newCount
+		//_, err = storeItem.Update(passdb.StdConn, boil.Whitelist(boiler.StoreItemColumns.AmountSold))
+		//if err != nil {
+		//	return nil, terror.Error(err)
+		//}
 	}
 
-	storeItem, err := boiler.FindStoreItem(passdb.StdConn, resp.MechContainer.Mech.TemplateID)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-	newCount, err := StoreItemPurchasedCount(uuid.Must(uuid.FromString(resp.MechContainer.Mech.TemplateID)))
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-	storeItem.AmountSold = newCount
-	_, err = storeItem.Update(passdb.StdConn, boil.Whitelist(boiler.StoreItemColumns.AmountSold))
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-	return newItem, nil
+	return newItems, nil
 }
 func PurchasedItemSetName(purchasedItemID uuid.UUID, name string) (*boiler.PurchasedItem, error) {
 	passlog.L.Debug().Str("fn", "PurchasedItemSetName").Msg("db func")
@@ -368,6 +363,7 @@ func PurchasedItemSetOwner(purchasedItemID uuid.UUID, ownerID uuid.UUID) (*boile
 }
 
 func refreshItem(itemID uuid.UUID, force bool) (*boiler.PurchasedItem, error) {
+	// TODO: Vinnie - refactor to refresh any item
 	passlog.L.Debug().Str("fn", "refreshItem").Msg("db func")
 	if itemID == uuid.Nil {
 		return nil, terror.Error(terror.ErrNilUUID)
@@ -389,18 +385,18 @@ func refreshItem(itemID uuid.UUID, force bool) (*boiler.PurchasedItem, error) {
 		}
 	}
 
-	resp := &rpcclient.MechResp{}
-	err = rpcclient.Client.Call("S.Mech", rpcclient.MechReq{MechID: itemID}, resp)
+	resp := &rpcclient.AssetResp{}
+	err = rpcclient.Client.Call("S.Asset", rpcclient.AssetReq{AssetID: itemID}, resp)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
-	b, err := json.Marshal(resp.MechContainer)
+	b, err := json.Marshal(resp.Asset)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
-	dbitem.OwnerID = resp.MechContainer.Mech.OwnerID
+	dbitem.OwnerID = resp.Asset.OwnerID
 	dbitem.Data = b
 	dbitem.RefreshesAt = time.Now().Add(RefreshDuration)
 	dbitem.UpdatedAt = time.Now()
@@ -418,7 +414,6 @@ func refreshItem(itemID uuid.UUID, force bool) (*boiler.PurchasedItem, error) {
 	tx.Commit()
 
 	return dbitem, nil
-
 }
 
 // setPurchasedItem sets the item, inserting it on the fly if it doesn't exist
@@ -427,17 +422,17 @@ func setPurchasedItem(item *boiler.PurchasedItem) (*boiler.PurchasedItem, error)
 	passlog.L.Debug().Str("fn", "setPurchasedItem").Msg("db func")
 	exists, err := boiler.PurchasedItemExists(passdb.StdConn, item.ID)
 	if err != nil {
-		return nil, terror.Error(err)
+		return item, terror.Error(err)
 	}
 	if !exists {
 		err = item.Insert(passdb.StdConn, boil.Infer())
 		if err != nil {
-			return nil, terror.Error(err)
+			return item, terror.Error(err)
 		}
 	}
 	item, err = refreshItem(uuid.Must(uuid.FromString(item.ID)), true)
 	if err != nil {
-		return nil, terror.Error(err)
+		return item, terror.Error(err)
 	}
 
 	return item, nil

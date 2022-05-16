@@ -699,7 +699,7 @@ func (storeItemL) LoadPurchasedItems(e boil.Executor, singular bool, maybeStoreI
 			}
 
 			for _, a := range args {
-				if a == obj.ID {
+				if queries.Equal(a, obj.ID) {
 					continue Outer
 				}
 			}
@@ -758,7 +758,7 @@ func (storeItemL) LoadPurchasedItems(e boil.Executor, singular bool, maybeStoreI
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.StoreItemID {
+			if queries.Equal(local.ID, foreign.StoreItemID) {
 				local.R.PurchasedItems = append(local.R.PurchasedItems, foreign)
 				if foreign.R == nil {
 					foreign.R = &purchasedItemR{}
@@ -872,7 +872,7 @@ func (o *StoreItem) AddPurchasedItems(exec boil.Executor, insert bool, related .
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.StoreItemID = o.ID
+			queries.Assign(&rel.StoreItemID, o.ID)
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
@@ -892,7 +892,7 @@ func (o *StoreItem) AddPurchasedItems(exec boil.Executor, insert bool, related .
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.StoreItemID = o.ID
+			queries.Assign(&rel.StoreItemID, o.ID)
 		}
 	}
 
@@ -913,6 +913,79 @@ func (o *StoreItem) AddPurchasedItems(exec boil.Executor, insert bool, related .
 			rel.R.StoreItem = o
 		}
 	}
+	return nil
+}
+
+// SetPurchasedItems removes all previously related items of the
+// store_item replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.StoreItem's PurchasedItems accordingly.
+// Replaces o.R.PurchasedItems with related.
+// Sets related.R.StoreItem's PurchasedItems accordingly.
+func (o *StoreItem) SetPurchasedItems(exec boil.Executor, insert bool, related ...*PurchasedItem) error {
+	query := "update \"purchased_items\" set \"store_item_id\" = null where \"store_item_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.PurchasedItems {
+			queries.SetScanner(&rel.StoreItemID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.StoreItem = nil
+		}
+
+		o.R.PurchasedItems = nil
+	}
+	return o.AddPurchasedItems(exec, insert, related...)
+}
+
+// RemovePurchasedItems relationships from objects passed in.
+// Removes related items from R.PurchasedItems (uses pointer comparison, removal does not keep order)
+// Sets related.R.StoreItem.
+func (o *StoreItem) RemovePurchasedItems(exec boil.Executor, related ...*PurchasedItem) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.StoreItemID, nil)
+		if rel.R != nil {
+			rel.R.StoreItem = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("store_item_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.PurchasedItems {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.PurchasedItems)
+			if ln > 1 && i < ln-1 {
+				o.R.PurchasedItems[i] = o.R.PurchasedItems[ln-1]
+			}
+			o.R.PurchasedItems = o.R.PurchasedItems[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 
