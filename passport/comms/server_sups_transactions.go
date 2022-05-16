@@ -2,6 +2,7 @@ package comms
 
 import (
 	"fmt"
+	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
@@ -92,7 +93,7 @@ func (s *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 		return err
 	}
 
-	user, err := db.UserGet(context.Background(), passdb.Conn, types.UserID(req.FromUserID))
+	user, err := users.UUID(req.FromUserID)
 
 	isLocked := user.CheckUserIsLocked("account")
 	if isLocked {

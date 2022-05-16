@@ -28,7 +28,7 @@ func Purchase(
 	log *zerolog.Logger,
 	supPrice decimal.Decimal,
 	ucmProcess func(*types.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error),
-	user *boiler.User,
+	user *types.User,
 	storeItemID types.StoreItemID,
 ) error {
 	storeItem, err := db.StoreItem(uuid.UUID(storeItemID))
