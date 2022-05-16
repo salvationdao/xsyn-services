@@ -94,6 +94,9 @@ func (s *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 	}
 
 	user, err := users.UUID(req.FromUserID)
+	if err != nil {
+		return err
+	}
 
 	isLocked := user.CheckUserIsLocked("account")
 	if isLocked {
