@@ -65,7 +65,7 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 			// keep redialing until rpc server comes back online
 			client, err = dial(5, c.Addrs[i])
 			if err != nil {
-				return terror.Error(err)
+				return err
 			}
 			c.mutex.Lock()
 			c.clients[i] = client

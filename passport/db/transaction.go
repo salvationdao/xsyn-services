@@ -1,14 +1,14 @@
 package db
 
 import (
-	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
+	"xsyn-services/boiler"
+	"xsyn-services/passport/passdb"
 	"xsyn-services/types"
 
-	"github.com/georgysavva/scany/pgxscan"
-	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
 )
@@ -73,9 +73,7 @@ INNER JOIN users f ON transactions.debit = f.id
 
 // UsersTransactionGroups returns details about the user's transactions that have group IDs
 func UsersTransactionGroups(
-	userID types.UserID,
-	ctx context.Context,
-	conn Conn,
+	userID string,
 ) (map[string][]string, error) {
 	// Get all transactions with group IDs
 	q := `--sql
@@ -85,15 +83,32 @@ func UsersTransactionGroups(
 		AND (transactions.credit = $1 OR transactions.debit = $1)
 	`
 	var args []interface{}
-	args = append(args, userID.String())
+	args = append(args, userID)
 
 	rows := make([]struct {
 		Group    string
 		SubGroup string
 	}, 0)
-	err := pgxscan.Select(ctx, conn, &rows, q, args...)
+	r, err := passdb.StdConn.Query(q, args...)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
+	}
+
+	for r.Next() {
+		tg := struct {
+			Group    string
+			SubGroup string
+		}{}
+
+		err = r.Scan(
+			&tg.Group,
+			&tg.SubGroup,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		rows = append(rows, tg)
 	}
 
 	m := make(map[string]map[string]struct{})
@@ -120,9 +135,7 @@ func UsersTransactionGroups(
 
 // TransactionList gets a list of Transactions depending on the filters
 func TransactionList(
-	ctx context.Context,
-	conn Conn,
-	userID *types.UserID, // if user id is provided, returns transactions that only matter to this user
+	userID *string, // if user id is provided, returns transactions that only matter to this user
 	search string,
 	filter *ListFilterRequest,
 	offset int,
@@ -141,7 +154,7 @@ func TransactionList(
 			column := TransactionColumn(f.ColumnField)
 			err := column.IsValid()
 			if err != nil {
-				return 0, nil, terror.Error(err)
+				return 0, nil, err
 			}
 
 			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, argIndex)
@@ -180,8 +193,8 @@ func TransactionList(
 		SELECT COUNT(DISTINCT transactions.id)
 		%s
 		WHERE transactions.id IS NOT NULL
-			%s
-			%s
+		%s
+		%s
 		`,
 		TransactionGetQueryFrom,
 		filterConditionsString,
@@ -189,10 +202,9 @@ func TransactionList(
 	)
 
 	var totalRows int
-
-	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
+	err := passdb.StdConn.QueryRow(countQ, args...).Scan(&totalRows)
 	if err != nil {
-		return 0, nil, terror.Error(err)
+		return 0, nil, err
 	}
 	if totalRows == 0 {
 		return 0, make([]*types.Transaction, 0), nil
@@ -203,7 +215,7 @@ func TransactionList(
 	if sortBy != "" {
 		err := sortBy.IsValid()
 		if err != nil {
-			return 0, nil, terror.Error(err)
+			return 0, nil, err
 		}
 		orderBy = fmt.Sprintf(" ORDER BY %s %s", sortBy, sortDir)
 	}
@@ -216,8 +228,8 @@ func TransactionList(
 	q := fmt.Sprintf(
 		TransactionGetQuery+`--sql
 		WHERE transactions.id IS NOT NULL
-			%s
-			%s
+		%s
+		%s
 		%s
 		%s`,
 		filterConditionsString,
@@ -227,83 +239,78 @@ func TransactionList(
 	)
 
 	result := make([]*types.Transaction, 0)
-	err = pgxscan.Select(ctx, conn, &result, q, args...)
+	r, err := passdb.StdConn.Query(q, args...)
 	if err != nil {
-		return 0, nil, terror.Error(err)
+		return 0, nil, err
 	}
+	for r.Next() {
+		ts := &types.Transaction{}
+
+		err = r.Scan(
+			ts.To,
+			ts.From,
+			ts.ID,
+			ts.Description,
+			ts.TransactionReference,
+			ts.Amount,
+			ts.Credit,
+			ts.Debit,
+			ts.Reason,
+			ts.ServiceID,
+			ts.RelatedTransactionID,
+			ts.CreatedAt,
+			ts.Group,
+			ts.SubGroup,
+		)
+		if err != nil {
+			return 0, nil, err
+		}
+	}
+
 	return totalRows, result, nil
 }
 
 // TransactionGet get store item by id
-func TransactionGet(ctx context.Context, conn Conn, transactionID string) (*types.Transaction, error) {
-	transaction := &types.Transaction{}
-	q := TransactionGetQuery + "WHERE transactions.id = $1"
-
-	err := pgxscan.Get(ctx, conn, transaction, q, transactionID)
+func TransactionGet(transactionID string) (*boiler.Transaction, error) {
+	transaction, err := boiler.Transactions(
+		boiler.TransactionWhere.ID.EQ(transactionID),
+	).One(passdb.StdConn)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	return transaction, nil
 }
 
 // TransactionAddRelatedTransaction adds a refund transaction ID to a transaction
-func TransactionAddRelatedTransaction(ctx context.Context, conn Conn, transactionID string, refundTransactionID string) error {
-	q := "UPDATE transactions SET related_transaction_id = $2 WHERE id = $1"
-
-	_, err := conn.Exec(ctx, q, transactionID, refundTransactionID)
+func TransactionAddRelatedTransaction(transactionID string, refundTransactionID string) error {
+	_, err := boiler.Transactions(
+		boiler.TransactionWhere.ID.EQ(transactionID),
+	).UpdateAll(passdb.StdConn, boiler.M{"related_transaction_id": refundTransactionID})
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	return nil
 }
 
-func TransactionExists(ctx context.Context, conn Conn, txhash string) (bool, error) {
-	q := "SELECT count(id) FROM transactions WHERE transaction_reference = $1"
-	var count int
-	err := pgxscan.Get(ctx, conn, &count, q, txhash)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
+func TransactionExists(txhash string) (bool, error) {
+	tx, err := boiler.Transactions(
+		boiler.TransactionWhere.TransactionReference.EQ(txhash),
+	).One(passdb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return false, terror.Error(err)
 	}
-	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
+
+	return tx != nil, nil
 }
 
-// TransactionGetList returns list of transactions from a list of transaction references
-func TransactionGetList(ctx context.Context, conn Conn, transactionList []string) ([]*types.Transaction, error) {
-	var transactions []*types.Transaction
-	args := []interface{}{}
-
-	whereCondition := ""
-	for i, s := range transactionList {
-		args = append(args, s)
-		if i == 0 {
-			whereCondition = fmt.Sprintf("$%d", i+1)
-			continue
-		}
-		whereCondition = fmt.Sprintf("%s, $%d", whereCondition, i+1)
-	}
-
-	q := fmt.Sprintf(`--sql
-		SELECT *
-		FROM transactions
-		WHERE transaction_reference IN (%s)`, whereCondition)
-	err := pgxscan.Select(ctx, conn, &transactions, q, args...)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-	return transactions, nil
-}
-
-func UserBalances(ctx context.Context, conn Conn) ([]*types.UserBalance, error) {
+func UserBalances() ([]*types.UserBalance, error) {
 	q := `SELECT id, sups FROM users`
 
-	rows, err := conn.Query(ctx, q)
+	rows, err := passdb.StdConn.Query(q)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	balances := []*types.UserBalance{}
@@ -318,7 +325,7 @@ func UserBalances(ctx context.Context, conn Conn) ([]*types.UserBalance, error) 
 			&balance.Sups,
 		)
 		if err != nil {
-			return balances, terror.Error(err)
+			return balances, err
 		}
 		balances = append(balances, balance)
 	}
@@ -326,15 +333,15 @@ func UserBalances(ctx context.Context, conn Conn) ([]*types.UserBalance, error) 
 	return balances, nil
 }
 
-func UserBalance(ctx context.Context, conn Conn, userID string) (decimal.Decimal, error) {
-	var wrap struct {
-		Sups decimal.Decimal `db:"sups"`
-	}
+func UserBalance(userID string) (decimal.Decimal, error) {
+	var sups decimal.Decimal
 	q := `SELECT sups FROM users WHERE id = $1`
+	row := passdb.StdConn.QueryRow(q, userID)
 
-	err := pgxscan.Get(ctx, conn, &wrap, q, userID)
+	err := row.Scan(&sups)
+
 	if err != nil {
-		return decimal.New(0, 18), terror.Error(err)
+		return decimal.New(0, 18), err
 	}
-	return wrap.Sups, nil
+	return sups, nil
 }

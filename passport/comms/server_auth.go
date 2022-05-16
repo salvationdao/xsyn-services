@@ -1,11 +1,18 @@
 package comms
 
 import (
+	"encoding/base64"
+	"errors"
 	"fmt"
+	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
+	"xsyn-services/passport/tokens"
 	"xsyn-services/types"
+
+	"github.com/gofrs/uuid"
+	"github.com/lestrrat-go/jwx/jwt/openid"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -20,7 +27,7 @@ func IsServerClient(apikey string) (string, error) {
 	apiKeyEntry, err := boiler.FindAPIKey(passdb.StdConn, apikey)
 	if err != nil {
 		passlog.L.Err(err).Str("api_key", apikey).Msg("error finding api key")
-		return "", terror.Error(err)
+		return "", err
 	}
 
 	if apiKeyEntry.Type != "SERVER_CLIENT" {
@@ -41,7 +48,7 @@ func IsSupremacyClient(apikey string) (string, error) {
 	apiKeyEntry, err := boiler.FindAPIKey(passdb.StdConn, apikey)
 	if err != nil {
 		passlog.L.Err(err).Str("api_key", apikey).Msg("error finding api key")
-		return "", terror.Error(err)
+		return "", err
 	}
 
 	if apiKeyEntry.Type != "SERVER_CLIENT" {
@@ -52,7 +59,7 @@ func IsSupremacyClient(apikey string) (string, error) {
 	user, err := boiler.FindUser(passdb.StdConn, apiKeyEntry.UserID)
 	if err != nil {
 		passlog.L.Err(err).Str("api_key", apikey).Str("user_id", apiKeyEntry.UserID).Msg("error finding user from api key")
-		return "", terror.Error(err)
+		return "", err
 	}
 
 	if user.Username != types.SupremacyGameUsername {
@@ -60,4 +67,160 @@ func IsSupremacyClient(apikey string) (string, error) {
 		return "", terror.Error(fmt.Errorf("api key owner username mismatch"))
 	}
 	return user.ID, nil
+}
+
+type TokenReq struct {
+	ApiKey      string
+	TokenBase64 string
+	Device      string
+	Action      string
+}
+
+type TokenResp struct {
+	*UserResp
+	Token     string
+	ExpiredAt time.Time
+}
+
+func (s *S) OneTimeTokenLogin(req TokenReq, resp *TokenResp) error {
+	_, err := IsServerClient(req.ApiKey)
+	if err != nil {
+		return err
+	}
+
+	tokenStr, err := base64.StdEncoding.DecodeString(req.TokenBase64)
+	if err != nil {
+		fmt.Println("error", err, tokenStr)
+		return terror.Error(err, "token is fail")
+	}
+
+	token, err := tokens.ReadJWT(tokenStr, true, s.TokenEncryptionKey)
+	if err != nil {
+		if errors.Is(err, tokens.ErrTokenExpired) {
+			tknUuid, err := tokens.TokenID(token)
+			if err != nil {
+				return err
+			}
+			err = tokens.Remove(tknUuid)
+			if err != nil {
+				return err
+			}
+			return terror.Warn(err, "Session has expired, please log in again.")
+		}
+		return err
+	}
+
+	jwtIDI, ok := token.Get(openid.JwtIDKey)
+
+	if !ok {
+		return terror.Error(errors.New("unable to get ID from token"), "unable to read token")
+	}
+
+	jwtID, err := uuid.FromString(jwtIDI.(string))
+	if err != nil {
+		return terror.Error(err, "unable to form UUID from token")
+	}
+
+	retrievedToken, user, err := tokens.Retrieve(jwtID)
+	if err != nil {
+		return err
+	}
+
+	if !retrievedToken.Whitelisted() {
+		return tokens.ErrTokenNotWhitelisted
+	}
+
+	resp.UserResp = &UserResp{}
+	resp.FactionID = user.FactionID
+	resp.ID = user.ID
+	resp.PublicAddress = user.PublicAddress
+	resp.Username = user.Username
+
+	tokenID := uuid.Must(uuid.NewV4())
+
+	// save user detail as jwt
+	jwt, sign, err := tokens.GenerateJWT(
+		tokenID,
+		user,
+		req.Device,
+		req.Action,
+		s.TokenExpirationDays)
+	if err != nil {
+		return err
+	}
+	jwtSigned, err := sign(jwt, true, s.TokenEncryptionKey)
+	if err != nil {
+		return err
+	}
+
+	resp.Token = base64.StdEncoding.EncodeToString(jwtSigned)
+	resp.ExpiredAt = time.Now().AddDate(0, 0, s.TokenExpirationDays)
+
+	err = tokens.Save(resp.Token, s.TokenExpirationDays, s.TokenEncryptionKey)
+	if err != nil {
+		return terror.Error(err, "unable to save jwt")
+	}
+
+	return nil
+}
+
+type GenTokenReq struct {
+	ApiKey string
+	UserID string
+	Device string
+	Action string
+}
+
+func (s *S) TokenLogin(req TokenReq, resp *UserResp) error {
+	_, err := IsServerClient(req.ApiKey)
+	if err != nil {
+		return err
+	}
+	tokenStr, err := base64.StdEncoding.DecodeString(req.TokenBase64)
+	if err != nil {
+		return terror.Error(err, "token is fail")
+	}
+
+	token, err := tokens.ReadJWT(tokenStr, true, s.TokenEncryptionKey)
+	if err != nil {
+		if errors.Is(err, tokens.ErrTokenExpired) {
+			tknUuid, err := tokens.TokenID(token)
+			if err != nil {
+				return err
+			}
+			err = tokens.Remove(tknUuid)
+			if err != nil {
+				return err
+			}
+			return terror.Warn(err, "Session has expired, please log in again.")
+		}
+		return err
+	}
+
+	jwtIDI, ok := token.Get(openid.JwtIDKey)
+
+	if !ok {
+		return terror.Error(errors.New("unable to get ID from token"), "unable to read token")
+	}
+
+	jwtID, err := uuid.FromString(jwtIDI.(string))
+	if err != nil {
+		return terror.Error(err, "unable to form UUID from token")
+	}
+
+	retrievedToken, user, err := tokens.Retrieve(jwtID)
+	if err != nil {
+		return err
+	}
+
+	if !retrievedToken.Whitelisted() {
+		return tokens.ErrTokenNotWhitelisted
+	}
+
+	resp.FactionID = user.FactionID
+	resp.ID = user.ID
+	resp.PublicAddress = user.PublicAddress
+	resp.Username = user.Username
+
+	return nil
 }

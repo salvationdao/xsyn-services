@@ -1,7 +1,6 @@
 package db
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 	"xsyn-services/passport/rpcclient"
 	"xsyn-services/types"
 
-	"github.com/georgysavva/scany/pgxscan"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -106,7 +104,7 @@ func SyncStoreItems() error {
 			}
 
 			collectionSlug = template.Template.CollectionSlug.String
-			collection, err = CollectionBySlug(context.Background(), passdb.Conn, collectionSlug)
+			collection, err = CollectionBySlug(collectionSlug)
 			if err != nil {
 				return err
 			}
@@ -179,7 +177,7 @@ func SyncStoreItems() error {
 	}
 	err = tx.Commit()
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	return nil
@@ -209,20 +207,6 @@ func StoreItemsRemainingByFactionIDAndTier(collectionID uuid.UUID, factionID uui
 		count = count + item.AmountAvailable - item.AmountSold
 	}
 	return count, err
-}
-
-func PurchasedLootboxesByUserID(userID uuid.UUID) (int, error) {
-	var result int
-	q := `
-SELECT COALESCE(count(pi.id), 0) FROM purchased_items pi 
-INNER JOIN store_items si ON si.id = pi.store_item_id 
-WHERE owner_id = $1 AND si.restriction_group = 'LOOTBOX';
-`
-	err := pgxscan.Get(context.Background(), passdb.Conn, &result, q, userID)
-	if err != nil {
-		return 0, err
-	}
-	return result, nil
 }
 
 // StoreItemsAvailable return the total of available war machine in each faction
@@ -312,7 +296,6 @@ func StoreItemsByFactionID(factionID uuid.UUID) ([]*boiler.StoreItem, error) {
 }
 
 func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, error) {
-	ctx := context.Background()
 	passlog.L.Trace().Str("fn", "refreshStoreItem").Msg("db func")
 	tx, err := passdb.StdConn.Begin()
 	if err != nil {
@@ -338,7 +321,7 @@ func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, err
 	}
 
 	if resp.TemplateContainer.Template.CollectionSlug.Valid {
-		collection, err := CollectionBySlug(ctx, passdb.Conn, resp.TemplateContainer.Template.CollectionSlug.String)
+		collection, err := CollectionBySlug(resp.TemplateContainer.Template.CollectionSlug.String)
 		if err != nil {
 			return nil, err
 		}
@@ -373,7 +356,7 @@ func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, err
 
 	err = tx.Commit()
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	return dbitem, nil
@@ -455,8 +438,6 @@ INNER JOIN (
 
 //  StoreItemsList gets a list of store items depending on the filters
 func StoreItemsList(
-	ctx context.Context,
-	conn Conn,
 	search string,
 	archived bool,
 	includedAssetHashes []string,
@@ -479,7 +460,7 @@ func StoreItemsList(
 			column := StoreItemColumn(f.ColumnField)
 			err := column.IsValid()
 			if err != nil {
-				return 0, nil, terror.Error(err)
+				return 0, nil, err
 			}
 
 			argIndex += 1
@@ -503,7 +484,7 @@ func StoreItemsList(
 			column := TraitType(f.Trait)
 			err := column.IsValid()
 			if err != nil {
-				return 0, nil, terror.Error(err)
+				return 0, nil, err
 			}
 			condition := GenerateDataFilterSQL(f.Trait, f.Value, argIndex, "store_items")
 			filterConditions = append(filterConditions, condition)
@@ -562,9 +543,9 @@ func StoreItemsList(
 	)
 
 	var totalRows int
-	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
+	err := passdb.StdConn.QueryRow(countQ, args...).Scan(&totalRows)
 	if err != nil {
-		return 0, nil, terror.Error(err)
+		return 0, nil, err
 	}
 	if totalRows == 0 {
 		return 0, make([]*types.StoreItem, 0), nil
@@ -584,9 +565,9 @@ func StoreItemsList(
 	q := fmt.Sprintf(
 		StoreItemGetQuery+`--sql
 		WHERE store_items.deleted_at %s
-			%s
-			%s
-			%s
+		%s
+		%s
+		%s
 		%s
 		%s`,
 		archiveCondition,
@@ -598,9 +579,29 @@ func StoreItemsList(
 	)
 
 	result := make([]*types.StoreItem, 0)
-	err = pgxscan.Select(ctx, conn, &result, q, args...)
+
+	r, err := passdb.StdConn.Query(q, args...)
 	if err != nil {
-		return 0, nil, terror.Error(err)
+		return 0, nil, err
+	}
+
+	for r.Next() {
+		si := &types.StoreItem{}
+		err = r.Scan(
+			&si.Collection,
+			&si.ID,
+			&si.Tier,
+			&si.IsDefault,
+			&si.RestrictionGroup,
+			&si.DeletedAt,
+			&si.UpdatedAt,
+			&si.CreatedAt,
+		)
+		if err != nil {
+			return 0, nil, err
+		}
+
+		result = append(result, si)
 	}
 
 	return totalRows, result, nil

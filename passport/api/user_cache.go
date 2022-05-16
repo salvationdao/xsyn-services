@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -11,31 +10,27 @@ import (
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
+	"github.com/ninja-syndicate/ws"
+
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/gofrs/uuid"
 
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/sasha-s/go-deadlock"
 )
 
 type Transactor struct {
 	deadlock.Map
-	conn       *pgxpool.Pool
-	MessageBus *messagebus.MessageBus
 }
 
-func NewTX(conn *pgxpool.Pool, msgBus *messagebus.MessageBus) (*Transactor, error) {
+func NewTX() (*Transactor, error) {
 	ucm := &Transactor{
 		deadlock.Map{},
-		conn,
-		msgBus,
 	}
-	balances, err := db.UserBalances(context.Background(), ucm.conn)
+	balances, err := db.UserBalances()
 
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to retrieve balances")
@@ -133,15 +128,19 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (decimal.Decimal, deci
 	blast := func(from *boiler.User, to *boiler.User, success bool) {
 		if !nt.From.IsSystemUser() {
 			if success {
-				go ucm.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, from.ID)), []*types.Transaction{tx})
+				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", from.ID), HubKeyUserLatestTransactionSubscribe, []*types.Transaction{tx})
+				//go ucm.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, from.ID)), []*types.Transaction{tx})
 			}
-			go ucm.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, from.ID)), from.Sups.String())
+			ws.PublishMessage(fmt.Sprintf("/user/%s/sups", from.ID), HubKeyUserSupsSubscribe, from.Sups.String())
+			// go ucm.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, from.ID)), from.Sups.String())
 		}
 		if !nt.To.IsSystemUser() {
 			if success {
-				go ucm.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, to.ID)), []*types.Transaction{tx})
+				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", to.ID), HubKeyUserLatestTransactionSubscribe, []*types.Transaction{tx})
+				// go ucm.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, to.ID)), []*types.Transaction{tx})
 			}
-			go ucm.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, to.ID)), to.Sups.String())
+			ws.PublishMessage(fmt.Sprintf("/user/%s/sups", to.ID), HubKeyUserSupsSubscribe, from.Sups.String())
+			// go ucm.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, to.ID)), to.Sups.String())
 		}
 	}
 
@@ -151,7 +150,7 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (decimal.Decimal, deci
 		ucm.Store(toUser.ID, toUser.Sups)
 		blast(fromUser, toUser, false)
 		passlog.L.Error().Err(err).Str("from", fromUser.ID).Str("to", toUser.ID).Str("id", nt.ID).Msg("transaction failed")
-		return decimal.Zero, decimal.Zero, TransactionFailed, terror.Error(err)
+		return decimal.Zero, decimal.Zero, TransactionFailed, err
 	}
 	tx.CreatedAt = nt.CreatedAt
 
@@ -178,19 +177,23 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (decimal.Decimal, deci
 	return fromUser.Sups, toUser.Sups, transactionID, nil
 }
 
-func (ucm *Transactor) Get(id string) (decimal.Decimal, error) {
-	result, ok := ucm.Load(id)
-	if ok {
-		return result.(decimal.Decimal), nil
-	}
-
-	balance, err := db.UserBalance(context.Background(), ucm.conn, id)
+func (ucm *Transactor) SetAndGet(id string) (decimal.Decimal, error) {
+	balance, err := db.UserBalance(id)
 	if err != nil {
 		return decimal.New(0, 18), err
 	}
 
 	ucm.Store(id, balance)
 	return balance, err
+}
+
+func (ucm *Transactor) Get(id string) (decimal.Decimal, error) {
+	result, ok := ucm.Load(id)
+	if ok {
+		return result.(decimal.Decimal), nil
+	}
+
+	return ucm.SetAndGet(id)
 }
 
 type UserCacheFunc func(userCacheList Transactor)
@@ -227,7 +230,7 @@ func CreateTransactionEntry(conn *sql.DB, nt *types.NewTransaction) error {
 		nt.RelatedTransactionID,
 	)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	nt.CreatedAt = now
 	return nil

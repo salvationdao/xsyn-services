@@ -1,7 +1,6 @@
 package payments
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -25,7 +24,6 @@ const (
 
 func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, error) {
 	l := passlog.L.With().Str("svc", "avant_deposit_processor").Logger()
-	ctx := context.Background()
 	success := 0
 	skipped := 0
 	supContract := db.GetStrWithDefault(db.KeySUPSPurchaseContract, "0x52b38626D3167e5357FE7348624352B7062fE271")
@@ -46,7 +44,7 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, 
 			skipped++
 			continue
 		}
-		user, err := CreateOrGetUser(ctx, passdb.Conn, common.HexToAddress(record.FromAddress))
+		user, err := CreateOrGetUser(common.HexToAddress(record.FromAddress))
 		if err != nil {
 			skipped++
 			l.Error().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("create or get user")
@@ -67,7 +65,7 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, 
 
 		msg := fmt.Sprintf("deposited %s SUPS", value.Shift(-1*types.SUPSDecimals).StringFixed(4))
 		trans := &types.NewTransaction{
-			To:                   user.ID,
+			To:                   types.UserIDFromString(user.ID),
 			From:                 types.OnChainUserID,
 			Amount:               value,
 			TransactionReference: types.TransactionReference(record.TxHash),

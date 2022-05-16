@@ -1,13 +1,12 @@
 package db
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
+	"xsyn-services/passport/passdb"
 	"xsyn-services/types"
 
-	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -41,84 +40,84 @@ func (ic RoleColumn) IsValid() error {
 }
 
 // RoleGet returns a role by given ID
-func RoleGet(ctx context.Context, conn Conn, roleID types.RoleID) (*types.Role, error) {
+func RoleGet(roleID types.RoleID) (*types.Role, error) {
 	role := &types.Role{}
 	q := `--sql
 		SELECT id, name, permissions, tier, reserved, deleted_at, updated_at, created_at
 		FROM roles
 		WHERE id = $1`
-	err := pgxscan.Get(ctx, conn, role, q, roleID)
+	err := passdb.StdConn.QueryRow(q, roleID).Scan(
+		&role.ID,
+		&role.Name,
+		&role.Permissions,
+		&role.Tier,
+		&role.Reserved,
+		&role.DeletedAt,
+		&role.UpdatedAt,
+		&role.CreatedAt,
+	)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 	return role, nil
 }
 
 // RoleGetByName returns a role by name
-func RoleByName(ctx context.Context, conn Conn, name string) (*types.Role, error) {
+func RoleByName(name string) (*types.Role, error) {
 	role := &types.Role{}
 	q := `--sql
 		SELECT id, name, permissions, tier, reserved, deleted_at, updated_at, created_at
 		FROM roles
 		WHERE name = $1`
-	err := pgxscan.Get(ctx, conn, role, q, name)
+	err := passdb.StdConn.QueryRow(q, name).Scan(
+		&role.ID,
+		&role.Name,
+		&role.Permissions,
+		&role.Tier,
+		&role.Reserved,
+		&role.DeletedAt,
+		&role.UpdatedAt,
+		&role.CreatedAt,
+	)
+
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 	return role, nil
 }
 
 // RoleCreate will create a new role
-func RoleCreate(ctx context.Context, conn Conn, role *types.Role) error {
+func RoleCreate(role *types.Role) error {
 	q := `--sql
 		INSERT INTO roles (name, permissions)
 		VALUES ($1, $2)
 		RETURNING
 			id, name, permissions, tier, reserved, deleted_at, updated_at, created_at`
-	err := pgxscan.Get(ctx,
-		conn,
-		role,
-		q,
-		role.Name,
-		role.Permissions,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
 
-// RoleCreateReserved will create a reserved new role
-func RoleCreateReserved(ctx context.Context, conn Conn, role *types.Role) error {
-	q := `--sql
-		INSERT INTO roles (id, name, permissions, tier, reserved)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING
-			id, name, permissions, tier, reserved, deleted_at, updated_at, created_at`
-	err := pgxscan.Get(ctx,
-		conn,
-		role,
-		q,
-		role.ID,
-		role.Name,
-		role.Permissions,
-		role.Tier,
-		true,
+	err := passdb.StdConn.QueryRow(q, role.Name, role.Permissions).Scan(
+		&role.ID,
+		&role.Name,
+		&role.Permissions,
+		&role.Tier,
+		&role.Reserved,
+		&role.DeletedAt,
+		&role.UpdatedAt,
+		&role.CreatedAt,
 	)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	return nil
 }
 
 // RoleUpdate will update an existing role
-func RoleUpdate(ctx context.Context, conn Conn, role *types.Role) error {
+func RoleUpdate(role *types.Role) error {
 	q := `--sql
 		UPDATE roles
 		SET 
 			name = $2, permissions = $3, tier = $4, reserved = $5
 		WHERE id = $1`
-	_, err := conn.Exec(ctx,
+	_, err := passdb.StdConn.Exec(
 		q,
 		role.ID,
 		role.Name,
@@ -127,13 +126,13 @@ func RoleUpdate(ctx context.Context, conn Conn, role *types.Role) error {
 		role.Reserved,
 	)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	return nil
 }
 
 // RoleArchiveUpdate will update an existing role as archived or unarchived
-func RoleArchiveUpdate(ctx context.Context, conn Conn, id types.RoleID, archived bool) error {
+func RoleArchiveUpdate(id types.RoleID, archived bool) error {
 	var deletedAt *time.Time
 	if archived {
 		now := time.Now()
@@ -143,17 +142,16 @@ func RoleArchiveUpdate(ctx context.Context, conn Conn, id types.RoleID, archived
 		UPDATE roles
 		SET deleted_at = $2
 		WHERE id = $1`
-	_, err := conn.Exec(ctx, q, id, deletedAt)
+	_, err := passdb.StdConn.Exec(q, id, deletedAt)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	return nil
 }
 
 // RoleList will grab a list of roles in offset pagination format
-func RoleList(ctx context.Context,
-	conn Conn,
-	result *[]*types.Role,
+func RoleList(
+	result []*types.Role,
 	search string,
 	archived bool,
 	filter *ListFilterRequest,
@@ -172,7 +170,7 @@ func RoleList(ctx context.Context,
 			column := RoleColumn(f.ColumnField)
 			err := column.IsValid()
 			if err != nil {
-				return 0, terror.Error(err)
+				return 0, err
 			}
 
 			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, i+1)
@@ -207,9 +205,9 @@ func RoleList(ctx context.Context,
 		FROM roles
 		WHERE deleted_at ` + archiveCondition + filterConditionsString + searchCondition
 	var totalRows int
-	err := pgxscan.Get(ctx, conn, &totalRows, q, args...)
+	err := passdb.StdConn.QueryRow(q, args).Scan(&totalRows)
 	if err != nil {
-		return 0, terror.Error(err)
+		return 0, err
 	}
 	if totalRows == 0 {
 		return totalRows, nil
@@ -220,7 +218,7 @@ func RoleList(ctx context.Context,
 	if sortBy != "" {
 		err := sortBy.IsValid()
 		if err != nil {
-			return 0, terror.Error(err)
+			return 0, err
 		}
 		orderBy = fmt.Sprintf(" ORDER BY %s %s", sortBy, sortDir)
 	}
@@ -235,8 +233,8 @@ func RoleList(ctx context.Context,
 		SELECT id, name, permissions, tier, reserved, deleted_at, updated_at, created_at
 		FROM roles
 		WHERE deleted_at %s
-			%s
-			%s
+		%s
+		%s
 		%s
 		%s`,
 		archiveCondition,
@@ -245,9 +243,29 @@ func RoleList(ctx context.Context,
 		orderBy,
 		limit,
 	)
-	err = pgxscan.Select(ctx, conn, result, q, args...)
+	r, err := passdb.StdConn.Query(q, args...)
 	if err != nil {
-		return 0, terror.Error(err)
+		return 0, err
+	}
+
+	for r.Next() {
+		role := &types.Role{}
+
+		err = r.Scan(
+			&role.ID,
+			&role.Name,
+			&role.Permissions,
+			&role.Tier,
+			&role.Reserved,
+			&role.DeletedAt,
+			&role.UpdatedAt,
+			&role.CreatedAt,
+		)
+		if err != nil {
+			return 0, err
+		}
+
+		result = append(result, role)
 	}
 	return totalRows, nil
 }

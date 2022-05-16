@@ -161,7 +161,7 @@ func purchasedItemToOpenseaMetaData(api *API, item *boiler.PurchasedItem) (jb []
 	itemMeta := purchasedItemMetaData{}
 	err = item.Data.Unmarshal(&itemMeta)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	datOpensea := openSeaMetaData{}
@@ -350,7 +350,7 @@ func purchasedItemToOpenseaMetaData(api *API, item *boiler.PurchasedItem) (jb []
 	// turn into json string
 	jb, err = json.Marshal(datOpensea)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	return

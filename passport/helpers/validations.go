@@ -26,9 +26,9 @@ var FirstDigitRegexp = regexp.MustCompile(`\d`)
 
 var emailRegexp = regexp.MustCompile("^.+?@.+?...+?$")
 
-var PasswordRegExp = regexp.MustCompile("[`!@#$%^&*()_+\\-=\\[\\]{};':\"\\|,.<>\\/?~]")
+var PasswordRegExp = regexp.MustCompile("[`!@#$%^&*()_+=\\[\\]{};':\"\\|,.<>\\/?~]")
 
-var UsernameRegExp = regexp.MustCompile("[`\\-~!@#$%^&*()+=\\[\\]{};':\"\\|,.<>\\/?]")
+var UsernameRegExp = regexp.MustCompile("[`~!@#$%^&*()+=\\[\\]{};':\"\\|,.<>\\/?]")
 
 // IsEmpty checks if string given is empty
 func IsEmpty(text *null.String) bool {

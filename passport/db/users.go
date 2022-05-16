@@ -1,21 +1,17 @@
 package db
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
-	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
-	"xsyn-services/passport/rpcclient"
 	"xsyn-services/types"
 
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/georgysavva/scany/pgxscan"
-	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
@@ -82,756 +78,9 @@ LEFT JOIN (
 ) faction ON faction.id = users.faction_id
 `
 
-// UserByPublicAddress returns a user by given public wallet address
-func UserByPublicAddress(ctx context.Context, conn Conn, publicAddress common.Address) (*types.User, error) {
-	user := &types.User{}
-	q := UserGetQuery + ` WHERE users.public_address = $1`
-	err := pgxscan.Get(ctx, conn, user, q, publicAddress.Hex())
-	if err != nil {
-		return nil, terror.Error(err, "Issue getting user from Public Address.")
-	}
-
-	// calc sups
-	user.Sups.Init()
-
-	return user, nil
-}
-
-// UserByGoogleID returns a user by google id
-func UserByGoogleID(ctx context.Context, conn Conn, googleID string) (*types.User, error) {
-	user := &types.User{}
-	q := UserGetQuery + ` WHERE users.google_id = $1`
-	err := pgxscan.Get(ctx, conn, user, q, googleID)
-	if err != nil {
-		return nil, terror.Error(err, "Issue getting user from google id.")
-	}
-
-	// calc sups
-	user.Sups.Init()
-
-	return user, nil
-}
-
-// UserByTwitchID returns a user by twitch id
-func UserByTwitchID(ctx context.Context, conn Conn, twitchID string) (*types.User, error) {
-	user := &types.User{}
-	q := UserGetQuery + ` WHERE users.twitch_id = $1`
-	err := pgxscan.Get(ctx, conn, user, q, twitchID)
-	if err != nil {
-		return nil, terror.Error(err, "Issue getting user from twitch id.")
-	}
-
-	// calc sups
-	user.Sups.Init()
-
-	return user, nil
-}
-
-// UserByTwitterID returns a user by Twitter id
-func UserByTwitterID(ctx context.Context, conn Conn, twitterID string) (*types.User, error) {
-	user := &types.User{}
-	q := UserGetQuery + ` WHERE users.twitter_id = $1`
-	err := pgxscan.Get(ctx, conn, user, q, twitterID)
-	if err != nil {
-		return nil, terror.Error(err, "Issue getting user from twitter id.")
-	}
-	return user, nil
-}
-
-// UserByDiscordID returns a user by Discord id
-func UserByDiscordID(ctx context.Context, conn Conn, discordID string) (*types.User, error) {
-	user := &types.User{}
-	q := UserGetQuery + ` WHERE users.discord_id = $1`
-	err := pgxscan.Get(ctx, conn, user, q, discordID)
-	if err != nil {
-		return nil, terror.Error(err, "Issue getting user from discord id.")
-	}
-	return user, nil
-}
-
-// UserByFacebookID returns a user by google id
-func UserByFacebookID(ctx context.Context, conn Conn, facebookID string) (*types.User, error) {
-	user := &types.User{}
-	q := UserGetQuery + ` WHERE users.facebook_id = $1`
-	err := pgxscan.Get(ctx, conn, user, q, facebookID)
-	if err != nil {
-		return nil, terror.Error(err, "Issue getting user from facebook id.")
-	}
-
-	// calc sups
-	user.Sups.Init()
-
-	return user, nil
-}
-
-// UserGet returns a user by given ID
-func UserGet(ctx context.Context, conn Conn, userID types.UserID) (*types.User, error) {
-	user := &types.User{}
-	q := UserGetQuery + ` WHERE users.id = $1`
-
-	err := pgxscan.Get(ctx, conn, user, q, userID)
-	if err != nil {
-		return nil, terror.Error(err, "Issue getting user from ID.")
-	}
-
-	// calc sups
-	user.Sups.Init()
-
-	return user, nil
-}
-
-// UserGet returns a user by given ID
-func UserGetByUsername(ctx context.Context, conn Conn, username string) (*types.User, error) {
-	user := &types.User{}
-	q := UserGetQuery + ` WHERE users.username = $1`
-
-	err := pgxscan.Get(ctx, conn, user, q, username)
-	if err != nil {
-		return nil, terror.Error(err, "Issue getting user from ID.")
-	}
-
-	// calc sups
-	user.Sups.Init()
-
-	return user, nil
-}
-
-// UserByUsername returns a user by given username
-func UserByUsername(ctx context.Context, conn Conn, username string) (*types.User, error) {
-	user := &types.User{}
-	q := UserGetQuery + ` WHERE username = $1`
-
-	err := pgxscan.Get(ctx, conn, user, q, username)
-	if err != nil {
-		return nil, terror.Error(err, "Issue getting user from Username.")
-	}
-
-	// calc sups
-	user.Sups.Init()
-
-	return user, nil
-}
-
-// UserByEmail returns a user by given email address
-func UserByEmail(ctx context.Context, conn Conn, email string) (*types.User, error) {
-	user := &types.User{}
-
-	q := UserGetQuery + ` WHERE email = $1`
-	err := pgxscan.Get(ctx, conn, user, q, email)
-	if err != nil {
-		return nil, terror.Error(err, "Issue getting user from Email.")
-	}
-
-	// calc sups
-	user.Sups.Init()
-
-	return user, nil
-}
-
-// UserIDFromUsername takes a username and returns the user id
-func UserIDFromUsername(ctx context.Context, conn Conn, username string) (*types.UserID, error) {
-	q := `SELECT id FROM users WHERE username = $1`
-	var id types.UserID
-	err := pgxscan.Get(ctx, conn, &id, q, username)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-	return &id, nil
-}
-
-// User2FASecretGet returns a user 2FA secret by given ID
-func User2FASecretGet(ctx context.Context, conn Conn, userID types.UserID) (string, error) {
-	secret := ""
-	q := `
-		SELECT 
-			two_factor_authentication_secret
-		FROM users 
-		WHERE users.id = $1
-	`
-	err := pgxscan.Get(ctx, conn, &secret, q, userID)
-	if err != nil {
-		return "", terror.Error(err)
-	}
-	return secret, nil
-}
-
-// User2FASecretGet set users' 2fa secret
-func User2FASecretSet(ctx context.Context, conn Conn, userID types.UserID, secret string) error {
-	q := `
-		UPDATE 
-			users
-		SET
-			two_factor_authentication_secret = $2
-		WHERE users.id = $1
-	`
-	_, err := conn.Exec(ctx, q, userID, secret)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// User2FAIsActivated check whether users' 2fa is activated
-func User2FAIsActivated(ctx context.Context, conn Conn, userID types.UserID) (bool, error) {
-	isActivated := false
-	q := `
-		SELECT 
-			two_factor_authentication_activated
-		FROM users 
-		WHERE users.id = $1
-	`
-	err := pgxscan.Get(ctx, conn, &isActivated, q, userID)
-	if err != nil {
-		return false, terror.Error(err)
-	}
-	return isActivated, nil
-}
-
-// User2FAIsSet check a user has set set yet
-func User2FAIsSet(ctx context.Context, conn Conn, userID types.UserID) (bool, error) {
-	isSet := false
-	q := `
-		SELECT 
-			two_factor_authentication_is_set
-		FROM users 
-		WHERE users.id = $1
-	`
-	err := pgxscan.Get(ctx, conn, &isSet, q, userID)
-	if err != nil {
-		return false, terror.Error(err)
-	}
-	return isSet, nil
-}
-
-// UserUpdate2FAIsSet update users' 2fa flag
-func UserUpdate2FAIsSet(ctx context.Context, conn Conn, userID types.UserID, isSet bool) error {
-	q := `
-		UPDATE users
-		SET	two_factor_authentication_is_set = $2
-		WHERE id = $1;
-	`
-	_, err := conn.Exec(ctx, q, userID, isSet)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// UserCreate will create a new user
-func UserCreateNoRPC(ctx context.Context, conn Conn, user *types.User) error {
-	usernameOK, err := UsernameAvailable(ctx, conn, user.Username, nil)
-	if err != nil {
-		return terror.Error(err)
-	}
-	if !usernameOK {
-		return terror.Error(fmt.Errorf("username is taken: %s", user.Username))
-	}
-
-	q := `--sql
-		INSERT INTO users (first_name, last_name, email, username, public_address, avatar_id, role_id, verified, facebook_id, google_id, twitch_id, twitter_id, discord_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-		RETURNING
-			id, role_id, first_name, last_name, email, username, avatar_id, created_at, updated_at, deleted_at, facebook_id, google_id, twitch_id, twitter_id, discord_id`
-
-	err = pgxscan.Get(ctx,
-		conn,
-		user,
-		q,
-		user.FirstName,
-		user.LastName,
-		user.Email,
-		user.Username,
-		common.HexToAddress(user.PublicAddress.String).Hex(),
-		user.AvatarID,
-		user.RoleID,
-		user.Verified,
-		user.FacebookID,
-		user.GoogleID,
-		user.TwitchID,
-		user.TwitterID,
-		user.DiscordID,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
-}
-
-// UserCreate will create a new user
-func UserCreate(ctx context.Context, conn Conn, user *types.User) error {
-	addressAvailable, err := AddressAvailable(conn, common.HexToAddress(user.PublicAddress.String))
-	if err != nil {
-		return terror.Error(err)
-	}
-	if !addressAvailable {
-		return terror.Error(fmt.Errorf("address is unavailable: %s", common.HexToAddress(user.PublicAddress.String).Hex()))
-	}
-
-	usernameOK, err := UsernameAvailable(ctx, conn, user.Username, nil)
-	if err != nil {
-		return terror.Error(err)
-	}
-	if !usernameOK {
-		return terror.Error(fmt.Errorf("username is taken: %s", user.Username))
-	}
-
-	q := `--sql
-		INSERT INTO users (first_name, last_name, email, username, public_address, avatar_id, role_id, verified, facebook_id, google_id, twitch_id, twitter_id, discord_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-		RETURNING
-			id, role_id, first_name, last_name, email, username, avatar_id, created_at, updated_at, deleted_at, facebook_id, google_id, twitch_id, twitter_id, discord_id`
-
-	err = pgxscan.Get(ctx,
-		conn,
-		user,
-		q,
-		user.FirstName,
-		user.LastName,
-		user.Email,
-		user.Username,
-		common.HexToAddress(user.PublicAddress.String).Hex(),
-		user.AvatarID,
-		user.RoleID,
-		user.Verified,
-		user.FacebookID,
-		user.GoogleID,
-		user.TwitchID,
-		user.TwitterID,
-		user.DiscordID,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	err = rpcclient.PlayerRegister(
-		uuid.UUID(user.ID),
-		user.Username,
-		uuid.Nil, // no faction yet
-		common.HexToAddress(user.PublicAddress.String),
-	)
-	if err != nil {
-		passlog.L.Err(err).
-			Str("id", user.ID.String()).
-			Str("username", user.Username).
-			Str("public_address", user.PublicAddress.String).
-			Msg("could not register player on gameserver")
-	}
-
-	return nil
-}
-
-// UserFactionEnlist will assign the faction to the user
-func UserFactionEnlist(ctx context.Context, conn Conn, user *types.User) error {
-	q := `--sql
-		UPDATE users
-		SET faction_id = $2
-		WHERE id = $1`
-	_, err := conn.Exec(ctx,
-		q,
-		user.ID,
-		user.FactionID,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	err = rpcclient.PlayerRegister(
-		uuid.UUID(user.ID),
-		user.Username,
-		uuid.UUID(*user.FactionID),
-		common.HexToAddress(user.PublicAddress.String),
-	)
-	if err != nil {
-		passlog.L.Err(err).
-			Str("id", user.ID.String()).
-			Str("username", user.Username).
-			Str("public_address", user.PublicAddress.String).
-			Str("faction_id", user.FactionID.String()).
-			Msg("could not enlist player faction on gameserver")
-	}
-
-	return nil
-}
-
-// UserUpdate will update a user
-func UserUpdate(ctx context.Context, conn Conn, user *types.User) error {
-	usernameOK, err := UsernameAvailable(ctx, conn, user.Username, &user.ID)
-	if err != nil {
-		return terror.Error(err)
-	}
-	if !usernameOK {
-		return terror.Error(fmt.Errorf("username is taken: %s", user.Username))
-	}
-
-	if user.Email.String != "" {
-		emailOK, err := EmailAvailable(ctx, conn, user.Email.String, &user.ID)
-		if err != nil {
-			return terror.Error(err)
-		}
-		if !emailOK {
-			return terror.Error(fmt.Errorf("email is taken: %s", user.Email.String), "Email is already in use, please use another one.")
-		}
-	}
-
-	// commented out by vinnie - unsure if mobile needs to be unique?
-	//if user.MobileNumber.String != "" {
-	//	mobileOK, err := MobileNumberAvailable(ctx, conn, user.MobileNumber.String, &user.ID)
-	//	if err != nil {
-	//		return terror.Error(err)
-	//	}
-	//	if !mobileOK {
-	//		return terror.Error(fmt.Errorf("mobile is taken: %s", user.MobileNumber.String), "Mobile number is already in use, please use another one.")
-	//	}
-	//}
-
-	q := `--sql
-		UPDATE users
-		SET first_name = $2, last_name = $3, email = $4, username = $5, avatar_id = $6, role_id = $7, two_factor_authentication_activated = $8, mobile_number = $9
-		WHERE id = $1`
-	_, err = conn.Exec(ctx,
-		q,
-		user.ID,
-		user.FirstName,
-		user.LastName,
-		user.Email,
-		user.Username,
-		user.AvatarID,
-		user.RoleID,
-		user.TwoFactorAuthenticationActivated,
-		user.MobileNumber,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// UserRemoveWallet will remove a users wallet
-func UserRemoveWallet(ctx context.Context, conn Conn, user *types.User) error {
-	q := `--sql
-		UPDATE users
-		SET public_address = null
-		WHERE id = $1`
-	_, err := conn.Exec(ctx,
-		q,
-		user.ID,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// UserAddWallet will add a users wallet
-func UserAddWallet(ctx context.Context, conn Conn, user *types.User, publicAddress string) error {
-	count := 0
-
-	q := `--sql
-		SELECT count(*)
-		FROM users
-		WHERE public_address = $1`
-
-	err := pgxscan.Get(ctx, conn, &count, q, common.HexToAddress(publicAddress).Hex())
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	if count != 0 {
-		return terror.Error(fmt.Errorf("wallet already assigned to a user"), "This wallet is already assigned to a user.")
-	}
-
-	q = `--sql
-		UPDATE users
-		SET public_address = $2
-		WHERE id = $1`
-	_, err = conn.Exec(ctx,
-		q,
-		user.ID,
-		common.HexToAddress(publicAddress).Hex(),
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// UserRemoveFacebook will remove a users associated Facebook account
-func UserRemoveFacebook(ctx context.Context, conn Conn, user *types.User) error {
-	q := `--sql
-		UPDATE users
-		SET facebook_id = null
-		WHERE id = $1`
-	_, err := conn.Exec(ctx,
-		q,
-		user.ID,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// UserAddFacebook will associate a user with a Facebook account
-func UserAddFacebook(ctx context.Context, conn Conn, user *types.User, facebookID string) error {
-	count := 0
-
-	q := `--sql
-		SELECT count(*)
-		FROM users
-		WHERE facebook_id = $1`
-
-	err := pgxscan.Get(ctx, conn, &count, q, facebookID)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	if count != 0 {
-		return terror.Error(fmt.Errorf("facebook already assigned to a user"), "This Facebook account is already associated with a user.")
-	}
-
-	q = `--sql
-		UPDATE users
-		SET facebook_id = $2
-		WHERE id = $1`
-	_, err = conn.Exec(ctx,
-		q,
-		user.ID,
-		facebookID,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// UserRemoveGoogle will remove a users associated Google account
-func UserRemoveGoogle(ctx context.Context, conn Conn, user *types.User) error {
-	q := `--sql
-		UPDATE users
-		SET google_id = null
-		WHERE id = $1`
-	_, err := conn.Exec(ctx,
-		q,
-		user.ID,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// UserAddGoogle wil associate a user with a Google account
-func UserAddGoogle(ctx context.Context, conn Conn, user *types.User, googleID string) error {
-	count := 0
-
-	q := `--sql
-		SELECT count(*)
-		FROM users
-		WHERE google_id = $1`
-
-	err := pgxscan.Get(ctx, conn, &count, q, googleID)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	if count != 0 {
-		return terror.Error(fmt.Errorf("google already assigned to a user"), "This Google account is already associated with a user.")
-	}
-
-	q = `--sql
-		UPDATE users
-		SET google_id = $2
-		WHERE id = $1`
-	_, err = conn.Exec(ctx,
-		q,
-		user.ID,
-		googleID,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// UserRemoveTwitch will remove a users associated Twitch account
-func UserRemoveTwitch(ctx context.Context, conn Conn, user *types.User) error {
-	q := `--sql
-		UPDATE users
-		SET twitch_id = null
-		WHERE id = $1`
-	_, err := conn.Exec(ctx,
-		q,
-		user.ID,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// UserAddTwitch wil associate a user with a Twitch account
-func UserAddTwitch(ctx context.Context, conn Conn, user *types.User, twitchID string) error {
-	count := 0
-
-	q := `--sql
-		SELECT count(*)
-		FROM users
-		WHERE twitch_id = $1`
-
-	err := pgxscan.Get(ctx, conn, &count, q, twitchID)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	if count != 0 {
-		return terror.Error(fmt.Errorf("twitch already assigned to a user"), "This Twitch account is already associated with a user.")
-	}
-
-	q = `--sql
-		UPDATE users
-		SET twitch_id = $2
-		WHERE id = $1`
-	_, err = conn.Exec(ctx,
-		q,
-		user.ID,
-		twitchID,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// UserRemoveTwitter will remove a users associated Twitter account
-func UserRemoveTwitter(ctx context.Context, conn Conn, user *types.User) error {
-	q := `--sql
-		UPDATE users
-		SET twitter_id = null
-		WHERE id = $1`
-	_, err := conn.Exec(ctx,
-		q,
-		user.ID,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// UserAddTwitter wil associate a user with a Twitter account
-func UserAddTwitter(ctx context.Context, conn Conn, user *types.User, twitterID string) error {
-	count := 0
-
-	q := `--sql
-		SELECT count(*)
-		FROM users
-		WHERE twitter_id = $1`
-
-	err := pgxscan.Get(ctx, conn, &count, q, twitterID)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	if count != 0 {
-		return terror.Error(fmt.Errorf("twitter already assigned to a user"), "This Twitter account is already associated with a user.")
-	}
-
-	q = `--sql
-		UPDATE users
-		SET twitter_id = $2
-		WHERE id = $1`
-	_, err = conn.Exec(ctx,
-		q,
-		user.ID,
-		twitterID,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// UserRemoveDiscord will remove a users associated Discord account
-func UserRemoveDiscord(ctx context.Context, conn Conn, user *types.User) error {
-	q := `--sql
-		UPDATE users
-		SET discord_id = null
-		WHERE id = $1`
-	_, err := conn.Exec(ctx,
-		q,
-		user.ID,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// UserAddDiscord wil associate a user with a Discord account
-func UserAddDiscord(ctx context.Context, conn Conn, user *types.User, discordID string) error {
-	count := 0
-
-	q := `--sql
-		SELECT count(*)
-		FROM users
-		WHERE discord_id = $1`
-
-	err := pgxscan.Get(ctx, conn, &count, q, discordID)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	if count != 0 {
-		return terror.Error(fmt.Errorf("discord already assigned to a user"), "This Discord account is already associated with a user.")
-	}
-
-	q = `--sql
-		UPDATE users
-		SET discord_id = $2
-		WHERE id = $1`
-	_, err = conn.Exec(ctx,
-		q,
-		user.ID,
-		discordID,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// UserVerify will mark a user as verified
-func UserVerify(ctx context.Context, conn Conn, id types.UserID) error {
-	q := `
-		UPDATE users
-		SET verified = true
-		WHERE id = $1`
-	_, err := conn.Exec(ctx, q, id.String())
-	if err != nil {
-		return terror.Error(err, "")
-	}
-	return nil
-}
-
-// UserUpdatePasswordSetting will change whether a user needs an old password to change password
-func UserUpdatePasswordSetting(ctx context.Context, conn Conn, id types.UserID, oldPasswordRequired bool) error {
-	q := `
-		UPDATE users
-		SET old_password_required = $2
-		WHERE id = $1`
-	_, err := conn.Exec(ctx, q, id.String(), oldPasswordRequired)
-	if err != nil {
-		return terror.Error(err, "")
-	}
-	return nil
-}
-
-// UserList gets a list of patients depending on the filters
+// UserList gets a list of users depending on the filters
 func UserList(
-	ctx context.Context,
-	conn Conn,
-	result *[]*types.User,
+	result []*types.User,
 	search string,
 	archived bool,
 	filter *ListFilterRequest,
@@ -850,7 +99,7 @@ func UserList(
 			column := UserColumn(f.ColumnField)
 			err := column.IsValid()
 			if err != nil {
-				return 0, terror.Error(err)
+				return 0, err
 			}
 
 			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, i+1)
@@ -893,9 +142,9 @@ func UserList(
 	)
 
 	var totalRows int
-	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
+	err := passdb.StdConn.QueryRow(countQ, args...).Scan(&totalRows)
 	if err != nil {
-		return 0, terror.Error(err)
+		return 0, err
 	}
 	if totalRows == 0 {
 		return 0, nil
@@ -906,7 +155,7 @@ func UserList(
 	if sortBy != "" {
 		err := sortBy.IsValid()
 		if err != nil {
-			return 0, terror.Error(err)
+			return 0, err
 		}
 		orderBy = fmt.Sprintf(" ORDER BY %s %s", sortBy, sortDir)
 	}
@@ -919,8 +168,8 @@ func UserList(
 	q := fmt.Sprintf(
 		UserGetQuery+`--sql
 		WHERE users.deleted_at %s
-			%s
-			%s
+		%s
+		%s
 		%s
 		%s`,
 		archiveCondition,
@@ -929,236 +178,67 @@ func UserList(
 		orderBy,
 		limit,
 	)
-	err = pgxscan.Select(ctx, conn, result, q, args...)
+	rows, err := passdb.StdConn.Query(q, args...)
 	if err != nil {
-		return 0, terror.Error(err)
+		return 0, err
 	}
 
-	for _, user := range *result {
-		// calc sups
-		user.Sups.Init()
+	for rows.Next() {
+		u := &types.User{}
+		// TODO: fix user scan list
+		err := rows.Scan(
+			&u.ID,
+			&u.RoleID,
+			&u.TwoFactorAuthenticationActivated,
+			&u.TwoFactorAuthenticationIsSet,
+			&u.FirstName,
+			&u.LastName,
+			&u.Email,
+			&u.Username,
+			&u.AvatarID,
+			&u.Verified,
+			&u.OldPasswordRequired,
+			&u.CreatedAt,
+			&u.Sups,
+			&u.UpdatedAt,
+			&u.DeletedAt,
+			&u.FacebookID,
+			&u.GoogleID,
+			&u.TwitchID,
+			&u.TwitterID,
+			&u.DiscordID,
+			&u.PublicAddress,
+			&u.Nonce,
+			&u.FactionID,
+			&u.MobileNumber,
+		)
+		if err != nil {
+			return 0, err
+		}
 
+		result = append(result, u)
 	}
+
 	return totalRows, nil
 }
 
-// UserArchiveUpdate will update a user archive status
-func UserArchiveUpdate(ctx context.Context, conn Conn, id types.UserID, archived bool) error {
-	var deletedAt *time.Time
-	if archived {
-		now := time.Now()
-		deletedAt = &now
-	}
-	q := `
-		UPDATE users
-		SET deleted_at = $2
-		WHERE id = $1 `
-	_, err := conn.Exec(ctx, q, id, deletedAt)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-//// UserGenerateUsername generates a user slug in the format "JohnSmith3".
-//func UserGenerateUsername(ctx context.Context, conn Conn, firstName string, lastName string, oldUsername string) (string, error) {
-//	seperator := "_" // use underscore to prevent loosing hyphened names ie John Brown-Smith
-//	username := slug.Make(fmt.Sprintf("%s%s%s", firstName, seperator, lastName))
-//
-//	if username == oldUsername {
-//		return oldUsername, nil
-//	}
-//
-//	// check if slug exists
-//	count := 0
-//	countQ := `
-//	SELECT
-//		count(*)
-//	FROM
-//		users
-//	WHERE
-//		username ~ $1
-//	`
-//	// Match the
-//	// %s[.]?[0-9]*$
-//	// `%s`: the username
-//	// `[.]?`: zero or one hyphen
-//	// `[0-9]*`: zero or more digits
-//	// `$`: on the end of the string
-//	clause := fmt.Sprintf("%s[%s]?[0-9]*$", username, seperator)
-//	err := pgxscan.Get(ctx, conn, &count, countQ, clause)
-//	if err != nil {
-//		return "", terror.Error(err)
-//	}
-//	if count == 0 {
-//		return username, nil
-//	}
-//
-//	return username + fmt.Sprintf("%s%d", seperator, count), nil
-//}
-
-// UserExistsByEmail checks if a user is found through their email address
-func UserExistsByEmail(ctx context.Context, conn Conn, email string) (bool, error) {
-	var count int
-	q := "SELECT COUNT(*) FROM users WHERE email = $1"
-	err := pgxscan.Get(ctx, conn, &count, q, email)
-	if err != nil {
-		return false, terror.Error(err)
-	}
-	return count > 0, nil
-}
-
-// UserSetRecoveryCodes set users' recovery codes
-func UserSetRecoveryCodes(ctx context.Context, conn Conn, userID types.UserID, recoveryCodes []string) error {
-	q := `
-		INSERT INTO 
-			user_recovery_codes (user_id, recovery_code)
-		VALUES	
-	`
-
-	for i, recoveryCode := range recoveryCodes {
-		q += fmt.Sprintf("('%s','%s')", userID, recoveryCode)
-
-		if i < len(recoveryCodes)-1 {
-			q += ","
-			continue
-		}
-
-		q += ";"
-	}
-
-	_, err := conn.Exec(ctx, q)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
-}
-
-// UserCheckRecoveryCode return recovery code by given user id and recovery code
-func UserCheckRecoveryCode(ctx context.Context, conn Conn, userID types.UserID, recoveryCode string) error {
-	q := `
-		SELECT id FROM user_recovery_codes
-		WHERE 	user_id = $1 AND 
-				recovery_code = $2 AND 
-				used_at ISNULL;
-	`
-
-	_, err := conn.Exec(ctx, q, userID, recoveryCode)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
-}
-
-// UserUseRecoveryCode use users' recovery code
-func UserUseRecoveryCode(ctx context.Context, conn Conn, userID types.UserID, recoveryCode string) error {
-	q := `
-		UPDATE
-			user_recovery_codes
-		SET
-			used_at = NOW()
-		WHERE 	user_id = $1 AND 
-				recovery_code = $2 AND
-				used_at ISNULL;
-	`
-
-	_, err := conn.Exec(ctx, q, userID, recoveryCode)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
-}
-
-// UserDeleteRecoveryCode delete users' recovery code
-func UserDeleteRecoveryCode(ctx context.Context, conn Conn, userID types.UserID) error {
-	q := `
-		DELETE FROM
-			user_recovery_codes
-		WHERE user_id = $1;
-	`
-
-	_, err := conn.Exec(ctx, q, userID)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
-}
-
-// UserUpdateNonce updates a user's nonce, used for wallet auth
-func UserUpdateNonce(ctx context.Context, conn Conn, userID types.UserID, newNonce string) error {
-	q := `
-		UPDATE users
-		SET	nonce = $2
-		WHERE id = $1;
-	`
-	_, err := conn.Exec(ctx, q, userID, newNonce)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// EmailAvailable returns true if an email is free
-func EmailAvailable(ctx context.Context, conn Conn, emailToCheck string, userID *types.UserID) (bool, error) {
-	count := 0
-
-	if userID != nil && !userID.IsNil() {
-		q := `
-        		SELECT count(*) FROM users
-        		WHERE email = $1 and id != $2
-        	`
-		err := pgxscan.Get(ctx, conn, &count, q, emailToCheck, userID)
-		if err != nil {
-			return false, terror.Error(err)
-		}
-		return count == 0, nil
-	}
-
-	q := `
-		SELECT count(*) FROM users
-		WHERE email = $1
-	`
-	err := pgxscan.Get(ctx, conn, &count, q, emailToCheck)
-	if err != nil {
-		return false, terror.Error(err)
-	}
-	return count == 0, nil
-}
-
-// AddressAvailable returns true if an address is free (case insensitive, very important!)
-func AddressAvailable(conn Conn, addr common.Address) (bool, error) {
-	count := 0
-
-	q := `
-SELECT count(*) FROM users
-WHERE LOWER(public_address) = LOWER($1);
-`
-	err := pgxscan.Get(context.Background(), conn, &count, q, addr.Hex())
-	if err != nil {
-		return false, terror.Error(err)
-	}
-	return count <= 0, nil
-}
-
 // UsernameAvailable returns true if a username is free
-func UsernameAvailable(ctx context.Context, conn Conn, nameToCheck string, userID *types.UserID) (bool, error) {
+func UsernameAvailable(nameToCheck string, userID string) (bool, error) {
 	if nameToCheck == "" {
 		return false, terror.Error(fmt.Errorf("username cannot be empty"), "Username cannot be empty.")
 	}
+	nameToCheck = strings.ToLower(nameToCheck)
+
 	count := 0
 
-	if userID != nil && !userID.IsNil() {
+	if userID != "" {
 		q := `
         		SELECT count(*) FROM users
         		WHERE 	username = $1 and id != $2
         	`
-		err := pgxscan.Get(ctx, conn, &count, q, nameToCheck, userID)
+		err := passdb.StdConn.QueryRow(q, nameToCheck, userID).Scan(&count)
 		if err != nil {
-			return false, terror.Error(err)
+			return false, err
 		}
 		return count == 0, nil
 	}
@@ -1167,74 +247,11 @@ func UsernameAvailable(ctx context.Context, conn Conn, nameToCheck string, userI
 		SELECT count(*) FROM users
 		WHERE 	username = $1
 	`
-	err := pgxscan.Get(ctx, conn, &count, q, nameToCheck)
+	err := passdb.StdConn.QueryRow(q, nameToCheck).Scan(&count)
 	if err != nil {
-		return false, terror.Error(err)
+		return false, err
 	}
 	return count == 0, nil
-}
-
-// InsertSystemUser this allows manually giving a user a ID
-func InsertSystemUser(ctx context.Context, conn Conn, user *types.User) error {
-
-	q := `--sql
-			INSERT INTO users (id, username, role_id, verified, faction_id)
-			VALUES ($1, $2, $3, $4, $5)`
-
-	_, err := conn.Exec(ctx,
-		q,
-		user.ID,
-		user.Username,
-		user.RoleID,
-		user.Verified,
-		user.FactionID,
-	)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// UserIDsGetByFactionID return a list of user id from the given faction id
-func UserIDsGetByFactionID(ctx context.Context, conn Conn, factionID types.FactionID) ([]types.UserID, error) {
-	userIDs := []types.UserID{}
-
-	q := `
-		SELECT
-			id
-		FROM
-			users
-		WHERE
-			faction_id = $1
-	`
-
-	err := pgxscan.Select(ctx, conn, &userIDs, q, factionID)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	return userIDs, nil
-}
-
-// FactionUserIDGetByFactionID return the faction game account user by faction id
-func FactionUserIDGetByFactionID(ctx context.Context, conn Conn, factionID types.FactionID) (types.UserID, error) {
-	userID := types.UserID{}
-
-	q := `
-		SELECT
-			id
-		FROM
-			users
-		WHERE
-			faction_id = $1 AND role_id = $2
-	`
-
-	err := pgxscan.Get(ctx, conn, &userID, q, factionID, types.UserRoleGameAccount)
-	if err != nil {
-		return userID, terror.Error(err)
-	}
-
-	return userID, nil
 }
 
 type Address struct {
@@ -1242,13 +259,12 @@ type Address struct {
 }
 
 // IsUserWhitelisted check if user is whitelisted
-func IsUserWhitelisted(ctx context.Context, conn Conn, walletAddress string) (bool, error) {
-	user := &Address{}
+func IsUserWhitelisted(walletAddress string) (bool, error) {
 
 	addr := common.HexToAddress(walletAddress).Hex()
-
-	q := "SELECT * FROM whitelisted_addresses WHERE wallet_address = $1"
-	err := pgxscan.Get(ctx, conn, user, q, addr)
+	_, err := boiler.WhitelistedAddresses(
+		boiler.WhitelistedAddressWhere.WalletAddress.EQ(addr),
+	).One(passdb.StdConn)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -1260,11 +276,11 @@ func IsUserWhitelisted(ctx context.Context, conn Conn, walletAddress string) (bo
 }
 
 // IsUserWhitelisted check if user is whitelisted
-func IsUserDeathlisted(ctx context.Context, conn Conn, walletAddress string) (bool, error) {
-	user := &Address{}
+func IsUserDeathlisted(walletAddress string) (bool, error) {
 	addr := common.HexToAddress(walletAddress).Hex()
-	q := "SELECT * FROM death_addresses WHERE wallet_address = $1"
-	err := pgxscan.Get(ctx, conn, user, q, addr)
+	_, err := boiler.WhitelistedAddresses(
+		boiler.WhitelistedAddressWhere.WalletAddress.EQ(addr),
+	).One(passdb.StdConn)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -1275,58 +291,34 @@ func IsUserDeathlisted(ctx context.Context, conn Conn, walletAddress string) (bo
 	return true, nil
 }
 
-func GetFactionIDByUsers(ctx context.Context, conn Conn, um map[types.UserID]types.FactionID) error {
-	users := []*types.User{}
-
-	var args []interface{}
-	q := `
-		SELECT id, faction_id FROM users WHERE id IN (
-	`
-
-	for uid := range um {
-		args = append(args, uid)
-
-		q += "$" + strconv.Itoa(len(args))
-		if len(args) < len(um) {
-			q += ","
-			continue
-		}
-		q += ")"
-	}
-
-	err := pgxscan.Select(ctx, conn, &users, q, args...)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	for _, user := range users {
-		if user.FactionID != nil && !user.FactionID.IsNil() {
-			um[user.ID] = *user.FactionID
-		}
-	}
-
-	return nil
-}
-
 // UserTransactionGetList returns list of transactions based on userid == credit/ debit
-func UserTransactionGetList(ctx context.Context, conn Conn, userID types.UserID, limit int) ([]*types.Transaction, error) {
-	var transactions []*types.Transaction
-
-	q := `--sql
-		SELECT *
-		FROM transactions
-		WHERE transactions.credit = $1 OR transactions.debit = $1 
-		ORDER BY transactions.created_at desc
-		LIMIT $2`
-	err := pgxscan.Select(ctx, conn, &transactions, q, userID, limit)
+func UserTransactionGetList(userID string, limit int) ([]*boiler.Transaction, error) {
+	transactions, err := boiler.Transactions(
+		qm.Where(
+			fmt.Sprintf(
+				"%s = ? OR %s = ?",
+				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.Credit),
+				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.Debit),
+			),
+			userID,
+			userID,
+		),
+		qm.OrderBy(
+			fmt.Sprintf(
+				"%s desc",
+				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.CreatedAt),
+			),
+		),
+		qm.Limit(limit),
+	).All(passdb.StdConn)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	for _, t := range transactions {
 		_, err := t.Amount.Value()
 		if err != nil {
-			return nil, terror.Error(err)
+			return nil, err
 		}
 	}
 
@@ -1359,34 +351,7 @@ func UserMixedCaseUpdateAll() error {
 	}
 	err = tx.Commit()
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	return nil
-}
-
-// MobileNumberAvailable returns true if an mobile number is free
-func MobileNumberAvailable(ctx context.Context, conn Conn, numberToCheck string, userID *types.UserID) (bool, error) {
-	count := 0
-
-	if userID != nil && !userID.IsNil() {
-		q := `
-        		SELECT count(*) FROM users
-        		WHERE mobile_number = $1 and id != $2
-        	`
-		err := pgxscan.Get(ctx, conn, &count, q, numberToCheck, userID)
-		if err != nil {
-			return false, terror.Error(err)
-		}
-		return count == 0, nil
-	}
-
-	q := `
-		SELECT count(*) FROM users
-		WHERE mobile_number = $1
-	`
-	err := pgxscan.Get(ctx, conn, &count, q, numberToCheck)
-	if err != nil {
-		return false, terror.Error(err)
-	}
-	return count == 0, nil
 }
