@@ -99,7 +99,6 @@ func (user *User) IsAdmin() bool {
 	return false
 }
 
-
 func (user *User) CheckUserIsLocked(level string) bool {
 	if level == "withdrawals" && user.WithdrawLock {
 		return true

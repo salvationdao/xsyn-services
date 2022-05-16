@@ -1838,8 +1838,7 @@ type UserFingerprintRequest struct {
 	} `json:"payload"`
 }
 
-
-const HubKeyUserLock hub.HubCommandKey = "USER:LOCK"
+const HubKeyUserLock = "USER:LOCK"
 
 type UserLockRequest struct {
 	*hub.HubCommandRequest
@@ -1849,16 +1848,11 @@ type UserLockRequest struct {
 }
 
 // LockHandler return updates user table to lock account according to requested level
-func (uc *UserController) LockHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) LockHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &UserLockRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
-	}
-
-	user, err := boiler.FindUser(passdb.StdConn, hubc.Identifier())
-	if err != nil {
-		return terror.Error(err, "Could not get user.")
 	}
 
 	if req.Payload.Type == "account" {

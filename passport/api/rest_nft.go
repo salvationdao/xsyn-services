@@ -21,11 +21,6 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/supremacy-bridge/bridge"
-	"math/big"
-	"net/http"
-	"strconv"
-	"time"
-	"xsyn-services/passport/db"
 )
 
 func (api *API) NFTRoutes() chi.Router {
