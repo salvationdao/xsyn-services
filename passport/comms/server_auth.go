@@ -192,7 +192,7 @@ func (s *S) TokenLogin(req TokenReq, resp *UserResp) error {
 			if err != nil {
 				return err
 			}
-			return terror.Warn(err, "Session has expired, please log in again.")
+			return terror.Error(fmt.Errorf("session is expired"), "Session has expired, please log in again.")
 		}
 		return err
 	}

@@ -96,8 +96,13 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, user *typ
 	// record old user state
 	oldUser := *user
 
+	faction, err := boiler.FindFaction(passdb.StdConn, req.Payload.FactionID)
+	if err != nil {
+		return terror.Error(err, "Failed to get faction")
+	}
+
 	// assign faction to current user
-	user.FactionID = null.StringFrom(req.Payload.FactionID)
+	user.FactionID = null.StringFrom(faction.ID)
 
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.FactionID))
 	if err != nil {
@@ -119,9 +124,10 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, user *typ
 		},
 	)
 
-	// broadcast updated user to gamebar user
-	//go fc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUser, user.ID.String())), user)
+	// assign faction to user
+	user.Faction = faction
 
+	// broadcast updated user to gamebar user
 	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
 
 	var resp struct {
