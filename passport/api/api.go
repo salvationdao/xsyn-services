@@ -210,6 +210,7 @@ func NewAPI(
 			})
 			r.Route("/auth", func(r chi.Router) {
 				r.Get("/check", WithError(api.AuthCheckHandler))
+				r.Get("/logout", WithError(api.AuthLogoutHandler))
 				r.Post("/external", api.ExternalLoginHandler)
 				r.Post("/token", api.TokenLoginHandler)
 				r.Post("/wallet", api.WalletLoginHandler)
