@@ -51,7 +51,7 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 		c.mutex.Unlock()
 	}
 
-	passlog.L.Debug().Str("fn", serviceMethod).Interface("args", args).Msg("rpc call")
+	passlog.L.Trace().Str("fn", serviceMethod).Interface("args", args).Msg("rpc call")
 
 	// count up, and use the next client/address
 	atomic.AddUint64(&c.counter, 1)
@@ -65,7 +65,7 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 			// keep redialing until rpc server comes back online
 			client, err = dial(5, c.Addrs[i])
 			if err != nil {
-				return terror.Error(err)
+				return err
 			}
 			c.mutex.Lock()
 			c.clients[i] = client

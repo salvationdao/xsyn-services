@@ -2,11 +2,13 @@ package types
 
 import (
 	"time"
+	"xsyn-services/boiler"
+	"xsyn-services/passport/passdb"
+	"xsyn-services/passport/passlog"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub"
 	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
 )
 
 const (
@@ -52,44 +54,38 @@ const ServerClientLevel = 5
 
 // User is a single user on the platform
 type User struct {
-	ID                               UserID        `json:"id" db:"id"`
-	FirstName                        string        `json:"first_name" db:"first_name"`
-	LastName                         string        `json:"last_name" db:"last_name"`
-	Email                            null.String   `json:"email" db:"email"`
-	FacebookID                       null.String   `json:"facebook_id" db:"facebook_id"`
-	GoogleID                         null.String   `json:"google_id" db:"google_id"`
-	TwitchID                         null.String   `json:"twitch_id" db:"twitch_id"`
-	TwitterID                        null.String   `json:"twitter_id" db:"twitter_id"`
-	DiscordID                        null.String   `json:"discord_id" db:"discord_id"`
-	FactionID                        *FactionID    `json:"faction_id" db:"faction_id"`
-	MobileNumber                     null.String   `json:"mobile_number" db:"mobile_number"`
-	Faction                          *Faction      `json:"faction"`
-	Username                         string        `json:"username" db:"username"`
-	Verified                         bool          `json:"verified" db:"verified"`
-	OldPasswordRequired              bool          `json:"old_password_required" db:"old_password_required"`
-	RoleID                           RoleID        `json:"role_id" db:"role_id"`
-	Role                             Role          `json:"role" db:"role"`
-	Organisation                     *Organisation `json:"organisation" db:"organisation"`
-	AvatarID                         *BlobID       `json:"avatar_id" db:"avatar_id"`
-	Sups                             BigInt
-	Online                           bool         `json:"online"`
-	TwoFactorAuthenticationActivated bool         `json:"two_factor_authentication_activated" db:"two_factor_authentication_activated"`
-	TwoFactorAuthenticationSecret    string       `json:"two_factor_authentication_secret" db:"two_factor_authentication_secret"`
-	TwoFactorAuthenticationIsSet     bool         `json:"two_factor_authentication_is_set" db:"two_factor_authentication_is_set"`
-	HasRecoveryCode                  bool         `json:"has_recovery_code" db:"has_recovery_code"`
-	Pass2FA                          bool         `json:"pass_2_fa"`
-	Nonce                            null.String  `json:"-" db:"nonce"`
-	PublicAddress                    null.String  `json:"public_address,omitempty" db:"public_address"`
-	CreatedAt                        time.Time    `json:"created_at" db:"created_at"`
-	UpdatedAt                        time.Time    `json:"updated_at" db:"updated_at"`
-	DeletedAt                        *time.Time   `json:"deleted_at" db:"deleted_at"`
-	Metadata                         UserMetadata `json:"metadata" db:"metadata"`
+	*boiler.User
+	Faction  *boiler.Faction `json:"faction"`
+	Online   bool            `json:"online"`
+	Pass2FA  bool            `json:"pass_2_fa"`
+	Metadata UserMetadata    `json:"metadata" db:"metadata"`
+	NoNonce  *struct{}       `json:"nonce,omitempty"`
+	NoSups   *struct{}       `json:"sups,omitempty"`
+}
+
+func UserFromBoil(u *boiler.User) (*User, error) {
+	user := &User{User: u}
+	if u.FactionID.Valid {
+		if u.R.Faction != nil {
+			user.Faction = u.R.Faction
+		} else {
+			f, err := boiler.FindFaction(passdb.StdConn, u.FactionID.String)
+			if err != nil {
+				passlog.L.Error().Str("faction_id", u.FactionID.String).Err(err).Msg("unable to query database for faction!")
+				return nil, err
+			}
+			user.Faction = f
+		}
+	}
+	return user, nil
 }
 
 type UserBrief struct {
-	ID       UserID  `json:"id" db:"id"`
-	Username string  `json:"username" db:"username"`
-	AvatarID *BlobID `json:"avatar_id" db:"avatar_id"`
+	ID        string          `json:"id" db:"id"`
+	Username  string          `json:"username" db:"username"`
+	AvatarID  *string         `json:"avatar_id" db:"avatar_id"`
+	FactionID *string         `json:"faction_id" db:"faction_id"`
+	Faction   *boiler.Faction `json:"faction" db:"-"`
 }
 
 type UserMetadata struct {
@@ -103,15 +99,10 @@ func (user *User) IsAdmin() bool {
 	return false
 }
 
-// IsMember returns true if user is a member
-func (user *User) IsMember() bool {
-	return user.RoleID == UserRoleMemberID
-}
-
 // IssueToken contains token information used for login and verifying accounts
 type IssueToken struct {
 	ID     IssueTokenID `json:"id" db:"id"`
-	UserID UserID       `json:"user_id" db:"user_id"`
+	UserID string       `json:"user_id" db:"user_id"`
 }
 
 func (i IssueToken) Whitelisted() bool {

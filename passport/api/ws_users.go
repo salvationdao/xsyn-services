@@ -2,13 +2,13 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"html"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -22,16 +22,17 @@ import (
 	"xsyn-services/passport/payments"
 	"xsyn-services/types"
 
-	"github.com/microcosm-cc/bluemonday"
+	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ninja-software/log_helpers"
-	"github.com/ninja-software/sale/dispersions"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	oidc "github.com/coreos/go-oidc"
-	"github.com/jackc/pgx/v4"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/microcosm-cc/bluemonday"
+	"github.com/ninja-software/log_helpers"
+	"github.com/ninja-software/sale/dispersions"
+	btypes "github.com/volatiletech/sqlboiler/v4/types"
 
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -40,17 +41,14 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/ninja-syndicate/supremacy-bridge/bridge"
 
 	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog"
 )
 
 // UserController holds handlers for authentication
 type UserController struct {
-	Conn    *pgxpool.Pool
 	Log     *zerolog.Logger
 	API     *API
 	Google  *auth.GoogleConfig
@@ -59,9 +57,8 @@ type UserController struct {
 }
 
 // NewUserController creates the user hub
-func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, googleConfig *auth.GoogleConfig, twitchConfig *auth.TwitchConfig, discordConfig *auth.DiscordConfig) *UserController {
+func NewUserController(log *zerolog.Logger, api *API, googleConfig *auth.GoogleConfig, twitchConfig *auth.TwitchConfig, discordConfig *auth.DiscordConfig) *UserController {
 	userHub := &UserController{
-		Conn:    conn,
 		Log:     log_helpers.NamedLogger(log, "user_hub"),
 		API:     api,
 		Google:  googleConfig,
@@ -69,7 +66,7 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 		Discord: discordConfig,
 	}
 
-	api.Command(HubKeyUserGet, userHub.GetHandler) // Perm check inside handler (users can get themselves; need UserRead permission to get other users)
+	api.SecureCommand(HubKeyUserGet, userHub.GetHandler) // Perm check inside handler (users can get themselves; need UserRead permission to get other users)
 	api.SecureCommand(HubKeyUserUpdate, userHub.UpdateHandler)
 	api.SecureCommand(HubKeyUserUsernameUpdate, userHub.UpdateUserUsernameHandler)
 	api.SecureCommand(HubKeyUserRemoveFacebook, userHub.RemoveFacebookHandler) // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
@@ -85,104 +82,91 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, google
 	api.SecureCommand(HubKeyUserRemoveWallet, userHub.RemoveWalletHandler)     // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserAddWallet, userHub.AddWalletHandler)           // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserCreate, userHub.CreateHandler)
-	api.SecureCommandWithPerm(HubKeyUserList, userHub.ListHandler, types.PermUserList)
-	api.SecureCommandWithPerm(HubKeyUserArchive, userHub.ArchiveHandler, types.PermUserArchive)
-	api.SecureCommandWithPerm(HubKeyUserUnarchive, userHub.UnarchiveHandler, types.PermUserUnarchive)
-	api.SecureCommandWithPerm(HubKeyUserChangePassword, userHub.ChangePasswordHandler, types.PermUserUpdate)
-	api.SecureCommandWithPerm(HubKeyUserForceDisconnect, userHub.ForceDisconnectHandler, types.PermUserForceDisconnect)
 
 	api.Command(HubKeyCheckCanAccessStore, userHub.CheckCanAccessStore)
 	api.SecureCommand(HubKeyUserAssetList, userHub.UserAssetListHandler)
 
-	api.SecureUserSubscribeCommand(HubKeyUserTransactionsSubscribe, userHub.UserTransactionsSubscribeHandler)
-	api.SecureUserSubscribeCommand(HubKeyUserLatestTransactionSubscribe, userHub.UserLatestTransactionsSubscribeHandler)
+	//api.SecureCommand(HubKeyUserTransactionsSubscribe, userHub.UserTransactionsSubscribeHandler)
+	//api.SecureCommand(HubKeyUserLatestTransactionSubscribe, userHub.UserLatestTransactionsSubscribeHandler)
+	api.SecureCommand(HubKeyUser, userHub.UpdatedSubscribeHandler)
 
-	api.SubscribeCommand(HubKeyUserForceDisconnected, userHub.ForceDisconnectedHandler)
-	api.SubscribeCommand(HubKeyUserSubscribe, userHub.UpdatedSubscribeHandler)
-	api.SubscribeCommand(HubKeyUserOnlineStatus, userHub.OnlineStatusSubscribeHandler)
-	api.SubscribeCommand(HubKeySUPSRemainingSubscribe, userHub.TotalSupRemainingHandler)
-	api.SubscribeCommand(HubKeySUPSExchangeRates, userHub.ExchangeRatesHandler)
+	api.SecureCommand(HubKeySUPSRemainingSubscribe, userHub.TotalSupRemainingHandler)
+	api.SecureCommand(HubKeySUPSExchangeRates, userHub.ExchangeRatesHandler)
 
 	// listen on queuing war machine
-	api.SecureUserSubscribeCommand(HubKeyWarMachineQueueStatSubscribe, userHub.WarMachineQueuePositionUpdatedSubscribeHandler)
-	api.SecureUserSubscribeCommand(HubKeyUserSupsSubscribe, userHub.UserSupsUpdatedSubscribeHandler)
-	api.SecureUserSubscribeCommand(HubKeyUserFactionSubscribe, userHub.UserFactionUpdatedSubscribeHandler)
+	api.SecureCommand(HubKeyUserSupsSubscribe, api.UserSupsUpdatedSubscribeHandler)
+	api.SecureCommand(HubKeyUserFactionSubscribe, userHub.UserFactionUpdatedSubscribeHandler)
 
-	api.SecureUserSubscribeCommand(HubKeyBlockConfirmation, userHub.BlockConfirmationHandler)
+	api.SecureCommand(HubKeyBlockConfirmation, userHub.BlockConfirmationHandler)
 
 	// sups multiplier
-	api.SecureUserSubscribeCommand(HubKeyUserSupsMultiplierSubscribe, userHub.UserSupsMultiplierUpdatedSubscribeHandler)
-	api.SecureUserSubscribeCommand(HubKeyUserStatSubscribe, userHub.UserStatUpdatedSubscribeHandler)
-
-	// user fingerprinting
-	api.Command(HubKeyUserFingerprint, userHub.UserFingerprintHandler)
+	api.SecureCommand(HubKeyUserStatSubscribe, userHub.UserStatUpdatedSubscribeHandler)
 
 	return userHub
 }
 
 // GetUserRequest requests an update for an existing user
 type GetUserRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
-		ID       types.UserID `json:"id"`
-		Username string       `json:"username"`
+		ID       string `json:"id"`
+		Username string `json:"username"`
 	} `json:"payload"`
 }
 
 // 	rootHub.SecureCommand(HubKeyUserGet, UserController.GetHandler)
-const HubKeyUserGet hub.HubCommandKey = "USER:GET"
+const HubKeyUserGet = "USER"
 
 // GetHandler gets the details for a user
-func (uc *UserController) GetHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) GetHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &GetUserRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-	if req.Payload.ID.IsNil() && req.Payload.Username == "" {
-		return terror.Error(terror.ErrInvalidInput, "User ID or username is required")
-	}
+	_ = json.Unmarshal(payload, req)
 
-	var user *types.User
-
-	if !req.Payload.ID.IsNil() {
-		usr, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
-		if err != nil {
-			return terror.Error(err, "Unable to load current user")
-		}
-		user = usr
-	} else {
-		usr, err := db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
-		if err != nil {
-			return terror.Error(err, "Unable to load current user")
-		}
-		user = usr
-	}
-
-	// if hub user isn't requested user, clear private data
-	if user.ID.String() != hubc.Identifier() {
-		reply(&types.User{
-			Username: user.Username,
-			Faction:  user.Faction,
-		})
+	if req.Payload.ID == "" && req.Payload.Username == "" {
+		reply(user)
 		return nil
 	}
 
-	reply(user)
+	// if hub user isn't requested user, clear private data
+	if user.ID != req.Payload.ID {
+		buser, err := boiler.Users(
+			boiler.UserWhere.ID.EQ(req.Payload.ID),
+			qm.Load(qm.Rels(boiler.UserRels.Faction)),
+		).One(passdb.StdConn)
+		if err != nil {
+			return fmt.Errorf("failed to find user: %w", err)
+		}
+
+		b := &types.UserBrief{
+			ID:       buser.ID,
+			Username: buser.Username,
+		}
+
+		if buser.AvatarID.Valid {
+			*b.AvatarID = buser.AvatarID.String
+		}
+
+		if buser.FactionID.Valid {
+			*b.FactionID = buser.FactionID.String
+		}
+
+		b.Faction = buser.R.Faction
+
+		reply(b)
+		return nil
+	}
 	return nil
 
 }
 
 type UpdateUserUsernameRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Username string `json:"username"`
 	} `json:"payload"`
 }
 
-const HubKeyUserUsernameUpdate hub.HubCommandKey = "USER:USERNAME:UPDATE"
+const HubKeyUserUsernameUpdate = "USER:USERNAME:UPDATE"
 
-func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue updating username, try again or contact support."
 	req := &UpdateUserUsernameRequest{}
 	err := json.Unmarshal(payload, req)
@@ -203,26 +187,12 @@ func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, hubc *h
 		return terror.Error(err, errMsg)
 	}
 
-	userID, err := uuid.FromString(hubc.Identifier())
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// Get user
-	user, err := db.UserGet(ctx, uc.Conn, types.UserID(userID))
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// Activity tracking
-	var oldUser types.User = *user
-
 	// Check availability of username
 	if user.Username == username {
-		return terror.Error(fmt.Errorf("username cannot be same as current"), "New username cannot be the same as current username.")
+		return fmt.Errorf("username must be different")
 	}
 
-	isAvailable, err := db.UsernameAvailable(ctx, uc.Conn, username, &user.ID)
+	isAvailable, err := db.UsernameAvailable(username, user.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -230,58 +200,57 @@ func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, hubc *h
 		return terror.Error(fmt.Errorf("A user with that username already exists."), "A user with that username already exists.")
 	}
 
-	// Update username
-	user.Username = username
+	oldUserName := user.Username
 
-	// Update user
-	err = db.UserUpdate(ctx, uc.Conn, user)
+	// Update username
+	user.Username = strings.ToLower(username)
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
 	// Log username change
-	if oldUser.Username != user.Username {
+	if oldUserName != user.Username {
 		uh := boiler.UsernameHistory{
-			UserID:      user.ID.String(),
-			OldUsername: oldUser.Username,
+			UserID:      user.ID,
+			OldUsername: oldUserName,
 			NewUsername: user.Username,
 		}
 		err := uh.Insert(passdb.StdConn, boil.Infer())
 		if err != nil {
-			passlog.L.Warn().Err(err).Str("old username", oldUser.Username).Str("new username", user.Username).Msg("Failed to log username change in db")
+			passlog.L.Warn().Err(err).Str("old username", oldUserName).Str("new username", user.Username).Msg("Failed to log username change in db")
 		}
-	}
-
-	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID)
-	if err != nil {
-		return terror.Error(err, "User does not exist.")
 	}
 
 	reply(user)
 
 	// Record user activity
 	uc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Updated user's username",
 		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
+		helpers.StringPointer(user.ID),
 		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
 		&types.UserActivityChangeData{
 			Name: db.TableNames.Users,
-			From: oldUser,
-			To:   user,
+			From: struct {
+				Username     string `json:"username"`
+				PrevUsername string `json:"previous_username"`
+			}{
+				Username:     user.Username,
+				PrevUsername: oldUserName,
+			},
+			To: user,
 		},
 	)
 
-	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
 	return nil
 }
 
 // UpdateUserFactionRequest requests update user faction
 type UpdateUserFactionRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		UserID    types.UserID    `json:"user_id"`
 		FactionID types.FactionID `json:"faction_id"`
@@ -289,54 +258,31 @@ type UpdateUserFactionRequest struct {
 }
 
 // HubKeyUserUpdate updates a user
-const HubKeyUserUpdate hub.HubCommandKey = "USER:UPDATE"
+const HubKeyUserUpdate = "USER:UPDATE"
 
 // UpdateUserRequest requests an update for an existing user
 type UpdateUserRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
-		ID                               types.UserID  `json:"id"`
-		Username                         string        `json:"username"`
-		NewUsername                      *string       `json:"new_username"`
-		FirstName                        string        `json:"first_name"`
-		LastName                         string        `json:"last_name"`
-		MobileNumber                     string        `json:"mobile_number"`
-		Email                            null.String   `json:"email"`
-		AvatarID                         *types.BlobID `json:"avatar_id"`
-		CurrentPassword                  *string       `json:"current_password"`
-		NewPassword                      *string       `json:"new_password"`
-		TwoFactorAuthenticationActivated bool          `json:"two_factor_authentication_activated"`
+		Username                         string      `json:"username"`
+		NewUsername                      *string     `json:"new_username"`
+		FirstName                        string      `json:"first_name"`
+		LastName                         string      `json:"last_name"`
+		MobileNumber                     string      `json:"mobile_number"`
+		Email                            null.String `json:"email"`
+		AvatarID                         *string     `json:"avatar_id"`
+		CurrentPassword                  *string     `json:"current_password"`
+		NewPassword                      *string     `json:"new_password"`
+		TwoFactorAuthenticationActivated bool        `json:"two_factor_authentication_activated"`
 	} `json:"payload"`
 }
 
 // UpdateHandler updates a user
-func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue updating user details, try again or contact support."
 	req := &UpdateUserRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
-	}
-	if req.Payload.ID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User ID is required.")
-	}
-
-	var user *types.User
-	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
-	} else {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
-	}
-
-	// Trying to update user w/ higher role than you?
-	if user.ID.String() != hubc.Identifier() && (hubc.IsHigherOrSameLevel(user.Role.Tier) || !hubc.HasPermission(types.PermUserUpdate.String())) {
-		return terror.Error(terror.ErrUnauthorised, "You are unauthorised to update this user.")
 	}
 
 	// Setup user activity tracking
@@ -379,18 +325,18 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 			return terror.Error(err, passwordErr)
 		}
 
-		hasPassword, err := db.UserHasPassword(ctx, uc.Conn, user)
+		hasPassword, err := db.UserHasPassword(user.ID)
 		if err != nil {
 			return terror.Error(err, errMsg)
 		}
-		confirmPassword = req.Payload.ID.String() == hubc.Identifier() && user.OldPasswordRequired && *hasPassword
+		confirmPassword = user.OldPasswordRequired && *hasPassword
 	}
 
 	if confirmPassword {
 		if req.Payload.CurrentPassword == nil {
 			return terror.Error(terror.ErrInvalidInput, "Current password is required.")
 		}
-		hashB64, err := db.HashByUserID(ctx, uc.Conn, req.Payload.ID)
+		hashB64, err := db.HashByUserID(user.ID)
 		if err != nil {
 			return terror.Error(err, "Current password is incorrect.")
 		}
@@ -400,8 +346,8 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 		}
 	}
 
-	user.FirstName = req.Payload.FirstName
-	user.LastName = req.Payload.LastName
+	user.FirstName = null.StringFrom(req.Payload.FirstName)
+	user.LastName = null.StringFrom(req.Payload.LastName)
 
 	if req.Payload.MobileNumber != "" && req.Payload.MobileNumber != user.MobileNumber.String {
 		number, err := uc.API.SMS.Lookup(req.Payload.MobileNumber)
@@ -415,67 +361,34 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 		user.MobileNumber = null.NewString("", false)
 	}
 
-	user.AvatarID = req.Payload.AvatarID
+	if req.Payload.AvatarID != nil {
+		user.AvatarID = null.StringFrom(*req.Payload.AvatarID)
+	}
 
 	// Start transaction
-	tx, err := uc.Conn.Begin(ctx)
+	tx, err := passdb.StdConn.Begin()
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
-	defer func(tx pgx.Tx, ctx context.Context) {
-		err := tx.Rollback(ctx)
-		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			uc.Log.Err(err).Msg("error rolling back")
-		}
-	}(tx, ctx)
-
-	if req.Payload.ID.String() == hubc.Identifier() && user.TwoFactorAuthenticationActivated != req.Payload.TwoFactorAuthenticationActivated {
-		// if turn off 2fa
-		if !req.Payload.TwoFactorAuthenticationActivated {
-			userUUID, err := uuid.FromString(hubc.Identifier())
-			if err != nil {
-				return terror.Error(err, errMsg)
-			}
-			userID := types.UserID(userUUID)
-			// reset 2fa flag
-			err = db.UserUpdate2FAIsSet(ctx, tx, userID, false)
-			if err != nil {
-				return terror.Error(err, errMsg)
-			}
-
-			// clear 2fa secret
-			err = db.User2FASecretSet(ctx, tx, userID, "")
-			if err != nil {
-				return terror.Error(err, errMsg)
-			}
-
-			// delete recovery code
-			err = db.UserDeleteRecoveryCode(ctx, tx, userID)
-			if err != nil {
-				return terror.Error(err, errMsg)
-			}
-		}
-
-		user.TwoFactorAuthenticationActivated = req.Payload.TwoFactorAuthenticationActivated
-	}
+	defer tx.Rollback()
 
 	// Update user
-	err = db.UserUpdate(ctx, tx, user)
+	_, err = user.Update(tx, boil.Infer())
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
 	// Update password?
 	if req.Payload.NewPassword != nil {
-		err = db.AuthSetPasswordHash(ctx, tx, req.Payload.ID, crypto.HashPassword(*req.Payload.NewPassword))
+		err = db.AuthSetPasswordHash(tx, user.ID, crypto.HashPassword(*req.Payload.NewPassword))
 		if err != nil {
 			return terror.Error(err, errMsg)
 		}
 	}
 
 	// Commit transaction
-	err = tx.Commit(ctx)
+	err = tx.Commit()
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -483,7 +396,7 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 	// Log username change
 	if oldUser.Username != user.Username {
 		uh := boiler.UsernameHistory{
-			UserID:      user.ID.String(),
+			UserID:      user.ID,
 			OldUsername: oldUser.Username,
 			NewUsername: user.Username,
 		}
@@ -493,28 +406,14 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 		}
 	}
 
-	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	if user.FactionID != nil && !user.FactionID.IsNil() {
-		faction, err := db.FactionGet(ctx, uc.Conn, *user.FactionID)
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
-		user.Faction = faction
-	}
-
 	reply(user)
 	uc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Updated User",
 		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
+		helpers.StringPointer(user.ID),
 		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
 		&types.UserActivityChangeData{
 			Name: db.TableNames.Users,
 			From: oldUser,
@@ -522,7 +421,7 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 		},
 	)
 
-	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
 
 	var resp struct {
 		IsSuccess bool `json:"is_success"`
@@ -542,7 +441,6 @@ func (uc *UserController) UpdateHandler(ctx context.Context, hubc *hub.Client, p
 
 // UpdateUserSupsRequest requests an update for an existing user
 type UpdateUserSupsRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		UserID     types.UserID `json:"user_id"`
 		SupsChange int64        `json:"sups_change"`
@@ -550,23 +448,22 @@ type UpdateUserSupsRequest struct {
 }
 
 // HubKeyUserCreate creates a user
-const HubKeyUserCreate hub.HubCommandKey = "USER:CREATE"
+const HubKeyUserCreate = "USER:CREATE"
 
 // CreateUserRequest requests an create for an existing user
 type CreateUserRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
-		FirstName   string        `json:"first_name"`
-		LastName    string        `json:"last_name"`
-		Email       null.String   `json:"email"`
-		AvatarID    *types.BlobID `json:"avatar_id"`
-		NewPassword *string       `json:"new_password"`
-		RoleID      types.RoleID  `json:"role_id"`
+		FirstName   string      `json:"first_name"`
+		LastName    string      `json:"last_name"`
+		Email       null.String `json:"email"`
+		AvatarID    string      `json:"avatar_id"`
+		NewPassword *string     `json:"new_password"`
+		RoleID      string      `json:"role_id"`
 	} `json:"payload"`
 }
 
 // CreateHandler creates a user
-func (uc *UserController) CreateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) CreateHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &CreateUserRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -586,7 +483,7 @@ func (uc *UserController) CreateHandler(ctx context.Context, hubc *hub.Client, p
 	if !helpers.IsValidEmail(email) {
 		return terror.Error(terror.ErrInvalidInput, "Email is required.")
 	}
-	if req.Payload.RoleID.IsNil() {
+	if req.Payload.RoleID == "" {
 		return terror.Error(terror.ErrInvalidInput, "Role is required.")
 	}
 	if req.Payload.NewPassword == nil {
@@ -599,61 +496,51 @@ func (uc *UserController) CreateHandler(ctx context.Context, hubc *hub.Client, p
 
 	// Start transaction
 	errMsg := "Unable to create user, please try again."
-	tx, err := uc.Conn.Begin(ctx)
+	tx, err := passdb.StdConn.Begin()
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	defer func(tx pgx.Tx, ctx context.Context) {
-		err := tx.Rollback(ctx)
-		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			uc.Log.Err(err).Msg("error rolling back")
-		}
-	}(tx, ctx)
+
+	defer tx.Rollback()
 
 	// Create user
-	user := &types.User{
-		FirstName: req.Payload.FirstName,
-		LastName:  req.Payload.LastName,
+	newUser := &boiler.User{
+		FirstName: null.StringFrom(req.Payload.FirstName),
+		LastName:  null.StringFrom(req.Payload.LastName),
 		Email:     req.Payload.Email,
-		RoleID:    req.Payload.RoleID,
+		RoleID:    null.StringFrom(req.Payload.RoleID),
 	}
-	if req.Payload.AvatarID != nil {
-		user.AvatarID = req.Payload.AvatarID
+	if req.Payload.AvatarID != "" {
+		newUser.AvatarID = null.StringFrom(req.Payload.AvatarID)
 	}
 
-	err = db.UserCreate(ctx, uc.Conn, user)
+	err = newUser.Insert(tx, boil.Infer())
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
 	// Set password
-	err = db.AuthSetPasswordHash(ctx, tx, user.ID, crypto.HashPassword(*req.Payload.NewPassword))
+	err = db.AuthSetPasswordHash(tx, user.ID, crypto.HashPassword(*req.Payload.NewPassword))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
 	// Commit transaction
-	err = tx.Commit(ctx)
+	err = tx.Commit()
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
-	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	reply(user)
+	reply(newUser)
 
 	// Record user activity
 	uc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Created User",
 		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
+		helpers.StringPointer(newUser.ID),
 		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
 		&types.UserActivityChangeData{
 			Name: db.TableNames.Users,
 			From: nil,
@@ -665,11 +552,10 @@ func (uc *UserController) CreateHandler(ctx context.Context, hubc *hub.Client, p
 }
 
 // HubKeyIntakeList is a hub key to run list user intake
-const HubKeyUserList hub.HubCommandKey = "USER:LIST"
+const HubKeyUserList = "USER:LIST"
 
 // ListHandlerRequest requests holds the filter for user list
 type ListHandlerRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		SortDir  db.SortByDir          `json:"sort_dir"`
 		SortBy   db.UserColumn         `json:"sort_by"`
@@ -688,7 +574,7 @@ type UserListResponse struct {
 }
 
 // ListHandler lists users with pagination
-func (uc *UserController) ListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) ListHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Could not get users, try again or contact support."
 
 	req := &ListHandlerRequest{}
@@ -704,7 +590,7 @@ func (uc *UserController) ListHandler(ctx context.Context, hubc *hub.Client, pay
 
 	users := []*types.User{}
 	total, err := db.UserList(
-		ctx, uc.Conn, &users,
+		users,
 		req.Payload.Search,
 		req.Payload.Archived,
 		req.Payload.Filter,
@@ -728,316 +614,7 @@ func (uc *UserController) ListHandler(ctx context.Context, hubc *hub.Client, pay
 	return nil
 }
 
-type UserArchiveRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		ID types.UserID `json:"id"`
-	} `json:"payload"`
-}
-
-const (
-	// HubKeyUserArchive archives the user
-	HubKeyUserArchive hub.HubCommandKey = hub.HubCommandKey("USER:ARCHIVE")
-
-	// HubKeyUserUnarchive unarchives the user
-	HubKeyUserUnarchive hub.HubCommandKey = hub.HubCommandKey("USER:UNARCHIVE")
-)
-
-// ArchiveHandler archives a user
-func (uc *UserController) ArchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Issue while archiving user, try again or contact support."
-	req := &UserArchiveRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-	err = db.UserArchiveUpdate(ctx, uc.Conn, req.Payload.ID, true)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// Return user
-	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-	reply(user)
-
-	// Record user activity
-	if err == nil {
-		uc.API.RecordUserActivity(ctx,
-			hubc.Identifier(),
-			"Archived User",
-			types.ObjectTypeUser,
-			helpers.StringPointer(user.ID.String()),
-			&user.Username,
-			helpers.StringPointer(user.FirstName+" "+user.LastName),
-		)
-	}
-
-	return nil
-}
-
-// UnarchiveHandler unarchives a user
-func (uc *UserController) UnarchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Issue unarchiving user, try again or contact support."
-	req := &UserArchiveRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-	err = db.UserArchiveUpdate(ctx, uc.Conn, req.Payload.ID, false)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// Return user
-	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-	reply(user)
-
-	//// Record user activity
-	if err == nil {
-		uc.API.RecordUserActivity(ctx,
-			hubc.Identifier(),
-			"Unarchived User",
-			types.ObjectTypeUser,
-			helpers.StringPointer(user.ID.String()),
-			&user.Username,
-			helpers.StringPointer(user.FirstName+" "+user.LastName),
-		)
-	}
-
-	return nil
-}
-
-// HubKeyUserChangePassword updates a user
-const HubKeyUserChangePassword hub.HubCommandKey = "USER:CHANGE_PASSWORD"
-
-// UserChangePasswordRequest requests an update for an existing user
-type UserChangePasswordRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		ID          types.UserID `json:"id"`
-		NewPassword string       `json:"new_password"`
-	} `json:"payload"`
-}
-
-// ChangePasswordHandler
-func (uc *UserController) ChangePasswordHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &UserChangePasswordRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-	if req.Payload.ID == types.UserID(uuid.Nil) {
-		return terror.Error(terror.ErrInvalidInput, "User ID is required")
-	}
-
-	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
-	if err != nil {
-		return terror.Error(err, "Unable to load current user")
-	}
-
-	// Trying to update user w/ higher role than you?
-	if user.ID.String() != hubc.Identifier() && hubc.IsHigherOrSameLevel(user.Role.Tier) {
-		return terror.Error(terror.ErrUnauthorised, "You do not have permission to update this user")
-	}
-
-	// Setup user activity tracking
-	var oldUser types.User = *user
-
-	// Validate
-	if req.Payload.NewPassword == "" {
-		return terror.Error(terror.ErrInvalidInput, "New Password is required")
-	}
-	err = helpers.IsValidPassword(req.Payload.NewPassword)
-	if err != nil {
-		passwordErr := err.Error()
-		var bErr *terror.TError
-		if errors.As(err, &bErr) {
-			passwordErr = bErr.Message
-		}
-		return terror.Error(err, passwordErr)
-	}
-
-	// Update Password
-	errMsg := "Unable to update user, please try again."
-
-	tx, err := uc.Conn.Begin(ctx)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-	defer func(tx pgx.Tx, ctx context.Context) {
-		err := tx.Rollback(ctx)
-		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			uc.Log.Err(err).Msg("error rolling back")
-		}
-	}(tx, ctx)
-
-	err = db.AuthSetPasswordHash(ctx, tx, req.Payload.ID, crypto.HashPassword(req.Payload.NewPassword))
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	err = tx.Commit(ctx)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	reply(true)
-
-	// Record user activity
-	uc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
-		"Changed User Password",
-		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
-		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
-		&types.UserActivityChangeData{
-			Name: db.TableNames.Users,
-			From: oldUser,
-			To:   user,
-		},
-	)
-	return nil
-}
-
-// HubKeyUserForceDisconnect to force disconnect a user and invalidate their tokens
-const HubKeyUserForceDisconnect hub.HubCommandKey = "USER:FORCE_DISCONNECT"
-
-// UserForceDisconnectRequest requests to force disconnect a user and invalidate their tokens
-type UserForceDisconnectRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		ID types.UserID `json:"id"`
-	} `json:"payload"`
-}
-
-// ForceDisconnectHandler to force disconnect a user and invalidate their tokens
-func (uc *UserController) ForceDisconnectHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &UserForceDisconnectRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-	if req.Payload.ID == types.UserID(uuid.Nil) {
-		return terror.Error(terror.ErrInvalidInput, "User ID is required.")
-	}
-
-	if req.Payload.ID.String() == hubc.Identifier() {
-		return terror.Error(terror.ErrForbidden, "You cannot force disconnect yourself.")
-	}
-
-	user, err := db.UserGet(ctx, uc.Conn, req.Payload.ID)
-	if err != nil {
-		return terror.Error(err, "Unable to load current user.")
-	}
-
-	// Trying to disconnect user w/ higher role than you?
-	if user.ID.String() != hubc.Identifier() && hubc.IsHigherOrSameLevel(user.Role.Tier) {
-		return terror.Error(terror.ErrUnauthorised, "You do not have permission to force disconnect this user.")
-	}
-
-	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserForceDisconnected, user.ID.String())), nil)
-	reply(true)
-
-	// Delete issue tokens
-	err = db.AuthRemoveTokensFromUserID(ctx, uc.Conn, req.Payload.ID)
-	if err != nil {
-		return terror.Error(err, "Issue force disconnecting user.")
-	}
-
-	//Record user activity
-	uc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
-		"Force Disconnected User",
-		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
-		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
-	)
-	return nil
-}
-
-type ForceDisconnectRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		ID types.UserID `json:"id"`
-	} `json:"payload"`
-}
-
-const HubKeyUserForceDisconnected hub.HubCommandKey = "USER:FORCE_DISCONNECTED"
-
-// ForceDisconnectedHandler subscribes a user to force disconnected messages
-func (uc *UserController) ForceDisconnectedHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &ForceDisconnectRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received.")
-	}
-	if req.Payload.ID == types.UserID(uuid.Nil) {
-		return "", "", terror.Error(terror.ErrInvalidInput, "User ID is required")
-	}
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserForceDisconnected, req.Payload.ID.String())), nil
-}
-
-// HubKeyUserOnlineStatus subscribes to a user's online status (returns boolean)
-const HubKeyUserOnlineStatus hub.HubCommandKey = "USER:ONLINE_STATUS"
-
-// HubKeyUserOnlineStatusRequest to subscribe to user online status changes
-type HubKeyUserOnlineStatusRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		ID       types.UserID `json:"id"`
-		Username string       `json:"username"` // Optional username instead of id
-	} `json:"payload"`
-}
-
-// OnlineStatusSubscribeHandler to subscribe to user online status changes
-func (uc *UserController) OnlineStatusSubscribeHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &HubKeyUserOnlineStatusRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
-	}
-
-	userID := req.Payload.ID
-	if userID.IsNil() && req.Payload.Username == "" {
-		return req.TransactionID, "", terror.Error(terror.ErrInvalidInput, "User ID or username is required.")
-	}
-	if userID.IsNil() {
-		id, err := db.UserIDFromUsername(ctx, uc.Conn, req.Payload.Username)
-		if err != nil {
-			return req.TransactionID, "", terror.Error(err, "Unable to load current user.")
-		}
-		userID = *id
-	}
-
-	if userID.IsNil() {
-		return req.TransactionID, "", terror.Error(fmt.Errorf("userID is still nil for %s %s", req.Payload.ID, req.Payload.Username), "Unable to load current user.")
-	}
-
-	// get current online status
-	online := false
-	uc.API.Hub.Clients(func(sessionID hub.SessionID, cl *hub.Client) bool {
-		if cl.Identifier() == userID.String() {
-			online = true
-			return false
-		}
-		return true
-	})
-
-	reply(online)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, userID.String())), nil
-}
-
 type RemoveServiceRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		ID       types.UserID `json:"id"`
 		Username string       `json:"username"`
@@ -1045,16 +622,15 @@ type RemoveServiceRequest struct {
 }
 
 type AddServiceRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Token string `json:"token"`
 	} `json:"payload"`
 }
 
 // HubKeyUserRemoveFacebook removes a linked Facebook account
-const HubKeyUserRemoveFacebook hub.HubCommandKey = "USER:REMOVE_FACEBOOK"
+const HubKeyUserRemoveFacebook = "USER:REMOVE_FACEBOOK"
 
-func (uc *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) RemoveFacebookHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1062,24 +638,6 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hub.C
 	}
 	if req.Payload.ID.IsNil() {
 		return terror.Error(terror.ErrInvalidInput, "User ID is required")
-	}
-
-	var user *types.User
-	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
-		if err != nil {
-			return terror.Error(err, "Failed to get user.")
-		}
-	} else {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
-		if err != nil {
-			return terror.Error(err, "Failed to get user.")
-		}
-	}
-
-	//// Permission check
-	if user.ID.String() != hubc.Identifier() && !hubc.HasPermission(types.PermUserUpdate.String()) {
-		return terror.Error(terror.ErrUnauthorised, "You do not have permission to update other users.")
 	}
 
 	// Setup user activity tracking
@@ -1093,13 +651,8 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hub.C
 
 	// Update user
 	errMsg := "Unable to update user, please try again."
-	err = db.UserRemoveFacebook(ctx, uc.Conn, user)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID)
+	user.FacebookID = null.NewString("", false)
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.FacebookID))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1108,12 +661,12 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hub.C
 
 	//// Record user activity
 	uc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Removed Facebook account from User",
 		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
+		helpers.StringPointer(user.ID),
 		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
 		&types.UserActivityChangeData{
 			Name: db.TableNames.Users,
 			From: oldUser,
@@ -1121,14 +674,14 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, hubc *hub.C
 		},
 	)
 
-	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
 	return nil
 }
 
 // HubKeyUserAddFacebook removes a linked Facebook account
-const HubKeyUserAddFacebook hub.HubCommandKey = "USER:ADD_FACEBOOK"
+const HubKeyUserAddFacebook = "USER:ADD_FACEBOOK"
 
-func (uc *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) AddFacebookHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &AddServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1154,42 +707,27 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.Clie
 		return terror.Error(err, errMsg)
 	}
 
-	userID, err := uuid.FromString(hubc.Identifier())
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// Get user
-	user, err := db.UserGet(ctx, uc.Conn, types.UserID(userID))
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
 	// Setup user activity tracking
 	var oldUser types.User = *user
 
 	// Update user's Facebook ID
-	err = db.UserAddFacebook(ctx, uc.Conn, user, resp.ID)
+
+	user.FacebookID = null.StringFrom(resp.ID)
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.FacebookID))
 	if err != nil {
 		return terror.Error(err, errMsg)
-	}
-
-	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, types.UserID(userID))
-	if err != nil {
-		return terror.Error(err, "Failed to query user.")
 	}
 
 	reply(user)
 
 	// Record user activity
 	uc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Added Facebook account to User",
 		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
+		helpers.StringPointer(user.ID),
 		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
 		&types.UserActivityChangeData{
 			Name: db.TableNames.Users,
 			From: oldUser,
@@ -1197,15 +735,14 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, hubc *hub.Clie
 		},
 	)
 
-	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
-
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
 	return nil
 }
 
 // HubKeyUserRemoveGoogle removes a linked Google account
-const HubKeyUserRemoveGoogle hub.HubCommandKey = "USER:REMOVE_GOOGLE"
+const HubKeyUserRemoveGoogle = "USER:REMOVE_GOOGLE"
 
-func (uc *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) RemoveGoogleHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1213,24 +750,6 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.Cli
 	}
 	if req.Payload.ID.IsNil() {
 		return terror.Error(terror.ErrInvalidInput, "User ID is required")
-	}
-
-	var user *types.User
-	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
-		if err != nil {
-			return terror.Error(err, "Failed to get user")
-		}
-	} else {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
-		if err != nil {
-			return terror.Error(err, "Failed to get user")
-		}
-	}
-
-	//// Permission check
-	if user.ID.String() != hubc.Identifier() && !hubc.HasPermission(types.PermUserUpdate.String()) {
-		return terror.Error(terror.ErrUnauthorised, "You do not have permission to update other users.")
 	}
 
 	// Setup user activity tracking
@@ -1244,13 +763,8 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.Cli
 
 	// Update user
 	errMsg := "Unable to update user, please try again."
-	err = db.UserRemoveGoogle(ctx, uc.Conn, user)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID)
+	user.GoogleID = null.NewString("", false)
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.GoogleID))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1259,12 +773,12 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.Cli
 
 	//// Record user activity
 	uc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Removed Google account from User",
 		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
+		helpers.StringPointer(user.ID),
 		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
 		&types.UserActivityChangeData{
 			Name: db.TableNames.Users,
 			From: oldUser,
@@ -1272,14 +786,15 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, hubc *hub.Cli
 		},
 	)
 
-	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
+
 	return nil
 }
 
 // HubKeyUserAddGoogle adds a linked Google account
-const HubKeyUserAddGoogle hub.HubCommandKey = "USER:ADD_GOOGLE"
+const HubKeyUserAddGoogle = "USER:ADD_GOOGLE"
 
-func (uc *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) AddGoogleHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &AddServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1302,28 +817,12 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Client
 		return terror.Error(err, errMsg)
 	}
 
-	userID, err := uuid.FromString(hubc.Identifier())
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// Get user
-	user, err := db.UserGet(ctx, uc.Conn, types.UserID(userID))
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
 	// Setup user activity tracking
 	var oldUser types.User = *user
 
 	// Update user's Google ID
-	err = db.UserAddGoogle(ctx, uc.Conn, user, googleID)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, types.UserID(userID))
+	user.GoogleID = null.StringFrom(googleID)
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.GoogleID))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1332,12 +831,12 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Client
 
 	// Record user activity
 	uc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Added Google account to User",
 		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
+		helpers.StringPointer(user.ID),
 		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
 		&types.UserActivityChangeData{
 			Name: db.TableNames.Users,
 			From: oldUser,
@@ -1345,15 +844,15 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, hubc *hub.Client
 		},
 	)
 
-	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
 
 	return nil
 }
 
 // HubKeyUserRemoveTwitch removes a linked Twitch account
-const HubKeyUserRemoveTwitch hub.HubCommandKey = "USER:REMOVE_TWITCH"
+const HubKeyUserRemoveTwitch = "USER:REMOVE_TWITCH"
 
-func (uc *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) RemoveTwitchHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1361,24 +860,6 @@ func (uc *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.Cli
 	}
 	if req.Payload.ID.IsNil() {
 		return terror.Error(terror.ErrInvalidInput, "User ID is required")
-	}
-
-	var user *types.User
-	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
-		if err != nil {
-			return terror.Error(err, "Failed to get user")
-		}
-	} else {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
-		if err != nil {
-			return terror.Error(err, "Failed to get user")
-		}
-	}
-
-	//// Permission check
-	if user.ID.String() != hubc.Identifier() && !hubc.HasPermission(types.PermUserUpdate.String()) {
-		return terror.Error(terror.ErrUnauthorised, "You do not have permission to update other users.")
 	}
 
 	// Setup user activity tracking
@@ -1392,13 +873,8 @@ func (uc *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.Cli
 
 	// Update user
 	errMsg := "Unable to update user, please try again."
-	err = db.UserRemoveTwitch(ctx, uc.Conn, user)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID)
+	user.TwitchID = null.NewString("", false)
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwitchID))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1407,12 +883,12 @@ func (uc *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.Cli
 
 	//// Record user activity
 	uc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Removed Twitch account from User",
 		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
+		helpers.StringPointer(user.ID),
 		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
 		&types.UserActivityChangeData{
 			Name: db.TableNames.Users,
 			From: oldUser,
@@ -1420,22 +896,22 @@ func (uc *UserController) RemoveTwitchHandler(ctx context.Context, hubc *hub.Cli
 		},
 	)
 
-	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
+
 	return nil
 }
 
 // HubKeyUserRemoveTwitch adds a linked Twitch account
-const HubKeyUserAddTwitch hub.HubCommandKey = "USER:ADD_TWITCH"
+const HubKeyUserAddTwitch = "USER:ADD_TWITCH"
 
 type AddTwitchRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Token   string `json:"token"`
 		Website bool   `json:"website"`
 	} `json:"payload"`
 }
 
-func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) AddTwitchHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue updating user's Twitch ID, try again or contact support."
 	req := &AddTwitchRequest{}
 	err := json.Unmarshal(payload, req)
@@ -1475,7 +951,7 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client
 		twitchID = claims.Sub
 
 	} else {
-		claims, err := uc.API.Auth.GetClaimsFromTwitchExtensionToken(req.Payload.Token)
+		claims, err := uc.API.GetClaimsFromTwitchExtensionToken(req.Payload.Token)
 		if err != nil {
 			return terror.Error(err, errMsg)
 		}
@@ -1491,42 +967,26 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client
 		return terror.Error(terror.ErrInvalidInput, "No Twitch account ID is provided")
 	}
 
-	userID, err := uuid.FromString(hubc.Identifier())
-	if err != nil {
-		return terror.Error(err, "Could not convert user ID to UUID")
-	}
-
-	// Get user
-	user, err := db.UserGet(ctx, uc.Conn, types.UserID(userID))
-	if err != nil {
-		return terror.Error(err, "Failed to query user")
-	}
-
 	// Activity tracking
 	var oldUser types.User = *user
 
+	user.TwitchID = null.StringFrom(twitchID)
 	// Update user's Twitch ID
-	err = db.UserAddTwitch(ctx, uc.Conn, user, twitchID)
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwitchID))
 	if err != nil {
 		return terror.Error(err, errMsg)
-	}
-
-	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, types.UserID(userID))
-	if err != nil {
-		return terror.Error(err, "Failed to query user")
 	}
 
 	reply(user)
 
 	// Record user activity
 	uc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Added Twitch account to User",
 		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
+		helpers.StringPointer(user.ID),
 		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
 		&types.UserActivityChangeData{
 			Name: db.TableNames.Users,
 			From: oldUser,
@@ -1534,15 +994,15 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, hubc *hub.Client
 		},
 	)
 
-	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
 
 	return nil
 }
 
 // HubKeyUserRemoveTwitter removes a linked Twitter account
-const HubKeyUserRemoveTwitter hub.HubCommandKey = "USER:REMOVE_TWITTER"
+const HubKeyUserRemoveTwitter = "USER:REMOVE_TWITTER"
 
-func (uc *UserController) RemoveTwitterHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) RemoveTwitterHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue removing user's twitter account, try again or contact support."
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
@@ -1551,24 +1011,6 @@ func (uc *UserController) RemoveTwitterHandler(ctx context.Context, hubc *hub.Cl
 	}
 	if req.Payload.ID.IsNil() {
 		return terror.Error(terror.ErrInvalidInput, "User ID is required")
-	}
-
-	var user *types.User
-	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
-		if err != nil {
-			return terror.Error(err, "Failed to get user")
-		}
-	} else {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
-		if err != nil {
-			return terror.Error(err, "Failed to get user")
-		}
-	}
-
-	//// Permission check
-	if user.ID.String() != hubc.Identifier() && !hubc.HasPermission(types.PermUserUpdate.String()) {
-		return terror.Error(terror.ErrUnauthorised, "You do not have permission to update other users.")
 	}
 
 	// Setup user activity tracking
@@ -1581,13 +1023,8 @@ func (uc *UserController) RemoveTwitterHandler(ctx context.Context, hubc *hub.Cl
 	}
 
 	// Update user
-	err = db.UserRemoveTwitter(ctx, uc.Conn, user)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID)
+	user.TwitterID = null.NewString("", false)
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwitterID))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1596,12 +1033,12 @@ func (uc *UserController) RemoveTwitterHandler(ctx context.Context, hubc *hub.Cl
 
 	//// Record user activity
 	uc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Removed Twitter account from User",
 		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
+		helpers.StringPointer(user.ID),
 		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
 		&types.UserActivityChangeData{
 			Name: db.TableNames.Users,
 			From: oldUser,
@@ -1609,12 +1046,12 @@ func (uc *UserController) RemoveTwitterHandler(ctx context.Context, hubc *hub.Cl
 		},
 	)
 
-	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
+
 	return nil
 }
 
 type AddTwitterRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		OAuthToken    string `json:"oauth_token"`
 		OAuthVerifier string `json:"oauth_verifier"`
@@ -1622,9 +1059,9 @@ type AddTwitterRequest struct {
 }
 
 // HubKeyUserRemoveTwitter adds a linked Twitter account
-const HubKeyUserAddTwitter hub.HubCommandKey = "USER:ADD_TWITTER"
+const HubKeyUserAddTwitter = "USER:ADD_TWITTER"
 
-func (uc *UserController) AddTwitterHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) AddTwitterHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue updating user's twitter account, try again or contact support."
 	req := &AddTwitterRequest{}
 	err := json.Unmarshal(payload, req)
@@ -1681,42 +1118,26 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, hubc *hub.Clien
 		return terror.Error(terror.ErrInvalidInput, "No Twitter account ID is provided.")
 	}
 
-	userID, err := uuid.FromString(hubc.Identifier())
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// Get user
-	user, err := db.UserGet(ctx, uc.Conn, types.UserID(userID))
-	if err != nil {
-		return terror.Error(err, "Failed to query user, try again or contact support.")
-	}
-
 	// Activity tracking
 	var oldUser types.User = *user
 
 	// Update user's Twitter ID
-	err = db.UserAddTwitter(ctx, uc.Conn, user, twitterID)
+	user.TwitterID = null.StringFrom(twitterID)
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwitterID))
 	if err != nil {
 		return terror.Error(err, errMsg)
-	}
-
-	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, types.UserID(userID))
-	if err != nil {
-		return terror.Error(err, "Failed to query user, try again or contact support.")
 	}
 
 	reply(user)
 
 	// Record user activity
 	uc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Added Twitter account to User",
 		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
+		helpers.StringPointer(user.ID),
 		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
 		&types.UserActivityChangeData{
 			Name: db.TableNames.Users,
 			From: oldUser,
@@ -1724,15 +1145,15 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, hubc *hub.Clien
 		},
 	)
 
-	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
 
 	return nil
 }
 
 // HubKeyUserRemoveDiscord removes a linked Discord account
-const HubKeyUserRemoveDiscord hub.HubCommandKey = "USER:REMOVE_DISCORD"
+const HubKeyUserRemoveDiscord = "USER:REMOVE_DISCORD"
 
-func (uc *UserController) RemoveDiscordHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) RemoveDiscordHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue removing user's discord account, try again or contact support."
 	req := &RemoveServiceRequest{}
 	err := json.Unmarshal(payload, req)
@@ -1741,24 +1162,6 @@ func (uc *UserController) RemoveDiscordHandler(ctx context.Context, hubc *hub.Cl
 	}
 	if req.Payload.ID.IsNil() {
 		return terror.Error(terror.ErrInvalidInput, "User ID is required.")
-	}
-
-	var user *types.User
-	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
-	} else {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
-	}
-
-	//// Permission check
-	if user.ID.String() != hubc.Identifier() && !hubc.HasPermission(types.PermUserUpdate.String()) {
-		return terror.Error(terror.ErrUnauthorised, "You do not have permission to update other users.")
 	}
 
 	// Setup user activity tracking
@@ -1771,13 +1174,8 @@ func (uc *UserController) RemoveDiscordHandler(ctx context.Context, hubc *hub.Cl
 	}
 
 	// Update user
-	err = db.UserRemoveDiscord(ctx, uc.Conn, user)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID)
+	user.DiscordID = null.NewString("", false)
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.DiscordID))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1786,12 +1184,12 @@ func (uc *UserController) RemoveDiscordHandler(ctx context.Context, hubc *hub.Cl
 
 	//// Record user activity
 	uc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Removed Discord account from User",
 		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
+		helpers.StringPointer(user.ID),
 		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
 		&types.UserActivityChangeData{
 			Name: db.TableNames.Users,
 			From: oldUser,
@@ -1799,22 +1197,22 @@ func (uc *UserController) RemoveDiscordHandler(ctx context.Context, hubc *hub.Cl
 		},
 	)
 
-	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
+
 	return nil
 }
 
 // HubKeyUserRemoveDiscord adds a linked Discord account
-const HubKeyUserAddDiscord hub.HubCommandKey = "USER:ADD_DISCORD"
+const HubKeyUserAddDiscord = "USER:ADD_DISCORD"
 
 type AddDiscordRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Code        string `json:"code"`
 		RedirectURI string `json:"redirect_uri"`
 	} `json:"payload"`
 }
 
-func (uc *UserController) AddDiscordHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) AddDiscordHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue adding user's discord account, try again or contact support."
 	req := &AddDiscordRequest{}
 	err := json.Unmarshal(payload, req)
@@ -1885,42 +1283,26 @@ func (uc *UserController) AddDiscordHandler(ctx context.Context, hubc *hub.Clien
 		return terror.Error(terror.ErrInvalidInput, errMsg)
 	}
 
-	userID, err := uuid.FromString(hubc.Identifier())
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// Get user
-	user, err := db.UserGet(ctx, uc.Conn, types.UserID(userID))
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
 	// Activity tracking
 	var oldUser types.User = *user
 
 	// Update user's Discord ID
-	err = db.UserAddDiscord(ctx, uc.Conn, user, discordID)
+	user.DiscordID = null.StringFrom(discordID)
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.DiscordID))
 	if err != nil {
 		return terror.Error(err, errMsg)
-	}
-
-	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, types.UserID(userID))
-	if err != nil {
-		return terror.Error(err, "Failed to query user.")
 	}
 
 	reply(user)
 
 	// Record user activity
 	uc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Added Discord account to User",
 		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
+		helpers.StringPointer(user.ID),
 		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
 		&types.UserActivityChangeData{
 			Name: db.TableNames.Users,
 			From: oldUser,
@@ -1928,17 +1310,16 @@ func (uc *UserController) AddDiscordHandler(ctx context.Context, hubc *hub.Clien
 		},
 	)
 
-	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
 
 	return nil
 }
 
 // HubKeyUserRemoveWallet removes a linked wallet address
-const HubKeyUserRemoveWallet hub.HubCommandKey = "USER:REMOVE_WALLET"
+const HubKeyUserRemoveWallet = "USER:REMOVE_WALLET"
 
 // RemoveWalletRequest requests an update for an existing user
 type RemoveWalletRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		ID       types.UserID `json:"id"`
 		Username string       `json:"username"`
@@ -1946,7 +1327,7 @@ type RemoveWalletRequest struct {
 }
 
 // RemoveWalletHandler removes a linked wallet address
-func (uc *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) RemoveWalletHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue removing user's wallet address, try again or contact support."
 	req := &RemoveWalletRequest{}
 	err := json.Unmarshal(payload, req)
@@ -1957,37 +1338,8 @@ func (uc *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.Cli
 		return terror.Error(terror.ErrInvalidInput, "User ID is required.")
 	}
 
-	var user *types.User
-	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
-	} else {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
-	}
-	//// Permission check
-	if user.ID.String() != hubc.Identifier() && !hubc.HasPermission(types.PermUserUpdate.String()) {
-		return terror.Error(terror.ErrUnauthorised, "You do not have permission to update other users.")
-	}
-
 	// Setup user activity tracking
 	var oldUser types.User = *user
-
-	// Start transaction
-	tx, err := uc.Conn.Begin(ctx)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-	defer func(tx pgx.Tx, ctx context.Context) {
-		err := tx.Rollback(ctx)
-		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			uc.Log.Err(err).Msg("error rolling back")
-		}
-	}(tx, ctx)
 
 	// Check if user can remove service
 	serviceCount := GetUserServiceCount(user)
@@ -1996,19 +1348,8 @@ func (uc *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.Cli
 	}
 
 	// Update user
-	err = db.UserRemoveWallet(ctx, tx, user)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// Commit transaction
-	err = tx.Commit(ctx)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID)
+	user.PublicAddress = null.NewString("", false)
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.PublicAddress))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -2017,12 +1358,12 @@ func (uc *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.Cli
 
 	//// Record user activity
 	uc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Updated User",
 		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
+		helpers.StringPointer(user.ID),
 		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
 		&types.UserActivityChangeData{
 			Name: db.TableNames.Users,
 			From: oldUser,
@@ -2030,15 +1371,15 @@ func (uc *UserController) RemoveWalletHandler(ctx context.Context, hubc *hub.Cli
 		},
 	)
 
-	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
+
 	return nil
 }
 
 // HubKeyUserAddWallet links a wallet to an account
-const HubKeyUserAddWallet hub.HubCommandKey = "USER:ADD_WALLET"
+const HubKeyUserAddWallet = "USER:ADD_WALLET"
 
 type AddWalletRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		ID            types.UserID `json:"id"`
 		Username      string       `json:"username"`
@@ -2048,7 +1389,7 @@ type AddWalletRequest struct {
 }
 
 // AddWalletHandler links a wallet address to a user
-func (uc *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) AddWalletHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue adding user's wallet address, try again or contact support."
 	req := &AddWalletRequest{}
 	err := json.Unmarshal(payload, req)
@@ -2066,73 +1407,34 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Client
 		return terror.Error(terror.ErrInvalidInput, "Signature is required.")
 	}
 
-	var user *types.User
-	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
-	} else {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
-	}
-
-	//// Permission check
-	if user.ID.String() != hubc.Identifier() && !hubc.HasPermission(types.PermUserUpdate.String()) {
-		return terror.Error(terror.ErrUnauthorised, "You do not have permission to update other users.")
-	}
-
 	// Setup user activity tracking
 	var oldUser = *user
 
-	// verify they signed it
-	err = uc.API.Auth.VerifySignature(req.Payload.Signature, user.Nonce.String, req.Payload.PublicAddress)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
+	publicAddr := common.HexToAddress(req.Payload.PublicAddress)
 
-	// Start transaction
-	tx, err := uc.Conn.Begin(ctx)
+	// verify they signed it
+	err = uc.API.VerifySignature(req.Payload.Signature, user.Nonce.String, publicAddr)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	defer func(tx pgx.Tx, ctx context.Context) {
-		err := tx.Rollback(ctx)
-		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			uc.Log.Err(err).Msg("error rolling back")
-		}
-	}(tx, ctx)
 
 	// Update user
-	err = db.UserAddWallet(ctx, tx, user, req.Payload.PublicAddress)
+	user.PublicAddress = null.StringFrom(req.Payload.PublicAddress)
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.PublicAddress))
 	if err != nil {
 		return terror.Error(err, errMsg)
-	}
-
-	// Commit transaction
-	err = tx.Commit(ctx)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// Get user
-	user, err = db.UserGet(ctx, uc.Conn, user.ID)
-	if err != nil {
-		return terror.Error(err, "Could not get user, try again or contact support.")
 	}
 
 	reply(user)
 
 	// Record user activity
 	uc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Updated User",
 		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
+		helpers.StringPointer(user.ID),
 		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
 		&types.UserActivityChangeData{
 			Name: db.TableNames.Users,
 			From: oldUser,
@@ -2140,344 +1442,212 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, hubc *hub.Client
 		},
 	)
 
-	go uc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
+
 	return nil
 }
 
-const HubKeyUserSubscribe hub.HubCommandKey = "USER:SUBSCRIBE"
+const HubKeyUser = "USER"
 
 // UpdatedSubscribeRequest to subscribe to user updates
 type UpdatedSubscribeRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		ID       types.UserID `json:"id"`
 		Username string       `json:"username"`
 	} `json:"payload"`
 }
 
-func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	errMsg := "Issue subscribing to user updates, try again or contact support."
+func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
-	}
-
-	var user *types.User
-
-	if !req.Payload.ID.IsNil() {
-		user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
-		if err != nil {
-			return req.TransactionID, "", terror.Error(err, errMsg)
-		}
-	} else if req.Payload.Username != "" {
-		user, err = db.UserByUsername(ctx, uc.Conn, req.Payload.Username)
-		if err != nil {
-			return req.TransactionID, "", terror.Error(err, errMsg)
-		}
-	}
-
-	if user == nil {
-		return req.TransactionID, "", terror.Error(fmt.Errorf("unable to get user"), errMsg)
-	}
-
-	// Permission check
-	if user.ID.String() != client.Identifier() && !client.HasPermission(types.PermUserRead.String()) {
-		return req.TransactionID, "", terror.Error(terror.ErrUnauthorised, "You do not have permission to look at other users.")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	reply(user)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), nil
+	return nil
 }
 
-const HubKeyUserSupsSubscribe hub.HubCommandKey = "USER:SUPS:SUBSCRIBE"
+const HubKeyUserSupsSubscribe = "USER:SUPS:SUBSCRIBE"
 
-func (uc *UserController) UserSupsUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
-	}
-
-	userID := types.UserID(uuid.FromStringOrNil(client.Identifier()))
-	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrForbidden, "User is not logged in, access forbidden.")
-	}
-
-	sups, err := uc.API.userCacheMap.Get(client.Identifier())
+func (api *API) UserSupsUpdatedSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	sups, err := api.userCacheMap.SetAndGet(user.ID)
 	// get current on world sups
 	if err != nil {
-		return "", "", terror.Error(err, "Issue subscribing to user SUPs updates, try again or contact support.")
+		return terror.Error(err, "Issue subscribing to user SUPs updates, try again or contact support.")
 	}
 
 	reply(sups.String())
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, userID)), nil
+	return nil
 }
 
-const HubKeyUserSupsMultiplierSubscribe hub.HubCommandKey = "USER:SUPS:MULTIPLIER:SUBSCRIBE"
+const HubKeyUserStatSubscribe = "USER:STAT:SUBSCRIBE"
 
-func (uc *UserController) UserSupsMultiplierUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (uc *UserController) UserStatUpdatedSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
-	}
-
-	var resp struct {
-		UserMultipliers []*types.SupsMultiplier `json:"user_multipliers"`
-	}
-	err = uc.API.GameserverRequest(http.MethodPost, "/user_multiplier", struct {
-		UserID types.UserID `json:"user_id"`
-	}{
-		UserID: types.UserID(uuid.FromStringOrNil(client.Identifier())),
-	}, &resp)
-	if err != nil {
-		return "", "", terror.Error(err, "Issue subscribing to user SUPs multiplier updates, try again or contact support.")
-	}
-
-	reply(resp.UserMultipliers)
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsMultiplierSubscribe, client.Identifier())), nil
-}
-
-const HubKeyUserStatSubscribe hub.HubCommandKey = "USER:STAT:SUBSCRIBE"
-
-func (uc *UserController) UserStatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	resp := &types.UserStat{}
 	err = uc.API.GameserverRequest(http.MethodPost, "/user_stat", struct {
-		UserID    types.UserID  `json:"user_id"`
-		SessionID hub.SessionID `json:"session_id"`
+		UserID types.UserID `json:"user_id"`
 	}{
-		UserID:    types.UserID(uuid.FromStringOrNil(client.Identifier())),
-		SessionID: client.SessionID,
+		UserID: types.UserID(uuid.FromStringOrNil(user.ID)),
 	}, resp)
 	if err != nil {
-		return "", "", terror.Error(err, "Issue subscribing to user stats updates, try again or contact support.")
+		return terror.Error(err, "Issue subscribing to user stats updates, try again or contact support.")
 	}
 
 	reply(resp)
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, client.Identifier())), nil
+	return nil
 }
 
 type UserFactionDetail struct {
-	RecruitID      string       `json:"recruit_id"`
-	SupsEarned     types.BigInt `json:"sups_earned"`
-	Rank           string       `json:"rank"`
-	SpectatedCount int64        `json:"spectated_count"`
+	RecruitID      string          `json:"recruit_id"`
+	SupsEarned     decimal.Decimal `json:"sups_earned"`
+	Rank           string          `json:"rank"`
+	SpectatedCount int64           `json:"spectated_count"`
 
 	// faction detail
-	FactionID        string              `json:"faction_id"`
-	LogoBlobID       types.BlobID        `json:"logo_blob_id" db:"logo_blob_id"`
-	BackgroundBlobID types.BlobID        `json:"background_blob_id" db:"background_blob_id"`
-	Theme            *types.FactionTheme `json:"theme"`
+	FactionID        string      `json:"faction_id"`
+	LogoBlobID       string      `json:"logo_blob_id" db:"logo_blob_id"`
+	BackgroundBlobID string      `json:"background_blob_id" db:"background_blob_id"`
+	Theme            btypes.JSON `json:"theme,omitempty"`
 }
 
-const HubKeyUserFactionSubscribe hub.HubCommandKey = "USER:FACTION:SUBSCRIBE"
+const HubKeyUserFactionSubscribe = "USER:FACTION:SUBSCRIBE"
 
-func (uc *UserController) UserFactionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (uc *UserController) UserFactionUpdatedSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue subscribing to user faction updates, try again or contact support."
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
-	}
-
-	userID := types.UserID(uuid.FromStringOrNil(client.Identifier()))
-	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrForbidden, "User is not logged in, access forbidden.")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	// get user faction
-	faction, err := db.FactionGetByUserID(ctx, uc.Conn, userID)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return "", "", terror.Error(err, errMsg)
+	faction, err := boiler.FindFaction(passdb.StdConn, user.FactionID.String)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, errMsg)
+	}
+
+	f := &UserFactionDetail{
+		RecruitID:        "3000",
+		SupsEarned:       decimal.Zero,
+		Rank:             "100",
+		SpectatedCount:   100,
+		FactionID:        faction.ID,
+		Theme:            faction.Theme,
+		LogoBlobID:       faction.LogoBlobID,
+		BackgroundBlobID: faction.BackgroundBlobID,
 	}
 
 	if faction != nil {
-		reply(&UserFactionDetail{
-			RecruitID:        "3000",
-			SupsEarned:       types.BigInt{},
-			Rank:             "100",
-			SpectatedCount:   100,
-			FactionID:        faction.ID.String(),
-			Theme:            faction.Theme,
-			LogoBlobID:       faction.LogoBlobID,
-			BackgroundBlobID: faction.BackgroundBlobID,
-		})
+		reply(f)
 	}
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserFactionSubscribe, userID)), nil
+	return nil
 }
 
 type WarMachineQueuePositionRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		AssetHash string `json:"asset_hash"`
 	} `json:"payload"`
 }
 
-const HubKeyWarMachineQueueStatSubscribe hub.HubCommandKey = "WAR:MACHINE:QUEUE:POSITION:SUBSCRIBE"
-
-func (uc *UserController) WarMachineQueuePositionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	errMsg := "Issue subscribing to user's War Machine queue position updates, try again or contact support."
-	req := &WarMachineQueuePositionRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
-	}
-
-	// get item
-	item, err := db.PurchasedItemByHash(req.Payload.AssetHash)
-	if err != nil {
-		return "", "", terror.Error(err, errMsg)
-	}
-	if item == nil {
-		return "", "", terror.Error(fmt.Errorf("asset doesn't exist"), "This asset does not exist.")
-	}
-
-	// get user
-	uid, err := uuid.FromString(client.Identifier())
-	if err != nil {
-		return "", "", terror.Error(err, errMsg)
-	}
-
-	userID := types.UserID(uid)
-
-	// check if user owns asset
-	if item.OwnerID != userID.String() {
-		return "", "", terror.Error(err, "Must own asset to subscribe to updates.")
-	}
-
-	// f, err := db.FactionGetByUserID(ctx, uc.Conn, userID)
-	// if err != nil {
-	// 	return "", "", terror.Error(err)
-	// }
-
-	// var resp struct {
-	// 	Position       *int    `json:"position"`
-	// 	ContractReward *string `json:"contract_reward"`
-	// }
-	// err = uc.API.GameserverRequest(http.MethodPost, "/war_machine_queue_position", struct {
-	// 	AssetHash string             `json:"assethash"`
-	// 	FactionID passport.FactionID `json:"faction_id"`
-	// }{
-	// 	AssetHash: req.Payload.AssetHash,
-	// 	FactionID: f.ID,
-	// }, &resp)
-	// if err != nil {
-	// 	return "", "", terror.Error(err)
-	// }
-
-	// reply(resp)
-
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineQueueStatSubscribe, req.Payload.AssetHash))
-
-	return req.TransactionID, busKey, nil
-}
-
 // GetUserServiceCount returns the amount of services (email, facebook, google, discord etc.) the user is currently connected to
 func GetUserServiceCount(user *types.User) int {
 	count := 0
-	if user.Email.String != "" {
+	if user.Email.Valid {
 		count++
 	}
-	if user.FacebookID.String != "" {
+	if user.FacebookID.Valid {
 		count++
 	}
-	if user.GoogleID.String != "" {
+	if user.GoogleID.Valid {
 		count++
 	}
-	if user.TwitchID.String != "" {
+	if user.TwitchID.Valid {
 		count++
 	}
-	if user.TwitterID.String != "" {
+	if user.TwitterID.Valid {
 		count++
 	}
-	if user.DiscordID.String != "" {
+	if user.DiscordID.Valid {
 		count++
 	}
 
 	return count
 }
 
-const HubKeySUPSRemainingSubscribe hub.HubCommandKey = "SUPS:TREASURY"
+const HubKeySUPSRemainingSubscribe = "SUPS:TREASURY"
 
-func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	sups, err := uc.API.userCacheMap.Get(types.XsynSaleUserID.String())
 	if err != nil {
-		return "", "", terror.Error(err, "Issue getting total SUPs remaining handler, try again or contact support.")
+		return terror.Error(err, "Issue getting total SUPs remaining handler, try again or contact support.")
 	}
 
 	reply(sups.String())
-	return req.TransactionID, messagebus.BusKey(HubKeySUPSRemainingSubscribe), nil
+	return nil
 }
 
-const HubKeySUPSExchangeRates hub.HubCommandKey = "SUPS:EXCHANGE"
+const HubKeySUPSExchangeRates = "SUPS:EXCHANGE"
 
-func (uc *UserController) ExchangeRatesHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (uc *UserController) ExchangeRatesHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
+		return terror.Error(err, "Invalid request received.")
 	}
 	exchangeRates, err := payments.FetchExchangeRates()
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Unable to fetch exchange rates.")
+		return terror.Error(err, "Unable to fetch exchange rates.")
 	}
 	reply(exchangeRates)
-	return req.TransactionID, messagebus.BusKey(HubKeySUPSExchangeRates), nil
+	//  req.TransactionID, messagebus.BusKey(HubKeySUPSExchangeRates), nil
+	return nil
 }
 
 //key and handler- payload userid- check they are user return transaction key and error: SecureUserSubscribeCommand
 
 type BlockConfirmationRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		ID             types.UserID `json:"id"`
 		GetInitialData bool         `json:"get_initial_data"`
 	} `json:"payload"`
 }
 
-const HubKeyBlockConfirmation hub.HubCommandKey = "BLOCK:CONFIRM"
+const HubKeyBlockConfirmation = "BLOCK:CONFIRM"
 
-func (uc *UserController) BlockConfirmationHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+//BlockConfirmationHandler
+//apparently does nothing? TODO: make do
+func (uc *UserController) BlockConfirmationHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &BlockConfirmationRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
-	}
-
-	var user *types.User
-
-	user, err = db.UserGet(ctx, uc.Conn, req.Payload.ID)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Failed to get user.")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	if req.Payload.GetInitialData {
 		// db func to get a list of users transaction on the comfirm transaction table
 		// reply(their confirm objects)
-		return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), nil
+		// return messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID)), nil
+		return nil
 	}
 
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID.String())), nil
+	// return messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID)), nil
+	return nil
 }
 
 type CheckAllowedStoreAccess struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		WalletAddress string `json:"wallet_address"`
 	} `json:"payload"`
@@ -2488,9 +1658,9 @@ type CheckAllowedStoreAccessResponse struct {
 	Message   string `json:"message"`
 }
 
-const HubKeyCheckCanAccessStore hub.HubCommandKey = "USER:CHECK:CAN_ACCESS_STORE"
+const HubKeyCheckCanAccessStore = "USER:CHECK:CAN_ACCESS_STORE"
 
-func (uc *UserController) CheckCanAccessStore(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) CheckCanAccessStore(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	var WinTokens = []int{1, 2, 3, 4, 5, 6}
 
 	req := &CheckAllowedStoreAccess{}
@@ -2514,12 +1684,12 @@ func (uc *UserController) CheckCanAccessStore(ctx context.Context, hubc *hub.Cli
 
 	PHASE_THREE := time.Date(2022, time.February, 27, 12, 0, 0, 0, loc)
 
-	isWhitelisted, err := db.IsUserWhitelisted(ctx, uc.Conn, req.Payload.WalletAddress)
+	isWhitelisted, err := db.IsUserWhitelisted(req.Payload.WalletAddress)
 	if err != nil {
 		return terror.Error(err, "Whitelisted check error.")
 	}
 
-	isDeathlisted, err := db.IsUserDeathlisted(ctx, uc.Conn, req.Payload.WalletAddress)
+	isDeathlisted, err := db.IsUserDeathlisted(req.Payload.WalletAddress)
 	if err != nil {
 		return terror.Error(err, "Deathlisted check error.")
 	}
@@ -2581,10 +1751,9 @@ func (uc *UserController) CheckCanAccessStore(ctx context.Context, hubc *hub.Cli
 }
 
 // 	rootHub.SecureCommand(HubKeyUserGet, UserController.GetHandler)
-const HubKeyUserAssetList hub.HubCommandKey = "USER:ASSET:LIST"
+const HubKeyUserAssetList = "USER:ASSET:LIST"
 
 type UserAssetListRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Limit                int         `json:"limit"`
 		IncludeAssetIDs      []uuid.UUID `json:"include_asset_ids"` // list of queues to show first in exact ordering
@@ -2594,7 +1763,7 @@ type UserAssetListRequest struct {
 }
 
 // UserAssetListHandler return a list of asset that user own
-func (uc *UserController) UserAssetListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (uc *UserController) UserAssetListHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &UserAssetListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -2605,12 +1774,7 @@ func (uc *UserController) UserAssetListHandler(ctx context.Context, hubc *hub.Cl
 		return terror.Error(err, "Limit is required")
 	}
 
-	userID := types.UserID(uuid.FromStringOrNil(hubc.Identifier()))
-	if userID.IsNil() {
-		return terror.Error(terror.ErrForbidden, "User is not logged in, access forbidden.")
-	}
-
-	items, err := db.PurchasedItemsByOwnerID(uuid.UUID(userID), req.Payload.Limit, req.Payload.AfterExternalTokenID, req.Payload.IncludeAssetIDs, req.Payload.ExcludeAssetIDs)
+	items, err := db.PurchasedItemsByOwnerID(user.ID, req.Payload.Limit, req.Payload.AfterExternalTokenID, req.Payload.IncludeAssetIDs, req.Payload.ExcludeAssetIDs)
 	if err != nil {
 		return terror.Error(err, "Issue getting user asset list, try again or contact support.")
 	}
@@ -2619,121 +1783,56 @@ func (uc *UserController) UserAssetListHandler(ctx context.Context, hubc *hub.Cl
 	return nil
 }
 
-const HubKeyUserTransactionsSubscribe hub.HubCommandKey = "USER:SUPS:TRANSACTIONS:SUBSCRIBE"
-const HubKeyUserLatestTransactionSubscribe hub.HubCommandKey = "USER:SUPS:LATEST_TRANSACTION:SUBSCRIBE"
+const HubKeyUserTransactionsSubscribe = "USER:SUPS:TRANSACTIONS:SUBSCRIBE"
+const HubKeyUserLatestTransactionSubscribe = "USER:SUPS:LATEST_TRANSACTION:SUBSCRIBE"
 
-func (uc *UserController) UserTransactionsSubscribeHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &UpdatedSubscribeRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
-	}
+//func (uc *UserController) UserTransactionsSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+//	req := &UpdatedSubscribeRequest{}
+//	err := json.Unmarshal(payload, req)
+//	if err != nil {
+//		return terror.Error(err, "Invalid request received.")
+//	}
+//
+//	// get users transactions
+//	list, err := db.UserTransactionGetList(ctx, uc.Conn, user.ID, 5)
+//	if err != nil {
+//		return terror.Error(err, "Failed to get transactions, try again or contact support.")
+//	}
+//	//HubKeyUserTransactionsSubscribe
+//	reply(list)
+//	return nil
+//}
 
-	userID := types.UserID(uuid.FromStringOrNil(hubc.Identifier()))
-	if userID.IsNil() {
-		return req.TransactionID, "", terror.Error(err, "User is not logged in, access forbidden.")
-	}
-
+func (api *API) UserTransactionsSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	// get users transactions
-	list, err := db.UserTransactionGetList(ctx, uc.Conn, userID, 5)
+	list, err := db.UserTransactionGetList(user.ID, 5)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Failed to get transactions, try again or contact support.")
+		return terror.Error(err, "Failed to get transactions, try again or contact support.")
 	}
 	reply(list)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserTransactionsSubscribe, userID.String())), nil
+	return nil
 }
 
-func (uc *UserController) UserLatestTransactionsSubscribeHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &UpdatedSubscribeRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
-	}
-
-	userID := types.UserID(uuid.FromStringOrNil(hubc.Identifier()))
-	if userID.IsNil() {
-		return req.TransactionID, "", terror.Error(err, "User is not logged in, access forbidden.")
-	}
-
-	// get transaction
-	list, err := db.UserTransactionGetList(ctx, uc.Conn, userID, 1)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Failed to get transactions, try again or contact support.")
-	}
-	reply(list)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, userID.String())), nil
-
-}
+//func (uc *UserController) UserLatestTransactionsSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+//	req := &UpdatedSubscribeRequest{}
+//	err := json.Unmarshal(payload, req)
+//	if err != nil {
+//		return terror.Error(err, "Invalid request received.")
+//	}
+//
+//	// get transaction
+//	list, err := db.UserTransactionGetList(ctx, uc.Conn, user.ID, 1)
+//	if err != nil {
+//		return terror.Error(err, "Failed to get transactions, try again or contact support.")
+//	}
+//	reply(list)
+//	//HubKeyUserLatestTransactionSubscribe
+//	return nil
+//
+//}
 
 type UserFingerprintRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Fingerprint auth.Fingerprint `json:"fingerprint"`
 	} `json:"payload"`
-}
-
-const HubKeyUserFingerprint hub.HubCommandKey = "USER:FINGERPRINT"
-
-// UserFingerprintHandler stores a fingerprint entry that may or may not be linked to a user yet
-func (uc *UserController) UserFingerprintHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &UserFingerprintRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	fingerprintExists, err := boiler.Fingerprints(boiler.FingerprintWhere.VisitorID.EQ(req.Payload.Fingerprint.VisitorID)).Exists(passdb.StdConn)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	if !fingerprintExists {
-		newFingerprint := boiler.Fingerprint{
-			VisitorID:  req.Payload.Fingerprint.VisitorID,
-			OsCPU:      null.StringFrom(req.Payload.Fingerprint.OSCPU),
-			Platform:   null.StringFrom(req.Payload.Fingerprint.Platform),
-			Timezone:   null.StringFrom(req.Payload.Fingerprint.Timezone),
-			Confidence: decimal.NewNullDecimal(decimal.NewFromFloat32(req.Payload.Fingerprint.Confidence)),
-			UserAgent:  null.StringFrom(req.Payload.Fingerprint.UserAgent),
-		}
-		err = newFingerprint.Insert(passdb.StdConn, boil.Infer())
-		if err != nil {
-			return terror.Error(err)
-		}
-	}
-
-	fingerprint, err := boiler.Fingerprints(boiler.FingerprintWhere.VisitorID.EQ(req.Payload.Fingerprint.VisitorID)).One(passdb.StdConn)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	ip := hubc.Request.Header.Get("X-Forwarded-For")
-	if ip == "" {
-		ipaddr, _, _ := net.SplitHostPort(hubc.Request.RemoteAddr)
-		userIP := net.ParseIP(ipaddr)
-		if userIP == nil {
-			ip = ipaddr
-		} else {
-			ip = userIP.String()
-		}
-	}
-
-	userIPExists, err := boiler.FingerprintIps(boiler.FingerprintIPWhere.IP.EQ(ip), boiler.FingerprintIPWhere.FingerprintID.EQ(fingerprint.ID)).Exists(passdb.StdConn)
-	if err != nil {
-		return terror.Error(err)
-	}
-	if !userIPExists {
-		// IP not logged for this fingerprint yet; create one
-		newFingerprintIP := boiler.FingerprintIP{
-			IP:            ip,
-			FingerprintID: fingerprint.ID,
-		}
-		err = newFingerprintIP.Insert(passdb.StdConn, boil.Infer())
-		if err != nil {
-			return terror.Error(err)
-		}
-	}
-
-	reply(true)
-	return nil
 }

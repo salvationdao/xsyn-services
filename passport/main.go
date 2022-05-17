@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os/signal"
+	"runtime"
 	"strings"
 	"time"
 	"xsyn-services/passport/api"
@@ -20,14 +21,13 @@ import (
 	"xsyn-services/passport/sms"
 	"xsyn-services/types"
 
-	_ "net/http/pprof"
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/shopspring/decimal"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ninja-software/log_helpers"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/oklog/run"
 
 	_ "github.com/lib/pq" //postgres drivers for initialization
@@ -61,6 +61,7 @@ const SentryReleasePrefix = "ninja_syndicate-passport_api"
 const envPrefix = "PASSPORT"
 
 func main() {
+	runtime.GOMAXPROCS(2)
 	app := &cli.App{
 		Compiled: time.Now(),
 		Usage:    "Run the passport server or database administration commands",
@@ -95,9 +96,6 @@ func main() {
 				Name:    "serve",
 				Aliases: []string{"s"},
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "database_tx_user", Value: "passport_tx", EnvVars: []string{"PASSPORT_DATABASE_TX_USER", "DATABASE_TX_USER"}, Usage: "The database transaction user"},
-					&cli.StringFlag{Name: "database_tx_pass", Value: "dev-tx", EnvVars: []string{"PASSPORT_DATABASE_TX_PASS", "DATABASE_TX_PASS"}, Usage: "The database transaction pass"},
-
 					&cli.StringFlag{Name: "database_user", Value: "passport", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
 					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
 					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
@@ -118,7 +116,10 @@ func main() {
 					&cli.StringFlag{Name: "gameserver_web_host_url", Value: "http://localhost:8084", EnvVars: []string{"GAMESERVER_HOST_URL"}, Usage: "The host for the gameserver, to allow it to connect"},
 
 					&cli.StringFlag{Name: "api_addr", Value: ":8086", EnvVars: []string{envPrefix + "_API_ADDR", "API_ADDR"}, Usage: "host:port to run the API"},
+
 					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{envPrefix + "_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
+					&cli.StringFlag{Name: "cookie_key", Value: "asgk236tkj2kszaxfj.,.135j25khsafkahfgiu215hi2htkjahsgfih13kj56hkqhkahgbkashgk312ht5lk2qhafga", EnvVars: []string{envPrefix + "_COOKIE_KEY", "COOKIE_KEY"}, Usage: "cookie encryption key"},
+
 					&cli.StringFlag{Name: "google_client_id", Value: "467953368642-8cobg822tej2i50ncfg4ge1pm4c5v033.apps.googleusercontent.com", EnvVars: []string{envPrefix + "_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google Client ID for OAuth functionaility."},
 
 					// SMS stuff
@@ -187,7 +188,6 @@ func main() {
 					//moralis key- set in env vars
 					//moralis key- set in env vars
 					//moralis key- set in env vars
-					&cli.IntFlag{Name: "database_max_pool_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_POOL_CONNS"}, Usage: "Database max pool conns"},
 					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
 					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 					&cli.StringFlag{Name: "moralis_key", Value: "91Xp2ke5eOVMavAsqdOoiXN4lg0n0AieW5kTJoupdyQBhL2k9XvMQtFPSA4opX2s", EnvVars: []string{envPrefix + "_MORALIS_KEY"}, Usage: "Key to connect to moralis API"},
@@ -205,16 +205,19 @@ func main() {
 					}
 					passlog.New(environment, level)
 					log.Info().Msg("zerolog initialised")
-					tracer.Start(
-						tracer.WithEnv(environment),
-						tracer.WithService(envPrefix),
-						tracer.WithServiceVersion(Version),
-						tracer.WithLogger(passlog.DatadogLog{L: passlog.L}), // configure before profiler so profiler will use this logger
-					)
-					defer tracer.Stop()
+
+					if os.Getenv("PASSPORT_ENVIRONMENT") != "development" {
+						tracer.Start(
+							tracer.WithEnv(environment),
+							tracer.WithService(envPrefix),
+							tracer.WithServiceVersion(Version),
+							tracer.WithLogger(passlog.DatadogLog{L: passlog.L}), // configure before profiler so profiler will use this logger
+						)
+						defer tracer.Stop()
+					}
 
 					// Datadog Tracing an profiling
-					if c.Bool("pprof_datadog") {
+					if c.Bool("pprof_datadog") && os.Getenv("PASSPORT_ENVIRONMENT") != "development" {
 						// Decode Profile types
 						active := c.StringSlice("pprof_datadog_profiles")
 						profilers := []profiler.ProfileType{}
@@ -386,14 +389,14 @@ func txConnect(
 
 	conn, err := sql.Open("postgres", connString)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 	conn.SetMaxIdleConns(maxIdle)
 	conn.SetMaxOpenConns(maxOpen)
 	return conn, nil
 }
 
-func SyncPayments(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
+func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) error {
 
 	records1, err := payments.BNB()
 	if err != nil {
@@ -426,7 +429,7 @@ func SyncPayments(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, 
 	}
 	log.Info().Int("records", len(records4)).Str("sym", "USDC").Msg("fetch exchange rates")
 
-	ucm.MessageBus.Send(messagebus.BusKey(api.HubKeySUPSExchangeRates), exchangeRates)
+	ws.PublishMessage("/ws/global/exchange", api.HubKeySUPSExchangeRates, exchangeRates)
 
 	records := []*payments.PurchaseRecord{}
 	records = append(records, records1...)
@@ -441,7 +444,7 @@ func SyncPayments(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, 
 	for _, r := range records {
 		ctx := context.Background()
 
-		exists, err := db.TransactionExists(ctx, conn, r.TxHash)
+		exists, err := db.TransactionExists(r.TxHash)
 		if err != nil {
 			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("check record exists")
 			failed++
@@ -452,7 +455,7 @@ func SyncPayments(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, 
 			continue
 		}
 
-		user, err := payments.CreateOrGetUser(ctx, conn, common.HexToAddress(r.FromAddress))
+		user, err := payments.CreateOrGetUser(common.HexToAddress(r.FromAddress))
 		if err != nil {
 			failed++
 			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("create new user for payment insertion")
@@ -470,7 +473,7 @@ func SyncPayments(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, 
 			continue
 		}
 
-		err = payments.StoreRecord(ctx, types.XsynSaleUserID, user.ID, ucm, r)
+		err = payments.StoreRecord(ctx, types.XsynSaleUserID, types.UserIDFromString(user.ID), ucm, r)
 		if err != nil && strings.Contains(err.Error(), "duplicate key") {
 			skipped++
 			continue
@@ -490,7 +493,7 @@ func SyncPayments(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, 
 	return nil
 
 }
-func SyncDeposits(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
+func SyncDeposits(ucm *api.Transactor, isTestnet bool) error {
 	depositRecords, err := payments.GetDeposits(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get deposits: %w", err)
@@ -503,7 +506,7 @@ func SyncDeposits(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, 
 	return nil
 
 }
-func SyncWithdraw(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool) error {
+func SyncWithdraw(ucm *api.Transactor, isTestnet, enableWithdrawRollback bool) error {
 	// Update with TX hash first
 	withdrawRecords, err := payments.GetWithdraws(isTestnet)
 	if err != nil {
@@ -521,7 +524,7 @@ func SyncWithdraw(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, 
 	return nil
 
 }
-func SyncNFTs(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) error {
+func SyncNFTs(isTestnet bool) error {
 	limitedReleaseCollection, err := db.LimitedReleaseCollection()
 	if err != nil {
 		return fmt.Errorf("failed to get limited release collection: %w", err)
@@ -557,7 +560,7 @@ func SyncNFTs(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTe
 	return nil
 }
 
-func SyncFunc(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool) error {
+func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool) error {
 	go func() {
 		l := passlog.L.With().Str("svc", "avant_ping").Logger()
 		failureCount := db.GetIntWithDefault(db.KeyAvantFailureCount, 0)
@@ -582,42 +585,41 @@ func SyncFunc(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTe
 		db.PutInt(db.KeyAvantSuccessCount, successCount+1)
 		db.PutInt(db.KeyAvantFailureCount, 0)
 	}()
-	go func(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
+	go func(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncPayments, false) {
-			err := SyncPayments(ucm, conn, log, isTestnet)
+			err := SyncPayments(ucm, log, isTestnet)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync payments")
 			}
 		}
-	}(ucm, conn, log, isTestnet)
-	go func(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
+	}(ucm, log, isTestnet)
+	go func(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncDeposits, false) {
-			err := SyncDeposits(ucm, conn, log, isTestnet)
+			err := SyncDeposits(ucm, isTestnet)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync deposits")
 			}
 		}
-	}(ucm, conn, log, isTestnet)
-	go func(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
+	}(ucm, log, isTestnet)
+	go func(isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncNFTOwners, false) {
-			err := SyncNFTs(ucm, conn, log, isTestnet)
+			err := SyncNFTs(isTestnet)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync nfts")
 			}
 		}
-	}(ucm, conn, log, isTestnet)
-	go func(ucm *api.Transactor, conn *pgxpool.Pool, log *zerolog.Logger, isTestnet bool) {
+	}(isTestnet)
+	go func(ucm *api.Transactor, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncWithdraw, false) {
-			err := SyncWithdraw(ucm, conn, log, isTestnet, enableWithdrawRollback)
+			err := SyncWithdraw(ucm, isTestnet, enableWithdrawRollback)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync withdraw")
 			}
 		}
-	}(ucm, conn, log, isTestnet)
+	}(ucm, isTestnet)
 	return nil
 }
 func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
-	databaseMaxPoolConns := ctxCLI.Int("database_max_pool_conns")
 	databaseMaxIdleConns := ctxCLI.Int("database_max_idle_conns")
 	databaseMaxOpenConns := ctxCLI.Int("database_max_open_conns")
 	environment := ctxCLI.String("environment")
@@ -638,15 +640,13 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		}
 	default:
 		if err != nil {
-			return terror.Error(err)
+			return err
 		}
 	}
 
 	apiAddr := ctxCLI.String("api_addr")
 	databaseUser := ctxCLI.String("database_user")
 	databasePass := ctxCLI.String("database_pass")
-	databaseTxUser := ctxCLI.String("database_tx_user")
-	databaseTxPass := ctxCLI.String("database_tx_pass")
 	databaseHost := ctxCLI.String("database_host")
 	databasePort := ctxCLI.String("database_port")
 	databaseName := ctxCLI.String("database_name")
@@ -735,6 +735,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 
 	config := &types.Config{
 		CookieSecure:        ctxCLI.Bool("cookie_secure"),
+		CookieKey:           ctxCLI.String("cookie_key"),
 		PassportWebHostURL:  ctxCLI.String("passport_web_host_url"),
 		GameserverHostURL:   ctxCLI.String("gameserver_web_host_url"),
 		EncryptTokens:       ctxCLI.Bool("jwt_encrypt"),
@@ -773,33 +774,6 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		},
 	}
 
-	txConn, err := txConnect(
-		databaseTxUser,
-		databaseTxPass,
-		databaseHost,
-		databasePort,
-		databaseName,
-		databaseMaxIdleConns,
-		databaseMaxOpenConns,
-	)
-	if err != nil {
-		return terror.Panic(err)
-	}
-
-	pgxconn, err := pgxconnect(
-		databaseUser,
-		databasePass,
-		databaseHost,
-		databasePort,
-		databaseName,
-		databaseAppName,
-		Version,
-		databaseMaxPoolConns,
-	)
-	if err != nil {
-		return terror.Panic(err)
-	}
-
 	sqlConnect, err := sqlConnect(
 		databaseUser,
 		databasePass,
@@ -814,17 +788,13 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	if err != nil {
 		return terror.Panic(err)
 	}
-	err = passdb.New(pgxconn, sqlConnect)
+	err = passdb.New(sqlConnect)
 	if err != nil {
 		return terror.Panic(err)
 	}
-	count := 0
-	err = db.IsSchemaDirty(context.Background(), pgxconn, &count)
+	err = db.IsSchemaDirty()
 	if err != nil {
 		return terror.Error(api.ErrCheckDBQuery)
-	}
-	if count > 0 {
-		return terror.Error(api.ErrCheckDBDirty)
 	}
 
 	// Mailer
@@ -843,12 +813,10 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	HTMLSanitizePolicy := bluemonday.UGCPolicy()
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
-	msgBus := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message bus"))
-
 	// initialise user cache map
-	ucm, err := api.NewTX(pgxconn, msgBus)
+	ucm, err := api.NewTX()
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	jwtKeyByteArray, err := base64.StdEncoding.DecodeString(jwtKey)
@@ -858,8 +826,6 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 
 	// API Server
 	api, routes := api.NewAPI(log,
-		pgxconn,
-		txConn,
 		mailer,
 		twilio,
 		apiAddr,
@@ -869,16 +835,15 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		ucm,
 		isTestnetBlockchain,
 		runBlockchainBridge,
-		msgBus,
 		enablePurchaseSubscription,
 		jwtKeyByteArray,
 	)
 
 	passlog.L.Info().Msg("start rpc server")
-	s := comms.NewServer(ucm, msgBus, log, pgxconn, api.ClientMap, twilio)
-	err = comms.StartServer(s)
+	s := comms.NewServer(ucm, log, api.ClientMap, twilio, config)
+	err = s.Start(10001, 34)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	apiServer := &http.Server{
@@ -905,44 +870,16 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 			passlog.L.Err(err).Msg("parse gameserver addr")
 			return
 		}
+
 		hostname := gameserverURL.Hostname()
-		rpcAddrs := []string{
-			fmt.Sprintf("%s:11001", hostname),
-			fmt.Sprintf("%s:11002", hostname),
-			fmt.Sprintf("%s:11003", hostname),
-			fmt.Sprintf("%s:11004", hostname),
-			fmt.Sprintf("%s:11005", hostname),
-			fmt.Sprintf("%s:11006", hostname),
-			fmt.Sprintf("%s:11007", hostname),
-			fmt.Sprintf("%s:11008", hostname),
-			fmt.Sprintf("%s:11009", hostname),
-			fmt.Sprintf("%s:11010", hostname),
-			fmt.Sprintf("%s:11011", hostname),
-			fmt.Sprintf("%s:11012", hostname),
-			fmt.Sprintf("%s:11013", hostname),
-			fmt.Sprintf("%s:11014", hostname),
-			fmt.Sprintf("%s:11015", hostname),
-			fmt.Sprintf("%s:11016", hostname),
-			fmt.Sprintf("%s:11017", hostname),
-			fmt.Sprintf("%s:11018", hostname),
-			fmt.Sprintf("%s:11019", hostname),
-			fmt.Sprintf("%s:11020", hostname),
-			fmt.Sprintf("%s:11021", hostname),
-			fmt.Sprintf("%s:11022", hostname),
-			fmt.Sprintf("%s:11023", hostname),
-			fmt.Sprintf("%s:11024", hostname),
-			fmt.Sprintf("%s:11025", hostname),
-			fmt.Sprintf("%s:11026", hostname),
-			fmt.Sprintf("%s:11027", hostname),
-			fmt.Sprintf("%s:11028", hostname),
-			fmt.Sprintf("%s:11029", hostname),
-			fmt.Sprintf("%s:11030", hostname),
-			fmt.Sprintf("%s:11031", hostname),
-			fmt.Sprintf("%s:11032", hostname),
-			fmt.Sprintf("%s:11033", hostname),
-			fmt.Sprintf("%s:11034", hostname),
-			fmt.Sprintf("%s:11035", hostname),
+
+		endPort := 11035
+		startPort := 11001
+		rpcAddrs := make([]string, endPort-startPort)
+		for i := startPort; i < endPort; i++ {
+			rpcAddrs[i-startPort] = fmt.Sprintf("%s:%d", hostname, i)
 		}
+
 		rpcClient := &rpcclient.XrpcClient{
 			Addrs: rpcAddrs,
 		}
@@ -965,7 +902,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 			l.Debug().Bool("enable_withdraw_rollback", enableWithdrawRollback).Msg("withdraw rollback is enabled")
 		}
 		avantTestnet := ctxCLI.Bool("avant_testnet")
-		err := SyncFunc(ucm, pgxconn, log, avantTestnet, enableWithdrawRollback)
+		err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback)
 		if err != nil {
 			log.Error().Err(err).Msg("sync")
 		}
@@ -979,7 +916,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 				} else {
 					l.Debug().Bool("enable_withdraw_rollback", enableWithdrawRollback).Msg("withdraw rollback is enabled")
 				}
-				err := SyncFunc(ucm, pgxconn, log, avantTestnet, enableWithdrawRollback)
+				err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback)
 				if err != nil {
 					log.Error().Err(err).Msg("sync")
 				}

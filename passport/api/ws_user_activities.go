@@ -3,14 +3,13 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"xsyn-services/passport/db"
 	"xsyn-services/types"
 
+	"github.com/ninja-syndicate/ws"
+
 	"github.com/ninja-software/log_helpers"
 
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/rs/zerolog"
@@ -19,17 +18,15 @@ import (
 
 // UserActivityController holds handlers for user activity
 type UserActivityController struct {
-	Conn *pgxpool.Pool
-	Log  *zerolog.Logger
-	API  *API
+	Log *zerolog.Logger
+	API *API
 }
 
 // NewUserActivityController creates the userActivity controller
-func NewUserActivityController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *UserActivityController {
+func NewUserActivityController(log *zerolog.Logger, api *API) *UserActivityController {
 	uah := &UserActivityController{
-		Conn: conn,
-		Log:  log_helpers.NamedLogger(log, "user_activity_hub"),
-		API:  api,
+		Log: log_helpers.NamedLogger(log, "user_activity_hub"),
+		API: api,
 	}
 
 	uah.API.SecureCommandWithPerm(HubKeyUserActivityList, uah.UserActivityListHandler, types.PermUserActivityList)
@@ -40,7 +37,7 @@ func NewUserActivityController(log *zerolog.Logger, conn *pgxpool.Pool, api *API
 }
 
 // HubKeyUserActivityList is a hub key to list userActivities
-const HubKeyUserActivityList hub.HubCommandKey = "USER_ACTIVITY:LIST"
+const HubKeyUserActivityList = "USER_ACTIVITY:LIST"
 
 // UserActivityListRequest  requests holds the filter for userActivity list
 type UserActivityListRequest struct {
@@ -62,7 +59,7 @@ type UserActivityListResponse struct {
 }
 
 // UserActivityListHandler lists userActivities with pagination
-func (hub *UserActivityController) UserActivityListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (hub *UserActivityController) UserActivityListHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Could not get user activities list, try again or contact support."
 
 	req := &UserActivityListRequest{}
@@ -78,9 +75,7 @@ func (hub *UserActivityController) UserActivityListHandler(ctx context.Context, 
 
 	userActivities := []*types.UserActivity{}
 	total, err := db.UserActivityList(
-		ctx,
-		hub.Conn,
-		&userActivities,
+		userActivities,
 		req.Payload.Search,
 		req.Payload.Filter,
 		offset,
@@ -102,7 +97,7 @@ func (hub *UserActivityController) UserActivityListHandler(ctx context.Context, 
 }
 
 // HubKeyUserActivityCreate is a hub key to create userActivities
-const HubKeyUserActivityCreate hub.HubCommandKey = "USER_ACTIVITY:CREATE"
+const HubKeyUserActivityCreate = "USER_ACTIVITY:CREATE"
 
 // UserActivityPayload used for create requests
 type UserActivityPayload struct {
@@ -118,12 +113,11 @@ type UserActivityPayload struct {
 
 // UserActivityCreateRequest requests a create userActivity
 type UserActivityCreateRequest struct {
-	*hub.HubCommandRequest
 	Payload UserActivityPayload `json:"payload"`
 }
 
 // UserActivityCreateHandler creates userActivities
-func (hub *UserActivityController) UserActivityCreateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (hub *UserActivityController) UserActivityCreateHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue creating user activity, please try again or contact support."
 
 	req := &UserActivityCreateRequest{}
@@ -141,20 +135,11 @@ func (hub *UserActivityController) UserActivityCreateHandler(ctx context.Context
 	}
 
 	// Create userActivity
-	tx, err := hub.Conn.Begin(ctx)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	defer func(tx pgx.Tx, ctx context.Context) {
-		err := tx.Rollback(ctx)
-		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			hub.Log.Err(err).Msg("error rolling back.")
-		}
-	}(tx, ctx)
 
 	err = db.UserActivityCreate(
-		ctx,
-		tx,
 		req.Payload.UserID,
 		req.Payload.Action,
 		req.Payload.ObjectType,
@@ -167,28 +152,21 @@ func (hub *UserActivityController) UserActivityCreateHandler(ctx context.Context
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-
-	err = tx.Commit(ctx)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
 	return nil
 }
 
 // HubKeyUserActivityGet is a hub key to grab userActivity
-const HubKeyUserActivityGet hub.HubCommandKey = "USER_ACTIVITY:GET"
+const HubKeyUserActivityGet = "USER_ACTIVITY:GET"
 
 // UserActivityGetRequest requests an create userActivity
 type UserActivityGetRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		ID types.UserActivityID `json:"id"`
 	} `json:"payload"`
 }
 
 // UserActivityGetHandler get userActivities
-func (hub *UserActivityController) UserActivityGetHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (hub *UserActivityController) UserActivityGetHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "User activity not found, check the URL and try again."
 	req := &UserActivityGetRequest{}
 	err := json.Unmarshal(payload, req)
@@ -198,7 +176,7 @@ func (hub *UserActivityController) UserActivityGetHandler(ctx context.Context, h
 
 	// Get userActivity
 	userActivity := &types.UserActivity{}
-	err = db.UserActivityGet(ctx, hub.Conn, userActivity, req.Payload.ID)
+	err = db.UserActivityGet(userActivity, req.Payload.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}

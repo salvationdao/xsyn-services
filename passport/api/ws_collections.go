@@ -5,51 +5,51 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
+	"xsyn-services/passport/passdb"
 	"xsyn-services/types"
+
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ninja-software/log_helpers"
 
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/ninja-syndicate/supremacy-bridge/bridge"
 	"github.com/rs/zerolog"
 )
 
 // CollectionController holds handlers for Collections
 type CollectionController struct {
-	Conn          *pgxpool.Pool
 	Log           *zerolog.Logger
 	API           *API
 	isTestnetwork bool
 }
 
 // NewCollectionController creates the collection hub
-func NewCollectionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, isTestnetwork bool) *CollectionController {
+func NewCollectionController(log *zerolog.Logger, api *API, isTestnetwork bool) *CollectionController {
 	collectionHub := &CollectionController{
-		Conn:          conn,
 		Log:           log_helpers.NamedLogger(log, "collection_hub"),
 		API:           api,
 		isTestnetwork: isTestnetwork,
 	}
 
 	// collection list
-	api.Command(HubKeyCollectionList, collectionHub.CollectionsList)
+	api.SecureCommand(HubKeyCollectionList, collectionHub.CollectionsList)
 	api.Command(HubKeyWalletCollectionList, collectionHub.WalletCollectionsList)
 
 	// collection subscribe
-	api.SubscribeCommand(HubKeyCollectionSubscribe, collectionHub.CollectionUpdatedSubscribeHandler)
+	api.Command(HubKeyCollectionSubscribe, collectionHub.Collection)
+
+	//api.SubscribeCommand(HubKeyCollectionSubscribe, collectionHub.CollectionUpdatedSubscribeHandler)
 
 	return collectionHub
 }
 
 // CollectionListRequest requests holds the filter for collections list
 type CollectionListRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		UserID types.UserID `json:"user_id"`
 	} `json:"payload"`
@@ -61,9 +61,9 @@ type CollectionListResponse struct {
 	Total   int                  `json:"total"`
 }
 
-const HubKeyCollectionList hub.HubCommandKey = "COLLECTION:LIST"
+const HubKeyCollectionList = "COLLECTION:LIST"
 
-func (ctrlr *CollectionController) CollectionsList(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (ctrlr *CollectionController) CollectionsList(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Could not get list of collections, try again or contact support."
 	req := &CollectionListRequest{}
 	err := json.Unmarshal(payload, req)
@@ -84,7 +84,6 @@ func (ctrlr *CollectionController) CollectionsList(ctx context.Context, hubc *hu
 }
 
 type WalletCollectionsListRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Username        string                     `json:"username"`
 		SortDir         db.SortByDir               `json:"sort_dir"`
@@ -104,9 +103,9 @@ type WalletCollectionListResponse struct {
 	AssetHashes []string `json:"asset_hashes"`
 }
 
-const HubKeyWalletCollectionList hub.HubCommandKey = "COLLECTION:WALLET:LIST"
+const HubKeyWalletCollectionList = "COLLECTION:WALLET:LIST"
 
-func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Failed to get user's NFT assets, try again or contact support."
 	req := &WalletCollectionsListRequest{}
 	err := json.Unmarshal(payload, req)
@@ -114,17 +113,22 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, hu
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	un := ctx.Value("username")
+	username, ok := un.(string)
+	if !ok {
+		return terror.Error(fmt.Errorf("username not found"), errMsg)
+	}
+
+	user, err := boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(username))).One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, "user not found")
+	}
+
 	o := bridge.NewOracle(ctrlr.API.BridgeParams.MoralisKey)
 
 	network := bridge.NetworkGoerli
 	if !ctrlr.isTestnetwork {
 		network = bridge.NetworkEth
-	}
-
-	// get user
-	user, err := db.UserGetByUsername(ctx, ctrlr.Conn, req.Payload.Username)
-	if err != nil {
-		return terror.Error(err, errMsg)
 	}
 
 	// get all collections
@@ -206,28 +210,27 @@ func FilterAssetList(
 
 // CollectionUpdatedSubscribeRequest requests an update for a collection
 type CollectionUpdatedSubscribeRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Slug string `json:"slug"`
 	} `json:"payload"`
 }
 
 // 	rootHub.SecureCommand(HubKeyCollectionSubscribe, CollectionController.CollectionSubscribe)
-const HubKeyCollectionSubscribe hub.HubCommandKey = "COLLECTION:SUBSCRIBE"
+const HubKeyCollectionSubscribe = "COLLECTION:SUBSCRIBE"
 
-func (ctrlr *CollectionController) CollectionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (ctrlr *CollectionController) Collection(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Failed to subscribe to collection updates, try again or contact support."
 	req := &CollectionUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
+		return terror.Error(err, "Invalid request received.")
 	}
 
-	collection, err := db.CollectionBySlug(ctx, ctrlr.Conn, req.Payload.Slug)
+	collection, err := db.CollectionBySlug(req.Payload.Slug)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, errMsg)
+		return terror.Error(err, errMsg)
 	}
 
 	reply(collection)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyCollectionSubscribe, collection.ID)), nil
+	return nil
 }

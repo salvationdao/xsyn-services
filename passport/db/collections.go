@@ -1,7 +1,6 @@
 package db
 
 import (
-	"context"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
 
@@ -17,7 +16,7 @@ func RogueCollection() (*boiler.Collection, error) {
 		boiler.CollectionWhere.Name.EQ("Supremacy"),
 	).One(passdb.StdConn)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 	return collection, nil
 }
@@ -26,7 +25,7 @@ func AICollection() (*boiler.Collection, error) {
 		boiler.CollectionWhere.Name.EQ("Supremacy AI"),
 	).One(passdb.StdConn)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 	return collection, nil
 }
@@ -35,7 +34,7 @@ func GenesisCollection() (*boiler.Collection, error) {
 		boiler.CollectionWhere.Name.EQ("Supremacy Genesis"),
 	).One(passdb.StdConn)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 	return collection, nil
 }
@@ -44,7 +43,7 @@ func LimitedReleaseCollection() (*boiler.Collection, error) {
 		boiler.CollectionWhere.Name.EQ("Supremacy Limited Release"),
 	).One(passdb.StdConn)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 	return collection, nil
 }
@@ -54,7 +53,7 @@ func Collection(id uuid.UUID) (*boiler.Collection, error) {
 		id.String(),
 	)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 	return collection, nil
 }
@@ -67,13 +66,13 @@ func CollectionByMintAddress(mintAddr common.Address) (*boiler.Collection, error
 		),
 	).One(passdb.StdConn)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 	return collection, nil
 }
 
 // CollectionBySlug returns a collection by slug
-func CollectionBySlug(ctx context.Context, conn Conn, slug string) (*boiler.Collection, error) {
+func CollectionBySlug(slug string) (*boiler.Collection, error) {
 	collection, err := boiler.Collections(
 		boiler.CollectionWhere.Slug.EQ(slug),
 	).One(passdb.StdConn)
@@ -90,7 +89,7 @@ func CollectionsList() ([]*boiler.Collection, error) {
 		qm.And("slug != ?", "supremacy"),
 	).All(passdb.StdConn)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 	return collections, nil
 }
@@ -103,7 +102,7 @@ func CollectionsVisibleList() ([]*boiler.Collection, error) {
 		boiler.CollectionWhere.IsVisible.EQ(null.BoolFrom(true)),
 	).All(passdb.StdConn)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 	return collections, nil
 }

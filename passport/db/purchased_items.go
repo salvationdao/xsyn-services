@@ -1,10 +1,10 @@
 package db
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/ninja-software/terror/v2"
 	"strconv"
 	"strings"
 	"time"
@@ -16,9 +16,7 @@ import (
 	"xsyn-services/passport/rpcclient"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/georgysavva/scany/pgxscan"
 	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -130,7 +128,6 @@ func SyncPurchasedItems() error {
 	//if err != nil {
 	//	return terror.Error(err)
 	//}
-
 	return nil
 }
 
@@ -167,7 +164,7 @@ func PurchasedItemIsMinted(collectionAddr common.Address, tokenID int) (bool, er
 }
 
 func PurchasedItemByMintContractAndTokenID(contractAddr common.Address, tokenID int) (*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "PurchasedItemByMintContractAndTokenID").Strs("args", []string{contractAddr.Hex(), strconv.Itoa(tokenID)}).Msg("db func")
+	passlog.L.Trace().Str("fn", "PurchasedItemByMintContractAndTokenID").Strs("args", []string{contractAddr.Hex(), strconv.Itoa(tokenID)}).Msg("db func")
 	collection, err := CollectionByMintAddress(contractAddr)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -186,7 +183,7 @@ func PurchasedItemByMintContractAndTokenID(contractAddr common.Address, tokenID 
 	return item, nil
 }
 func PurchasedItemByHash(hash string) (*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "PurchasedItemByHash").Msg("db func")
+	passlog.L.Trace().Str("fn", "PurchasedItemByHash").Msg("db func")
 	item, err := boiler.PurchasedItems(boiler.PurchasedItemWhere.Hash.EQ(hash)).One(passdb.StdConn)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, terror.Error(err)
@@ -201,13 +198,13 @@ func PurchasedItemByHash(hash string) (*boiler.PurchasedItem, error) {
 	}
 	return item, nil
 }
-func PurchasedItemsByOwnerID(ownerID uuid.UUID, limit int, afterExternalTokenID *int, includeAssetIDs, excludeAssetIDs []uuid.UUID) ([]*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "PurchasedItemsByOwnerID").Msg("db func")
+func PurchasedItemsByOwnerID(ownerID string, limit int, afterExternalTokenID *int, includeAssetIDs, excludeAssetIDs []uuid.UUID) ([]*boiler.PurchasedItem, error) {
+	passlog.L.Trace().Str("fn", "PurchasedItemsByOwnerID").Msg("db func")
 
 	orderBy := boiler.PurchasedItemColumns.ExternalTokenID + " ASC"
 	orderByArgs := []interface{}{}
 	queryMods := []qm.QueryMod{
-		boiler.PurchasedItemWhere.OwnerID.EQ(ownerID.String()),
+		boiler.PurchasedItemWhere.OwnerID.EQ(ownerID),
 		qm.Limit(limit),
 	}
 	if afterExternalTokenID != nil {
@@ -255,13 +252,13 @@ func PurchasedItemsByOwnerID(ownerID uuid.UUID, limit int, afterExternalTokenID 
 	return result, nil
 }
 
-func PurchasedItemsByOwnerIDAndTier(ownerID uuid.UUID, tier string) (int, error) {
+func PurchasedItemsByOwnerIDAndTier(ownerID string, tier string) (int, error) {
 	count, err := boiler.PurchasedItems(
-		boiler.PurchasedItemWhere.OwnerID.EQ(ownerID.String()),
+		boiler.PurchasedItemWhere.OwnerID.EQ(ownerID),
 		boiler.PurchasedItemWhere.Tier.EQ(tier),
 	).Count(passdb.StdConn)
 	if err != nil {
-		return 0, terror.Error(err)
+		return 0, err
 	}
 	return int(count), nil
 }
@@ -276,12 +273,12 @@ func PurchasedItems() ([]*boiler.PurchasedItem, error) {
 }
 
 func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "PurchasedItemRegister").Msg("db func")
+	passlog.L.Trace().Str("fn", "PurchasedItemRegister").Msg("db func")
 	req := rpcclient.TemplateRegisterReq{TemplateID: storeItemID, OwnerID: ownerID}
 	resp := &rpcclient.TemplateRegisterResp{}
 	err := rpcclient.Client.Call("S.TemplateRegister", req, resp)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, terror.Error(err,  "communication to supremacy has failed")
 	}
 	var newItems []*boiler.PurchasedItem
 	// for each asset, assign it on our database
@@ -292,7 +289,7 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*boiler.
 		}
 
 		// get collection
-		collection, err := CollectionBySlug(context.Background(), passdb.Conn, itm.CollectionSlug)
+		collection, err := CollectionBySlug(itm.CollectionSlug)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
@@ -334,7 +331,7 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*boiler.
 	return newItems, nil
 }
 func PurchasedItemSetName(purchasedItemID uuid.UUID, name string) (*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "PurchasedItemSetName").Msg("db func")
+	passlog.L.Trace().Str("fn", "PurchasedItemSetName").Msg("db func")
 	req := rpcclient.MechSetNameReq{MechID: purchasedItemID, Name: name}
 	resp := &rpcclient.MechSetNameResp{}
 	err := rpcclient.Client.Call("S.MechSetName", req, resp)
@@ -348,7 +345,7 @@ func PurchasedItemSetName(purchasedItemID uuid.UUID, name string) (*boiler.Purch
 	return refreshedItem, nil
 }
 func PurchasedItemSetOwner(purchasedItemID uuid.UUID, ownerID uuid.UUID) (*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "PurchasedItemSetOwner").Msg("db func")
+	passlog.L.Trace().Str("fn", "PurchasedItemSetOwner").Msg("db func")
 	req := rpcclient.MechSetOwnerReq{MechID: purchasedItemID, OwnerID: ownerID}
 	resp := &rpcclient.MechSetOwnerResp{}
 	err := rpcclient.Client.Call("S.MechSetOwner", req, resp)
@@ -364,7 +361,7 @@ func PurchasedItemSetOwner(purchasedItemID uuid.UUID, ownerID uuid.UUID) (*boile
 
 func refreshItem(itemID uuid.UUID, force bool) (*boiler.PurchasedItem, error) {
 	// TODO: Vinnie - refactor to refresh any item
-	passlog.L.Debug().Str("fn", "refreshItem").Msg("db func")
+	passlog.L.Trace().Str("fn", "refreshItem").Msg("db func")
 	if itemID == uuid.Nil {
 		return nil, terror.Error(terror.ErrNilUUID)
 	}
@@ -411,7 +408,10 @@ func refreshItem(itemID uuid.UUID, force bool) (*boiler.PurchasedItem, error) {
 		return nil, terror.Error(err)
 	}
 
-	tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return nil, terror.Error(err)
+	}
 
 	return dbitem, nil
 }
@@ -419,7 +419,7 @@ func refreshItem(itemID uuid.UUID, force bool) (*boiler.PurchasedItem, error) {
 // setPurchasedItem sets the item, inserting it on the fly if it doesn't exist
 // Does not obey TTL, can be heavy to run
 func setPurchasedItem(item *boiler.PurchasedItem) (*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "setPurchasedItem").Msg("db func")
+	passlog.L.Trace().Str("fn", "setPurchasedItem").Msg("db func")
 	exists, err := boiler.PurchasedItemExists(passdb.StdConn, item.ID)
 	if err != nil {
 		return item, terror.Error(err)
@@ -440,7 +440,7 @@ func setPurchasedItem(item *boiler.PurchasedItem) (*boiler.PurchasedItem, error)
 
 // getPurchasedItem fetches the item, obeying TTL
 func getPurchasedItem(itemID uuid.UUID) (*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "getPurchasedItem").Msg("db func")
+	passlog.L.Trace().Str("fn", "getPurchasedItem").Msg("db func")
 	item, err := boiler.FindPurchasedItem(passdb.StdConn, itemID.String())
 	if err != nil {
 		return nil, terror.Error(err)
@@ -455,7 +455,7 @@ func getPurchasedItem(itemID uuid.UUID) (*boiler.PurchasedItem, error) {
 
 // PurchasedItem fetches the item, with the db as a fallback cache
 func PurchasedItem(itemID uuid.UUID) (*boiler.PurchasedItem, error) {
-	passlog.L.Debug().Str("fn", "PurchasedItem").Msg("db func")
+	passlog.L.Trace().Str("fn", "PurchasedItem").Msg("db func")
 	purchasedItem, err := getPurchasedItem(itemID)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -521,13 +521,10 @@ INNER JOIN (
 INNER JOIN users u ON purchased_items.owner_id = u.id
 `
 
-//  PurchaseItemsList gets a list of purchased items depending on the filters
+// PurchaseItemsList gets a list of purchased items depending on the filters
 func PurchaseItemsList(
-	ctx context.Context,
-	conn Conn,
 	search string,
 	archived bool,
-	includedAssetHashes []string,
 	filter *ListFilterRequest,
 	attributeFilter *AttributeFilterRequest,
 	offset int,
@@ -618,9 +615,9 @@ func PurchaseItemsList(
 	)
 
 	var totalRows int
-	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
+	err := passdb.StdConn.QueryRow(countQ, args).Scan(&totalRows)
 	if err != nil {
-		return 0, nil, terror.Error(err)
+		return 0, nil, err
 	}
 	if totalRows == 0 {
 		return 0, make([]*types.PurchasedItem, 0), nil
@@ -657,10 +654,29 @@ func PurchaseItemsList(
 		limit,
 	)
 
-	result := make([]*types.PurchasedItem, 0)
-	err = pgxscan.Select(ctx, conn, &result, q, args...)
+	result := []*types.PurchasedItem{}
+	r, err := passdb.StdConn.Query(q, args...)
 	if err != nil {
-		return 0, nil, terror.Error(err)
+		return 0, nil, err
+	}
+
+	for r.Next() {
+		pi := &types.PurchasedItem{}
+
+		err = r.Scan(
+			&pi.Collection,
+			&pi.ExternalTokenID,
+			&pi.DeletedAt,
+			&pi.UpdatedAt,
+			&pi.CreatedAt,
+			&pi.Hash,
+			&pi.Username,
+		)
+		if err != nil {
+			return 0, nil, err
+		}
+
+		result = append(result, pi)
 	}
 
 	return totalRows, result, nil

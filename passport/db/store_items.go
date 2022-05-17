@@ -1,7 +1,6 @@
 package db
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -10,7 +9,6 @@ import (
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
-	"github.com/georgysavva/scany/pgxscan"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 )
@@ -69,8 +67,7 @@ var PriceCentsMap = map[string]int{
 }
 
 func SyncStoreItems() error {
-	// TODO: Vinnie - look into if we need this, if so update it to work with all our new items
-	//passlog.L.Debug().Str("fn", "SyncStoreItems").Msg("db func")
+	//passlog.L.Trace().Str("fn", "SyncStoreItems").Msg("db func")
 	//
 	//tx, err := passdb.StdConn.Begin()
 	//if err != nil {
@@ -103,7 +100,7 @@ func SyncStoreItems() error {
 	//		}
 	//
 	//		collectionSlug = template.Template.CollectionSlug.String
-	//		collection, err = CollectionBySlug(context.Background(), passdb.Conn, collectionSlug)
+	//		collection, err = CollectionBySlug(collectionSlug)
 	//		if err != nil {
 	//			return err
 	//		}
@@ -176,7 +173,7 @@ func SyncStoreItems() error {
 	//}
 	//err = tx.Commit()
 	//if err != nil {
-	//	return terror.Error(err)
+	//	return err
 	//}
 
 	return nil
@@ -258,12 +255,12 @@ func StoreItems() ([]*boiler.StoreItem, error) {
 	return result, nil
 }
 func StoreItem(storeItemID uuid.UUID) (*boiler.StoreItem, error) {
-	passlog.L.Debug().Str("fn", "StoreItem").Msg("db func")
+	passlog.L.Trace().Str("fn", "StoreItem").Msg("db func")
 	return getStoreItem(storeItemID)
 }
 func StoreItemPurchasedCount(templateID uuid.UUID) (int, error) {
 	// TODO: Vinnie - see if we still need and refactor if needed
-	//passlog.L.Debug().Str("fn", "StoreItemPurchasedCount").Msg("db func")
+	//passlog.L.Trace().Str("fn", "StoreItemPurchasedCount").Msg("db func")
 	//resp := &rpcclient.TemplatePurchasedCountResp{}
 	//err := rpcclient.Client.Call("S.TemplatePurchasedCount", rpcclient.TemplatePurchasedCountReq{TemplateID: templateID}, resp)
 	//if err != nil {
@@ -282,7 +279,7 @@ func StoreItemsByFactionIDAndRestrictionGroup(factionID uuid.UUID, restrictionGr
 }
 
 func StoreItemsByFactionID(factionID uuid.UUID) ([]*boiler.StoreItem, error) {
-	passlog.L.Debug().Str("fn", "StoreItemsByFactionID").Msg("db func")
+	passlog.L.Trace().Str("fn", "StoreItemsByFactionID").Msg("db func")
 	storeItems, err := boiler.StoreItems(boiler.StoreItemWhere.FactionID.EQ(factionID.String())).All(passdb.StdConn)
 	if err != nil {
 		return nil, err
@@ -299,18 +296,15 @@ func StoreItemsByFactionID(factionID uuid.UUID) ([]*boiler.StoreItem, error) {
 }
 
 func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, error) {
-	//ctx := context.Background()
-	passlog.L.Debug().Str("fn", "refreshStoreItem").Msg("db func")
+	passlog.L.Trace().Str("fn", "refreshStoreItem").Msg("db func")
 	tx, err := passdb.StdConn.Begin()
 	if err != nil {
-		fmt.Println("here - 1")
 		return nil, err
 	}
 	defer tx.Rollback()
 
 	dbitem, err := boiler.FindStoreItem(tx, storeItemID.String())
 	if err != nil {
-		fmt.Println("here - 2")
 		return nil, err
 	}
 
@@ -320,18 +314,15 @@ func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, err
 		}
 	}
 
-	// TODO: Vinnie - fix this
 	//resp := &rpcclient.TemplateResp{}
 	//err = rpcclient.Client.Call("S.Template", rpcclient.TemplateReq{TemplateID: storeItemID}, resp)
 	//if err != nil {
-	//	fmt.Println("here - 3")
 	//	return nil, err
 	//}
 	//
 	//if resp.TemplateContainer.Template.CollectionSlug.Valid {
-	//	collection, err := CollectionBySlug(ctx, passdb.Conn, resp.TemplateContainer.Template.CollectionSlug.String)
+	//	collection, err := CollectionBySlug(resp.TemplateContainer.Template.CollectionSlug.String)
 	//	if err != nil {
-	//		fmt.Println("here - 4")
 	//		return nil, err
 	//	}
 	//	dbitem.CollectionID = collection.ID
@@ -339,7 +330,6 @@ func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, err
 	//
 	//b, err := json.Marshal(resp.TemplateContainer)
 	//if err != nil {
-	//	fmt.Println("here - 5")
 	//	return nil, err
 	//}
 	//
@@ -361,14 +351,12 @@ func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, err
 	//
 	//_, err = dbitem.Update(tx, boil.Infer())
 	//if err != nil {
-	//	fmt.Println("here - 6")
 	//	return nil, err
 	//}
 	//
 	//err = tx.Commit()
 	//if err != nil {
-	//	fmt.Println("here - 7")
-	//	return nil, terror.Error(err)
+	//	return nil, err
 	//}
 
 	return dbitem, nil
@@ -377,7 +365,7 @@ func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, err
 
 // getStoreItem fetches the item, obeying TTL
 func getStoreItem(storeItemID uuid.UUID) (*boiler.StoreItem, error) {
-	passlog.L.Debug().Str("fn", "getStoreItem").Msg("db func")
+	passlog.L.Trace().Str("fn", "getStoreItem").Msg("db func")
 	item, err := boiler.FindStoreItem(passdb.StdConn, storeItemID.String())
 	if err != nil {
 		return nil, err
@@ -450,8 +438,6 @@ INNER JOIN (
 
 //  StoreItemsList gets a list of store items depending on the filters
 func StoreItemsList(
-	ctx context.Context,
-	conn Conn,
 	search string,
 	archived bool,
 	includedAssetHashes []string,
@@ -474,7 +460,7 @@ func StoreItemsList(
 			column := StoreItemColumn(f.ColumnField)
 			err := column.IsValid()
 			if err != nil {
-				return 0, nil, terror.Error(err)
+				return 0, nil, err
 			}
 
 			argIndex += 1
@@ -498,7 +484,7 @@ func StoreItemsList(
 			column := TraitType(f.Trait)
 			err := column.IsValid()
 			if err != nil {
-				return 0, nil, terror.Error(err)
+				return 0, nil, err
 			}
 			condition := GenerateDataFilterSQL(f.Trait, f.Value, argIndex, "store_items")
 			filterConditions = append(filterConditions, condition)
@@ -557,9 +543,9 @@ func StoreItemsList(
 	)
 
 	var totalRows int
-	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
+	err := passdb.StdConn.QueryRow(countQ, args...).Scan(&totalRows)
 	if err != nil {
-		return 0, nil, terror.Error(err)
+		return 0, nil, err
 	}
 	if totalRows == 0 {
 		return 0, make([]*types.StoreItem, 0), nil
@@ -579,9 +565,9 @@ func StoreItemsList(
 	q := fmt.Sprintf(
 		StoreItemGetQuery+`--sql
 		WHERE store_items.deleted_at %s
-			%s
-			%s
-			%s
+		%s
+		%s
+		%s
 		%s
 		%s`,
 		archiveCondition,
@@ -593,9 +579,29 @@ func StoreItemsList(
 	)
 
 	result := make([]*types.StoreItem, 0)
-	err = pgxscan.Select(ctx, conn, &result, q, args...)
+
+	r, err := passdb.StdConn.Query(q, args...)
 	if err != nil {
-		return 0, nil, terror.Error(err)
+		return 0, nil, err
+	}
+
+	for r.Next() {
+		si := &types.StoreItem{}
+		err = r.Scan(
+			&si.Collection,
+			&si.ID,
+			&si.Tier,
+			&si.IsDefault,
+			&si.RestrictionGroup,
+			&si.DeletedAt,
+			&si.UpdatedAt,
+			&si.CreatedAt,
+		)
+		if err != nil {
+			return 0, nil, err
+		}
+
+		result = append(result, si)
 	}
 
 	return totalRows, result, nil

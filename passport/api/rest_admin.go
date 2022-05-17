@@ -269,7 +269,7 @@ func ListUserTransactions(w http.ResponseWriter, r *http.Request) (int, error) {
 }
 func ListUsers(w http.ResponseWriter, r *http.Request) (int, error) {
 	result := []*types.User{}
-	_, err := db.UserList(r.Context(), passdb.Conn, &result, "", false, nil, 0, 20000, db.UserColumnUsername, db.SortByDirAsc)
+	_, err := db.UserList(result, "", false, nil, 0, 20000, db.UserColumnUsername, db.SortByDirAsc)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not list users")
 	}
@@ -448,12 +448,12 @@ func PurchasedItemRegisterHandler(w http.ResponseWriter, r *http.Request) (int, 
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Bad template ID")
 	}
-	ownerIdStr := chi.URLParam(r, "owner_id")
-	ownerId, err := uuid.FromString(ownerIdStr)
+	ownerId := chi.URLParam(r, "owner_id")
+	ownerUUID, err := uuid.FromString(ownerId)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Bad owner ID")
 	}
-	result, err := db.PurchasedItemRegister(templateId, ownerId)
+	result, err := db.PurchasedItemRegister(templateId, ownerUUID)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not register new purchased item")
 	}

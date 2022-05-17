@@ -1,40 +1,32 @@
 package items
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
+	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/rpcclient"
 	"xsyn-services/types"
 
-	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/rs/zerolog"
-
-	"github.com/jackc/pgx/v4/pgxpool"
 
 	"github.com/shopspring/decimal"
 )
 
+
 // Purchase attempts to make a purchase for a given user ID and a given
 func Purchase(
-	ctx context.Context,
-	conn *pgxpool.Pool,
 	log *zerolog.Logger,
-	bus *messagebus.MessageBus,
-	busKey messagebus.BusKey,
 	supPrice decimal.Decimal,
 	ucmProcess func(*types.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error),
-	user types.User,
+	user *boiler.User,
 	storeItemID types.StoreItemID,
-	externalUrl string,
 ) error {
 	// TODO: vinnie fix this
 	storeItem, err := db.StoreItem(uuid.UUID(storeItemID))
@@ -46,11 +38,11 @@ func Purchase(
 		return terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
 	}
 
-	if user.FactionID == nil || user.FactionID.IsNil() {
+	if !user.FactionID.Valid {
 		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to purchase faction specific items.")
 	}
 
-	if user.FactionID.String() != storeItem.FactionID {
+	if user.FactionID.String != storeItem.FactionID {
 		return terror.Error(fmt.Errorf("user is wrong faction"), "You cannot buy items for another faction")
 	}
 
@@ -83,7 +75,7 @@ func Purchase(
 	// resultChan := make(chan *passport.TransactionResult, 1)
 	trans := &types.NewTransaction{
 		To:                   types.XsynTreasuryUserID,
-		From:                 user.ID,
+		From:                 types.UserID(uuid.Must(uuid.FromString(user.ID))),
 		Amount:               decimal.NewFromBigInt(priceAsSupsBigInt, 0),
 		TransactionReference: types.TransactionReference(txRef),
 		Description:          "Purchase on Supremacy storefront.",
@@ -93,16 +85,19 @@ func Purchase(
 
 	nfb, ntb, txID, err := ucmProcess(trans)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
-	go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
-	go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.To)), ntb.String())
+	ws.PublishMessage("/user/"+trans.From.String()+"/sups", "USER:SUPS", nfb.String())
+	ws.PublishMessage("/user/"+trans.To.String()+"/sups", "USER:SUPS", ntb.String())
+
+	//go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
+	//go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.To)), ntb.String())
 
 	// refund callback
 	refund := func(reason string) {
 		trans := &types.NewTransaction{
-			To:                   user.ID,
+			To:                   types.UserID(uuid.Must(uuid.FromString(user.ID))),
 			RelatedTransactionID: null.StringFrom(txID),
 			From:                 types.XsynTreasuryUserID,
 			Amount:               decimal.NewFromBigInt(priceAsSupsBigInt, 0),
@@ -118,35 +113,29 @@ func Purchase(
 			return
 		}
 
-		go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
-		go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.To)), ntb.String())
-
+		ws.PublishMessage("/user/"+trans.From.String()+"/sups", "USER:SUPS", nfb.String())
+		ws.PublishMessage("/user/"+trans.To.String()+"/sups", "USER:SUPS", ntb.String())
 	}
 
 	// let's assign the item.
-	tx, err := conn.Begin(ctx)
-	if err != nil {
-		refund(err.Error())
-		return terror.Error(err)
-	}
-
-	defer func(tx pgx.Tx, ctx context.Context) {
-		err := tx.Rollback(ctx)
-		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			log.Err(err).Msg("error rolling back")
-		}
-	}(tx, ctx)
-
-	_, err = db.PurchasedItemRegister(uuid.Must(uuid.FromString(storeItem.ID)), uuid.UUID(user.ID))
+	tx, err := passdb.StdConn.Begin()
 	if err != nil {
 		refund(err.Error())
 		return err
 	}
 
-	err = tx.Commit(ctx)
+	defer tx.Rollback()
+
+	_, err = db.PurchasedItemRegister(uuid.Must(uuid.FromString(storeItem.ID)), uuid.Must(uuid.FromString(user.ID)))
 	if err != nil {
 		refund(err.Error())
-		return terror.Error(err)
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		refund(err.Error())
+		return err
 	}
 
 	resp := struct {
@@ -157,19 +146,20 @@ func Purchase(
 		Item:        storeItem,
 	}
 
-	go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), resp)
+	//go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), resp)
+	ws.PublishMessage("/user/"+user.ID+"/purchase", types.HubKeyStoreItemSubscribe, resp)
 	return nil
 }
 
 // PurchaseLootbox attempts to make a purchase for a given user ID and a given
-func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logger, bus *messagebus.MessageBus, busKey messagebus.BusKey,
+func PurchaseLootbox(log *zerolog.Logger,
 	// TODO: Vinnie fix this - may not be needed anymore?
-	ucmProcess func(*types.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error), user types.User, factionID types.FactionID, externalURL string) (string, error) {
+	ucmProcess func(*types.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error), user *boiler.User, factionID types.FactionID) (*boiler.PurchasedItem, error) {
 
 	//// get all faction items marked as loot box
 	//items, err := db.StoreItemsByFactionIDAndRestrictionGroup(uuid.UUID(factionID), db.RestrictionGroupLootbox)
 	//if err != nil {
-	//	return "", terror.Error(err, "Failed to get loot box items.")
+	//	return nil, terror.Error(err, "Failed to get loot box items.")
 	//}
 	//itemIDs := []types.StoreItemID{}
 	//for _, m := range items {
@@ -179,7 +169,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	//}
 	//
 	//if len(itemIDs) == 0 {
-	//	return "", terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
+	//	return nil, terror.Error(fmt.Errorf("all sold out"), "This item has sold out.")
 	//}
 	//
 	//chosenIdx := rand.Intn(len(itemIDs))
@@ -193,13 +183,13 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	//}
 	//
 	//if storeItem == nil {
-	//	return "", terror.Error(fmt.Errorf("store item nil"), "Internal error, contact support or try again.")
+	//	return nil, terror.Error(fmt.Errorf("store item nil"), "Internal error, contact support or try again.")
 	//}
 	//
 	//data := &rpcclient.TemplateContainer{}
 	//err = storeItem.Data.Unmarshal(data)
 	//if err != nil {
-	//	return "", terror.Error(err, "failed to get store item info")
+	//	return nil, terror.Error(err, "failed to get store item info")
 	//}
 	//txRef := fmt.Sprintf("Lootbox %s | %d", data.Template.Label, time.Now().UnixNano())
 	//
@@ -209,7 +199,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	//
 	//trans := &types.NewTransaction{
 	//	To:                   types.XsynTreasuryUserID,
-	//	From:                 user.ID,
+	//	From:                 types.UserID(uuid.Must(uuid.FromString(user.ID))),
 	//	Amount:               price,
 	//	TransactionReference: types.TransactionReference(txRef),
 	//	Description:          "Mystery crate purchase.",
@@ -220,15 +210,17 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	//// process user cache map
 	//nfb, ntb, txID, txerr := ucmProcess(trans)
 	//if txerr != nil {
-	//	return "", terror.Error(txerr)
+	//	return nil, terror.Error(txerr)
 	//}
 	//
 	//if !trans.From.IsSystemUser() {
-	//	go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
+	//	ws.PublishMessage("/user/"+trans.From.String()+"/sups", "USER:SUPS", nfb.String())
+	//	//go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
 	//}
 	//
 	//if !trans.To.IsSystemUser() {
-	//	go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.To)), ntb.String())
+	//	ws.PublishMessage("/user/"+trans.To.String()+"/sups", "USER:SUPS", ntb.String())
+	//	//go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.To)), ntb.String())
 	//}
 	//
 	//// refund callback
@@ -237,7 +229,7 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	//		return
 	//	}
 	//	trans := &types.NewTransaction{
-	//		To:                   user.ID,
+	//		To:                   types.UserID(uuid.Must(uuid.FromString(user.ID))),
 	//		RelatedTransactionID: null.StringFrom(txID),
 	//		From:                 types.XsynTreasuryUserID,
 	//		Amount:               price,
@@ -284,6 +276,5 @@ func PurchaseLootbox(ctx context.Context, conn *pgxpool.Pool, log *zerolog.Logge
 	//
 	//go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", busKey, storeItem.ID)), storeItem)
 	//return newItem.Hash, nil
-	return "", nil
+	return nil, nil
 }
-

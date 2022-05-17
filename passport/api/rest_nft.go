@@ -1,21 +1,25 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"net/http"
 	"strconv"
 	"time"
+	"xsyn-services/boiler"
+	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/db"
+	"xsyn-services/passport/passdb"
+
+	"github.com/ninja-syndicate/ws"
+	"github.com/volatiletech/null/v8"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/ninja-syndicate/supremacy-bridge/bridge"
 )
 
@@ -72,13 +76,13 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	}
 
 	// check user owns this asset
-	user, err := db.UserByPublicAddress(context.Background(), api.Conn, common.HexToAddress(address))
+	user, err := users.PublicAddress(common.HexToAddress(address))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
 	}
 
 	// get collection details
-	collection, err := db.CollectionBySlug(context.Background(), api.Conn, collectionSlug)
+	collection, err := db.CollectionBySlug(collectionSlug)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get collection.")
 	}
@@ -94,7 +98,7 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
 	}
-	if item.OwnerID != user.ID.String() {
+	if item.OwnerID != user.ID {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("unable to validate ownership of asset"), "Unable to validate ownership of asset.")
 	}
 
@@ -120,11 +124,17 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err, "Could not lock item.")
 	}
 
-	go api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetSubscribe, item.Hash)), &AssetUpdatedSubscribeResponse{
+	ws.PublishMessage(fmt.Sprintf("/ws/collections/%s", collectionSlug), HubKeyAssetSubscribe, &AssetUpdatedSubscribeResponse{
 		CollectionSlug: collectionSlug,
 		PurchasedItem:  item,
 		OwnerUsername:  address,
 	})
+
+	//go api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyAssetSubscribe, item.Hash)), &AssetUpdatedSubscribeResponse{
+	//	CollectionSlug: collectionSlug,
+	//	PurchasedItem:  item,
+	//	OwnerUsername:  address,
+	//})
 
 	err = json.NewEncoder(w).Encode(struct {
 		MessageSignature string `json:"messageSignature"`
@@ -134,7 +144,7 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		Expiry:           expiry.Unix(),
 	})
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
+		return http.StatusInternalServerError, err
 	}
 	return http.StatusOK, nil
 }
@@ -155,7 +165,7 @@ func (api *API) LockNFT(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing tokenID"), "Missing tokenID.")
 	}
 
-	collection, err := db.CollectionBySlug(context.Background(), api.Conn, collectionSlug)
+	collection, err := db.CollectionBySlug(collectionSlug)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get collection.")
 	}
@@ -177,15 +187,18 @@ func (api *API) LockNFT(w http.ResponseWriter, r *http.Request) (int, error) {
 	}
 
 	// check user owns this asset
-	user, err := db.UserByPublicAddress(context.Background(), api.Conn, common.HexToAddress(address))
+	user, err := boiler.Users(boiler.UserWhere.PublicAddress.EQ(null.StringFrom(common.HexToAddress(address).String()))).One(passdb.StdConn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
 	}
 
-	go api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, item.Hash)), &AssetUpdatedSubscribeResponse{
+	ws.PublishMessage("/user/"+user.ID+"/assets/"+item.Hash, HubKeyAssetSubscribe, &AssetUpdatedSubscribeResponse{
 		PurchasedItem:  item,
 		OwnerUsername:  user.PublicAddress.String,
 		CollectionSlug: collection.Slug,
 	})
+
+	//go api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%v", HubKeyAssetSubscribe, item.Hash)), )
+
 	return http.StatusOK, nil
 }

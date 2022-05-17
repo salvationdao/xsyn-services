@@ -6,15 +6,13 @@ import (
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
-
-	"github.com/ninja-software/terror/v2"
 )
 
 func (s *S) AssetOnChainStatusHandler(req AssetOnChainStatusReq, resp *AssetOnChainStatusResp) error {
 	item, err := boiler.PurchasedItems(boiler.PurchasedItemWhere.ID.EQ(req.AssetID)).One(passdb.StdConn)
 	if err != nil {
 		passlog.L.Error().Str("req.AssetID", req.AssetID).Err(err).Msg("failed to get asset")
-		return terror.Error(err)
+		return err
 	}
 
 	resp.OnChainStatus = item.OnChainStatus
@@ -25,7 +23,7 @@ func (s *S) AssetsOnChainStatusHandler(req AssetsOnChainStatusReq, resp *AssetsO
 	items, err := boiler.PurchasedItems(boiler.PurchasedItemWhere.ID.IN(req.AssetIDs)).All(passdb.StdConn)
 	if err != nil {
 		passlog.L.Error().Str("req.AssetIDs", strings.Join(req.AssetIDs, ", ")).Err(err).Msg("failed to get assets")
-		return terror.Error(err)
+		return err
 	}
 
 	assetMap := make(map[string]string)
@@ -51,7 +49,7 @@ func (s *S) UpdateAssetIDHandler(req UpdateAssetIDReq, resp *UpdateAssetIDResp) 
 	err := db.ChangePurchasedItemID(req.OldAssetID, req.AssetID)
 	if err != nil {
 		passlog.L.Error().Str("req.AssetID", req.AssetID).Str("req.OldAssetID",req.OldAssetID).Err(err).Msg("failed to update asset")
-		return terror.Error(err)
+		return err
 	}
 
 	resp.AssetID = req.AssetID
@@ -72,7 +70,7 @@ func (s *S) UpdateAssetsIDHandler(req UpdateAssetsIDReq, resp *UpdateAssetsIDRes
 		err := db.ChangePurchasedItemID(ass.OldAssetID, ass.AssetID)
 		if err != nil {
 			passlog.L.Error().Str("req.AssetID", ass.AssetID).Str("req.OldAssetID",ass.OldAssetID).Err(err).Msg("failed to update asset")
-			return terror.Error(err)
+			return err
 		}
 	}
 
@@ -99,7 +97,7 @@ func (s *S) UpdateStoreItemIDsHandler(req UpdateStoreItemIDsReq, resp *UpdateSto
 		err := db.ChangeStoreItemsTemplateID(ass.OldTemplateID, ass.NewTemplateID)
 		if err != nil {
 			passlog.L.Error().Str("req.NewTemplateID", ass.NewTemplateID).Str("req.OldTemplateID",ass.OldTemplateID).Err(err).Msg("failed to update store item id")
-			return terror.Error(err)
+			return err
 		}
 	}
 

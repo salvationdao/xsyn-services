@@ -11,74 +11,59 @@ import (
 	"xsyn-services/passport/items"
 	"xsyn-services/types"
 
+	"github.com/ninja-syndicate/ws"
+
 	"github.com/ninja-software/log_helpers"
 
-	"github.com/ninja-syndicate/hub/ext/messagebus"
-
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
 	"github.com/rs/zerolog"
 )
 
+
 // StoreControllerWS holds handlers for serverClienting serverClient status
 type StoreControllerWS struct {
-	Conn *pgxpool.Pool
-	Log  *zerolog.Logger
-	API  *API
+	Log *zerolog.Logger
+	API *API
 }
 
 // NewStoreController creates the serverClient hub
-func NewStoreController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *StoreControllerWS {
+func NewStoreController(log *zerolog.Logger, api *API) *StoreControllerWS {
 	storeHub := &StoreControllerWS{
-		Conn: conn,
-		Log:  log_helpers.NamedLogger(log, "store_hub"),
-		API:  api,
+		Log: log_helpers.NamedLogger(log, "store_hub"),
+		API: api,
 	}
 
-	api.Command(HubKeyStoreList, storeHub.StoreListHandler)
-	api.Command(HubKeyLootbox, storeHub.PurchaseLootboxHandler)
-	api.Command(HubKeyLootboxAmount, storeHub.LootboxAmountHandler)
+	api.SecureCommand(HubKeyStoreList, storeHub.StoreListHandler)
+	api.SecureCommand(HubKeyLootbox, storeHub.PurchaseLootboxHandler)
+	api.SecureCommand(HubKeyLootboxAmount, storeHub.LootboxAmountHandler)
 
 	api.SecureCommand(HubKeyPurchaseItem, storeHub.PurchaseItemHandler)
 
-	api.SubscribeCommand(HubKeyStoreItemSubscribe, storeHub.StoreItemSubscribeHandler)
-	api.SubscribeCommand(HubKeyAvailableItemAmountSubscribe, storeHub.AvailableItemAmountSubscribeHandler)
+	api.SecureCommand(types.HubKeyStoreItemSubscribe, storeHub.StoreItemHandler)
+	api.Command(types.HubKeyAvailableItemAmount, AvailableItemAmountHandler)
 
 	return storeHub
 }
 
-const HubKeyPurchaseItem = hub.HubCommandKey("STORE:PURCHASE")
+const HubKeyPurchaseItem = "STORE:PURCHASE"
 
 type PurchaseRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		StoreItemID types.StoreItemID `json:"store_item_id"`
 	} `json:"payload"`
 }
 
-func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	//return terror.Warn(fmt.Errorf("store closed"), "The XSYN Store is currently closed.")
-	errMsg := "Issue purchasing store item, try again or contact support."
+func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &PurchaseRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	// get user
-	uid, err := uuid.FromString(hubc.Identifier())
+	//  sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe),
+	err = items.Purchase(sc.Log, decimal.New(12, -2), sc.API.userCacheMap.Transact, user.User, req.Payload.StoreItemID)
 	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-	user, err := db.UserGet(ctx, sc.Conn, types.UserID(uid))
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	err = items.Purchase(ctx, sc.Conn, sc.Log, sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), decimal.New(12, -2), sc.API.userCacheMap.Transact, *user, req.Payload.StoreItemID, sc.API.storeItemExternalUrl)
-	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	reply(true)
@@ -90,22 +75,22 @@ func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, hubc *hub.
 			sc.API.Log.Err(err)
 			return
 		}
-		sc.API.MessageBus.Send(messagebus.BusKey(HubKeyAvailableItemAmountSubscribe), fsa)
+		ws.PublishMessage("/store/availability", types.HubKeyAvailableItemAmount, fsa)
+		//sc.API.MessageBus.Send(messagebus.BusKey(HubKeyAvailableItemAmountSubscribe), fsa)
 	}()
 
 	return nil
 }
 
 type PurchaseLootboxRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		FactionID types.FactionID `json:"faction_id"`
 	} `json:"payload"`
 }
 
-const HubKeyLootbox = hub.HubCommandKey("STORE:LOOTBOX")
+const HubKeyLootbox = "STORE:LOOTBOX"
 
-func (sc *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (sc *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	return terror.Warn(fmt.Errorf("store closed"), "The XSYN Store is currently closed.")
 
 	//req := &PurchaseLootboxRequest{}
@@ -114,22 +99,19 @@ func (sc *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, hubc *h
 	//	return terror.Error(err, "Invalid request received.")
 	//}
 	//
-	//// get user
-	//uid, err := uuid.FromString(hubc.Identifier())
+	//item, err := items.PurchaseLootbox(sc.Log, sc.API.userCacheMap.Transact, user.User, req.Payload.FactionID)
 	//if err != nil {
-	//	return terror.Error(err, "Could not find user.")
-	//}
-	//user, err := db.UserGet(ctx, sc.Conn, types.UserID(uid))
-	//if err != nil {
-	//	return terror.Error(err, "Could not find user.")
+	//	return err
 	//}
 	//
-	//tokenID, err := items.PurchaseLootbox(ctx, sc.Conn, sc.Log, sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe), sc.API.userCacheMap.Transact, *user, req.Payload.FactionID, sc.API.storeItemExternalUrl)
-	//if err != nil {
-	//	return terror.Error(err)
-	//}
+	//err = item.L.LoadCollection(passdb.StdConn, true, item, nil)
 	//
-	//reply(tokenID)
+	//reply(&AssetUpdatedSubscribeResponse{
+	//	PurchasedItem:  item,
+	//	OwnerUsername:  user.Username,
+	//	CollectionSlug: item.R.Collection.Slug,
+	//	HostURL:        sc.API.GameserverHostUrl,
+	//})
 	//
 	//// broadcast available mech amount
 	//go func() {
@@ -138,30 +120,30 @@ func (sc *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, hubc *h
 	//		sc.API.Log.Err(err)
 	//		return
 	//	}
-	//	sc.API.MessageBus.Send(messagebus.BusKey(HubKeyAvailableItemAmountSubscribe), fsa)
+	//	ws.PublishMessage("/store/availability", types.HubKeyAvailableItemAmount, fsa)
 	//}()
 
 	return nil
 }
 
-const HubKeyLootboxAmount = hub.HubCommandKey("STORE:LOOTBOX:AMOUNT")
+const HubKeyLootboxAmount = "STORE:LOOTBOX:AMOUNT"
 
-func (sc *StoreControllerWS) LootboxAmountHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (sc *StoreControllerWS) LootboxAmountHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &PurchaseLootboxRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
 
+
 	reply(0)
 
 	return nil
 }
 
-const HubKeyStoreList = hub.HubCommandKey("STORE:LIST")
+const HubKeyStoreList = "STORE:LIST"
 
 type StoreListRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		UserID              types.UserID               `json:"user_id"`
 		SortDir             db.SortByDir               `json:"sort_dir"`
@@ -182,9 +164,7 @@ type StoreListResponse struct {
 	StoreItemIDs []types.StoreItemID `json:"store_item_ids"`
 }
 
-func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	//return terror.Warn(fmt.Errorf("store closed"), "The XSYN Store is currently closed.")
-
+func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue getting list of store items, try again or contact support."
 	req := &StoreListRequest{}
 	err := json.Unmarshal(payload, req)
@@ -192,17 +172,7 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Cli
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	// get user to check faction
-	uid, err := uuid.FromString(hubc.Identifier())
-	if err != nil {
-		return terror.Error(err, "Could not find user.")
-	}
-	user, err := db.UserGet(ctx, sc.Conn, types.UserID(uid))
-	if err != nil {
-		return terror.Error(err, "Could not find user.")
-	}
-
-	if user.FactionID == nil {
+	if !user.FactionID.Valid {
 		return terror.Error(fmt.Errorf("user not enlisted: %s", user.ID), "User is not enlisted, enlist in a faction to continue.")
 	}
 
@@ -213,7 +183,6 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Cli
 
 	// TODO: remove megas filters later (?)
 	total, items, err := db.StoreItemsList(
-		ctx, sc.Conn,
 		req.Payload.Search,
 		req.Payload.Archived,
 		req.Payload.IncludedAssetHashes,
@@ -240,10 +209,7 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, hubc *hub.Cli
 	return nil
 }
 
-const HubKeyStoreItemSubscribe hub.HubCommandKey = "STORE:ITEM"
-
 type StoreItemSubscribeRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		StoreItemID types.StoreItemID `json:"store_item_id"`
 	} `json:"payload"`
@@ -255,45 +221,29 @@ type StoreItemSubscribeResponse struct {
 	HostURL     string            `json:"host_url"`
 }
 
-func (sc *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	//return "","", terror.Error(fmt.Errorf("store closed"), "The XSYN Store is currently closed.")
-
+func (sc *StoreControllerWS) StoreItemHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &StoreItemSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
+		return terror.Error(err, "Invalid request received.")
 	}
 
 	item, err := db.StoreItem(uuid.UUID(req.Payload.StoreItemID))
 	if err != nil {
-		return "", "", terror.Error(err, "Could not get store item, try again or contact support.")
+		return terror.Error(err, "Could not get store item, try again or contact support.")
 	}
 
-	if client.Identifier() == "" || client.Level < 1 {
-		return "", "", terror.Error(fmt.Errorf("user not logged in"), "You must be logged in and enlisted in the faction to view this item.")
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "Please select a syndicate to view this item.")
 	}
 
-	// get user to check faction
-	uid, err := uuid.FromString(client.Identifier())
-	if err != nil {
-		return "", "", terror.Error(err, "Could not get user, try again or contact support.")
-	}
-	user, err := db.UserGet(ctx, sc.Conn, types.UserID(uid))
-	if err != nil {
-		return "", "", terror.Error(err, "Could not get user, try again or contact support.")
-	}
-
-	if user.FactionID == nil || user.FactionID.IsNil() {
-		return "", "", terror.Error(fmt.Errorf("user has no faction"), "Please select a syndicate to view this item.")
-	}
-
-	if user.FactionID.String() != item.FactionID {
-		return "", "", terror.Warn(fmt.Errorf("user has wrong faction, need %s, got %s", item.FactionID, user.FactionID), "You do not belong to the correct faction.")
+	if user.FactionID.String != item.FactionID {
+		return terror.Warn(fmt.Errorf("user has wrong faction, need %s, got %s", item.FactionID, user.FactionID), "You do not belong to the correct faction.")
 	}
 
 	supsAsCents, err := db.SupInCents()
 	if err != nil {
-		return "", "", terror.Error(err, "Could not get SUP price, try again or contact support.")
+		return terror.Error(err, "Could not get SUP price, try again or contact support.")
 	}
 
 	priceAsCents := decimal.New(int64(item.UsdCentCost), 0)
@@ -306,26 +256,17 @@ func (sc *StoreControllerWS) StoreItemSubscribeHandler(ctx context.Context, clie
 	}
 
 	reply(result)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyStoreItemSubscribe, item.ID)), nil
+	return nil
 }
 
-const HubKeyAvailableItemAmountSubscribe hub.HubCommandKey = "AVAILABLE:ITEM:AMOUNT"
+func AvailableItemAmountHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	return terror.Error(fmt.Errorf("store closed"), "The XSYN Store is currently closed.")
 
-func (sc *StoreControllerWS) AvailableItemAmountSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	return "","", terror.Error(fmt.Errorf("store closed"), "The XSYN Store is currently closed.")
-
-	//req := &hub.HubCommandRequest{}
-	//err := json.Unmarshal(payload, req)
-	//if err != nil {
-	//	return req.TransactionID, "", terror.Error(err, "Invalid request received.")
-	//}
-	//
 	//fsa, err := db.StoreItemsAvailable()
 	//if err != nil {
-	//	return "", "", terror.Error(err, "Could not get the available amount of this item, try again or contact support.")
+	//	terror.Error(err, "Could not get the available amount of this item, try again or contact support.")
 	//}
 	//
 	//reply(fsa)
-	//
-	//return req.TransactionID, messagebus.BusKey(HubKeyAvailableItemAmountSubscribe), nil
+	//return nil
 }

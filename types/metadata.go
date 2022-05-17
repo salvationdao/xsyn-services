@@ -1,6 +1,8 @@
 package types
 
 import (
+	"encoding/json"
+	"fmt"
 	"math/big"
 	"time"
 )
@@ -45,7 +47,7 @@ type StoreItem struct {
 	FactionID            FactionID           `json:"faction_id" db:"faction_id"`
 	Faction              *Faction            `json:"faction" db:"faction"`
 	CollectionID         CollectionID        `json:"collection_id" db:"collection_id"`
-	Collection           Collection          `json:"collection" db:"collection"`
+	Collection           *Collection         `json:"collection" db:"collection"`
 	Description          string              `json:"description" db:"description"`
 	Image                string              `json:"image" db:"image"`
 	ImageAvatar          string              `json:"image_avatar" db:"image_avatar"`
@@ -92,6 +94,14 @@ type XsynMetadata struct {
 	TxHistory          []string              `json:"tx_history" db:"tx_history"`
 }
 
+func (c *Collection) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(b, c)
+}
+
 type PurchasedItem struct {
 	Hash            string       `json:"hash" db:"hash"`
 	UserID          *UserID      `json:"user_id" db:"user_id"`
@@ -99,7 +109,7 @@ type PurchasedItem struct {
 	Username        *string      `json:"username" db:"username,omitempty"`
 	ExternalTokenID uint64       `json:"external_token_id" db:"external_token_id"`
 	CollectionID    CollectionID `json:"collection_id" db:"collection_id"`
-	Collection      Collection   `json:"collection" db:"collection"`
+	Collection      *Collection  `json:"collection" db:"collection"`
 	GameObject      interface{}  `json:"game_object" db:"game_object"`
 	ExternalUrl     string       `json:"external_url" db:"external_url"`
 	Image           string       `json:"image" db:"image"`
