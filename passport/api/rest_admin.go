@@ -50,6 +50,11 @@ func AdminRoutes(ucm *Transactor) chi.Router {
 
 	r.Post("/sync/store_items", WithError(WithAdmin(SyncStoreItems)))
 	r.Post("/sync/purchased_items", WithError(WithAdmin(SyncPurchasedItems)))
+
+	r.Get("/users/unlock_account/{public_address}", WithError(WithAdmin(UnlockAccount)))
+	r.Get("/users/unlock_withdraw/{public_address}", WithError(WithAdmin(UnlockWithdraw)))
+	r.Get("/users/unlock_mint/{public_address}", WithError(WithAdmin(UnlockMint)))
+
 	return r
 }
 
@@ -449,11 +454,11 @@ func PurchasedItemRegisterHandler(w http.ResponseWriter, r *http.Request) (int, 
 		return http.StatusBadRequest, terror.Error(err, "Bad template ID")
 	}
 	ownerId := chi.URLParam(r, "owner_id")
-	_, err = uuid.FromString(ownerId)
+	ownerUUID, err := uuid.FromString(ownerId)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Bad owner ID")
 	}
-	result, err := db.PurchasedItemRegister(templateId, ownerId)
+	result, err := db.PurchasedItemRegister(templateId, ownerUUID)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not register new purchased item")
 	}
@@ -489,5 +494,64 @@ func PurchasedItemSetOwner(w http.ResponseWriter, r *http.Request) (int, error) 
 
 func AdminCheck(w http.ResponseWriter, r *http.Request) (int, error) {
 	w.Write([]byte("ok"))
+	return http.StatusOK, nil
+}
+
+func UnlockAccount(w http.ResponseWriter, r *http.Request) (int, error) {
+	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
+	u, err := boiler.Users(
+		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex())),
+	).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not get user")
+	}
+
+	u.WithdrawLock = false
+	u.MintLock = false
+	u.TotalLock = false
+
+	_, err = u.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not update user to unlock account.")
+	}
+
+	return http.StatusOK, nil
+}
+
+func UnlockWithdraw(w http.ResponseWriter, r *http.Request) (int, error) {
+	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
+	u, err := boiler.Users(
+		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex())),
+	).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not get user")
+	}
+
+	u.WithdrawLock = false
+
+	_, err = u.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not update user to unlock withdrawals.")
+	}
+
+	return http.StatusOK, nil
+}
+
+func UnlockMint(w http.ResponseWriter, r *http.Request) (int, error) {
+	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
+	u, err := boiler.Users(
+		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex())),
+	).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not get user")
+	}
+
+	u.MintLock = false
+
+	_, err = u.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not update user to unlock minting.")
+	}
+
 	return http.StatusOK, nil
 }

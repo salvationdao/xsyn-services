@@ -99,6 +99,22 @@ func (user *User) IsAdmin() bool {
 	return false
 }
 
+func (user *User) CheckUserIsLocked(level string) bool {
+	if level == "withdrawals" && user.WithdrawLock {
+		return true
+	}
+
+	if level == "minting" && user.MintLock {
+		return true
+	}
+
+	if level == "account" && user.TotalLock {
+		return true
+	}
+
+	return false
+}
+
 // IssueToken contains token information used for login and verifying accounts
 type IssueToken struct {
 	ID     IssueTokenID `json:"id" db:"id"`
