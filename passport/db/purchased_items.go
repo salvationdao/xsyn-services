@@ -630,7 +630,7 @@ func PurchaseItemsList(
 	)
 
 	var totalRows int
-	err := passdb.StdConn.QueryRow(countQ, args).Scan(&totalRows)
+	err := passdb.StdConn.QueryRow(countQ, args...).Scan(&totalRows)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -673,6 +673,7 @@ func PurchaseItemsList(
 
 	r, err := passdb.StdConn.Query(q, args...)
 	if err != nil {
+
 		return 0, nil, err
 	}
 
