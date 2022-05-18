@@ -447,6 +447,8 @@ func (api *API) GetNonce(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusOK, nil
 	}
 
+
+
 	user, err := boiler.FindUser(passdb.StdConn, userID)
 	if err != nil {
 		return http.StatusBadRequest, err
@@ -460,6 +462,8 @@ func (api *API) GetNonce(w http.ResponseWriter, r *http.Request) (int, error) {
 	resp := &GetNonceResponse{
 		Nonce: newNonce,
 	}
+
+
 
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
