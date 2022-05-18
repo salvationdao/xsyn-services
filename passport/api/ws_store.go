@@ -61,7 +61,7 @@ func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, user *type
 	}
 
 	//  sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe),
-	err = items.Purchase(sc.Log, decimal.New(12, -2), sc.API.userCacheMap.Transact, user.User, req.Payload.StoreItemID)
+	err = items.Purchase(sc.Log, decimal.New(12, -2), sc.API.userCacheMap.Transact, user, req.Payload.StoreItemID)
 	if err != nil {
 		return err
 	}

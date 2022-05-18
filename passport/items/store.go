@@ -25,13 +25,18 @@ func Purchase(
 	log *zerolog.Logger,
 	supPrice decimal.Decimal,
 	ucmProcess func(*types.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error),
-	user *boiler.User,
+	user *types.User,
 	storeItemID types.StoreItemID,
 ) error {
 	// TODO: vinnie fix this
 	storeItem, err := db.StoreItem(uuid.UUID(storeItemID))
 	if err != nil {
 		return terror.Error(err)
+	}
+
+	isLocked := user.CheckUserIsLocked("account")
+	if isLocked {
+		return terror.Error(fmt.Errorf("user: %s, attempting to purchase item while account is locked", user.ID), "Account is locked, contact support to unlock.")
 	}
 
 	if storeItem.AmountSold >= storeItem.AmountAvailable {

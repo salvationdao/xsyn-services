@@ -82,6 +82,7 @@ func NewUserController(log *zerolog.Logger, api *API, googleConfig *auth.GoogleC
 	api.SecureCommand(HubKeyUserRemoveWallet, userHub.RemoveWalletHandler)     // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserAddWallet, userHub.AddWalletHandler)           // Perm check inside handler (handler used to update self or for user w/ permission to update another user)
 	api.SecureCommand(HubKeyUserCreate, userHub.CreateHandler)
+	api.SecureCommand(HubKeyUserLock, userHub.LockHandler)
 
 	api.Command(HubKeyCheckCanAccessStore, userHub.CheckCanAccessStore)
 	api.SecureCommand(HubKeyUserAssetList, userHub.UserAssetListHandler)
@@ -1835,4 +1836,60 @@ type UserFingerprintRequest struct {
 	Payload struct {
 		Fingerprint auth.Fingerprint `json:"fingerprint"`
 	} `json:"payload"`
+}
+
+const HubKeyUserLock = "USER:LOCK"
+
+type UserLockRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Type string `json:"type"`
+	} `json:"payload"`
+}
+
+// LockHandler return updates user table to lock account according to requested level
+func (uc *UserController) LockHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &UserLockRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if req.Payload.Type == "account" {
+		if user.TotalLock == true {
+			return terror.Error(fmt.Errorf("user: %s: has already locked account", user.ID), "Account is already locked.")
+		}
+
+		user.TotalLock = true
+		user.WithdrawLock = true
+		user.MintLock = true
+	}
+
+	if req.Payload.Type == "minting" {
+		if user.MintLock == true {
+			return terror.Error(fmt.Errorf("user: %s: has already locked minting", user.ID), "Minting is already locked.")
+		}
+
+		user.MintLock = true
+	}
+
+	if req.Payload.Type == "withdrawals" {
+		if user.WithdrawLock == true {
+			return terror.Error(fmt.Errorf("user: %s: has already locked withdrawals", user.ID), "Withdrawals is already locked.")
+		}
+
+		user.WithdrawLock = true
+	}
+
+	columns, err := user.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Could not update account lock settings.")
+	}
+	if columns < 1 {
+		return terror.Error(fmt.Errorf("Did not update user columns"), "Could not update account lock settings.")
+	}
+
+	reply(true)
+
+	return nil
 }

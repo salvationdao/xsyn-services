@@ -81,6 +81,11 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
 	}
 
+	isLocked := user.CheckUserIsLocked("minting")
+	if isLocked {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("user: %s, attempting to mint while account is locked.", user.ID), "Minting assets is locked, contact support to unlock.")
+	}
+
 	// get collection details
 	collection, err := db.CollectionBySlug(collectionSlug)
 	if err != nil {

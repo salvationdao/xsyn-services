@@ -54,6 +54,9 @@ type User struct {
 	MobileNumber                     null.String     `boiler:"mobile_number" boil:"mobile_number" json:"mobile_number,omitempty" toml:"mobile_number" yaml:"mobile_number,omitempty"`
 	ChatBannedUntil                  null.Time       `boiler:"chat_banned_until" boil:"chat_banned_until" json:"chat_banned_until,omitempty" toml:"chat_banned_until" yaml:"chat_banned_until,omitempty"`
 	RenameBanned                     null.Bool       `boiler:"rename_banned" boil:"rename_banned" json:"rename_banned,omitempty" toml:"rename_banned" yaml:"rename_banned,omitempty"`
+	WithdrawLock                     bool            `boiler:"withdraw_lock" boil:"withdraw_lock" json:"withdraw_lock" toml:"withdraw_lock" yaml:"withdraw_lock"`
+	MintLock                         bool            `boiler:"mint_lock" boil:"mint_lock" json:"mint_lock" toml:"mint_lock" yaml:"mint_lock"`
+	TotalLock                        bool            `boiler:"total_lock" boil:"total_lock" json:"total_lock" toml:"total_lock" yaml:"total_lock"`
 
 	R *userR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -90,6 +93,9 @@ var UserColumns = struct {
 	MobileNumber                     string
 	ChatBannedUntil                  string
 	RenameBanned                     string
+	WithdrawLock                     string
+	MintLock                         string
+	TotalLock                        string
 }{
 	ID:                               "id",
 	Username:                         "username",
@@ -121,6 +127,9 @@ var UserColumns = struct {
 	MobileNumber:                     "mobile_number",
 	ChatBannedUntil:                  "chat_banned_until",
 	RenameBanned:                     "rename_banned",
+	WithdrawLock:                     "withdraw_lock",
+	MintLock:                         "mint_lock",
+	TotalLock:                        "total_lock",
 }
 
 var UserTableColumns = struct {
@@ -154,6 +163,9 @@ var UserTableColumns = struct {
 	MobileNumber                     string
 	ChatBannedUntil                  string
 	RenameBanned                     string
+	WithdrawLock                     string
+	MintLock                         string
+	TotalLock                        string
 }{
 	ID:                               "users.id",
 	Username:                         "users.username",
@@ -185,6 +197,9 @@ var UserTableColumns = struct {
 	MobileNumber:                     "users.mobile_number",
 	ChatBannedUntil:                  "users.chat_banned_until",
 	RenameBanned:                     "users.rename_banned",
+	WithdrawLock:                     "users.withdraw_lock",
+	MintLock:                         "users.mint_lock",
+	TotalLock:                        "users.total_lock",
 }
 
 // Generated where
@@ -220,6 +235,9 @@ var UserWhere = struct {
 	MobileNumber                     whereHelpernull_String
 	ChatBannedUntil                  whereHelpernull_Time
 	RenameBanned                     whereHelpernull_Bool
+	WithdrawLock                     whereHelperbool
+	MintLock                         whereHelperbool
+	TotalLock                        whereHelperbool
 }{
 	ID:                               whereHelperstring{field: "\"users\".\"id\""},
 	Username:                         whereHelperstring{field: "\"users\".\"username\""},
@@ -251,6 +269,9 @@ var UserWhere = struct {
 	MobileNumber:                     whereHelpernull_String{field: "\"users\".\"mobile_number\""},
 	ChatBannedUntil:                  whereHelpernull_Time{field: "\"users\".\"chat_banned_until\""},
 	RenameBanned:                     whereHelpernull_Bool{field: "\"users\".\"rename_banned\""},
+	WithdrawLock:                     whereHelperbool{field: "\"users\".\"withdraw_lock\""},
+	MintLock:                         whereHelperbool{field: "\"users\".\"mint_lock\""},
+	TotalLock:                        whereHelperbool{field: "\"users\".\"total_lock\""},
 }
 
 // UserRels is where relationship names are stored.
@@ -325,9 +346,9 @@ func (*userR) NewStruct() *userR {
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"id", "username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "sups", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata", "mobile_number", "chat_banned_until", "rename_banned"}
+	userAllColumns            = []string{"id", "username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "sups", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata", "mobile_number", "chat_banned_until", "rename_banned", "withdraw_lock", "mint_lock", "total_lock"}
 	userColumnsWithoutDefault = []string{"username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "public_address", "private_address", "nonce", "keywords", "deleted_at", "mobile_number", "chat_banned_until", "rename_banned"}
-	userColumnsWithDefault    = []string{"id", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "sups", "updated_at", "created_at", "metadata"}
+	userColumnsWithDefault    = []string{"id", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "sups", "updated_at", "created_at", "metadata", "withdraw_lock", "mint_lock", "total_lock"}
 	userPrimaryKeyColumns     = []string{"id"}
 )
 
