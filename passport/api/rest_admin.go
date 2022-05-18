@@ -449,11 +449,11 @@ func PurchasedItemRegisterHandler(w http.ResponseWriter, r *http.Request) (int, 
 		return http.StatusBadRequest, terror.Error(err, "Bad template ID")
 	}
 	ownerId := chi.URLParam(r, "owner_id")
-	_, err = uuid.FromString(ownerId)
+	ownerUUID, err := uuid.FromString(ownerId)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Bad owner ID")
 	}
-	result, err := db.PurchasedItemRegister(templateId, ownerId)
+	result, err := db.PurchasedItemRegister(templateId, ownerUUID)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not register new purchased item")
 	}

@@ -4,22 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/gofrs/uuid"
+	"github.com/shopspring/decimal"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/items"
-	"xsyn-services/passport/passdb"
 	"xsyn-services/types"
 
 	"github.com/ninja-syndicate/ws"
 
 	"github.com/ninja-software/log_helpers"
 
-	"github.com/shopspring/decimal"
-
-	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 )
+
 
 // StoreControllerWS holds handlers for serverClienting serverClient status
 type StoreControllerWS struct {
@@ -92,35 +91,37 @@ type PurchaseLootboxRequest struct {
 const HubKeyLootbox = "STORE:LOOTBOX"
 
 func (sc *StoreControllerWS) PurchaseLootboxHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &PurchaseLootboxRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
+	return terror.Warn(fmt.Errorf("store closed"), "The XSYN Store is currently closed.")
 
-	item, err := items.PurchaseLootbox(sc.Log, sc.API.userCacheMap.Transact, user.User, req.Payload.FactionID)
-	if err != nil {
-		return err
-	}
-
-	err = item.L.LoadCollection(passdb.StdConn, true, item, nil)
-
-	reply(&AssetUpdatedSubscribeResponse{
-		PurchasedItem:  item,
-		OwnerUsername:  user.Username,
-		CollectionSlug: item.R.Collection.Slug,
-		HostURL:        sc.API.GameserverHostUrl,
-	})
-
-	// broadcast available mech amount
-	go func() {
-		fsa, err := db.StoreItemsAvailable()
-		if err != nil {
-			sc.API.Log.Err(err)
-			return
-		}
-		ws.PublishMessage("/store/availability", types.HubKeyAvailableItemAmount, fsa)
-	}()
+	//req := &PurchaseLootboxRequest{}
+	//err := json.Unmarshal(payload, req)
+	//if err != nil {
+	//	return terror.Error(err, "Invalid request received.")
+	//}
+	//
+	//item, err := items.PurchaseLootbox(sc.Log, sc.API.userCacheMap.Transact, user.User, req.Payload.FactionID)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//err = item.L.LoadCollection(passdb.StdConn, true, item, nil)
+	//
+	//reply(&AssetUpdatedSubscribeResponse{
+	//	PurchasedItem:  item,
+	//	OwnerUsername:  user.Username,
+	//	CollectionSlug: item.R.Collection.Slug,
+	//	HostURL:        sc.API.GameserverHostUrl,
+	//})
+	//
+	//// broadcast available mech amount
+	//go func() {
+	//	fsa, err := db.StoreItemsAvailable()
+	//	if err != nil {
+	//		sc.API.Log.Err(err)
+	//		return
+	//	}
+	//	ws.PublishMessage("/store/availability", types.HubKeyAvailableItemAmount, fsa)
+	//}()
 
 	return nil
 }
@@ -134,14 +135,8 @@ func (sc *StoreControllerWS) LootboxAmountHandler(ctx context.Context, user *typ
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	//   sc.API.MessageBus, messagebus.BusKey(HubKeyLootboxAmount),
 
-	amount, err := items.LootboxAmountPerFaction(req.Payload.FactionID)
-	if err != nil {
-		return terror.Error(err, "Could not get mystery crate amount, try again or contact support.")
-	}
-
-	reply(amount)
+	reply(0)
 
 	return nil
 }
@@ -265,11 +260,13 @@ func (sc *StoreControllerWS) StoreItemHandler(ctx context.Context, user *types.U
 }
 
 func AvailableItemAmountHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	fsa, err := db.StoreItemsAvailable()
-	if err != nil {
-		terror.Error(err, "Could not get the available amount of this item, try again or contact support.")
-	}
+	return terror.Error(fmt.Errorf("store closed"), "The XSYN Store is currently closed.")
 
-	reply(fsa)
-	return nil
+	//fsa, err := db.StoreItemsAvailable()
+	//if err != nil {
+	//	terror.Error(err, "Could not get the available amount of this item, try again or contact support.")
+	//}
+	//
+	//reply(fsa)
+	//return nil
 }
