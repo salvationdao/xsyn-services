@@ -68,6 +68,20 @@ func (api *API) WriteCookie(w http.ResponseWriter, token string) error {
 	return nil
 }
 
+func (api *API) DeleteCookie(w http.ResponseWriter) error {
+	cookie := &http.Cookie{
+		Name:     "xsyn-token",
+		Value:    "",
+		Expires:  time.Now().AddDate(0, 0, -1),
+		Path:     "/",
+		Secure:   api.IsCookieSecure,
+		HttpOnly: true,
+		SameSite: http.SameSiteNoneMode,
+	}
+	http.SetCookie(w, cookie)
+	return nil
+}
+
 func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
@@ -143,7 +157,7 @@ func (api *API) WalletLoginHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	b, _ := json.Marshal(resp)
+	b, _ := json.Marshal(resp.User)
 	_, _ = w.Write(b)
 }
 
@@ -509,7 +523,7 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 		token := r.URL.Query().Get("token")
 		if token == "" {
 			passlog.L.Error().Msg("No token found")
-			return http.StatusBadRequest, terror.Warn(fmt.Errorf("no cookie and token are provided"), "Player are not signed in.")
+			return http.StatusBadRequest, terror.Warn(fmt.Errorf("no cookie and token are provided"), "User are not signed in.")
 		}
 
 		// check user from token
@@ -539,6 +553,22 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 	}
 
 	return helpers.EncodeJSON(w, resp.User)
+}
+
+func (api *API) AuthLogoutHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	_, err := r.Cookie("xsyn-token")
+	if err != nil {
+		// check whether token is attached
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no cookie are provided"), "User is not signed in.")
+	}
+
+	// clear and expire cookie and push to browser
+	err = api.DeleteCookie(w)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to logout user.")
+	}
+
+	return helpers.EncodeJSON(w, true)
 }
 
 // TokenLoginHandler lets you log in with just a jwt
