@@ -155,7 +155,7 @@ go-mod-download:
 
 .PHONY: go-mod-tidy
 go-mod-tidy:
-	go mod tidy -compat=1.17
+	go mod tidy -compat=1.18
 
 .PHONY: init
 init: db-setup deps tools go-mod-tidy db-reset
