@@ -22,8 +22,8 @@ import (
 	"github.com/volatiletech/strmangle"
 )
 
-// PurchasedItem is an object representing the database table.
-type PurchasedItem struct {
+// PurchasedItemsOld is an object representing the database table.
+type PurchasedItemsOld struct {
 	ID              string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	CollectionID    string      `boiler:"collection_id" boil:"collection_id" json:"collection_id" toml:"collection_id" yaml:"collection_id"`
 	StoreItemID     null.String `boiler:"store_item_id" boil:"store_item_id" json:"store_item_id,omitempty" toml:"store_item_id" yaml:"store_item_id,omitempty"`
@@ -41,11 +41,11 @@ type PurchasedItem struct {
 	CreatedAt       time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	OnChainStatus   string      `boiler:"on_chain_status" boil:"on_chain_status" json:"on_chain_status" toml:"on_chain_status" yaml:"on_chain_status"`
 
-	R *purchasedItemR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
-	L purchasedItemL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	R *purchasedItemsOldR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	L purchasedItemsOldL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
-var PurchasedItemColumns = struct {
+var PurchasedItemsOldColumns = struct {
 	ID              string
 	CollectionID    string
 	StoreItemID     string
@@ -81,7 +81,7 @@ var PurchasedItemColumns = struct {
 	OnChainStatus:   "on_chain_status",
 }
 
-var PurchasedItemTableColumns = struct {
+var PurchasedItemsOldTableColumns = struct {
 	ID              string
 	CollectionID    string
 	StoreItemID     string
@@ -99,27 +99,27 @@ var PurchasedItemTableColumns = struct {
 	CreatedAt       string
 	OnChainStatus   string
 }{
-	ID:              "purchased_items.id",
-	CollectionID:    "purchased_items.collection_id",
-	StoreItemID:     "purchased_items.store_item_id",
-	ExternalTokenID: "purchased_items.external_token_id",
-	IsDefault:       "purchased_items.is_default",
-	Tier:            "purchased_items.tier",
-	Hash:            "purchased_items.hash",
-	OwnerID:         "purchased_items.owner_id",
-	Data:            "purchased_items.data",
-	UnlockedAt:      "purchased_items.unlocked_at",
-	MintedAt:        "purchased_items.minted_at",
-	DeletedAt:       "purchased_items.deleted_at",
-	RefreshesAt:     "purchased_items.refreshes_at",
-	UpdatedAt:       "purchased_items.updated_at",
-	CreatedAt:       "purchased_items.created_at",
-	OnChainStatus:   "purchased_items.on_chain_status",
+	ID:              "purchased_items_old.id",
+	CollectionID:    "purchased_items_old.collection_id",
+	StoreItemID:     "purchased_items_old.store_item_id",
+	ExternalTokenID: "purchased_items_old.external_token_id",
+	IsDefault:       "purchased_items_old.is_default",
+	Tier:            "purchased_items_old.tier",
+	Hash:            "purchased_items_old.hash",
+	OwnerID:         "purchased_items_old.owner_id",
+	Data:            "purchased_items_old.data",
+	UnlockedAt:      "purchased_items_old.unlocked_at",
+	MintedAt:        "purchased_items_old.minted_at",
+	DeletedAt:       "purchased_items_old.deleted_at",
+	RefreshesAt:     "purchased_items_old.refreshes_at",
+	UpdatedAt:       "purchased_items_old.updated_at",
+	CreatedAt:       "purchased_items_old.created_at",
+	OnChainStatus:   "purchased_items_old.on_chain_status",
 }
 
 // Generated where
 
-var PurchasedItemWhere = struct {
+var PurchasedItemsOldWhere = struct {
 	ID              whereHelperstring
 	CollectionID    whereHelperstring
 	StoreItemID     whereHelpernull_String
@@ -137,26 +137,26 @@ var PurchasedItemWhere = struct {
 	CreatedAt       whereHelpertime_Time
 	OnChainStatus   whereHelperstring
 }{
-	ID:              whereHelperstring{field: "\"purchased_items\".\"id\""},
-	CollectionID:    whereHelperstring{field: "\"purchased_items\".\"collection_id\""},
-	StoreItemID:     whereHelpernull_String{field: "\"purchased_items\".\"store_item_id\""},
-	ExternalTokenID: whereHelperint{field: "\"purchased_items\".\"external_token_id\""},
-	IsDefault:       whereHelperbool{field: "\"purchased_items\".\"is_default\""},
-	Tier:            whereHelperstring{field: "\"purchased_items\".\"tier\""},
-	Hash:            whereHelperstring{field: "\"purchased_items\".\"hash\""},
-	OwnerID:         whereHelperstring{field: "\"purchased_items\".\"owner_id\""},
-	Data:            whereHelpertypes_JSON{field: "\"purchased_items\".\"data\""},
-	UnlockedAt:      whereHelpertime_Time{field: "\"purchased_items\".\"unlocked_at\""},
-	MintedAt:        whereHelpernull_Time{field: "\"purchased_items\".\"minted_at\""},
-	DeletedAt:       whereHelpernull_Time{field: "\"purchased_items\".\"deleted_at\""},
-	RefreshesAt:     whereHelpertime_Time{field: "\"purchased_items\".\"refreshes_at\""},
-	UpdatedAt:       whereHelpertime_Time{field: "\"purchased_items\".\"updated_at\""},
-	CreatedAt:       whereHelpertime_Time{field: "\"purchased_items\".\"created_at\""},
-	OnChainStatus:   whereHelperstring{field: "\"purchased_items\".\"on_chain_status\""},
+	ID:              whereHelperstring{field: "\"purchased_items_old\".\"id\""},
+	CollectionID:    whereHelperstring{field: "\"purchased_items_old\".\"collection_id\""},
+	StoreItemID:     whereHelpernull_String{field: "\"purchased_items_old\".\"store_item_id\""},
+	ExternalTokenID: whereHelperint{field: "\"purchased_items_old\".\"external_token_id\""},
+	IsDefault:       whereHelperbool{field: "\"purchased_items_old\".\"is_default\""},
+	Tier:            whereHelperstring{field: "\"purchased_items_old\".\"tier\""},
+	Hash:            whereHelperstring{field: "\"purchased_items_old\".\"hash\""},
+	OwnerID:         whereHelperstring{field: "\"purchased_items_old\".\"owner_id\""},
+	Data:            whereHelpertypes_JSON{field: "\"purchased_items_old\".\"data\""},
+	UnlockedAt:      whereHelpertime_Time{field: "\"purchased_items_old\".\"unlocked_at\""},
+	MintedAt:        whereHelpernull_Time{field: "\"purchased_items_old\".\"minted_at\""},
+	DeletedAt:       whereHelpernull_Time{field: "\"purchased_items_old\".\"deleted_at\""},
+	RefreshesAt:     whereHelpertime_Time{field: "\"purchased_items_old\".\"refreshes_at\""},
+	UpdatedAt:       whereHelpertime_Time{field: "\"purchased_items_old\".\"updated_at\""},
+	CreatedAt:       whereHelpertime_Time{field: "\"purchased_items_old\".\"created_at\""},
+	OnChainStatus:   whereHelperstring{field: "\"purchased_items_old\".\"on_chain_status\""},
 }
 
-// PurchasedItemRels is where relationship names are stored.
-var PurchasedItemRels = struct {
+// PurchasedItemsOldRels is where relationship names are stored.
+var PurchasedItemsOldRels = struct {
 	Collection string
 	Owner      string
 	StoreItem  string
@@ -166,51 +166,51 @@ var PurchasedItemRels = struct {
 	StoreItem:  "StoreItem",
 }
 
-// purchasedItemR is where relationships are stored.
-type purchasedItemR struct {
+// purchasedItemsOldR is where relationships are stored.
+type purchasedItemsOldR struct {
 	Collection *Collection `boiler:"Collection" boil:"Collection" json:"Collection" toml:"Collection" yaml:"Collection"`
 	Owner      *User       `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
 	StoreItem  *StoreItem  `boiler:"StoreItem" boil:"StoreItem" json:"StoreItem" toml:"StoreItem" yaml:"StoreItem"`
 }
 
 // NewStruct creates a new relationship struct
-func (*purchasedItemR) NewStruct() *purchasedItemR {
-	return &purchasedItemR{}
+func (*purchasedItemsOldR) NewStruct() *purchasedItemsOldR {
+	return &purchasedItemsOldR{}
 }
 
-// purchasedItemL is where Load methods for each relationship are stored.
-type purchasedItemL struct{}
+// purchasedItemsOldL is where Load methods for each relationship are stored.
+type purchasedItemsOldL struct{}
 
 var (
-	purchasedItemAllColumns            = []string{"id", "collection_id", "store_item_id", "external_token_id", "is_default", "tier", "hash", "owner_id", "data", "unlocked_at", "minted_at", "deleted_at", "refreshes_at", "updated_at", "created_at", "on_chain_status"}
-	purchasedItemColumnsWithoutDefault = []string{"collection_id", "store_item_id", "external_token_id", "is_default", "tier", "hash", "owner_id", "data", "minted_at", "deleted_at"}
-	purchasedItemColumnsWithDefault    = []string{"id", "unlocked_at", "refreshes_at", "updated_at", "created_at", "on_chain_status"}
-	purchasedItemPrimaryKeyColumns     = []string{"id"}
+	purchasedItemsOldAllColumns            = []string{"id", "collection_id", "store_item_id", "external_token_id", "is_default", "tier", "hash", "owner_id", "data", "unlocked_at", "minted_at", "deleted_at", "refreshes_at", "updated_at", "created_at", "on_chain_status"}
+	purchasedItemsOldColumnsWithoutDefault = []string{"collection_id", "store_item_id", "external_token_id", "is_default", "tier", "hash", "owner_id", "data", "minted_at", "deleted_at"}
+	purchasedItemsOldColumnsWithDefault    = []string{"id", "unlocked_at", "refreshes_at", "updated_at", "created_at", "on_chain_status"}
+	purchasedItemsOldPrimaryKeyColumns     = []string{"id"}
 )
 
 type (
-	// PurchasedItemSlice is an alias for a slice of pointers to PurchasedItem.
-	// This should almost always be used instead of []PurchasedItem.
-	PurchasedItemSlice []*PurchasedItem
-	// PurchasedItemHook is the signature for custom PurchasedItem hook methods
-	PurchasedItemHook func(boil.Executor, *PurchasedItem) error
+	// PurchasedItemsOldSlice is an alias for a slice of pointers to PurchasedItemsOld.
+	// This should almost always be used instead of []PurchasedItemsOld.
+	PurchasedItemsOldSlice []*PurchasedItemsOld
+	// PurchasedItemsOldHook is the signature for custom PurchasedItemsOld hook methods
+	PurchasedItemsOldHook func(boil.Executor, *PurchasedItemsOld) error
 
-	purchasedItemQuery struct {
+	purchasedItemsOldQuery struct {
 		*queries.Query
 	}
 )
 
 // Cache for insert, update and upsert
 var (
-	purchasedItemType                 = reflect.TypeOf(&PurchasedItem{})
-	purchasedItemMapping              = queries.MakeStructMapping(purchasedItemType)
-	purchasedItemPrimaryKeyMapping, _ = queries.BindMapping(purchasedItemType, purchasedItemMapping, purchasedItemPrimaryKeyColumns)
-	purchasedItemInsertCacheMut       sync.RWMutex
-	purchasedItemInsertCache          = make(map[string]insertCache)
-	purchasedItemUpdateCacheMut       sync.RWMutex
-	purchasedItemUpdateCache          = make(map[string]updateCache)
-	purchasedItemUpsertCacheMut       sync.RWMutex
-	purchasedItemUpsertCache          = make(map[string]insertCache)
+	purchasedItemsOldType                 = reflect.TypeOf(&PurchasedItemsOld{})
+	purchasedItemsOldMapping              = queries.MakeStructMapping(purchasedItemsOldType)
+	purchasedItemsOldPrimaryKeyMapping, _ = queries.BindMapping(purchasedItemsOldType, purchasedItemsOldMapping, purchasedItemsOldPrimaryKeyColumns)
+	purchasedItemsOldInsertCacheMut       sync.RWMutex
+	purchasedItemsOldInsertCache          = make(map[string]insertCache)
+	purchasedItemsOldUpdateCacheMut       sync.RWMutex
+	purchasedItemsOldUpdateCache          = make(map[string]updateCache)
+	purchasedItemsOldUpsertCacheMut       sync.RWMutex
+	purchasedItemsOldUpsertCache          = make(map[string]insertCache)
 )
 
 var (
@@ -221,20 +221,20 @@ var (
 	_ = qmhelper.Where
 )
 
-var purchasedItemBeforeInsertHooks []PurchasedItemHook
-var purchasedItemBeforeUpdateHooks []PurchasedItemHook
-var purchasedItemBeforeDeleteHooks []PurchasedItemHook
-var purchasedItemBeforeUpsertHooks []PurchasedItemHook
+var purchasedItemsOldBeforeInsertHooks []PurchasedItemsOldHook
+var purchasedItemsOldBeforeUpdateHooks []PurchasedItemsOldHook
+var purchasedItemsOldBeforeDeleteHooks []PurchasedItemsOldHook
+var purchasedItemsOldBeforeUpsertHooks []PurchasedItemsOldHook
 
-var purchasedItemAfterInsertHooks []PurchasedItemHook
-var purchasedItemAfterSelectHooks []PurchasedItemHook
-var purchasedItemAfterUpdateHooks []PurchasedItemHook
-var purchasedItemAfterDeleteHooks []PurchasedItemHook
-var purchasedItemAfterUpsertHooks []PurchasedItemHook
+var purchasedItemsOldAfterInsertHooks []PurchasedItemsOldHook
+var purchasedItemsOldAfterSelectHooks []PurchasedItemsOldHook
+var purchasedItemsOldAfterUpdateHooks []PurchasedItemsOldHook
+var purchasedItemsOldAfterDeleteHooks []PurchasedItemsOldHook
+var purchasedItemsOldAfterUpsertHooks []PurchasedItemsOldHook
 
 // doBeforeInsertHooks executes all "before insert" hooks.
-func (o *PurchasedItem) doBeforeInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range purchasedItemBeforeInsertHooks {
+func (o *PurchasedItemsOld) doBeforeInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range purchasedItemsOldBeforeInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -244,8 +244,8 @@ func (o *PurchasedItem) doBeforeInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpdateHooks executes all "before Update" hooks.
-func (o *PurchasedItem) doBeforeUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range purchasedItemBeforeUpdateHooks {
+func (o *PurchasedItemsOld) doBeforeUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range purchasedItemsOldBeforeUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -255,8 +255,8 @@ func (o *PurchasedItem) doBeforeUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeDeleteHooks executes all "before Delete" hooks.
-func (o *PurchasedItem) doBeforeDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range purchasedItemBeforeDeleteHooks {
+func (o *PurchasedItemsOld) doBeforeDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range purchasedItemsOldBeforeDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -266,8 +266,8 @@ func (o *PurchasedItem) doBeforeDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpsertHooks executes all "before Upsert" hooks.
-func (o *PurchasedItem) doBeforeUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range purchasedItemBeforeUpsertHooks {
+func (o *PurchasedItemsOld) doBeforeUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range purchasedItemsOldBeforeUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -277,8 +277,8 @@ func (o *PurchasedItem) doBeforeUpsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterInsertHooks executes all "after Insert" hooks.
-func (o *PurchasedItem) doAfterInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range purchasedItemAfterInsertHooks {
+func (o *PurchasedItemsOld) doAfterInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range purchasedItemsOldAfterInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -288,8 +288,8 @@ func (o *PurchasedItem) doAfterInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterSelectHooks executes all "after Select" hooks.
-func (o *PurchasedItem) doAfterSelectHooks(exec boil.Executor) (err error) {
-	for _, hook := range purchasedItemAfterSelectHooks {
+func (o *PurchasedItemsOld) doAfterSelectHooks(exec boil.Executor) (err error) {
+	for _, hook := range purchasedItemsOldAfterSelectHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -299,8 +299,8 @@ func (o *PurchasedItem) doAfterSelectHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpdateHooks executes all "after Update" hooks.
-func (o *PurchasedItem) doAfterUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range purchasedItemAfterUpdateHooks {
+func (o *PurchasedItemsOld) doAfterUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range purchasedItemsOldAfterUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -310,8 +310,8 @@ func (o *PurchasedItem) doAfterUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterDeleteHooks executes all "after Delete" hooks.
-func (o *PurchasedItem) doAfterDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range purchasedItemAfterDeleteHooks {
+func (o *PurchasedItemsOld) doAfterDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range purchasedItemsOldAfterDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -321,8 +321,8 @@ func (o *PurchasedItem) doAfterDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpsertHooks executes all "after Upsert" hooks.
-func (o *PurchasedItem) doAfterUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range purchasedItemAfterUpsertHooks {
+func (o *PurchasedItemsOld) doAfterUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range purchasedItemsOldAfterUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -331,33 +331,33 @@ func (o *PurchasedItem) doAfterUpsertHooks(exec boil.Executor) (err error) {
 	return nil
 }
 
-// AddPurchasedItemHook registers your hook function for all future operations.
-func AddPurchasedItemHook(hookPoint boil.HookPoint, purchasedItemHook PurchasedItemHook) {
+// AddPurchasedItemsOldHook registers your hook function for all future operations.
+func AddPurchasedItemsOldHook(hookPoint boil.HookPoint, purchasedItemsOldHook PurchasedItemsOldHook) {
 	switch hookPoint {
 	case boil.BeforeInsertHook:
-		purchasedItemBeforeInsertHooks = append(purchasedItemBeforeInsertHooks, purchasedItemHook)
+		purchasedItemsOldBeforeInsertHooks = append(purchasedItemsOldBeforeInsertHooks, purchasedItemsOldHook)
 	case boil.BeforeUpdateHook:
-		purchasedItemBeforeUpdateHooks = append(purchasedItemBeforeUpdateHooks, purchasedItemHook)
+		purchasedItemsOldBeforeUpdateHooks = append(purchasedItemsOldBeforeUpdateHooks, purchasedItemsOldHook)
 	case boil.BeforeDeleteHook:
-		purchasedItemBeforeDeleteHooks = append(purchasedItemBeforeDeleteHooks, purchasedItemHook)
+		purchasedItemsOldBeforeDeleteHooks = append(purchasedItemsOldBeforeDeleteHooks, purchasedItemsOldHook)
 	case boil.BeforeUpsertHook:
-		purchasedItemBeforeUpsertHooks = append(purchasedItemBeforeUpsertHooks, purchasedItemHook)
+		purchasedItemsOldBeforeUpsertHooks = append(purchasedItemsOldBeforeUpsertHooks, purchasedItemsOldHook)
 	case boil.AfterInsertHook:
-		purchasedItemAfterInsertHooks = append(purchasedItemAfterInsertHooks, purchasedItemHook)
+		purchasedItemsOldAfterInsertHooks = append(purchasedItemsOldAfterInsertHooks, purchasedItemsOldHook)
 	case boil.AfterSelectHook:
-		purchasedItemAfterSelectHooks = append(purchasedItemAfterSelectHooks, purchasedItemHook)
+		purchasedItemsOldAfterSelectHooks = append(purchasedItemsOldAfterSelectHooks, purchasedItemsOldHook)
 	case boil.AfterUpdateHook:
-		purchasedItemAfterUpdateHooks = append(purchasedItemAfterUpdateHooks, purchasedItemHook)
+		purchasedItemsOldAfterUpdateHooks = append(purchasedItemsOldAfterUpdateHooks, purchasedItemsOldHook)
 	case boil.AfterDeleteHook:
-		purchasedItemAfterDeleteHooks = append(purchasedItemAfterDeleteHooks, purchasedItemHook)
+		purchasedItemsOldAfterDeleteHooks = append(purchasedItemsOldAfterDeleteHooks, purchasedItemsOldHook)
 	case boil.AfterUpsertHook:
-		purchasedItemAfterUpsertHooks = append(purchasedItemAfterUpsertHooks, purchasedItemHook)
+		purchasedItemsOldAfterUpsertHooks = append(purchasedItemsOldAfterUpsertHooks, purchasedItemsOldHook)
 	}
 }
 
-// One returns a single purchasedItem record from the query.
-func (q purchasedItemQuery) One(exec boil.Executor) (*PurchasedItem, error) {
-	o := &PurchasedItem{}
+// One returns a single purchasedItemsOld record from the query.
+func (q purchasedItemsOldQuery) One(exec boil.Executor) (*PurchasedItemsOld, error) {
+	o := &PurchasedItemsOld{}
 
 	queries.SetLimit(q.Query, 1)
 
@@ -366,7 +366,7 @@ func (q purchasedItemQuery) One(exec boil.Executor) (*PurchasedItem, error) {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: failed to execute a one query for purchased_items")
+		return nil, errors.Wrap(err, "boiler: failed to execute a one query for purchased_items_old")
 	}
 
 	if err := o.doAfterSelectHooks(exec); err != nil {
@@ -376,16 +376,16 @@ func (q purchasedItemQuery) One(exec boil.Executor) (*PurchasedItem, error) {
 	return o, nil
 }
 
-// All returns all PurchasedItem records from the query.
-func (q purchasedItemQuery) All(exec boil.Executor) (PurchasedItemSlice, error) {
-	var o []*PurchasedItem
+// All returns all PurchasedItemsOld records from the query.
+func (q purchasedItemsOldQuery) All(exec boil.Executor) (PurchasedItemsOldSlice, error) {
+	var o []*PurchasedItemsOld
 
 	err := q.Bind(nil, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "boiler: failed to assign all query results to PurchasedItem slice")
+		return nil, errors.Wrap(err, "boiler: failed to assign all query results to PurchasedItemsOld slice")
 	}
 
-	if len(purchasedItemAfterSelectHooks) != 0 {
+	if len(purchasedItemsOldAfterSelectHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterSelectHooks(exec); err != nil {
 				return o, err
@@ -396,8 +396,8 @@ func (q purchasedItemQuery) All(exec boil.Executor) (PurchasedItemSlice, error) 
 	return o, nil
 }
 
-// Count returns the count of all PurchasedItem records in the query.
-func (q purchasedItemQuery) Count(exec boil.Executor) (int64, error) {
+// Count returns the count of all PurchasedItemsOld records in the query.
+func (q purchasedItemsOldQuery) Count(exec boil.Executor) (int64, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -405,14 +405,14 @@ func (q purchasedItemQuery) Count(exec boil.Executor) (int64, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to count purchased_items rows")
+		return 0, errors.Wrap(err, "boiler: failed to count purchased_items_old rows")
 	}
 
 	return count, nil
 }
 
 // Exists checks if the row exists in the table.
-func (q purchasedItemQuery) Exists(exec boil.Executor) (bool, error) {
+func (q purchasedItemsOldQuery) Exists(exec boil.Executor) (bool, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -421,14 +421,14 @@ func (q purchasedItemQuery) Exists(exec boil.Executor) (bool, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: failed to check if purchased_items exists")
+		return false, errors.Wrap(err, "boiler: failed to check if purchased_items_old exists")
 	}
 
 	return count > 0, nil
 }
 
 // Collection pointed to by the foreign key.
-func (o *PurchasedItem) Collection(mods ...qm.QueryMod) collectionQuery {
+func (o *PurchasedItemsOld) Collection(mods ...qm.QueryMod) collectionQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.CollectionID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -443,7 +443,7 @@ func (o *PurchasedItem) Collection(mods ...qm.QueryMod) collectionQuery {
 }
 
 // Owner pointed to by the foreign key.
-func (o *PurchasedItem) Owner(mods ...qm.QueryMod) userQuery {
+func (o *PurchasedItemsOld) Owner(mods ...qm.QueryMod) userQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.OwnerID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -458,7 +458,7 @@ func (o *PurchasedItem) Owner(mods ...qm.QueryMod) userQuery {
 }
 
 // StoreItem pointed to by the foreign key.
-func (o *PurchasedItem) StoreItem(mods ...qm.QueryMod) storeItemQuery {
+func (o *PurchasedItemsOld) StoreItem(mods ...qm.QueryMod) storeItemQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.StoreItemID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -474,20 +474,20 @@ func (o *PurchasedItem) StoreItem(mods ...qm.QueryMod) storeItemQuery {
 
 // LoadCollection allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (purchasedItemL) LoadCollection(e boil.Executor, singular bool, maybePurchasedItem interface{}, mods queries.Applicator) error {
-	var slice []*PurchasedItem
-	var object *PurchasedItem
+func (purchasedItemsOldL) LoadCollection(e boil.Executor, singular bool, maybePurchasedItemsOld interface{}, mods queries.Applicator) error {
+	var slice []*PurchasedItemsOld
+	var object *PurchasedItemsOld
 
 	if singular {
-		object = maybePurchasedItem.(*PurchasedItem)
+		object = maybePurchasedItemsOld.(*PurchasedItemsOld)
 	} else {
-		slice = *maybePurchasedItem.(*[]*PurchasedItem)
+		slice = *maybePurchasedItemsOld.(*[]*PurchasedItemsOld)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &purchasedItemR{}
+			object.R = &purchasedItemsOldR{}
 		}
 		args = append(args, object.CollectionID)
 
@@ -495,7 +495,7 @@ func (purchasedItemL) LoadCollection(e boil.Executor, singular bool, maybePurcha
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &purchasedItemR{}
+				obj.R = &purchasedItemsOldR{}
 			}
 
 			for _, a := range args {
@@ -539,7 +539,7 @@ func (purchasedItemL) LoadCollection(e boil.Executor, singular bool, maybePurcha
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for collections")
 	}
 
-	if len(purchasedItemAfterSelectHooks) != 0 {
+	if len(purchasedItemsOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -557,7 +557,7 @@ func (purchasedItemL) LoadCollection(e boil.Executor, singular bool, maybePurcha
 		if foreign.R == nil {
 			foreign.R = &collectionR{}
 		}
-		foreign.R.PurchasedItems = append(foreign.R.PurchasedItems, object)
+		foreign.R.PurchasedItemsOlds = append(foreign.R.PurchasedItemsOlds, object)
 		return nil
 	}
 
@@ -568,7 +568,7 @@ func (purchasedItemL) LoadCollection(e boil.Executor, singular bool, maybePurcha
 				if foreign.R == nil {
 					foreign.R = &collectionR{}
 				}
-				foreign.R.PurchasedItems = append(foreign.R.PurchasedItems, local)
+				foreign.R.PurchasedItemsOlds = append(foreign.R.PurchasedItemsOlds, local)
 				break
 			}
 		}
@@ -579,20 +579,20 @@ func (purchasedItemL) LoadCollection(e boil.Executor, singular bool, maybePurcha
 
 // LoadOwner allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (purchasedItemL) LoadOwner(e boil.Executor, singular bool, maybePurchasedItem interface{}, mods queries.Applicator) error {
-	var slice []*PurchasedItem
-	var object *PurchasedItem
+func (purchasedItemsOldL) LoadOwner(e boil.Executor, singular bool, maybePurchasedItemsOld interface{}, mods queries.Applicator) error {
+	var slice []*PurchasedItemsOld
+	var object *PurchasedItemsOld
 
 	if singular {
-		object = maybePurchasedItem.(*PurchasedItem)
+		object = maybePurchasedItemsOld.(*PurchasedItemsOld)
 	} else {
-		slice = *maybePurchasedItem.(*[]*PurchasedItem)
+		slice = *maybePurchasedItemsOld.(*[]*PurchasedItemsOld)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &purchasedItemR{}
+			object.R = &purchasedItemsOldR{}
 		}
 		args = append(args, object.OwnerID)
 
@@ -600,7 +600,7 @@ func (purchasedItemL) LoadOwner(e boil.Executor, singular bool, maybePurchasedIt
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &purchasedItemR{}
+				obj.R = &purchasedItemsOldR{}
 			}
 
 			for _, a := range args {
@@ -644,7 +644,7 @@ func (purchasedItemL) LoadOwner(e boil.Executor, singular bool, maybePurchasedIt
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for users")
 	}
 
-	if len(purchasedItemAfterSelectHooks) != 0 {
+	if len(purchasedItemsOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -662,7 +662,7 @@ func (purchasedItemL) LoadOwner(e boil.Executor, singular bool, maybePurchasedIt
 		if foreign.R == nil {
 			foreign.R = &userR{}
 		}
-		foreign.R.OwnerPurchasedItems = append(foreign.R.OwnerPurchasedItems, object)
+		foreign.R.OwnerPurchasedItemsOlds = append(foreign.R.OwnerPurchasedItemsOlds, object)
 		return nil
 	}
 
@@ -673,7 +673,7 @@ func (purchasedItemL) LoadOwner(e boil.Executor, singular bool, maybePurchasedIt
 				if foreign.R == nil {
 					foreign.R = &userR{}
 				}
-				foreign.R.OwnerPurchasedItems = append(foreign.R.OwnerPurchasedItems, local)
+				foreign.R.OwnerPurchasedItemsOlds = append(foreign.R.OwnerPurchasedItemsOlds, local)
 				break
 			}
 		}
@@ -684,20 +684,20 @@ func (purchasedItemL) LoadOwner(e boil.Executor, singular bool, maybePurchasedIt
 
 // LoadStoreItem allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (purchasedItemL) LoadStoreItem(e boil.Executor, singular bool, maybePurchasedItem interface{}, mods queries.Applicator) error {
-	var slice []*PurchasedItem
-	var object *PurchasedItem
+func (purchasedItemsOldL) LoadStoreItem(e boil.Executor, singular bool, maybePurchasedItemsOld interface{}, mods queries.Applicator) error {
+	var slice []*PurchasedItemsOld
+	var object *PurchasedItemsOld
 
 	if singular {
-		object = maybePurchasedItem.(*PurchasedItem)
+		object = maybePurchasedItemsOld.(*PurchasedItemsOld)
 	} else {
-		slice = *maybePurchasedItem.(*[]*PurchasedItem)
+		slice = *maybePurchasedItemsOld.(*[]*PurchasedItemsOld)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &purchasedItemR{}
+			object.R = &purchasedItemsOldR{}
 		}
 		if !queries.IsNil(object.StoreItemID) {
 			args = append(args, object.StoreItemID)
@@ -707,7 +707,7 @@ func (purchasedItemL) LoadStoreItem(e boil.Executor, singular bool, maybePurchas
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &purchasedItemR{}
+				obj.R = &purchasedItemsOldR{}
 			}
 
 			for _, a := range args {
@@ -753,7 +753,7 @@ func (purchasedItemL) LoadStoreItem(e boil.Executor, singular bool, maybePurchas
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for store_items")
 	}
 
-	if len(purchasedItemAfterSelectHooks) != 0 {
+	if len(purchasedItemsOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -771,7 +771,7 @@ func (purchasedItemL) LoadStoreItem(e boil.Executor, singular bool, maybePurchas
 		if foreign.R == nil {
 			foreign.R = &storeItemR{}
 		}
-		foreign.R.PurchasedItems = append(foreign.R.PurchasedItems, object)
+		foreign.R.PurchasedItemsOlds = append(foreign.R.PurchasedItemsOlds, object)
 		return nil
 	}
 
@@ -782,7 +782,7 @@ func (purchasedItemL) LoadStoreItem(e boil.Executor, singular bool, maybePurchas
 				if foreign.R == nil {
 					foreign.R = &storeItemR{}
 				}
-				foreign.R.PurchasedItems = append(foreign.R.PurchasedItems, local)
+				foreign.R.PurchasedItemsOlds = append(foreign.R.PurchasedItemsOlds, local)
 				break
 			}
 		}
@@ -791,10 +791,10 @@ func (purchasedItemL) LoadStoreItem(e boil.Executor, singular bool, maybePurchas
 	return nil
 }
 
-// SetCollection of the purchasedItem to the related item.
+// SetCollection of the purchasedItemsOld to the related item.
 // Sets o.R.Collection to related.
-// Adds o to related.R.PurchasedItems.
-func (o *PurchasedItem) SetCollection(exec boil.Executor, insert bool, related *Collection) error {
+// Adds o to related.R.PurchasedItemsOlds.
+func (o *PurchasedItemsOld) SetCollection(exec boil.Executor, insert bool, related *Collection) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -803,9 +803,9 @@ func (o *PurchasedItem) SetCollection(exec boil.Executor, insert bool, related *
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"purchased_items\" SET %s WHERE %s",
+		"UPDATE \"purchased_items_old\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"collection_id"}),
-		strmangle.WhereClause("\"", "\"", 2, purchasedItemPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, purchasedItemsOldPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -819,7 +819,7 @@ func (o *PurchasedItem) SetCollection(exec boil.Executor, insert bool, related *
 
 	o.CollectionID = related.ID
 	if o.R == nil {
-		o.R = &purchasedItemR{
+		o.R = &purchasedItemsOldR{
 			Collection: related,
 		}
 	} else {
@@ -828,19 +828,19 @@ func (o *PurchasedItem) SetCollection(exec boil.Executor, insert bool, related *
 
 	if related.R == nil {
 		related.R = &collectionR{
-			PurchasedItems: PurchasedItemSlice{o},
+			PurchasedItemsOlds: PurchasedItemsOldSlice{o},
 		}
 	} else {
-		related.R.PurchasedItems = append(related.R.PurchasedItems, o)
+		related.R.PurchasedItemsOlds = append(related.R.PurchasedItemsOlds, o)
 	}
 
 	return nil
 }
 
-// SetOwner of the purchasedItem to the related item.
+// SetOwner of the purchasedItemsOld to the related item.
 // Sets o.R.Owner to related.
-// Adds o to related.R.OwnerPurchasedItems.
-func (o *PurchasedItem) SetOwner(exec boil.Executor, insert bool, related *User) error {
+// Adds o to related.R.OwnerPurchasedItemsOlds.
+func (o *PurchasedItemsOld) SetOwner(exec boil.Executor, insert bool, related *User) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -849,9 +849,9 @@ func (o *PurchasedItem) SetOwner(exec boil.Executor, insert bool, related *User)
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"purchased_items\" SET %s WHERE %s",
+		"UPDATE \"purchased_items_old\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
-		strmangle.WhereClause("\"", "\"", 2, purchasedItemPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, purchasedItemsOldPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -865,7 +865,7 @@ func (o *PurchasedItem) SetOwner(exec boil.Executor, insert bool, related *User)
 
 	o.OwnerID = related.ID
 	if o.R == nil {
-		o.R = &purchasedItemR{
+		o.R = &purchasedItemsOldR{
 			Owner: related,
 		}
 	} else {
@@ -874,19 +874,19 @@ func (o *PurchasedItem) SetOwner(exec boil.Executor, insert bool, related *User)
 
 	if related.R == nil {
 		related.R = &userR{
-			OwnerPurchasedItems: PurchasedItemSlice{o},
+			OwnerPurchasedItemsOlds: PurchasedItemsOldSlice{o},
 		}
 	} else {
-		related.R.OwnerPurchasedItems = append(related.R.OwnerPurchasedItems, o)
+		related.R.OwnerPurchasedItemsOlds = append(related.R.OwnerPurchasedItemsOlds, o)
 	}
 
 	return nil
 }
 
-// SetStoreItem of the purchasedItem to the related item.
+// SetStoreItem of the purchasedItemsOld to the related item.
 // Sets o.R.StoreItem to related.
-// Adds o to related.R.PurchasedItems.
-func (o *PurchasedItem) SetStoreItem(exec boil.Executor, insert bool, related *StoreItem) error {
+// Adds o to related.R.PurchasedItemsOlds.
+func (o *PurchasedItemsOld) SetStoreItem(exec boil.Executor, insert bool, related *StoreItem) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -895,9 +895,9 @@ func (o *PurchasedItem) SetStoreItem(exec boil.Executor, insert bool, related *S
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"purchased_items\" SET %s WHERE %s",
+		"UPDATE \"purchased_items_old\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"store_item_id"}),
-		strmangle.WhereClause("\"", "\"", 2, purchasedItemPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, purchasedItemsOldPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -911,7 +911,7 @@ func (o *PurchasedItem) SetStoreItem(exec boil.Executor, insert bool, related *S
 
 	queries.Assign(&o.StoreItemID, related.ID)
 	if o.R == nil {
-		o.R = &purchasedItemR{
+		o.R = &purchasedItemsOldR{
 			StoreItem: related,
 		}
 	} else {
@@ -920,10 +920,10 @@ func (o *PurchasedItem) SetStoreItem(exec boil.Executor, insert bool, related *S
 
 	if related.R == nil {
 		related.R = &storeItemR{
-			PurchasedItems: PurchasedItemSlice{o},
+			PurchasedItemsOlds: PurchasedItemsOldSlice{o},
 		}
 	} else {
-		related.R.PurchasedItems = append(related.R.PurchasedItems, o)
+		related.R.PurchasedItemsOlds = append(related.R.PurchasedItemsOlds, o)
 	}
 
 	return nil
@@ -932,7 +932,7 @@ func (o *PurchasedItem) SetStoreItem(exec boil.Executor, insert bool, related *S
 // RemoveStoreItem relationship.
 // Sets o.R.StoreItem to nil.
 // Removes o from all passed in related items' relationships struct (Optional).
-func (o *PurchasedItem) RemoveStoreItem(exec boil.Executor, related *StoreItem) error {
+func (o *PurchasedItemsOld) RemoveStoreItem(exec boil.Executor, related *StoreItem) error {
 	var err error
 
 	queries.SetScanner(&o.StoreItemID, nil)
@@ -947,62 +947,62 @@ func (o *PurchasedItem) RemoveStoreItem(exec boil.Executor, related *StoreItem) 
 		return nil
 	}
 
-	for i, ri := range related.R.PurchasedItems {
+	for i, ri := range related.R.PurchasedItemsOlds {
 		if queries.Equal(o.StoreItemID, ri.StoreItemID) {
 			continue
 		}
 
-		ln := len(related.R.PurchasedItems)
+		ln := len(related.R.PurchasedItemsOlds)
 		if ln > 1 && i < ln-1 {
-			related.R.PurchasedItems[i] = related.R.PurchasedItems[ln-1]
+			related.R.PurchasedItemsOlds[i] = related.R.PurchasedItemsOlds[ln-1]
 		}
-		related.R.PurchasedItems = related.R.PurchasedItems[:ln-1]
+		related.R.PurchasedItemsOlds = related.R.PurchasedItemsOlds[:ln-1]
 		break
 	}
 	return nil
 }
 
-// PurchasedItems retrieves all the records using an executor.
-func PurchasedItems(mods ...qm.QueryMod) purchasedItemQuery {
-	mods = append(mods, qm.From("\"purchased_items\""), qmhelper.WhereIsNull("\"purchased_items\".\"deleted_at\""))
-	return purchasedItemQuery{NewQuery(mods...)}
+// PurchasedItemsOlds retrieves all the records using an executor.
+func PurchasedItemsOlds(mods ...qm.QueryMod) purchasedItemsOldQuery {
+	mods = append(mods, qm.From("\"purchased_items_old\""), qmhelper.WhereIsNull("\"purchased_items_old\".\"deleted_at\""))
+	return purchasedItemsOldQuery{NewQuery(mods...)}
 }
 
-// FindPurchasedItem retrieves a single record by ID with an executor.
+// FindPurchasedItemsOld retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindPurchasedItem(exec boil.Executor, iD string, selectCols ...string) (*PurchasedItem, error) {
-	purchasedItemObj := &PurchasedItem{}
+func FindPurchasedItemsOld(exec boil.Executor, iD string, selectCols ...string) (*PurchasedItemsOld, error) {
+	purchasedItemsOldObj := &PurchasedItemsOld{}
 
 	sel := "*"
 	if len(selectCols) > 0 {
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"purchased_items\" where \"id\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"purchased_items_old\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
 
-	err := q.Bind(nil, exec, purchasedItemObj)
+	err := q.Bind(nil, exec, purchasedItemsOldObj)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: unable to select from purchased_items")
+		return nil, errors.Wrap(err, "boiler: unable to select from purchased_items_old")
 	}
 
-	if err = purchasedItemObj.doAfterSelectHooks(exec); err != nil {
-		return purchasedItemObj, err
+	if err = purchasedItemsOldObj.doAfterSelectHooks(exec); err != nil {
+		return purchasedItemsOldObj, err
 	}
 
-	return purchasedItemObj, nil
+	return purchasedItemsOldObj, nil
 }
 
 // Insert a single record using an executor.
 // See boil.Columns.InsertColumnSet documentation to understand column list inference for inserts.
-func (o *PurchasedItem) Insert(exec boil.Executor, columns boil.Columns) error {
+func (o *PurchasedItemsOld) Insert(exec boil.Executor, columns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no purchased_items provided for insertion")
+		return errors.New("boiler: no purchased_items_old provided for insertion")
 	}
 
 	var err error
@@ -1019,33 +1019,33 @@ func (o *PurchasedItem) Insert(exec boil.Executor, columns boil.Columns) error {
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(purchasedItemColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(purchasedItemsOldColumnsWithDefault, o)
 
 	key := makeCacheKey(columns, nzDefaults)
-	purchasedItemInsertCacheMut.RLock()
-	cache, cached := purchasedItemInsertCache[key]
-	purchasedItemInsertCacheMut.RUnlock()
+	purchasedItemsOldInsertCacheMut.RLock()
+	cache, cached := purchasedItemsOldInsertCache[key]
+	purchasedItemsOldInsertCacheMut.RUnlock()
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			purchasedItemAllColumns,
-			purchasedItemColumnsWithDefault,
-			purchasedItemColumnsWithoutDefault,
+			purchasedItemsOldAllColumns,
+			purchasedItemsOldColumnsWithDefault,
+			purchasedItemsOldColumnsWithoutDefault,
 			nzDefaults,
 		)
 
-		cache.valueMapping, err = queries.BindMapping(purchasedItemType, purchasedItemMapping, wl)
+		cache.valueMapping, err = queries.BindMapping(purchasedItemsOldType, purchasedItemsOldMapping, wl)
 		if err != nil {
 			return err
 		}
-		cache.retMapping, err = queries.BindMapping(purchasedItemType, purchasedItemMapping, returnColumns)
+		cache.retMapping, err = queries.BindMapping(purchasedItemsOldType, purchasedItemsOldMapping, returnColumns)
 		if err != nil {
 			return err
 		}
 		if len(wl) != 0 {
-			cache.query = fmt.Sprintf("INSERT INTO \"purchased_items\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
+			cache.query = fmt.Sprintf("INSERT INTO \"purchased_items_old\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
 		} else {
-			cache.query = "INSERT INTO \"purchased_items\" %sDEFAULT VALUES%s"
+			cache.query = "INSERT INTO \"purchased_items_old\" %sDEFAULT VALUES%s"
 		}
 
 		var queryOutput, queryReturning string
@@ -1072,22 +1072,22 @@ func (o *PurchasedItem) Insert(exec boil.Executor, columns boil.Columns) error {
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to insert into purchased_items")
+		return errors.Wrap(err, "boiler: unable to insert into purchased_items_old")
 	}
 
 	if !cached {
-		purchasedItemInsertCacheMut.Lock()
-		purchasedItemInsertCache[key] = cache
-		purchasedItemInsertCacheMut.Unlock()
+		purchasedItemsOldInsertCacheMut.Lock()
+		purchasedItemsOldInsertCache[key] = cache
+		purchasedItemsOldInsertCacheMut.Unlock()
 	}
 
 	return o.doAfterInsertHooks(exec)
 }
 
-// Update uses an executor to update the PurchasedItem.
+// Update uses an executor to update the PurchasedItemsOld.
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
-func (o *PurchasedItem) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+func (o *PurchasedItemsOld) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
 	currTime := time.Now().In(boil.GetLocation())
 
 	o.UpdatedAt = currTime
@@ -1097,28 +1097,28 @@ func (o *PurchasedItem) Update(exec boil.Executor, columns boil.Columns) (int64,
 		return 0, err
 	}
 	key := makeCacheKey(columns, nil)
-	purchasedItemUpdateCacheMut.RLock()
-	cache, cached := purchasedItemUpdateCache[key]
-	purchasedItemUpdateCacheMut.RUnlock()
+	purchasedItemsOldUpdateCacheMut.RLock()
+	cache, cached := purchasedItemsOldUpdateCache[key]
+	purchasedItemsOldUpdateCacheMut.RUnlock()
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			purchasedItemAllColumns,
-			purchasedItemPrimaryKeyColumns,
+			purchasedItemsOldAllColumns,
+			purchasedItemsOldPrimaryKeyColumns,
 		)
 
 		if !columns.IsWhitelist() {
 			wl = strmangle.SetComplement(wl, []string{"created_at"})
 		}
 		if len(wl) == 0 {
-			return 0, errors.New("boiler: unable to update purchased_items, could not build whitelist")
+			return 0, errors.New("boiler: unable to update purchased_items_old, could not build whitelist")
 		}
 
-		cache.query = fmt.Sprintf("UPDATE \"purchased_items\" SET %s WHERE %s",
+		cache.query = fmt.Sprintf("UPDATE \"purchased_items_old\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
-			strmangle.WhereClause("\"", "\"", len(wl)+1, purchasedItemPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", len(wl)+1, purchasedItemsOldPrimaryKeyColumns),
 		)
-		cache.valueMapping, err = queries.BindMapping(purchasedItemType, purchasedItemMapping, append(wl, purchasedItemPrimaryKeyColumns...))
+		cache.valueMapping, err = queries.BindMapping(purchasedItemsOldType, purchasedItemsOldMapping, append(wl, purchasedItemsOldPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1133,42 +1133,42 @@ func (o *PurchasedItem) Update(exec boil.Executor, columns boil.Columns) (int64,
 	var result sql.Result
 	result, err = exec.Exec(cache.query, values...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update purchased_items row")
+		return 0, errors.Wrap(err, "boiler: unable to update purchased_items_old row")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for purchased_items")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for purchased_items_old")
 	}
 
 	if !cached {
-		purchasedItemUpdateCacheMut.Lock()
-		purchasedItemUpdateCache[key] = cache
-		purchasedItemUpdateCacheMut.Unlock()
+		purchasedItemsOldUpdateCacheMut.Lock()
+		purchasedItemsOldUpdateCache[key] = cache
+		purchasedItemsOldUpdateCacheMut.Unlock()
 	}
 
 	return rowsAff, o.doAfterUpdateHooks(exec)
 }
 
 // UpdateAll updates all rows with the specified column values.
-func (q purchasedItemQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (q purchasedItemsOldQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	queries.SetUpdate(q.Query, cols)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all for purchased_items")
+		return 0, errors.Wrap(err, "boiler: unable to update all for purchased_items_old")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for purchased_items")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for purchased_items_old")
 	}
 
 	return rowsAff, nil
 }
 
 // UpdateAll updates all rows with the specified column values, using an executor.
-func (o PurchasedItemSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (o PurchasedItemsOldSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	ln := int64(len(o))
 	if ln == 0 {
 		return 0, nil
@@ -1190,13 +1190,13 @@ func (o PurchasedItemSlice) UpdateAll(exec boil.Executor, cols M) (int64, error)
 
 	// Append all of the primary key values for each column
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), purchasedItemPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), purchasedItemsOldPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := fmt.Sprintf("UPDATE \"purchased_items\" SET %s WHERE %s",
+	sql := fmt.Sprintf("UPDATE \"purchased_items_old\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, colNames),
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, purchasedItemPrimaryKeyColumns, len(o)))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, purchasedItemsOldPrimaryKeyColumns, len(o)))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1204,21 +1204,21 @@ func (o PurchasedItemSlice) UpdateAll(exec boil.Executor, cols M) (int64, error)
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all in purchasedItem slice")
+		return 0, errors.Wrap(err, "boiler: unable to update all in purchasedItemsOld slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all purchasedItem")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all purchasedItemsOld")
 	}
 	return rowsAff, nil
 }
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *PurchasedItem) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *PurchasedItemsOld) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no purchased_items provided for upsert")
+		return errors.New("boiler: no purchased_items_old provided for upsert")
 	}
 	currTime := time.Now().In(boil.GetLocation())
 
@@ -1231,7 +1231,7 @@ func (o *PurchasedItem) Upsert(exec boil.Executor, updateOnConflict bool, confli
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(purchasedItemColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(purchasedItemsOldColumnsWithDefault, o)
 
 	// Build cache key in-line uglily - mysql vs psql problems
 	buf := strmangle.GetBuffer()
@@ -1261,41 +1261,41 @@ func (o *PurchasedItem) Upsert(exec boil.Executor, updateOnConflict bool, confli
 	key := buf.String()
 	strmangle.PutBuffer(buf)
 
-	purchasedItemUpsertCacheMut.RLock()
-	cache, cached := purchasedItemUpsertCache[key]
-	purchasedItemUpsertCacheMut.RUnlock()
+	purchasedItemsOldUpsertCacheMut.RLock()
+	cache, cached := purchasedItemsOldUpsertCache[key]
+	purchasedItemsOldUpsertCacheMut.RUnlock()
 
 	var err error
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			purchasedItemAllColumns,
-			purchasedItemColumnsWithDefault,
-			purchasedItemColumnsWithoutDefault,
+			purchasedItemsOldAllColumns,
+			purchasedItemsOldColumnsWithDefault,
+			purchasedItemsOldColumnsWithoutDefault,
 			nzDefaults,
 		)
 		update := updateColumns.UpdateColumnSet(
-			purchasedItemAllColumns,
-			purchasedItemPrimaryKeyColumns,
+			purchasedItemsOldAllColumns,
+			purchasedItemsOldPrimaryKeyColumns,
 		)
 
 		if updateOnConflict && len(update) == 0 {
-			return errors.New("boiler: unable to upsert purchased_items, could not build update column list")
+			return errors.New("boiler: unable to upsert purchased_items_old, could not build update column list")
 		}
 
 		conflict := conflictColumns
 		if len(conflict) == 0 {
-			conflict = make([]string, len(purchasedItemPrimaryKeyColumns))
-			copy(conflict, purchasedItemPrimaryKeyColumns)
+			conflict = make([]string, len(purchasedItemsOldPrimaryKeyColumns))
+			copy(conflict, purchasedItemsOldPrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"purchased_items\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"purchased_items_old\"", updateOnConflict, ret, update, conflict, insert)
 
-		cache.valueMapping, err = queries.BindMapping(purchasedItemType, purchasedItemMapping, insert)
+		cache.valueMapping, err = queries.BindMapping(purchasedItemsOldType, purchasedItemsOldMapping, insert)
 		if err != nil {
 			return err
 		}
 		if len(ret) != 0 {
-			cache.retMapping, err = queries.BindMapping(purchasedItemType, purchasedItemMapping, ret)
+			cache.retMapping, err = queries.BindMapping(purchasedItemsOldType, purchasedItemsOldMapping, ret)
 			if err != nil {
 				return err
 			}
@@ -1322,23 +1322,23 @@ func (o *PurchasedItem) Upsert(exec boil.Executor, updateOnConflict bool, confli
 		_, err = exec.Exec(cache.query, vals...)
 	}
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to upsert purchased_items")
+		return errors.Wrap(err, "boiler: unable to upsert purchased_items_old")
 	}
 
 	if !cached {
-		purchasedItemUpsertCacheMut.Lock()
-		purchasedItemUpsertCache[key] = cache
-		purchasedItemUpsertCacheMut.Unlock()
+		purchasedItemsOldUpsertCacheMut.Lock()
+		purchasedItemsOldUpsertCache[key] = cache
+		purchasedItemsOldUpsertCacheMut.Unlock()
 	}
 
 	return o.doAfterUpsertHooks(exec)
 }
 
-// Delete deletes a single PurchasedItem record with an executor.
+// Delete deletes a single PurchasedItemsOld record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *PurchasedItem) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o *PurchasedItemsOld) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
-		return 0, errors.New("boiler: no PurchasedItem provided for delete")
+		return 0, errors.New("boiler: no PurchasedItemsOld provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(exec); err != nil {
@@ -1350,16 +1350,16 @@ func (o *PurchasedItem) Delete(exec boil.Executor, hardDelete bool) (int64, erro
 		args []interface{}
 	)
 	if hardDelete {
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), purchasedItemPrimaryKeyMapping)
-		sql = "DELETE FROM \"purchased_items\" WHERE \"id\"=$1"
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), purchasedItemsOldPrimaryKeyMapping)
+		sql = "DELETE FROM \"purchased_items_old\" WHERE \"id\"=$1"
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		o.DeletedAt = null.TimeFrom(currTime)
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"purchased_items\" SET %s WHERE \"id\"=$2",
+		sql = fmt.Sprintf("UPDATE \"purchased_items_old\" SET %s WHERE \"id\"=$2",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
-		valueMapping, err := queries.BindMapping(purchasedItemType, purchasedItemMapping, append(wl, purchasedItemPrimaryKeyColumns...))
+		valueMapping, err := queries.BindMapping(purchasedItemsOldType, purchasedItemsOldMapping, append(wl, purchasedItemsOldPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1372,12 +1372,12 @@ func (o *PurchasedItem) Delete(exec boil.Executor, hardDelete bool) (int64, erro
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete from purchased_items")
+		return 0, errors.Wrap(err, "boiler: unable to delete from purchased_items_old")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for purchased_items")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for purchased_items_old")
 	}
 
 	if err := o.doAfterDeleteHooks(exec); err != nil {
@@ -1388,9 +1388,9 @@ func (o *PurchasedItem) Delete(exec boil.Executor, hardDelete bool) (int64, erro
 }
 
 // DeleteAll deletes all matching rows.
-func (q purchasedItemQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (q purchasedItemsOldQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
-		return 0, errors.New("boiler: no purchasedItemQuery provided for delete all")
+		return 0, errors.New("boiler: no purchasedItemsOldQuery provided for delete all")
 	}
 
 	if hardDelete {
@@ -1402,24 +1402,24 @@ func (q purchasedItemQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int6
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from purchased_items")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from purchased_items_old")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for purchased_items")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for purchased_items_old")
 	}
 
 	return rowsAff, nil
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o PurchasedItemSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o PurchasedItemsOldSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
 
-	if len(purchasedItemBeforeDeleteHooks) != 0 {
+	if len(purchasedItemsOldBeforeDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doBeforeDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1433,21 +1433,21 @@ func (o PurchasedItemSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int6
 	)
 	if hardDelete {
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), purchasedItemPrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), purchasedItemsOldPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 		}
-		sql = "DELETE FROM \"purchased_items\" WHERE " +
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, purchasedItemPrimaryKeyColumns, len(o))
+		sql = "DELETE FROM \"purchased_items_old\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, purchasedItemsOldPrimaryKeyColumns, len(o))
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), purchasedItemPrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), purchasedItemsOldPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 			obj.DeletedAt = null.TimeFrom(currTime)
 		}
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"purchased_items\" SET %s WHERE "+
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, purchasedItemPrimaryKeyColumns, len(o)),
+		sql = fmt.Sprintf("UPDATE \"purchased_items_old\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, purchasedItemsOldPrimaryKeyColumns, len(o)),
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
 		args = append([]interface{}{currTime}, args...)
@@ -1459,15 +1459,15 @@ func (o PurchasedItemSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int6
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from purchasedItem slice")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from purchasedItemsOld slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for purchased_items")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for purchased_items_old")
 	}
 
-	if len(purchasedItemAfterDeleteHooks) != 0 {
+	if len(purchasedItemsOldAfterDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1480,8 +1480,8 @@ func (o PurchasedItemSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int6
 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
-func (o *PurchasedItem) Reload(exec boil.Executor) error {
-	ret, err := FindPurchasedItem(exec, o.ID)
+func (o *PurchasedItemsOld) Reload(exec boil.Executor) error {
+	ret, err := FindPurchasedItemsOld(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -1492,27 +1492,27 @@ func (o *PurchasedItem) Reload(exec boil.Executor) error {
 
 // ReloadAll refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *PurchasedItemSlice) ReloadAll(exec boil.Executor) error {
+func (o *PurchasedItemsOldSlice) ReloadAll(exec boil.Executor) error {
 	if o == nil || len(*o) == 0 {
 		return nil
 	}
 
-	slice := PurchasedItemSlice{}
+	slice := PurchasedItemsOldSlice{}
 	var args []interface{}
 	for _, obj := range *o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), purchasedItemPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), purchasedItemsOldPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "SELECT \"purchased_items\".* FROM \"purchased_items\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, purchasedItemPrimaryKeyColumns, len(*o)) +
+	sql := "SELECT \"purchased_items_old\".* FROM \"purchased_items_old\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, purchasedItemsOldPrimaryKeyColumns, len(*o)) +
 		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
 	err := q.Bind(nil, exec, &slice)
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to reload all in PurchasedItemSlice")
+		return errors.Wrap(err, "boiler: unable to reload all in PurchasedItemsOldSlice")
 	}
 
 	*o = slice
@@ -1520,10 +1520,10 @@ func (o *PurchasedItemSlice) ReloadAll(exec boil.Executor) error {
 	return nil
 }
 
-// PurchasedItemExists checks if the PurchasedItem row exists.
-func PurchasedItemExists(exec boil.Executor, iD string) (bool, error) {
+// PurchasedItemsOldExists checks if the PurchasedItemsOld row exists.
+func PurchasedItemsOldExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"purchased_items\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"purchased_items_old\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1533,7 +1533,7 @@ func PurchasedItemExists(exec boil.Executor, iD string) (bool, error) {
 
 	err := row.Scan(&exists)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: unable to check if purchased_items exists")
+		return false, errors.Wrap(err, "boiler: unable to check if purchased_items_old exists")
 	}
 
 	return exists, nil

@@ -132,7 +132,7 @@ type AssetUpdatedSubscribeRequest struct {
 
 type AssetUpdatedSubscribeResponse struct {
 	CollectionSlug string                `json:"collection_slug"`
-	PurchasedItem  *boiler.PurchasedItem `json:"purchased_item"`
+	PurchasedItem  *boiler.PurchasedItemsOld `json:"purchased_item"`
 	OwnerUsername  string                `json:"owner_username"`
 	HostURL        string                `json:"host_url"`
 }

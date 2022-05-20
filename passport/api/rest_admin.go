@@ -104,9 +104,9 @@ func TransferAsset() func(w http.ResponseWriter, r *http.Request) (int, error) {
 			return http.StatusBadRequest, terror.Error(err, "Could not get collection")
 		}
 
-		item, err := boiler.PurchasedItems(
-			boiler.PurchasedItemWhere.ExternalTokenID.EQ(tokenID),
-			boiler.PurchasedItemWhere.CollectionID.EQ(c.ID),
+		item, err := boiler.PurchasedItemsOlds(
+			boiler.PurchasedItemsOldWhere.ExternalTokenID.EQ(tokenID),
+			boiler.PurchasedItemsOldWhere.CollectionID.EQ(c.ID),
 		).One(passdb.StdConn)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not get purchased item")
@@ -115,7 +115,7 @@ func TransferAsset() func(w http.ResponseWriter, r *http.Request) (int, error) {
 			return http.StatusBadRequest, errors.New("from user does not own the asset")
 		}
 		item.OwnerID = to
-		_, err = item.Update(passdb.StdConn, boil.Whitelist(boiler.PurchasedItemColumns.OwnerID))
+		_, err = item.Update(passdb.StdConn, boil.Whitelist(boiler.PurchasedItemsOldColumns.OwnerID))
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not update purchased item")
 		}
@@ -438,7 +438,7 @@ func ListPurchasedItems(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, terror.Error(err, "Could not list store items")
 	}
 	if len(purchasedItems) == 0 {
-		purchasedItems = []*boiler.PurchasedItem{}
+		purchasedItems = []*boiler.PurchasedItemsOld{}
 	}
 	err = json.NewEncoder(w).Encode(purchasedItems)
 	if err != nil {

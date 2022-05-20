@@ -153,7 +153,7 @@ type purchasedItemMetaDataWeapon struct {
 	Label string `json:"label"`
 }
 
-func purchasedItemToOpenseaMetaData(api *API, item *boiler.PurchasedItem) (jb []byte, err error) {
+func purchasedItemToOpenseaMetaData(api *API, item *boiler.PurchasedItemsOld) (jb []byte, err error) {
 	if item == nil {
 		return nil, terror.Error(fmt.Errorf("item is nil"))
 	}

@@ -138,7 +138,7 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, ke
 	}
 
 	// for each collection get all nfts
-	items := []*boiler.PurchasedItem{}
+	items := []*boiler.PurchasedItemsOld{}
 	for _, c := range collections {
 		walletCollections, err := o.NFTOwners(common.HexToAddress(c.MintContract.String), network)
 		if err != nil {

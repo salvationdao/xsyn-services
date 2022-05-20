@@ -159,7 +159,7 @@ func Purchase(
 // PurchaseLootbox attempts to make a purchase for a given user ID and a given
 func PurchaseLootbox(log *zerolog.Logger,
 	// TODO: Vinnie fix this - may not be needed anymore?
-	ucmProcess func(*types.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error), user *boiler.User, factionID types.FactionID) (*boiler.PurchasedItem, error) {
+	ucmProcess func(*types.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error), user *boiler.User, factionID types.FactionID) (*boiler.PurchasedItemsOld, error) {
 
 	//// get all faction items marked as loot box
 	//items, err := db.StoreItemsByFactionIDAndRestrictionGroup(uuid.UUID(factionID), db.RestrictionGroupLootbox)

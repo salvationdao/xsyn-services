@@ -18,7 +18,7 @@ var TableNames = struct {
 	KV                      string
 	PasswordHashes          string
 	PendingRefund           string
-	PurchasedItems          string
+	PurchasedItemsOld       string
 	Roles                   string
 	SaftAgreements          string
 	SchemaMigrations        string
@@ -26,6 +26,7 @@ var TableNames = struct {
 	StoreItems              string
 	Transactions            string
 	UserActivities          string
+	UserAssets              string
 	UserFingerprints        string
 	UserRecoveryCodes       string
 	UsernameHistory         string
@@ -46,7 +47,7 @@ var TableNames = struct {
 	KV:                      "kv",
 	PasswordHashes:          "password_hashes",
 	PendingRefund:           "pending_refund",
-	PurchasedItems:          "purchased_items",
+	PurchasedItemsOld:       "purchased_items_old",
 	Roles:                   "roles",
 	SaftAgreements:          "saft_agreements",
 	SchemaMigrations:        "schema_migrations",
@@ -54,6 +55,7 @@ var TableNames = struct {
 	StoreItems:              "store_items",
 	Transactions:            "transactions",
 	UserActivities:          "user_activities",
+	UserAssets:              "user_assets",
 	UserFingerprints:        "user_fingerprints",
 	UserRecoveryCodes:       "user_recovery_codes",
 	UsernameHistory:         "username_history",
