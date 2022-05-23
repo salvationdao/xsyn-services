@@ -38,8 +38,7 @@ func AdminRoutes(ucm *Transactor) chi.Router {
 	r.Get("/rename_ban_userID/{userID}/{banned}", WithError(WithAdmin(RenameBanUserID)))
 	r.Get("/store_items", WithError(WithAdmin(ListStoreItems)))
 
-	//r.Post("/purchased_items/register/{template_id}/{owner_id}", WithError(WithAdmin(PurchasedItemRegisterHandler)))  // TODO: Vinnie ask if need redoing
-	//r.Post("/purchased_items/set_owner/{purchased_item_id}/{owner_id}", WithError(WithAdmin(PurchasedItemSetOwner)))  // TODO: Vinnie ask if need redoing
+	r.Post("/purchased_items/register/{template_id}/{owner_id}", WithError(WithAdmin(PurchasedItemRegisterHandler)))  // TODO: Vinnie ask if need redoing
 	r.Post("/purchased_items/transfer/from/{from}/to/{to}/collection_id/{collection_id}/token_id/{token_id}", WithError(WithAdmin(TransferAsset())))  // TODO: Vinnie FIX
 
 	r.Post("/transactions/create", WithError(WithAdmin(CreateTransaction(ucm))))
@@ -417,6 +416,7 @@ func PurchasedItemRegisterHandler(w http.ResponseWriter, r *http.Request) (int, 
 	}
 	return http.StatusOK, nil
 }
+
 
 func AdminCheck(w http.ResponseWriter, r *http.Request) (int, error) {
 	w.Write([]byte("ok"))
