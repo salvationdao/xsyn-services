@@ -40,7 +40,6 @@ func NewStoreController(log *zerolog.Logger, api *API) *StoreControllerWS {
 	api.SecureCommand(HubKeyPurchaseItem, storeHub.PurchaseItemHandler)
 
 	api.SecureCommand(types.HubKeyStoreItemSubscribe, storeHub.StoreItemHandler)
-	api.Command(types.HubKeyAvailableItemAmount, AvailableItemAmountHandler)
 
 	return storeHub
 }
@@ -148,7 +147,6 @@ type StoreListRequest struct {
 		UserID              types.UserID               `json:"user_id"`
 		SortDir             db.SortByDir               `json:"sort_dir"`
 		SortBy              string                     `json:"sortBy"`
-		IncludedAssetHashes []string                   `json:"included_asset_hashes"`
 		Filter              *db.ListFilterRequest      `json:"filter,omitempty"`
 		AttributeFilter     *db.AttributeFilterRequest `json:"attribute_filter,omitempty"`
 		AssetType           string                     `json:"asset_type"`
@@ -185,7 +183,6 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, user *types.U
 	total, items, err := db.StoreItemsList(
 		req.Payload.Search,
 		req.Payload.Archived,
-		req.Payload.IncludedAssetHashes,
 		req.Payload.Filter,
 		req.Payload.AttributeFilter,
 		offset,
@@ -257,16 +254,4 @@ func (sc *StoreControllerWS) StoreItemHandler(ctx context.Context, user *types.U
 
 	reply(result)
 	return nil
-}
-
-func AvailableItemAmountHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	return terror.Error(fmt.Errorf("store closed"), "The XSYN Store is currently closed.")
-
-	//fsa, err := db.StoreItemsAvailable()
-	//if err != nil {
-	//	terror.Error(err, "Could not get the available amount of this item, try again or contact support.")
-	//}
-	//
-	//reply(fsa)
-	//return nil
 }

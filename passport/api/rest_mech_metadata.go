@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
 	"xsyn-services/types"
@@ -30,7 +29,7 @@ func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 	// Get token id
 	hash := chi.URLParam(r, "hash")
 	if hash == "" {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("invalid asset hash"), "Invalid Asset Hash.")
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("invalid asset hash"), "Invalid UserAsset Hash.")
 	}
 
 	// Get asset via token id
@@ -93,56 +92,6 @@ type openSeaMetaData struct {
 	YoutubeURL      string            `json:"youtube_url,omitempty"`      // url to youtube video
 }
 
-// purchasedItemMetaData shape of the purchased_items.metadata in the database
-type purchasedItemMetaData struct {
-	Mech    purchasedItemMetaDataMech         `json:"mech"`
-	Chassis purchasedItemMetaDataChassis      `json:"chassis"`
-	Modules purchasedItemMetaDataNestedModule `json:"modules"`
-	Turrets purchasedItemMetaDataNestedTurret `json:"turrets"`
-	Weapons purchasedItemMetaDataNestedWeapon `json:"weapons"`
-}
-
-// purchasedItemMetaDataNestedModule shape of module, object not array
-type purchasedItemMetaDataNestedModule struct {
-	Key0 purchasedItemMetaDataModule `json:"0"`
-}
-
-// purchasedItemMetaDataNestedTrurrent shape of turret, object not array
-type purchasedItemMetaDataNestedTurret struct {
-	Key0 purchasedItemMetaDataTurret `json:"0"`
-	Key1 purchasedItemMetaDataTurret `json:"1"`
-}
-
-// purchasedItemMetaDataNestedWeapon shape of weapon, object not array
-type purchasedItemMetaDataNestedWeapon struct {
-	Key0 purchasedItemMetaDataWeapon `json:"0"`
-	Key1 purchasedItemMetaDataWeapon `json:"1"`
-}
-
-// labels that we only need
-type purchasedItemMetaDataMech struct {
-	Name          string `json:"name"`
-	Label         string `json:"label"`
-	LargeImageURL string `json:"large_image_url"`
-	ImageURL      string `json:"image_url"`
-	AnimationURL  string `json:"animation_url"`
-	AssetType     string `json:"asset_type"`
-	Tier          string `json:"tier"`
-	Slug          string `json:"slug"`
-}
-type purchasedItemMetaDataChassis struct {
-	Label              string `json:"label"`
-	Model              string `json:"model"`
-	Skin               string `json:"skin"`
-	ShieldRechargeRate int    `json:"shield_recharge_rate"`
-	HealthRemaining    int    `json:"health_remaining"`
-	WeaponHardpoints   int    `json:"weapon_hardpoints"`
-	TurretHardpoints   int    `json:"turret_hardpoints"`
-	UtilitySlots       int    `json:"utility_slots"`
-	Speed              int    `json:"speed"`
-	MaxHitpoints       int    `json:"max_hitpoints"`
-	MaxShield          int    `json:"max_shield"`
-}
 type purchasedItemMetaDataModule struct {
 	Label string `json:"label"`
 }
@@ -157,201 +106,201 @@ func purchasedItemToOpenseaMetaData(api *API, item *boiler.PurchasedItemsOld) (j
 	if item == nil {
 		return nil, terror.Error(fmt.Errorf("item is nil"))
 	}
-
-	itemMeta := purchasedItemMetaData{}
-	err = item.Data.Unmarshal(&itemMeta)
-	if err != nil {
-		return nil, err
-	}
-
-	datOpensea := openSeaMetaData{}
-	datOpensea.Image = itemMeta.Mech.LargeImageURL
-	datOpensea.Description = strings.Trim(itemMeta.Mech.Label, " ")
-	datOpensea.Name = strings.Trim(
-		strings.Join(
-			[]string{itemMeta.Mech.Label, itemMeta.Mech.Name},
-			" ",
-		),
-		" ",
-	)
-	datOpensea.AnimationURL = itemMeta.Mech.AnimationURL
-
-	// prepare attributes adding
-	attributes := []types.Attribute{}
-	var str string
-	var atr types.Attribute
-
-	// asset type
-	str = itemMeta.Mech.AssetType
-	if len(str) > 0 {
-		atr = types.Attribute{
-			TraitType: "Asset Type",
-			Value:     str,
-		}
-		attributes = append(attributes, atr)
-	}
-
-	// brand
-	// HACK: cheat to do quick brand lookup
-	// TODO: may need to do db or rpc call in the future
-	// hint: itemMeta.Chassis.BrandID == "id"
-	if strings.Contains(itemMeta.Mech.Slug, "zaibatsu") {
-		str = "Zaibatsu Heavy Industries"
-	} else if strings.Contains(itemMeta.Mech.Slug, "mountain") {
-		str = "Red Mountain Offworld Mining Corporation"
-	} else if strings.Contains(itemMeta.Mech.Slug, "boston") {
-		str = "Boston Cybernetics"
-	}
-	if len(str) > 0 {
-		atr = types.Attribute{
-			TraitType: "Brand",
-			Value:     str,
-		}
-		attributes = append(attributes, atr)
-	}
-
-	// model
-	str = itemMeta.Chassis.Model
-	if len(str) > 0 {
-		atr = types.Attribute{
-			TraitType: "Model",
-			Value:     str,
-		}
-		attributes = append(attributes, atr)
-	}
-	str = strconv.Itoa(itemMeta.Chassis.ShieldRechargeRate)
-
-	atr = types.Attribute{
-		TraitType: "Shield Recharge Rate",
-		Value:     str,
-	}
-	attributes = append(attributes, atr)
-
-	str = strconv.Itoa(itemMeta.Chassis.HealthRemaining)
-
-	atr = types.Attribute{
-		TraitType: "Health Remaining",
-		Value:     str,
-	}
-	attributes = append(attributes, atr)
-
-	str = strconv.Itoa(itemMeta.Chassis.TurretHardpoints)
-
-	atr = types.Attribute{
-		TraitType: "Turret Hardpoints",
-		Value:     str,
-	}
-	attributes = append(attributes, atr)
-
-	str = strconv.Itoa(itemMeta.Chassis.UtilitySlots)
-	atr = types.Attribute{
-		TraitType: "Utility Slots",
-		Value:     str,
-	}
-	attributes = append(attributes, atr)
-
-	str = strconv.Itoa(itemMeta.Chassis.Speed)
-	atr = types.Attribute{
-		TraitType: "Speed",
-		Value:     str,
-	}
-	attributes = append(attributes, atr)
-
-	str = strconv.Itoa(itemMeta.Chassis.MaxHitpoints)
-	atr = types.Attribute{
-		TraitType: "Max Hitpoints",
-		Value:     str,
-	}
-	attributes = append(attributes, atr)
-
-	str = strconv.Itoa(itemMeta.Chassis.MaxShield)
-	atr = types.Attribute{
-		TraitType: "Max Shield",
-		Value:     str,
-	}
-	attributes = append(attributes, atr)
-
-	// rarity
-	str = itemMeta.Mech.Tier
-	if len(str) > 0 {
-		atr = types.Attribute{
-			TraitType: "Rarity",
-			Value:     str,
-		}
-		attributes = append(attributes, atr)
-	}
-
-	// submodel
-	str = itemMeta.Chassis.Skin
-	if len(str) > 0 {
-		atr = types.Attribute{
-			TraitType: "Submodel",
-			Value:     str,
-		}
-		attributes = append(attributes, atr)
-	}
-
-	// torrent 1
-	str = itemMeta.Turrets.Key0.Label
-	if len(str) > 0 {
-		atr = types.Attribute{
-			TraitType: "Turret One",
-			Value:     str,
-		}
-		attributes = append(attributes, atr)
-	}
-
-	// torrent 2
-	str = itemMeta.Turrets.Key1.Label
-	if len(str) > 0 {
-		atr = types.Attribute{
-			TraitType: "Turret Two",
-			Value:     str,
-		}
-		attributes = append(attributes, atr)
-	}
-
-	// utility 1
-	str = itemMeta.Modules.Key0.Label
-	if len(str) > 0 {
-		atr = types.Attribute{
-			TraitType: "Utility One",
-			Value:     str,
-		}
-		attributes = append(attributes, atr)
-	}
-
-	// weapon 1
-	str = itemMeta.Weapons.Key0.Label
-	if len(str) > 0 {
-		atr = types.Attribute{
-			TraitType: "Weapon One",
-			Value:     str,
-		}
-		attributes = append(attributes, atr)
-	}
-
-	// weapon 2
-	str = itemMeta.Weapons.Key1.Label
-	if len(str) > 0 {
-		atr = types.Attribute{
-			TraitType: "Weapon Two",
-			Value:     str,
-		}
-		attributes = append(attributes, atr)
-	}
-
-	// insert attributes
-	if len(attributes) < 10 {
-		api.Log.Warn().Err(fmt.Errorf("invalid opensea attributes length")).Msg("opensea attributes less than 10")
-	}
-	datOpensea.Attributes = attributes
-
-	// turn into json string
-	jb, err = json.Marshal(datOpensea)
-	if err != nil {
-		return nil, err
-	}
+	// TODO: Vinnie FIX
+	//itemMeta := purchasedItemMetaData{}
+	//err = item.Data.Unmarshal(&itemMeta)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//datOpensea := openSeaMetaData{}
+	//datOpensea.Image = itemMeta.Mech.LargeImageURL
+	//datOpensea.Description = strings.Trim(itemMeta.Mech.Label, " ")
+	//datOpensea.Name = strings.Trim(
+	//	strings.Join(
+	//		[]string{itemMeta.Mech.Label, itemMeta.Mech.Name},
+	//		" ",
+	//	),
+	//	" ",
+	//)
+	//datOpensea.AnimationURL = itemMeta.Mech.AnimationURL
+	//
+	//// prepare attributes adding
+	//attributes := []types.AttributeOld{}
+	//var str string
+	//var atr types.AttributeOld
+	//
+	//// asset type
+	//str = itemMeta.Mech.AssetType
+	//if len(str) > 0 {
+	//	atr = types.AttributeOld{
+	//		TraitType: "UserAsset Type",
+	//		Value:     str,
+	//	}
+	//	attributes = append(attributes, atr)
+	//}
+	//
+	//// brand
+	//// HACK: cheat to do quick brand lookup
+	//// TODO: may need to do db or rpc call in the future
+	//// hint: itemMeta.Chassis.BrandID == "id"
+	//if strings.Contains(itemMeta.Mech.Slug, "zaibatsu") {
+	//	str = "Zaibatsu Heavy Industries"
+	//} else if strings.Contains(itemMeta.Mech.Slug, "mountain") {
+	//	str = "Red Mountain Offworld Mining Corporation"
+	//} else if strings.Contains(itemMeta.Mech.Slug, "boston") {
+	//	str = "Boston Cybernetics"
+	//}
+	//if len(str) > 0 {
+	//	atr = types.AttributeOld{
+	//		TraitType: "Brand",
+	//		Value:     str,
+	//	}
+	//	attributes = append(attributes, atr)
+	//}
+	//
+	//// model
+	//str = itemMeta.Chassis.Model
+	//if len(str) > 0 {
+	//	atr = types.AttributeOld{
+	//		TraitType: "Model",
+	//		Value:     str,
+	//	}
+	//	attributes = append(attributes, atr)
+	//}
+	//str = strconv.Itoa(itemMeta.Chassis.ShieldRechargeRate)
+	//
+	//atr = types.AttributeOld{
+	//	TraitType: "Shield Recharge Rate",
+	//	Value:     str,
+	//}
+	//attributes = append(attributes, atr)
+	//
+	//str = strconv.Itoa(itemMeta.Chassis.HealthRemaining)
+	//
+	//atr = types.AttributeOld{
+	//	TraitType: "Health Remaining",
+	//	Value:     str,
+	//}
+	//attributes = append(attributes, atr)
+	//
+	//str = strconv.Itoa(itemMeta.Chassis.TurretHardpoints)
+	//
+	//atr = types.AttributeOld{
+	//	TraitType: "Turret Hardpoints",
+	//	Value:     str,
+	//}
+	//attributes = append(attributes, atr)
+	//
+	//str = strconv.Itoa(itemMeta.Chassis.UtilitySlots)
+	//atr = types.AttributeOld{
+	//	TraitType: "Utility Slots",
+	//	Value:     str,
+	//}
+	//attributes = append(attributes, atr)
+	//
+	//str = strconv.Itoa(itemMeta.Chassis.Speed)
+	//atr = types.AttributeOld{
+	//	TraitType: "Speed",
+	//	Value:     str,
+	//}
+	//attributes = append(attributes, atr)
+	//
+	//str = strconv.Itoa(itemMeta.Chassis.MaxHitpoints)
+	//atr = types.AttributeOld{
+	//	TraitType: "Max Hitpoints",
+	//	Value:     str,
+	//}
+	//attributes = append(attributes, atr)
+	//
+	//str = strconv.Itoa(itemMeta.Chassis.MaxShield)
+	//atr = types.AttributeOld{
+	//	TraitType: "Max Shield",
+	//	Value:     str,
+	//}
+	//attributes = append(attributes, atr)
+	//
+	//// rarity
+	//str = itemMeta.Mech.Tier
+	//if len(str) > 0 {
+	//	atr = types.AttributeOld{
+	//		TraitType: "Rarity",
+	//		Value:     str,
+	//	}
+	//	attributes = append(attributes, atr)
+	//}
+	//
+	//// submodel
+	//str = itemMeta.Chassis.Skin
+	//if len(str) > 0 {
+	//	atr = types.AttributeOld{
+	//		TraitType: "Submodel",
+	//		Value:     str,
+	//	}
+	//	attributes = append(attributes, atr)
+	//}
+	//
+	//// torrent 1
+	//str = itemMeta.Turrets.Key0.Label
+	//if len(str) > 0 {
+	//	atr = types.AttributeOld{
+	//		TraitType: "Turret One",
+	//		Value:     str,
+	//	}
+	//	attributes = append(attributes, atr)
+	//}
+	//
+	//// torrent 2
+	//str = itemMeta.Turrets.Key1.Label
+	//if len(str) > 0 {
+	//	atr = types.AttributeOld{
+	//		TraitType: "Turret Two",
+	//		Value:     str,
+	//	}
+	//	attributes = append(attributes, atr)
+	//}
+	//
+	//// utility 1
+	//str = itemMeta.Modules.Key0.Label
+	//if len(str) > 0 {
+	//	atr = types.AttributeOld{
+	//		TraitType: "Utility One",
+	//		Value:     str,
+	//	}
+	//	attributes = append(attributes, atr)
+	//}
+	//
+	//// weapon 1
+	//str = itemMeta.Weapons.Key0.Label
+	//if len(str) > 0 {
+	//	atr = types.AttributeOld{
+	//		TraitType: "Weapon One",
+	//		Value:     str,
+	//	}
+	//	attributes = append(attributes, atr)
+	//}
+	//
+	//// weapon 2
+	//str = itemMeta.Weapons.Key1.Label
+	//if len(str) > 0 {
+	//	atr = types.AttributeOld{
+	//		TraitType: "Weapon Two",
+	//		Value:     str,
+	//	}
+	//	attributes = append(attributes, atr)
+	//}
+	//
+	//// insert attributes
+	//if len(attributes) < 10 {
+	//	api.Log.Warn().Err(fmt.Errorf("invalid opensea attributes length")).Msg("opensea attributes less than 10")
+	//}
+	//datOpensea.Attributes = attributes
+	//
+	//// turn into json string
+	//jb, err = json.Marshal(datOpensea)
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	return
 }

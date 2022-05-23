@@ -79,10 +79,11 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool, collectio
 			itemID := uuid.Must(uuid.FromString(purchasedItem.ID))
 			newOffchainOwnerID := uuid.FromStringOrNil(onChainOwner.ID)
 			l.Debug().Str("new_owner", newOffchainOwnerID.String()).Str("item_id", itemID.String()).Msg("setting new nft owner")
-			_, err = db.PurchasedItemSetOwner(itemID, newOffchainOwnerID)
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				return 0, 0, fmt.Errorf("set new nft owner: %w", err)
-			}
+			// TODO: Vinnie fix
+			//_, err = db.PurchasedItemSetOwner(itemID, newOffchainOwnerID)
+			//if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			//	return 0, 0, fmt.Errorf("set new nft owner: %w", err)
+			//}
 			updated++
 		}
 

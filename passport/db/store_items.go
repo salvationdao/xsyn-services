@@ -440,7 +440,6 @@ INNER JOIN (
 func StoreItemsList(
 	search string,
 	archived bool,
-	includedAssetHashes []string,
 	filter *ListFilterRequest,
 	attributeFilter *AttributeFilterRequest,
 	offset int,
@@ -457,17 +456,17 @@ func StoreItemsList(
 	if filter != nil {
 		filterConditions := []string{}
 		for _, f := range filter.Items {
-			column := StoreItemColumn(f.ColumnField)
+			column := StoreItemColumn(f.Column)
 			err := column.IsValid()
 			if err != nil {
 				return 0, nil, err
 			}
 
 			argIndex += 1
-			if f.ColumnField == string("collection_id") {
-				f.ColumnField = fmt.Sprintf("collection_id")
+			if f.Column == string("collection_id") {
+				f.Column = fmt.Sprintf("collection_id")
 			}
-			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, argIndex)
+			condition, value := GenerateListFilterSQL(f.Column, f.Value, f.Operator, argIndex)
 			if condition != "" {
 				filterConditions = append(filterConditions, condition)
 				args = append(args, value)

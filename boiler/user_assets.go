@@ -24,184 +24,212 @@ import (
 
 // UserAsset is an object representing the database table.
 type UserAsset struct {
-	ID              string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	CollectionID    string      `boiler:"collection_id" boil:"collection_id" json:"collection_id" toml:"collection_id" yaml:"collection_id"`
-	TokenID         int         `boiler:"token_id" boil:"token_id" json:"token_id" toml:"token_id" yaml:"token_id"`
-	Tier            string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	Hash            string      `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
-	OwnerID         string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	Data            types.JSON  `boiler:"data" boil:"data" json:"data" toml:"data" yaml:"data"`
-	Attributes      types.JSON  `boiler:"attributes" boil:"attributes" json:"attributes" toml:"attributes" yaml:"attributes"`
-	Name            string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	ImageURL        null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
-	ExternalURL     null.String `boiler:"external_url" boil:"external_url" json:"external_url,omitempty" toml:"external_url" yaml:"external_url,omitempty"`
-	Description     null.String `boiler:"description" boil:"description" json:"description,omitempty" toml:"description" yaml:"description,omitempty"`
-	BackgroundColor null.String `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
-	AnimationURL    null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
-	YoutubeURL      null.String `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
-	UnlockedAt      time.Time   `boiler:"unlocked_at" boil:"unlocked_at" json:"unlocked_at" toml:"unlocked_at" yaml:"unlocked_at"`
-	MintedAt        null.Time   `boiler:"minted_at" boil:"minted_at" json:"minted_at,omitempty" toml:"minted_at" yaml:"minted_at,omitempty"`
-	OnChainStatus   string      `boiler:"on_chain_status" boil:"on_chain_status" json:"on_chain_status" toml:"on_chain_status" yaml:"on_chain_status"`
-	XsynLocked      null.Bool   `boiler:"xsyn_locked" boil:"xsyn_locked" json:"xsyn_locked,omitempty" toml:"xsyn_locked" yaml:"xsyn_locked,omitempty"`
-	DeletedAt       null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	DataRefreshedAt time.Time   `boiler:"data_refreshed_at" boil:"data_refreshed_at" json:"data_refreshed_at" toml:"data_refreshed_at" yaml:"data_refreshed_at"`
-	UpdatedAt       time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt       time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	CollectionID     string      `boiler:"collection_id" boil:"collection_id" json:"collection_id" toml:"collection_id" yaml:"collection_id"`
+	TokenID          int64       `boiler:"token_id" boil:"token_id" json:"token_id" toml:"token_id" yaml:"token_id"`
+	Tier             string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	Hash             string      `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
+	OwnerID          string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	Data             types.JSON  `boiler:"data" boil:"data" json:"data" toml:"data" yaml:"data"`
+	Attributes       types.JSON  `boiler:"attributes" boil:"attributes" json:"attributes" toml:"attributes" yaml:"attributes"`
+	Name             string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
+	ImageURL         null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
+	ExternalURL      null.String `boiler:"external_url" boil:"external_url" json:"external_url,omitempty" toml:"external_url" yaml:"external_url,omitempty"`
+	CardAnimationURL null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
+	AvatarURL        null.String `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
+	LargeImageURL    null.String `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
+	Description      null.String `boiler:"description" boil:"description" json:"description,omitempty" toml:"description" yaml:"description,omitempty"`
+	BackgroundColor  null.String `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
+	AnimationURL     null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
+	YoutubeURL       null.String `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
+	UnlockedAt       time.Time   `boiler:"unlocked_at" boil:"unlocked_at" json:"unlocked_at" toml:"unlocked_at" yaml:"unlocked_at"`
+	MintedAt         null.Time   `boiler:"minted_at" boil:"minted_at" json:"minted_at,omitempty" toml:"minted_at" yaml:"minted_at,omitempty"`
+	OnChainStatus    string      `boiler:"on_chain_status" boil:"on_chain_status" json:"on_chain_status" toml:"on_chain_status" yaml:"on_chain_status"`
+	XsynLocked       null.Bool   `boiler:"xsyn_locked" boil:"xsyn_locked" json:"xsyn_locked,omitempty" toml:"xsyn_locked" yaml:"xsyn_locked,omitempty"`
+	DeletedAt        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	DataRefreshedAt  time.Time   `boiler:"data_refreshed_at" boil:"data_refreshed_at" json:"data_refreshed_at" toml:"data_refreshed_at" yaml:"data_refreshed_at"`
+	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ServiceLocked    null.String `boiler:"service_locked" boil:"service_locked" json:"service_locked,omitempty" toml:"service_locked" yaml:"service_locked,omitempty"`
 
 	R *userAssetR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userAssetL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var UserAssetColumns = struct {
-	ID              string
-	CollectionID    string
-	TokenID         string
-	Tier            string
-	Hash            string
-	OwnerID         string
-	Data            string
-	Attributes      string
-	Name            string
-	ImageURL        string
-	ExternalURL     string
-	Description     string
-	BackgroundColor string
-	AnimationURL    string
-	YoutubeURL      string
-	UnlockedAt      string
-	MintedAt        string
-	OnChainStatus   string
-	XsynLocked      string
-	DeletedAt       string
-	DataRefreshedAt string
-	UpdatedAt       string
-	CreatedAt       string
+	ID               string
+	CollectionID     string
+	TokenID          string
+	Tier             string
+	Hash             string
+	OwnerID          string
+	Data             string
+	Attributes       string
+	Name             string
+	ImageURL         string
+	ExternalURL      string
+	CardAnimationURL string
+	AvatarURL        string
+	LargeImageURL    string
+	Description      string
+	BackgroundColor  string
+	AnimationURL     string
+	YoutubeURL       string
+	UnlockedAt       string
+	MintedAt         string
+	OnChainStatus    string
+	XsynLocked       string
+	DeletedAt        string
+	DataRefreshedAt  string
+	UpdatedAt        string
+	CreatedAt        string
+	ServiceLocked    string
 }{
-	ID:              "id",
-	CollectionID:    "collection_id",
-	TokenID:         "token_id",
-	Tier:            "tier",
-	Hash:            "hash",
-	OwnerID:         "owner_id",
-	Data:            "data",
-	Attributes:      "attributes",
-	Name:            "name",
-	ImageURL:        "image_url",
-	ExternalURL:     "external_url",
-	Description:     "description",
-	BackgroundColor: "background_color",
-	AnimationURL:    "animation_url",
-	YoutubeURL:      "youtube_url",
-	UnlockedAt:      "unlocked_at",
-	MintedAt:        "minted_at",
-	OnChainStatus:   "on_chain_status",
-	XsynLocked:      "xsyn_locked",
-	DeletedAt:       "deleted_at",
-	DataRefreshedAt: "data_refreshed_at",
-	UpdatedAt:       "updated_at",
-	CreatedAt:       "created_at",
+	ID:               "id",
+	CollectionID:     "collection_id",
+	TokenID:          "token_id",
+	Tier:             "tier",
+	Hash:             "hash",
+	OwnerID:          "owner_id",
+	Data:             "data",
+	Attributes:       "attributes",
+	Name:             "name",
+	ImageURL:         "image_url",
+	ExternalURL:      "external_url",
+	CardAnimationURL: "card_animation_url",
+	AvatarURL:        "avatar_url",
+	LargeImageURL:    "large_image_url",
+	Description:      "description",
+	BackgroundColor:  "background_color",
+	AnimationURL:     "animation_url",
+	YoutubeURL:       "youtube_url",
+	UnlockedAt:       "unlocked_at",
+	MintedAt:         "minted_at",
+	OnChainStatus:    "on_chain_status",
+	XsynLocked:       "xsyn_locked",
+	DeletedAt:        "deleted_at",
+	DataRefreshedAt:  "data_refreshed_at",
+	UpdatedAt:        "updated_at",
+	CreatedAt:        "created_at",
+	ServiceLocked:    "service_locked",
 }
 
 var UserAssetTableColumns = struct {
-	ID              string
-	CollectionID    string
-	TokenID         string
-	Tier            string
-	Hash            string
-	OwnerID         string
-	Data            string
-	Attributes      string
-	Name            string
-	ImageURL        string
-	ExternalURL     string
-	Description     string
-	BackgroundColor string
-	AnimationURL    string
-	YoutubeURL      string
-	UnlockedAt      string
-	MintedAt        string
-	OnChainStatus   string
-	XsynLocked      string
-	DeletedAt       string
-	DataRefreshedAt string
-	UpdatedAt       string
-	CreatedAt       string
+	ID               string
+	CollectionID     string
+	TokenID          string
+	Tier             string
+	Hash             string
+	OwnerID          string
+	Data             string
+	Attributes       string
+	Name             string
+	ImageURL         string
+	ExternalURL      string
+	CardAnimationURL string
+	AvatarURL        string
+	LargeImageURL    string
+	Description      string
+	BackgroundColor  string
+	AnimationURL     string
+	YoutubeURL       string
+	UnlockedAt       string
+	MintedAt         string
+	OnChainStatus    string
+	XsynLocked       string
+	DeletedAt        string
+	DataRefreshedAt  string
+	UpdatedAt        string
+	CreatedAt        string
+	ServiceLocked    string
 }{
-	ID:              "user_assets.id",
-	CollectionID:    "user_assets.collection_id",
-	TokenID:         "user_assets.token_id",
-	Tier:            "user_assets.tier",
-	Hash:            "user_assets.hash",
-	OwnerID:         "user_assets.owner_id",
-	Data:            "user_assets.data",
-	Attributes:      "user_assets.attributes",
-	Name:            "user_assets.name",
-	ImageURL:        "user_assets.image_url",
-	ExternalURL:     "user_assets.external_url",
-	Description:     "user_assets.description",
-	BackgroundColor: "user_assets.background_color",
-	AnimationURL:    "user_assets.animation_url",
-	YoutubeURL:      "user_assets.youtube_url",
-	UnlockedAt:      "user_assets.unlocked_at",
-	MintedAt:        "user_assets.minted_at",
-	OnChainStatus:   "user_assets.on_chain_status",
-	XsynLocked:      "user_assets.xsyn_locked",
-	DeletedAt:       "user_assets.deleted_at",
-	DataRefreshedAt: "user_assets.data_refreshed_at",
-	UpdatedAt:       "user_assets.updated_at",
-	CreatedAt:       "user_assets.created_at",
+	ID:               "user_assets.id",
+	CollectionID:     "user_assets.collection_id",
+	TokenID:          "user_assets.token_id",
+	Tier:             "user_assets.tier",
+	Hash:             "user_assets.hash",
+	OwnerID:          "user_assets.owner_id",
+	Data:             "user_assets.data",
+	Attributes:       "user_assets.attributes",
+	Name:             "user_assets.name",
+	ImageURL:         "user_assets.image_url",
+	ExternalURL:      "user_assets.external_url",
+	CardAnimationURL: "user_assets.card_animation_url",
+	AvatarURL:        "user_assets.avatar_url",
+	LargeImageURL:    "user_assets.large_image_url",
+	Description:      "user_assets.description",
+	BackgroundColor:  "user_assets.background_color",
+	AnimationURL:     "user_assets.animation_url",
+	YoutubeURL:       "user_assets.youtube_url",
+	UnlockedAt:       "user_assets.unlocked_at",
+	MintedAt:         "user_assets.minted_at",
+	OnChainStatus:    "user_assets.on_chain_status",
+	XsynLocked:       "user_assets.xsyn_locked",
+	DeletedAt:        "user_assets.deleted_at",
+	DataRefreshedAt:  "user_assets.data_refreshed_at",
+	UpdatedAt:        "user_assets.updated_at",
+	CreatedAt:        "user_assets.created_at",
+	ServiceLocked:    "user_assets.service_locked",
 }
 
 // Generated where
 
 var UserAssetWhere = struct {
-	ID              whereHelperstring
-	CollectionID    whereHelperstring
-	TokenID         whereHelperint
-	Tier            whereHelperstring
-	Hash            whereHelperstring
-	OwnerID         whereHelperstring
-	Data            whereHelpertypes_JSON
-	Attributes      whereHelpertypes_JSON
-	Name            whereHelperstring
-	ImageURL        whereHelpernull_String
-	ExternalURL     whereHelpernull_String
-	Description     whereHelpernull_String
-	BackgroundColor whereHelpernull_String
-	AnimationURL    whereHelpernull_String
-	YoutubeURL      whereHelpernull_String
-	UnlockedAt      whereHelpertime_Time
-	MintedAt        whereHelpernull_Time
-	OnChainStatus   whereHelperstring
-	XsynLocked      whereHelpernull_Bool
-	DeletedAt       whereHelpernull_Time
-	DataRefreshedAt whereHelpertime_Time
-	UpdatedAt       whereHelpertime_Time
-	CreatedAt       whereHelpertime_Time
+	ID               whereHelperstring
+	CollectionID     whereHelperstring
+	TokenID          whereHelperint64
+	Tier             whereHelperstring
+	Hash             whereHelperstring
+	OwnerID          whereHelperstring
+	Data             whereHelpertypes_JSON
+	Attributes       whereHelpertypes_JSON
+	Name             whereHelperstring
+	ImageURL         whereHelpernull_String
+	ExternalURL      whereHelpernull_String
+	CardAnimationURL whereHelpernull_String
+	AvatarURL        whereHelpernull_String
+	LargeImageURL    whereHelpernull_String
+	Description      whereHelpernull_String
+	BackgroundColor  whereHelpernull_String
+	AnimationURL     whereHelpernull_String
+	YoutubeURL       whereHelpernull_String
+	UnlockedAt       whereHelpertime_Time
+	MintedAt         whereHelpernull_Time
+	OnChainStatus    whereHelperstring
+	XsynLocked       whereHelpernull_Bool
+	DeletedAt        whereHelpernull_Time
+	DataRefreshedAt  whereHelpertime_Time
+	UpdatedAt        whereHelpertime_Time
+	CreatedAt        whereHelpertime_Time
+	ServiceLocked    whereHelpernull_String
 }{
-	ID:              whereHelperstring{field: "\"user_assets\".\"id\""},
-	CollectionID:    whereHelperstring{field: "\"user_assets\".\"collection_id\""},
-	TokenID:         whereHelperint{field: "\"user_assets\".\"token_id\""},
-	Tier:            whereHelperstring{field: "\"user_assets\".\"tier\""},
-	Hash:            whereHelperstring{field: "\"user_assets\".\"hash\""},
-	OwnerID:         whereHelperstring{field: "\"user_assets\".\"owner_id\""},
-	Data:            whereHelpertypes_JSON{field: "\"user_assets\".\"data\""},
-	Attributes:      whereHelpertypes_JSON{field: "\"user_assets\".\"attributes\""},
-	Name:            whereHelperstring{field: "\"user_assets\".\"name\""},
-	ImageURL:        whereHelpernull_String{field: "\"user_assets\".\"image_url\""},
-	ExternalURL:     whereHelpernull_String{field: "\"user_assets\".\"external_url\""},
-	Description:     whereHelpernull_String{field: "\"user_assets\".\"description\""},
-	BackgroundColor: whereHelpernull_String{field: "\"user_assets\".\"background_color\""},
-	AnimationURL:    whereHelpernull_String{field: "\"user_assets\".\"animation_url\""},
-	YoutubeURL:      whereHelpernull_String{field: "\"user_assets\".\"youtube_url\""},
-	UnlockedAt:      whereHelpertime_Time{field: "\"user_assets\".\"unlocked_at\""},
-	MintedAt:        whereHelpernull_Time{field: "\"user_assets\".\"minted_at\""},
-	OnChainStatus:   whereHelperstring{field: "\"user_assets\".\"on_chain_status\""},
-	XsynLocked:      whereHelpernull_Bool{field: "\"user_assets\".\"xsyn_locked\""},
-	DeletedAt:       whereHelpernull_Time{field: "\"user_assets\".\"deleted_at\""},
-	DataRefreshedAt: whereHelpertime_Time{field: "\"user_assets\".\"data_refreshed_at\""},
-	UpdatedAt:       whereHelpertime_Time{field: "\"user_assets\".\"updated_at\""},
-	CreatedAt:       whereHelpertime_Time{field: "\"user_assets\".\"created_at\""},
+	ID:               whereHelperstring{field: "\"user_assets\".\"id\""},
+	CollectionID:     whereHelperstring{field: "\"user_assets\".\"collection_id\""},
+	TokenID:          whereHelperint64{field: "\"user_assets\".\"token_id\""},
+	Tier:             whereHelperstring{field: "\"user_assets\".\"tier\""},
+	Hash:             whereHelperstring{field: "\"user_assets\".\"hash\""},
+	OwnerID:          whereHelperstring{field: "\"user_assets\".\"owner_id\""},
+	Data:             whereHelpertypes_JSON{field: "\"user_assets\".\"data\""},
+	Attributes:       whereHelpertypes_JSON{field: "\"user_assets\".\"attributes\""},
+	Name:             whereHelperstring{field: "\"user_assets\".\"name\""},
+	ImageURL:         whereHelpernull_String{field: "\"user_assets\".\"image_url\""},
+	ExternalURL:      whereHelpernull_String{field: "\"user_assets\".\"external_url\""},
+	CardAnimationURL: whereHelpernull_String{field: "\"user_assets\".\"card_animation_url\""},
+	AvatarURL:        whereHelpernull_String{field: "\"user_assets\".\"avatar_url\""},
+	LargeImageURL:    whereHelpernull_String{field: "\"user_assets\".\"large_image_url\""},
+	Description:      whereHelpernull_String{field: "\"user_assets\".\"description\""},
+	BackgroundColor:  whereHelpernull_String{field: "\"user_assets\".\"background_color\""},
+	AnimationURL:     whereHelpernull_String{field: "\"user_assets\".\"animation_url\""},
+	YoutubeURL:       whereHelpernull_String{field: "\"user_assets\".\"youtube_url\""},
+	UnlockedAt:       whereHelpertime_Time{field: "\"user_assets\".\"unlocked_at\""},
+	MintedAt:         whereHelpernull_Time{field: "\"user_assets\".\"minted_at\""},
+	OnChainStatus:    whereHelperstring{field: "\"user_assets\".\"on_chain_status\""},
+	XsynLocked:       whereHelpernull_Bool{field: "\"user_assets\".\"xsyn_locked\""},
+	DeletedAt:        whereHelpernull_Time{field: "\"user_assets\".\"deleted_at\""},
+	DataRefreshedAt:  whereHelpertime_Time{field: "\"user_assets\".\"data_refreshed_at\""},
+	UpdatedAt:        whereHelpertime_Time{field: "\"user_assets\".\"updated_at\""},
+	CreatedAt:        whereHelpertime_Time{field: "\"user_assets\".\"created_at\""},
+	ServiceLocked:    whereHelpernull_String{field: "\"user_assets\".\"service_locked\""},
 }
 
 // UserAssetRels is where relationship names are stored.
@@ -228,9 +256,9 @@ func (*userAssetR) NewStruct() *userAssetR {
 type userAssetL struct{}
 
 var (
-	userAssetAllColumns            = []string{"id", "collection_id", "token_id", "tier", "hash", "owner_id", "data", "attributes", "name", "image_url", "external_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "on_chain_status", "xsyn_locked", "deleted_at", "data_refreshed_at", "updated_at", "created_at"}
-	userAssetColumnsWithoutDefault = []string{"collection_id", "token_id", "tier", "hash", "owner_id", "data", "attributes", "name", "image_url", "external_url", "description", "background_color", "animation_url", "youtube_url", "minted_at", "deleted_at"}
-	userAssetColumnsWithDefault    = []string{"id", "unlocked_at", "on_chain_status", "xsyn_locked", "data_refreshed_at", "updated_at", "created_at"}
+	userAssetAllColumns            = []string{"id", "collection_id", "token_id", "tier", "hash", "owner_id", "data", "attributes", "name", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "on_chain_status", "xsyn_locked", "deleted_at", "data_refreshed_at", "updated_at", "created_at", "service_locked"}
+	userAssetColumnsWithoutDefault = []string{"collection_id", "token_id", "tier", "hash", "owner_id", "name", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "minted_at", "deleted_at", "service_locked"}
+	userAssetColumnsWithDefault    = []string{"id", "data", "attributes", "unlocked_at", "on_chain_status", "xsyn_locked", "data_refreshed_at", "updated_at", "created_at"}
 	userAssetPrimaryKeyColumns     = []string{"id"}
 )
 

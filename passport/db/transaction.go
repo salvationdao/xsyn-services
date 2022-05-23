@@ -151,15 +151,15 @@ func TransactionList(
 	if filter != nil {
 		filterConditions := []string{}
 		for _, f := range filter.Items {
-			column := TransactionColumn(f.ColumnField)
+			column := TransactionColumn(f.Column)
 			err := column.IsValid()
 			if err != nil {
 				return 0, nil, err
 			}
 
-			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, argIndex)
+			condition, value := GenerateListFilterSQL(f.Column, f.Value, f.Operator, argIndex)
 			if condition != "" {
-				switch f.OperatorValue {
+				switch f.Operator {
 				case OperatorValueTypeIsNull, OperatorValueTypeIsNotNull:
 					break
 				default:
