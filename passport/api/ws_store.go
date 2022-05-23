@@ -234,9 +234,9 @@ func (sc *StoreControllerWS) StoreItemHandler(ctx context.Context, user *types.U
 		return terror.Error(fmt.Errorf("user has no faction"), "Please select a syndicate to view this item.")
 	}
 
-	if user.FactionID.String != item.FactionID {
-		return terror.Warn(fmt.Errorf("user has wrong faction, need %s, got %s", item.FactionID, user.FactionID), "You do not belong to the correct faction.")
-	}
+	//if user.FactionID.String != item.FactionID {
+	//	return terror.Warn(fmt.Errorf("user has wrong faction, need %s, got %s", item.FactionID, user.FactionID), "You do not belong to the correct faction.")
+	//}
 
 	supsAsCents, err := db.SupInCents()
 	if err != nil {

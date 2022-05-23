@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/volatiletech/null/v8"
 	"net/http"
 	"strconv"
@@ -11,6 +10,7 @@ import (
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
+	"xsyn-services/passport/rpcclient"
 	"xsyn-services/types"
 
 	"github.com/go-chi/chi/v5"
@@ -75,14 +75,20 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 
 	// if collection is genesis or limited
 	if collection.Name == "Supremacy Genesis" || collection.Name == "Supremacy Limited Release" && collection.MintContract.Valid {
-		// TODO: create gameserver rpc call to get genesis orl imited
-		item, err := db.PurchasedItemByMintContractAndTokenIDDEPRECATE(common.HexToAddress(collection.MintContract.String), tokenID)
+		asset, err := rpcclient.GenesisOrLimitedMech(collection.Slug, tokenID)
 		if err != nil {
-			return http.StatusBadRequest, terror.Warn(err, "failed to get item")
+			return http.StatusBadRequest, terror.Warn(err, "failed to get item from gameserver")
 		}
-		openseaAsset, err = purchasedItemToOpenseaMetaData(api, item)
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err, "Failed to convert to opensea metadata")
+
+		openseaAsset = &openSeaMetaData{
+			Image:           asset.ImageURL.String,
+			ExternalURL:     asset.ExternalURL.String,
+			Description:     asset.Description.String,
+			Name:            asset.Name,
+			Attributes:      asset.Attributes,
+			BackgroundColor: asset.BackgroundColor.String,
+			AnimationURL:    asset.AnimationURL.String,
+			YoutubeURL:      asset.YoutubeURL.String,
 		}
 	} else {
 		asset, err := boiler.UserAssets(boiler.UserAssetWhere.CollectionID.EQ(collection.ID), boiler.UserAssetWhere.TokenID.EQ(int64(tokenID))).One(passdb.StdConn)
@@ -108,8 +114,10 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 			AnimationURL:    asset.AnimationURL.String,
 			YoutubeURL:      asset.YoutubeURL.String,
 		}
-
 	}
+
+
+
 
 	jsonObject, err := json.Marshal(openseaAsset)
 	if err != nil {
@@ -125,15 +133,15 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 
 // openSeaMetaData data structure, reference https://docs.opensea.io/docs/metadata-standards
 type openSeaMetaData struct {
-	Image           string            `json:"image,omitempty"`            // image url, to be cached by opensea
-	ImageData       string            `json:"image_data,omitempty"`       // raw image svg
-	ExternalURL     string            `json:"external_url,omitempty"`     // direct url link to image asset
-	Description     string            `json:"description,omitempty"`      // item description
-	Name            string            `json:"name,omitempty"`             // item name
-	Attributes      []*types.Attribute `json:"attributes,omitempty"`       // item attributes, custom    TODO
-	BackgroundColor string            `json:"background_color,omitempty"` // openseas page background
-	AnimationURL    string            `json:"animation_url,omitempty"`    // direct url link to video asset
-	YoutubeURL      string            `json:"youtube_url,omitempty"`      // url to youtube video
+	Image           string            `json:"image"`            // image url, to be cached by opensea
+	ImageData       string            `json:"image_data"`       // raw image svg
+	ExternalURL     string            `json:"external_url"`     // direct url link to image asset
+	Description     string            `json:"description"`      // item description
+	Name            string            `json:"name"`             // item name
+	Attributes      []*types.Attribute `json:"attributes"`       // item attributes, custom    TODO
+	BackgroundColor string            `json:"background_color"` // openseas page background
+	AnimationURL    string            `json:"animation_url"`    // direct url link to video asset
+	YoutubeURL      string            `json:"youtube_url"`      // url to youtube video
 }
 
 // purchasedItemMetaData shape of the purchased_items.metadata in the database
