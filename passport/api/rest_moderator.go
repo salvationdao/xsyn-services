@@ -19,7 +19,6 @@ func ModeratorRoutes() chi.Router {
 	r.Get("/chat_timeout_userid/{userID}/{minutes}", WithError(WithModerator(ChatTimeoutUserID)))
 	r.Get("/rename_ban_username/{username}/{banned}", WithError(WithModerator(RenameBanUsername)))
 	r.Get("/rename_ban_userID/{userID}/{banned}", WithError(WithModerator(RenameBanUserID)))
-	r.Get("/rename_asset/{hash}/{newName}", WithError(WithModerator(RenameAsset)))
 	//r.Get("/purchased_items", WithError(WithModerator(ListPurchasedItems)))  // TODO: Vinnie FIX
 	r.Get("/store_items", WithError(WithModerator(ListStoreItems)))
 

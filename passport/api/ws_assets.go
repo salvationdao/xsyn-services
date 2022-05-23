@@ -3,9 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"xsyn-services/boiler"
-	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/db"
 	"xsyn-services/types"
 
@@ -13,7 +11,6 @@ import (
 
 	"github.com/ninja-software/log_helpers"
 
-	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 )
@@ -105,36 +102,36 @@ type AssetUpdatedSubscribeResponse struct {
 const HubKeyAssetSubscribe = "ASSET:SUBSCRIBE"
 
 func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	errMsg := "Issue subscribing to asset updates, try again or contact support."
-	req := &AssetUpdatedSubscribeRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	asset, err := db.PurchasedItemByHash(req.Payload.AssetHash)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	if asset == nil {
-		return terror.Error(fmt.Errorf("asset doesn't exist"), "UserAsset doesn't exist.")
-	}
-
-	owner, err := users.ID(asset.OwnerID)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	collection, err := db.Collection(uuid.Must(uuid.FromString(asset.CollectionID)))
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-	reply(&AssetUpdatedSubscribeResponse{
-		PurchasedItem:  asset,
-		OwnerUsername:  owner.Username,
-		CollectionSlug: collection.Slug,
-		HostURL:        ac.API.GameserverHostUrl,
-	})
+	//errMsg := "Issue subscribing to asset updates, try again or contact support."
+	//req := &AssetUpdatedSubscribeRequest{}
+	//err := json.Unmarshal(payload, req)
+	//if err != nil {
+	//	return terror.Error(err, "Invalid request received.")
+	//}
+	//
+	//asset, err := db.PurchasedItemByHashDEPRECATE(req.Payload.AssetHash)
+	//if err != nil {
+	//	return terror.Error(err, errMsg)
+	//}
+	//
+	//if asset == nil {
+	//	return terror.Error(fmt.Errorf("asset doesn't exist"), "UserAsset doesn't exist.")
+	//}
+	//
+	//owner, err := users.ID(asset.OwnerID)
+	//if err != nil {
+	//	return terror.Error(err, errMsg)
+	//}
+	//
+	//collection, err := db.Collection(uuid.Must(uuid.FromString(asset.CollectionID)))
+	//if err != nil {
+	//	return terror.Error(err, errMsg)
+	//}
+	//reply(&AssetUpdatedSubscribeResponse{
+	//	PurchasedItem:  asset,
+	//	OwnerUsername:  owner.Username,
+	//	CollectionSlug: collection.Slug,
+	//	HostURL:        ac.API.GameserverHostUrl,
+	//})
 	return nil
 }

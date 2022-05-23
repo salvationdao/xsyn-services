@@ -55,15 +55,15 @@ func Purchase(
 		return terror.Error(fmt.Errorf("cannot purchase whitelist item or lootbox"), "Item currently not available.")
 	}
 
-	//if storeItem.Tier == db.TierMega {
-	//	count, err := db.PurchasedItemsByOwnerIDAndTier(uuid.UUID(user.ID), db.TierMega)
-	//	if err != nil {
-	//		return terror.Error(err)
-	//	}
-	//	if count >= 2 {
-	//		return terror.Warn(fmt.Errorf("user bought 2 starter mechs"), "You have reached your 2 Mega War Machine limit.")
-	//	}
-	//}
+	if storeItem.Tier == db.TierMega {
+		count, err := db.PurchasedItemsByOwnerIDAndTierDEPRECATE(user.ID, db.TierMega)
+		if err != nil {
+			return terror.Error(err)
+		}
+		if count >= 2 {
+			return terror.Warn(fmt.Errorf("user bought 2 starter mechs"), "You have reached your 2 Mega War Machine limit.")
+		}
+	}
 
 	template := &rpcclient.TemplateContainer{}
 	err = storeItem.Data.Unmarshal(template)

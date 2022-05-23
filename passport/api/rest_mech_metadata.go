@@ -34,7 +34,7 @@ func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 
 	// Get asset via token id
 
-	item, err := db.PurchasedItemByHash(hash)
+	item, err := db.PurchasedItemByHashDEPRECATE(hash)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset")
 	}
@@ -47,7 +47,7 @@ func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 	return http.StatusOK, nil
 }
 
-// AssetGet grabs asset's metadata via token id
+// AssetGetByCollectionAndTokenID grabs asset's metadata via token id
 func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Request) (int, error) {
 	collectionAddress := chi.URLParam(r, "collection_address")
 	if collectionAddress == "" {
@@ -61,7 +61,7 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 	if err != nil {
 		return http.StatusBadRequest, terror.Warn(err, "get asset from db")
 	}
-	item, err := db.PurchasedItemByMintContractAndTokenID(common.HexToAddress(collectionAddress), tokenID)
+	item, err := db.PurchasedItemByMintContractAndTokenIDDEPRECATE(common.HexToAddress(collectionAddress), tokenID)
 	if err != nil {
 		return http.StatusBadRequest, terror.Warn(err, "get asset from db")
 	}
@@ -106,7 +106,7 @@ func purchasedItemToOpenseaMetaData(api *API, item *boiler.PurchasedItemsOld) (j
 	if item == nil {
 		return nil, terror.Error(fmt.Errorf("item is nil"))
 	}
-	// TODO: Vinnie FIX
+	//TODO: Vinnie FIX
 	//itemMeta := purchasedItemMetaData{}
 	//err = item.Data.Unmarshal(&itemMeta)
 	//if err != nil {

@@ -2,10 +2,17 @@ package db
 
 import (
 	"fmt"
+	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/types"
+	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
-	"xsyn-services/types"
+	"xsyn-services/passport/passlog"
+	"xsyn-services/passport/rpcclient"
+	xsynTypes "xsyn-services/types"
 )
 
 func IsUserAssetColumn(col string) bool {
@@ -39,7 +46,7 @@ func IsUserAssetColumn(col string) bool {
 
 
 type AssetListOpts struct {
-	UserID              types.UserID
+	UserID              xsynTypes.UserID
 	Sort              *ListSortRequest
 	Filter              *ListFilterRequest
 	AttributeFilter     *AttributeFilterRequest
@@ -49,7 +56,7 @@ type AssetListOpts struct {
 	Page                int
 }
 
-func AssetList(opts *AssetListOpts) (int64, []*types.UserAsset, error) {
+func AssetList(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 	var queryMods []qm.QueryMod
 
 	// create the where owner id = clause
@@ -113,5 +120,63 @@ func AssetList(opts *AssetListOpts) (int64, []*types.UserAsset, error) {
 		return 0, nil, err
 	}
 
-	return total, types.UserAssetsFromBoiler(boilerAssets), nil
+	return total, xsynTypes.UserAssetsFromBoiler(boilerAssets), nil
+}
+
+func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTypes.UserAsset, error) {
+	passlog.L.Trace().Str("fn", "PurchasedItemRegister").Msg("db func")
+	req := rpcclient.TemplateRegisterReq{TemplateID: storeItemID, OwnerID: ownerID}
+	resp := &rpcclient.TemplateRegisterResp{}
+	err := rpcclient.Client.Call("S.TemplateRegister", req, resp)
+	if err != nil {
+		return nil, terror.Error(err,  "communication to supremacy has failed")
+	}
+	var newItems []*xsynTypes.UserAsset
+	// for each asset, assign it on our database
+	for _, itm := range resp.Assets {
+		// get collection
+		collection, err := CollectionBySlug(itm.CollectionSlug)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+
+		var jsonAtrribs types.JSON
+		err = jsonAtrribs.Marshal(itm.Attributes)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+
+		boilerAsset := &boiler.UserAsset{
+			CollectionID:    collection.ID,
+			ID:              itm.ID,
+			TokenID: itm.TokenID,
+			Tier:            itm.Tier,
+			Hash:            itm.Hash,
+			OwnerID:         itm.OwnerID,
+			Data:            itm.Data,
+			Attributes:      jsonAtrribs,
+			Name:            itm.Name,
+			ImageURL:        itm.ImageURL,
+			ExternalURL:     itm.ExternalURL,
+			Description:     itm.Description,
+			BackgroundColor: itm.BackgroundColor,
+			AnimationURL: itm.AnimationURL,
+			YoutubeURL: itm.YoutubeURL,
+			UnlockedAt: itm.UnlockedAt,
+			MintedAt: itm.MintedAt,
+			OnChainStatus: itm.OnChainStatus,
+			XsynLocked: itm.XsynLocked,
+			DataRefreshedAt: time.Now(),
+		}
+
+		err = boilerAsset.Insert(passdb.StdConn, boil.Infer())
+		if err != nil {
+			passlog.L.Error().Interface("req", req).Err(err).Msg("failed to register new asset - can't insert asset")
+			return nil, err
+		}
+
+		newItems = append(newItems, xsynTypes.UserAssetFromBoiler(boilerAsset))
+	}
+
+	return newItems, nil
 }
