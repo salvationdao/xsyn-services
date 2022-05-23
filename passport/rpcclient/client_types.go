@@ -359,13 +359,6 @@ type BlueprintUtilityAntiMissile struct {
 	CreatedAt          time.Time `json:"created_at"`
 }
 
-type MechsByOwnerIDReq struct {
-	OwnerID uuid.UUID
-}
-type MechsByOwnerIDResp struct {
-	MechContainers []*Mech
-}
-
 type MechReq struct {
 	MechID uuid.UUID
 }
@@ -387,14 +380,6 @@ type TemplateRegisterReq struct {
 
 type TemplateRegisterResp struct {
 	Assets []*XsynAsset
-}
-
-type MechSetNameReq struct {
-	MechID uuid.UUID
-	Name   string
-}
-type MechSetNameResp struct {
-	MechContainer *Mech
 }
 
 type MechSetOwnerReq struct {
