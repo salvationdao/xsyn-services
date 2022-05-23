@@ -64,9 +64,10 @@ var assets []*UserAsset
 return assets
 }
 
+
 func UserAssetFromBoiler(us *boiler.UserAsset) *UserAsset {
-	var attribes []*Attribute
-	 err := us.Attributes.Unmarshal(attribes)
+	attribes := []*Attribute{}
+	 err := us.Attributes.Unmarshal(&attribes)
 	 if err != nil {
 		 passlog.L.Error().Err(err).Interface("us.Attributes", us.Attributes).Msg("failed to unmarshall attributes")
 	 }

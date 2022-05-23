@@ -135,8 +135,8 @@ func (sc *StoreControllerWS) LootboxAmountHandler(ctx context.Context, user *typ
 	}
 
 
-	reply(0)
 
+	reply(-1)
 	return nil
 }
 
@@ -171,7 +171,7 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, user *types.U
 	}
 
 	if !user.FactionID.Valid {
-		return terror.Error(fmt.Errorf("user not enlisted: %s", user.ID), "User is not enlisted, enlist in a faction to continue.")
+		return terror.Error(fmt.Errorf("user not enlisted: %s", user.ID), "User is not enlisted, enlist in Supremacy to purchase from this store.")
 	}
 
 	offset := 0

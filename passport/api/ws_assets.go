@@ -42,7 +42,7 @@ func NewAssetController(log *zerolog.Logger, api *API) *AssetController {
 type AssetListRequest struct {
 	Payload struct {
 		UserID              types.UserID               `json:"user_id"`
-		Sort              *db.ListSortRequest                     `json:"sort,omitempty"`
+		Sort              	*db.ListSortRequest                     `json:"sort,omitempty"`
 		Filter              *db.ListFilterRequest      `json:"filter,omitempty"`
 		AttributeFilter     *db.AttributeFilterRequest `json:"attribute_filter,omitempty"`
 		AssetType           string                     `json:"asset_type"`
