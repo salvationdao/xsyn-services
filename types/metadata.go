@@ -19,13 +19,6 @@ type Collection struct {
 	StakeContract string       `json:"stake_contract" db:"stake_contract"`
 }
 
-type AttributeOld struct {
-	DisplayType DisplayType `json:"display_type,omitempty"`
-	TraitType   string      `json:"trait_type"`
-	TokenID     uint64      `json:"token_id,omitempty"`
-	Value       interface{} `json:"value"` // string or number only
-}
-
 
 
 // StoreItem holds data for a nft that is listed on the marketplace
@@ -45,7 +38,7 @@ type StoreItem struct {
 	Image                string              `json:"image" db:"image"`
 	ImageAvatar          string              `json:"image_avatar" db:"image_avatar"`
 	AnimationURL         string              `json:"animation_url" db:"animation_url"`
-	Attributes           []*AttributeOld     `json:"attributes" db:"attributes"`
+	Attributes           []*Attribute     `json:"attributes" db:"attributes"`
 	AdditionalMetadata   *AdditionalMetadata `json:"additional_metadata" db:"additional_metadata"`
 	UsdCentCost          int                 `json:"usd_cent_cost" db:"usd_cent_cost"`
 	AmountSold           int                 `json:"amount_sold" db:"amount_sold"`
@@ -75,7 +68,7 @@ type XsynMetadata struct {
 	ImageAvatar        string                `json:"image_avatar" db:"image_avatar"`
 	AnimationURL       string                `json:"animation_url" db:"animation_url"`
 	Durability         int                   `json:"durability" db:"durability"`
-	Attributes         []*AttributeOld       `json:"attributes" db:"attributes"`
+	Attributes         []*Attribute       `json:"attributes" db:"attributes"`
 	AdditionalMetadata []*AdditionalMetadata `json:"additional_metadata" db:"additional_metadata"`
 	DeletedAt          *time.Time            `json:"deleted_at" db:"deleted_at"`
 	FrozenAt           *time.Time            `json:"frozen_at" db:"frozen_at"`
@@ -133,7 +126,7 @@ type AdditionalMetadata struct {
 	Description string       `json:"description" db:"description"`
 	ExternalUrl string       `json:"external_url" db:"external_url"`
 	Image       string          `json:"image" db:"image"`
-	Attributes  []*AttributeOld `json:"attributes" db:"attributes"`
+	Attributes  []*Attribute `json:"attributes" db:"attributes"`
 	DeletedAt   *time.Time      `json:"deleted_at" db:"deleted_at"`
 	UpdatedAt   time.Time    `json:"updated_at" db:"updated_at"`
 	CreatedAt   time.Time    `json:"created_at" db:"created_at"`
