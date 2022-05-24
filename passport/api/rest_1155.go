@@ -8,10 +8,14 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/supremacy-bridge/bridge"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math/big"
 	"net/http"
 	"time"
+	"xsyn-services/boiler"
 	"xsyn-services/passport/api/users"
+	"xsyn-services/passport/passdb"
 )
 
 func (api *API) Withdraw1155(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -75,7 +79,38 @@ func (api *API) Withdraw1155(w http.ResponseWriter, r *http.Request) (int, error
 		Expiry:           expiry.Unix(),
 	})
 	if err != nil {
-		return http.StatusInternalServerError, err
+		return http.StatusInternalServerError, terror.Error(err, "Failed to encode json. Please try again or contact support")
 	}
+	return http.StatusOK, nil
+}
+
+func (api *API) Get1155Contracts(w http.ResponseWriter, r *http.Request) (int, error) {
+	contracts, err := boiler.Collections(
+		boiler.CollectionWhere.ContractType.EQ(null.String{
+			String: "EIP-1155",
+			Valid:  true,
+		}),
+		qm.Select(boiler.CollectionColumns.MintContract),
+	).All(passdb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get EIP-1555 contracts. Please try again or contract support")
+	}
+	var allMintContract []string
+
+	for _, contract := range contracts {
+		if contract.MintContract.Valid {
+			allMintContract = append(allMintContract, contract.MintContract.String)
+		}
+	}
+
+	err = json.NewEncoder(w).Encode(struct {
+		Contracts []string
+	}{
+		Contracts: allMintContract,
+	})
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to encode json. Please try again or contact support")
+	}
+
 	return http.StatusOK, nil
 }

@@ -205,6 +205,7 @@ func NewAPI(
 			r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSups))
 
 			r.Get("/1155/withdraw/{address}/{token_id}", WithError(api.Withdraw1155))
+			r.Get("/1155/contracts", WithError(api.Get1155Contracts))
 
 			r.Get("/asset/{hash}", WithError(api.AssetGet))
 			r.Get("/asset/{collection_address}/{token_id}", WithError(api.AssetGetByCollectionAndTokenID))
