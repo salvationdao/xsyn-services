@@ -26,7 +26,7 @@ func DevRoutes() chi.Router {
 // WithDev checks that dev key is in the header and environment is development.
 func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error)) func(w http.ResponseWriter, r *http.Request) (int, error) {
 	fn := func(w http.ResponseWriter, r *http.Request) (int, error) {
-		if os.Getenv("PASSPORT_ENVIRONMENT") == "development" {
+		if os.Getenv("PASSPORT_ENVIRONMENT") != "development" {
 			passlog.L.Warn().Err(terror.ErrUnauthorised).Str("os.Getenv(\"PASSPORT_ENVIRONMENT\")", os.Getenv("PASSPORT_ENVIRONMENT")).Msg("dev endpoint attempted in non dev environment")
 			return http.StatusUnauthorized, terror.Error(terror.ErrUnauthorised, "Unauthorized.")
 		}
