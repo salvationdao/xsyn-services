@@ -154,12 +154,9 @@ func UserExists(email string) (bool, error) {
 }
 
 func UserCreator(firstName, lastName, username, email, facebookID, googleID, twitchID, twitterID, discordID, phNumber string, publicAddress common.Address, password string, other ...interface{}) (*types.User, error) {
-	fmt.Println("2.0")
 	throughOauth := true
-	fmt.Println("2.1")
 	if facebookID == "" && googleID == "" && publicAddress.Hex() == "" && twitchID == "" && twitterID == "" && discordID == "" {
 		if email == "" {
-			fmt.Println("2.2")
 			return nil, terror.Error(fmt.Errorf("email empty"), "Email cannot be empty")
 		}
 
@@ -167,17 +164,14 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 
 		err := helpers.IsValidPassword(password)
 		if err != nil {
-			fmt.Println("2.3")
 			return nil, err
 		}
 
 		emailNotAvailable, err := UserExists(email)
 		if err != nil {
-			fmt.Println("2.4")
 			return nil, terror.Error(err, "Something went wrong. Please try again.")
 		}
 		if emailNotAvailable {
-			fmt.Println("2.5")
 			return nil, terror.Error(fmt.Errorf("user already exists"), "A user with that email already exists. Perhaps you'd like to login instead?")
 		}
 	}
@@ -188,14 +182,12 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 
 	err := helpers.IsValidUsername(sanitizedUsername)
 	if err != nil {
-		fmt.Println("2.6")
 		return nil, err
 	}
 
 	usExists, err := boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(trimmedUsername))).One(passdb.StdConn)
 	n := 1
 	for usExists != nil {
-		fmt.Println("2.7")
 		trimmedUsername = helpers.RandStringBytes(n) + trimmedUsername
 		n++
 		usExists, err = boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(trimmedUsername))).One(passdb.StdConn)
@@ -221,7 +213,6 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 
 	err = user.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
-		fmt.Println("2.8")
 		passlog.L.Error().Err(err).Msg("insert new user failed")
 		return nil, terror.Error(err, "create new user failed")
 	}
@@ -301,11 +292,8 @@ func PublicAddress(s common.Address) (*types.User, error) {
 		qm.Load(qm.Rels(boiler.UserRels.Faction)),
 	).One(passdb.StdConn)
 	if err != nil {
-		fmt.Println("0.001")
-
 		return nil, err
 	}
-	fmt.Println("0.002")
 	return types.UserFromBoil(user)
 }
 
