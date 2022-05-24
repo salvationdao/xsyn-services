@@ -147,21 +147,24 @@ var CollectionWhere = struct {
 var CollectionRels = struct {
 	LogoBlob                string
 	ItemOnchainTransactions string
-	PurchasedItems          string
+	PurchasedItemsOlds      string
 	StoreItems              string
+	UserAssets              string
 }{
 	LogoBlob:                "LogoBlob",
 	ItemOnchainTransactions: "ItemOnchainTransactions",
-	PurchasedItems:          "PurchasedItems",
+	PurchasedItemsOlds:      "PurchasedItemsOlds",
 	StoreItems:              "StoreItems",
+	UserAssets:              "UserAssets",
 }
 
 // collectionR is where relationships are stored.
 type collectionR struct {
 	LogoBlob                *Blob                       `boiler:"LogoBlob" boil:"LogoBlob" json:"LogoBlob" toml:"LogoBlob" yaml:"LogoBlob"`
 	ItemOnchainTransactions ItemOnchainTransactionSlice `boiler:"ItemOnchainTransactions" boil:"ItemOnchainTransactions" json:"ItemOnchainTransactions" toml:"ItemOnchainTransactions" yaml:"ItemOnchainTransactions"`
-	PurchasedItems          PurchasedItemSlice          `boiler:"PurchasedItems" boil:"PurchasedItems" json:"PurchasedItems" toml:"PurchasedItems" yaml:"PurchasedItems"`
+	PurchasedItemsOlds      PurchasedItemsOldSlice      `boiler:"PurchasedItemsOlds" boil:"PurchasedItemsOlds" json:"PurchasedItemsOlds" toml:"PurchasedItemsOlds" yaml:"PurchasedItemsOlds"`
 	StoreItems              StoreItemSlice              `boiler:"StoreItems" boil:"StoreItems" json:"StoreItems" toml:"StoreItems" yaml:"StoreItems"`
+	UserAssets              UserAssetSlice              `boiler:"UserAssets" boil:"UserAssets" json:"UserAssets" toml:"UserAssets" yaml:"UserAssets"`
 }
 
 // NewStruct creates a new relationship struct
@@ -455,23 +458,23 @@ func (o *Collection) ItemOnchainTransactions(mods ...qm.QueryMod) itemOnchainTra
 	return query
 }
 
-// PurchasedItems retrieves all the purchased_item's PurchasedItems with an executor.
-func (o *Collection) PurchasedItems(mods ...qm.QueryMod) purchasedItemQuery {
+// PurchasedItemsOlds retrieves all the purchased_items_old's PurchasedItemsOlds with an executor.
+func (o *Collection) PurchasedItemsOlds(mods ...qm.QueryMod) purchasedItemsOldQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"purchased_items\".\"collection_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"purchased_items\".\"deleted_at\""),
+		qm.Where("\"purchased_items_old\".\"collection_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"purchased_items_old\".\"deleted_at\""),
 	)
 
-	query := PurchasedItems(queryMods...)
-	queries.SetFrom(query.Query, "\"purchased_items\"")
+	query := PurchasedItemsOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"purchased_items_old\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"purchased_items\".*"})
+		queries.SetSelect(query.Query, []string{"\"purchased_items_old\".*"})
 	}
 
 	return query
@@ -494,6 +497,28 @@ func (o *Collection) StoreItems(mods ...qm.QueryMod) storeItemQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"store_items\".*"})
+	}
+
+	return query
+}
+
+// UserAssets retrieves all the user_asset's UserAssets with an executor.
+func (o *Collection) UserAssets(mods ...qm.QueryMod) userAssetQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"user_assets\".\"collection_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"user_assets\".\"deleted_at\""),
+	)
+
+	query := UserAssets(queryMods...)
+	queries.SetFrom(query.Query, "\"user_assets\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"user_assets\".*"})
 	}
 
 	return query
@@ -707,9 +732,9 @@ func (collectionL) LoadItemOnchainTransactions(e boil.Executor, singular bool, m
 	return nil
 }
 
-// LoadPurchasedItems allows an eager lookup of values, cached into the
+// LoadPurchasedItemsOlds allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (collectionL) LoadPurchasedItems(e boil.Executor, singular bool, maybeCollection interface{}, mods queries.Applicator) error {
+func (collectionL) LoadPurchasedItemsOlds(e boil.Executor, singular bool, maybeCollection interface{}, mods queries.Applicator) error {
 	var slice []*Collection
 	var object *Collection
 
@@ -747,9 +772,9 @@ func (collectionL) LoadPurchasedItems(e boil.Executor, singular bool, maybeColle
 	}
 
 	query := NewQuery(
-		qm.From(`purchased_items`),
-		qm.WhereIn(`purchased_items.collection_id in ?`, args...),
-		qmhelper.WhereIsNull(`purchased_items.deleted_at`),
+		qm.From(`purchased_items_old`),
+		qm.WhereIn(`purchased_items_old.collection_id in ?`, args...),
+		qmhelper.WhereIsNull(`purchased_items_old.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -757,22 +782,22 @@ func (collectionL) LoadPurchasedItems(e boil.Executor, singular bool, maybeColle
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load purchased_items")
+		return errors.Wrap(err, "failed to eager load purchased_items_old")
 	}
 
-	var resultSlice []*PurchasedItem
+	var resultSlice []*PurchasedItemsOld
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice purchased_items")
+		return errors.Wrap(err, "failed to bind eager loaded slice purchased_items_old")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on purchased_items")
+		return errors.Wrap(err, "failed to close results in eager load on purchased_items_old")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for purchased_items")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for purchased_items_old")
 	}
 
-	if len(purchasedItemAfterSelectHooks) != 0 {
+	if len(purchasedItemsOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -780,10 +805,10 @@ func (collectionL) LoadPurchasedItems(e boil.Executor, singular bool, maybeColle
 		}
 	}
 	if singular {
-		object.R.PurchasedItems = resultSlice
+		object.R.PurchasedItemsOlds = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &purchasedItemR{}
+				foreign.R = &purchasedItemsOldR{}
 			}
 			foreign.R.Collection = object
 		}
@@ -793,9 +818,9 @@ func (collectionL) LoadPurchasedItems(e boil.Executor, singular bool, maybeColle
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.CollectionID {
-				local.R.PurchasedItems = append(local.R.PurchasedItems, foreign)
+				local.R.PurchasedItemsOlds = append(local.R.PurchasedItemsOlds, foreign)
 				if foreign.R == nil {
-					foreign.R = &purchasedItemR{}
+					foreign.R = &purchasedItemsOldR{}
 				}
 				foreign.R.Collection = local
 				break
@@ -895,6 +920,105 @@ func (collectionL) LoadStoreItems(e boil.Executor, singular bool, maybeCollectio
 				local.R.StoreItems = append(local.R.StoreItems, foreign)
 				if foreign.R == nil {
 					foreign.R = &storeItemR{}
+				}
+				foreign.R.Collection = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadUserAssets allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (collectionL) LoadUserAssets(e boil.Executor, singular bool, maybeCollection interface{}, mods queries.Applicator) error {
+	var slice []*Collection
+	var object *Collection
+
+	if singular {
+		object = maybeCollection.(*Collection)
+	} else {
+		slice = *maybeCollection.(*[]*Collection)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &collectionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &collectionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`user_assets`),
+		qm.WhereIn(`user_assets.collection_id in ?`, args...),
+		qmhelper.WhereIsNull(`user_assets.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load user_assets")
+	}
+
+	var resultSlice []*UserAsset
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice user_assets")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on user_assets")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_assets")
+	}
+
+	if len(userAssetAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.UserAssets = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &userAssetR{}
+			}
+			foreign.R.Collection = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.CollectionID {
+				local.R.UserAssets = append(local.R.UserAssets, foreign)
+				if foreign.R == nil {
+					foreign.R = &userAssetR{}
 				}
 				foreign.R.Collection = local
 				break
@@ -1036,11 +1160,11 @@ func (o *Collection) AddItemOnchainTransactions(exec boil.Executor, insert bool,
 	return nil
 }
 
-// AddPurchasedItems adds the given related objects to the existing relationships
+// AddPurchasedItemsOlds adds the given related objects to the existing relationships
 // of the collection, optionally inserting them as new records.
-// Appends related to o.R.PurchasedItems.
+// Appends related to o.R.PurchasedItemsOlds.
 // Sets related.R.Collection appropriately.
-func (o *Collection) AddPurchasedItems(exec boil.Executor, insert bool, related ...*PurchasedItem) error {
+func (o *Collection) AddPurchasedItemsOlds(exec boil.Executor, insert bool, related ...*PurchasedItemsOld) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -1050,9 +1174,9 @@ func (o *Collection) AddPurchasedItems(exec boil.Executor, insert bool, related 
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"purchased_items\" SET %s WHERE %s",
+				"UPDATE \"purchased_items_old\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"collection_id"}),
-				strmangle.WhereClause("\"", "\"", 2, purchasedItemPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, purchasedItemsOldPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -1070,15 +1194,15 @@ func (o *Collection) AddPurchasedItems(exec boil.Executor, insert bool, related 
 
 	if o.R == nil {
 		o.R = &collectionR{
-			PurchasedItems: related,
+			PurchasedItemsOlds: related,
 		}
 	} else {
-		o.R.PurchasedItems = append(o.R.PurchasedItems, related...)
+		o.R.PurchasedItemsOlds = append(o.R.PurchasedItemsOlds, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &purchasedItemR{
+			rel.R = &purchasedItemsOldR{
 				Collection: o,
 			}
 		} else {
@@ -1131,6 +1255,58 @@ func (o *Collection) AddStoreItems(exec boil.Executor, insert bool, related ...*
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &storeItemR{
+				Collection: o,
+			}
+		} else {
+			rel.R.Collection = o
+		}
+	}
+	return nil
+}
+
+// AddUserAssets adds the given related objects to the existing relationships
+// of the collection, optionally inserting them as new records.
+// Appends related to o.R.UserAssets.
+// Sets related.R.Collection appropriately.
+func (o *Collection) AddUserAssets(exec boil.Executor, insert bool, related ...*UserAsset) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.CollectionID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"user_assets\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"collection_id"}),
+				strmangle.WhereClause("\"", "\"", 2, userAssetPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.CollectionID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &collectionR{
+			UserAssets: related,
+		}
+	} else {
+		o.R.UserAssets = append(o.R.UserAssets, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &userAssetR{
 				Collection: o,
 			}
 		} else {

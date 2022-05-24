@@ -72,7 +72,6 @@ func (s *S) UserBalanceGetHandler(req UserBalanceGetReq, resp *UserBalanceGetRes
 	}
 
 	resp.Balance = b
-
 	return nil
 }
 

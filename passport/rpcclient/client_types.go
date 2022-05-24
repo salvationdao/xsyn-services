@@ -3,6 +3,7 @@ package rpcclient
 import (
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"time"
+	xsynTypes "xsyn-services/types"
 
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
@@ -358,13 +359,6 @@ type BlueprintUtilityAntiMissile struct {
 	CreatedAt          time.Time `json:"created_at"`
 }
 
-type MechsByOwnerIDReq struct {
-	OwnerID uuid.UUID
-}
-type MechsByOwnerIDResp struct {
-	MechContainers []*Mech
-}
-
 type MechReq struct {
 	MechID uuid.UUID
 }
@@ -388,14 +382,6 @@ type TemplateRegisterResp struct {
 	Assets []*XsynAsset
 }
 
-type MechSetNameReq struct {
-	MechID uuid.UUID
-	Name   string
-}
-type MechSetNameResp struct {
-	MechContainer *Mech
-}
-
 type MechSetOwnerReq struct {
 	MechID  uuid.UUID
 	OwnerID uuid.UUID
@@ -405,14 +391,28 @@ type MechSetOwnerResp struct {
 }
 
 type XsynAsset struct {
-	ID             string     `json:"id"`
-	CollectionSlug string     `json:"collection_id"`
-	TokenID        int        `json:"external_token_id"`
-	Tier           string     `json:"tier"`
-	Hash           string     `json:"hash"`
-	OwnerID        string     `json:"owner_id"`
-	Data           types.JSON `json:"data"`
-	OnChainStatus  string     `json:"on_chain_status"`
+	ID              string      `json:"id,omitempty"`
+	CollectionSlug    string      `json:"collection_slug,omitempty"`
+	TokenID         int64         `json:"token_id,omitempty"`
+	Tier            string      `json:"tier,omitempty"`
+	Hash            string      `json:"hash,omitempty"`
+	OwnerID         string      `json:"owner_id,omitempty"`
+	Data            types.JSON  `json:"data,omitempty"`
+	Attributes      []*xsynTypes.Attribute  `json:"attributes,omitempty"`
+	Name            string      `json:"name,omitempty"`
+	ImageURL        null.String `json:"image_url,omitempty"`
+	ExternalURL     null.String `json:"external_url,omitempty"`
+	Description     null.String `json:"description,omitempty"`
+	BackgroundColor null.String `json:"background_color,omitempty"`
+	AnimationURL    null.String `json:"animation_url,omitempty"`
+	YoutubeURL      null.String `json:"youtube_url,omitempty"`
+	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
+	AvatarURL        null.String `json:"avatar_url,omitempty"`
+	LargeImageURL    null.String `json:"large_image_url,omitempty"`
+	UnlockedAt      time.Time   `json:"unlocked_at,omitempty"`
+	MintedAt        null.Time   `json:"minted_at,omitempty"`
+	OnChainStatus   string      `json:"on_chain_status,omitempty"`
+	XsynLocked      null.Bool   `json:"xsyn_locked,omitempty"`
 }
 
 type AssetReq struct {

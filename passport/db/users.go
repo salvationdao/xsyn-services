@@ -96,13 +96,13 @@ func UserList(
 	if filter != nil {
 		filterConditions := []string{}
 		for i, f := range filter.Items {
-			column := UserColumn(f.ColumnField)
+			column := UserColumn(f.Column)
 			err := column.IsValid()
 			if err != nil {
 				return 0, err
 			}
 
-			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, i+1)
+			condition, value := GenerateListFilterSQL(f.Column, f.Value, f.Operator, i+1)
 			if condition != "" {
 				filterConditions = append(filterConditions, condition)
 				args = append(args, value)
@@ -185,7 +185,6 @@ func UserList(
 
 	for rows.Next() {
 		u := &types.User{}
-		// TODO: fix user scan list
 		err := rows.Scan(
 			&u.ID,
 			&u.RoleID,

@@ -235,7 +235,6 @@ func NewAPI(
 				})
 			}))
 			r.Mount("/store", ws.NewServer(func(s *ws.Server) {
-				s.WS("/availability", types.HubKeyAvailableItemAmount, AvailableItemAmountHandler)
 			}))
 			r.Mount("/user/{userId}", ws.NewServer(func(s *ws.Server) {
 				s.Use(api.AuthWS(true, true))

@@ -91,7 +91,7 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get collection.")
 	}
-	isMinted, err := db.PurchasedItemIsMinted(common.HexToAddress(collection.MintContract.String), int(tokenIDuint64))
+	isMinted, err := db.PurchasedItemIsMintedDEPRECATE(common.HexToAddress(collection.MintContract.String), int(tokenIDuint64))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to check mint status.")
 	}
@@ -99,7 +99,7 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("already minted: %s %s", collection.MintContract.String, tokenID), "NFT already minted")
 	}
 
-	item, err := db.PurchasedItemByMintContractAndTokenID(common.HexToAddress(collection.MintContract.String), int(tokenIDuint64))
+	item, err := db.PurchasedItemByMintContractAndTokenIDDEPRECATE(common.HexToAddress(collection.MintContract.String), int(tokenIDuint64))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
 	}
@@ -124,7 +124,7 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 	}
 
 	// Lock item for 5 minutes
-	item, err = db.PurchasedItemLock(uuid.Must(uuid.FromString(item.ID)))
+	item, err = db.PurchasedItemLockDEPRECATED(uuid.Must(uuid.FromString(item.ID)))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Could not lock item.")
 	}
@@ -180,13 +180,13 @@ func (api *API) LockNFT(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to convert token id.")
 	}
 
-	item, err := db.PurchasedItemByMintContractAndTokenID(common.HexToAddress(collection.MintContract.String), tokenID)
+	item, err := db.PurchasedItemByMintContractAndTokenIDDEPRECATE(common.HexToAddress(collection.MintContract.String), tokenID)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
 	}
 
 	// Lock item for 5 minutes
-	item, err = db.PurchasedItemLock(uuid.Must(uuid.FromString(item.ID)))
+	item, err = db.PurchasedItemLockDEPRECATED(uuid.Must(uuid.FromString(item.ID)))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Could not lock item.")
 	}
