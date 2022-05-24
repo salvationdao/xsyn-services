@@ -222,3 +222,11 @@ db-restore:
 
 dev_tool:
 	go run ./passport/devtool/*.go
+
+.PHONE: dev-give-mech
+dev-give-mech:
+	curl -i -H "X-Authorization: NinjaDojo_!" -k https://api.xsyndev.io/api/dev/give-mechs/${public_address}
+
+.PHONE: dev-give-mechs
+dev-give-mechs:
+	make dev-give-mech public_address=0x51627A7e67b86decf28a50a9207060f634D6C6d4

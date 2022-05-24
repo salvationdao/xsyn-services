@@ -19,7 +19,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
@@ -38,7 +37,6 @@ type Fingerprint struct {
 
 type UserGetter struct {
 	Log    *zerolog.Logger
-	Conn   *pgxpool.Pool
 	Mailer *email.Mailer
 }
 
@@ -296,7 +294,6 @@ func PublicAddress(s common.Address) (*types.User, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return types.UserFromBoil(user)
 }
 
