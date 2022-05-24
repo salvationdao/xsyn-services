@@ -2,11 +2,10 @@ package comms
 
 import (
 	"fmt"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
-
-	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"

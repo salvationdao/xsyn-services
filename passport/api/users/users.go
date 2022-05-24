@@ -220,8 +220,6 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 	_ = rpcclient.PlayerRegister(
 		uuid.Must(uuid.FromString(user.ID)), user.Username, uuid.Nil, publicAddress)
 
-
-
 	if password != "" && email != "" {
 		pw := &boiler.PasswordHash{
 			UserID:       user.ID,

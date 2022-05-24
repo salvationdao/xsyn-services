@@ -34,6 +34,7 @@ type Collection struct {
 	MintContract  null.String `boiler:"mint_contract" boil:"mint_contract" json:"mint_contract,omitempty" toml:"mint_contract" yaml:"mint_contract,omitempty"`
 	StakeContract null.String `boiler:"stake_contract" boil:"stake_contract" json:"stake_contract,omitempty" toml:"stake_contract" yaml:"stake_contract,omitempty"`
 	IsVisible     null.Bool   `boiler:"is_visible" boil:"is_visible" json:"is_visible,omitempty" toml:"is_visible" yaml:"is_visible,omitempty"`
+	ContractType  null.String `boiler:"contract_type" boil:"contract_type" json:"contract_type,omitempty" toml:"contract_type" yaml:"contract_type,omitempty"`
 
 	R *collectionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L collectionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -51,6 +52,7 @@ var CollectionColumns = struct {
 	MintContract  string
 	StakeContract string
 	IsVisible     string
+	ContractType  string
 }{
 	ID:            "id",
 	Name:          "name",
@@ -63,6 +65,7 @@ var CollectionColumns = struct {
 	MintContract:  "mint_contract",
 	StakeContract: "stake_contract",
 	IsVisible:     "is_visible",
+	ContractType:  "contract_type",
 }
 
 var CollectionTableColumns = struct {
@@ -77,6 +80,7 @@ var CollectionTableColumns = struct {
 	MintContract  string
 	StakeContract string
 	IsVisible     string
+	ContractType  string
 }{
 	ID:            "collections.id",
 	Name:          "collections.name",
@@ -89,6 +93,7 @@ var CollectionTableColumns = struct {
 	MintContract:  "collections.mint_contract",
 	StakeContract: "collections.stake_contract",
 	IsVisible:     "collections.is_visible",
+	ContractType:  "collections.contract_type",
 }
 
 // Generated where
@@ -129,6 +134,7 @@ var CollectionWhere = struct {
 	MintContract  whereHelpernull_String
 	StakeContract whereHelpernull_String
 	IsVisible     whereHelpernull_Bool
+	ContractType  whereHelpernull_String
 }{
 	ID:            whereHelperstring{field: "\"collections\".\"id\""},
 	Name:          whereHelperstring{field: "\"collections\".\"name\""},
@@ -141,6 +147,7 @@ var CollectionWhere = struct {
 	MintContract:  whereHelpernull_String{field: "\"collections\".\"mint_contract\""},
 	StakeContract: whereHelpernull_String{field: "\"collections\".\"stake_contract\""},
 	IsVisible:     whereHelpernull_Bool{field: "\"collections\".\"is_visible\""},
+	ContractType:  whereHelpernull_String{field: "\"collections\".\"contract_type\""},
 }
 
 // CollectionRels is where relationship names are stored.
@@ -150,12 +157,14 @@ var CollectionRels = struct {
 	PurchasedItemsOlds      string
 	StoreItems              string
 	UserAssets              string
+	UserAssets1155S         string
 }{
 	LogoBlob:                "LogoBlob",
 	ItemOnchainTransactions: "ItemOnchainTransactions",
 	PurchasedItemsOlds:      "PurchasedItemsOlds",
 	StoreItems:              "StoreItems",
 	UserAssets:              "UserAssets",
+	UserAssets1155S:         "UserAssets1155S",
 }
 
 // collectionR is where relationships are stored.
@@ -165,6 +174,7 @@ type collectionR struct {
 	PurchasedItemsOlds      PurchasedItemsOldSlice      `boiler:"PurchasedItemsOlds" boil:"PurchasedItemsOlds" json:"PurchasedItemsOlds" toml:"PurchasedItemsOlds" yaml:"PurchasedItemsOlds"`
 	StoreItems              StoreItemSlice              `boiler:"StoreItems" boil:"StoreItems" json:"StoreItems" toml:"StoreItems" yaml:"StoreItems"`
 	UserAssets              UserAssetSlice              `boiler:"UserAssets" boil:"UserAssets" json:"UserAssets" toml:"UserAssets" yaml:"UserAssets"`
+	UserAssets1155S         UserAssets1155Slice         `boiler:"UserAssets1155S" boil:"UserAssets1155S" json:"UserAssets1155S" toml:"UserAssets1155S" yaml:"UserAssets1155S"`
 }
 
 // NewStruct creates a new relationship struct
@@ -176,8 +186,8 @@ func (*collectionR) NewStruct() *collectionR {
 type collectionL struct{}
 
 var (
-	collectionAllColumns            = []string{"id", "name", "logo_blob_id", "keywords", "deleted_at", "updated_at", "created_at", "slug", "mint_contract", "stake_contract", "is_visible"}
-	collectionColumnsWithoutDefault = []string{"name", "logo_blob_id", "keywords", "deleted_at", "slug", "mint_contract"}
+	collectionAllColumns            = []string{"id", "name", "logo_blob_id", "keywords", "deleted_at", "updated_at", "created_at", "slug", "mint_contract", "stake_contract", "is_visible", "contract_type"}
+	collectionColumnsWithoutDefault = []string{"name", "logo_blob_id", "keywords", "deleted_at", "slug", "mint_contract", "contract_type"}
 	collectionColumnsWithDefault    = []string{"id", "updated_at", "created_at", "stake_contract", "is_visible"}
 	collectionPrimaryKeyColumns     = []string{"id"}
 )
@@ -519,6 +529,27 @@ func (o *Collection) UserAssets(mods ...qm.QueryMod) userAssetQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"user_assets\".*"})
+	}
+
+	return query
+}
+
+// UserAssets1155S retrieves all the user_assets_1155's UserAssets1155S with an executor.
+func (o *Collection) UserAssets1155S(mods ...qm.QueryMod) userAssets1155Query {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"user_assets_1155\".\"collection_id\"=?", o.ID),
+	)
+
+	query := UserAssets1155S(queryMods...)
+	queries.SetFrom(query.Query, "\"user_assets_1155\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"user_assets_1155\".*"})
 	}
 
 	return query
@@ -1029,6 +1060,104 @@ func (collectionL) LoadUserAssets(e boil.Executor, singular bool, maybeCollectio
 	return nil
 }
 
+// LoadUserAssets1155S allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (collectionL) LoadUserAssets1155S(e boil.Executor, singular bool, maybeCollection interface{}, mods queries.Applicator) error {
+	var slice []*Collection
+	var object *Collection
+
+	if singular {
+		object = maybeCollection.(*Collection)
+	} else {
+		slice = *maybeCollection.(*[]*Collection)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &collectionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &collectionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`user_assets_1155`),
+		qm.WhereIn(`user_assets_1155.collection_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load user_assets_1155")
+	}
+
+	var resultSlice []*UserAssets1155
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice user_assets_1155")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on user_assets_1155")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_assets_1155")
+	}
+
+	if len(userAssets1155AfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.UserAssets1155S = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &userAssets1155R{}
+			}
+			foreign.R.Collection = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.CollectionID {
+				local.R.UserAssets1155S = append(local.R.UserAssets1155S, foreign)
+				if foreign.R == nil {
+					foreign.R = &userAssets1155R{}
+				}
+				foreign.R.Collection = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetLogoBlob of the collection to the related item.
 // Sets o.R.LogoBlob to related.
 // Adds o to related.R.LogoBlobCollections.
@@ -1307,6 +1436,58 @@ func (o *Collection) AddUserAssets(exec boil.Executor, insert bool, related ...*
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &userAssetR{
+				Collection: o,
+			}
+		} else {
+			rel.R.Collection = o
+		}
+	}
+	return nil
+}
+
+// AddUserAssets1155S adds the given related objects to the existing relationships
+// of the collection, optionally inserting them as new records.
+// Appends related to o.R.UserAssets1155S.
+// Sets related.R.Collection appropriately.
+func (o *Collection) AddUserAssets1155S(exec boil.Executor, insert bool, related ...*UserAssets1155) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.CollectionID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"user_assets_1155\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"collection_id"}),
+				strmangle.WhereClause("\"", "\"", 2, userAssets1155PrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.CollectionID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &collectionR{
+			UserAssets1155S: related,
+		}
+	} else {
+		o.R.UserAssets1155S = append(o.R.UserAssets1155S, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &userAssets1155R{
 				Collection: o,
 			}
 		} else {
