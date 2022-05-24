@@ -33,8 +33,8 @@ func (api *API) Withdraw1155(w http.ResponseWriter, r *http.Request) (int, error
 	}
 
 	amount := chi.URLParam(r, "nonce")
-	if nonce == "" {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing nonce"), "Missing nonce.")
+	if amount == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing amount"), "Missing amount.")
 	}
 
 	// check balance
