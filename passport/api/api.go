@@ -196,7 +196,6 @@ func NewAPI(
 				r.Mount("/dev", DevRoutes())
 			}
 
-
 			//r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", WithError(api.GetNonce))
 			//r.Get("/auth/twitter", WithError(api.Auth.TwitterAuth))
@@ -204,6 +203,8 @@ func NewAPI(
 			r.Get("/withdraw/check/{address}", WithError(api.GetMaxWithdrawAmount))
 			r.Get("/withdraw/check", WithError(api.CheckCanWithdraw))
 			r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSups))
+
+			r.Get("/1155/withdraw/{address}/{token_id}", WithError(api.Withdraw1155))
 
 			r.Get("/asset/{hash}", WithError(api.AssetGet))
 			r.Get("/asset/{collection_address}/{token_id}", WithError(api.AssetGetByCollectionAndTokenID))
