@@ -837,6 +837,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		runBlockchainBridge,
 		enablePurchaseSubscription,
 		jwtKeyByteArray,
+		environment,
 	)
 
 	passlog.L.Info().Msg("start rpc server")

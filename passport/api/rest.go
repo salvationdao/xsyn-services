@@ -42,7 +42,7 @@ type ErrorObject struct {
 func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) http.HandlerFunc {
 	// TODO: Ask about sentry ideas?
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		contents, _ := ioutil.ReadAll(r.Body)
+		contents, err := ioutil.ReadAll(r.Body)
 
 		r.Body = ioutil.NopCloser(bytes.NewReader(contents))
 		defer r.Body.Close()

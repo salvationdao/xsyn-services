@@ -2,6 +2,7 @@ package payments
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,7 +15,6 @@ import (
 	"xsyn-services/types"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/jackc/pgx/v4"
 	"github.com/shopspring/decimal"
 )
 
@@ -39,15 +39,19 @@ func CreateOrGetUser(userAddr common.Address) (*types.User, error) {
 	var user *types.User
 	var err error
 	user, err = users.PublicAddress(userAddr)
-	if errors.Is(err, pgx.ErrNoRows) {
-		user, err = users.UserCreator("", "", helpers.TrimUsername(user.Username), "", "", "", "", "", "", "", userAddr, "")
+	if errors.Is(err, sql.ErrNoRows) {
+		username := helpers.TrimUsername(userAddr.Hex())
+		runes := []rune(username)
+		username = string(runes[0:10])
+		user, err = users.UserCreator("", "", username, "", "", "", "", "", "", "", userAddr, "")
 		if err != nil {
 			return nil, err
 		}
 	}
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
+
 	return user, nil
 }
 
