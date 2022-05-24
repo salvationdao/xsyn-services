@@ -169,11 +169,7 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, user *types.U
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
-
-	if !user.FactionID.Valid {
-		return terror.Error(fmt.Errorf("user not enlisted: %s", user.ID), "User is not enlisted, enlist in Supremacy to purchase from this store.")
-	}
-
+	
 	offset := 0
 	if req.Payload.Page > 0 {
 		offset = req.Payload.Page * req.Payload.PageSize

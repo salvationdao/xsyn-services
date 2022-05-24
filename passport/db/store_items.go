@@ -3,7 +3,6 @@ package db
 import (
 	"fmt"
 	"strings"
-	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
@@ -64,119 +63,6 @@ var PriceCentsMap = map[string]int{
 	TierMythic:         100000,
 	TierRare:           100000,
 	TierUltraRare:      100000,
-}
-
-func SyncStoreItems() error {
-	//passlog.L.Trace().Str("fn", "SyncStoreItems").Msg("db func")
-	//
-	//tx, err := passdb.StdConn.Begin()
-	//if err != nil {
-	//	return err
-	//}
-	//defer tx.Rollback()
-	//templateResp := &rpcclient.TemplatesResp{}
-	//err = rpcclient.Client.Call("S.Templates", rpcclient.TemplatesReq{}, templateResp)
-	//if err != nil {
-	//	return err
-	//}
-	//for _, template := range templateResp.TemplateContainers {
-	//	if template.Template.ID == uuid.Nil.String() {
-	//		return errors.New("nil template ID")
-	//	}
-	//	exists, err := boiler.StoreItemExists(tx, template.Template.ID)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	passlog.L.Debug().Str("id", template.Template.ID).Msg("sync store item")
-	//	if !exists {
-	//		data, err := json.Marshal(template)
-	//		if err != nil {
-	//			return err
-	//		}
-	//		var collection *boiler.Collection
-	//		var collectionSlug string
-	//		if !template.Template.CollectionSlug.Valid {
-	//			return fmt.Errorf("template collection slug not valid")
-	//		}
-	//
-	//		collectionSlug = template.Template.CollectionSlug.String
-	//		collection, err = CollectionBySlug(collectionSlug)
-	//		if err != nil {
-	//			return err
-	//		}
-	//		if template.Template.IsDefault {
-	//			collection, err = AICollection()
-	//			if err != nil {
-	//				return err
-	//			}
-	//		}
-	//
-	//		if template.Template.ID == "" {
-	//			return fmt.Errorf("template.Template.ID invalid")
-	//		}
-	//		if collection.ID == "" {
-	//			return fmt.Errorf("collection.ID invalid")
-	//		}
-	//		if template.Template.FactionID == "" {
-	//			return fmt.Errorf("template.Template.FactionID invalid")
-	//		}
-	//		restrictionGroup, ok := RestrictionMap[template.Template.Tier]
-	//		if !ok {
-	//			return fmt.Errorf("restriction not found for %s", template.Template.Tier)
-	//		}
-	//
-	//		// Golds are prizes only, not purchasable
-	//		if template.BlueprintChassis.Skin == "Gold" {
-	//			restrictionGroup = RestrictionGroupPrize
-	//		}
-	//		if template.BlueprintChassis.Skin == "Slava Ukraini" {
-	//			restrictionGroup = RestrictionGroupPrize
-	//		}
-	//		amountAvailable, ok := AmountMap[template.Template.Tier]
-	//		if !ok {
-	//			return fmt.Errorf("amountAvailable not found for %s", template.Template.Tier)
-	//		}
-	//		priceCents, ok := PriceCentsMap[template.Template.Tier]
-	//		if !ok {
-	//			return fmt.Errorf("amountAvailable not found for %s", template.Template.Tier)
-	//		}
-	//		count, err := StoreItemPurchasedCount(uuid.Must(uuid.FromString(template.Template.ID)))
-	//		if err != nil {
-	//			return fmt.Errorf("get purchase count: %w", err)
-	//		}
-	//		newStoreItem := &boiler.StoreItem{
-	//			ID:               template.Template.ID,
-	//			CollectionID:     collection.ID,
-	//			FactionID:        template.Template.FactionID,
-	//			UsdCentCost:      priceCents,
-	//			Tier:             template.Template.Tier,
-	//			IsDefault:        template.Template.IsDefault,
-	//			AmountSold:       count,
-	//			AmountAvailable:  amountAvailable,
-	//			RestrictionGroup: restrictionGroup,
-	//			Data:             data,
-	//			RefreshesAt:      time.Now().Add(RefreshDuration),
-	//		}
-	//		passlog.L.Info().Str("id", template.Template.ID).Interface("data", newStoreItem).Msg("inserting new store item")
-	//		err = newStoreItem.Insert(tx, boil.Infer())
-	//		if err != nil {
-	//			return fmt.Errorf("insert new store item: %w", err)
-	//		}
-	//	} else {
-	//		passlog.L.Info().Str("id", template.Template.ID).Msg("updating existing store item")
-	//		_, err = refreshStoreItem(uuid.Must(uuid.FromString(template.Template.ID)), true)
-	//		if err != nil {
-	//
-	//			return err
-	//		}
-	//	}
-	//}
-	//err = tx.Commit()
-	//if err != nil {
-	//	return err
-	//}
-
-	return nil
 }
 
 func StoreItemsRemainingByFactionIDAndRestrictionGroup(collectionID uuid.UUID, factionID uuid.UUID, restrictionGroup string) (int, error) {
@@ -258,17 +144,6 @@ func StoreItem(storeItemID uuid.UUID) (*boiler.StoreItem, error) {
 	passlog.L.Trace().Str("fn", "StoreItem").Msg("db func")
 	return getStoreItem(storeItemID)
 }
-func StoreItemPurchasedCount(templateID uuid.UUID) (int, error) {
-	// TODO: Vinnie - see if we still need and refactor if needed
-	//passlog.L.Trace().Str("fn", "StoreItemPurchasedCount").Msg("db func")
-	//resp := &rpcclient.TemplatePurchasedCountResp{}
-	//err := rpcclient.Client.Call("S.TemplatePurchasedCount", rpcclient.TemplatePurchasedCountReq{TemplateID: templateID}, resp)
-	//if err != nil {
-	//	return 0, err
-	//}
-	//return resp.Count, nil
-	return 0,nil
-}
 
 func StoreItemsByFactionIDAndRestrictionGroup(factionID uuid.UUID, restrictionGroup string) ([]*boiler.StoreItem, error) {
 	result, err := boiler.StoreItems(
@@ -295,73 +170,6 @@ func StoreItemsByFactionID(factionID uuid.UUID) ([]*boiler.StoreItem, error) {
 	return result, nil
 }
 
-func refreshStoreItem(storeItemID uuid.UUID, force bool) (*boiler.StoreItem, error) {
-	passlog.L.Trace().Str("fn", "refreshStoreItem").Msg("db func")
-	tx, err := passdb.StdConn.Begin()
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	dbitem, err := boiler.FindStoreItem(tx, storeItemID.String())
-	if err != nil {
-		return nil, err
-	}
-
-	if !force {
-		if dbitem.RefreshesAt.After(time.Now()) {
-			return dbitem, nil
-		}
-	}
-
-	//resp := &rpcclient.TemplateResp{}
-	//err = rpcclient.Client.Call("S.Template", rpcclient.TemplateReq{TemplateID: storeItemID}, resp)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//if resp.TemplateContainer.Template.CollectionSlug.Valid {
-	//	collection, err := CollectionBySlug(resp.TemplateContainer.Template.CollectionSlug.String)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	dbitem.CollectionID = collection.ID
-	//}
-	//
-	//b, err := json.Marshal(resp.TemplateContainer)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//dbitem.Data = b
-	//dbitem.FactionID = resp.TemplateContainer.Template.FactionID
-	//dbitem.RefreshesAt = time.Now().Add(RefreshDuration)
-	//dbitem.UpdatedAt = time.Now()
-	//
-	//// Not done on a refresh as it should never be updated via sync after initial insertion
-	//// dbitem.RestrictionGroup = restrictionGroup
-	//// dbitem.AmountAvailable = amountAvailable
-	//// dbitem.UsdCentCost = priceCents
-	//// dbitem.AmountSold = count
-	//
-	//dbitem.Tier = resp.TemplateContainer.Template.Tier
-	//dbitem.IsDefault = resp.TemplateContainer.Template.IsDefault
-	//
-	//passlog.L.Info().Str("id", dbitem.ID).Interface("data", dbitem).Msg("updating store item")
-	//
-	//_, err = dbitem.Update(tx, boil.Infer())
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//err = tx.Commit()
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	return dbitem, nil
-
-}
 
 // getStoreItem fetches the item, obeying TTL
 func getStoreItem(storeItemID uuid.UUID) (*boiler.StoreItem, error) {
@@ -370,12 +178,8 @@ func getStoreItem(storeItemID uuid.UUID) (*boiler.StoreItem, error) {
 	if err != nil {
 		return nil, err
 	}
-	refreshedItem, err := refreshStoreItem(uuid.Must(uuid.FromString(item.ID)), true)
-	if err != nil {
-		passlog.L.Err(err).Str("store_item_id", item.ID).Msg("could not refresh store item from gameserver, using cached store item")
-		return item, nil
-	}
-	return refreshedItem, nil
+
+	return item, nil
 }
 
 type StoreItemColumn string

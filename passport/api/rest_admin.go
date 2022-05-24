@@ -45,8 +45,6 @@ func AdminRoutes(ucm *Transactor) chi.Router {
 	r.Post("/transactions/reverse/{transaction_id}", WithError(WithAdmin(ReverseUserTransaction(ucm))))
 	r.Get("/transactions/list/user/{public_address}", WithError(WithAdmin(ListUserTransactions)))
 
-	r.Post("/sync/store_items", WithError(WithAdmin(SyncStoreItems)))
-
 	r.Get("/users/unlock_account/{public_address}", WithError(WithAdmin(UnlockAccount)))
 	r.Get("/users/unlock_withdraw/{public_address}", WithError(WithAdmin(UnlockWithdraw)))
 	r.Get("/users/unlock_mint/{public_address}", WithError(WithAdmin(UnlockMint)))
@@ -234,14 +232,6 @@ func GetUserByUsername(w http.ResponseWriter, r *http.Request) (int, error) {
 	err = json.NewEncoder(w).Encode(u)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not marshal user")
-	}
-	return http.StatusOK, nil
-}
-
-func SyncStoreItems(w http.ResponseWriter, r *http.Request) (int, error) {
-	err := db.SyncStoreItems()
-	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Could not sync store items")
 	}
 	return http.StatusOK, nil
 }

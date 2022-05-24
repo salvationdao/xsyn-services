@@ -47,23 +47,23 @@ func Purchase(
 		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to purchase faction specific items.")
 	}
 
-	if user.FactionID.String != storeItem.FactionID {
-		return terror.Error(fmt.Errorf("user is wrong faction"), "You cannot buy items for another faction")
-	}
+	//if user.FactionID.String != storeItem.FactionID {
+	//	return terror.Error(fmt.Errorf("user is wrong faction"), "You cannot buy items for another faction")
+	//}
 
-	if storeItem.RestrictionGroup == "WHITELIST" || storeItem.RestrictionGroup == "LOOTBOX" {
-		return terror.Error(fmt.Errorf("cannot purchase whitelist item or lootbox"), "Item currently not available.")
-	}
+	//if storeItem.RestrictionGroup == "WHITELIST" || storeItem.RestrictionGroup == "LOOTBOX" {
+	//	return terror.Error(fmt.Errorf("cannot purchase whitelist item or lootbox"), "Item currently not available.")
+	//}
 
-	if storeItem.Tier == db.TierMega {
-		count, err := db.PurchasedItemsByOwnerIDAndTierDEPRECATE(user.ID, db.TierMega)
-		if err != nil {
-			return terror.Error(err)
-		}
-		if count >= 2 {
-			return terror.Warn(fmt.Errorf("user bought 2 starter mechs"), "You have reached your 2 Mega War Machine limit.")
-		}
-	}
+	//if storeItem.Tier == db.TierMega {
+	//	count, err := db.PurchasedItemsByOwnerIDAndTierDEPRECATE(user.ID, db.TierMega)
+	//	if err != nil {
+	//		return terror.Error(err)
+	//	}
+	//	if count >= 2 {
+	//		return terror.Warn(fmt.Errorf("user bought 2 starter mechs"), "You have reached your 2 Mega War Machine limit.")
+	//	}
+	//}
 
 	template := &rpcclient.TemplateContainer{}
 	err = storeItem.Data.Unmarshal(template)
