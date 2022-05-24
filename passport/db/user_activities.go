@@ -103,7 +103,7 @@ func UserActivityList(result []*types.UserActivity, search string, filter *ListF
 	if filter != nil {
 		filterConditions := []string{}
 		for i, f := range filter.Items {
-			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, i+1)
+			condition, value := GenerateListFilterSQL(f.Column, f.Value, f.Operator, i+1)
 			if condition != "" {
 				filterConditions = append(filterConditions, condition)
 				args = append(args, value)

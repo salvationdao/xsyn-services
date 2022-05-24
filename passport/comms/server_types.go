@@ -37,9 +37,6 @@ type SpendSupsResp struct {
 type GetMechOwnerResp struct {
 	Payload types.JSON
 }
-type GetAllMechsReq struct {
-	ApiKey string
-}
 
 type UserGetReq struct {
 	ApiKey string

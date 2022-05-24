@@ -138,7 +138,7 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, ke
 	}
 
 	// for each collection get all nfts
-	items := []*boiler.PurchasedItem{}
+	items := []*boiler.PurchasedItemsOld{}
 	for _, c := range collections {
 		walletCollections, err := o.NFTOwners(common.HexToAddress(c.MintContract.String), network)
 		if err != nil {
@@ -155,7 +155,7 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, ke
 					return terror.Error(err, errMsg)
 				}
 
-				item, err := db.PurchasedItemByMintContractAndTokenID(common.HexToAddress(nft.TokenAddress), int(tokenID))
+				item, err := db.PurchasedItemByMintContractAndTokenIDDEPRECATE(common.HexToAddress(nft.TokenAddress), int(tokenID))
 				if err != nil {
 					return terror.Error(err, errMsg)
 				}

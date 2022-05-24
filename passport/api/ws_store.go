@@ -40,7 +40,6 @@ func NewStoreController(log *zerolog.Logger, api *API) *StoreControllerWS {
 	api.SecureCommand(HubKeyPurchaseItem, storeHub.PurchaseItemHandler)
 
 	api.SecureCommand(types.HubKeyStoreItemSubscribe, storeHub.StoreItemHandler)
-	api.Command(types.HubKeyAvailableItemAmount, AvailableItemAmountHandler)
 
 	return storeHub
 }
@@ -67,18 +66,6 @@ func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, user *type
 	}
 
 	reply(true)
-
-	// broadcast available mech amount
-	go func() {
-		fsa, err := db.StoreItemsAvailable()
-		if err != nil {
-			sc.API.Log.Err(err)
-			return
-		}
-		ws.PublishMessage("/store/availability", types.HubKeyAvailableItemAmount, fsa)
-		//sc.API.MessageBus.Send(messagebus.BusKey(HubKeyAvailableItemAmountSubscribe), fsa)
-	}()
-
 	return nil
 }
 
@@ -136,8 +123,8 @@ func (sc *StoreControllerWS) LootboxAmountHandler(ctx context.Context, user *typ
 	}
 
 
-	reply(0)
 
+	reply(-1)
 	return nil
 }
 
@@ -148,7 +135,6 @@ type StoreListRequest struct {
 		UserID              types.UserID               `json:"user_id"`
 		SortDir             db.SortByDir               `json:"sort_dir"`
 		SortBy              string                     `json:"sortBy"`
-		IncludedAssetHashes []string                   `json:"included_asset_hashes"`
 		Filter              *db.ListFilterRequest      `json:"filter,omitempty"`
 		AttributeFilter     *db.AttributeFilterRequest `json:"attribute_filter,omitempty"`
 		AssetType           string                     `json:"asset_type"`
@@ -171,11 +157,7 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, user *types.U
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
-
-	if !user.FactionID.Valid {
-		return terror.Error(fmt.Errorf("user not enlisted: %s", user.ID), "User is not enlisted, enlist in a faction to continue.")
-	}
-
+	
 	offset := 0
 	if req.Payload.Page > 0 {
 		offset = req.Payload.Page * req.Payload.PageSize
@@ -185,7 +167,6 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, user *types.U
 	total, items, err := db.StoreItemsList(
 		req.Payload.Search,
 		req.Payload.Archived,
-		req.Payload.IncludedAssetHashes,
 		req.Payload.Filter,
 		req.Payload.AttributeFilter,
 		offset,
@@ -237,9 +218,9 @@ func (sc *StoreControllerWS) StoreItemHandler(ctx context.Context, user *types.U
 		return terror.Error(fmt.Errorf("user has no faction"), "Please select a syndicate to view this item.")
 	}
 
-	if user.FactionID.String != item.FactionID {
-		return terror.Warn(fmt.Errorf("user has wrong faction, need %s, got %s", item.FactionID, user.FactionID), "You do not belong to the correct faction.")
-	}
+	//if user.FactionID.String != item.FactionID {
+	//	return terror.Warn(fmt.Errorf("user has wrong faction, need %s, got %s", item.FactionID, user.FactionID), "You do not belong to the correct faction.")
+	//}
 
 	supsAsCents, err := db.SupInCents()
 	if err != nil {
@@ -257,16 +238,4 @@ func (sc *StoreControllerWS) StoreItemHandler(ctx context.Context, user *types.U
 
 	reply(result)
 	return nil
-}
-
-func AvailableItemAmountHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	return terror.Error(fmt.Errorf("store closed"), "The XSYN Store is currently closed.")
-
-	//fsa, err := db.StoreItemsAvailable()
-	//if err != nil {
-	//	terror.Error(err, "Could not get the available amount of this item, try again or contact support.")
-	//}
-	//
-	//reply(fsa)
-	//return nil
 }

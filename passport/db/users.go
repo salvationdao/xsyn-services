@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -12,7 +13,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -96,13 +96,13 @@ func UserList(
 	if filter != nil {
 		filterConditions := []string{}
 		for i, f := range filter.Items {
-			column := UserColumn(f.ColumnField)
+			column := UserColumn(f.Column)
 			err := column.IsValid()
 			if err != nil {
 				return 0, err
 			}
 
-			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, i+1)
+			condition, value := GenerateListFilterSQL(f.Column, f.Value, f.Operator, i+1)
 			if condition != "" {
 				filterConditions = append(filterConditions, condition)
 				args = append(args, value)
@@ -185,7 +185,6 @@ func UserList(
 
 	for rows.Next() {
 		u := &types.User{}
-		// TODO: fix user scan list
 		err := rows.Scan(
 			&u.ID,
 			&u.RoleID,
@@ -265,7 +264,7 @@ func IsUserWhitelisted(walletAddress string) (bool, error) {
 	_, err := boiler.WhitelistedAddresses(
 		boiler.WhitelistedAddressWhere.WalletAddress.EQ(addr),
 	).One(passdb.StdConn)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {
@@ -281,7 +280,7 @@ func IsUserDeathlisted(walletAddress string) (bool, error) {
 	_, err := boiler.WhitelistedAddresses(
 		boiler.WhitelistedAddressWhere.WalletAddress.EQ(addr),
 	).One(passdb.StdConn)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {

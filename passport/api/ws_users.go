@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/crypto"
 	"xsyn-services/passport/db"
@@ -28,10 +27,8 @@ import (
 
 	oidc "github.com/coreos/go-oidc"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
-	"github.com/ninja-software/sale/dispersions"
 	btypes "github.com/volatiletech/sqlboiler/v4/types"
 
 	"github.com/volatiletech/null/v8"
@@ -41,9 +38,6 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
-	"github.com/ninja-syndicate/supremacy-bridge/bridge"
-
-	"github.com/gofrs/uuid"
 	"github.com/rs/zerolog"
 )
 
@@ -84,24 +78,15 @@ func NewUserController(log *zerolog.Logger, api *API, googleConfig *auth.GoogleC
 	api.SecureCommand(HubKeyUserCreate, userHub.CreateHandler)
 	api.SecureCommand(HubKeyUserLock, userHub.LockHandler)
 
-	api.Command(HubKeyCheckCanAccessStore, userHub.CheckCanAccessStore)
-	api.SecureCommand(HubKeyUserAssetList, userHub.UserAssetListHandler)
 
 	//api.SecureCommand(HubKeyUserTransactionsSubscribe, userHub.UserTransactionsSubscribeHandler)
 	//api.SecureCommand(HubKeyUserLatestTransactionSubscribe, userHub.UserLatestTransactionsSubscribeHandler)
 	api.SecureCommand(HubKeyUser, userHub.UpdatedSubscribeHandler)
 
-	api.SecureCommand(HubKeySUPSRemainingSubscribe, userHub.TotalSupRemainingHandler)
+	api.SecureCommand(HubKeySUPSRemainingSubscribe, userHub.TotalSupRemainingHandler) // TODO: shouldn't be in ws_user since its nothing to do with user sups
 	api.SecureCommand(HubKeySUPSExchangeRates, userHub.ExchangeRatesHandler)
 
-	// listen on queuing war machine
 	api.SecureCommand(HubKeyUserSupsSubscribe, api.UserSupsUpdatedSubscribeHandler)
-	api.SecureCommand(HubKeyUserFactionSubscribe, userHub.UserFactionUpdatedSubscribeHandler)
-
-	api.SecureCommand(HubKeyBlockConfirmation, userHub.BlockConfirmationHandler)
-
-	// sups multiplier
-	api.SecureCommand(HubKeyUserStatSubscribe, userHub.UserStatUpdatedSubscribeHandler)
 
 	return userHub
 }
@@ -645,7 +630,7 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, user *types
 	var oldUser types.User = *user
 
 	// Check if user can remove service
-	serviceCount := GetUserServiceCount(user)
+	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
 		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
 	}
@@ -757,7 +742,7 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, user *types.U
 	var oldUser types.User = *user
 
 	// Check if user can remove service
-	serviceCount := GetUserServiceCount(user)
+	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
 		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
 	}
@@ -867,7 +852,7 @@ func (uc *UserController) RemoveTwitchHandler(ctx context.Context, user *types.U
 	var oldUser types.User = *user
 
 	// Check if user can remove service
-	serviceCount := GetUserServiceCount(user)
+	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
 		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
 	}
@@ -1018,7 +1003,7 @@ func (uc *UserController) RemoveTwitterHandler(ctx context.Context, user *types.
 	var oldUser types.User = *user
 
 	// Check if user can remove service
-	serviceCount := GetUserServiceCount(user)
+	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
 		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
 	}
@@ -1169,7 +1154,7 @@ func (uc *UserController) RemoveDiscordHandler(ctx context.Context, user *types.
 	var oldUser types.User = *user
 
 	// Check if user can remove service
-	serviceCount := GetUserServiceCount(user)
+	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
 		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
 	}
@@ -1343,7 +1328,7 @@ func (uc *UserController) RemoveWalletHandler(ctx context.Context, user *types.U
 	var oldUser types.User = *user
 
 	// Check if user can remove service
-	serviceCount := GetUserServiceCount(user)
+	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
 		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
 	}
@@ -1482,29 +1467,6 @@ func (api *API) UserSupsUpdatedSubscribeHandler(ctx context.Context, user *types
 	return nil
 }
 
-const HubKeyUserStatSubscribe = "USER:STAT:SUBSCRIBE"
-
-func (uc *UserController) UserStatUpdatedSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	resp := &types.UserStat{}
-	err = uc.API.GameserverRequest(http.MethodPost, "/user_stat", struct {
-		UserID types.UserID `json:"user_id"`
-	}{
-		UserID: types.UserID(uuid.FromStringOrNil(user.ID)),
-	}, resp)
-	if err != nil {
-		return terror.Error(err, "Issue subscribing to user stats updates, try again or contact support.")
-	}
-
-	reply(resp)
-	return nil
-}
-
 type UserFactionDetail struct {
 	RecruitID      string          `json:"recruit_id"`
 	SupsEarned     decimal.Decimal `json:"sups_earned"`
@@ -1557,8 +1519,8 @@ type WarMachineQueuePositionRequest struct {
 	} `json:"payload"`
 }
 
-// GetUserServiceCount returns the amount of services (email, facebook, google, discord etc.) the user is currently connected to
-func GetUserServiceCount(user *types.User) int {
+// getUserServiceCount returns the amount of services (email, facebook, google, discord etc.) the user is currently connected to
+func getUserServiceCount(user *types.User) int {
 	count := 0
 	if user.Email.Valid {
 		count++
@@ -1614,173 +1576,6 @@ func (uc *UserController) ExchangeRatesHandler(ctx context.Context, user *types.
 	}
 	reply(exchangeRates)
 	//  req.TransactionID, messagebus.BusKey(HubKeySUPSExchangeRates), nil
-	return nil
-}
-
-//key and handler- payload userid- check they are user return transaction key and error: SecureUserSubscribeCommand
-
-type BlockConfirmationRequest struct {
-	Payload struct {
-		ID             types.UserID `json:"id"`
-		GetInitialData bool         `json:"get_initial_data"`
-	} `json:"payload"`
-}
-
-const HubKeyBlockConfirmation = "BLOCK:CONFIRM"
-
-//BlockConfirmationHandler
-//apparently does nothing? TODO: make do
-func (uc *UserController) BlockConfirmationHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &BlockConfirmationRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	if req.Payload.GetInitialData {
-		// db func to get a list of users transaction on the comfirm transaction table
-		// reply(their confirm objects)
-		// return messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID)), nil
-		return nil
-	}
-
-	// return messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBlockConfirmation, user.ID)), nil
-	return nil
-}
-
-type CheckAllowedStoreAccess struct {
-	Payload struct {
-		WalletAddress string `json:"wallet_address"`
-	} `json:"payload"`
-}
-
-type CheckAllowedStoreAccessResponse struct {
-	IsAllowed bool   `json:"is_allowed"`
-	Message   string `json:"message"`
-}
-
-const HubKeyCheckCanAccessStore = "USER:CHECK:CAN_ACCESS_STORE"
-
-func (uc *UserController) CheckCanAccessStore(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	var WinTokens = []int{1, 2, 3, 4, 5, 6}
-
-	req := &CheckAllowedStoreAccess{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-	if req.Payload.WalletAddress == "" {
-		return terror.Error(terror.ErrInvalidInput, "Wallet address is required.")
-	}
-
-	loc, err := time.LoadLocation("Australia/Perth")
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	// alpha
-	PHASE_ONE := time.Date(2022, time.February, 24, 0, 0, 0, 0, loc)
-
-	PHASE_TWO := time.Date(2022, time.February, 27, 0, 0, 0, 0, loc)
-
-	PHASE_THREE := time.Date(2022, time.February, 27, 12, 0, 0, 0, loc)
-
-	isWhitelisted, err := db.IsUserWhitelisted(req.Payload.WalletAddress)
-	if err != nil {
-		return terror.Error(err, "Whitelisted check error.")
-	}
-
-	isDeathlisted, err := db.IsUserDeathlisted(req.Payload.WalletAddress)
-	if err != nil {
-		return terror.Error(err, "Deathlisted check error.")
-	}
-
-	client, err := ethclient.Dial("wss://speedy-nodes-nyc.moralis.io/1375aa321ac8ac6cfba6aa9c/eth/mainnet/ws")
-	if err != nil {
-		return terror.Error(terror.ErrInvalidInput, "eth client dial error")
-	}
-
-	e, err := bridge.NewERC1155(common.HexToAddress("0x17F5655c7D834e4772171F30E7315bbc3221F1eE"), client)
-	if err != nil {
-		return terror.Error(terror.ErrInvalidInput, "bridge error")
-	}
-
-	isWinHolder, err := e.OwnsAny(common.HexToAddress(req.Payload.WalletAddress), WinTokens)
-	if err != nil {
-		return terror.Error(terror.ErrInvalidInput, "secondary holder check error")
-	}
-
-	isEarly := false
-	now := time.Now().In(loc)
-	dispersionMap := dispersions.All()
-	for k := range dispersionMap {
-		if strings.EqualFold(common.HexToAddress(req.Payload.WalletAddress).Hex(), k.Hex()) {
-			if now.After(PHASE_ONE) {
-				isEarly = true
-			} else {
-				isEarly = false
-			}
-		}
-	}
-
-	// if between 26th 12am - 27 12am only whitelisted and win holders and early contributors
-	if now.After(PHASE_ONE) && now.Before(PHASE_TWO) && !(isWhitelisted || isWinHolder || isEarly) {
-		resp := &CheckAllowedStoreAccessResponse{
-			IsAllowed: false,
-			Message:   "You must be Whitelisted to access the store.",
-		}
-		reply(resp)
-		return nil
-	}
-
-	// if after 27 12am included deathlisted
-	if now.After(PHASE_ONE) && now.Before(PHASE_THREE) && !(isWhitelisted || isWinHolder || isEarly || isDeathlisted) {
-		resp := &CheckAllowedStoreAccessResponse{
-			IsAllowed: false,
-			Message:   "You must be Whitelisted to access the store.",
-		}
-		reply(resp)
-		return nil
-	}
-
-	resp := &CheckAllowedStoreAccessResponse{
-		IsAllowed: true,
-		Message:   "",
-	}
-	reply(resp)
-	return nil
-}
-
-// 	rootHub.SecureCommand(HubKeyUserGet, UserController.GetHandler)
-const HubKeyUserAssetList = "USER:ASSET:LIST"
-
-type UserAssetListRequest struct {
-	Payload struct {
-		Limit                int         `json:"limit"`
-		IncludeAssetIDs      []uuid.UUID `json:"include_asset_ids"` // list of queues to show first in exact ordering
-		ExcludeAssetIDs      []uuid.UUID `json:"exclude_queue_asset_ids"`
-		AfterExternalTokenID *int        `json:"after_external_token_id"`
-	} `json:"payload"`
-}
-
-// UserAssetListHandler return a list of asset that user own
-func (uc *UserController) UserAssetListHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &UserAssetListRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	if req.Payload.Limit <= 0 {
-		return terror.Error(err, "Limit is required")
-	}
-
-	items, err := db.PurchasedItemsByOwnerID(user.ID, req.Payload.Limit, req.Payload.AfterExternalTokenID, req.Payload.IncludeAssetIDs, req.Payload.ExcludeAssetIDs)
-	if err != nil {
-		return terror.Error(err, "Issue getting user asset list, try again or contact support.")
-	}
-	reply(items)
-
 	return nil
 }
 

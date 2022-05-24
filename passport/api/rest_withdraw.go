@@ -17,7 +17,6 @@ import (
 	"xsyn-services/passport/payments"
 	"xsyn-services/types"
 
-	"github.com/jackc/pgx/v4"
 	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -106,12 +105,12 @@ type HoldingResp struct {
 func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error) {
 	address := common.HexToAddress(chi.URLParam(r, "user_address"))
 	u, err := boiler.Users(boiler.UserWhere.PublicAddress.EQ(null.StringFrom(address.String()))).One(passdb.StdConn)
-	if err != nil && errors.Is(err, pgx.ErrNoRows) {
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		passlog.L.Error().Str("user_address", address.Hex()).Err(err).Msg("failed to find user by public address")
 		return http.StatusBadRequest, err
 	}
 
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		err = json.NewEncoder(w).Encode(&HoldingResp{Amount: decimal.Zero.String()})
 		if err != nil {
 			return http.StatusInternalServerError, err
