@@ -91,47 +91,6 @@ func StoreItemsRemainingByFactionIDAndTier(collectionID uuid.UUID, factionID uui
 	return count, err
 }
 
-
-// StoreItemsAvailable return the total of available war machine in each faction
-func StoreItemsAvailable() ([]*types.FactionSaleAvailable, error) {
-	// TODO: Vinnie - rework this
-	collection, err := GenesisCollection()
-	if err != nil {
-		return nil, err
-	}
-	factions, err := boiler.Factions().All(passdb.StdConn)
-	if err != nil {
-		return nil, err
-	}
-	result := []*types.FactionSaleAvailable{}
-
-	for _, faction := range factions {
-		theme := &types.FactionTheme{}
-		err = faction.Theme.Unmarshal(theme)
-		if err != nil {
-			return nil, err
-		}
-		megaAmount, err := StoreItemsRemainingByFactionIDAndTier(uuid.Must(uuid.FromString(collection.ID)), uuid.Must(uuid.FromString(faction.ID)), TierMega)
-		if err != nil {
-			return nil, err
-		}
-		lootboxAmount, err := StoreItemsRemainingByFactionIDAndRestrictionGroup(uuid.Must(uuid.FromString(collection.ID)), uuid.Must(uuid.FromString(faction.ID)), RestrictionGroupLootbox)
-		if err != nil {
-			return nil, err
-		}
-		record := &types.FactionSaleAvailable{
-			ID:            types.FactionID(uuid.Must(uuid.FromString(faction.ID))),
-			Label:         faction.Label,
-			LogoBlobID:    types.BlobID(uuid.Must(uuid.FromString(faction.LogoBlobID))),
-			Theme:         theme,
-			MegaAmount:    int64(megaAmount),
-			LootboxAmount: int64(lootboxAmount),
-		}
-		result = append(result, record)
-	}
-	return result, nil
-}
-
 // StoreItems for admin only
 func StoreItems() ([]*boiler.StoreItem, error) {
 	result, err := boiler.StoreItems().All(passdb.StdConn)

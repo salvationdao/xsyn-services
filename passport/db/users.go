@@ -185,7 +185,6 @@ func UserList(
 
 	for rows.Next() {
 		u := &types.User{}
-		// TODO: fix user scan list
 		err := rows.Scan(
 			&u.ID,
 			&u.RoleID,
