@@ -198,6 +198,7 @@ func (s *S) AssetsRegisterHandler(req RegisterAssetsReq, resp *RegisterAssetsRes
 }
 
 type UpdateUser1155AssetReq struct {
+	ApiKey        string               `json:"api_key"`
 	PublicAddress string               `json:"public_address"`
 	AssetData     []Supremacy1155Asset `json:"asset_data"`
 }
@@ -226,8 +227,12 @@ type UpdateUser1155AssetResp struct {
 	PublicAddress null.String `json:"public_address"`
 }
 
-//InsertUser1155Asset inserts keycards
-func (s *S) InsertUser1155Asset(req UpdateUser1155AssetReq, resp *UpdateUser1155AssetResp) error {
+//InsertUser1155AssetHandler inserts keycards
+func (s *S) InsertUser1155AssetHandler(req UpdateUser1155AssetReq, resp *UpdateUser1155AssetResp) error {
+	serviceID, err := IsServerClient(req.ApiKey)
+	if err != nil {
+		return err
+	}
 	user, err := payments.CreateOrGetUser(common.HexToAddress(req.PublicAddress))
 	if err != nil {
 		passlog.L.Error().Str("req.PublicAddress", req.PublicAddress).Err(err).Msg("Failed to get or create user while updating 1155 asset")
@@ -267,6 +272,7 @@ func (s *S) InsertUser1155Asset(req UpdateUser1155AssetReq, resp *UpdateUser1155
 			KeycardGroup:    asset.KeycardGroup,
 			Attributes:      assetJson,
 			CollectionID:    collection.ID,
+			ServiceID:       null.StringFrom(serviceID),
 		}
 
 		err = newAsset.Insert(passdb.StdConn, boil.Infer())

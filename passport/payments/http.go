@@ -14,6 +14,7 @@ import (
 )
 
 const baseURL = "http://v3.supremacy-api.avantdata.com:3001"
+const stagingURL = "http://v3-staging.supremacy-api.avantdata.com:3001"
 
 type Path string
 
@@ -24,6 +25,7 @@ const BNBPurchasePath Path = "bnb_txs"
 const BUSDPurchasePath Path = "busd_txs"
 const ETHPurchasePath Path = "eth_txs"
 const USDCPurchasePath Path = "usdc_txs"
+const MultiTokenTxs Path = "multi_token_txs"
 
 func Ping() error {
 	u := fmt.Sprintf("%s/ping", baseURL)
@@ -181,6 +183,17 @@ func GetDeposits(testnet bool) ([]*SUPTransferRecord, error) {
 		return nil, err
 	}
 	db.PutInt(db.KeyLatestDepositBlock, latestSUPTransferBlockFromRecords(latestDepositBlock, records))
+	return records, nil
+}
+
+func Get1155(testnet bool, contract string) ([]*SUPTransferRecord, error) {
+	latest1155Block := db.GetInt(db.KeyLatest1155Block)
+	records, err := getSUPTransferRecords(MultiTokenTxs, latest1155Block, testnet)
+	if err != nil {
+		return nil, fmt.Errorf("get 1155 txes: %w", err)
+	}
+	newLatestWithdrawBlock := latestSUPTransferBlockFromRecords(latest1155Block, records)
+	db.PutInt(db.KeyLatest1155Block, newLatestWithdrawBlock)
 	return records, nil
 }
 

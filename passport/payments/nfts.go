@@ -4,7 +4,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"strconv"
+	"strings"
+	"time"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
@@ -112,4 +119,129 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool, collectio
 	}
 
 	return updated, skipped, nil
+}
+
+func UpdateSuccessful1155WithTxHash(records []*SUPTransferRecord, contract string) (int, int) {
+	l := passlog.L.With().Str("svc", "avant_pending_refund_set_tx_hash").Logger()
+
+	skipped := 0
+	success := 0
+
+	for _, record := range records {
+		// Null address is equal to mint
+		if !strings.EqualFold(record.FromAddress, "0x0000000000000000000000000000000000000000") {
+			skipped++
+			continue
+		}
+
+		val, err := strconv.Atoi(record.ValueInt)
+		if err != nil {
+			l.Warn().
+				Str("user_addr", record.ToAddress).
+				Str("tx_hash", record.TxHash).
+				Err(err).
+				Msg("convert to decimal failed")
+			skipped++
+			continue
+		}
+
+		u, err := users.PublicAddress(common.HexToAddress(record.ToAddress))
+		if err != nil {
+			skipped++
+			continue
+		}
+
+		filter := []qm.QueryMod{
+			boiler.Pending1155RollbackWhere.UserID.EQ(u.ID),
+			boiler.Pending1155RollbackWhere.Count.EQ(val),
+			boiler.Pending1155RollbackWhere.IsRefunded.EQ(false),
+			boiler.Pending1155RollbackWhere.RefundCanceledAt.IsNull(), // Not cancelled yet
+			boiler.Pending1155RollbackWhere.DeletedAt.IsNull(),
+			boiler.Pending1155RollbackWhere.TXHash.EQ(""),
+			boiler.Pending1155RollbackWhere.TXHash.NEQ(record.TxHash), // Ignore tx hash if already assigned to another pending refund
+		}
+
+		count, err := boiler.Pending1155Rollbacks(filter...).Count(passdb.StdConn)
+		if err != nil {
+			l.Warn().Err(err).Msg("failed to get count")
+			skipped++
+			continue
+		}
+		if count <= 0 {
+			//is this even an error? do we need to be warned about this?
+			//l.Warn().Err(err).Msg("user does not have any pending refunds matching the value")
+			skipped++
+			continue
+		}
+
+		// Get pending refunds for user that are ready to be confirmed as on chain
+		filter = append(filter, qm.OrderBy("created_at ASC")) // Sort so we get the oldest one
+		pendingRefund, err := boiler.Pending1155Rollbacks(filter...).One(passdb.StdConn)
+		if err != nil {
+			l.Warn().Err(err).Msg("could not get matching single pending refund")
+			skipped++
+			continue
+		}
+		pendingRefund.TXHash = record.TxHash
+		pendingRefund.RefundCanceledAt = null.TimeFrom(time.Now())
+
+		_, err = pendingRefund.Update(passdb.StdConn, boil.Whitelist(boiler.PendingRefundColumns.TXHash, boiler.PendingRefundColumns.RefundCanceledAt))
+		if err != nil {
+			l.Warn().Err(err).Msg("failed to update user pending refund with tx hash")
+			skipped++
+			continue
+		}
+
+		//l.Info().Msg("successfully set tx hash, cancel refund")
+		success++
+	}
+
+	return success, skipped
+}
+
+// ReverseFailed1155 Rollback stale 1155 (dangerous if buggy, check very, very carefully)
+func ReverseFailed1155(enabled1155Rollback bool) (int, int, error) {
+	l := passlog.L.
+		With().
+		Str("svc", "avant_rollback_1155").
+		Bool("enable_1155_rollback", enabled1155Rollback).
+		Logger()
+
+	success := 0
+	skipped := 0
+
+	// Get refunds that can be marked as failed withdraws
+	filter := []qm.QueryMod{
+		boiler.Pending1155RollbackWhere.RefundedAt.LT(time.Now()),
+		boiler.Pending1155RollbackWhere.RefundCanceledAt.IsNull(),
+		boiler.Pending1155RollbackWhere.IsRefunded.EQ(false),
+		boiler.Pending1155RollbackWhere.DeletedAt.IsNull(),
+		boiler.Pending1155RollbackWhere.TXHash.EQ(""),
+		qm.Load(boiler.Pending1155RollbackRels.Asset, qm.Select(boiler.UserAssets1155Columns.ID, boiler.UserAssets1155Columns.Count)),
+	}
+
+	refundsToProcess, err := boiler.Pending1155Rollbacks(filter...).All(passdb.StdConn)
+	if err != nil {
+		return success, skipped, err
+	}
+
+	for _, refund := range refundsToProcess {
+		l = l.With().
+			Str("asset_id", refund.R.Asset.ID).
+			Int("count_from", refund.R.Asset.Count).
+			Int("count_to", refund.R.Asset.Count+refund.Count).
+			Logger()
+
+		refund.R.Asset.Count += refund.Count
+
+		_, err := refund.R.Asset.Update(passdb.StdConn, boil.Infer())
+		if err != nil {
+			l.Warn().Err(err).Msg("failed to rollback 1155 asset")
+		}
+
+		l.Info().Msg("successfully 1155 asset rollback")
+		success++
+	}
+
+	return success, skipped, nil
 }

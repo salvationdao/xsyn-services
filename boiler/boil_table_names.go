@@ -17,6 +17,7 @@ var TableNames = struct {
 	ItemOnchainTransactions string
 	KV                      string
 	PasswordHashes          string
+	Pending1155Rollback     string
 	PendingRefund           string
 	PurchasedItemsOld       string
 	Roles                   string
@@ -47,6 +48,7 @@ var TableNames = struct {
 	ItemOnchainTransactions: "item_onchain_transactions",
 	KV:                      "kv",
 	PasswordHashes:          "password_hashes",
+	Pending1155Rollback:     "pending_1155_rollback",
 	PendingRefund:           "pending_refund",
 	PurchasedItemsOld:       "purchased_items_old",
 	Roles:                   "roles",

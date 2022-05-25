@@ -4,12 +4,14 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"errors"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"net/http"
 	"net/url"
 	"os/signal"
 	"runtime"
 	"strings"
 	"time"
+	"xsyn-services/boiler"
 	"xsyn-services/passport/api"
 	"xsyn-services/passport/comms"
 	"xsyn-services/passport/db"
@@ -560,6 +562,25 @@ func SyncNFTs(isTestnet bool) error {
 	return nil
 }
 
+func Sync1155(ucm *api.Transactor, isTestnet, enable1155Rollback bool, contract string) error {
+	// Update with TX hash first
+	records, err := payments.Get1155(isTestnet, contract)
+	if err != nil {
+		return fmt.Errorf("get 1155: %w", err)
+	}
+	success, skipped := payments.UpdateSuccessful1155WithTxHash(records, contract)
+	passlog.L.Info().Int("success", success).Int("skipped", skipped).Msg("add tx hashes to pending refunds")
+
+	refundsSuccess, refundsSkipped, err := payments.ReverseFailed1155(enable1155Rollback)
+	if err != nil {
+		return fmt.Errorf("process withdraws: %w", err)
+	}
+	passlog.L.Info().Int("success", refundsSuccess).Int("skipped", refundsSkipped).Msg("refunds processed")
+
+	return nil
+
+}
+
 func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool) error {
 	go func() {
 		l := passlog.L.With().Str("svc", "avant_ping").Logger()
@@ -614,6 +635,21 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 			err := SyncWithdraw(ucm, isTestnet, enableWithdrawRollback)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync withdraw")
+			}
+		}
+	}(ucm, isTestnet)
+	go func(ucm *api.Transactor, isTestnet bool) {
+		if db.GetBoolWithDefault(db.KeyEnableSync1155, false) {
+			keycardContract, err := boiler.Collections(
+				boiler.CollectionWhere.Slug.EQ("supremacy-achievements"),
+				qm.Select(boiler.CollectionColumns.Slug),
+			).One(passdb.StdConn)
+			if err != nil || !keycardContract.MintContract.Valid {
+				passlog.L.Err(err).Msg("failed to find achievements contract")
+			}
+			err = Sync1155(ucm, isTestnet, enableWithdrawRollback, keycardContract.MintContract.String)
+			if err != nil {
+				passlog.L.Err(err).Msg("failed to sync 1155")
 			}
 		}
 	}(ucm, isTestnet)
