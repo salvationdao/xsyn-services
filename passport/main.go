@@ -4,14 +4,12 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"errors"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"net/http"
 	"net/url"
 	"os/signal"
 	"runtime"
 	"strings"
 	"time"
-	"xsyn-services/boiler"
 	"xsyn-services/passport/api"
 	"xsyn-services/passport/comms"
 	"xsyn-services/passport/db"
@@ -508,6 +506,25 @@ func SyncDeposits(ucm *api.Transactor, isTestnet bool) error {
 	return nil
 
 }
+
+func Sync1155Deposits(collectionSlug string, isTestnet bool) error {
+	collection, err := db.CollectionBySlug(collectionSlug)
+	if err != nil || !collection.MintContract.Valid {
+		return err
+	}
+
+	depositRecords, err := payments.Get1155Deposits(isTestnet, collection.MintContract.String)
+	if err != nil {
+		return fmt.Errorf("get deposits: %w", err)
+	}
+	_, _, err = payments.Process1155Deposits(depositRecords, collectionSlug)
+	if err != nil {
+		return fmt.Errorf("process deposits: %w", err)
+	}
+
+	return nil
+
+}
 func SyncWithdraw(ucm *api.Transactor, isTestnet, enableWithdrawRollback bool) error {
 	// Update with TX hash first
 	withdrawRecords, err := payments.GetWithdraws(isTestnet)
@@ -562,13 +579,17 @@ func SyncNFTs(isTestnet bool) error {
 	return nil
 }
 
-func Sync1155(ucm *api.Transactor, isTestnet, enable1155Rollback bool, contract string) error {
+func Sync1155Withdraw(collectionSlug string, isTestnet, enable1155Rollback bool) error {
+	collection, err := db.CollectionBySlug(collectionSlug)
+	if err != nil || !collection.MintContract.Valid {
+		return err
+	}
 	// Update with TX hash first
-	records, err := payments.Get1155(isTestnet, contract)
+	records, err := payments.Get1155Withdraws(isTestnet, collection.MintContract.String)
 	if err != nil {
 		return fmt.Errorf("get 1155: %w", err)
 	}
-	success, skipped := payments.UpdateSuccessful1155WithTxHash(records, contract)
+	success, skipped := payments.UpdateSuccessful1155WithdrawalsWithTxHash(records, collection.MintContract.String)
 	passlog.L.Info().Int("success", success).Int("skipped", skipped).Msg("add tx hashes to pending refunds")
 
 	refundsSuccess, refundsSkipped, err := payments.ReverseFailed1155(enable1155Rollback)
@@ -578,7 +599,6 @@ func Sync1155(ucm *api.Transactor, isTestnet, enable1155Rollback bool, contract 
 	passlog.L.Info().Int("success", refundsSuccess).Int("skipped", refundsSkipped).Msg("refunds processed")
 
 	return nil
-
 }
 
 func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool) error {
@@ -640,14 +660,15 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 	}(ucm, isTestnet)
 	go func(ucm *api.Transactor, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSync1155, false) {
-			keycardContract, err := boiler.Collections(
-				boiler.CollectionWhere.Slug.EQ("supremacy-achievements"),
-				qm.Select(boiler.CollectionColumns.Slug),
-			).One(passdb.StdConn)
-			if err != nil || !keycardContract.MintContract.Valid {
-				passlog.L.Err(err).Msg("failed to find achievements contract")
+			err := Sync1155Withdraw("supremacy-achievements", isTestnet, enableWithdrawRollback)
+			if err != nil {
+				passlog.L.Err(err).Msg("failed to sync 1155")
 			}
-			err = Sync1155(ucm, isTestnet, enableWithdrawRollback, keycardContract.MintContract.String)
+		}
+	}(ucm, isTestnet)
+	go func(ucm *api.Transactor, isTestnet bool) {
+		if db.GetBoolWithDefault(db.KeyEnableSync1155, false) {
+			err := Sync1155Deposits("supremacy-achievements", isTestnet)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync 1155")
 			}

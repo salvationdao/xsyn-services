@@ -13,8 +13,10 @@ import (
 	"xsyn-services/boiler"
 	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/db"
+	"xsyn-services/passport/nft1155"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
+	"xsyn-services/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
@@ -121,7 +123,7 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool, collectio
 	return updated, skipped, nil
 }
 
-func UpdateSuccessful1155WithTxHash(records []*SUPTransferRecord, contract string) (int, int) {
+func UpdateSuccessful1155WithdrawalsWithTxHash(records []*NFT1155TransferRecord, contract string) (int, int) {
 	l := passlog.L.With().Str("svc", "avant_pending_refund_set_tx_hash").Logger()
 
 	skipped := 0
@@ -242,6 +244,62 @@ func ReverseFailed1155(enabled1155Rollback bool) (int, int, error) {
 		l.Info().Msg("successfully 1155 asset rollback")
 		success++
 	}
+
+	return success, skipped, nil
+}
+
+func Process1155Deposits(records []*NFT1155TransferRecord, collectionSlug string) (int, int, error) {
+	l := passlog.L.With().Str("svc", "avant_deposit_processor").Logger()
+	success := 0
+	skipped := 0
+	treasuryUser, err := boiler.Users(boiler.UserWhere.ID.EQ(types.XsynTreasuryUserID.String())).One(passdb.StdConn)
+	if err != nil || !treasuryUser.PublicAddress.Valid {
+		return 0, 0, err
+	}
+
+	l.Info().Int("records", len(records)).Msg("processing deposits")
+	for _, record := range records {
+		if !strings.EqualFold(record.ToAddress, treasuryUser.PublicAddress.String) {
+			skipped++
+			continue
+		}
+		user, err := CreateOrGetUser(common.HexToAddress(record.FromAddress))
+		if err != nil {
+			skipped++
+			l.Error().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("create or get user")
+			continue
+		}
+
+		count, err := strconv.Atoi(record.ValueInt)
+		if err != nil {
+			skipped++
+			l.Error().Str("txid", record.TxHash).Err(err).Msg("process decimal")
+			continue
+		}
+
+		asset, err := nft1155.CreateOrGet1155Asset(record.TokenID, user, collectionSlug)
+		if err != nil {
+			l.Error().Str("txid", record.TxHash).Err(err).Msg("failed creating or getting asset")
+			skipped++
+			continue
+		}
+
+		asset.Count += count
+
+		_, err = asset.Update(passdb.StdConn, boil.Infer())
+		if err != nil {
+			l.Error().Interface("asset", asset).Err(err).Msg("failed creating or getting asset")
+			skipped++
+			continue
+		}
+
+		success++
+
+	}
+	l.Info().
+		Int("success", success).
+		Int("skipped", skipped).
+		Msg("synced deposits")
 
 	return success, skipped, nil
 }

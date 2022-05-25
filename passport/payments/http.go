@@ -165,6 +165,40 @@ func getSUPTransferRecords(path Path, latestBlock int, testnet bool) ([]*SUPTran
 	return result, nil
 }
 
+func getNFT1155TransferRecords(path Path, latestBlock int, testnet bool, contractAddress string) ([]*NFT1155TransferRecord, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s", baseURL, path), nil)
+	if err != nil {
+		return nil, err
+	}
+	q := req.URL.Query()
+	q.Add("since_block", strconv.Itoa(latestBlock))
+	if testnet {
+		q.Add("is_testnet", "true")
+	}
+
+	q.Add("contract_address", contractAddress)
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("non 200 response for %s: %d", req.URL.String(), resp.StatusCode)
+	}
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	result := []*NFT1155TransferRecord{}
+	err = json.Unmarshal(b, &result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func GetWithdraws(testnet bool) ([]*SUPTransferRecord, error) {
 	latestWithdrawBlock := db.GetInt(db.KeyLatestWithdrawBlock)
 	records, err := getSUPTransferRecords(SUPSWithdrawTxs, latestWithdrawBlock, testnet)
@@ -186,14 +220,24 @@ func GetDeposits(testnet bool) ([]*SUPTransferRecord, error) {
 	return records, nil
 }
 
-func Get1155(testnet bool, contract string) ([]*SUPTransferRecord, error) {
-	latest1155Block := db.GetInt(db.KeyLatest1155Block)
-	records, err := getSUPTransferRecords(MultiTokenTxs, latest1155Block, testnet)
+func Get1155Deposits(testnet bool, contractAddress string) ([]*NFT1155TransferRecord, error) {
+	latestDepositBlock := db.GetInt(db.KeyLatest1155DepositBlock)
+	records, err := getNFT1155TransferRecords(MultiTokenTxs, latestDepositBlock, testnet, contractAddress)
+	if err != nil {
+		return nil, err
+	}
+	db.PutInt(db.KeyLatest1155DepositBlock, latestNFT1155TransferBlockFromRecords(latestDepositBlock, records))
+	return records, nil
+}
+
+func Get1155Withdraws(testnet bool, contractAddress string) ([]*NFT1155TransferRecord, error) {
+	latest1155Block := db.GetInt(db.KeyLatest1155WithdrawBlock)
+	records, err := getNFT1155TransferRecords(MultiTokenTxs, latest1155Block, testnet, contractAddress)
 	if err != nil {
 		return nil, fmt.Errorf("get 1155 txes: %w", err)
 	}
-	newLatestWithdrawBlock := latestSUPTransferBlockFromRecords(latest1155Block, records)
-	db.PutInt(db.KeyLatest1155Block, newLatestWithdrawBlock)
+	newLatestWithdrawBlock := latestNFT1155TransferBlockFromRecords(latest1155Block, records)
+	db.PutInt(db.KeyLatest1155WithdrawBlock, newLatestWithdrawBlock)
 	return records, nil
 }
 
@@ -213,6 +257,17 @@ func latestPurchaseBlockFromRecords(currentBlock int, records []*PurchaseRecord)
 }
 
 func latestSUPTransferBlockFromRecords(currentBlock int, records []*SUPTransferRecord) int {
+	latestBlock := currentBlock
+	for _, record := range records {
+		if record.BlockNumber > latestBlock {
+			latestBlock = record.BlockNumber
+		}
+	}
+	passlog.L.Debug().Int("latest_block", latestBlock).Msg("Get latest block for sup transfer records")
+	return latestBlock
+}
+
+func latestNFT1155TransferBlockFromRecords(currentBlock int, records []*NFT1155TransferRecord) int {
 	latestBlock := currentBlock
 	for _, record := range records {
 		if record.BlockNumber > latestBlock {
