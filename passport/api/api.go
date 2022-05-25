@@ -196,7 +196,6 @@ func NewAPI(
 				r.Mount("/dev", DevRoutes())
 			}
 
-
 			//r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", WithError(api.GetNonce))
 			//r.Get("/auth/twitter", WithError(api.Auth.TwitterAuth))
@@ -219,6 +218,8 @@ func NewAPI(
 				r.Post("/external", api.ExternalLoginHandler)
 				r.Post("/token", api.TokenLoginHandler)
 				r.Post("/wallet", api.WalletLoginHandler)
+
+				r.Post("/bot_token", api.BotTokenLoginHandler)
 			})
 		})
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.

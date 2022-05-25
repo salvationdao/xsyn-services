@@ -19,6 +19,8 @@ import (
 	"xsyn-services/passport/tokens"
 	"xsyn-services/types"
 
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -476,8 +478,6 @@ func (api *API) GetNonce(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusOK, nil
 	}
 
-
-
 	user, err := boiler.FindUser(passdb.StdConn, userID)
 	if err != nil {
 		return http.StatusBadRequest, err
@@ -491,8 +491,6 @@ func (api *API) GetNonce(w http.ResponseWriter, r *http.Request) (int, error) {
 	resp := &GetNonceResponse{
 		Nonce: newNonce,
 	}
-
-
 
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
@@ -693,6 +691,67 @@ func (api *API) TokenLogin(tokenBase64 string, twitchExtensionJWT string) (*Toke
 	}
 
 	return &TokenLoginResponse{user}, nil
+}
+
+type BotTokenLoginRequest struct {
+	BotToken  string `json:"bot_token"`
+	FactionID string `json:"faction_id"`
+}
+
+type BotTokenResponse struct {
+	User  *boiler.User `json:"user"`
+	Token string       `json:"token"`
+}
+
+// BotTokenLoginHandler return a bot user and access token from the given bot token
+func (api *API) BotTokenLoginHandler(w http.ResponseWriter, r *http.Request) {
+	req := &BotTokenLoginRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		http.Error(w, "auth fail", http.StatusBadRequest)
+		return
+	}
+
+	// check bot token
+	if req.BotToken != "bot_token" {
+		http.Error(w, "invalid bot token", http.StatusBadRequest)
+		return
+	}
+
+	// return a bot user and generate an access_token
+	user, err := boiler.Users(
+		boiler.UserWhere.FactionID.EQ(null.StringFrom(req.FactionID)),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s ON %s = %s AND %s = Bot",
+				boiler.TableNames.Roles,
+				qm.Rels(boiler.TableNames.Roles, boiler.RoleColumns.ID),
+				qm.Rels(boiler.TableNames.Users, boiler.UserColumns.RoleID),
+				qm.Rels(boiler.TableNames.Roles, boiler.RoleColumns.Name),
+			),
+		),
+	).One(passdb.StdConn)
+	if err != nil {
+		http.Error(w, "failed to get user", http.StatusInternalServerError)
+		return
+	}
+
+	_, _, token, err := api.IssueToken(&IssueTokenConfig{
+		Encrypted: true,
+		Key:       api.TokenEncryptionKey,
+		Device:    r.UserAgent(),
+		Action:    "bot_login",
+		User:      user,
+	})
+	if err != nil {
+		http.Error(w, "failed to generate access token", http.StatusInternalServerError)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(&BotTokenResponse{user, token})
+	if err != nil {
+		http.Error(w, "failed state", http.StatusBadRequest)
+	}
 }
 
 // UserFingerprintHandler stores a fingerprint entry that may or may not be linked to a user yet
