@@ -11,7 +11,7 @@ import (
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
-	"xsyn-services/passport/rpcclient"
+	"xsyn-services/passport/supremacy_rpcclient"
 	xsynTypes "xsyn-services/types"
 )
 
@@ -124,9 +124,9 @@ func AssetList(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 
 func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTypes.UserAsset, error) {
 	passlog.L.Trace().Str("fn", "PurchasedItemRegister").Msg("db func")
-	req := rpcclient.TemplateRegisterReq{TemplateID: storeItemID, OwnerID: ownerID}
-	resp := &rpcclient.TemplateRegisterResp{}
-	err := rpcclient.Client.Call("S.TemplateRegister", req, resp)
+	req := supremacy_rpcclient.TemplateRegisterReq{TemplateID: storeItemID, OwnerID: ownerID}
+	resp := &supremacy_rpcclient.TemplateRegisterResp{}
+	err := supremacy_rpcclient.SupremacyClient.Call("S.TemplateRegisterHandler", req, resp)
 	if err != nil {
 		return nil, terror.Error(err,  "communication to supremacy has failed")
 	}

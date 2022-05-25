@@ -1,4 +1,4 @@
-package rpcclient
+package supremacy_rpcclient
 
 import (
 	"github.com/volatiletech/sqlboiler/v4/types"
@@ -414,10 +414,6 @@ type XsynAsset struct {
 	OnChainStatus   string      `json:"on_chain_status,omitempty"`
 	Service      string   `json:"xsyn_locked"`
 }
-
-
-
-
 
 
 type AssetReq struct {

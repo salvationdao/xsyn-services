@@ -12,7 +12,7 @@ import (
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/payments"
-	"xsyn-services/passport/rpcclient"
+	"xsyn-services/passport/supremacy_rpcclient"
 )
 
 func (s *S) AssetOnChainStatusHandler(req AssetOnChainStatusReq, resp *AssetOnChainStatusResp) error {
@@ -70,8 +70,8 @@ func (s *S) UpdateStoreItemIDsHandler(req UpdateStoreItemIDsReq, resp *UpdateSto
 }
 
 type RegisterAssetReq struct {
-	ApiKey string `json:"api_key"`
-	Asset *rpcclient.XsynAsset `json:"asset"`
+	ApiKey string                        `json:"api_key"`
+	Asset *supremacy_rpcclient.XsynAsset `json:"asset"`
 }
 
 type RegisterAssetResp struct {
@@ -140,8 +140,8 @@ func (s *S) AssetRegisterHandler(req RegisterAssetReq, resp *RegisterAssetResp) 
 }
 
 type RegisterAssetsReq struct {
-	ApiKey string `json:"api_key"`
-	Assets []*rpcclient.XsynAsset `json:"assets"`
+	ApiKey string                           `json:"api_key"`
+	Assets []*supremacy_rpcclient.XsynAsset `json:"assets"`
 }
 
 type RegisterAssetsResp struct {

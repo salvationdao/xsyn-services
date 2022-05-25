@@ -14,11 +14,11 @@ type AssetLockToServiceResp struct {
 }
 
 type AssetLockToServiceReq struct {
-	ApiKey string `json:"api_key"`
-	CollectionSlug string
-	TokenID int64
-	OwnerID string
-	Hash string
+	ApiKey         string `json:"api_key,omitempty"`
+	CollectionSlug string `json:"collection_slug,omitempty"`
+	TokenID        int64  `json:"token_id,omitempty"`
+	OwnerID        string `json:"owner_id,omitempty"`
+	Hash           string `json:"hash,omitempty"`
 }
 
 
@@ -69,11 +69,11 @@ type AssetUnlockToServiceResp struct {
 }
 
 type AssetUnlockToServiceReq struct {
-	ApiKey string `json:"api_key"`
-	CollectionSlug string
-	TokenID int64
-	OwnerID string
-	Hash string
+	ApiKey         string `json:"api_key,omitempty"`
+	CollectionSlug string `json:"collection_slug,omitempty"`
+	TokenID        int64  `json:"token_id,omitempty"`
+	OwnerID        string `json:"owner_id,omitempty"`
+	Hash           string `json:"hash,omitempty"`
 }
 
 // AssetUnlockFromServiceHandler request a service unlock of an asset
