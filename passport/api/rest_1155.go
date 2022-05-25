@@ -9,7 +9,6 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/supremacy-bridge/bridge"
 	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math/big"
 	"net/http"
@@ -17,6 +16,7 @@ import (
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/api/users"
+	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
 )
 
@@ -35,17 +35,6 @@ func (api *API) Withdraw1155(w http.ResponseWriter, r *http.Request) (int, error
 	tokenInt, err := strconv.Atoi(tokenID)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing external token id"), "Missing external token id.")
-	}
-	asset, err := boiler.UserAssets1155S(
-		boiler.UserAssets1155Where.ExternalTokenID.EQ(tokenInt),
-		boiler.UserAssets1155Where.ServiceID.IsNull(),
-		qm.Load(
-			boiler.UserAssets1155Rels.Owner,
-			boiler.UserWhere.PublicAddress.EQ(null.StringFrom(common.HexToAddress(address).Hex())),
-		),
-	).One(passdb.StdConn)
-	if err != nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("can't find user asset"), "Can't find asset detils for user")
 	}
 
 	nonce := chi.URLParam(r, "nonce")
@@ -93,25 +82,9 @@ func (api *API) Withdraw1155(w http.ResponseWriter, r *http.Request) (int, error
 		return http.StatusInternalServerError, terror.Error(err, "Failed to convert amount. Please contract support or try again")
 	}
 
-	asset.Count -= amountInt
-	if asset.Count < 0 {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("user amount will become less then 0 after update"), "Amount cannot be less than 0 after withdraw")
-	}
-	_, err = asset.Update(passdb.StdConn, boil.Whitelist(boiler.UserAssets1155Columns.Count))
+	err = db.Withdraw1155AssetWithPendingRollback(amountInt, tokenInt, user.ID)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to update asset details. Please contract support or try again")
-	}
-
-	newPendingRollback := boiler.Pending1155Rollback{
-		UserID:     user.ID,
-		AssetID:    asset.ID,
-		Count:      amountInt,
-		RefundedAt: time.Now().Add(10 * time.Minute),
-	}
-
-	err = newPendingRollback.Insert(passdb.StdConn, boil.Infer())
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to insert pending rollback.")
+		return http.StatusInternalServerError, terror.Error(err, "Failed to process withdrawal. Please contract support or try again")
 	}
 
 	err = json.NewEncoder(w).Encode(struct {
