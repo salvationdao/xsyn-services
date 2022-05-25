@@ -5,16 +5,17 @@ import (
 	"encoding/json"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
+	"xsyn-services/passport/passdb"
 	"xsyn-services/types"
 
 	"github.com/ninja-syndicate/ws"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ninja-software/log_helpers"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 )
-
 
 // AssetController holds handlers for as
 type AssetController struct {
@@ -99,39 +100,41 @@ type AssetUpdatedSubscribeResponse struct {
 	HostURL        string                `json:"host_url"`
 }
 
+type AssetResponse struct {
+	UserAsset *boiler.UserAsset `json:"user_asset"`
+	Collection *boiler.Collection `json:"collection"`
+	Owner *boiler.User `json:"owner"`
+}
+
 const HubKeyAssetSubscribe = "ASSET:SUBSCRIBE"
 
 func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	//errMsg := "Issue subscribing to asset updates, try again or contact support."
-	//req := &AssetUpdatedSubscribeRequest{}
-	//err := json.Unmarshal(payload, req)
-	//if err != nil {
-	//	return terror.Error(err, "Invalid request received.")
-	//}
-	//
-	//asset, err := db.PurchasedItemByHashDEPRECATE(req.Payload.AssetHash)
-	//if err != nil {
-	//	return terror.Error(err, errMsg)
-	//}
-	//
-	//if asset == nil {
-	//	return terror.Error(fmt.Errorf("asset doesn't exist"), "UserAsset doesn't exist.")
-	//}
-	//
-	//owner, err := users.ID(asset.OwnerID)
-	//if err != nil {
-	//	return terror.Error(err, errMsg)
-	//}
-	//
-	//collection, err := db.Collection(uuid.Must(uuid.FromString(asset.CollectionID)))
-	//if err != nil {
-	//	return terror.Error(err, errMsg)
-	//}
-	//reply(&AssetUpdatedSubscribeResponse{
-	//	PurchasedItem:  asset,
-	//	OwnerUsername:  owner.Username,
-	//	CollectionSlug: collection.Slug,
-	//	HostURL:        ac.API.GameserverHostUrl,
-	//})
+	// errMsg := "Issue subscribing to asset updates, try again or contact support."
+	req := &AssetUpdatedSubscribeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	userAsset, err := boiler.UserAssets(
+		boiler.UserAssetWhere.Hash.EQ(req.Payload.AssetHash),
+		qm.Load(boiler.UserAssetRels.Collection),
+		qm.Load(
+			boiler.UserAssetRels.Owner,
+			qm.Select(
+				boiler.UserColumns.Username,
+				boiler.UserColumns.FactionID,
+			),
+		),
+	).One(passdb.StdConn)
+	if err != nil{
+		return terror.Error(err, "Failed to get user asset from db")
+	}
+
+	reply(&AssetResponse{
+		UserAsset: userAsset,
+		Collection: userAsset.R.Collection,
+		Owner: userAsset.R.Owner,
+	})
 	return nil
 }
