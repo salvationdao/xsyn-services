@@ -93,6 +93,7 @@ func NewAPI(
 	runBlockchainBridge bool,
 	enablePurchaseSubscription bool,
 	jwtKey []byte,
+	environment string,
 ) (*API, chi.Router) {
 
 	api := &API{
@@ -191,6 +192,10 @@ func NewAPI(
 			r.Mount("/files", FileRouter(api))
 			r.Mount("/nfts", api.NFTRoutes())
 			r.Mount("/moderator", ModeratorRoutes())
+			if environment == "development" {
+				r.Mount("/dev", DevRoutes())
+			}
+
 
 			//r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", WithError(api.GetNonce))

@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -12,7 +13,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -185,7 +185,6 @@ func UserList(
 
 	for rows.Next() {
 		u := &types.User{}
-		// TODO: fix user scan list
 		err := rows.Scan(
 			&u.ID,
 			&u.RoleID,
@@ -265,7 +264,7 @@ func IsUserWhitelisted(walletAddress string) (bool, error) {
 	_, err := boiler.WhitelistedAddresses(
 		boiler.WhitelistedAddressWhere.WalletAddress.EQ(addr),
 	).One(passdb.StdConn)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {
@@ -281,7 +280,7 @@ func IsUserDeathlisted(walletAddress string) (bool, error) {
 	_, err := boiler.WhitelistedAddresses(
 		boiler.WhitelistedAddressWhere.WalletAddress.EQ(addr),
 	).One(passdb.StdConn)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {

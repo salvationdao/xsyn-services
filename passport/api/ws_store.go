@@ -66,18 +66,6 @@ func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, user *type
 	}
 
 	reply(true)
-
-	// broadcast available mech amount
-	go func() {
-		fsa, err := db.StoreItemsAvailable()
-		if err != nil {
-			sc.API.Log.Err(err)
-			return
-		}
-		ws.PublishMessage("/store/availability", types.HubKeyAvailableItemAmount, fsa)
-		//sc.API.MessageBus.Send(messagebus.BusKey(HubKeyAvailableItemAmountSubscribe), fsa)
-	}()
-
 	return nil
 }
 

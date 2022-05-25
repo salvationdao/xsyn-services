@@ -22,7 +22,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/h2non/filetype"
-	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -117,7 +116,7 @@ func (c *FilesController) FileGetByName(w http.ResponseWriter, r *http.Request) 
 		boiler.BlobWhere.FileName.EQ(fileName),
 	).One(passdb.StdConn)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return http.StatusNotFound, terror.Error(err, "attachment not found")
 		}
 		return http.StatusInternalServerError, terror.Error(err, "could not get attachment")

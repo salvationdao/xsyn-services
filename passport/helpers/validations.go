@@ -109,21 +109,25 @@ func IsValidUsername(username string) error {
 		hasDisallowedSymbol = true
 	}
 
-	err := fmt.Errorf("username does not meet requirements")
+	//err := fmt.Errorf("username does not meet requirements")
 	if TrimUsername(username) == "" {
-		return terror.Error(err, "Invalid username. Your username cannot be empty.")
+		return terror.Error(fmt.Errorf("username cannot be empty"), "Invalid username. Your username cannot be empty.")
 	}
 	if PrintableLen(TrimUsername(username)) < 3 {
-		return terror.Error(err, "Invalid username. Your username must be at least 3 characters long.")
+		return terror.Error(fmt.Errorf("username must be at least characters long"), "Invalid username. Your username must be at least 3 characters long.")
 	}
 	if PrintableLen(TrimUsername(username)) > 30 {
-		return terror.Error(err, "Invalid username. Your username cannot be more than 30 characters long.")
+		return terror.Error(fmt.Errorf("username cannot be more than 30 characters long"), "Invalid username. Your username cannot be more than 30 characters long.")
 	}
 	if hasDisallowedSymbol {
-		return terror.Error(err, "Invalid username. Your username contains a disallowed symbol.")
+		return terror.Error(fmt.Errorf("username cannot contain disallowed symbols"), "Invalid username. Your username contains a disallowed symbol.")
 	}
-	if goaway.IsProfane(username) {
-		return terror.Error(err, "Invalid username. Your username contains profanity.")
+
+	profanityDetector := goaway.NewProfanityDetector()
+	profanityDetector = profanityDetector.WithSanitizeLeetSpeak(false)
+
+	if profanityDetector.IsProfane(username) {
+		return terror.Error(fmt.Errorf("username contains profanity"), "Invalid username. Your username contains profanity.")
 	}
 
 	return nil
