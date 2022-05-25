@@ -104,7 +104,6 @@ type AssetResponse struct {
 	UserAsset *boiler.UserAsset `json:"user_asset"`
 	Collection *boiler.Collection `json:"collection"`
 	Owner *boiler.User `json:"owner"`
-	HostURL string `json:"host_url"`
 }
 
 const HubKeyAssetSubscribe = "ASSET:GET"
@@ -136,7 +135,6 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, key
 		UserAsset: userAsset,
 		Collection: userAsset.R.Collection,
 		Owner: userAsset.R.Owner,
-		HostURL: ac.API.GameserverHostUrl,
 	})
 	return nil
 }
