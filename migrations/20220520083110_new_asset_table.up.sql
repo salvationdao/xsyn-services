@@ -2,7 +2,7 @@ ALTER TABLE purchased_items
     RENAME TO purchased_items_old;
 
 DROP TYPE IF EXISTS SERVICE;
-CREATE TYPE SERVICE AS ENUM ('Supremacy');
+CREATE TYPE SERVICE AS ENUM ('Supremacy', 'XSYN');
 
 
 CREATE TABLE user_assets
@@ -28,11 +28,10 @@ CREATE TABLE user_assets
     unlocked_at        TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
     minted_at          TIMESTAMPTZ,
     on_chain_status    TEXT             NOT NULL DEFAULT 'MINTABLE' CHECK (on_chain_status IN ('MINTABLE', 'STAKABLE', 'UNSTAKABLE')),
-    xsyn_locked        BOOL                      DEFAULT FALSE,
     deleted_at         TIMESTAMPTZ,
     data_refreshed_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
     updated_at         TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
     created_at         TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
-    service_locked     SERVICE,
+    locked_to_service  UUID REFERENCES users (id),
     UNIQUE (collection_id, token_id)
 );

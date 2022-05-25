@@ -35,7 +35,6 @@ func IsUserAssetColumn(col string) bool {
 		boiler.UserAssetColumns.UnlockedAt,
 		boiler.UserAssetColumns.MintedAt,
 		boiler.UserAssetColumns.OnChainStatus,
-		boiler.UserAssetColumns.XsynLocked,
 		boiler.UserAssetColumns.DeletedAt,
 		boiler.UserAssetColumns.DataRefreshedAt:
 		return true
@@ -165,7 +164,6 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTyp
 			UnlockedAt: itm.UnlockedAt,
 			MintedAt: itm.MintedAt,
 			OnChainStatus: itm.OnChainStatus,
-			XsynLocked: itm.XsynLocked,
 			DataRefreshedAt: time.Now(),
 		}
 

@@ -276,71 +276,74 @@ var UserWhere = struct {
 
 // UserRels is where relationship names are stored.
 var UserRels = struct {
-	Avatar                   string
-	Faction                  string
-	Role                     string
-	PasswordHash             string
-	APIKeys                  string
-	DepositTransactions      string
-	CreditFailedTransactions string
-	DebitFailedTransactions  string
-	IssueTokens              string
-	PendingRefunds           string
-	OwnerPurchasedItemsOlds  string
-	CreditTransactions       string
-	DebitTransactions        string
-	ServiceTransactions      string
-	UserActivities           string
-	OwnerUserAssets          string
-	OwnerUserAssets1155S     string
-	UserFingerprints         string
-	UserRecoveryCodes        string
-	UsernameHistories        string
+	Avatar                    string
+	Faction                   string
+	Role                      string
+	PasswordHash              string
+	APIKeys                   string
+	DepositTransactions       string
+	CreditFailedTransactions  string
+	DebitFailedTransactions   string
+	IssueTokens               string
+	PendingRefunds            string
+	OwnerPurchasedItemsOlds   string
+	CreditTransactions        string
+	DebitTransactions         string
+	ServiceTransactions       string
+	UserActivities            string
+	LockedToServiceUserAssets string
+	OwnerUserAssets           string
+	OwnerUserAssets1155S      string
+	UserFingerprints          string
+	UserRecoveryCodes         string
+	UsernameHistories         string
 }{
-	Avatar:                   "Avatar",
-	Faction:                  "Faction",
-	Role:                     "Role",
-	PasswordHash:             "PasswordHash",
-	APIKeys:                  "APIKeys",
-	DepositTransactions:      "DepositTransactions",
-	CreditFailedTransactions: "CreditFailedTransactions",
-	DebitFailedTransactions:  "DebitFailedTransactions",
-	IssueTokens:              "IssueTokens",
-	PendingRefunds:           "PendingRefunds",
-	OwnerPurchasedItemsOlds:  "OwnerPurchasedItemsOlds",
-	CreditTransactions:       "CreditTransactions",
-	DebitTransactions:        "DebitTransactions",
-	ServiceTransactions:      "ServiceTransactions",
-	UserActivities:           "UserActivities",
-	OwnerUserAssets:          "OwnerUserAssets",
-	OwnerUserAssets1155S:     "OwnerUserAssets1155S",
-	UserFingerprints:         "UserFingerprints",
-	UserRecoveryCodes:        "UserRecoveryCodes",
-	UsernameHistories:        "UsernameHistories",
+	Avatar:                    "Avatar",
+	Faction:                   "Faction",
+	Role:                      "Role",
+	PasswordHash:              "PasswordHash",
+	APIKeys:                   "APIKeys",
+	DepositTransactions:       "DepositTransactions",
+	CreditFailedTransactions:  "CreditFailedTransactions",
+	DebitFailedTransactions:   "DebitFailedTransactions",
+	IssueTokens:               "IssueTokens",
+	PendingRefunds:            "PendingRefunds",
+	OwnerPurchasedItemsOlds:   "OwnerPurchasedItemsOlds",
+	CreditTransactions:        "CreditTransactions",
+	DebitTransactions:         "DebitTransactions",
+	ServiceTransactions:       "ServiceTransactions",
+	UserActivities:            "UserActivities",
+	LockedToServiceUserAssets: "LockedToServiceUserAssets",
+	OwnerUserAssets:           "OwnerUserAssets",
+	OwnerUserAssets1155S:      "OwnerUserAssets1155S",
+	UserFingerprints:          "UserFingerprints",
+	UserRecoveryCodes:         "UserRecoveryCodes",
+	UsernameHistories:         "UsernameHistories",
 }
 
 // userR is where relationships are stored.
 type userR struct {
-	Avatar                   *Blob                   `boiler:"Avatar" boil:"Avatar" json:"Avatar" toml:"Avatar" yaml:"Avatar"`
-	Faction                  *Faction                `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	Role                     *Role                   `boiler:"Role" boil:"Role" json:"Role" toml:"Role" yaml:"Role"`
-	PasswordHash             *PasswordHash           `boiler:"PasswordHash" boil:"PasswordHash" json:"PasswordHash" toml:"PasswordHash" yaml:"PasswordHash"`
-	APIKeys                  APIKeySlice             `boiler:"APIKeys" boil:"APIKeys" json:"APIKeys" toml:"APIKeys" yaml:"APIKeys"`
-	DepositTransactions      DepositTransactionSlice `boiler:"DepositTransactions" boil:"DepositTransactions" json:"DepositTransactions" toml:"DepositTransactions" yaml:"DepositTransactions"`
-	CreditFailedTransactions FailedTransactionSlice  `boiler:"CreditFailedTransactions" boil:"CreditFailedTransactions" json:"CreditFailedTransactions" toml:"CreditFailedTransactions" yaml:"CreditFailedTransactions"`
-	DebitFailedTransactions  FailedTransactionSlice  `boiler:"DebitFailedTransactions" boil:"DebitFailedTransactions" json:"DebitFailedTransactions" toml:"DebitFailedTransactions" yaml:"DebitFailedTransactions"`
-	IssueTokens              IssueTokenSlice         `boiler:"IssueTokens" boil:"IssueTokens" json:"IssueTokens" toml:"IssueTokens" yaml:"IssueTokens"`
-	PendingRefunds           PendingRefundSlice      `boiler:"PendingRefunds" boil:"PendingRefunds" json:"PendingRefunds" toml:"PendingRefunds" yaml:"PendingRefunds"`
-	OwnerPurchasedItemsOlds  PurchasedItemsOldSlice  `boiler:"OwnerPurchasedItemsOlds" boil:"OwnerPurchasedItemsOlds" json:"OwnerPurchasedItemsOlds" toml:"OwnerPurchasedItemsOlds" yaml:"OwnerPurchasedItemsOlds"`
-	CreditTransactions       TransactionSlice        `boiler:"CreditTransactions" boil:"CreditTransactions" json:"CreditTransactions" toml:"CreditTransactions" yaml:"CreditTransactions"`
-	DebitTransactions        TransactionSlice        `boiler:"DebitTransactions" boil:"DebitTransactions" json:"DebitTransactions" toml:"DebitTransactions" yaml:"DebitTransactions"`
-	ServiceTransactions      TransactionSlice        `boiler:"ServiceTransactions" boil:"ServiceTransactions" json:"ServiceTransactions" toml:"ServiceTransactions" yaml:"ServiceTransactions"`
-	UserActivities           UserActivitySlice       `boiler:"UserActivities" boil:"UserActivities" json:"UserActivities" toml:"UserActivities" yaml:"UserActivities"`
-	OwnerUserAssets          UserAssetSlice          `boiler:"OwnerUserAssets" boil:"OwnerUserAssets" json:"OwnerUserAssets" toml:"OwnerUserAssets" yaml:"OwnerUserAssets"`
-	OwnerUserAssets1155S     UserAssets1155Slice     `boiler:"OwnerUserAssets1155S" boil:"OwnerUserAssets1155S" json:"OwnerUserAssets1155S" toml:"OwnerUserAssets1155S" yaml:"OwnerUserAssets1155S"`
-	UserFingerprints         UserFingerprintSlice    `boiler:"UserFingerprints" boil:"UserFingerprints" json:"UserFingerprints" toml:"UserFingerprints" yaml:"UserFingerprints"`
-	UserRecoveryCodes        UserRecoveryCodeSlice   `boiler:"UserRecoveryCodes" boil:"UserRecoveryCodes" json:"UserRecoveryCodes" toml:"UserRecoveryCodes" yaml:"UserRecoveryCodes"`
-	UsernameHistories        UsernameHistorySlice    `boiler:"UsernameHistories" boil:"UsernameHistories" json:"UsernameHistories" toml:"UsernameHistories" yaml:"UsernameHistories"`
+	Avatar                    *Blob                   `boiler:"Avatar" boil:"Avatar" json:"Avatar" toml:"Avatar" yaml:"Avatar"`
+	Faction                   *Faction                `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	Role                      *Role                   `boiler:"Role" boil:"Role" json:"Role" toml:"Role" yaml:"Role"`
+	PasswordHash              *PasswordHash           `boiler:"PasswordHash" boil:"PasswordHash" json:"PasswordHash" toml:"PasswordHash" yaml:"PasswordHash"`
+	APIKeys                   APIKeySlice             `boiler:"APIKeys" boil:"APIKeys" json:"APIKeys" toml:"APIKeys" yaml:"APIKeys"`
+	DepositTransactions       DepositTransactionSlice `boiler:"DepositTransactions" boil:"DepositTransactions" json:"DepositTransactions" toml:"DepositTransactions" yaml:"DepositTransactions"`
+	CreditFailedTransactions  FailedTransactionSlice  `boiler:"CreditFailedTransactions" boil:"CreditFailedTransactions" json:"CreditFailedTransactions" toml:"CreditFailedTransactions" yaml:"CreditFailedTransactions"`
+	DebitFailedTransactions   FailedTransactionSlice  `boiler:"DebitFailedTransactions" boil:"DebitFailedTransactions" json:"DebitFailedTransactions" toml:"DebitFailedTransactions" yaml:"DebitFailedTransactions"`
+	IssueTokens               IssueTokenSlice         `boiler:"IssueTokens" boil:"IssueTokens" json:"IssueTokens" toml:"IssueTokens" yaml:"IssueTokens"`
+	PendingRefunds            PendingRefundSlice      `boiler:"PendingRefunds" boil:"PendingRefunds" json:"PendingRefunds" toml:"PendingRefunds" yaml:"PendingRefunds"`
+	OwnerPurchasedItemsOlds   PurchasedItemsOldSlice  `boiler:"OwnerPurchasedItemsOlds" boil:"OwnerPurchasedItemsOlds" json:"OwnerPurchasedItemsOlds" toml:"OwnerPurchasedItemsOlds" yaml:"OwnerPurchasedItemsOlds"`
+	CreditTransactions        TransactionSlice        `boiler:"CreditTransactions" boil:"CreditTransactions" json:"CreditTransactions" toml:"CreditTransactions" yaml:"CreditTransactions"`
+	DebitTransactions         TransactionSlice        `boiler:"DebitTransactions" boil:"DebitTransactions" json:"DebitTransactions" toml:"DebitTransactions" yaml:"DebitTransactions"`
+	ServiceTransactions       TransactionSlice        `boiler:"ServiceTransactions" boil:"ServiceTransactions" json:"ServiceTransactions" toml:"ServiceTransactions" yaml:"ServiceTransactions"`
+	UserActivities            UserActivitySlice       `boiler:"UserActivities" boil:"UserActivities" json:"UserActivities" toml:"UserActivities" yaml:"UserActivities"`
+	LockedToServiceUserAssets UserAssetSlice          `boiler:"LockedToServiceUserAssets" boil:"LockedToServiceUserAssets" json:"LockedToServiceUserAssets" toml:"LockedToServiceUserAssets" yaml:"LockedToServiceUserAssets"`
+	OwnerUserAssets           UserAssetSlice          `boiler:"OwnerUserAssets" boil:"OwnerUserAssets" json:"OwnerUserAssets" toml:"OwnerUserAssets" yaml:"OwnerUserAssets"`
+	OwnerUserAssets1155S      UserAssets1155Slice     `boiler:"OwnerUserAssets1155S" boil:"OwnerUserAssets1155S" json:"OwnerUserAssets1155S" toml:"OwnerUserAssets1155S" yaml:"OwnerUserAssets1155S"`
+	UserFingerprints          UserFingerprintSlice    `boiler:"UserFingerprints" boil:"UserFingerprints" json:"UserFingerprints" toml:"UserFingerprints" yaml:"UserFingerprints"`
+	UserRecoveryCodes         UserRecoveryCodeSlice   `boiler:"UserRecoveryCodes" boil:"UserRecoveryCodes" json:"UserRecoveryCodes" toml:"UserRecoveryCodes" yaml:"UserRecoveryCodes"`
+	UsernameHistories         UsernameHistorySlice    `boiler:"UsernameHistories" boil:"UsernameHistories" json:"UsernameHistories" toml:"UsernameHistories" yaml:"UsernameHistories"`
 }
 
 // NewStruct creates a new relationship struct
@@ -887,6 +890,28 @@ func (o *User) UserActivities(mods ...qm.QueryMod) userActivityQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"user_activities\".*"})
+	}
+
+	return query
+}
+
+// LockedToServiceUserAssets retrieves all the user_asset's UserAssets with an executor via locked_to_service column.
+func (o *User) LockedToServiceUserAssets(mods ...qm.QueryMod) userAssetQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"user_assets\".\"locked_to_service\"=?", o.ID),
+		qmhelper.WhereIsNull("\"user_assets\".\"deleted_at\""),
+	)
+
+	query := UserAssets(queryMods...)
+	queries.SetFrom(query.Query, "\"user_assets\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"user_assets\".*"})
 	}
 
 	return query
@@ -2510,6 +2535,105 @@ func (userL) LoadUserActivities(e boil.Executor, singular bool, maybeUser interf
 	return nil
 }
 
+// LoadLockedToServiceUserAssets allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadLockedToServiceUserAssets(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`user_assets`),
+		qm.WhereIn(`user_assets.locked_to_service in ?`, args...),
+		qmhelper.WhereIsNull(`user_assets.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load user_assets")
+	}
+
+	var resultSlice []*UserAsset
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice user_assets")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on user_assets")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_assets")
+	}
+
+	if len(userAssetAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.LockedToServiceUserAssets = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &userAssetR{}
+			}
+			foreign.R.LockedToServiceUser = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.LockedToService) {
+				local.R.LockedToServiceUserAssets = append(local.R.LockedToServiceUserAssets, foreign)
+				if foreign.R == nil {
+					foreign.R = &userAssetR{}
+				}
+				foreign.R.LockedToServiceUser = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadOwnerUserAssets allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (userL) LoadOwnerUserAssets(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
@@ -3931,6 +4055,131 @@ func (o *User) AddUserActivities(exec boil.Executor, insert bool, related ...*Us
 			rel.R.User = o
 		}
 	}
+	return nil
+}
+
+// AddLockedToServiceUserAssets adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.LockedToServiceUserAssets.
+// Sets related.R.LockedToServiceUser appropriately.
+func (o *User) AddLockedToServiceUserAssets(exec boil.Executor, insert bool, related ...*UserAsset) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.LockedToService, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"user_assets\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"locked_to_service"}),
+				strmangle.WhereClause("\"", "\"", 2, userAssetPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.LockedToService, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			LockedToServiceUserAssets: related,
+		}
+	} else {
+		o.R.LockedToServiceUserAssets = append(o.R.LockedToServiceUserAssets, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &userAssetR{
+				LockedToServiceUser: o,
+			}
+		} else {
+			rel.R.LockedToServiceUser = o
+		}
+	}
+	return nil
+}
+
+// SetLockedToServiceUserAssets removes all previously related items of the
+// user replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.LockedToServiceUser's LockedToServiceUserAssets accordingly.
+// Replaces o.R.LockedToServiceUserAssets with related.
+// Sets related.R.LockedToServiceUser's LockedToServiceUserAssets accordingly.
+func (o *User) SetLockedToServiceUserAssets(exec boil.Executor, insert bool, related ...*UserAsset) error {
+	query := "update \"user_assets\" set \"locked_to_service\" = null where \"locked_to_service\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.LockedToServiceUserAssets {
+			queries.SetScanner(&rel.LockedToService, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.LockedToServiceUser = nil
+		}
+
+		o.R.LockedToServiceUserAssets = nil
+	}
+	return o.AddLockedToServiceUserAssets(exec, insert, related...)
+}
+
+// RemoveLockedToServiceUserAssets relationships from objects passed in.
+// Removes related items from R.LockedToServiceUserAssets (uses pointer comparison, removal does not keep order)
+// Sets related.R.LockedToServiceUser.
+func (o *User) RemoveLockedToServiceUserAssets(exec boil.Executor, related ...*UserAsset) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.LockedToService, nil)
+		if rel.R != nil {
+			rel.R.LockedToServiceUser = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("locked_to_service")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.LockedToServiceUserAssets {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.LockedToServiceUserAssets)
+			if ln > 1 && i < ln-1 {
+				o.R.LockedToServiceUserAssets[i] = o.R.LockedToServiceUserAssets[ln-1]
+			}
+			o.R.LockedToServiceUserAssets = o.R.LockedToServiceUserAssets[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 
