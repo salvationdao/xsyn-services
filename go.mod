@@ -29,7 +29,7 @@ require (
 	github.com/ninja-software/terror/v2 v2.0.7
 	github.com/ninja-syndicate/hub v1.9.2
 	github.com/ninja-syndicate/supremacy-bridge v0.1.43
-	github.com/ninja-syndicate/ws v0.9.3
+	github.com/ninja-syndicate/ws v0.10.0
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/prometheus/client_golang v1.11.0
@@ -63,6 +63,7 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/jackc/pgproto3/v2 v2.2.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
+	github.com/kevinms/leakybucket-go v0.0.0-20200115003610-082473db97ca // indirect
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
