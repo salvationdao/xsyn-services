@@ -44,19 +44,35 @@ func IsUserAssetColumn(col string) bool {
 	}
 }
 
-
-type AssetListOpts struct {
-	UserID              xsynTypes.UserID
-	Sort              *ListSortRequest
-	Filter              *ListFilterRequest
-	AttributeFilter     *AttributeFilterRequest
-	AssetType           string
-	Search              string
-	PageSize            int
-	Page                int
+func IsUserAsset1155Column(col string) bool {
+	switch col {
+	case boiler.UserAssets1155Columns.ID,
+		boiler.UserAssets1155Columns.CollectionID,
+		boiler.UserAssets1155Columns.Label,
+		boiler.UserAssets1155Columns.Description,
+		boiler.UserAssets1155Columns.OwnerID,
+		boiler.UserAssets1155Columns.Attributes,
+		boiler.UserAssets1155Columns.ImageURL,
+		boiler.UserAssets1155Columns.AnimationURL,
+		boiler.UserAssets1155Columns.ServiceID:
+		return true
+	default:
+		return false
+	}
 }
 
-func AssetList(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
+type AssetListOpts struct {
+	UserID          xsynTypes.UserID
+	Sort            *ListSortRequest
+	Filter          *ListFilterRequest
+	AttributeFilter *AttributeFilterRequest
+	AssetType       string
+	Search          string
+	PageSize        int
+	Page            int
+}
+
+func AssetList721(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 	var queryMods []qm.QueryMod
 
 	// create the where owner id = clause
@@ -120,7 +136,74 @@ func AssetList(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 		return 0, nil, err
 	}
 
-	return total, xsynTypes.UserAssetsFromBoiler(boilerAssets), nil
+	return total, xsynTypes.UserAssets721FromBoiler(boilerAssets), nil
+}
+
+func AssetList1155(opts *AssetListOpts) (int64, []*xsynTypes.User1155Asset, error) {
+	var queryMods []qm.QueryMod
+
+	// create the where owner id = clause
+	queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+		Table:    boiler.TableNames.UserAssets1155,
+		Column:   boiler.UserAssets1155Columns.OwnerID,
+		Operator: OperatorValueTypeEquals,
+		Value:    opts.UserID.String(),
+	}, 0, ""))
+
+	// Filters // TODO: filtering
+	//if opts.Filter != nil {
+	//	// if we have filter
+	//	for i, f := range opts.Filter.Items {
+	//		// validate it is the right table and valid column
+	//		if f.Table == boiler.TableNames.UserAssets && IsAssetColumn(f.Column) {
+	//			queryMods = append(queryMods, GenerateListFilterQueryMod(*f, i+1, opts.Filter.LinkOperator))
+	//		}
+	//
+	//	}
+	//}
+
+	// Search
+	if opts.Search != "" {
+		xSearch := ParseQueryText(opts.Search, true)
+		if len(xSearch) > 0 {
+			queryMods = append(queryMods,
+				qm.And(fmt.Sprintf(
+					"((to_tsvector('english', %[1]s.%[2]s) @@ to_tsquery(?))",
+					boiler.TableNames.UserAssets1155,
+					boiler.UserAssets1155Columns.Label,
+				),
+					xSearch,
+				))
+		}
+	}
+
+	total, err := boiler.UserAssets1155S(
+		queryMods...,
+	).Count(passdb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+	// Sort
+	if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.UserAssets1155 && IsUserAsset1155Column(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
+		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.UserAssets1155, opts.Sort.Column, opts.Sort.Direction)))
+	} else {
+		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s desc", boiler.TableNames.UserAssets1155, boiler.UserAssets1155Columns.Label)))
+	}
+
+	// Limit/Offset
+	if opts.PageSize > 0 {
+		queryMods = append(queryMods, qm.Limit(opts.PageSize))
+	}
+	if opts.Page > 0 {
+		queryMods = append(queryMods, qm.Offset(opts.PageSize*(opts.Page-1)))
+	}
+
+	boilerAssets, err := boiler.UserAssets1155S(queryMods...).All(passdb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return total, xsynTypes.UserAssets1155FromBoiler(boilerAssets), nil
 }
 
 func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTypes.UserAsset, error) {
@@ -129,7 +212,7 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTyp
 	resp := &rpcclient.TemplateRegisterResp{}
 	err := rpcclient.Client.Call("S.TemplateRegister", req, resp)
 	if err != nil {
-		return nil, terror.Error(err,  "communication to supremacy has failed")
+		return nil, terror.Error(err, "communication to supremacy has failed")
 	}
 	var newItems []*xsynTypes.UserAsset
 	// for each asset, assign it on our database
@@ -149,7 +232,7 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTyp
 		boilerAsset := &boiler.UserAsset{
 			CollectionID:    collection.ID,
 			ID:              itm.ID,
-			TokenID: itm.TokenID,
+			TokenID:         itm.TokenID,
 			Tier:            itm.Tier,
 			Hash:            itm.Hash,
 			OwnerID:         itm.OwnerID,
@@ -160,12 +243,12 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTyp
 			ExternalURL:     itm.ExternalURL,
 			Description:     itm.Description,
 			BackgroundColor: itm.BackgroundColor,
-			AnimationURL: itm.AnimationURL,
-			YoutubeURL: itm.YoutubeURL,
-			UnlockedAt: itm.UnlockedAt,
-			MintedAt: itm.MintedAt,
-			OnChainStatus: itm.OnChainStatus,
-			XsynLocked: itm.XsynLocked,
+			AnimationURL:    itm.AnimationURL,
+			YoutubeURL:      itm.YoutubeURL,
+			UnlockedAt:      itm.UnlockedAt,
+			MintedAt:        itm.MintedAt,
+			OnChainStatus:   itm.OnChainStatus,
+			XsynLocked:      itm.XsynLocked,
 			DataRefreshedAt: time.Now(),
 		}
 

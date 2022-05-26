@@ -37,6 +37,22 @@ type UserAsset struct {
 	CreatedAt        time.Time    `json:"created_at"`
 }
 
+type User1155Asset struct {
+	ID              string      `json:"id"`
+	OwnerID         string      `json:"owner_id"`
+	CollectionID    string      `json:"collection_id"`
+	ExternalTokenID int         `json:"external_token_id"`
+	Count           int         `json:"count"`
+	Label           string      `json:"label"`
+	Description     string      `json:"description"`
+	ImageURL        string      `json:"image_url"`
+	AnimationURL    null.String `json:"animation_url"`
+	KeycardGroup    string      `json:"keycard_group"`
+	Attributes      types.JSON  `json:"attributes"`
+	ServiceID       null.String `json:"service_id"`
+	CreatedAt       time.Time   `json:"created_at"`
+}
+
 type Attribute struct {
 	DisplayType DisplayType `json:"display_type,omitempty"`
 	TraitType   string      `json:"trait_type"`
@@ -53,10 +69,24 @@ const (
 	Date            DisplayType = "date"
 )
 
-func UserAssetsFromBoiler(us []*boiler.UserAsset) []*UserAsset {
+func UserAssets721FromBoiler(us []*boiler.UserAsset) []*UserAsset {
 	var assets []*UserAsset
 	for _, ass := range us {
 		assets = append(assets, UserAssetFromBoiler(ass))
+	}
+
+	return assets
+}
+
+func UserAssets1155FromBoiler(us []*boiler.UserAssets1155) []*User1155Asset {
+	var assets []*User1155Asset
+
+	// Goes through count and return individual items of 1155 assets
+	for _, ass := range us {
+		userAssets := UserAsset1155FromBoiler(ass)
+		for _, asset := range *userAssets {
+			assets = append(assets, &asset)
+		}
 	}
 
 	return assets
@@ -98,26 +128,27 @@ func UserAssetFromBoiler(us *boiler.UserAsset) *UserAsset {
 	}
 }
 
-func UserAsset1155FromBoiler(us *boiler.UserAssets1155) *UserAsset {
-	attribes := []*Attribute{}
-	err := us.Attributes.Unmarshal(&attribes)
-	if err != nil {
-		passlog.L.Error().Err(err).Interface("us.Attributes", us.Attributes).Msg("failed to unmarshall attributes")
+func UserAsset1155FromBoiler(us *boiler.UserAssets1155) *[]User1155Asset {
+	var userAssets []User1155Asset
+
+	for i := 0; i < us.Count; i++ {
+		userAsset := User1155Asset{
+			ID:              us.ID,
+			OwnerID:         us.OwnerID,
+			CollectionID:    us.CollectionID,
+			ExternalTokenID: us.ExternalTokenID,
+			Label:           us.Label,
+			Description:     us.Description,
+			ImageURL:        us.ImageURL,
+			AnimationURL:    us.AnimationURL,
+			KeycardGroup:    us.KeycardGroup,
+			Attributes:      us.Attributes,
+			ServiceID:       us.ServiceID,
+			CreatedAt:       us.CreatedAt,
+		}
+
+		userAssets = append(userAssets, userAsset)
 	}
 
-	return &UserAsset{
-		ID:               us.ID,
-		CollectionID:     us.CollectionID,
-		TokenID:          int64(us.ExternalTokenID),
-		OwnerID:          us.OwnerID,
-		Attributes:       attribes,
-		Name:             us.Label,
-		ImageURL:         null.StringFrom(us.ImageURL),
-		Description:      null.StringFrom(us.Description),
-		AnimationURL:     us.AnimationURL,
-		CreatedAt:        us.CreatedAt,
-		CardAnimationURL: us.AnimationURL,
-		AvatarURL:        null.StringFrom(us.ImageURL),
-		LargeImageURL:    null.StringFrom(us.ImageURL),
-	}
+	return &userAssets
 }

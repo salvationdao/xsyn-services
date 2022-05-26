@@ -58,28 +58,21 @@ func (api *API) Withdraw1155(w http.ResponseWriter, r *http.Request) (int, error
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("user: %s, attempting to withdraw while account is locked.", user.ID), "Withdrawals is locked, contact support to unlock.")
 	}
 
-	amountBigInt := new(big.Int)
-	_, ok := amountBigInt.SetString(amount, 10)
-	if !ok {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("failed to parse amount to big int"), "Invalid amount.")
-	}
-
-	nonceBigInt := new(big.Int)
-	_, ok = amountBigInt.SetString(nonce, 10)
-	if !ok {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("failed to parse amount to big int"), "Invalid amount.")
-	}
-
-	expiry := time.Now().Add(5 * time.Minute)
-	signer := bridge.NewSigner(api.BridgeParams.SignerPrivateKey)
-	_, messageSig, err := signer.GenerateSignatureWithExpiry(toAddress, amountBigInt, nonceBigInt, big.NewInt(expiry.Unix()))
+	nonceInt, err := strconv.Atoi(nonce)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to create withdraw signature, please try again or contact support.")
+		return http.StatusBadRequest, err
 	}
 
 	amountInt, err := strconv.Atoi(amount)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to convert amount. Please contract support or try again")
+		return http.StatusBadRequest, err
+	}
+
+	expiry := time.Now().Add(5 * time.Minute)
+	signer := bridge.NewSigner("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+	_, messageSig, err := signer.GenerateSignature(toAddress, big.NewInt(int64(tokenInt)), big.NewInt(int64(nonceInt)))
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to create withdraw signature, please try again or contact support.")
 	}
 
 	err = db.Withdraw1155AssetWithPendingRollback(amountInt, tokenInt, user.ID)
