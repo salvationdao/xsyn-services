@@ -304,7 +304,6 @@ func (api *API) IssueToken(config *IssueTokenConfig) (*types.User, uuid.UUID, st
 	errMsg := "There was a problem with your authentication, please check your details and try again."
 
 	// Get user by email
-
 	if config.Email == "" && config.User == nil {
 		return nil, uuid.Nil, "", terror.Error(ErrNoUserInformation, errMsg)
 	}
@@ -322,7 +321,6 @@ func (api *API) IssueToken(config *IssueTokenConfig) (*types.User, uuid.UUID, st
 	}
 
 	tokenID := uuid.Must(uuid.NewV4())
-
 	// save user detail as jwt
 	jwt, sign, err := tokens.GenerateJWT(
 		tokenID,
@@ -723,23 +721,24 @@ func (api *API) BotTokenLoginHandler(w http.ResponseWriter, r *http.Request) {
 		boiler.UserWhere.FactionID.EQ(null.StringFrom(req.FactionID)),
 		qm.InnerJoin(
 			fmt.Sprintf(
-				"%s ON %s = %s AND %s = Bot",
+				"%s ON %s = %s AND %s = 'Bot'",
 				boiler.TableNames.Roles,
 				qm.Rels(boiler.TableNames.Roles, boiler.RoleColumns.ID),
 				qm.Rels(boiler.TableNames.Users, boiler.UserColumns.RoleID),
 				qm.Rels(boiler.TableNames.Roles, boiler.RoleColumns.Name),
 			),
 		),
+		qm.Load(boiler.UserRels.Faction),
 	).One(passdb.StdConn)
 	if err != nil {
-		http.Error(w, "failed to get user", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	_, _, token, err := api.IssueToken(&IssueTokenConfig{
 		Encrypted: true,
 		Key:       api.TokenEncryptionKey,
-		Device:    r.UserAgent(),
+		Device:    "gamebot",
 		Action:    "bot_login",
 		User:      user,
 	})
