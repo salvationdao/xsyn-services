@@ -54,8 +54,9 @@ func SupremacyAssetUnlock(assetToUnlock *types.UserAsset, collectionSlug string)
 		OwnerID:        assetToUnlock.OwnerID,
 		Hash:           assetToUnlock.Hash,
 	}
+
 	resp := &GenesisOrLimitedMechResp{}
-	err := SupremacyClient.Call("S.SupremacyAssetUnlock", req, resp)
+	err := SupremacyClient.Call("S.AssetUnlockHandler", req, resp)
 	if err != nil {
 		passlog.L.Error().Err(err).Interface("assetToUnlock", assetToUnlock).Str("collectionSlug", collectionSlug).Msg("failed to unlock asset on supremacy")
 		return  terror.Error(err, "communication to supremacy has failed")

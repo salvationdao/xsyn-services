@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
@@ -165,6 +166,7 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTyp
 			MintedAt: itm.MintedAt,
 			OnChainStatus: itm.OnChainStatus,
 			DataRefreshedAt: time.Now(),
+			LockedToService: null.StringFrom(xsynTypes.SupremacyGameUserID.String()),
 		}
 
 		err = boilerAsset.Insert(passdb.StdConn, boil.Infer())
