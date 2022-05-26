@@ -17,10 +17,6 @@ type AssetLockReq struct {
 	Hash           string `json:"hash,omitempty"`
 }
 
-
-
-
-
 // SupremacyAssetLock requests an asset to be locked on supremacy
 func SupremacyAssetLock(assetToLock *types.UserAsset, collectionSlug string) error {
 	req := &AssetLockReq{
