@@ -29,5 +29,6 @@ CREATE TABLE user_assets_1155
     keycard_group     TEXT             NOT NULL,
     attributes        jsonb            NOT NULL,
     service_id        UUID             NULL,
+    created_at        TIMESTAMPTZ      NOT NULL DEFAULT now(),
     UNIQUE (owner_id, collection_id, external_token_id)
 );
