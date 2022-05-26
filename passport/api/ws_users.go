@@ -78,7 +78,6 @@ func NewUserController(log *zerolog.Logger, api *API, googleConfig *auth.GoogleC
 	api.SecureCommand(HubKeyUserCreate, userHub.CreateHandler)
 	api.SecureCommand(HubKeyUserLock, userHub.LockHandler)
 
-
 	//api.SecureCommand(HubKeyUserTransactionsSubscribe, userHub.UserTransactionsSubscribeHandler)
 	//api.SecureCommand(HubKeyUserLatestTransactionSubscribe, userHub.UserLatestTransactionsSubscribeHandler)
 	api.SecureCommand(HubKeyUser, userHub.UpdatedSubscribeHandler)
