@@ -6,10 +6,10 @@ import (
 	"xsyn-services/types"
 )
 
-type AssetLockResp struct {
+type AssetLockToSupremacyResp struct {
 }
 
-type AssetLockReq struct {
+type AssetLockToSupremacyReq struct {
 	ApiKey         string `json:"api_key,omitempty"`
 	CollectionSlug string `json:"collection_slug,omitempty"`
 	TokenID        int64  `json:"token_id,omitempty"`
@@ -17,16 +17,16 @@ type AssetLockReq struct {
 	Hash           string `json:"hash,omitempty"`
 }
 
-// SupremacyAssetLock requests an asset to be locked on supremacy
-func SupremacyAssetLock(assetToLock *types.UserAsset, collectionSlug string) error {
-	req := &AssetLockReq{
+// AssetLockToSupremacy requests an asset to be locked on supremacy
+func AssetLockToSupremacy(assetToLock *types.UserAsset, collectionSlug string) error {
+	req := &AssetLockToSupremacyReq{
 		CollectionSlug: collectionSlug,
 		TokenID:        assetToLock.TokenID,
 		OwnerID:        assetToLock.OwnerID,
 		Hash:           assetToLock.Hash,
 	}
-	resp := &GenesisOrLimitedMechResp{}
-	err := SupremacyClient.Call("S.AssetLockHandler", req, resp)
+	resp := &AssetLockToSupremacyResp{}
+	err := SupremacyClient.Call("S.AssetLockToSupremacyHandler", req, resp)
 	if err != nil {
 		passlog.L.Error().Err(err).Interface("assetToLock", assetToLock).Str("collectionSlug", collectionSlug).Msg("failed to lock asset on supremacy")
 		return  terror.Error(err, "communication to supremacy has failed")
@@ -35,10 +35,10 @@ func SupremacyAssetLock(assetToLock *types.UserAsset, collectionSlug string) err
 	return nil
 }
 
-type AssetUnlockResp struct {
+type AssetUnlockFromSupremacyResp struct {
 }
 
-type AssetUnlockReq struct {
+type AssetUnlockFromSupremacyReq struct {
 	ApiKey         string `json:"api_key,omitempty"`
 	CollectionSlug string `json:"collection_slug,omitempty"`
 	TokenID        int64  `json:"token_id,omitempty"`
@@ -46,9 +46,9 @@ type AssetUnlockReq struct {
 	Hash           string `json:"hash,omitempty"`
 }
 
-// SupremacyAssetUnlock request a unlock of an asset
-func SupremacyAssetUnlock(assetToUnlock *types.UserAsset, collectionSlug string) error {
-	req := &AssetUnlockReq{
+// AssetUnlockFromSupremacy request a unlock of an asset
+func AssetUnlockFromSupremacy(assetToUnlock *types.UserAsset, collectionSlug string) error {
+	req := &AssetUnlockFromSupremacyReq{
 		CollectionSlug: collectionSlug,
 		TokenID:        assetToUnlock.TokenID,
 		OwnerID:        assetToUnlock.OwnerID,
@@ -56,7 +56,7 @@ func SupremacyAssetUnlock(assetToUnlock *types.UserAsset, collectionSlug string)
 	}
 
 	resp := &GenesisOrLimitedMechResp{}
-	err := SupremacyClient.Call("S.AssetUnlockHandler", req, resp)
+	err := SupremacyClient.Call("S.AssetUnlockFromSupremacyHandler", req, resp)
 	if err != nil {
 		passlog.L.Error().Err(err).Interface("assetToUnlock", assetToUnlock).Str("collectionSlug", collectionSlug).Msg("failed to unlock asset on supremacy")
 		return  terror.Error(err, "communication to supremacy has failed")

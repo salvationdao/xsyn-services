@@ -339,7 +339,7 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 
 
 
-	err = supremacy_rpcclient.SupremacyAssetLock(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug)
+	err = supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug)
 	if err != nil {
 		refundFunc("Failed to transfer asset to supremacy")
 		return terror.Error(err, "Failed to transfer asset to supremacy")
@@ -348,7 +348,7 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 	userAsset.LockedToService = null.StringFrom(xsynTypes.SupremacyGameUserID.String())
 	_, err = userAsset.Update(passdb.StdConn, boil.Infer())
 	if err != nil {
-		err = supremacy_rpcclient.SupremacyAssetUnlock(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug)
+		err = supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug)
 		if err != nil {
 			refundFunc("Failed to transfer asset to supremacy")
 			passlog.L.Error().Err(err).Msg("failed to unlock asset from supremacy after we failed to update asset lock")
@@ -492,7 +492,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 	}
 
 
-	err = supremacy_rpcclient.SupremacyAssetUnlock(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug)
+	err = supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug)
 	if err != nil {
 		refundFunc("Failed to transfer asset from supremacy")
 		return terror.Error(err, "Failed to transfer asset from supremacy")
@@ -501,7 +501,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 	userAsset.LockedToService = null.NewString("", false)
 	_, err = userAsset.Update(passdb.StdConn, boil.Infer())
 	if err != nil {
-		err = supremacy_rpcclient.SupremacyAssetLock(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug)
+		err = supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug)
 		if err != nil {
 			refundFunc("Failed to transfer asset from supremacy")
 			passlog.L.Error().Err(err).Msg("failed to lock asset from supremacy after we failed to update asset lock")
