@@ -13,7 +13,6 @@ import (
 	"math/big"
 	"net/http"
 	"strconv"
-	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/db"
@@ -68,8 +67,7 @@ func (api *API) Withdraw1155(w http.ResponseWriter, r *http.Request) (int, error
 		return http.StatusBadRequest, err
 	}
 
-	expiry := time.Now().Add(5 * time.Minute)
-	signer := bridge.NewSigner("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+	signer := bridge.NewSigner("0x9878e47371dc28d434b8e5a2e36a5ac2fad84af4ebcd8ea34470b2417590e087")
 	_, messageSig, err := signer.GenerateSignature(toAddress, big.NewInt(int64(tokenInt)), big.NewInt(int64(nonceInt)))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to create withdraw signature, please try again or contact support.")
@@ -82,10 +80,8 @@ func (api *API) Withdraw1155(w http.ResponseWriter, r *http.Request) (int, error
 
 	err = json.NewEncoder(w).Encode(struct {
 		MessageSignature string `json:"messageSignature"`
-		Expiry           int64  `json:"expiry"`
 	}{
 		MessageSignature: hexutil.Encode(messageSig),
-		Expiry:           expiry.Unix(),
 	})
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to encode json. Please try again or contact support")
@@ -113,7 +109,7 @@ func (api *API) Get1155Contracts(w http.ResponseWriter, r *http.Request) (int, e
 	}
 
 	err = json.NewEncoder(w).Encode(struct {
-		Contracts []string
+		Contracts []string `json:"contracts"`
 	}{
 		Contracts: allMintContract,
 	})

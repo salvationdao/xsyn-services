@@ -2,12 +2,22 @@ DROP TYPE IF EXISTS CONTRACT_TYPE;
 CREATE TYPE CONTRACT_TYPE AS ENUM ('ERC-721', 'EIP-1155');
 
 ALTER TABLE collections
-    ADD contract_type CONTRACT_TYPE;
+    ADD COLUMN background_url TEXT,
+    ADD COLUMN contract_type  CONTRACT_TYPE,
+    ADD COLUMN logo_url       TEXT,
+    ADD COLUMN description    TEXT;
 
-INSERT INTO collections (id, name, logo_blob_id, slug, mint_contract, stake_contract, is_visible, contract_type)
+INSERT INTO collections (id, name, logo_url, slug, mint_contract, stake_contract, is_visible, contract_type)
 VALUES ('8ccb689f-f6fe-43dd-92f5-dcd6e61b5614', 'Supremacy Achievements', null, 'supremacy-achievements',
         '0x17F5655c7D834e4772171F30E7315bbc3221F1eE', null,
         false, 'EIP-1155');
+
+UPDATE collections
+SET logo_url       = 'https://afiles.ninja-cdn.com/passport/collections/supremacy-achievements/logo.png',
+    background_url = 'https://afiles.ninja-cdn.com/passport/collections/supremacy-achievements/background.png',
+    is_visible     = true,
+    description    = 'Supremacy is a collection of games that connect players into one immersive, interactive, and interconnected universe offering a unique experience to those looking for a Metaverse that blurs the line between the real world and the game world.'
+WHERE slug = 'supremacy-achievements';
 
 UPDATE collections
 SET contract_type = 'ERC-721'
@@ -21,7 +31,7 @@ CREATE TABLE user_assets_1155
     collection_id     UUID             NOT NULL REFERENCES collections (id),
     external_token_id INT              NOT NULL,
     count             INT              NOT NULL default 0
-        CHECK ( count > 0 ),
+        CHECK ( count >= 0 ),
     label             TEXT             NOT NULL,
     description       TEXT             NOT NULL,
     image_url         TEXT             NOT NULL,

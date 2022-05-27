@@ -11,8 +11,10 @@ import (
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
+	"xsyn-services/passport/nft1155"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
+	"xsyn-services/passport/payments"
 	"xsyn-services/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -40,6 +42,7 @@ func AdminRoutes(ucm *Transactor) chi.Router {
 
 	r.Post("/purchased_items/register/{template_id}/{owner_id}", WithError(WithAdmin(PurchasedItemRegisterHandler)))
 	//r.Post("/purchased_items/set_owner/{purchased_item_id}/{owner_id}", WithError(WithAdmin(PurchasedItemSetOwner)))  //TODO: Vinnie fix ASSET TRANSFER
+	r.Post("/purchased_items/register/1155/{public_address}/{collection_slug}/{token_id}/{amount}", WithError(WithAdmin(Register1155Asset)))
 
 	r.Post("/transactions/create", WithError(WithAdmin(CreateTransaction(ucm))))
 	r.Post("/transactions/reverse/{transaction_id}", WithError(WithAdmin(ReverseUserTransaction(ucm))))
@@ -407,7 +410,6 @@ func PurchasedItemRegisterHandler(w http.ResponseWriter, r *http.Request) (int, 
 	return http.StatusOK, nil
 }
 
-
 func AdminCheck(w http.ResponseWriter, r *http.Request) (int, error) {
 	w.Write([]byte("ok"))
 	return http.StatusOK, nil
@@ -467,6 +469,44 @@ func UnlockMint(w http.ResponseWriter, r *http.Request) (int, error) {
 	_, err = u.Update(passdb.StdConn, boil.Infer())
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not update user to unlock minting.")
+	}
+
+	return http.StatusOK, nil
+}
+
+func Register1155Asset(w http.ResponseWriter, r *http.Request) (int, error) {
+	address := chi.URLParam(r, "public_address")
+	if address == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("no public address provided when registering 1155 asset"), "No public address given")
+	}
+	collectionSlug := chi.URLParam(r, "collection_slug")
+	if collectionSlug == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("no collection slug provided when registering 1155 asset"), "No collection slug given")
+	}
+	tokenID, err := strconv.Atoi(chi.URLParam(r, "token_id"))
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to read token id")
+	}
+	amount, err := strconv.Atoi(chi.URLParam(r, "amount"))
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to read amount")
+	}
+
+	user, err := payments.CreateOrGetUser(common.HexToAddress(address))
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to get user")
+	}
+
+	asset, err := nft1155.CreateOrGet1155Asset(tokenID, user, collectionSlug)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to create or get 1155 asset")
+	}
+
+	asset.Count += amount
+
+	_, err = asset.Update(passdb.StdConn, boil.Whitelist(boiler.UserAssets1155Columns.Count))
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to update assets count")
 	}
 
 	return http.StatusOK, nil

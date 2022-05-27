@@ -69,7 +69,6 @@ func CreateOrGet1155Asset(externalTokenID int, user *types2.User, collectionSlug
 			OwnerID:         user.ID,
 			CollectionID:    collection.ID,
 			ExternalTokenID: externalTokenID,
-			Count:           1,
 			Label:           assetDetail.Label,
 			Description:     assetDetail.Description,
 			ImageURL:        assetDetail.ImageURL,
