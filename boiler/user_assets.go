@@ -33,6 +33,7 @@ type UserAsset struct {
 	Data             types.JSON  `boiler:"data" boil:"data" json:"data" toml:"data" yaml:"data"`
 	Attributes       types.JSON  `boiler:"attributes" boil:"attributes" json:"attributes" toml:"attributes" yaml:"attributes"`
 	Name             string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
+	AssetType        null.String `boiler:"asset_type" boil:"asset_type" json:"asset_type,omitempty" toml:"asset_type" yaml:"asset_type,omitempty"`
 	ImageURL         null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
 	ExternalURL      null.String `boiler:"external_url" boil:"external_url" json:"external_url,omitempty" toml:"external_url" yaml:"external_url,omitempty"`
 	CardAnimationURL null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
@@ -65,6 +66,7 @@ var UserAssetColumns = struct {
 	Data             string
 	Attributes       string
 	Name             string
+	AssetType        string
 	ImageURL         string
 	ExternalURL      string
 	CardAnimationURL string
@@ -92,6 +94,7 @@ var UserAssetColumns = struct {
 	Data:             "data",
 	Attributes:       "attributes",
 	Name:             "name",
+	AssetType:        "asset_type",
 	ImageURL:         "image_url",
 	ExternalURL:      "external_url",
 	CardAnimationURL: "card_animation_url",
@@ -121,6 +124,7 @@ var UserAssetTableColumns = struct {
 	Data             string
 	Attributes       string
 	Name             string
+	AssetType        string
 	ImageURL         string
 	ExternalURL      string
 	CardAnimationURL string
@@ -148,6 +152,7 @@ var UserAssetTableColumns = struct {
 	Data:             "user_assets.data",
 	Attributes:       "user_assets.attributes",
 	Name:             "user_assets.name",
+	AssetType:        "user_assets.asset_type",
 	ImageURL:         "user_assets.image_url",
 	ExternalURL:      "user_assets.external_url",
 	CardAnimationURL: "user_assets.card_animation_url",
@@ -179,6 +184,7 @@ var UserAssetWhere = struct {
 	Data             whereHelpertypes_JSON
 	Attributes       whereHelpertypes_JSON
 	Name             whereHelperstring
+	AssetType        whereHelpernull_String
 	ImageURL         whereHelpernull_String
 	ExternalURL      whereHelpernull_String
 	CardAnimationURL whereHelpernull_String
@@ -206,6 +212,7 @@ var UserAssetWhere = struct {
 	Data:             whereHelpertypes_JSON{field: "\"user_assets\".\"data\""},
 	Attributes:       whereHelpertypes_JSON{field: "\"user_assets\".\"attributes\""},
 	Name:             whereHelperstring{field: "\"user_assets\".\"name\""},
+	AssetType:        whereHelpernull_String{field: "\"user_assets\".\"asset_type\""},
 	ImageURL:         whereHelpernull_String{field: "\"user_assets\".\"image_url\""},
 	ExternalURL:      whereHelpernull_String{field: "\"user_assets\".\"external_url\""},
 	CardAnimationURL: whereHelpernull_String{field: "\"user_assets\".\"card_animation_url\""},
@@ -255,8 +262,8 @@ func (*userAssetR) NewStruct() *userAssetR {
 type userAssetL struct{}
 
 var (
-	userAssetAllColumns            = []string{"id", "collection_id", "token_id", "tier", "hash", "owner_id", "data", "attributes", "name", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "on_chain_status", "deleted_at", "data_refreshed_at", "updated_at", "created_at", "locked_to_service"}
-	userAssetColumnsWithoutDefault = []string{"collection_id", "token_id", "tier", "hash", "owner_id", "name", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "minted_at", "deleted_at", "locked_to_service"}
+	userAssetAllColumns            = []string{"id", "collection_id", "token_id", "tier", "hash", "owner_id", "data", "attributes", "name", "asset_type", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "on_chain_status", "deleted_at", "data_refreshed_at", "updated_at", "created_at", "locked_to_service"}
+	userAssetColumnsWithoutDefault = []string{"collection_id", "token_id", "tier", "hash", "owner_id", "name", "asset_type", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "minted_at", "deleted_at", "locked_to_service"}
 	userAssetColumnsWithDefault    = []string{"id", "data", "attributes", "unlocked_at", "on_chain_status", "data_refreshed_at", "updated_at", "created_at"}
 	userAssetPrimaryKeyColumns     = []string{"id"}
 )
