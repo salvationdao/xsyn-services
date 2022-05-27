@@ -53,20 +53,20 @@ func NewAssetController(log *zerolog.Logger, api *API) *AssetController {
 
 type AssetListRequest struct {
 	Payload struct {
-		UserID              xsynTypes.UserID               `json:"user_id"`
-		Sort              	*db.ListSortRequest                     `json:"sort,omitempty"`
-		Filter              *db.ListFilterRequest      `json:"filter,omitempty"`
-		AttributeFilter     *db.AttributeFilterRequest `json:"attribute_filter,omitempty"`
-		AssetType           string                     `json:"asset_type"`
-		Search              string                     `json:"search"`
-		PageSize            int                        `json:"page_size"`
-		Page                int                        `json:"page"`
+		UserID          xsynTypes.UserID           `json:"user_id"`
+		Sort            *db.ListSortRequest        `json:"sort,omitempty"`
+		Filter          *db.ListFilterRequest      `json:"filter,omitempty"`
+		AttributeFilter *db.AttributeFilterRequest `json:"attribute_filter,omitempty"`
+		AssetType       string                     `json:"asset_type"`
+		Search          string                     `json:"search"`
+		PageSize        int                        `json:"page_size"`
+		Page            int                        `json:"page"`
 	} `json:"payload"`
 }
 
 // AssetListResponse is the response from get asset list
 type AssetListResponse struct {
-	Total       int64                `json:"total"`
+	Total  int64                  `json:"total"`
 	Assets []*xsynTypes.UserAsset `json:"assets"` // TODO: create api type for user assets
 }
 
@@ -94,7 +94,7 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, user *xsynTypes
 	}
 
 	reply(&AssetListResponse{
-		Total: total,
+		Total:  total,
 		Assets: assets,
 	})
 	return nil
@@ -108,44 +108,43 @@ type AssetUpdatedSubscribeRequest struct {
 }
 
 type AssetUpdatedSubscribeResponse struct {
-	CollectionSlug string                `json:"collection_slug"`
+	CollectionSlug string                    `json:"collection_slug"`
 	PurchasedItem  *boiler.PurchasedItemsOld `json:"purchased_item"`
-	OwnerUsername  string                `json:"owner_username"`
-	HostURL        string                `json:"host_url"`
+	OwnerUsername  string                    `json:"owner_username"`
+	HostURL        string                    `json:"host_url"`
 }
 
-
-type UserAsset struct{
-	ID               string      `json:"id"`
-	CollectionID     string      `json:"collection_id"`
-	TokenID          int64       `json:"token_id"`
-	Tier             string      `json:"tier"`
-	Hash             string      `json:"hash"`
-	OwnerID          string      `json:"owner_id"`
-	Data             types.JSON  `json:"data"`
-	Attributes       types.JSON  `json:"attributes"`
-	Name             string      `json:"name"`
-	ImageURL         null.String `json:"image_url,omitempty"`
-	ExternalURL      null.String `json:"external_url,omitempty"`
-	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
-	AvatarURL        null.String `json:"avatar_url,omitempty"`
-	LargeImageURL    null.String `json:"large_image_url,omitempty"`
-	Description      null.String `json:"description,omitempty"`
-	BackgroundColor  null.String `json:"background_color,omitempty"`
-	AnimationURL     null.String `json:"animation_url,omitempty"`
-	YoutubeURL       null.String `json:"youtube_url,omitempty"`
-	UnlockedAt       time.Time   `json:"unlocked_at"`
-	MintedAt         null.Time   `json:"minted_at,omitempty"`
-	OnChainStatus    string      `json:"on_chain_status"`
-	XsynLocked       null.Bool   `json:"xsyn_locked,omitempty"`
-	DeletedAt        null.Time   `json:"deleted_at,omitempty"`
-	DataRefreshedAt  time.Time   `json:"data_refreshed_at"`
-	UpdatedAt        time.Time   `json:"updated_at"`
-	CreatedAt        time.Time   `json:"created_at"`
-	LockedToServiceName    null.String `json:"locked_to_service_name,omitempty"`
+type UserAsset struct {
+	ID                  string      `json:"id"`
+	CollectionID        string      `json:"collection_id"`
+	TokenID             int64       `json:"token_id"`
+	Tier                string      `json:"tier"`
+	Hash                string      `json:"hash"`
+	OwnerID             string      `json:"owner_id"`
+	Data                types.JSON  `json:"data"`
+	Attributes          types.JSON  `json:"attributes"`
+	Name                string      `json:"name"`
+	ImageURL            null.String `json:"image_url,omitempty"`
+	ExternalURL         null.String `json:"external_url,omitempty"`
+	CardAnimationURL    null.String `json:"card_animation_url,omitempty"`
+	AvatarURL           null.String `json:"avatar_url,omitempty"`
+	LargeImageURL       null.String `json:"large_image_url,omitempty"`
+	Description         null.String `json:"description,omitempty"`
+	BackgroundColor     null.String `json:"background_color,omitempty"`
+	AnimationURL        null.String `json:"animation_url,omitempty"`
+	YoutubeURL          null.String `json:"youtube_url,omitempty"`
+	UnlockedAt          time.Time   `json:"unlocked_at"`
+	MintedAt            null.Time   `json:"minted_at,omitempty"`
+	OnChainStatus       string      `json:"on_chain_status"`
+	XsynLocked          null.Bool   `json:"xsyn_locked,omitempty"`
+	DeletedAt           null.Time   `json:"deleted_at,omitempty"`
+	DataRefreshedAt     time.Time   `json:"data_refreshed_at"`
+	UpdatedAt           time.Time   `json:"updated_at"`
+	CreatedAt           time.Time   `json:"created_at"`
+	LockedToServiceName null.String `json:"locked_to_service_name,omitempty"`
 }
 
-type Collection struct{
+type Collection struct {
 	ID            string      `json:"id"`
 	Name          string      `json:"name"`
 	LogoBlobID    null.String `json:"logo_blob_id,omitempty"`
@@ -161,16 +160,15 @@ type Collection struct{
 }
 
 type User struct {
-	ID                               string          `json:"id"`
-	Username                         string          `json:"username"`
+	ID       string `json:"id"`
+	Username string `json:"username"`
 }
 
 type AssetResponse struct {
-	UserAsset *UserAsset `json:"user_asset"`
+	UserAsset  *UserAsset  `json:"user_asset"`
 	Collection *Collection `json:"collection"`
-	Owner *User `json:"owner"`
+	Owner      *User       `json:"owner"`
 }
-
 
 const HubKeyAssetSubscribe = "ASSET:GET"
 
@@ -194,10 +192,9 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, key
 		),
 		qm.Load(boiler.UserAssetRels.LockedToServiceUser),
 	).One(passdb.StdConn)
-	if err != nil{
+	if err != nil {
 		return terror.Error(err, "Failed to get user asset from db")
 	}
-
 
 	serviceName := null.NewString("", false)
 	if userAsset.R.LockedToServiceUser != nil {
@@ -206,46 +203,46 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, key
 
 	reply(&AssetResponse{
 		UserAsset: &UserAsset{
-			ID: userAsset.ID,
-			CollectionID: userAsset.CollectionID,
-			TokenID: userAsset.TokenID,
-			Tier: userAsset.Tier,
-			Hash: userAsset.Hash,
-			OwnerID: userAsset.OwnerID,
-			Data: userAsset.Data,
-			Attributes: userAsset.Attributes,
-			Name: userAsset.Name,
-			ImageURL: userAsset.ImageURL,
-			ExternalURL: userAsset.ExternalURL,
-			CardAnimationURL: userAsset.CardAnimationURL,
-			AvatarURL: userAsset.AvatarURL,
-			LargeImageURL: userAsset.LargeImageURL,
-			Description: userAsset.Description,
-			BackgroundColor: userAsset.BackgroundColor,
-			AnimationURL: userAsset.AnimationURL,
-			YoutubeURL: userAsset.YoutubeURL,
-			UnlockedAt: userAsset.UnlockedAt,
-			MintedAt: userAsset.MintedAt,
-			OnChainStatus: userAsset.OnChainStatus,
-			DeletedAt: userAsset.DeletedAt,
-			DataRefreshedAt: userAsset.DataRefreshedAt,
-			UpdatedAt: userAsset.UpdatedAt,
-			CreatedAt: userAsset.CreatedAt,
+			ID:                  userAsset.ID,
+			CollectionID:        userAsset.CollectionID,
+			TokenID:             userAsset.TokenID,
+			Tier:                userAsset.Tier,
+			Hash:                userAsset.Hash,
+			OwnerID:             userAsset.OwnerID,
+			Data:                userAsset.Data,
+			Attributes:          userAsset.Attributes,
+			Name:                userAsset.Name,
+			ImageURL:            userAsset.ImageURL,
+			ExternalURL:         userAsset.ExternalURL,
+			CardAnimationURL:    userAsset.CardAnimationURL,
+			AvatarURL:           userAsset.AvatarURL,
+			LargeImageURL:       userAsset.LargeImageURL,
+			Description:         userAsset.Description,
+			BackgroundColor:     userAsset.BackgroundColor,
+			AnimationURL:        userAsset.AnimationURL,
+			YoutubeURL:          userAsset.YoutubeURL,
+			UnlockedAt:          userAsset.UnlockedAt,
+			MintedAt:            userAsset.MintedAt,
+			OnChainStatus:       userAsset.OnChainStatus,
+			DeletedAt:           userAsset.DeletedAt,
+			DataRefreshedAt:     userAsset.DataRefreshedAt,
+			UpdatedAt:           userAsset.UpdatedAt,
+			CreatedAt:           userAsset.CreatedAt,
 			LockedToServiceName: serviceName,
 		},
 		Collection: &Collection{
-			ID:userAsset.R.Collection.ID,
-			Name:userAsset.R.Collection.Name,
-			LogoBlobID:userAsset.R.Collection.LogoBlobID,
-			Keywords:userAsset.R.Collection.Keywords,
-			DeletedAt:userAsset.R.Collection.DeletedAt,
-			UpdatedAt:userAsset.R.Collection.UpdatedAt,
-			CreatedAt:userAsset.R.Collection.CreatedAt,
-			Slug:userAsset.R.Collection.Slug,
-			MintContract:userAsset.R.Collection.MintContract,
-			StakeContract:userAsset.R.Collection.StakeContract,
-			IsVisible:userAsset.R.Collection.IsVisible,
-			ContractType:userAsset.R.Collection.ContractType,
+			ID:            userAsset.R.Collection.ID,
+			Name:          userAsset.R.Collection.Name,
+			LogoBlobID:    userAsset.R.Collection.LogoBlobID,
+			Keywords:      userAsset.R.Collection.Keywords,
+			DeletedAt:     userAsset.R.Collection.DeletedAt,
+			UpdatedAt:     userAsset.R.Collection.UpdatedAt,
+			CreatedAt:     userAsset.R.Collection.CreatedAt,
+			Slug:          userAsset.R.Collection.Slug,
+			MintContract:  userAsset.R.Collection.MintContract,
+			StakeContract: userAsset.R.Collection.StakeContract,
+			IsVisible:     userAsset.R.Collection.IsVisible,
+			ContractType:  userAsset.R.Collection.ContractType,
 		},
 		Owner: &User{
 			ID:       userAsset.R.Owner.ID,
@@ -282,7 +279,7 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 		),
 		qm.Load(boiler.UserAssetRels.LockedToServiceUser),
 	).One(passdb.StdConn)
-	if err != nil{
+	if err != nil {
 		return terror.Error(err, "Failed to get user asset from db")
 	}
 
@@ -296,12 +293,12 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 	tx := &xsynTypes.NewTransaction{
 		From:                 xsynTypes.UserID(userUUID),
 		To:                   xsynTypes.XsynTreasuryUserID,
-		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "SUPREMACY",req.Payload.AssetHash, time.Now().UnixNano())),
+		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "SUPREMACY", req.Payload.AssetHash, time.Now().UnixNano())),
 		Description:          fmt.Sprintf("Transfer of asset: %s to Supremacy", req.Payload.AssetHash),
 		Amount:               decimal.New(5, 18), // 5 sups
 		Group:                xsynTypes.TransactionGroupAssetManagement,
 		SubGroup:             "Transfer",
-		NotSafe: true,
+		NotSafe:              true,
 	}
 
 	_, _, txID, err := ac.API.userCacheMap.Transact(tx)
@@ -310,112 +307,90 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 	}
 
 	transferLog := &boiler.AssetServiceTransferEvent{
-		UserAssetID:         userAsset.ID,
-		UserID:              userAsset.OwnerID,
-		InitiatedFrom:       "XSYN",
-		ToService:           null.StringFrom(xsynTypes.SupremacyGameUserID.String()),
-		TransferTXID:       txID,
+		UserAssetID:   userAsset.ID,
+		UserID:        userAsset.OwnerID,
+		InitiatedFrom: "XSYN",
+		ToService:     null.StringFrom(xsynTypes.SupremacyGameUserID.String()),
+		TransferTXID:  txID,
 	}
-	 err = transferLog.Insert(passdb.StdConn, boil.Infer())
+	err = transferLog.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
 		return terror.Error(err, "Failed to transfer asset to supremacy")
 	}
 
-	refundFunc := func(reason string){
-		refundTX := &xsynTypes.NewTransaction{
-			From:                 tx.To,
-			To:                   tx.From,
-			TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("REFUND - %s", tx.TransactionReference)),
-			Description:          fmt.Sprintf("Reverse transaction - %s. Reason: %s", tx.Description, reason),
-			Amount:               tx.Amount,
-			Group:                xsynTypes.TransactionGroupAssetManagement,
-			SubGroup:               "Transfer",
-			RelatedTransactionID: null.StringFrom(tx.ID),
-		}
-
-		_, _, refundTxID, err := ac.API.userCacheMap.Transact(refundTX)
-		if err != nil {
-			passlog.L.Error().
-				Err(err).
-				Interface("refundTX", refundTX).
-				Msg("refund failed")
-			return
-		}
-		transferLog.RefundedAt = null.TimeFrom(time.Now())
-		transferLog.TransferRefundTXID = null.StringFrom(refundTxID)
-		_, err = transferLog.Update(passdb.StdConn, boil.Infer())
-		if err != nil {
-			passlog.L.Error().
-				Err(err).
-				Interface("transferLog", transferLog).
-				Msg("failed to update transfer log in refund")
-		}
-	}
-
-
-
-
-	err = supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug)
+	err = supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug, transferLog.ID)
 	if err != nil {
-		refundFunc("Failed to transfer asset to supremacy")
+		_, _ = reverseAssetServiceTransaction(
+			ac.API.userCacheMap,
+			tx,
+			transferLog,
+			"Failed to transfer asset to supremacy")
 		return terror.Error(err, "Failed to transfer asset to supremacy")
 	}
 
 	userAsset.LockedToService = null.StringFrom(xsynTypes.SupremacyGameUserID.String())
 	_, err = userAsset.Update(passdb.StdConn, boil.Infer())
 	if err != nil {
-		err = supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug)
+		reverseTransaction, reverseTransfer := reverseAssetServiceTransaction(
+			ac.API.userCacheMap,
+			tx,
+			transferLog,
+			"Failed to transfer asset to supremacy")
+		err = supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug, reverseTransfer.ID)
 		if err != nil {
-			refundFunc("Failed to transfer asset to supremacy")
+			_,_  = reverseAssetServiceTransaction(
+				ac.API.userCacheMap,
+				reverseTransaction,
+				reverseTransfer,
+				"Failed to transfer asset to supremacy")
 			passlog.L.Error().Err(err).Msg("failed to unlock asset from supremacy after we failed to update asset lock")
 			return terror.Error(err, "Failed to transfer asset to supremacy")
 		}
-		refundFunc("Failed to transfer asset to supremacy")
 		return terror.Error(err, "Failed to transfer asset to supremacy")
 	}
 
 	reply(&AssetResponse{
 		UserAsset: &UserAsset{
-			ID: userAsset.ID,
-			CollectionID: userAsset.CollectionID,
-			TokenID: userAsset.TokenID,
-			Tier: userAsset.Tier,
-			Hash: userAsset.Hash,
-			OwnerID: userAsset.OwnerID,
-			Data: userAsset.Data,
-			Attributes: userAsset.Attributes,
-			Name: userAsset.Name,
-			ImageURL: userAsset.ImageURL,
-			ExternalURL: userAsset.ExternalURL,
-			CardAnimationURL: userAsset.CardAnimationURL,
-			AvatarURL: userAsset.AvatarURL,
-			LargeImageURL: userAsset.LargeImageURL,
-			Description: userAsset.Description,
-			BackgroundColor: userAsset.BackgroundColor,
-			AnimationURL: userAsset.AnimationURL,
-			YoutubeURL: userAsset.YoutubeURL,
-			UnlockedAt: userAsset.UnlockedAt,
-			MintedAt: userAsset.MintedAt,
-			OnChainStatus: userAsset.OnChainStatus,
-			DeletedAt: userAsset.DeletedAt,
-			DataRefreshedAt: userAsset.DataRefreshedAt,
-			UpdatedAt: userAsset.UpdatedAt,
-			CreatedAt: userAsset.CreatedAt,
+			ID:                  userAsset.ID,
+			CollectionID:        userAsset.CollectionID,
+			TokenID:             userAsset.TokenID,
+			Tier:                userAsset.Tier,
+			Hash:                userAsset.Hash,
+			OwnerID:             userAsset.OwnerID,
+			Data:                userAsset.Data,
+			Attributes:          userAsset.Attributes,
+			Name:                userAsset.Name,
+			ImageURL:            userAsset.ImageURL,
+			ExternalURL:         userAsset.ExternalURL,
+			CardAnimationURL:    userAsset.CardAnimationURL,
+			AvatarURL:           userAsset.AvatarURL,
+			LargeImageURL:       userAsset.LargeImageURL,
+			Description:         userAsset.Description,
+			BackgroundColor:     userAsset.BackgroundColor,
+			AnimationURL:        userAsset.AnimationURL,
+			YoutubeURL:          userAsset.YoutubeURL,
+			UnlockedAt:          userAsset.UnlockedAt,
+			MintedAt:            userAsset.MintedAt,
+			OnChainStatus:       userAsset.OnChainStatus,
+			DeletedAt:           userAsset.DeletedAt,
+			DataRefreshedAt:     userAsset.DataRefreshedAt,
+			UpdatedAt:           userAsset.UpdatedAt,
+			CreatedAt:           userAsset.CreatedAt,
 			LockedToServiceName: null.StringFrom("Supremacy"),
 		},
 		Collection: &Collection{
-			ID:userAsset.R.Collection.ID,
-			Name:userAsset.R.Collection.Name,
-			LogoBlobID:userAsset.R.Collection.LogoBlobID,
-			Keywords:userAsset.R.Collection.Keywords,
-			DeletedAt:userAsset.R.Collection.DeletedAt,
-			UpdatedAt:userAsset.R.Collection.UpdatedAt,
-			CreatedAt:userAsset.R.Collection.CreatedAt,
-			Slug:userAsset.R.Collection.Slug,
-			MintContract:userAsset.R.Collection.MintContract,
-			StakeContract:userAsset.R.Collection.StakeContract,
-			IsVisible:userAsset.R.Collection.IsVisible,
-			ContractType:userAsset.R.Collection.ContractType,
+			ID:            userAsset.R.Collection.ID,
+			Name:          userAsset.R.Collection.Name,
+			LogoBlobID:    userAsset.R.Collection.LogoBlobID,
+			Keywords:      userAsset.R.Collection.Keywords,
+			DeletedAt:     userAsset.R.Collection.DeletedAt,
+			UpdatedAt:     userAsset.R.Collection.UpdatedAt,
+			CreatedAt:     userAsset.R.Collection.CreatedAt,
+			Slug:          userAsset.R.Collection.Slug,
+			MintContract:  userAsset.R.Collection.MintContract,
+			StakeContract: userAsset.R.Collection.StakeContract,
+			IsVisible:     userAsset.R.Collection.IsVisible,
+			ContractType:  userAsset.R.Collection.ContractType,
 		},
 		Owner: &User{
 			ID:       userAsset.R.Owner.ID,
@@ -424,7 +399,6 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 	})
 	return nil
 }
-
 
 type AssetTransferFromSupremacyRequest struct {
 	Payload struct {
@@ -453,7 +427,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 		),
 		qm.Load(boiler.UserAssetRels.LockedToServiceUser),
 	).One(passdb.StdConn)
-	if err != nil{
+	if err != nil {
 		return terror.Error(err, "Failed to get user asset from db")
 	}
 
@@ -467,125 +441,108 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 	tx := &xsynTypes.NewTransaction{
 		From:                 xsynTypes.UserID(userUUID),
 		To:                   xsynTypes.XsynTreasuryUserID,
-		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "XSYN",req.Payload.AssetHash, time.Now().UnixNano())),
+		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "XSYN", req.Payload.AssetHash, time.Now().UnixNano())),
 		Description:          fmt.Sprintf("Transfer of asset: %s to XSYN", req.Payload.AssetHash),
 		Amount:               decimal.New(5, 18), // 5 sups
 		Group:                xsynTypes.TransactionGroupAssetManagement,
 		SubGroup:             "Transfer",
-		NotSafe: true,
+		NotSafe:              true,
 	}
 
 	_, _, txID, err := ac.API.userCacheMap.Transact(tx)
 	if err != nil {
-		fmt.Println("here123")
 		return err
 	}
 
 	transferLog := &boiler.AssetServiceTransferEvent{
-		UserAssetID:         userAsset.ID,
-		UserID:              userAsset.OwnerID,
-		InitiatedFrom:       "XSYN",
-		FromService:           null.StringFrom(xsynTypes.SupremacyGameUserID.String()),
-		TransferTXID:       txID,
+		UserAssetID:   userAsset.ID,
+		UserID:        userAsset.OwnerID,
+		InitiatedFrom: "XSYN",
+		FromService:   null.StringFrom(xsynTypes.SupremacyGameUserID.String()),
+		TransferTXID:  txID,
 	}
 	err = transferLog.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
 		return terror.Error(err, "Failed to transfer asset to XSYN")
 	}
 
-	refundFunc := func(reason string){
-		refundTX := &xsynTypes.NewTransaction{
-			From:                 tx.To,
-			To:                   tx.From,
-			TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("REFUND - %s", tx.TransactionReference)),
-			Description:          fmt.Sprintf("Reverse transaction - %s. Reason: %s", tx.Description, reason),
-			Amount:               tx.Amount,
-			Group:                xsynTypes.TransactionGroupAssetManagement,
-			SubGroup:               "Transfer",
-			RelatedTransactionID: null.StringFrom(tx.ID),
-		}
-
-		_, _, refundTxID, err := ac.API.userCacheMap.Transact(refundTX)
-		if err != nil {
-			passlog.L.Error().
-				Err(err).
-				Interface("refundTX", refundTX).
-				Msg("refund failed")
-			return
-		}
-		transferLog.RefundedAt = null.TimeFrom(time.Now())
-		transferLog.TransferRefundTXID = null.StringFrom(refundTxID)
-		_, err = transferLog.Update(passdb.StdConn, boil.Infer())
-		if err != nil {
-			passlog.L.Error().
-				Err(err).
-				Interface("transferLog", transferLog).
-				Msg("failed to update transfer log in refund")
-		}
-	}
-
-
-	err = supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug)
+	err = supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug, transferLog.ID)
 	if err != nil {
-		refundFunc("Failed to transfer asset from supremacy")
+		// TODO: in the future we should forcable be able to pull assets from services back to xsyn
+		reverseAssetServiceTransaction(
+			ac.API.userCacheMap,
+			tx,
+			transferLog,
+			"Failed to transfer asset from supremacy",
+			)
 		return terror.Error(err, "Failed to transfer asset from supremacy")
 	}
 
 	userAsset.LockedToService = null.NewString("", false)
 	_, err = userAsset.Update(passdb.StdConn, boil.Infer())
 	if err != nil {
-		err = supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug)
+		reverseTransaction, reverseTransferLog := reverseAssetServiceTransaction(
+			ac.API.userCacheMap,
+			tx,
+			transferLog,
+			"Failed to transfer asset from supremacy",
+			)
+		err = supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug, reverseTransferLog.ID)
 		if err != nil {
-			refundFunc("Failed to transfer asset from supremacy")
+			_, _ = reverseAssetServiceTransaction(
+				ac.API.userCacheMap,
+				reverseTransaction,
+				reverseTransferLog,
+				"Failed to transfer asset from supremacy",
+			)
 			passlog.L.Error().Err(err).Msg("failed to lock asset from supremacy after we failed to update asset lock")
 			return terror.Error(err, "Failed to transfer asset from supremacy")
 		}
-		refundFunc("Failed to transfer asset from supremacy")
 		return terror.Error(err, "Failed to transfer asset from supremacy")
 	}
 
 	reply(&AssetResponse{
 		UserAsset: &UserAsset{
-			ID: userAsset.ID,
-			CollectionID: userAsset.CollectionID,
-			TokenID: userAsset.TokenID,
-			Tier: userAsset.Tier,
-			Hash: userAsset.Hash,
-			OwnerID: userAsset.OwnerID,
-			Data: userAsset.Data,
-			Attributes: userAsset.Attributes,
-			Name: userAsset.Name,
-			ImageURL: userAsset.ImageURL,
-			ExternalURL: userAsset.ExternalURL,
-			CardAnimationURL: userAsset.CardAnimationURL,
-			AvatarURL: userAsset.AvatarURL,
-			LargeImageURL: userAsset.LargeImageURL,
-			Description: userAsset.Description,
-			BackgroundColor: userAsset.BackgroundColor,
-			AnimationURL: userAsset.AnimationURL,
-			YoutubeURL: userAsset.YoutubeURL,
-			UnlockedAt: userAsset.UnlockedAt,
-			MintedAt: userAsset.MintedAt,
-			OnChainStatus: userAsset.OnChainStatus,
-			DeletedAt: userAsset.DeletedAt,
-			DataRefreshedAt: userAsset.DataRefreshedAt,
-			UpdatedAt: userAsset.UpdatedAt,
-			CreatedAt: userAsset.CreatedAt,
+			ID:                  userAsset.ID,
+			CollectionID:        userAsset.CollectionID,
+			TokenID:             userAsset.TokenID,
+			Tier:                userAsset.Tier,
+			Hash:                userAsset.Hash,
+			OwnerID:             userAsset.OwnerID,
+			Data:                userAsset.Data,
+			Attributes:          userAsset.Attributes,
+			Name:                userAsset.Name,
+			ImageURL:            userAsset.ImageURL,
+			ExternalURL:         userAsset.ExternalURL,
+			CardAnimationURL:    userAsset.CardAnimationURL,
+			AvatarURL:           userAsset.AvatarURL,
+			LargeImageURL:       userAsset.LargeImageURL,
+			Description:         userAsset.Description,
+			BackgroundColor:     userAsset.BackgroundColor,
+			AnimationURL:        userAsset.AnimationURL,
+			YoutubeURL:          userAsset.YoutubeURL,
+			UnlockedAt:          userAsset.UnlockedAt,
+			MintedAt:            userAsset.MintedAt,
+			OnChainStatus:       userAsset.OnChainStatus,
+			DeletedAt:           userAsset.DeletedAt,
+			DataRefreshedAt:     userAsset.DataRefreshedAt,
+			UpdatedAt:           userAsset.UpdatedAt,
+			CreatedAt:           userAsset.CreatedAt,
 			LockedToServiceName: null.NewString("", false),
 		},
 		Collection: &Collection{
-			ID:userAsset.R.Collection.ID,
-			Name:userAsset.R.Collection.Name,
-			LogoBlobID:userAsset.R.Collection.LogoBlobID,
-			Keywords:userAsset.R.Collection.Keywords,
-			DeletedAt:userAsset.R.Collection.DeletedAt,
-			UpdatedAt:userAsset.R.Collection.UpdatedAt,
-			CreatedAt:userAsset.R.Collection.CreatedAt,
-			Slug:userAsset.R.Collection.Slug,
-			MintContract:userAsset.R.Collection.MintContract,
-			StakeContract:userAsset.R.Collection.StakeContract,
-			IsVisible:userAsset.R.Collection.IsVisible,
-			ContractType:userAsset.R.Collection.ContractType,
+			ID:            userAsset.R.Collection.ID,
+			Name:          userAsset.R.Collection.Name,
+			LogoBlobID:    userAsset.R.Collection.LogoBlobID,
+			Keywords:      userAsset.R.Collection.Keywords,
+			DeletedAt:     userAsset.R.Collection.DeletedAt,
+			UpdatedAt:     userAsset.R.Collection.UpdatedAt,
+			CreatedAt:     userAsset.R.Collection.CreatedAt,
+			Slug:          userAsset.R.Collection.Slug,
+			MintContract:  userAsset.R.Collection.MintContract,
+			StakeContract: userAsset.R.Collection.StakeContract,
+			IsVisible:     userAsset.R.Collection.IsVisible,
+			ContractType:  userAsset.R.Collection.ContractType,
 		},
 		Owner: &User{
 			ID:       userAsset.R.Owner.ID,
@@ -593,4 +550,49 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 		},
 	})
 	return nil
+}
+
+ func reverseAssetServiceTransaction(
+	  ucm *Transactor,
+	 transactionToReverse *xsynTypes.NewTransaction,
+	 transferToReverse *boiler.AssetServiceTransferEvent,
+	 reason string,
+	 ) (transaction *xsynTypes.NewTransaction, returnTransferLog *boiler.AssetServiceTransferEvent) {
+	transaction = &xsynTypes.NewTransaction{
+		From:                 transactionToReverse.To,
+		To:                   transactionToReverse.From,
+		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("REFUND - %s", transactionToReverse.TransactionReference)),
+		Description:          fmt.Sprintf("Reverse transaction - %s. Reason: %s", transactionToReverse.Description, reason),
+		Amount:               transactionToReverse.Amount,
+		Group:                xsynTypes.TransactionGroupAssetManagement,
+		SubGroup:             "Transfer",
+		RelatedTransactionID: null.StringFrom(transactionToReverse.ID),
+	}
+
+	_, _, reverseID, err := ucm.Transact(transaction)
+	if err != nil {
+		passlog.L.Error().
+			Err(err).
+			Interface("transaction", transaction).
+			Msg("reverse failed")
+		return
+	}
+
+	returnTransferLog = &boiler.AssetServiceTransferEvent{
+		UserAssetID:   transferToReverse.UserAssetID,
+		UserID:        transferToReverse.UserID,
+		InitiatedFrom: transferToReverse.InitiatedFrom,
+		FromService: 	transferToReverse.ToService,
+		ToService:     transferToReverse.FromService,
+		TransferTXID:  reverseID,
+	}
+	err = returnTransferLog.Insert(passdb.StdConn, boil.Infer())
+	if err != nil {
+		passlog.L.Error().
+			Err(err).
+			Interface("returnTransferLog", returnTransferLog).
+			Msg("failed to update transfer log in refund")
+		return
+	}
+	return
 }

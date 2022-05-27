@@ -23,70 +23,83 @@ import (
 
 // AssetServiceTransferEvent is an object representing the database table.
 type AssetServiceTransferEvent struct {
-	ID                 string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	UserAssetID        string      `boiler:"user_asset_id" boil:"user_asset_id" json:"user_asset_id" toml:"user_asset_id" yaml:"user_asset_id"`
-	UserID             string      `boiler:"user_id" boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
-	InitiatedFrom      string      `boiler:"initiated_from" boil:"initiated_from" json:"initiated_from" toml:"initiated_from" yaml:"initiated_from"`
-	FromService        null.String `boiler:"from_service" boil:"from_service" json:"from_service,omitempty" toml:"from_service" yaml:"from_service,omitempty"`
-	ToService          null.String `boiler:"to_service" boil:"to_service" json:"to_service,omitempty" toml:"to_service" yaml:"to_service,omitempty"`
-	TransferTXID       string      `boiler:"transfer_tx_id" boil:"transfer_tx_id" json:"transfer_tx_id" toml:"transfer_tx_id" yaml:"transfer_tx_id"`
-	TransferRefundTXID null.String `boiler:"transfer_refund_tx_id" boil:"transfer_refund_tx_id" json:"transfer_refund_tx_id,omitempty" toml:"transfer_refund_tx_id" yaml:"transfer_refund_tx_id,omitempty"`
-	TransferredAt      time.Time   `boiler:"transferred_at" boil:"transferred_at" json:"transferred_at" toml:"transferred_at" yaml:"transferred_at"`
-	RefundedAt         null.Time   `boiler:"refunded_at" boil:"refunded_at" json:"refunded_at,omitempty" toml:"refunded_at" yaml:"refunded_at,omitempty"`
+	ID            int64       `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	UserAssetID   string      `boiler:"user_asset_id" boil:"user_asset_id" json:"user_asset_id" toml:"user_asset_id" yaml:"user_asset_id"`
+	UserID        string      `boiler:"user_id" boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
+	InitiatedFrom string      `boiler:"initiated_from" boil:"initiated_from" json:"initiated_from" toml:"initiated_from" yaml:"initiated_from"`
+	FromService   null.String `boiler:"from_service" boil:"from_service" json:"from_service,omitempty" toml:"from_service" yaml:"from_service,omitempty"`
+	ToService     null.String `boiler:"to_service" boil:"to_service" json:"to_service,omitempty" toml:"to_service" yaml:"to_service,omitempty"`
+	TransferTXID  string      `boiler:"transfer_tx_id" boil:"transfer_tx_id" json:"transfer_tx_id" toml:"transfer_tx_id" yaml:"transfer_tx_id"`
+	TransferredAt time.Time   `boiler:"transferred_at" boil:"transferred_at" json:"transferred_at" toml:"transferred_at" yaml:"transferred_at"`
 
 	R *assetServiceTransferEventR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L assetServiceTransferEventL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var AssetServiceTransferEventColumns = struct {
-	ID                 string
-	UserAssetID        string
-	UserID             string
-	InitiatedFrom      string
-	FromService        string
-	ToService          string
-	TransferTXID       string
-	TransferRefundTXID string
-	TransferredAt      string
-	RefundedAt         string
+	ID            string
+	UserAssetID   string
+	UserID        string
+	InitiatedFrom string
+	FromService   string
+	ToService     string
+	TransferTXID  string
+	TransferredAt string
 }{
-	ID:                 "id",
-	UserAssetID:        "user_asset_id",
-	UserID:             "user_id",
-	InitiatedFrom:      "initiated_from",
-	FromService:        "from_service",
-	ToService:          "to_service",
-	TransferTXID:       "transfer_tx_id",
-	TransferRefundTXID: "transfer_refund_tx_id",
-	TransferredAt:      "transferred_at",
-	RefundedAt:         "refunded_at",
+	ID:            "id",
+	UserAssetID:   "user_asset_id",
+	UserID:        "user_id",
+	InitiatedFrom: "initiated_from",
+	FromService:   "from_service",
+	ToService:     "to_service",
+	TransferTXID:  "transfer_tx_id",
+	TransferredAt: "transferred_at",
 }
 
 var AssetServiceTransferEventTableColumns = struct {
-	ID                 string
-	UserAssetID        string
-	UserID             string
-	InitiatedFrom      string
-	FromService        string
-	ToService          string
-	TransferTXID       string
-	TransferRefundTXID string
-	TransferredAt      string
-	RefundedAt         string
+	ID            string
+	UserAssetID   string
+	UserID        string
+	InitiatedFrom string
+	FromService   string
+	ToService     string
+	TransferTXID  string
+	TransferredAt string
 }{
-	ID:                 "asset_service_transfer_events.id",
-	UserAssetID:        "asset_service_transfer_events.user_asset_id",
-	UserID:             "asset_service_transfer_events.user_id",
-	InitiatedFrom:      "asset_service_transfer_events.initiated_from",
-	FromService:        "asset_service_transfer_events.from_service",
-	ToService:          "asset_service_transfer_events.to_service",
-	TransferTXID:       "asset_service_transfer_events.transfer_tx_id",
-	TransferRefundTXID: "asset_service_transfer_events.transfer_refund_tx_id",
-	TransferredAt:      "asset_service_transfer_events.transferred_at",
-	RefundedAt:         "asset_service_transfer_events.refunded_at",
+	ID:            "asset_service_transfer_events.id",
+	UserAssetID:   "asset_service_transfer_events.user_asset_id",
+	UserID:        "asset_service_transfer_events.user_id",
+	InitiatedFrom: "asset_service_transfer_events.initiated_from",
+	FromService:   "asset_service_transfer_events.from_service",
+	ToService:     "asset_service_transfer_events.to_service",
+	TransferTXID:  "asset_service_transfer_events.transfer_tx_id",
+	TransferredAt: "asset_service_transfer_events.transferred_at",
 }
 
 // Generated where
+
+type whereHelperint64 struct{ field string }
+
+func (w whereHelperint64) EQ(x int64) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
+func (w whereHelperint64) NEQ(x int64) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
+func (w whereHelperint64) LT(x int64) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
+func (w whereHelperint64) LTE(x int64) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
+func (w whereHelperint64) GT(x int64) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
+func (w whereHelperint64) GTE(x int64) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
+func (w whereHelperint64) IN(slice []int64) qm.QueryMod {
+	values := make([]interface{}, 0, len(slice))
+	for _, value := range slice {
+		values = append(values, value)
+	}
+	return qm.WhereIn(fmt.Sprintf("%s IN ?", w.field), values...)
+}
+func (w whereHelperint64) NIN(slice []int64) qm.QueryMod {
+	values := make([]interface{}, 0, len(slice))
+	for _, value := range slice {
+		values = append(values, value)
+	}
+	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
+}
 
 type whereHelpernull_String struct{ field string }
 
@@ -113,54 +126,47 @@ func (w whereHelpernull_String) IsNull() qm.QueryMod    { return qmhelper.WhereI
 func (w whereHelpernull_String) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
 var AssetServiceTransferEventWhere = struct {
-	ID                 whereHelperstring
-	UserAssetID        whereHelperstring
-	UserID             whereHelperstring
-	InitiatedFrom      whereHelperstring
-	FromService        whereHelpernull_String
-	ToService          whereHelpernull_String
-	TransferTXID       whereHelperstring
-	TransferRefundTXID whereHelpernull_String
-	TransferredAt      whereHelpertime_Time
-	RefundedAt         whereHelpernull_Time
+	ID            whereHelperint64
+	UserAssetID   whereHelperstring
+	UserID        whereHelperstring
+	InitiatedFrom whereHelperstring
+	FromService   whereHelpernull_String
+	ToService     whereHelpernull_String
+	TransferTXID  whereHelperstring
+	TransferredAt whereHelpertime_Time
 }{
-	ID:                 whereHelperstring{field: "\"asset_service_transfer_events\".\"id\""},
-	UserAssetID:        whereHelperstring{field: "\"asset_service_transfer_events\".\"user_asset_id\""},
-	UserID:             whereHelperstring{field: "\"asset_service_transfer_events\".\"user_id\""},
-	InitiatedFrom:      whereHelperstring{field: "\"asset_service_transfer_events\".\"initiated_from\""},
-	FromService:        whereHelpernull_String{field: "\"asset_service_transfer_events\".\"from_service\""},
-	ToService:          whereHelpernull_String{field: "\"asset_service_transfer_events\".\"to_service\""},
-	TransferTXID:       whereHelperstring{field: "\"asset_service_transfer_events\".\"transfer_tx_id\""},
-	TransferRefundTXID: whereHelpernull_String{field: "\"asset_service_transfer_events\".\"transfer_refund_tx_id\""},
-	TransferredAt:      whereHelpertime_Time{field: "\"asset_service_transfer_events\".\"transferred_at\""},
-	RefundedAt:         whereHelpernull_Time{field: "\"asset_service_transfer_events\".\"refunded_at\""},
+	ID:            whereHelperint64{field: "\"asset_service_transfer_events\".\"id\""},
+	UserAssetID:   whereHelperstring{field: "\"asset_service_transfer_events\".\"user_asset_id\""},
+	UserID:        whereHelperstring{field: "\"asset_service_transfer_events\".\"user_id\""},
+	InitiatedFrom: whereHelperstring{field: "\"asset_service_transfer_events\".\"initiated_from\""},
+	FromService:   whereHelpernull_String{field: "\"asset_service_transfer_events\".\"from_service\""},
+	ToService:     whereHelpernull_String{field: "\"asset_service_transfer_events\".\"to_service\""},
+	TransferTXID:  whereHelperstring{field: "\"asset_service_transfer_events\".\"transfer_tx_id\""},
+	TransferredAt: whereHelpertime_Time{field: "\"asset_service_transfer_events\".\"transferred_at\""},
 }
 
 // AssetServiceTransferEventRels is where relationship names are stored.
 var AssetServiceTransferEventRels = struct {
-	FromServiceUser  string
-	ToServiceUser    string
-	TransferRefundTX string
-	TransferTX       string
-	UserAsset        string
-	User             string
+	FromServiceUser string
+	ToServiceUser   string
+	TransferTX      string
+	UserAsset       string
+	User            string
 }{
-	FromServiceUser:  "FromServiceUser",
-	ToServiceUser:    "ToServiceUser",
-	TransferRefundTX: "TransferRefundTX",
-	TransferTX:       "TransferTX",
-	UserAsset:        "UserAsset",
-	User:             "User",
+	FromServiceUser: "FromServiceUser",
+	ToServiceUser:   "ToServiceUser",
+	TransferTX:      "TransferTX",
+	UserAsset:       "UserAsset",
+	User:            "User",
 }
 
 // assetServiceTransferEventR is where relationships are stored.
 type assetServiceTransferEventR struct {
-	FromServiceUser  *User        `boiler:"FromServiceUser" boil:"FromServiceUser" json:"FromServiceUser" toml:"FromServiceUser" yaml:"FromServiceUser"`
-	ToServiceUser    *User        `boiler:"ToServiceUser" boil:"ToServiceUser" json:"ToServiceUser" toml:"ToServiceUser" yaml:"ToServiceUser"`
-	TransferRefundTX *Transaction `boiler:"TransferRefundTX" boil:"TransferRefundTX" json:"TransferRefundTX" toml:"TransferRefundTX" yaml:"TransferRefundTX"`
-	TransferTX       *Transaction `boiler:"TransferTX" boil:"TransferTX" json:"TransferTX" toml:"TransferTX" yaml:"TransferTX"`
-	UserAsset        *UserAsset   `boiler:"UserAsset" boil:"UserAsset" json:"UserAsset" toml:"UserAsset" yaml:"UserAsset"`
-	User             *User        `boiler:"User" boil:"User" json:"User" toml:"User" yaml:"User"`
+	FromServiceUser *User        `boiler:"FromServiceUser" boil:"FromServiceUser" json:"FromServiceUser" toml:"FromServiceUser" yaml:"FromServiceUser"`
+	ToServiceUser   *User        `boiler:"ToServiceUser" boil:"ToServiceUser" json:"ToServiceUser" toml:"ToServiceUser" yaml:"ToServiceUser"`
+	TransferTX      *Transaction `boiler:"TransferTX" boil:"TransferTX" json:"TransferTX" toml:"TransferTX" yaml:"TransferTX"`
+	UserAsset       *UserAsset   `boiler:"UserAsset" boil:"UserAsset" json:"UserAsset" toml:"UserAsset" yaml:"UserAsset"`
+	User            *User        `boiler:"User" boil:"User" json:"User" toml:"User" yaml:"User"`
 }
 
 // NewStruct creates a new relationship struct
@@ -172,8 +178,8 @@ func (*assetServiceTransferEventR) NewStruct() *assetServiceTransferEventR {
 type assetServiceTransferEventL struct{}
 
 var (
-	assetServiceTransferEventAllColumns            = []string{"id", "user_asset_id", "user_id", "initiated_from", "from_service", "to_service", "transfer_tx_id", "transfer_refund_tx_id", "transferred_at", "refunded_at"}
-	assetServiceTransferEventColumnsWithoutDefault = []string{"user_asset_id", "user_id", "from_service", "to_service", "transfer_tx_id", "transfer_refund_tx_id", "refunded_at"}
+	assetServiceTransferEventAllColumns            = []string{"id", "user_asset_id", "user_id", "initiated_from", "from_service", "to_service", "transfer_tx_id", "transferred_at"}
+	assetServiceTransferEventColumnsWithoutDefault = []string{"user_asset_id", "user_id", "from_service", "to_service", "transfer_tx_id"}
 	assetServiceTransferEventColumnsWithDefault    = []string{"id", "initiated_from", "transferred_at"}
 	assetServiceTransferEventPrimaryKeyColumns     = []string{"id"}
 )
@@ -447,20 +453,6 @@ func (o *AssetServiceTransferEvent) ToServiceUser(mods ...qm.QueryMod) userQuery
 	return query
 }
 
-// TransferRefundTX pointed to by the foreign key.
-func (o *AssetServiceTransferEvent) TransferRefundTX(mods ...qm.QueryMod) transactionQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.TransferRefundTXID),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Transactions(queryMods...)
-	queries.SetFrom(query.Query, "\"transactions\"")
-
-	return query
-}
-
 // TransferTX pointed to by the foreign key.
 func (o *AssetServiceTransferEvent) TransferTX(mods ...qm.QueryMod) transactionQuery {
 	queryMods := []qm.QueryMod{
@@ -715,114 +707,6 @@ func (assetServiceTransferEventL) LoadToServiceUser(e boil.Executor, singular bo
 					foreign.R = &userR{}
 				}
 				foreign.R.ToServiceAssetServiceTransferEvents = append(foreign.R.ToServiceAssetServiceTransferEvents, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadTransferRefundTX allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (assetServiceTransferEventL) LoadTransferRefundTX(e boil.Executor, singular bool, maybeAssetServiceTransferEvent interface{}, mods queries.Applicator) error {
-	var slice []*AssetServiceTransferEvent
-	var object *AssetServiceTransferEvent
-
-	if singular {
-		object = maybeAssetServiceTransferEvent.(*AssetServiceTransferEvent)
-	} else {
-		slice = *maybeAssetServiceTransferEvent.(*[]*AssetServiceTransferEvent)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &assetServiceTransferEventR{}
-		}
-		if !queries.IsNil(object.TransferRefundTXID) {
-			args = append(args, object.TransferRefundTXID)
-		}
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &assetServiceTransferEventR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.TransferRefundTXID) {
-					continue Outer
-				}
-			}
-
-			if !queries.IsNil(obj.TransferRefundTXID) {
-				args = append(args, obj.TransferRefundTXID)
-			}
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`transactions`),
-		qm.WhereIn(`transactions.id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Transaction")
-	}
-
-	var resultSlice []*Transaction
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Transaction")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for transactions")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions")
-	}
-
-	if len(assetServiceTransferEventAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.TransferRefundTX = foreign
-		if foreign.R == nil {
-			foreign.R = &transactionR{}
-		}
-		foreign.R.TransferRefundTXAssetServiceTransferEvents = append(foreign.R.TransferRefundTXAssetServiceTransferEvents, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.TransferRefundTXID, foreign.ID) {
-				local.R.TransferRefundTX = foreign
-				if foreign.R == nil {
-					foreign.R = &transactionR{}
-				}
-				foreign.R.TransferRefundTXAssetServiceTransferEvents = append(foreign.R.TransferRefundTXAssetServiceTransferEvents, local)
 				break
 			}
 		}
@@ -1303,85 +1187,6 @@ func (o *AssetServiceTransferEvent) RemoveToServiceUser(exec boil.Executor, rela
 	return nil
 }
 
-// SetTransferRefundTX of the assetServiceTransferEvent to the related item.
-// Sets o.R.TransferRefundTX to related.
-// Adds o to related.R.TransferRefundTXAssetServiceTransferEvents.
-func (o *AssetServiceTransferEvent) SetTransferRefundTX(exec boil.Executor, insert bool, related *Transaction) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"asset_service_transfer_events\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"transfer_refund_tx_id"}),
-		strmangle.WhereClause("\"", "\"", 2, assetServiceTransferEventPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.TransferRefundTXID, related.ID)
-	if o.R == nil {
-		o.R = &assetServiceTransferEventR{
-			TransferRefundTX: related,
-		}
-	} else {
-		o.R.TransferRefundTX = related
-	}
-
-	if related.R == nil {
-		related.R = &transactionR{
-			TransferRefundTXAssetServiceTransferEvents: AssetServiceTransferEventSlice{o},
-		}
-	} else {
-		related.R.TransferRefundTXAssetServiceTransferEvents = append(related.R.TransferRefundTXAssetServiceTransferEvents, o)
-	}
-
-	return nil
-}
-
-// RemoveTransferRefundTX relationship.
-// Sets o.R.TransferRefundTX to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *AssetServiceTransferEvent) RemoveTransferRefundTX(exec boil.Executor, related *Transaction) error {
-	var err error
-
-	queries.SetScanner(&o.TransferRefundTXID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("transfer_refund_tx_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.TransferRefundTX = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.TransferRefundTXAssetServiceTransferEvents {
-		if queries.Equal(o.TransferRefundTXID, ri.TransferRefundTXID) {
-			continue
-		}
-
-		ln := len(related.R.TransferRefundTXAssetServiceTransferEvents)
-		if ln > 1 && i < ln-1 {
-			related.R.TransferRefundTXAssetServiceTransferEvents[i] = related.R.TransferRefundTXAssetServiceTransferEvents[ln-1]
-		}
-		related.R.TransferRefundTXAssetServiceTransferEvents = related.R.TransferRefundTXAssetServiceTransferEvents[:ln-1]
-		break
-	}
-	return nil
-}
-
 // SetTransferTX of the assetServiceTransferEvent to the related item.
 // Sets o.R.TransferTX to related.
 // Adds o to related.R.TransferTXAssetServiceTransferEvents.
@@ -1528,7 +1333,7 @@ func AssetServiceTransferEvents(mods ...qm.QueryMod) assetServiceTransferEventQu
 
 // FindAssetServiceTransferEvent retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindAssetServiceTransferEvent(exec boil.Executor, iD string, selectCols ...string) (*AssetServiceTransferEvent, error) {
+func FindAssetServiceTransferEvent(exec boil.Executor, iD int64, selectCols ...string) (*AssetServiceTransferEvent, error) {
 	assetServiceTransferEventObj := &AssetServiceTransferEvent{}
 
 	sel := "*"
@@ -2020,7 +1825,7 @@ func (o *AssetServiceTransferEventSlice) ReloadAll(exec boil.Executor) error {
 }
 
 // AssetServiceTransferEventExists checks if the AssetServiceTransferEvent row exists.
-func AssetServiceTransferEventExists(exec boil.Executor, iD string) (bool, error) {
+func AssetServiceTransferEventExists(exec boil.Executor, iD int64) (bool, error) {
 	var exists bool
 	sql := "select exists(select 1 from \"asset_service_transfer_events\" where \"id\"=$1 limit 1)"
 

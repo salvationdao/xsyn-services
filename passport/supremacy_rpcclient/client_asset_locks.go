@@ -15,15 +15,17 @@ type AssetLockToSupremacyReq struct {
 	TokenID        int64  `json:"token_id,omitempty"`
 	OwnerID        string `json:"owner_id,omitempty"`
 	Hash           string `json:"hash,omitempty"`
+	TransferEventID int64 `json:"transfer_event_id"`
 }
 
 // AssetLockToSupremacy requests an asset to be locked on supremacy
-func AssetLockToSupremacy(assetToLock *types.UserAsset, collectionSlug string) error {
+func AssetLockToSupremacy(assetToLock *types.UserAsset, collectionSlug string, transferEventID int64) error {
 	req := &AssetLockToSupremacyReq{
 		CollectionSlug: collectionSlug,
 		TokenID:        assetToLock.TokenID,
 		OwnerID:        assetToLock.OwnerID,
 		Hash:           assetToLock.Hash,
+		TransferEventID: transferEventID,
 	}
 	resp := &AssetLockToSupremacyResp{}
 	err := SupremacyClient.Call("S.AssetLockToSupremacyHandler", req, resp)
@@ -44,15 +46,17 @@ type AssetUnlockFromSupremacyReq struct {
 	TokenID        int64  `json:"token_id,omitempty"`
 	OwnerID        string `json:"owner_id,omitempty"`
 	Hash           string `json:"hash,omitempty"`
+	TransferEventID int64 `json:"transfer_event_id"`
 }
 
-// AssetUnlockFromSupremacy request a unlock of an asset
-func AssetUnlockFromSupremacy(assetToUnlock *types.UserAsset, collectionSlug string) error {
+// AssetUnlockFromSupremacy request an un-lock of an asset
+func AssetUnlockFromSupremacy(assetToUnlock *types.UserAsset, collectionSlug string, transferEventID int64) error {
 	req := &AssetUnlockFromSupremacyReq{
 		CollectionSlug: collectionSlug,
 		TokenID:        assetToUnlock.TokenID,
 		OwnerID:        assetToUnlock.OwnerID,
 		Hash:           assetToUnlock.Hash,
+		TransferEventID: transferEventID,
 	}
 
 	resp := &GenesisOrLimitedMechResp{}
