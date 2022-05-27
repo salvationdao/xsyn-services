@@ -16,6 +16,7 @@ CREATE TABLE user_assets
     data               JSONB            NOT NULL DEFAULT '{}',
     attributes         JSONB            NOT NULL DEFAULT '{}',
     name               TEXT             NOT NULL,
+    asset_type         TEXT,
     image_url          TEXT,
     external_url       TEXT,
     card_animation_url TEXT,

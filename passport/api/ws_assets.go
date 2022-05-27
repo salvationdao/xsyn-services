@@ -84,7 +84,7 @@ func (ac *AssetController) AssetListHandler(ctx context.Context, user *xsynTypes
 		Sort:            req.Payload.Sort,
 		Filter:          req.Payload.Filter,
 		AttributeFilter: req.Payload.AttributeFilter,
-		AssetType:       req.Payload.AssetType,
+		AssetType:       "mech", // for now this is hardcoded to hide all the other assets
 		Search:          req.Payload.Search,
 		PageSize:        req.Payload.PageSize,
 		Page:            req.Payload.Page,
@@ -124,6 +124,7 @@ type UserAsset struct {
 	Data                types.JSON  `json:"data"`
 	Attributes          types.JSON  `json:"attributes"`
 	Name                string      `json:"name"`
+	AssetType           null.String `json:"asset_type,omitempty"`
 	ImageURL            null.String `json:"image_url,omitempty"`
 	ExternalURL         null.String `json:"external_url,omitempty"`
 	CardAnimationURL    null.String `json:"card_animation_url,omitempty"`
@@ -213,6 +214,7 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, key
 			Attributes:          userAsset.Attributes,
 			Name:                userAsset.Name,
 			ImageURL:            userAsset.ImageURL,
+			AssetType:           userAsset.AssetType,
 			ExternalURL:         userAsset.ExternalURL,
 			CardAnimationURL:    userAsset.CardAnimationURL,
 			AvatarURL:           userAsset.AvatarURL,
@@ -338,7 +340,7 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 			"Failed to transfer asset to supremacy")
 		err = supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug, reverseTransfer.ID)
 		if err != nil {
-			_,_  = reverseAssetServiceTransaction(
+			_, _ = reverseAssetServiceTransaction(
 				ac.API.userCacheMap,
 				reverseTransaction,
 				reverseTransfer,
@@ -362,6 +364,7 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 			Name:                userAsset.Name,
 			ImageURL:            userAsset.ImageURL,
 			ExternalURL:         userAsset.ExternalURL,
+			AssetType:           userAsset.AssetType,
 			CardAnimationURL:    userAsset.CardAnimationURL,
 			AvatarURL:           userAsset.AvatarURL,
 			LargeImageURL:       userAsset.LargeImageURL,
@@ -474,7 +477,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 			tx,
 			transferLog,
 			"Failed to transfer asset from supremacy",
-			)
+		)
 		return terror.Error(err, "Failed to transfer asset from supremacy")
 	}
 
@@ -486,7 +489,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 			tx,
 			transferLog,
 			"Failed to transfer asset from supremacy",
-			)
+		)
 		err = supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug, reverseTransferLog.ID)
 		if err != nil {
 			_, _ = reverseAssetServiceTransaction(
@@ -514,6 +517,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 			Name:                userAsset.Name,
 			ImageURL:            userAsset.ImageURL,
 			ExternalURL:         userAsset.ExternalURL,
+			AssetType:           userAsset.AssetType,
 			CardAnimationURL:    userAsset.CardAnimationURL,
 			AvatarURL:           userAsset.AvatarURL,
 			LargeImageURL:       userAsset.LargeImageURL,
@@ -552,12 +556,12 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 	return nil
 }
 
- func reverseAssetServiceTransaction(
-	  ucm *Transactor,
-	 transactionToReverse *xsynTypes.NewTransaction,
-	 transferToReverse *boiler.AssetServiceTransferEvent,
-	 reason string,
-	 ) (transaction *xsynTypes.NewTransaction, returnTransferLog *boiler.AssetServiceTransferEvent) {
+func reverseAssetServiceTransaction(
+	ucm *Transactor,
+	transactionToReverse *xsynTypes.NewTransaction,
+	transferToReverse *boiler.AssetServiceTransferEvent,
+	reason string,
+) (transaction *xsynTypes.NewTransaction, returnTransferLog *boiler.AssetServiceTransferEvent) {
 	transaction = &xsynTypes.NewTransaction{
 		From:                 transactionToReverse.To,
 		To:                   transactionToReverse.From,
@@ -582,7 +586,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 		UserAssetID:   transferToReverse.UserAssetID,
 		UserID:        transferToReverse.UserID,
 		InitiatedFrom: transferToReverse.InitiatedFrom,
-		FromService: 	transferToReverse.ToService,
+		FromService:   transferToReverse.ToService,
 		ToService:     transferToReverse.FromService,
 		TransferTXID:  reverseID,
 	}

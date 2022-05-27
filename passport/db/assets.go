@@ -79,6 +79,15 @@ func AssetList(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 	//	}
 	//}
 
+	if opts.AssetType != "" {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.UserAssets,
+			Column:   boiler.UserAssetColumns.AssetType,
+			Operator: OperatorValueTypeEquals,
+			Value:    opts.AssetType,
+		}, 0, ""))
+	}
+
 	// Search
 	if opts.Search != "" {
 		xSearch := ParseQueryText(opts.Search, true)
@@ -156,6 +165,7 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTyp
 			Data:            itm.Data,
 			Attributes:      jsonAtrribs,
 			Name:            itm.Name,
+			AssetType: itm.AssetType,
 			ImageURL:        itm.ImageURL,
 			ExternalURL:     itm.ExternalURL,
 			Description:     itm.Description,
