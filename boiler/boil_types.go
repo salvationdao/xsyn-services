@@ -52,8 +52,3 @@ func makeCacheKey(cols boil.Columns, nzDefaults []string) string {
 }
 
 // Enum values for  are not proper Go identifiers, cannot emit constants
-
-// Enum values for Service
-const (
-	ServiceSupremacy = "Supremacy"
-)

@@ -12,7 +12,7 @@ import (
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/payments"
-	"xsyn-services/passport/rpcclient"
+	"xsyn-services/passport/supremacy_rpcclient"
 )
 
 func (s *S) AssetOnChainStatusHandler(req AssetOnChainStatusReq, resp *AssetOnChainStatusResp) error {
@@ -70,7 +70,8 @@ func (s *S) UpdateStoreItemIDsHandler(req UpdateStoreItemIDsReq, resp *UpdateSto
 }
 
 type RegisterAssetReq struct {
-	Asset *rpcclient.XsynAsset `json:"asset"`
+	ApiKey string                        `json:"api_key"`
+	Asset *supremacy_rpcclient.XsynAsset `json:"asset"`
 }
 
 type RegisterAssetResp struct {
@@ -79,6 +80,12 @@ type RegisterAssetResp struct {
 
 // AssetRegisterHandler registers a new asset
 func (s *S) AssetRegisterHandler(req RegisterAssetReq, resp *RegisterAssetResp) error {
+	serviceID, err := IsServerClient(req.ApiKey)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to register new asset")
+		return err
+	}
+
 	collection, err := boiler.Collections(boiler.CollectionWhere.Slug.EQ(req.Asset.CollectionSlug)).One(passdb.StdConn)
 	if err != nil {
 		passlog.L.Error().Interface("req", req).Err(err).Msg("failed to register new asset - can't get collection")
@@ -119,7 +126,7 @@ func (s *S) AssetRegisterHandler(req RegisterAssetReq, resp *RegisterAssetResp) 
 		UnlockedAt:      req.Asset.UnlockedAt,
 		MintedAt:        req.Asset.MintedAt,
 		OnChainStatus:   req.Asset.OnChainStatus,
-		XsynLocked:      req.Asset.XsynLocked,
+		LockedToService: null.StringFrom(serviceID),
 	}
 
 	err = boilerAsset.Insert(passdb.StdConn, boil.Infer())
@@ -133,7 +140,8 @@ func (s *S) AssetRegisterHandler(req RegisterAssetReq, resp *RegisterAssetResp) 
 }
 
 type RegisterAssetsReq struct {
-	Assets []*rpcclient.XsynAsset `json:"assets"`
+	ApiKey string                           `json:"api_key"`
+	Assets []*supremacy_rpcclient.XsynAsset `json:"assets"`
 }
 
 type RegisterAssetsResp struct {
@@ -142,6 +150,12 @@ type RegisterAssetsResp struct {
 
 // AssetsRegisterHandler registers new assets
 func (s *S) AssetsRegisterHandler(req RegisterAssetsReq, resp *RegisterAssetsResp) error {
+	serviceID, err := IsServerClient(req.ApiKey)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to register new asset")
+		return err
+	}
+
 	for _, asset := range req.Assets {
 		collection, err := boiler.Collections(boiler.CollectionWhere.Slug.EQ(asset.CollectionSlug)).One(passdb.StdConn)
 		if err != nil {
@@ -183,8 +197,7 @@ func (s *S) AssetsRegisterHandler(req RegisterAssetsReq, resp *RegisterAssetsRes
 			UnlockedAt:      asset.UnlockedAt,
 			MintedAt:        asset.MintedAt,
 			OnChainStatus:   asset.OnChainStatus,
-			XsynLocked:      asset.XsynLocked,
-			ServiceLocked:   null.StringFrom("Supremacy"), // TODO: hook this up from the service user
+			LockedToService: null.StringFrom(serviceID),
 		}
 
 		err = boilerAsset.Insert(passdb.StdConn, boil.Infer())
@@ -284,3 +297,5 @@ func (s *S) InsertUser1155Asset(req UpdateUser1155AssetReq, resp *UpdateUser1155
 
 	return nil
 }
+
+

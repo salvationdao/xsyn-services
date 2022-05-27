@@ -9,7 +9,7 @@ import (
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
-	"xsyn-services/passport/rpcclient"
+	"xsyn-services/passport/supremacy_rpcclient"
 	"xsyn-services/types"
 
 	"github.com/ninja-syndicate/ws"
@@ -56,7 +56,7 @@ func Purchase(
 		}
 	}
 
-	template := &rpcclient.TemplateContainer{}
+	template := &supremacy_rpcclient.TemplateContainer{}
 	err = storeItem.Data.Unmarshal(template)
 	if err != nil {
 		return terror.Error(err)

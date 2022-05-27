@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
@@ -11,7 +12,7 @@ import (
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
-	"xsyn-services/passport/rpcclient"
+	"xsyn-services/passport/supremacy_rpcclient"
 	xsynTypes "xsyn-services/types"
 )
 
@@ -35,7 +36,6 @@ func IsUserAssetColumn(col string) bool {
 		boiler.UserAssetColumns.UnlockedAt,
 		boiler.UserAssetColumns.MintedAt,
 		boiler.UserAssetColumns.OnChainStatus,
-		boiler.UserAssetColumns.XsynLocked,
 		boiler.UserAssetColumns.DeletedAt,
 		boiler.UserAssetColumns.DataRefreshedAt:
 		return true
@@ -125,9 +125,9 @@ func AssetList(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 
 func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTypes.UserAsset, error) {
 	passlog.L.Trace().Str("fn", "PurchasedItemRegister").Msg("db func")
-	req := rpcclient.TemplateRegisterReq{TemplateID: storeItemID, OwnerID: ownerID}
-	resp := &rpcclient.TemplateRegisterResp{}
-	err := rpcclient.Client.Call("S.TemplateRegister", req, resp)
+	req := supremacy_rpcclient.TemplateRegisterReq{TemplateID: storeItemID, OwnerID: ownerID}
+	resp := &supremacy_rpcclient.TemplateRegisterResp{}
+	err := supremacy_rpcclient.SupremacyClient.Call("S.TemplateRegisterHandler", req, resp)
 	if err != nil {
 		return nil, terror.Error(err,  "communication to supremacy has failed")
 	}
@@ -165,8 +165,8 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTyp
 			UnlockedAt: itm.UnlockedAt,
 			MintedAt: itm.MintedAt,
 			OnChainStatus: itm.OnChainStatus,
-			XsynLocked: itm.XsynLocked,
 			DataRefreshedAt: time.Now(),
+			LockedToService: null.StringFrom(xsynTypes.SupremacyGameUserID.String()),
 		}
 
 		err = boilerAsset.Insert(passdb.StdConn, boil.Infer())
