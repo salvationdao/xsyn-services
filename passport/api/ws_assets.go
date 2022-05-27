@@ -306,12 +306,20 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 
 	_, _, txID, err := ac.API.userCacheMap.Transact(tx)
 	if err != nil {
-		fmt.Println("here12")
 		return terror.Error(err, "failed to process sups")
 	}
 
-	// TODO: store the txID
-	fmt.Println(txID)
+	transferLog := &boiler.AssetServiceTransferEvent{
+		UserAssetID:         userAsset.ID,
+		UserID:              userAsset.OwnerID,
+		InitiatedFrom:       "XSYN",
+		ToService:           null.StringFrom(xsynTypes.SupremacyGameUserID.String()),
+		TransferTXID:       txID,
+	}
+	 err = transferLog.Insert(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to transfer asset to supremacy")
+	}
 
 	refundFunc := func(reason string){
 		refundTX := &xsynTypes.NewTransaction{
@@ -325,15 +333,23 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 			RelatedTransactionID: null.StringFrom(tx.ID),
 		}
 
-		_, _, txID, err := ac.API.userCacheMap.Transact(refundTX)
+		_, _, refundTxID, err := ac.API.userCacheMap.Transact(refundTX)
 		if err != nil {
 			passlog.L.Error().
 				Err(err).
 				Interface("refundTX", refundTX).
 				Msg("refund failed")
+			return
 		}
-		// TODO: store the txID
-		fmt.Println(txID)
+		transferLog.RefundedAt = null.TimeFrom(time.Now())
+		transferLog.TransferRefundTXID = null.StringFrom(refundTxID)
+		_, err = transferLog.Update(passdb.StdConn, boil.Infer())
+		if err != nil {
+			passlog.L.Error().
+				Err(err).
+				Interface("transferLog", transferLog).
+				Msg("failed to update transfer log in refund")
+		}
 	}
 
 
@@ -465,8 +481,17 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 		return err
 	}
 
-	// TODO: store the txID
-	fmt.Println(txID)
+	transferLog := &boiler.AssetServiceTransferEvent{
+		UserAssetID:         userAsset.ID,
+		UserID:              userAsset.OwnerID,
+		InitiatedFrom:       "XSYN",
+		FromService:           null.StringFrom(xsynTypes.SupremacyGameUserID.String()),
+		TransferTXID:       txID,
+	}
+	err = transferLog.Insert(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to transfer asset to XSYN")
+	}
 
 	refundFunc := func(reason string){
 		refundTX := &xsynTypes.NewTransaction{
@@ -480,15 +505,23 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 			RelatedTransactionID: null.StringFrom(tx.ID),
 		}
 
-		_, _, txID, err := ac.API.userCacheMap.Transact(refundTX)
+		_, _, refundTxID, err := ac.API.userCacheMap.Transact(refundTX)
 		if err != nil {
 			passlog.L.Error().
 				Err(err).
 				Interface("refundTX", refundTX).
 				Msg("refund failed")
+			return
 		}
-		// TODO: store the txID
-		fmt.Println(txID)
+		transferLog.RefundedAt = null.TimeFrom(time.Now())
+		transferLog.TransferRefundTXID = null.StringFrom(refundTxID)
+		_, err = transferLog.Update(passdb.StdConn, boil.Infer())
+		if err != nil {
+			passlog.L.Error().
+				Err(err).
+				Interface("transferLog", transferLog).
+				Msg("failed to update transfer log in refund")
+		}
 	}
 
 

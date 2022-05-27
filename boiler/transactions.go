@@ -129,35 +129,41 @@ var TransactionWhere = struct {
 
 // TransactionRels is where relationship names are stored.
 var TransactionRels = struct {
-	CreditUser                         string
-	DebitUser                          string
-	RelatedTransaction                 string
-	Service                            string
-	ReversalTransactionPendingRefunds  string
-	TransactionReferencePendingRefunds string
-	WithdrawTransactionPendingRefunds  string
-	RelatedTransactionTransactions     string
+	CreditUser                                 string
+	DebitUser                                  string
+	RelatedTransaction                         string
+	Service                                    string
+	TransferRefundTXAssetServiceTransferEvents string
+	TransferTXAssetServiceTransferEvents       string
+	ReversalTransactionPendingRefunds          string
+	TransactionReferencePendingRefunds         string
+	WithdrawTransactionPendingRefunds          string
+	RelatedTransactionTransactions             string
 }{
-	CreditUser:                         "CreditUser",
-	DebitUser:                          "DebitUser",
-	RelatedTransaction:                 "RelatedTransaction",
-	Service:                            "Service",
-	ReversalTransactionPendingRefunds:  "ReversalTransactionPendingRefunds",
-	TransactionReferencePendingRefunds: "TransactionReferencePendingRefunds",
-	WithdrawTransactionPendingRefunds:  "WithdrawTransactionPendingRefunds",
-	RelatedTransactionTransactions:     "RelatedTransactionTransactions",
+	CreditUser:         "CreditUser",
+	DebitUser:          "DebitUser",
+	RelatedTransaction: "RelatedTransaction",
+	Service:            "Service",
+	TransferRefundTXAssetServiceTransferEvents: "TransferRefundTXAssetServiceTransferEvents",
+	TransferTXAssetServiceTransferEvents:       "TransferTXAssetServiceTransferEvents",
+	ReversalTransactionPendingRefunds:          "ReversalTransactionPendingRefunds",
+	TransactionReferencePendingRefunds:         "TransactionReferencePendingRefunds",
+	WithdrawTransactionPendingRefunds:          "WithdrawTransactionPendingRefunds",
+	RelatedTransactionTransactions:             "RelatedTransactionTransactions",
 }
 
 // transactionR is where relationships are stored.
 type transactionR struct {
-	CreditUser                         *User              `boiler:"CreditUser" boil:"CreditUser" json:"CreditUser" toml:"CreditUser" yaml:"CreditUser"`
-	DebitUser                          *User              `boiler:"DebitUser" boil:"DebitUser" json:"DebitUser" toml:"DebitUser" yaml:"DebitUser"`
-	RelatedTransaction                 *Transaction       `boiler:"RelatedTransaction" boil:"RelatedTransaction" json:"RelatedTransaction" toml:"RelatedTransaction" yaml:"RelatedTransaction"`
-	Service                            *User              `boiler:"Service" boil:"Service" json:"Service" toml:"Service" yaml:"Service"`
-	ReversalTransactionPendingRefunds  PendingRefundSlice `boiler:"ReversalTransactionPendingRefunds" boil:"ReversalTransactionPendingRefunds" json:"ReversalTransactionPendingRefunds" toml:"ReversalTransactionPendingRefunds" yaml:"ReversalTransactionPendingRefunds"`
-	TransactionReferencePendingRefunds PendingRefundSlice `boiler:"TransactionReferencePendingRefunds" boil:"TransactionReferencePendingRefunds" json:"TransactionReferencePendingRefunds" toml:"TransactionReferencePendingRefunds" yaml:"TransactionReferencePendingRefunds"`
-	WithdrawTransactionPendingRefunds  PendingRefundSlice `boiler:"WithdrawTransactionPendingRefunds" boil:"WithdrawTransactionPendingRefunds" json:"WithdrawTransactionPendingRefunds" toml:"WithdrawTransactionPendingRefunds" yaml:"WithdrawTransactionPendingRefunds"`
-	RelatedTransactionTransactions     TransactionSlice   `boiler:"RelatedTransactionTransactions" boil:"RelatedTransactionTransactions" json:"RelatedTransactionTransactions" toml:"RelatedTransactionTransactions" yaml:"RelatedTransactionTransactions"`
+	CreditUser                                 *User                          `boiler:"CreditUser" boil:"CreditUser" json:"CreditUser" toml:"CreditUser" yaml:"CreditUser"`
+	DebitUser                                  *User                          `boiler:"DebitUser" boil:"DebitUser" json:"DebitUser" toml:"DebitUser" yaml:"DebitUser"`
+	RelatedTransaction                         *Transaction                   `boiler:"RelatedTransaction" boil:"RelatedTransaction" json:"RelatedTransaction" toml:"RelatedTransaction" yaml:"RelatedTransaction"`
+	Service                                    *User                          `boiler:"Service" boil:"Service" json:"Service" toml:"Service" yaml:"Service"`
+	TransferRefundTXAssetServiceTransferEvents AssetServiceTransferEventSlice `boiler:"TransferRefundTXAssetServiceTransferEvents" boil:"TransferRefundTXAssetServiceTransferEvents" json:"TransferRefundTXAssetServiceTransferEvents" toml:"TransferRefundTXAssetServiceTransferEvents" yaml:"TransferRefundTXAssetServiceTransferEvents"`
+	TransferTXAssetServiceTransferEvents       AssetServiceTransferEventSlice `boiler:"TransferTXAssetServiceTransferEvents" boil:"TransferTXAssetServiceTransferEvents" json:"TransferTXAssetServiceTransferEvents" toml:"TransferTXAssetServiceTransferEvents" yaml:"TransferTXAssetServiceTransferEvents"`
+	ReversalTransactionPendingRefunds          PendingRefundSlice             `boiler:"ReversalTransactionPendingRefunds" boil:"ReversalTransactionPendingRefunds" json:"ReversalTransactionPendingRefunds" toml:"ReversalTransactionPendingRefunds" yaml:"ReversalTransactionPendingRefunds"`
+	TransactionReferencePendingRefunds         PendingRefundSlice             `boiler:"TransactionReferencePendingRefunds" boil:"TransactionReferencePendingRefunds" json:"TransactionReferencePendingRefunds" toml:"TransactionReferencePendingRefunds" yaml:"TransactionReferencePendingRefunds"`
+	WithdrawTransactionPendingRefunds          PendingRefundSlice             `boiler:"WithdrawTransactionPendingRefunds" boil:"WithdrawTransactionPendingRefunds" json:"WithdrawTransactionPendingRefunds" toml:"WithdrawTransactionPendingRefunds" yaml:"WithdrawTransactionPendingRefunds"`
+	RelatedTransactionTransactions             TransactionSlice               `boiler:"RelatedTransactionTransactions" boil:"RelatedTransactionTransactions" json:"RelatedTransactionTransactions" toml:"RelatedTransactionTransactions" yaml:"RelatedTransactionTransactions"`
 }
 
 // NewStruct creates a new relationship struct
@@ -469,6 +475,48 @@ func (o *Transaction) Service(mods ...qm.QueryMod) userQuery {
 
 	query := Users(queryMods...)
 	queries.SetFrom(query.Query, "\"users\"")
+
+	return query
+}
+
+// TransferRefundTXAssetServiceTransferEvents retrieves all the asset_service_transfer_event's AssetServiceTransferEvents with an executor via transfer_refund_tx_id column.
+func (o *Transaction) TransferRefundTXAssetServiceTransferEvents(mods ...qm.QueryMod) assetServiceTransferEventQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"asset_service_transfer_events\".\"transfer_refund_tx_id\"=?", o.ID),
+	)
+
+	query := AssetServiceTransferEvents(queryMods...)
+	queries.SetFrom(query.Query, "\"asset_service_transfer_events\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"asset_service_transfer_events\".*"})
+	}
+
+	return query
+}
+
+// TransferTXAssetServiceTransferEvents retrieves all the asset_service_transfer_event's AssetServiceTransferEvents with an executor via transfer_tx_id column.
+func (o *Transaction) TransferTXAssetServiceTransferEvents(mods ...qm.QueryMod) assetServiceTransferEventQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"asset_service_transfer_events\".\"transfer_tx_id\"=?", o.ID),
+	)
+
+	query := AssetServiceTransferEvents(queryMods...)
+	queries.SetFrom(query.Query, "\"asset_service_transfer_events\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"asset_service_transfer_events\".*"})
+	}
 
 	return query
 }
@@ -979,6 +1027,202 @@ func (transactionL) LoadService(e boil.Executor, singular bool, maybeTransaction
 					foreign.R = &userR{}
 				}
 				foreign.R.ServiceTransactions = append(foreign.R.ServiceTransactions, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadTransferRefundTXAssetServiceTransferEvents allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (transactionL) LoadTransferRefundTXAssetServiceTransferEvents(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
+	var slice []*Transaction
+	var object *Transaction
+
+	if singular {
+		object = maybeTransaction.(*Transaction)
+	} else {
+		slice = *maybeTransaction.(*[]*Transaction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &transactionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &transactionR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`asset_service_transfer_events`),
+		qm.WhereIn(`asset_service_transfer_events.transfer_refund_tx_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load asset_service_transfer_events")
+	}
+
+	var resultSlice []*AssetServiceTransferEvent
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice asset_service_transfer_events")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on asset_service_transfer_events")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for asset_service_transfer_events")
+	}
+
+	if len(assetServiceTransferEventAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.TransferRefundTXAssetServiceTransferEvents = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &assetServiceTransferEventR{}
+			}
+			foreign.R.TransferRefundTX = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.TransferRefundTXID) {
+				local.R.TransferRefundTXAssetServiceTransferEvents = append(local.R.TransferRefundTXAssetServiceTransferEvents, foreign)
+				if foreign.R == nil {
+					foreign.R = &assetServiceTransferEventR{}
+				}
+				foreign.R.TransferRefundTX = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadTransferTXAssetServiceTransferEvents allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (transactionL) LoadTransferTXAssetServiceTransferEvents(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
+	var slice []*Transaction
+	var object *Transaction
+
+	if singular {
+		object = maybeTransaction.(*Transaction)
+	} else {
+		slice = *maybeTransaction.(*[]*Transaction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &transactionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &transactionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`asset_service_transfer_events`),
+		qm.WhereIn(`asset_service_transfer_events.transfer_tx_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load asset_service_transfer_events")
+	}
+
+	var resultSlice []*AssetServiceTransferEvent
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice asset_service_transfer_events")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on asset_service_transfer_events")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for asset_service_transfer_events")
+	}
+
+	if len(assetServiceTransferEventAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.TransferTXAssetServiceTransferEvents = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &assetServiceTransferEventR{}
+			}
+			foreign.R.TransferTX = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.TransferTXID {
+				local.R.TransferTXAssetServiceTransferEvents = append(local.R.TransferTXAssetServiceTransferEvents, foreign)
+				if foreign.R == nil {
+					foreign.R = &assetServiceTransferEventR{}
+				}
+				foreign.R.TransferTX = local
 				break
 			}
 		}
@@ -1628,6 +1872,183 @@ func (o *Transaction) RemoveService(exec boil.Executor, related *User) error {
 		}
 		related.R.ServiceTransactions = related.R.ServiceTransactions[:ln-1]
 		break
+	}
+	return nil
+}
+
+// AddTransferRefundTXAssetServiceTransferEvents adds the given related objects to the existing relationships
+// of the transaction, optionally inserting them as new records.
+// Appends related to o.R.TransferRefundTXAssetServiceTransferEvents.
+// Sets related.R.TransferRefundTX appropriately.
+func (o *Transaction) AddTransferRefundTXAssetServiceTransferEvents(exec boil.Executor, insert bool, related ...*AssetServiceTransferEvent) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.TransferRefundTXID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"asset_service_transfer_events\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"transfer_refund_tx_id"}),
+				strmangle.WhereClause("\"", "\"", 2, assetServiceTransferEventPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.TransferRefundTXID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &transactionR{
+			TransferRefundTXAssetServiceTransferEvents: related,
+		}
+	} else {
+		o.R.TransferRefundTXAssetServiceTransferEvents = append(o.R.TransferRefundTXAssetServiceTransferEvents, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &assetServiceTransferEventR{
+				TransferRefundTX: o,
+			}
+		} else {
+			rel.R.TransferRefundTX = o
+		}
+	}
+	return nil
+}
+
+// SetTransferRefundTXAssetServiceTransferEvents removes all previously related items of the
+// transaction replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.TransferRefundTX's TransferRefundTXAssetServiceTransferEvents accordingly.
+// Replaces o.R.TransferRefundTXAssetServiceTransferEvents with related.
+// Sets related.R.TransferRefundTX's TransferRefundTXAssetServiceTransferEvents accordingly.
+func (o *Transaction) SetTransferRefundTXAssetServiceTransferEvents(exec boil.Executor, insert bool, related ...*AssetServiceTransferEvent) error {
+	query := "update \"asset_service_transfer_events\" set \"transfer_refund_tx_id\" = null where \"transfer_refund_tx_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.TransferRefundTXAssetServiceTransferEvents {
+			queries.SetScanner(&rel.TransferRefundTXID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.TransferRefundTX = nil
+		}
+
+		o.R.TransferRefundTXAssetServiceTransferEvents = nil
+	}
+	return o.AddTransferRefundTXAssetServiceTransferEvents(exec, insert, related...)
+}
+
+// RemoveTransferRefundTXAssetServiceTransferEvents relationships from objects passed in.
+// Removes related items from R.TransferRefundTXAssetServiceTransferEvents (uses pointer comparison, removal does not keep order)
+// Sets related.R.TransferRefundTX.
+func (o *Transaction) RemoveTransferRefundTXAssetServiceTransferEvents(exec boil.Executor, related ...*AssetServiceTransferEvent) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.TransferRefundTXID, nil)
+		if rel.R != nil {
+			rel.R.TransferRefundTX = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("transfer_refund_tx_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.TransferRefundTXAssetServiceTransferEvents {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.TransferRefundTXAssetServiceTransferEvents)
+			if ln > 1 && i < ln-1 {
+				o.R.TransferRefundTXAssetServiceTransferEvents[i] = o.R.TransferRefundTXAssetServiceTransferEvents[ln-1]
+			}
+			o.R.TransferRefundTXAssetServiceTransferEvents = o.R.TransferRefundTXAssetServiceTransferEvents[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+// AddTransferTXAssetServiceTransferEvents adds the given related objects to the existing relationships
+// of the transaction, optionally inserting them as new records.
+// Appends related to o.R.TransferTXAssetServiceTransferEvents.
+// Sets related.R.TransferTX appropriately.
+func (o *Transaction) AddTransferTXAssetServiceTransferEvents(exec boil.Executor, insert bool, related ...*AssetServiceTransferEvent) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.TransferTXID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"asset_service_transfer_events\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"transfer_tx_id"}),
+				strmangle.WhereClause("\"", "\"", 2, assetServiceTransferEventPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.TransferTXID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &transactionR{
+			TransferTXAssetServiceTransferEvents: related,
+		}
+	} else {
+		o.R.TransferTXAssetServiceTransferEvents = append(o.R.TransferTXAssetServiceTransferEvents, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &assetServiceTransferEventR{
+				TransferTX: o,
+			}
+		} else {
+			rel.R.TransferTX = o
+		}
 	}
 	return nil
 }
