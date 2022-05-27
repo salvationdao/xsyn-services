@@ -173,6 +173,7 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTyp
 			AnimationURL: itm.AnimationURL,
 			YoutubeURL: itm.YoutubeURL,
 			UnlockedAt: itm.UnlockedAt,
+			AvatarURL: itm.AvatarURL,
 			MintedAt: itm.MintedAt,
 			OnChainStatus: itm.OnChainStatus,
 			DataRefreshedAt: time.Now(),
