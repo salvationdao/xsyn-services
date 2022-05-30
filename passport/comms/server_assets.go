@@ -16,7 +16,7 @@ import (
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/payments"
 	"xsyn-services/passport/supremacy_rpcclient"
-	xsyn_types "xsyn-services/types"
+	xsynTypes "xsyn-services/types"
 )
 
 func (s *S) AssetOnChainStatusHandler(req AssetOnChainStatusReq, resp *AssetOnChainStatusResp) error {
@@ -74,8 +74,8 @@ func (s *S) UpdateStoreItemIDsHandler(req UpdateStoreItemIDsReq, resp *UpdateSto
 }
 
 type RegisterAssetReq struct {
-	ApiKey string                        `json:"api_key"`
-	Asset *supremacy_rpcclient.XsynAsset `json:"asset"`
+	ApiKey string                         `json:"api_key"`
+	Asset  *supremacy_rpcclient.XsynAsset `json:"asset"`
 }
 
 type RegisterAssetResp struct {
@@ -116,7 +116,7 @@ func (s *S) AssetRegisterHandler(req RegisterAssetReq, resp *RegisterAssetResp) 
 		CollectionID:    collection.ID,
 		TokenID:         req.Asset.TokenID,
 		Tier:            req.Asset.Tier,
-		AssetType: req.Asset.AssetType,
+		AssetType:       req.Asset.AssetType,
 		Hash:            req.Asset.Hash,
 		OwnerID:         req.Asset.OwnerID,
 		Data:            req.Asset.Data,
@@ -128,24 +128,20 @@ func (s *S) AssetRegisterHandler(req RegisterAssetReq, resp *RegisterAssetResp) 
 		BackgroundColor: req.Asset.BackgroundColor,
 		AnimationURL:    req.Asset.AnimationURL,
 		YoutubeURL:      req.Asset.YoutubeURL,
-		AvatarURL: req.Asset.AvatarURL,
+		AvatarURL:       req.Asset.AvatarURL,
 		UnlockedAt:      req.Asset.UnlockedAt,
 		MintedAt:        req.Asset.MintedAt,
 		OnChainStatus:   req.Asset.OnChainStatus,
 		LockedToService: null.StringFrom(serviceID),
 	}
-	fmt.Println(collection.ID)
-	fmt.Println(req.Asset.TokenID)
+
 	// see if old asset exists
 	oldAsset, err := boiler.PurchasedItemsOlds(
 		boiler.PurchasedItemsOldWhere.CollectionID.EQ(collection.ID),
 		boiler.PurchasedItemsOldWhere.ExternalTokenID.EQ(int(req.Asset.TokenID)),
 	).One(passdb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		// handle
-		fmt.Println(collection.ID)
-		fmt.Println(req.Asset.TokenID)
-		fmt.Println(err.Error())
+		return err
 	}
 
 	if oldAsset != nil {
@@ -158,18 +154,28 @@ func (s *S) AssetRegisterHandler(req RegisterAssetReq, resp *RegisterAssetResp) 
 	// if minted tell gameserver item is xsyn locked
 	if boilerAsset.OnChainStatus == "STAKABLE" {
 		boilerAsset.LockedToService = null.String{}
-		colSlug := "supremacy-general"
-		err := supremacy_rpcclient.AssetUnlockFromSupremacy(xsyn_types.UserAssetFromBoiler(boilerAsset), colSlug, 0)
+		err := supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(boilerAsset), 0)
 		if err != nil {
-			// handle
+			return err
 		}
 	}
 
 	// if staked tell gameserver item is market locked
 	if boilerAsset.OnChainStatus == "UNSTAKABLE" {
-		// TODO: market lock asset
+		err := supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(boilerAsset), 0, false)
+		if err != nil {
+			return err
+		}
 	}
 
+	// if staked tell gameserver item is market locked
+	// UNSTAKABLE_OLD = still staked on old contract, not market tradable
+	if boilerAsset.OnChainStatus == "UNSTAKABLE_OLD" {
+		err := supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(boilerAsset), 0, true)
+		if err != nil {
+			return err
+		}
+	}
 
 	err = boilerAsset.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
@@ -226,7 +232,7 @@ func (s *S) AssetsRegisterHandler(req RegisterAssetsReq, resp *RegisterAssetsRes
 			TokenID:         int64(int(asset.TokenID)),
 			Tier:            asset.Tier,
 			Hash:            asset.Hash,
-			AssetType: asset.AssetType,
+			AssetType:       asset.AssetType,
 			OwnerID:         asset.OwnerID,
 			Data:            asset.Data,
 			Attributes:      attributeJson,
@@ -234,7 +240,7 @@ func (s *S) AssetsRegisterHandler(req RegisterAssetsReq, resp *RegisterAssetsRes
 			ImageURL:        asset.ImageURL,
 			ExternalURL:     asset.ExternalURL,
 			Description:     asset.Description,
-			AvatarURL: asset.AvatarURL,
+			AvatarURL:       asset.AvatarURL,
 			BackgroundColor: asset.BackgroundColor,
 			AnimationURL:    asset.AnimationURL,
 			YoutubeURL:      asset.YoutubeURL,
@@ -250,7 +256,7 @@ func (s *S) AssetsRegisterHandler(req RegisterAssetsReq, resp *RegisterAssetsRes
 			boiler.PurchasedItemsOldWhere.ExternalTokenID.EQ(int(asset.TokenID)),
 		).One(passdb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			// handle
+			return err
 		}
 
 		if oldAsset != nil {
@@ -262,22 +268,27 @@ func (s *S) AssetsRegisterHandler(req RegisterAssetsReq, resp *RegisterAssetsRes
 		// if minted tell gameserver item is xsyn locked
 		if boilerAsset.OnChainStatus == "STAKABLE" {
 			boilerAsset.LockedToService = null.String{}
-			colSlug := "supremacy-general"
-			err := supremacy_rpcclient.AssetUnlockFromSupremacy(xsyn_types.UserAssetFromBoiler(boilerAsset), colSlug, 0)
+			err := supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(boilerAsset), 0)
 			if err != nil {
-				// handle
+				return err
 			}
 		}
 
 		// if staked tell gameserver item is market locked
 		if boilerAsset.OnChainStatus == "UNSTAKABLE" {
-			// TODO: market lock asset
+			err := supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(boilerAsset), 0, false)
+			if err != nil {
+				return err
+			}
 		}
 
-		err = boilerAsset.Insert(passdb.StdConn, boil.Infer())
-		if err != nil {
-			passlog.L.Error().Interface("req", req).Err(err).Msg(" failed to register new asset - can't insert asset")
-			return err
+		// if staked tell gameserver item is market locked
+		// UNSTAKABLE_OLD = still staked on old contract, not market tradable
+		if boilerAsset.OnChainStatus == "UNSTAKABLE_OLD" {
+			err := supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(boilerAsset), 0, true)
+			if err != nil {
+				return err
+			}
 		}
 
 	}
@@ -372,5 +383,3 @@ func (s *S) InsertUser1155Asset(req UpdateUser1155AssetReq, resp *UpdateUser1155
 
 	return nil
 }
-
-
