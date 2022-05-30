@@ -14,7 +14,7 @@ import (
 	"xsyn-services/passport/helpers"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
-	"xsyn-services/passport/rpcclient"
+	"xsyn-services/passport/supremacy_rpcclient"
 	"xsyn-services/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -217,7 +217,7 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		return nil, terror.Error(err, "create new user failed")
 	}
 
-	_ = rpcclient.PlayerRegister(
+	_ = supremacy_rpcclient.PlayerRegister(
 		uuid.Must(uuid.FromString(user.ID)), user.Username, uuid.Nil, publicAddress)
 
 	if password != "" && email != "" {

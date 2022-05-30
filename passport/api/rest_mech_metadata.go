@@ -9,7 +9,7 @@ import (
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
-	"xsyn-services/passport/rpcclient"
+	"xsyn-services/passport/supremacy_rpcclient"
 	"xsyn-services/types"
 
 	"github.com/go-chi/chi/v5"
@@ -74,7 +74,7 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 
 	// if collection is genesis or limited
 	if collection.Name == "Supremacy Genesis" || collection.Name == "Supremacy Limited Release" && collection.MintContract.Valid {
-		asset, err := rpcclient.GenesisOrLimitedMech(collection.Slug, tokenID)
+		asset, err := supremacy_rpcclient.GenesisOrLimitedMech(collection.Slug, tokenID)
 		if err != nil {
 			return http.StatusBadRequest, terror.Warn(err, "failed to get item from gameserver")
 		}
