@@ -72,7 +72,7 @@ type AssetListResponse struct {
 
 const HubKeyAssetList = "ASSET:LIST:721"
 
-func (ac *AssetController) AssetList721Handler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+func (ac *AssetController) AssetList721Handler(ctx context.Context, user *xsynTypes.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &AssetListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -108,7 +108,7 @@ type Asset1155ListResponse struct {
 
 const HubKey1155AssetList = "ASSET:LIST:1155"
 
-func (ac *AssetController) AssetList1155Handler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+func (ac *AssetController) AssetList1155Handler(ctx context.Context, user *xsynTypes.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &AssetListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -130,7 +130,6 @@ func (ac *AssetController) AssetList1155Handler(ctx context.Context, user *types
 	}
 
 	reply(&Asset1155ListResponse{
-		Total:  total,
 		Total:  total,
 		Assets: assets,
 	})
