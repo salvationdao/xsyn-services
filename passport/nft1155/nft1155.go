@@ -9,7 +9,7 @@ import (
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
-	"xsyn-services/passport/rpcclient"
+	"xsyn-services/passport/supremacy_rpcclient"
 	types2 "xsyn-services/types"
 )
 
@@ -36,7 +36,7 @@ func CreateOrGet1155Asset(externalTokenID int, user *types2.User, collectionSlug
 	).One(passdb.StdConn)
 	if errors.Is(err, sql.ErrNoRows) {
 
-		assetDetail, err := rpcclient.Get1155Details(externalTokenID, collection.Slug)
+		assetDetail, err := supremacy_rpcclient.Get1155Details(externalTokenID, collection.Slug)
 		if err != nil {
 			return nil, err
 		}

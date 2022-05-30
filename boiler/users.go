@@ -288,6 +288,7 @@ var UserRels = struct {
 	CreditFailedTransactions              string
 	DebitFailedTransactions               string
 	IssueTokens                           string
+	Pending1155Rollbacks                  string
 	PendingRefunds                        string
 	OwnerPurchasedItemsOlds               string
 	CreditTransactions                    string
@@ -313,6 +314,7 @@ var UserRels = struct {
 	CreditFailedTransactions:              "CreditFailedTransactions",
 	DebitFailedTransactions:               "DebitFailedTransactions",
 	IssueTokens:                           "IssueTokens",
+	Pending1155Rollbacks:                  "Pending1155Rollbacks",
 	PendingRefunds:                        "PendingRefunds",
 	OwnerPurchasedItemsOlds:               "OwnerPurchasedItemsOlds",
 	CreditTransactions:                    "CreditTransactions",
@@ -341,6 +343,7 @@ type userR struct {
 	CreditFailedTransactions              FailedTransactionSlice         `boiler:"CreditFailedTransactions" boil:"CreditFailedTransactions" json:"CreditFailedTransactions" toml:"CreditFailedTransactions" yaml:"CreditFailedTransactions"`
 	DebitFailedTransactions               FailedTransactionSlice         `boiler:"DebitFailedTransactions" boil:"DebitFailedTransactions" json:"DebitFailedTransactions" toml:"DebitFailedTransactions" yaml:"DebitFailedTransactions"`
 	IssueTokens                           IssueTokenSlice                `boiler:"IssueTokens" boil:"IssueTokens" json:"IssueTokens" toml:"IssueTokens" yaml:"IssueTokens"`
+	Pending1155Rollbacks                  Pending1155RollbackSlice       `boiler:"Pending1155Rollbacks" boil:"Pending1155Rollbacks" json:"Pending1155Rollbacks" toml:"Pending1155Rollbacks" yaml:"Pending1155Rollbacks"`
 	PendingRefunds                        PendingRefundSlice             `boiler:"PendingRefunds" boil:"PendingRefunds" json:"PendingRefunds" toml:"PendingRefunds" yaml:"PendingRefunds"`
 	OwnerPurchasedItemsOlds               PurchasedItemsOldSlice         `boiler:"OwnerPurchasedItemsOlds" boil:"OwnerPurchasedItemsOlds" json:"OwnerPurchasedItemsOlds" toml:"OwnerPurchasedItemsOlds" yaml:"OwnerPurchasedItemsOlds"`
 	CreditTransactions                    TransactionSlice               `boiler:"CreditTransactions" boil:"CreditTransactions" json:"CreditTransactions" toml:"CreditTransactions" yaml:"CreditTransactions"`

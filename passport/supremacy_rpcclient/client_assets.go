@@ -50,7 +50,7 @@ func Get1155Details(tokenID int, collectionSlug string) (*NFT1155DetailsResp, er
 		TokenID:        tokenID,
 	}
 	resp := &NFT1155DetailsResp{}
-	err := Client.Call("S.Get1155Details", req, resp)
+	err := SupremacyClient.Call("S.Get1155Details", req, resp)
 	if err != nil {
 		return nil, terror.Error(err, "communication to supremacy has failed")
 	}
