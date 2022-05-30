@@ -102,8 +102,8 @@ func (ac *AssetController) AssetList721Handler(ctx context.Context, user *xsynTy
 
 // Asset1155ListResponse is the response from get asset list
 type Asset1155ListResponse struct {
-	Total  int64                  `json:"total"`
-	Assets []*types.User1155Asset `json:"assets"` // TODO: create api type for user assets
+	Total  int64                      `json:"total"`
+	Assets []*xsynTypes.User1155Asset `json:"assets"` // TODO: create api type for user assets
 }
 
 const HubKey1155AssetList = "ASSET:LIST:1155"
