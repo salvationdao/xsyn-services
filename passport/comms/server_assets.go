@@ -1,6 +1,9 @@
 package comms
 
 import (
+	"database/sql"
+	"errors"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
@@ -13,6 +16,7 @@ import (
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/payments"
 	"xsyn-services/passport/supremacy_rpcclient"
+	xsyn_types "xsyn-services/types"
 )
 
 func (s *S) AssetOnChainStatusHandler(req AssetOnChainStatusReq, resp *AssetOnChainStatusResp) error {
@@ -130,6 +134,42 @@ func (s *S) AssetRegisterHandler(req RegisterAssetReq, resp *RegisterAssetResp) 
 		OnChainStatus:   req.Asset.OnChainStatus,
 		LockedToService: null.StringFrom(serviceID),
 	}
+	fmt.Println(collection.ID)
+	fmt.Println(req.Asset.TokenID)
+	// see if old asset exists
+	oldAsset, err := boiler.PurchasedItemsOlds(
+		boiler.PurchasedItemsOldWhere.CollectionID.EQ(collection.ID),
+		boiler.PurchasedItemsOldWhere.ExternalTokenID.EQ(int(req.Asset.TokenID)),
+	).One(passdb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		// handle
+		fmt.Println(collection.ID)
+		fmt.Println(req.Asset.TokenID)
+		fmt.Println(err.Error())
+	}
+
+	if oldAsset != nil {
+		fmt.Println("Not nil!")
+		boilerAsset.MintedAt = oldAsset.MintedAt
+		boilerAsset.OnChainStatus = oldAsset.OnChainStatus
+		boilerAsset.UnlockedAt = oldAsset.UnlockedAt
+	}
+
+	// if minted tell gameserver item is xsyn locked
+	if boilerAsset.OnChainStatus == "STAKABLE" {
+		boilerAsset.LockedToService = null.String{}
+		colSlug := "supremacy-general"
+		err := supremacy_rpcclient.AssetUnlockFromSupremacy(xsyn_types.UserAssetFromBoiler(boilerAsset), colSlug, 0)
+		if err != nil {
+			// handle
+		}
+	}
+
+	// if staked tell gameserver item is market locked
+	if boilerAsset.OnChainStatus == "UNSTAKABLE" {
+		// TODO: market lock asset
+	}
+
 
 	err = boilerAsset.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
@@ -204,11 +244,42 @@ func (s *S) AssetsRegisterHandler(req RegisterAssetsReq, resp *RegisterAssetsRes
 			LockedToService: null.StringFrom(serviceID),
 		}
 
+		// see if old asset exists
+		oldAsset, err := boiler.PurchasedItemsOlds(
+			boiler.PurchasedItemsOldWhere.CollectionID.EQ(collection.ID),
+			boiler.PurchasedItemsOldWhere.ExternalTokenID.EQ(int(asset.TokenID)),
+		).One(passdb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			// handle
+		}
+
+		if oldAsset != nil {
+			boilerAsset.MintedAt = oldAsset.MintedAt
+			boilerAsset.OnChainStatus = oldAsset.OnChainStatus
+			boilerAsset.UnlockedAt = oldAsset.UnlockedAt
+		}
+
+		// if minted tell gameserver item is xsyn locked
+		if boilerAsset.OnChainStatus == "STAKABLE" {
+			boilerAsset.LockedToService = null.String{}
+			colSlug := "supremacy-general"
+			err := supremacy_rpcclient.AssetUnlockFromSupremacy(xsyn_types.UserAssetFromBoiler(boilerAsset), colSlug, 0)
+			if err != nil {
+				// handle
+			}
+		}
+
+		// if staked tell gameserver item is market locked
+		if boilerAsset.OnChainStatus == "UNSTAKABLE" {
+			// TODO: market lock asset
+		}
+
 		err = boilerAsset.Insert(passdb.StdConn, boil.Infer())
 		if err != nil {
 			passlog.L.Error().Interface("req", req).Err(err).Msg(" failed to register new asset - can't insert asset")
 			return err
 		}
+
 	}
 	resp.Success = true
 	return nil

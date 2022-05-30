@@ -1,6 +1,8 @@
 package db
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -178,6 +180,42 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTyp
 			OnChainStatus: itm.OnChainStatus,
 			DataRefreshedAt: time.Now(),
 			LockedToService: null.StringFrom(xsynTypes.SupremacyGameUserID.String()),
+		}
+
+		fmt.Println(collection.ID)
+		fmt.Println(itm.TokenID)
+		// see if old asset exists
+		oldAsset, err := boiler.PurchasedItemsOlds(
+			boiler.PurchasedItemsOldWhere.CollectionID.EQ(collection.ID),
+			boiler.PurchasedItemsOldWhere.ExternalTokenID.EQ(int(itm.TokenID)),
+		).One(passdb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			// handle
+			fmt.Println(collection.ID)
+			fmt.Println(itm.TokenID)
+			fmt.Println(err.Error())
+		}
+
+		if oldAsset != nil {
+			fmt.Println("Not nil!")
+			boilerAsset.MintedAt = oldAsset.MintedAt
+			boilerAsset.OnChainStatus = oldAsset.OnChainStatus
+			boilerAsset.UnlockedAt = oldAsset.UnlockedAt
+		}
+
+		// if minted tell gameserver item is xsyn locked
+		if boilerAsset.OnChainStatus == "STAKABLE" {
+			boilerAsset.LockedToService = null.String{}
+			colSlug := "supremacy-general"
+			err := supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(boilerAsset), colSlug, 0)
+			if err != nil {
+				// handle
+			}
+		}
+
+		// if staked tell gameserver item is market locked
+		if boilerAsset.OnChainStatus == "UNSTAKABLE" {
+			// TODO: market lock asset
 		}
 
 		err = boilerAsset.Insert(passdb.StdConn, boil.Infer())

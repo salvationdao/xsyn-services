@@ -471,7 +471,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 
 	err = supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug, transferLog.ID)
 	if err != nil {
-		// TODO: in the future we should forcable be able to pull assets from services back to xsyn
+		// TODO: in the future we should forcibly be able to pull assets from services back to xsyn
 		reverseAssetServiceTransaction(
 			ac.API.userCacheMap,
 			tx,
