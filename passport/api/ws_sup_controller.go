@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"time"
 	"xsyn-services/boiler"
-	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
+
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -22,28 +22,22 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
-
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog"
 )
 
 // SupController holds handlers for as
 type SupController struct {
-	Conn *pgxpool.Pool
-	Log  *zerolog.Logger
-	API  *API
-	cc   *ChainClients
+	Log *zerolog.Logger
+	API *API
+	cc  *ChainClients
 }
 
 // NewSupController creates the sup hub
-func NewSupController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, cc *ChainClients) *SupController {
+func NewSupController(log *zerolog.Logger, api *API, cc *ChainClients) *SupController {
 	supHub := &SupController{
-		Conn: conn,
-		Log:  log_helpers.NamedLogger(log, "sup_hub"),
-		API:  api,
-		cc:   cc,
+		Log: log_helpers.NamedLogger(log, "sup_hub"),
+		API: api,
+		cc:  cc,
 	}
 
 	api.SecureCommand(HubKeyWithdrawSups, supHub.WithdrawSupHandler)
@@ -58,25 +52,12 @@ type DepositTransactionListResponse struct {
 	Transactions boiler.DepositTransactionSlice `json:"transactions"`
 }
 
-const HubKeyDepositTransactionList hub.HubCommandKey = "SUPS:DEPOSIT:LIST"
+const HubKeyDepositTransactionList = "SUPS:DEPOSIT:LIST"
 
-func (sc *SupController) DepositTransactionListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (sc *SupController) DepositTransactionListHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue getting deposit transaction list, try again or contact support."
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
 
-	// get user
-	uid, err := uuid.FromString(hubc.Identifier())
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	userID := types.UserID(uid)
-
-	dtxs, err := boiler.DepositTransactions(boiler.DepositTransactionWhere.UserID.EQ(userID.String()), qm.Limit(10), qm.OrderBy("created_at DESC")).All(passdb.StdConn)
+	dtxs, err := boiler.DepositTransactions(boiler.DepositTransactionWhere.UserID.EQ(user.ID), qm.Limit(10), qm.OrderBy("created_at DESC")).All(passdb.StdConn)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -95,16 +76,15 @@ func (sc *SupController) DepositTransactionListHandler(ctx context.Context, hubc
 }
 
 type SupDepositRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		TransactionHash string          `json:"transaction_hash"`
 		Amount          decimal.Decimal `json:"amount"`
 	} `json:"payload"`
 }
 
-const HubKeyDepositSups hub.HubCommandKey = "SUPS:DEPOSIT"
+const HubKeyDepositSups = "SUPS:DEPOSIT"
 
-func (sc *SupController) DepositSupHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (sc *SupController) DepositSupHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue processing SUPs deposit transaction, try again or contact support."
 
 	req := &SupDepositRequest{}
@@ -123,16 +103,8 @@ func (sc *SupController) DepositSupHandler(ctx context.Context, hubc *hub.Client
 		return terror.Error(fmt.Errorf("deposit transaction amount is lower than the minimum required amount"), "Deposit transaction amount is lower than the minimum required amount.")
 	}
 
-	// get user
-	uid, err := uuid.FromString(hubc.Identifier())
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	userID := types.UserID(uid)
-
 	dtx := boiler.DepositTransaction{
-		UserID: userID.String(),
+		UserID: user.ID,
 		TXHash: req.Payload.TransactionHash,
 		Amount: req.Payload.Amount,
 	}
@@ -147,15 +119,14 @@ func (sc *SupController) DepositSupHandler(ctx context.Context, hubc *hub.Client
 }
 
 type SupWithdrawRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Amount string `json:"amount"`
 	} `json:"payload"`
 }
 
-const HubKeyWithdrawSups hub.HubCommandKey = "SUPS:WITHDRAW"
+const HubKeyWithdrawSups = "SUPS:WITHDRAW"
 
-func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (sc *SupController) WithdrawSupHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue processing SUPs withdrawal transaction, try again or contact support."
 
 	req := &SupWithdrawRequest{}
@@ -168,18 +139,11 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 		return terror.Error(fmt.Errorf("sups controller not initalized"), "Internal error, try again or contact support.")
 	}
 
-	withdrawAmount := big.NewInt(0)
-	if _, ok := withdrawAmount.SetString(req.Payload.Amount, 10); !ok {
-		return terror.Error(fmt.Errorf("failed to create big int from amount"), errMsg)
-	}
-	userID := types.UserID(uuid.FromStringOrNil(hubc.Identifier()))
-	if userID.IsNil() {
-		return terror.Error(terror.ErrForbidden, "User is not logged in, access forbidden.")
-	}
-	user, err := db.UserGet(ctx, sc.Conn, userID)
+	withdrawAmount, err := decimal.NewFromString(req.Payload.Amount)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(fmt.Errorf("failed to create decimal from amount: %v", err), errMsg)
 	}
+
 	if !user.PublicAddress.Valid || user.PublicAddress.String == "" {
 		return terror.Error(fmt.Errorf("user has no public address"), "Account missing public address.")
 	}
@@ -188,13 +152,15 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 		return terror.Error(fmt.Errorf("user tried to withdraw without enough funds"), "Insufficient funds.")
 	}
 	// check withdraw wallet sups
-	balance, err := sc.cc.SUPS.Balance()
+	balanceBI, err := sc.cc.SUPS.Balance()
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
+	balance := decimal.NewFromBigInt(balanceBI, 0)
+
 	// if wallet sups balance too low
-	if balance.Cmp(withdrawAmount) < 0 {
+	if balance.LessThan(withdrawAmount) {
 		return terror.Error(fmt.Errorf("not enough funds in our withdraw wallet"), "Insufficient in funds in withdraw wallet at this time.")
 	}
 	// check withdraw wallet gas
@@ -217,9 +183,9 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 
 	trans := &types.NewTransaction{
 		To:                   types.OnChainUserID,
-		From:                 userID,
+		From:                 types.UserID(uuid.Must(uuid.FromString(user.ID))),
 		NotSafe:              true,
-		Amount:               decimal.NewFromBigInt(withdrawAmount, 0),
+		Amount:               withdrawAmount,
 		TransactionReference: types.TransactionReference(txRef),
 		Description:          "Withdraw of SUPS.",
 		Group:                types.TransactionGroupWithdrawal,
@@ -231,19 +197,19 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	if !trans.From.IsSystemUser() {
-		go sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, trans.From)), nfb.String())
+		ws.PublishMessage("/user/"+trans.From.String()+"/sups", "USER:SUPS", nfb.String())
 	}
 	if !trans.To.IsSystemUser() {
-		go sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, trans.To)), ntb.String())
+		ws.PublishMessage("/user/"+trans.To.String()+"/sups", "USER:SUPS", ntb.String())
 	}
 
 	// refund callback
 	refund := func(reason string) {
 		trans := &types.NewTransaction{
-			To:                   userID,
+			To:                   types.UserID(uuid.Must(uuid.FromString(user.ID))),
 			NotSafe:              true,
 			From:                 types.OnChainUserID,
-			Amount:               decimal.NewFromBigInt(withdrawAmount, 0),
+			Amount:               withdrawAmount,
 			TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
 			Description:          "Refund of Withdraw of SUPS.",
 			Group:                types.TransactionGroupWithdrawal,
@@ -256,14 +222,14 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, hubc *hub.Clien
 		}
 
 		if !trans.From.IsSystemUser() {
-			go sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, trans.From)), nfb.String())
+			ws.PublishMessage("/user/"+trans.From.String()+"/sups", "USER:SUPS", nfb.String())
 		}
 		if !trans.To.IsSystemUser() {
-			go sc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, trans.To)), ntb.String())
+			ws.PublishMessage("/user/"+trans.To.String()+"/sups", "USER:SUPS", ntb.String())
 		}
 
 	}
-	tx, err := sc.cc.SUPS.Transfer(ctx, common.HexToAddress(user.PublicAddress.String), withdrawAmount)
+	tx, err := sc.cc.SUPS.Transfer(ctx, common.HexToAddress(user.PublicAddress.String), withdrawAmount.BigInt())
 	if err != nil {
 		refund(err.Error())
 		return terror.Error(err, "Withdraw failed: %s. Try again or contact support.", txID.String())

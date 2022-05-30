@@ -1,6 +1,8 @@
 package types
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/volatiletech/null/v8"
@@ -23,6 +25,14 @@ const USDCSymbol = "USDC"
 const ETHDecimals = 18
 const BNBDecimals = 18
 const SUPSDecimals = 18
+
+func (c *User) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(b, c)
+}
 
 type Transaction struct {
 	ID                   string            `json:"id" db:"id"`

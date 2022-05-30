@@ -1,7 +1,6 @@
 package payments
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -55,7 +54,7 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool, collectio
 	l.Debug().Int("records", len(nftStatuses)).Msg("processing new owners for NFT")
 	for tokenID, nftStatus := range nftStatuses {
 		l.Debug().Int("token_id", tokenID).Str("collection", nftStatus.Collection.Hex()).Str("owner", nftStatus.Owner.Hex()).Bool("stakable", nftStatus.Stakable).Bool("unstakable", nftStatus.Unstakable).Msg("processing new owner for NFT")
-		purchasedItem, err := db.PurchasedItemByMintContractAndTokenID(NFTAddr, tokenID)
+		purchasedItem, err := db.PurchasedItemByMintContractAndTokenIDDEPRECATE(NFTAddr, tokenID)
 		if err != nil && errors.Is(err, sql.ErrNoRows) {
 			l.Debug().Str("collection_addr", NFTAddr.Hex()).Int("external_token_id", tokenID).Msg("item not found")
 			skipped++
@@ -64,7 +63,7 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool, collectio
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return 0, 0, fmt.Errorf("get purchased item: %w", err)
 		}
-		onChainOwner, err := CreateOrGetUser(context.Background(), passdb.Conn, nftStatus.Owner)
+		onChainOwner, err := CreateOrGetUser(nftStatus.Owner)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return 0, 0, fmt.Errorf("get or create onchain user: %w", err)
 		}
@@ -78,12 +77,13 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool, collectio
 		l.Debug().Str("off_chain_user", offChainAddr.Hex()).Str("on_chain_user", onChainAddr.Hex()).Bool("matches", offChainAddr.Hex() != onChainAddr.Hex()).Msg("check if nft owners match")
 		if offChainAddr.Hex() != onChainAddr.Hex() {
 			itemID := uuid.Must(uuid.FromString(purchasedItem.ID))
-			newOffchainOwnerID := uuid.UUID(onChainOwner.ID)
+			newOffchainOwnerID := uuid.FromStringOrNil(onChainOwner.ID)
 			l.Debug().Str("new_owner", newOffchainOwnerID.String()).Str("item_id", itemID.String()).Msg("setting new nft owner")
-			_, err = db.PurchasedItemSetOwner(itemID, newOffchainOwnerID)
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				return 0, 0, fmt.Errorf("set new nft owner: %w", err)
-			}
+			//TODO: Vinnie fix ASSET TRANSFER
+			//_, err = db.PurchasedItemSetOwner(itemID, newOffchainOwnerID)
+			//if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			//	return 0, 0, fmt.Errorf("set new nft owner: %w", err)
+			//}
 			updated++
 		}
 
@@ -91,7 +91,7 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool, collectio
 		if nftStatus.Stakable && purchasedItem.OnChainStatus != string(db.STAKABLE) {
 			itemID := uuid.Must(uuid.FromString(purchasedItem.ID))
 
-			err = db.PurchasedItemSetOnChainStatus(itemID, db.STAKABLE)
+			err = db.PurchasedItemSetOnChainStatusDEPRECATE(itemID, db.STAKABLE)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				return 0, 0, fmt.Errorf("set new nft status: %w", err)
 			}
@@ -102,7 +102,7 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, isTestnet bool, collectio
 		if nftStatus.Unstakable && purchasedItem.OnChainStatus != string(db.UNSTAKABLE) {
 			itemID := uuid.Must(uuid.FromString(purchasedItem.ID))
 
-			err = db.PurchasedItemSetOnChainStatus(itemID, db.UNSTAKABLE)
+			err = db.PurchasedItemSetOnChainStatusDEPRECATE(itemID, db.UNSTAKABLE)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				return 0, 0, fmt.Errorf("set new nft status: %w", err)
 			}

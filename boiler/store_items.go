@@ -143,20 +143,20 @@ var StoreItemWhere = struct {
 
 // StoreItemRels is where relationship names are stored.
 var StoreItemRels = struct {
-	Collection     string
-	Faction        string
-	PurchasedItems string
+	Collection         string
+	Faction            string
+	PurchasedItemsOlds string
 }{
-	Collection:     "Collection",
-	Faction:        "Faction",
-	PurchasedItems: "PurchasedItems",
+	Collection:         "Collection",
+	Faction:            "Faction",
+	PurchasedItemsOlds: "PurchasedItemsOlds",
 }
 
 // storeItemR is where relationships are stored.
 type storeItemR struct {
-	Collection     *Collection        `boiler:"Collection" boil:"Collection" json:"Collection" toml:"Collection" yaml:"Collection"`
-	Faction        *Faction           `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	PurchasedItems PurchasedItemSlice `boiler:"PurchasedItems" boil:"PurchasedItems" json:"PurchasedItems" toml:"PurchasedItems" yaml:"PurchasedItems"`
+	Collection         *Collection            `boiler:"Collection" boil:"Collection" json:"Collection" toml:"Collection" yaml:"Collection"`
+	Faction            *Faction               `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	PurchasedItemsOlds PurchasedItemsOldSlice `boiler:"PurchasedItemsOlds" boil:"PurchasedItemsOlds" json:"PurchasedItemsOlds" toml:"PurchasedItemsOlds" yaml:"PurchasedItemsOlds"`
 }
 
 // NewStruct creates a new relationship struct
@@ -442,23 +442,23 @@ func (o *StoreItem) Faction(mods ...qm.QueryMod) factionQuery {
 	return query
 }
 
-// PurchasedItems retrieves all the purchased_item's PurchasedItems with an executor.
-func (o *StoreItem) PurchasedItems(mods ...qm.QueryMod) purchasedItemQuery {
+// PurchasedItemsOlds retrieves all the purchased_items_old's PurchasedItemsOlds with an executor.
+func (o *StoreItem) PurchasedItemsOlds(mods ...qm.QueryMod) purchasedItemsOldQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"purchased_items\".\"store_item_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"purchased_items\".\"deleted_at\""),
+		qm.Where("\"purchased_items_old\".\"store_item_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"purchased_items_old\".\"deleted_at\""),
 	)
 
-	query := PurchasedItems(queryMods...)
-	queries.SetFrom(query.Query, "\"purchased_items\"")
+	query := PurchasedItemsOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"purchased_items_old\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"purchased_items\".*"})
+		queries.SetSelect(query.Query, []string{"\"purchased_items_old\".*"})
 	}
 
 	return query
@@ -673,9 +673,9 @@ func (storeItemL) LoadFaction(e boil.Executor, singular bool, maybeStoreItem int
 	return nil
 }
 
-// LoadPurchasedItems allows an eager lookup of values, cached into the
+// LoadPurchasedItemsOlds allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (storeItemL) LoadPurchasedItems(e boil.Executor, singular bool, maybeStoreItem interface{}, mods queries.Applicator) error {
+func (storeItemL) LoadPurchasedItemsOlds(e boil.Executor, singular bool, maybeStoreItem interface{}, mods queries.Applicator) error {
 	var slice []*StoreItem
 	var object *StoreItem
 
@@ -699,7 +699,7 @@ func (storeItemL) LoadPurchasedItems(e boil.Executor, singular bool, maybeStoreI
 			}
 
 			for _, a := range args {
-				if a == obj.ID {
+				if queries.Equal(a, obj.ID) {
 					continue Outer
 				}
 			}
@@ -713,9 +713,9 @@ func (storeItemL) LoadPurchasedItems(e boil.Executor, singular bool, maybeStoreI
 	}
 
 	query := NewQuery(
-		qm.From(`purchased_items`),
-		qm.WhereIn(`purchased_items.store_item_id in ?`, args...),
-		qmhelper.WhereIsNull(`purchased_items.deleted_at`),
+		qm.From(`purchased_items_old`),
+		qm.WhereIn(`purchased_items_old.store_item_id in ?`, args...),
+		qmhelper.WhereIsNull(`purchased_items_old.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -723,22 +723,22 @@ func (storeItemL) LoadPurchasedItems(e boil.Executor, singular bool, maybeStoreI
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load purchased_items")
+		return errors.Wrap(err, "failed to eager load purchased_items_old")
 	}
 
-	var resultSlice []*PurchasedItem
+	var resultSlice []*PurchasedItemsOld
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice purchased_items")
+		return errors.Wrap(err, "failed to bind eager loaded slice purchased_items_old")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on purchased_items")
+		return errors.Wrap(err, "failed to close results in eager load on purchased_items_old")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for purchased_items")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for purchased_items_old")
 	}
 
-	if len(purchasedItemAfterSelectHooks) != 0 {
+	if len(purchasedItemsOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -746,10 +746,10 @@ func (storeItemL) LoadPurchasedItems(e boil.Executor, singular bool, maybeStoreI
 		}
 	}
 	if singular {
-		object.R.PurchasedItems = resultSlice
+		object.R.PurchasedItemsOlds = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &purchasedItemR{}
+				foreign.R = &purchasedItemsOldR{}
 			}
 			foreign.R.StoreItem = object
 		}
@@ -758,10 +758,10 @@ func (storeItemL) LoadPurchasedItems(e boil.Executor, singular bool, maybeStoreI
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.StoreItemID {
-				local.R.PurchasedItems = append(local.R.PurchasedItems, foreign)
+			if queries.Equal(local.ID, foreign.StoreItemID) {
+				local.R.PurchasedItemsOlds = append(local.R.PurchasedItemsOlds, foreign)
 				if foreign.R == nil {
-					foreign.R = &purchasedItemR{}
+					foreign.R = &purchasedItemsOldR{}
 				}
 				foreign.R.StoreItem = local
 				break
@@ -864,23 +864,23 @@ func (o *StoreItem) SetFaction(exec boil.Executor, insert bool, related *Faction
 	return nil
 }
 
-// AddPurchasedItems adds the given related objects to the existing relationships
+// AddPurchasedItemsOlds adds the given related objects to the existing relationships
 // of the store_item, optionally inserting them as new records.
-// Appends related to o.R.PurchasedItems.
+// Appends related to o.R.PurchasedItemsOlds.
 // Sets related.R.StoreItem appropriately.
-func (o *StoreItem) AddPurchasedItems(exec boil.Executor, insert bool, related ...*PurchasedItem) error {
+func (o *StoreItem) AddPurchasedItemsOlds(exec boil.Executor, insert bool, related ...*PurchasedItemsOld) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.StoreItemID = o.ID
+			queries.Assign(&rel.StoreItemID, o.ID)
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"purchased_items\" SET %s WHERE %s",
+				"UPDATE \"purchased_items_old\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"store_item_id"}),
-				strmangle.WhereClause("\"", "\"", 2, purchasedItemPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, purchasedItemsOldPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -892,27 +892,100 @@ func (o *StoreItem) AddPurchasedItems(exec boil.Executor, insert bool, related .
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.StoreItemID = o.ID
+			queries.Assign(&rel.StoreItemID, o.ID)
 		}
 	}
 
 	if o.R == nil {
 		o.R = &storeItemR{
-			PurchasedItems: related,
+			PurchasedItemsOlds: related,
 		}
 	} else {
-		o.R.PurchasedItems = append(o.R.PurchasedItems, related...)
+		o.R.PurchasedItemsOlds = append(o.R.PurchasedItemsOlds, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &purchasedItemR{
+			rel.R = &purchasedItemsOldR{
 				StoreItem: o,
 			}
 		} else {
 			rel.R.StoreItem = o
 		}
 	}
+	return nil
+}
+
+// SetPurchasedItemsOlds removes all previously related items of the
+// store_item replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.StoreItem's PurchasedItemsOlds accordingly.
+// Replaces o.R.PurchasedItemsOlds with related.
+// Sets related.R.StoreItem's PurchasedItemsOlds accordingly.
+func (o *StoreItem) SetPurchasedItemsOlds(exec boil.Executor, insert bool, related ...*PurchasedItemsOld) error {
+	query := "update \"purchased_items_old\" set \"store_item_id\" = null where \"store_item_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.PurchasedItemsOlds {
+			queries.SetScanner(&rel.StoreItemID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.StoreItem = nil
+		}
+
+		o.R.PurchasedItemsOlds = nil
+	}
+	return o.AddPurchasedItemsOlds(exec, insert, related...)
+}
+
+// RemovePurchasedItemsOlds relationships from objects passed in.
+// Removes related items from R.PurchasedItemsOlds (uses pointer comparison, removal does not keep order)
+// Sets related.R.StoreItem.
+func (o *StoreItem) RemovePurchasedItemsOlds(exec boil.Executor, related ...*PurchasedItemsOld) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.StoreItemID, nil)
+		if rel.R != nil {
+			rel.R.StoreItem = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("store_item_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.PurchasedItemsOlds {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.PurchasedItemsOlds)
+			if ln > 1 && i < ln-1 {
+				o.R.PurchasedItemsOlds[i] = o.R.PurchasedItemsOlds[ln-1]
+			}
+			o.R.PurchasedItemsOlds = o.R.PurchasedItemsOlds[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 

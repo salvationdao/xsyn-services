@@ -10,6 +10,7 @@ LimitNOFILE=65536
 WorkingDirectory=/usr/share/ninja_syndicate/passport-online
 ExecStart=/usr/share/ninja_syndicate/passport-online/passport-api serve
 EnvironmentFile=/usr/share/ninja_syndicate/passport-online/init/passport-staging.env
+LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target

@@ -22,14 +22,14 @@ func (api *API) GameserverRequest(method string, endpoint string, data interface
 
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(jd))
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	req.Header.Add("Passport-Authorization", api.WebhookToken)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {

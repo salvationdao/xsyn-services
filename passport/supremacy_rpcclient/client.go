@@ -1,4 +1,4 @@
-package rpcclient
+package supremacy_rpcclient
 
 import (
 	"errors"
@@ -15,25 +15,25 @@ import (
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
-// XrpcClient is a basic RPC client with retry function and also support multiple addresses for increase through-put
-type XrpcClient struct {
+// SupremacyXrpcClient is a basic RPC client with retry function and also support multiple addresses for increase through-put
+type SupremacyXrpcClient struct {
 	Addrs   []string      // list of rpc addresses available to use
 	clients []*rpc.Client // holds rpc clients, same len/pos as the Addrs
 	counter uint64        // counter for cycling address/clients
 	mutex   sync.Mutex    // lock and unlocks clients slice editing
 }
 
-var Client *XrpcClient
+var SupremacyClient *SupremacyXrpcClient
 
-func SetGlobalClient(c *XrpcClient) {
-	if Client != nil {
+func SetGlobalClient(c *SupremacyXrpcClient) {
+	if SupremacyClient != nil {
 		passlog.L.Fatal().Msg("rpc client already initialised")
 	}
-	Client = c
+	SupremacyClient = c
 }
 
 // Call calls RPC server and retry, also initialise if it is the first time
-func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interface{}) error {
+func (c *SupremacyXrpcClient) Call(serviceMethod string, args interface{}, reply interface{}) error {
 	span := tracer.StartSpan("rpc_client", tracer.ResourceName(serviceMethod))
 	defer span.Finish()
 
@@ -51,7 +51,7 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 		c.mutex.Unlock()
 	}
 
-	passlog.L.Debug().Str("fn", serviceMethod).Interface("args", args).Msg("rpc call")
+	passlog.L.Trace().Str("fn", serviceMethod).Interface("args", args).Msg("rpc call")
 
 	// count up, and use the next client/address
 	atomic.AddUint64(&c.counter, 1)
@@ -65,7 +65,7 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 			// keep redialing until rpc server comes back online
 			client, err = dial(5, c.Addrs[i])
 			if err != nil {
-				return terror.Error(err)
+				return err
 			}
 			c.mutex.Lock()
 			c.clients[i] = client

@@ -7,27 +7,25 @@ import (
 	"xsyn-services/passport/helpers"
 	"xsyn-services/types"
 
+	"github.com/ninja-syndicate/ws"
+
 	"github.com/ninja-software/log_helpers"
 
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
 	"github.com/rs/zerolog"
 )
 
 // RoleController holds handlers for roles
 type RoleController struct {
-	Conn *pgxpool.Pool
-	Log  *zerolog.Logger
-	API  *API
+	Log *zerolog.Logger
+	API *API
 }
 
 // NewRoleController creates the role hub
-func NewRoleController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *RoleController {
+func NewRoleController(log *zerolog.Logger, api *API) *RoleController {
 	roleHub := &RoleController{
-		Conn: conn,
-		Log:  log_helpers.NamedLogger(log, "role_hub"),
-		API:  api,
+		Log: log_helpers.NamedLogger(log, "role_hub"),
+		API: api,
 	}
 
 	api.SecureCommandWithPerm(HubKeyRoleList, roleHub.ListHandler, types.PermRoleList)
@@ -41,11 +39,10 @@ func NewRoleController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *RoleC
 }
 
 // HubKeyRoleList is a hub key to list roles
-const HubKeyRoleList hub.HubCommandKey = "ROLE:LIST"
+const HubKeyRoleList = "ROLE:LIST"
 
 // RoleListRequest requests holds the filter for role list
 type RoleListRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		SortDir  db.SortByDir          `json:"sort_dir"`
 		SortBy   db.RoleColumn         `json:"sort_by"`
@@ -64,7 +61,7 @@ type RoleListResponse struct {
 }
 
 // ListHandler lists roles with pagination
-func (ctrlr *RoleController) ListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (ctrlr *RoleController) ListHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 
 	req := &RoleListRequest{}
 	err := json.Unmarshal(payload, req)
@@ -78,9 +75,8 @@ func (ctrlr *RoleController) ListHandler(ctx context.Context, hubc *hub.Client, 
 	}
 
 	roles := []*types.Role{}
-	total, err := db.RoleList(ctx,
-		ctrlr.Conn,
-		&roles,
+	total, err := db.RoleList(
+		roles,
 		req.Payload.Search,
 		req.Payload.Archived,
 		req.Payload.Filter,
@@ -103,11 +99,10 @@ func (ctrlr *RoleController) ListHandler(ctx context.Context, hubc *hub.Client, 
 }
 
 // HubKeyRoleGet is a hub key to get a role
-const HubKeyRoleGet hub.HubCommandKey = "ROLE:GET"
+const HubKeyRoleGet = "ROLE:GET"
 
 // RoleGetRequest to get a role
 type RoleGetRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Name string       `json:"name"`
 		ID   types.RoleID `json:"id"`
@@ -115,7 +110,7 @@ type RoleGetRequest struct {
 }
 
 // GetHandler to get a role
-func (ctrlr *RoleController) GetHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (ctrlr *RoleController) GetHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Role not found, check the URL and try again or contact support."
 	req := &RoleGetRequest{}
 	err := json.Unmarshal(payload, req)
@@ -126,12 +121,12 @@ func (ctrlr *RoleController) GetHandler(ctx context.Context, hubc *hub.Client, p
 	// Get role
 	var role *types.Role
 	if req.Payload.ID.IsNil() {
-		role, err = db.RoleByName(ctx, ctrlr.Conn, req.Payload.Name)
+		role, err = db.RoleByName(req.Payload.Name)
 		if err != nil {
 			return terror.Error(err, errMsg)
 		}
 	} else {
-		role, err = db.RoleGet(ctx, ctrlr.Conn, req.Payload.ID)
+		role, err = db.RoleGet(req.Payload.ID)
 		if err != nil {
 			return terror.Error(err, errMsg)
 		}
@@ -143,7 +138,7 @@ func (ctrlr *RoleController) GetHandler(ctx context.Context, hubc *hub.Client, p
 }
 
 // HubKeyRoleCreate is a hub key to create a role
-const HubKeyRoleCreate hub.HubCommandKey = "ROLE:CREATE"
+const HubKeyRoleCreate = "ROLE:CREATE"
 
 // RolePayload used for create and update requests
 type RolePayload struct {
@@ -153,12 +148,11 @@ type RolePayload struct {
 
 // RoleCreateRequest to create a role
 type RoleCreateRequest struct {
-	*hub.HubCommandRequest
 	Payload RolePayload `json:"payload"`
 }
 
 // CreateHandler to create a role
-func (ctrlr *RoleController) CreateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (ctrlr *RoleController) CreateHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Could not create role, try again or contact support."
 
 	req := &RoleCreateRequest{}
@@ -197,7 +191,7 @@ func (ctrlr *RoleController) CreateHandler(ctx context.Context, hubc *hub.Client
 		}
 	}
 
-	err = db.RoleCreate(ctx, ctrlr.Conn, role)
+	err = db.RoleCreate(role)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -206,7 +200,7 @@ func (ctrlr *RoleController) CreateHandler(ctx context.Context, hubc *hub.Client
 
 	// Record user activity
 	ctrlr.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Created Role",
 		types.ObjectTypeRole,
 		helpers.StringPointer(role.ID.String()),
@@ -222,11 +216,10 @@ func (ctrlr *RoleController) CreateHandler(ctx context.Context, hubc *hub.Client
 }
 
 // HubKeyRoleUpdate is a hub key to update a role
-const HubKeyRoleUpdate hub.HubCommandKey = "ROLE:UPDATE"
+const HubKeyRoleUpdate = "ROLE:UPDATE"
 
 // RoleUpdateRequest to update a role
 type RoleUpdateRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		ID types.RoleID `json:"id"`
 		RolePayload
@@ -234,7 +227,7 @@ type RoleUpdateRequest struct {
 }
 
 // UpdateHandler to update a role
-func (ctrlr *RoleController) UpdateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (ctrlr *RoleController) UpdateHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Could not update user role, try again or contact support."
 
 	req := &RoleUpdateRequest{}
@@ -244,7 +237,7 @@ func (ctrlr *RoleController) UpdateHandler(ctx context.Context, hubc *hub.Client
 	}
 
 	// Find Role
-	role, err := db.RoleGet(ctx, ctrlr.Conn, req.Payload.ID)
+	role, err := db.RoleGet(req.Payload.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -278,7 +271,7 @@ func (ctrlr *RoleController) UpdateHandler(ctx context.Context, hubc *hub.Client
 	}
 
 	// Update Role
-	err = db.RoleUpdate(ctx, ctrlr.Conn, role)
+	err = db.RoleUpdate(role)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -287,7 +280,7 @@ func (ctrlr *RoleController) UpdateHandler(ctx context.Context, hubc *hub.Client
 
 	// Record user activity
 	ctrlr.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Updated Role",
 		types.ObjectTypeRole,
 		helpers.StringPointer(role.ID.String()),
@@ -305,22 +298,21 @@ func (ctrlr *RoleController) UpdateHandler(ctx context.Context, hubc *hub.Client
 
 const (
 	// HubKeyRoleArchive archives the role
-	HubKeyRoleArchive hub.HubCommandKey = hub.HubCommandKey("ROLE:ARCHIVE")
+	HubKeyRoleArchive = "ROLE:ARCHIVE"
 
 	// HubKeyRoleUnarchive unarchives the role
-	HubKeyRoleUnarchive hub.HubCommandKey = hub.HubCommandKey("ROLE:UNARCHIVE")
+	HubKeyRoleUnarchive = "ROLE:UNARCHIVE"
 )
 
 // RoleToggleArchiveRequest requests to archive a role
 type RoleToggleArchiveRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		ID types.RoleID `json:"id"`
 	} `json:"payload"`
 }
 
 // ArchiveHandler archives a role
-func (ctrlr *RoleController) ArchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (ctrlr *RoleController) ArchiveHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Could not archive role, try again or contact support."
 
 	req := &RoleToggleArchiveRequest{}
@@ -330,11 +322,11 @@ func (ctrlr *RoleController) ArchiveHandler(ctx context.Context, hubc *hub.Clien
 	}
 
 	// Archive
-	err = db.RoleArchiveUpdate(ctx, ctrlr.Conn, req.Payload.ID, true)
+	err = db.RoleArchiveUpdate(req.Payload.ID, true)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	role, err := db.RoleGet(ctx, ctrlr.Conn, req.Payload.ID)
+	role, err := db.RoleGet(req.Payload.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -343,7 +335,7 @@ func (ctrlr *RoleController) ArchiveHandler(ctx context.Context, hubc *hub.Clien
 
 	// Record user activity
 	ctrlr.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Archived Role",
 		types.ObjectTypeRole,
 		helpers.StringPointer(role.ID.String()),
@@ -355,7 +347,7 @@ func (ctrlr *RoleController) ArchiveHandler(ctx context.Context, hubc *hub.Clien
 }
 
 // UnarchiveHandler unarchives a role
-func (ctrlr *RoleController) UnarchiveHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (ctrlr *RoleController) UnarchiveHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Could not unarchive role, try again or contact support."
 
 	req := &RoleToggleArchiveRequest{}
@@ -365,11 +357,11 @@ func (ctrlr *RoleController) UnarchiveHandler(ctx context.Context, hubc *hub.Cli
 	}
 
 	// Unarchive
-	err = db.RoleArchiveUpdate(ctx, ctrlr.Conn, req.Payload.ID, false)
+	err = db.RoleArchiveUpdate(req.Payload.ID, false)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	role, err := db.RoleGet(ctx, ctrlr.Conn, req.Payload.ID)
+	role, err := db.RoleGet(req.Payload.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -378,7 +370,7 @@ func (ctrlr *RoleController) UnarchiveHandler(ctx context.Context, hubc *hub.Cli
 
 	// Record user activity
 	ctrlr.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Unarchived Role",
 		types.ObjectTypeRole,
 		helpers.StringPointer(role.ID.String()),

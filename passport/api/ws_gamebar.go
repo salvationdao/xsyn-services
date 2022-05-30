@@ -2,46 +2,39 @@ package api
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"os"
 	"sync"
 	"time"
-	"xsyn-services/passport/db"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
+
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/shopspring/decimal"
 
 	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
-	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 )
 
 // GamebarController holds handlers for authentication
 type GamebarController struct {
-	Conn *pgxpool.Pool
-	Log  *zerolog.Logger
-	API  *API
+	Log *zerolog.Logger
+	API *API
 }
 
-func NewGamebarController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *GamebarController {
+func NewGamebarController(log *zerolog.Logger, api *API) *GamebarController {
 	gamebarHub := &GamebarController{
-		Conn: conn,
-		Log:  log_helpers.NamedLogger(log, "user_hub"),
-		API:  api,
+		Log: log_helpers.NamedLogger(log, "user_hub"),
+		API: api,
 	}
+	if os.Getenv("PASSPORT_ENVIRONMENT") == "development" || os.Getenv("PASSPORT_ENVIRONMENT") == "staging" {
 
-	api.Command(HubKeyGamebarSessionIDGet, gamebarHub.GetSessionIDHandler)
-	api.SecureCommand(HubKeyGamebarGetFreeSups, gamebarHub.GetFreeSups)
-	api.SubscribeCommand(HubKeyGamebarUserSubscribe, gamebarHub.UserUpdatedSubscribeHandler)
+		api.SecureCommand(HubKeyGamebarGetFreeSups, gamebarHub.GetFreeSups)
+	}
+	//api.SecureCommand(HubKeyGamebarUserSubscribe, gamebarHub.UserUpdatedSubscribeHandler)
 
 	return gamebarHub
 }
@@ -50,25 +43,11 @@ var timeMap = sync.Map{}
 
 const HubKeyGamebarGetFreeSups = "GAMEBAR:GET:SUPS"
 
-func (gc *GamebarController) GetFreeSups(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	userID := types.UserID(uuid.FromStringOrNil(hubc.Identifier()))
-	if userID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User is not logged in, access forbidden.")
-	}
-
-	user, err := db.UserGet(ctx, gc.Conn, userID)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return terror.Error(terror.ErrInvalidInput, "Failed to find the user detail, try again or contact support.")
-	}
-
-	if user == nil {
-		return terror.Error(fmt.Errorf("user not found"), "User not found, try again or contact support.")
-	}
-
+func (gc *GamebarController) GetFreeSups(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	if os.Getenv("PASSPORT_ENVIRONMENT") != "development" && os.Getenv("PASSPORT_ENVIRONMENT") != "staging" {
 		// If not development or staging
 		passlog.L.
-			Err(err).
+			Error().
 			Str("env", os.Getenv("PASSPORT_ENVIRONMENT")).
 			Msg("NO SUPS FOR YOU :p (not staging or development)")
 		reply(false)
@@ -81,7 +60,7 @@ func (gc *GamebarController) GetFreeSups(ctx context.Context, hubc *hub.Client, 
 	}
 
 	allowed := false
-	t, found := timeMap.Load(fmt.Sprintf("%s:GET_SUPS", userID))
+	t, found := timeMap.Load(fmt.Sprintf("%s:GET_SUPS", user.ID))
 	// Get time til next claim
 	tm, ok := t.(time.Time)
 	if found {
@@ -97,7 +76,7 @@ func (gc *GamebarController) GetFreeSups(ctx context.Context, hubc *hub.Client, 
 
 	if !allowed {
 		passlog.L.
-			Err(err).
+			Error().
 			Interface("timeUntilClaim", tm).
 			Msg(fmt.Sprintf("NO SUPS FOR YOU :p (on cooldown)"))
 		reply(tm)
@@ -109,7 +88,7 @@ func (gc *GamebarController) GetFreeSups(ctx context.Context, hubc *hub.Client, 
 	oneSups := big.NewInt(1000000000000000000)
 	oneSups.Mul(oneSups, big.NewInt(100))
 	tx := &types.NewTransaction{
-		To:                   user.ID,
+		To:                   types.UserID(uuid.Must(uuid.FromString(user.ID))),
 		From:                 types.XsynSaleUserID,
 		Amount:               decimal.NewFromBigInt(oneSups, 0),
 		NotSafe:              true,
@@ -117,7 +96,7 @@ func (gc *GamebarController) GetFreeSups(ctx context.Context, hubc *hub.Client, 
 		Description:          "100 SUPS giveaway for testing",
 		Group:                types.TransactionGroupTesting,
 	}
-	_, _, _, err = gc.API.userCacheMap.Transact(tx)
+	_, _, _, err := gc.API.userCacheMap.Transact(tx)
 	if err != nil {
 		passlog.L.
 			Err(err).
@@ -132,37 +111,8 @@ func (gc *GamebarController) GetFreeSups(ctx context.Context, hubc *hub.Client, 
 	}
 	// Set their timer to one hour from now (or whatever the cooldown is)
 	nextClaimTime := time.Now().Add(cooldown)
-	timeMap.Store(fmt.Sprintf("%s:GET_SUPS", userID), nextClaimTime)
+	timeMap.Store(fmt.Sprintf("%s:GET_SUPS", user.ID), nextClaimTime)
 
 	reply(nextClaimTime)
 	return nil
-}
-
-// 	rootHub.SecureCommand(HubKeyUserGet, UserController.GetHandler)
-const HubKeyGamebarSessionIDGet hub.HubCommandKey = "GAMEBAR:SESSION:ID:GET"
-
-func (gc *GamebarController) GetSessionIDHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	reply(hubc.SessionID)
-
-	return nil
-}
-
-const HubKeyGamebarUserSubscribe hub.HubCommandKey = "GAMEBAR:USER:SUBSCRIBE"
-
-// UserUpdatedSubscribeRequest to subscribe to user updates
-type UserUpdatedSubscribeRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		SessionID string `json:"session_id"`
-	} `json:"payload"`
-}
-
-func (gc *GamebarController) UserUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &UserUpdatedSubscribeRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
-	}
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyGamebarUserSubscribe, req.Payload.SessionID)), nil
 }

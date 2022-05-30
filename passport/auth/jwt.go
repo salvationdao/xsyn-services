@@ -18,15 +18,14 @@ import (
 )
 
 func GenerateJWT(tokenID string, u types.User, deviceName string, expireInDays int, jwtKey []byte) (jwt.Token, func(jwt.Token, bool, []byte) ([]byte, error), error) {
-
 	token := openid.New()
 	token.Set("user-id", u.ID)
 	token.Set(openid.JwtIDKey, tokenID)
 	token.Set(openid.ExpirationKey, time.Now().AddDate(0, 0, expireInDays))
 	token.Set("device", deviceName)
 
-	if u.FactionID != nil && !u.FactionID.IsNil() {
-		token.Set("faction-id", u.FactionID.String())
+	if u.FactionID.Valid {
+		token.Set("faction-id", u.FactionID.String)
 	}
 
 	if u.PublicAddress.Valid {

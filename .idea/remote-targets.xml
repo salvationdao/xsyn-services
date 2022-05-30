@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteTargetsManager">
+    <option name="projectDefaultTargetUuid" value="da222896-4392-4fc8-b8e3-cd87ca96b393" />
+    <targets>
+      <target name="WSL - Ubuntu-20.04" type="wsl" uuid="da222896-4392-4fc8-b8e3-cd87ca96b393">
+        <config>
+          <option name="distributionMsId" value="Ubuntu-20.04" />
+          <option name="projectRootOnTarget" value="/mnt/c/Program Files/JetBrains/IntelliJ IDEA 2022.1/jbr/bin&#10;/xsyn-services" />
+        </config>
+      </target>
+    </targets>
+  </component>
+</project>

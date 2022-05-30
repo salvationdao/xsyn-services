@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"net"
 	"net/rpc"
+	"strconv"
 	"sync"
 	"time"
 	"xsyn-services/passport/api"
-	"xsyn-services/passport/db"
 	"xsyn-services/types"
 
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 	"github.com/sasha-s/go-deadlock"
@@ -23,33 +22,34 @@ type TickerPoolCache struct {
 }
 
 type S struct {
+	StartPort    int
+	EndPort      int
 	UserCacheMap *api.Transactor
 	MessageBus   *messagebus.MessageBus
 	SMS          types.SMS
 	//Txs          *api.Transactions
-	Log      *zerolog.Logger
-	Conn     db.Conn
-	DistLock deadlock.Mutex
-
-	TickerPoolCache *TickerPoolCache // user for sup trickle process
-	HubSessionIDMap *sync.Map
+	Log                 *zerolog.Logger
+	DistLock            deadlock.Mutex
+	TickerPoolCache     *TickerPoolCache // user for sup trickle process
+	HubSessionIDMap     *sync.Map
+	TokenExpirationDays int
+	TokenEncryptionKey  []byte
 }
 
 func NewServer(
 	userCacheMap *api.Transactor,
-	messageBus *messagebus.MessageBus,
 	//txs *api.Transactions,
 	log *zerolog.Logger,
-	conn *pgxpool.Pool,
 	cm *sync.Map,
 	sms types.SMS,
+	config *types.Config,
 ) *S {
 	result := &S{
 		UserCacheMap: userCacheMap,
-		MessageBus:   messageBus,
 		//Txs:          txs,
-		Log:  log,
-		Conn: conn,
+		Log:                 log,
+		TokenExpirationDays: config.TokenExpirationDays,
+		TokenEncryptionKey:  []byte(config.EncryptTokensKey),
 		TickerPoolCache: &TickerPoolCache{
 			deadlock.Mutex{},
 			make(map[string]decimal.Decimal),
@@ -105,43 +105,13 @@ func (s *S) listen(addrStr ...string) ([]net.Listener, error) {
 	return listeners, nil
 }
 
-func StartServer(s *S) error {
-	listeners, err := s.listen(
-		"10001",
-		"10002",
-		"10003",
-		"10004",
-		"10005",
-		"10006",
-		"10007",
-		"10008",
-		"10009",
-		"10010",
-		"10011",
-		"10012",
-		"10013",
-		"10014",
-		"10015",
-		"10016",
-		"10017",
-		"10018",
-		"10019",
-		"10020",
-		"10021",
-		"10022",
-		"10023",
-		"10024",
-		"10025",
-		"10026",
-		"10027",
-		"10028",
-		"10029",
-		"10030",
-		"10031",
-		"10032",
-		"10033",
-		"10034",
-		"10035")
+func (s *S) Start(startPort, numPorts int) error {
+	listenPorts := make([]string, numPorts)
+	for i := 0; i < numPorts; i++ {
+		listenPorts[i] = strconv.Itoa(startPort + i)
+	}
+
+	listeners, err := s.listen(listenPorts...)
 	if err != nil {
 		return err
 	}

@@ -6,6 +6,7 @@ import (
 
 type Config struct {
 	CookieSecure            bool
+	CookieKey               string
 	EncryptTokens           bool
 	EncryptTokensKey        string
 	TokenExpirationDays     int

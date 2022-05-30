@@ -37,17 +37,10 @@ type SpendSupsResp struct {
 type GetMechOwnerResp struct {
 	Payload types.JSON
 }
-type GetAllMechsReq struct {
-	ApiKey string
-}
 
 type UserGetReq struct {
 	ApiKey string
 	UserID types2.UserID `json:"userID"`
-}
-
-type UserGetResp struct {
-	User *types2.User `json:"user"`
 }
 
 type UserBalanceGetReq struct {
@@ -74,3 +67,11 @@ type AssetsOnChainStatusReq struct {
 type AssetsOnChainStatusResp struct {
 	OnChainStatuses map[string]string `json:"on_chain_statuses"`
 }
+
+type UserFactionEnlistReq struct {
+	ApiKey    string
+	UserID    string `json:"userID"`
+	FactionID string `json:"factionID"`
+}
+
+type UserFactionEnlistResp struct{}

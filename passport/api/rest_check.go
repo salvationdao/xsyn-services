@@ -1,9 +1,7 @@
 package api
 
 import (
-	"context"
 	"net/http"
-	"xsyn-services/passport/db"
 
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	"github.com/rs/zerolog"
@@ -13,14 +11,12 @@ import (
 
 // CheckController holds connection data for handlers
 type CheckController struct {
-	Conn db.Conn
-	Log  *zerolog.Logger
+	Log *zerolog.Logger
 }
 
-func CheckRouter(log *zerolog.Logger, conn db.Conn) chi.Router {
+func CheckRouter(log *zerolog.Logger) chi.Router {
 	c := &CheckController{
-		Conn: conn,
-		Log:  log,
+		Log: log,
 	}
 	r := chi.NewRouter()
 	r.Get("/", c.Check)
@@ -29,7 +25,7 @@ func CheckRouter(log *zerolog.Logger, conn db.Conn) chi.Router {
 }
 
 func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
-	err := check(context.Background(), c.Conn)
+	err := check()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, wErr := w.Write([]byte(err.Error()))

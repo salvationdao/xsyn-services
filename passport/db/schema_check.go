@@ -1,12 +1,21 @@
 package db
 
 import (
-	"context"
-
-	"github.com/georgysavva/scany/pgxscan"
+	"fmt"
+	"xsyn-services/boiler"
+	"xsyn-services/passport/passdb"
 )
 
-func IsSchemaDirty(ctx context.Context, conn Conn, count *int) error {
-	q := `SELECT count(*) FROM schema_migrations where dirty is true`
-	return pgxscan.Get(ctx, conn, count, q)
+func IsSchemaDirty() error {
+	count, err := boiler.SchemaMigrations(
+		boiler.SchemaMigrationWhere.Dirty.EQ(true),
+	).Count(passdb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	if count > 0 {
+		return fmt.Errorf("db is dirty")
+	}
+	return nil
 }
