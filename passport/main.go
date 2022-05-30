@@ -17,8 +17,8 @@ import (
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/payments"
-	"xsyn-services/passport/rpcclient"
 	"xsyn-services/passport/sms"
+	"xsyn-services/passport/supremacy_rpcclient"
 	"xsyn-services/types"
 
 	"github.com/ninja-syndicate/ws"
@@ -120,7 +120,7 @@ func main() {
 					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{envPrefix + "_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
 					&cli.StringFlag{Name: "cookie_key", Value: "asgk236tkj2kszaxfj.,.135j25khsafkahfgiu215hi2htkjahsgfih13kj56hkqhkahgbkashgk312ht5lk2qhafga", EnvVars: []string{envPrefix + "_COOKIE_KEY", "COOKIE_KEY"}, Usage: "cookie encryption key"},
 
-					&cli.StringFlag{Name: "google_client_id", Value: "467953368642-8cobg822tej2i50ncfg4ge1pm4c5v033.apps.googleusercontent.com", EnvVars: []string{envPrefix + "_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google Client ID for OAuth functionaility."},
+					&cli.StringFlag{Name: "google_client_id", Value: "467953368642-8cobg822tej2i50ncfg4ge1pm4c5v033.apps.googleusercontent.com", EnvVars: []string{envPrefix + "_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google SupremacyClient ID for OAuth functionaility."},
 
 					// SMS stuff
 					&cli.StringFlag{Name: "twilio_sid", Value: "", EnvVars: []string{envPrefix + "_TWILIO_ACCOUNT_SID"}, Usage: "Twilio account sid"},
@@ -938,10 +938,10 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 			rpcAddrs[i-startPort] = fmt.Sprintf("%s:%d", hostname, i)
 		}
 
-		rpcClient := &rpcclient.XrpcClient{
+		rpcClient := &supremacy_rpcclient.SupremacyXrpcClient{
 			Addrs: rpcAddrs,
 		}
-		rpcclient.SetGlobalClient(rpcClient)
+		supremacy_rpcclient.SetGlobalClient(rpcClient)
 	}()
 
 	if enablePurchaseSubscription {

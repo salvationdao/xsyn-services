@@ -33,6 +33,7 @@ type UserAsset struct {
 	Data             types.JSON  `boiler:"data" boil:"data" json:"data" toml:"data" yaml:"data"`
 	Attributes       types.JSON  `boiler:"attributes" boil:"attributes" json:"attributes" toml:"attributes" yaml:"attributes"`
 	Name             string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
+	AssetType        null.String `boiler:"asset_type" boil:"asset_type" json:"asset_type,omitempty" toml:"asset_type" yaml:"asset_type,omitempty"`
 	ImageURL         null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
 	ExternalURL      null.String `boiler:"external_url" boil:"external_url" json:"external_url,omitempty" toml:"external_url" yaml:"external_url,omitempty"`
 	CardAnimationURL null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
@@ -45,12 +46,11 @@ type UserAsset struct {
 	UnlockedAt       time.Time   `boiler:"unlocked_at" boil:"unlocked_at" json:"unlocked_at" toml:"unlocked_at" yaml:"unlocked_at"`
 	MintedAt         null.Time   `boiler:"minted_at" boil:"minted_at" json:"minted_at,omitempty" toml:"minted_at" yaml:"minted_at,omitempty"`
 	OnChainStatus    string      `boiler:"on_chain_status" boil:"on_chain_status" json:"on_chain_status" toml:"on_chain_status" yaml:"on_chain_status"`
-	XsynLocked       null.Bool   `boiler:"xsyn_locked" boil:"xsyn_locked" json:"xsyn_locked,omitempty" toml:"xsyn_locked" yaml:"xsyn_locked,omitempty"`
 	DeletedAt        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	DataRefreshedAt  time.Time   `boiler:"data_refreshed_at" boil:"data_refreshed_at" json:"data_refreshed_at" toml:"data_refreshed_at" yaml:"data_refreshed_at"`
 	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	ServiceLocked    null.String `boiler:"service_locked" boil:"service_locked" json:"service_locked,omitempty" toml:"service_locked" yaml:"service_locked,omitempty"`
+	LockedToService  null.String `boiler:"locked_to_service" boil:"locked_to_service" json:"locked_to_service,omitempty" toml:"locked_to_service" yaml:"locked_to_service,omitempty"`
 
 	R *userAssetR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userAssetL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -66,6 +66,7 @@ var UserAssetColumns = struct {
 	Data             string
 	Attributes       string
 	Name             string
+	AssetType        string
 	ImageURL         string
 	ExternalURL      string
 	CardAnimationURL string
@@ -78,12 +79,11 @@ var UserAssetColumns = struct {
 	UnlockedAt       string
 	MintedAt         string
 	OnChainStatus    string
-	XsynLocked       string
 	DeletedAt        string
 	DataRefreshedAt  string
 	UpdatedAt        string
 	CreatedAt        string
-	ServiceLocked    string
+	LockedToService  string
 }{
 	ID:               "id",
 	CollectionID:     "collection_id",
@@ -94,6 +94,7 @@ var UserAssetColumns = struct {
 	Data:             "data",
 	Attributes:       "attributes",
 	Name:             "name",
+	AssetType:        "asset_type",
 	ImageURL:         "image_url",
 	ExternalURL:      "external_url",
 	CardAnimationURL: "card_animation_url",
@@ -106,12 +107,11 @@ var UserAssetColumns = struct {
 	UnlockedAt:       "unlocked_at",
 	MintedAt:         "minted_at",
 	OnChainStatus:    "on_chain_status",
-	XsynLocked:       "xsyn_locked",
 	DeletedAt:        "deleted_at",
 	DataRefreshedAt:  "data_refreshed_at",
 	UpdatedAt:        "updated_at",
 	CreatedAt:        "created_at",
-	ServiceLocked:    "service_locked",
+	LockedToService:  "locked_to_service",
 }
 
 var UserAssetTableColumns = struct {
@@ -124,6 +124,7 @@ var UserAssetTableColumns = struct {
 	Data             string
 	Attributes       string
 	Name             string
+	AssetType        string
 	ImageURL         string
 	ExternalURL      string
 	CardAnimationURL string
@@ -136,12 +137,11 @@ var UserAssetTableColumns = struct {
 	UnlockedAt       string
 	MintedAt         string
 	OnChainStatus    string
-	XsynLocked       string
 	DeletedAt        string
 	DataRefreshedAt  string
 	UpdatedAt        string
 	CreatedAt        string
-	ServiceLocked    string
+	LockedToService  string
 }{
 	ID:               "user_assets.id",
 	CollectionID:     "user_assets.collection_id",
@@ -152,6 +152,7 @@ var UserAssetTableColumns = struct {
 	Data:             "user_assets.data",
 	Attributes:       "user_assets.attributes",
 	Name:             "user_assets.name",
+	AssetType:        "user_assets.asset_type",
 	ImageURL:         "user_assets.image_url",
 	ExternalURL:      "user_assets.external_url",
 	CardAnimationURL: "user_assets.card_animation_url",
@@ -164,12 +165,11 @@ var UserAssetTableColumns = struct {
 	UnlockedAt:       "user_assets.unlocked_at",
 	MintedAt:         "user_assets.minted_at",
 	OnChainStatus:    "user_assets.on_chain_status",
-	XsynLocked:       "user_assets.xsyn_locked",
 	DeletedAt:        "user_assets.deleted_at",
 	DataRefreshedAt:  "user_assets.data_refreshed_at",
 	UpdatedAt:        "user_assets.updated_at",
 	CreatedAt:        "user_assets.created_at",
-	ServiceLocked:    "user_assets.service_locked",
+	LockedToService:  "user_assets.locked_to_service",
 }
 
 // Generated where
@@ -184,6 +184,7 @@ var UserAssetWhere = struct {
 	Data             whereHelpertypes_JSON
 	Attributes       whereHelpertypes_JSON
 	Name             whereHelperstring
+	AssetType        whereHelpernull_String
 	ImageURL         whereHelpernull_String
 	ExternalURL      whereHelpernull_String
 	CardAnimationURL whereHelpernull_String
@@ -196,12 +197,11 @@ var UserAssetWhere = struct {
 	UnlockedAt       whereHelpertime_Time
 	MintedAt         whereHelpernull_Time
 	OnChainStatus    whereHelperstring
-	XsynLocked       whereHelpernull_Bool
 	DeletedAt        whereHelpernull_Time
 	DataRefreshedAt  whereHelpertime_Time
 	UpdatedAt        whereHelpertime_Time
 	CreatedAt        whereHelpertime_Time
-	ServiceLocked    whereHelpernull_String
+	LockedToService  whereHelpernull_String
 }{
 	ID:               whereHelperstring{field: "\"user_assets\".\"id\""},
 	CollectionID:     whereHelperstring{field: "\"user_assets\".\"collection_id\""},
@@ -212,6 +212,7 @@ var UserAssetWhere = struct {
 	Data:             whereHelpertypes_JSON{field: "\"user_assets\".\"data\""},
 	Attributes:       whereHelpertypes_JSON{field: "\"user_assets\".\"attributes\""},
 	Name:             whereHelperstring{field: "\"user_assets\".\"name\""},
+	AssetType:        whereHelpernull_String{field: "\"user_assets\".\"asset_type\""},
 	ImageURL:         whereHelpernull_String{field: "\"user_assets\".\"image_url\""},
 	ExternalURL:      whereHelpernull_String{field: "\"user_assets\".\"external_url\""},
 	CardAnimationURL: whereHelpernull_String{field: "\"user_assets\".\"card_animation_url\""},
@@ -224,27 +225,32 @@ var UserAssetWhere = struct {
 	UnlockedAt:       whereHelpertime_Time{field: "\"user_assets\".\"unlocked_at\""},
 	MintedAt:         whereHelpernull_Time{field: "\"user_assets\".\"minted_at\""},
 	OnChainStatus:    whereHelperstring{field: "\"user_assets\".\"on_chain_status\""},
-	XsynLocked:       whereHelpernull_Bool{field: "\"user_assets\".\"xsyn_locked\""},
 	DeletedAt:        whereHelpernull_Time{field: "\"user_assets\".\"deleted_at\""},
 	DataRefreshedAt:  whereHelpertime_Time{field: "\"user_assets\".\"data_refreshed_at\""},
 	UpdatedAt:        whereHelpertime_Time{field: "\"user_assets\".\"updated_at\""},
 	CreatedAt:        whereHelpertime_Time{field: "\"user_assets\".\"created_at\""},
-	ServiceLocked:    whereHelpernull_String{field: "\"user_assets\".\"service_locked\""},
+	LockedToService:  whereHelpernull_String{field: "\"user_assets\".\"locked_to_service\""},
 }
 
 // UserAssetRels is where relationship names are stored.
 var UserAssetRels = struct {
-	Collection string
-	Owner      string
+	Collection                 string
+	LockedToServiceUser        string
+	Owner                      string
+	AssetServiceTransferEvents string
 }{
-	Collection: "Collection",
-	Owner:      "Owner",
+	Collection:                 "Collection",
+	LockedToServiceUser:        "LockedToServiceUser",
+	Owner:                      "Owner",
+	AssetServiceTransferEvents: "AssetServiceTransferEvents",
 }
 
 // userAssetR is where relationships are stored.
 type userAssetR struct {
-	Collection *Collection `boiler:"Collection" boil:"Collection" json:"Collection" toml:"Collection" yaml:"Collection"`
-	Owner      *User       `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	Collection                 *Collection                    `boiler:"Collection" boil:"Collection" json:"Collection" toml:"Collection" yaml:"Collection"`
+	LockedToServiceUser        *User                          `boiler:"LockedToServiceUser" boil:"LockedToServiceUser" json:"LockedToServiceUser" toml:"LockedToServiceUser" yaml:"LockedToServiceUser"`
+	Owner                      *User                          `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	AssetServiceTransferEvents AssetServiceTransferEventSlice `boiler:"AssetServiceTransferEvents" boil:"AssetServiceTransferEvents" json:"AssetServiceTransferEvents" toml:"AssetServiceTransferEvents" yaml:"AssetServiceTransferEvents"`
 }
 
 // NewStruct creates a new relationship struct
@@ -256,9 +262,9 @@ func (*userAssetR) NewStruct() *userAssetR {
 type userAssetL struct{}
 
 var (
-	userAssetAllColumns            = []string{"id", "collection_id", "token_id", "tier", "hash", "owner_id", "data", "attributes", "name", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "on_chain_status", "xsyn_locked", "deleted_at", "data_refreshed_at", "updated_at", "created_at", "service_locked"}
-	userAssetColumnsWithoutDefault = []string{"collection_id", "token_id", "tier", "hash", "owner_id", "name", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "minted_at", "deleted_at", "service_locked"}
-	userAssetColumnsWithDefault    = []string{"id", "data", "attributes", "unlocked_at", "on_chain_status", "xsyn_locked", "data_refreshed_at", "updated_at", "created_at"}
+	userAssetAllColumns            = []string{"id", "collection_id", "token_id", "tier", "hash", "owner_id", "data", "attributes", "name", "asset_type", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "on_chain_status", "deleted_at", "data_refreshed_at", "updated_at", "created_at", "locked_to_service"}
+	userAssetColumnsWithoutDefault = []string{"collection_id", "token_id", "tier", "hash", "owner_id", "name", "asset_type", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "minted_at", "deleted_at", "locked_to_service"}
+	userAssetColumnsWithDefault    = []string{"id", "data", "attributes", "unlocked_at", "on_chain_status", "data_refreshed_at", "updated_at", "created_at"}
 	userAssetPrimaryKeyColumns     = []string{"id"}
 )
 
@@ -516,6 +522,21 @@ func (o *UserAsset) Collection(mods ...qm.QueryMod) collectionQuery {
 	return query
 }
 
+// LockedToServiceUser pointed to by the foreign key.
+func (o *UserAsset) LockedToServiceUser(mods ...qm.QueryMod) userQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.LockedToService),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Users(queryMods...)
+	queries.SetFrom(query.Query, "\"users\"")
+
+	return query
+}
+
 // Owner pointed to by the foreign key.
 func (o *UserAsset) Owner(mods ...qm.QueryMod) userQuery {
 	queryMods := []qm.QueryMod{
@@ -527,6 +548,27 @@ func (o *UserAsset) Owner(mods ...qm.QueryMod) userQuery {
 
 	query := Users(queryMods...)
 	queries.SetFrom(query.Query, "\"users\"")
+
+	return query
+}
+
+// AssetServiceTransferEvents retrieves all the asset_service_transfer_event's AssetServiceTransferEvents with an executor.
+func (o *UserAsset) AssetServiceTransferEvents(mods ...qm.QueryMod) assetServiceTransferEventQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"asset_service_transfer_events\".\"user_asset_id\"=?", o.ID),
+	)
+
+	query := AssetServiceTransferEvents(queryMods...)
+	queries.SetFrom(query.Query, "\"asset_service_transfer_events\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"asset_service_transfer_events\".*"})
+	}
 
 	return query
 }
@@ -628,6 +670,115 @@ func (userAssetL) LoadCollection(e boil.Executor, singular bool, maybeUserAsset 
 					foreign.R = &collectionR{}
 				}
 				foreign.R.UserAssets = append(foreign.R.UserAssets, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadLockedToServiceUser allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (userAssetL) LoadLockedToServiceUser(e boil.Executor, singular bool, maybeUserAsset interface{}, mods queries.Applicator) error {
+	var slice []*UserAsset
+	var object *UserAsset
+
+	if singular {
+		object = maybeUserAsset.(*UserAsset)
+	} else {
+		slice = *maybeUserAsset.(*[]*UserAsset)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userAssetR{}
+		}
+		if !queries.IsNil(object.LockedToService) {
+			args = append(args, object.LockedToService)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userAssetR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.LockedToService) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.LockedToService) {
+				args = append(args, obj.LockedToService)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`users`),
+		qm.WhereIn(`users.id in ?`, args...),
+		qmhelper.WhereIsNull(`users.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load User")
+	}
+
+	var resultSlice []*User
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice User")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for users")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for users")
+	}
+
+	if len(userAssetAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.LockedToServiceUser = foreign
+		if foreign.R == nil {
+			foreign.R = &userR{}
+		}
+		foreign.R.LockedToServiceUserAssets = append(foreign.R.LockedToServiceUserAssets, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.LockedToService, foreign.ID) {
+				local.R.LockedToServiceUser = foreign
+				if foreign.R == nil {
+					foreign.R = &userR{}
+				}
+				foreign.R.LockedToServiceUserAssets = append(foreign.R.LockedToServiceUserAssets, local)
 				break
 			}
 		}
@@ -741,6 +892,104 @@ func (userAssetL) LoadOwner(e boil.Executor, singular bool, maybeUserAsset inter
 	return nil
 }
 
+// LoadAssetServiceTransferEvents allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userAssetL) LoadAssetServiceTransferEvents(e boil.Executor, singular bool, maybeUserAsset interface{}, mods queries.Applicator) error {
+	var slice []*UserAsset
+	var object *UserAsset
+
+	if singular {
+		object = maybeUserAsset.(*UserAsset)
+	} else {
+		slice = *maybeUserAsset.(*[]*UserAsset)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userAssetR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userAssetR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`asset_service_transfer_events`),
+		qm.WhereIn(`asset_service_transfer_events.user_asset_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load asset_service_transfer_events")
+	}
+
+	var resultSlice []*AssetServiceTransferEvent
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice asset_service_transfer_events")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on asset_service_transfer_events")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for asset_service_transfer_events")
+	}
+
+	if len(assetServiceTransferEventAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.AssetServiceTransferEvents = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &assetServiceTransferEventR{}
+			}
+			foreign.R.UserAsset = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.UserAssetID {
+				local.R.AssetServiceTransferEvents = append(local.R.AssetServiceTransferEvents, foreign)
+				if foreign.R == nil {
+					foreign.R = &assetServiceTransferEventR{}
+				}
+				foreign.R.UserAsset = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetCollection of the userAsset to the related item.
 // Sets o.R.Collection to related.
 // Adds o to related.R.UserAssets.
@@ -787,6 +1036,85 @@ func (o *UserAsset) SetCollection(exec boil.Executor, insert bool, related *Coll
 	return nil
 }
 
+// SetLockedToServiceUser of the userAsset to the related item.
+// Sets o.R.LockedToServiceUser to related.
+// Adds o to related.R.LockedToServiceUserAssets.
+func (o *UserAsset) SetLockedToServiceUser(exec boil.Executor, insert bool, related *User) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"user_assets\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"locked_to_service"}),
+		strmangle.WhereClause("\"", "\"", 2, userAssetPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.LockedToService, related.ID)
+	if o.R == nil {
+		o.R = &userAssetR{
+			LockedToServiceUser: related,
+		}
+	} else {
+		o.R.LockedToServiceUser = related
+	}
+
+	if related.R == nil {
+		related.R = &userR{
+			LockedToServiceUserAssets: UserAssetSlice{o},
+		}
+	} else {
+		related.R.LockedToServiceUserAssets = append(related.R.LockedToServiceUserAssets, o)
+	}
+
+	return nil
+}
+
+// RemoveLockedToServiceUser relationship.
+// Sets o.R.LockedToServiceUser to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *UserAsset) RemoveLockedToServiceUser(exec boil.Executor, related *User) error {
+	var err error
+
+	queries.SetScanner(&o.LockedToService, nil)
+	if _, err = o.Update(exec, boil.Whitelist("locked_to_service")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.LockedToServiceUser = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.LockedToServiceUserAssets {
+		if queries.Equal(o.LockedToService, ri.LockedToService) {
+			continue
+		}
+
+		ln := len(related.R.LockedToServiceUserAssets)
+		if ln > 1 && i < ln-1 {
+			related.R.LockedToServiceUserAssets[i] = related.R.LockedToServiceUserAssets[ln-1]
+		}
+		related.R.LockedToServiceUserAssets = related.R.LockedToServiceUserAssets[:ln-1]
+		break
+	}
+	return nil
+}
+
 // SetOwner of the userAsset to the related item.
 // Sets o.R.Owner to related.
 // Adds o to related.R.OwnerUserAssets.
@@ -830,6 +1158,58 @@ func (o *UserAsset) SetOwner(exec boil.Executor, insert bool, related *User) err
 		related.R.OwnerUserAssets = append(related.R.OwnerUserAssets, o)
 	}
 
+	return nil
+}
+
+// AddAssetServiceTransferEvents adds the given related objects to the existing relationships
+// of the user_asset, optionally inserting them as new records.
+// Appends related to o.R.AssetServiceTransferEvents.
+// Sets related.R.UserAsset appropriately.
+func (o *UserAsset) AddAssetServiceTransferEvents(exec boil.Executor, insert bool, related ...*AssetServiceTransferEvent) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.UserAssetID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"asset_service_transfer_events\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"user_asset_id"}),
+				strmangle.WhereClause("\"", "\"", 2, assetServiceTransferEventPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.UserAssetID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userAssetR{
+			AssetServiceTransferEvents: related,
+		}
+	} else {
+		o.R.AssetServiceTransferEvents = append(o.R.AssetServiceTransferEvents, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &assetServiceTransferEventR{
+				UserAsset: o,
+			}
+		} else {
+			rel.R.UserAsset = o
+		}
+	}
 	return nil
 }
 

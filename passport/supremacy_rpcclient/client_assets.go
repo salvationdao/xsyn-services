@@ -1,4 +1,4 @@
-package rpcclient
+package supremacy_rpcclient
 
 import (
 	"github.com/ninja-software/terror/v2"
@@ -22,7 +22,7 @@ func GenesisOrLimitedMech(collectionSlug string, tokenID int) (*XsynAsset, error
 		TokenID:        tokenID,
 	}
 	resp := &GenesisOrLimitedMechResp{}
-	err := Client.Call("S.GenesisOrLimitedMech", req, resp)
+	err := SupremacyClient.Call("S.GenesisOrLimitedMechHandler", req, resp)
 	if err != nil {
 		return nil, terror.Error(err, "communication to supremacy has failed")
 	}

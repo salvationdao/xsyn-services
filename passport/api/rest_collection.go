@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/types"
 	"io/ioutil"
 	"net/http"
 	"xsyn-services/boiler"
@@ -14,13 +15,13 @@ import (
 )
 
 type Collections1155Resp struct {
-	Name          string             `json:"name"`
-	Description   null.String        `json:"description"`
-	Slug          string             `json:"slug"`
-	MintContract  null.String        `json:"mint_contract"`
-	LogoURL       null.String        `json:"logo_url"`
-	BackgroundURL null.String        `json:"background_url"`
-	Balances      *AvantUserBalances `json:"balances,omitempty"`
+	Name          string           `json:"name"`
+	Description   null.String      `json:"description"`
+	Slug          string           `json:"slug"`
+	MintContract  null.String      `json:"mint_contract"`
+	LogoURL       null.String      `json:"logo_url"`
+	BackgroundURL null.String      `json:"background_url"`
+	TokenIDs      types.Int64Array `json:"token_ids"`
 }
 
 func (api *API) Get1155Collections(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -41,6 +42,7 @@ func (api *API) Get1155Collections(w http.ResponseWriter, r *http.Request) (int,
 			MintContract:  collection.MintContract,
 			LogoURL:       collection.LogoURL,
 			BackgroundURL: collection.BackgroundURL,
+			TokenIDs:      collection.ExternalTokenIds,
 		})
 	}
 
@@ -107,7 +109,7 @@ func (api *API) Get1155Collection(w http.ResponseWriter, r *http.Request) (int, 
 		MintContract:  collection.MintContract,
 		LogoURL:       collection.LogoURL,
 		BackgroundURL: collection.BackgroundURL,
-		Balances:      result[0],
+		TokenIDs:      collection.ExternalTokenIds,
 	})
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get 1155 collections")

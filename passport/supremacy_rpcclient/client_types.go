@@ -1,4 +1,4 @@
-package rpcclient
+package supremacy_rpcclient
 
 import (
 	"github.com/volatiletech/sqlboiler/v4/types"
@@ -400,6 +400,7 @@ type XsynAsset struct {
 	Data            types.JSON  `json:"data,omitempty"`
 	Attributes      []*xsynTypes.Attribute  `json:"attributes,omitempty"`
 	Name            string      `json:"name,omitempty"`
+	AssetType        null.String `json:"asset_type,omitempty"`
 	ImageURL        null.String `json:"image_url,omitempty"`
 	ExternalURL     null.String `json:"external_url,omitempty"`
 	Description     null.String `json:"description,omitempty"`
@@ -412,8 +413,9 @@ type XsynAsset struct {
 	UnlockedAt      time.Time   `json:"unlocked_at,omitempty"`
 	MintedAt        null.Time   `json:"minted_at,omitempty"`
 	OnChainStatus   string      `json:"on_chain_status,omitempty"`
-	XsynLocked      null.Bool   `json:"xsyn_locked,omitempty"`
+	Service      string   `json:"xsyn_locked"`
 }
+
 
 type AssetReq struct {
 	AssetID uuid.UUID
