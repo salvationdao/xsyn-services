@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/gofrs/uuid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -16,10 +18,6 @@ import (
 	"xsyn-services/passport/nft1155"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
-	"xsyn-services/types"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/gofrs/uuid"
 )
 
 var MainnetStaking = common.HexToAddress("0x6476dB7cFfeeBf7Cc47Ed8D4996d1D60608AAf95")
@@ -252,14 +250,11 @@ func Process1155Deposits(records []*NFT1155TransferRecord, collectionSlug string
 	l := passlog.L.With().Str("svc", "avant_deposit_processor").Logger()
 	success := 0
 	skipped := 0
-	treasuryUser, err := boiler.Users(boiler.UserWhere.ID.EQ(types.XsynTreasuryUserID.String())).One(passdb.StdConn)
-	if err != nil || !treasuryUser.PublicAddress.Valid {
-		return 0, 0, err
-	}
+	supContract := db.GetStrWithDefault(db.KeySUPSPurchaseContract, "0x52b38626D3167e5357FE7348624352B7062fE271")
 
 	l.Info().Int("records", len(records)).Msg("processing deposits")
 	for _, record := range records {
-		if !strings.EqualFold(record.ToAddress, treasuryUser.PublicAddress.String) {
+		if !strings.EqualFold(record.ToAddress, supContract) {
 			skipped++
 			continue
 		}

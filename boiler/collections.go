@@ -18,97 +18,103 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"
+	"github.com/volatiletech/sqlboiler/v4/types"
 	"github.com/volatiletech/strmangle"
 )
 
 // Collection is an object representing the database table.
 type Collection struct {
-	ID            string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Name          string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	LogoBlobID    null.String `boiler:"logo_blob_id" boil:"logo_blob_id" json:"logo_blob_id,omitempty" toml:"logo_blob_id" yaml:"logo_blob_id,omitempty"`
-	Keywords      null.String `boiler:"keywords" boil:"keywords" json:"keywords,omitempty" toml:"keywords" yaml:"keywords,omitempty"`
-	DeletedAt     null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt     time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	Slug          string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	MintContract  null.String `boiler:"mint_contract" boil:"mint_contract" json:"mint_contract,omitempty" toml:"mint_contract" yaml:"mint_contract,omitempty"`
-	StakeContract null.String `boiler:"stake_contract" boil:"stake_contract" json:"stake_contract,omitempty" toml:"stake_contract" yaml:"stake_contract,omitempty"`
-	IsVisible     null.Bool   `boiler:"is_visible" boil:"is_visible" json:"is_visible,omitempty" toml:"is_visible" yaml:"is_visible,omitempty"`
-	BackgroundURL null.String `boiler:"background_url" boil:"background_url" json:"background_url,omitempty" toml:"background_url" yaml:"background_url,omitempty"`
-	ContractType  null.String `boiler:"contract_type" boil:"contract_type" json:"contract_type,omitempty" toml:"contract_type" yaml:"contract_type,omitempty"`
-	LogoURL       null.String `boiler:"logo_url" boil:"logo_url" json:"logo_url,omitempty" toml:"logo_url" yaml:"logo_url,omitempty"`
-	Description   null.String `boiler:"description" boil:"description" json:"description,omitempty" toml:"description" yaml:"description,omitempty"`
+	ID               string           `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Name             string           `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
+	LogoBlobID       null.String      `boiler:"logo_blob_id" boil:"logo_blob_id" json:"logo_blob_id,omitempty" toml:"logo_blob_id" yaml:"logo_blob_id,omitempty"`
+	Keywords         null.String      `boiler:"keywords" boil:"keywords" json:"keywords,omitempty" toml:"keywords" yaml:"keywords,omitempty"`
+	DeletedAt        null.Time        `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt        time.Time        `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt        time.Time        `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	Slug             string           `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	MintContract     null.String      `boiler:"mint_contract" boil:"mint_contract" json:"mint_contract,omitempty" toml:"mint_contract" yaml:"mint_contract,omitempty"`
+	StakeContract    null.String      `boiler:"stake_contract" boil:"stake_contract" json:"stake_contract,omitempty" toml:"stake_contract" yaml:"stake_contract,omitempty"`
+	IsVisible        null.Bool        `boiler:"is_visible" boil:"is_visible" json:"is_visible,omitempty" toml:"is_visible" yaml:"is_visible,omitempty"`
+	BackgroundURL    null.String      `boiler:"background_url" boil:"background_url" json:"background_url,omitempty" toml:"background_url" yaml:"background_url,omitempty"`
+	ContractType     null.String      `boiler:"contract_type" boil:"contract_type" json:"contract_type,omitempty" toml:"contract_type" yaml:"contract_type,omitempty"`
+	LogoURL          null.String      `boiler:"logo_url" boil:"logo_url" json:"logo_url,omitempty" toml:"logo_url" yaml:"logo_url,omitempty"`
+	Description      null.String      `boiler:"description" boil:"description" json:"description,omitempty" toml:"description" yaml:"description,omitempty"`
+	ExternalTokenIds types.Int64Array `boiler:"external_token_ids" boil:"external_token_ids" json:"external_token_ids,omitempty" toml:"external_token_ids" yaml:"external_token_ids,omitempty"`
 
 	R *collectionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L collectionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var CollectionColumns = struct {
-	ID            string
-	Name          string
-	LogoBlobID    string
-	Keywords      string
-	DeletedAt     string
-	UpdatedAt     string
-	CreatedAt     string
-	Slug          string
-	MintContract  string
-	StakeContract string
-	IsVisible     string
-	BackgroundURL string
-	ContractType  string
-	LogoURL       string
-	Description   string
+	ID               string
+	Name             string
+	LogoBlobID       string
+	Keywords         string
+	DeletedAt        string
+	UpdatedAt        string
+	CreatedAt        string
+	Slug             string
+	MintContract     string
+	StakeContract    string
+	IsVisible        string
+	BackgroundURL    string
+	ContractType     string
+	LogoURL          string
+	Description      string
+	ExternalTokenIds string
 }{
-	ID:            "id",
-	Name:          "name",
-	LogoBlobID:    "logo_blob_id",
-	Keywords:      "keywords",
-	DeletedAt:     "deleted_at",
-	UpdatedAt:     "updated_at",
-	CreatedAt:     "created_at",
-	Slug:          "slug",
-	MintContract:  "mint_contract",
-	StakeContract: "stake_contract",
-	IsVisible:     "is_visible",
-	BackgroundURL: "background_url",
-	ContractType:  "contract_type",
-	LogoURL:       "logo_url",
-	Description:   "description",
+	ID:               "id",
+	Name:             "name",
+	LogoBlobID:       "logo_blob_id",
+	Keywords:         "keywords",
+	DeletedAt:        "deleted_at",
+	UpdatedAt:        "updated_at",
+	CreatedAt:        "created_at",
+	Slug:             "slug",
+	MintContract:     "mint_contract",
+	StakeContract:    "stake_contract",
+	IsVisible:        "is_visible",
+	BackgroundURL:    "background_url",
+	ContractType:     "contract_type",
+	LogoURL:          "logo_url",
+	Description:      "description",
+	ExternalTokenIds: "external_token_ids",
 }
 
 var CollectionTableColumns = struct {
-	ID            string
-	Name          string
-	LogoBlobID    string
-	Keywords      string
-	DeletedAt     string
-	UpdatedAt     string
-	CreatedAt     string
-	Slug          string
-	MintContract  string
-	StakeContract string
-	IsVisible     string
-	BackgroundURL string
-	ContractType  string
-	LogoURL       string
-	Description   string
+	ID               string
+	Name             string
+	LogoBlobID       string
+	Keywords         string
+	DeletedAt        string
+	UpdatedAt        string
+	CreatedAt        string
+	Slug             string
+	MintContract     string
+	StakeContract    string
+	IsVisible        string
+	BackgroundURL    string
+	ContractType     string
+	LogoURL          string
+	Description      string
+	ExternalTokenIds string
 }{
-	ID:            "collections.id",
-	Name:          "collections.name",
-	LogoBlobID:    "collections.logo_blob_id",
-	Keywords:      "collections.keywords",
-	DeletedAt:     "collections.deleted_at",
-	UpdatedAt:     "collections.updated_at",
-	CreatedAt:     "collections.created_at",
-	Slug:          "collections.slug",
-	MintContract:  "collections.mint_contract",
-	StakeContract: "collections.stake_contract",
-	IsVisible:     "collections.is_visible",
-	BackgroundURL: "collections.background_url",
-	ContractType:  "collections.contract_type",
-	LogoURL:       "collections.logo_url",
-	Description:   "collections.description",
+	ID:               "collections.id",
+	Name:             "collections.name",
+	LogoBlobID:       "collections.logo_blob_id",
+	Keywords:         "collections.keywords",
+	DeletedAt:        "collections.deleted_at",
+	UpdatedAt:        "collections.updated_at",
+	CreatedAt:        "collections.created_at",
+	Slug:             "collections.slug",
+	MintContract:     "collections.mint_contract",
+	StakeContract:    "collections.stake_contract",
+	IsVisible:        "collections.is_visible",
+	BackgroundURL:    "collections.background_url",
+	ContractType:     "collections.contract_type",
+	LogoURL:          "collections.logo_url",
+	Description:      "collections.description",
+	ExternalTokenIds: "collections.external_token_ids",
 }
 
 // Generated where
@@ -137,38 +143,64 @@ func (w whereHelpernull_Bool) GTE(x null.Bool) qm.QueryMod {
 func (w whereHelpernull_Bool) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
 func (w whereHelpernull_Bool) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
+type whereHelpertypes_Int64Array struct{ field string }
+
+func (w whereHelpertypes_Int64Array) EQ(x types.Int64Array) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpertypes_Int64Array) NEQ(x types.Int64Array) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpertypes_Int64Array) LT(x types.Int64Array) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpertypes_Int64Array) LTE(x types.Int64Array) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpertypes_Int64Array) GT(x types.Int64Array) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpertypes_Int64Array) GTE(x types.Int64Array) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelpertypes_Int64Array) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpertypes_Int64Array) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
+
 var CollectionWhere = struct {
-	ID            whereHelperstring
-	Name          whereHelperstring
-	LogoBlobID    whereHelpernull_String
-	Keywords      whereHelpernull_String
-	DeletedAt     whereHelpernull_Time
-	UpdatedAt     whereHelpertime_Time
-	CreatedAt     whereHelpertime_Time
-	Slug          whereHelperstring
-	MintContract  whereHelpernull_String
-	StakeContract whereHelpernull_String
-	IsVisible     whereHelpernull_Bool
-	BackgroundURL whereHelpernull_String
-	ContractType  whereHelpernull_String
-	LogoURL       whereHelpernull_String
-	Description   whereHelpernull_String
+	ID               whereHelperstring
+	Name             whereHelperstring
+	LogoBlobID       whereHelpernull_String
+	Keywords         whereHelpernull_String
+	DeletedAt        whereHelpernull_Time
+	UpdatedAt        whereHelpertime_Time
+	CreatedAt        whereHelpertime_Time
+	Slug             whereHelperstring
+	MintContract     whereHelpernull_String
+	StakeContract    whereHelpernull_String
+	IsVisible        whereHelpernull_Bool
+	BackgroundURL    whereHelpernull_String
+	ContractType     whereHelpernull_String
+	LogoURL          whereHelpernull_String
+	Description      whereHelpernull_String
+	ExternalTokenIds whereHelpertypes_Int64Array
 }{
-	ID:            whereHelperstring{field: "\"collections\".\"id\""},
-	Name:          whereHelperstring{field: "\"collections\".\"name\""},
-	LogoBlobID:    whereHelpernull_String{field: "\"collections\".\"logo_blob_id\""},
-	Keywords:      whereHelpernull_String{field: "\"collections\".\"keywords\""},
-	DeletedAt:     whereHelpernull_Time{field: "\"collections\".\"deleted_at\""},
-	UpdatedAt:     whereHelpertime_Time{field: "\"collections\".\"updated_at\""},
-	CreatedAt:     whereHelpertime_Time{field: "\"collections\".\"created_at\""},
-	Slug:          whereHelperstring{field: "\"collections\".\"slug\""},
-	MintContract:  whereHelpernull_String{field: "\"collections\".\"mint_contract\""},
-	StakeContract: whereHelpernull_String{field: "\"collections\".\"stake_contract\""},
-	IsVisible:     whereHelpernull_Bool{field: "\"collections\".\"is_visible\""},
-	BackgroundURL: whereHelpernull_String{field: "\"collections\".\"background_url\""},
-	ContractType:  whereHelpernull_String{field: "\"collections\".\"contract_type\""},
-	LogoURL:       whereHelpernull_String{field: "\"collections\".\"logo_url\""},
-	Description:   whereHelpernull_String{field: "\"collections\".\"description\""},
+	ID:               whereHelperstring{field: "\"collections\".\"id\""},
+	Name:             whereHelperstring{field: "\"collections\".\"name\""},
+	LogoBlobID:       whereHelpernull_String{field: "\"collections\".\"logo_blob_id\""},
+	Keywords:         whereHelpernull_String{field: "\"collections\".\"keywords\""},
+	DeletedAt:        whereHelpernull_Time{field: "\"collections\".\"deleted_at\""},
+	UpdatedAt:        whereHelpertime_Time{field: "\"collections\".\"updated_at\""},
+	CreatedAt:        whereHelpertime_Time{field: "\"collections\".\"created_at\""},
+	Slug:             whereHelperstring{field: "\"collections\".\"slug\""},
+	MintContract:     whereHelpernull_String{field: "\"collections\".\"mint_contract\""},
+	StakeContract:    whereHelpernull_String{field: "\"collections\".\"stake_contract\""},
+	IsVisible:        whereHelpernull_Bool{field: "\"collections\".\"is_visible\""},
+	BackgroundURL:    whereHelpernull_String{field: "\"collections\".\"background_url\""},
+	ContractType:     whereHelpernull_String{field: "\"collections\".\"contract_type\""},
+	LogoURL:          whereHelpernull_String{field: "\"collections\".\"logo_url\""},
+	Description:      whereHelpernull_String{field: "\"collections\".\"description\""},
+	ExternalTokenIds: whereHelpertypes_Int64Array{field: "\"collections\".\"external_token_ids\""},
 }
 
 // CollectionRels is where relationship names are stored.
@@ -207,8 +239,8 @@ func (*collectionR) NewStruct() *collectionR {
 type collectionL struct{}
 
 var (
-	collectionAllColumns            = []string{"id", "name", "logo_blob_id", "keywords", "deleted_at", "updated_at", "created_at", "slug", "mint_contract", "stake_contract", "is_visible", "background_url", "contract_type", "logo_url", "description"}
-	collectionColumnsWithoutDefault = []string{"name", "logo_blob_id", "keywords", "deleted_at", "slug", "mint_contract", "background_url", "contract_type", "logo_url", "description"}
+	collectionAllColumns            = []string{"id", "name", "logo_blob_id", "keywords", "deleted_at", "updated_at", "created_at", "slug", "mint_contract", "stake_contract", "is_visible", "background_url", "contract_type", "logo_url", "description", "external_token_ids"}
+	collectionColumnsWithoutDefault = []string{"name", "logo_blob_id", "keywords", "deleted_at", "slug", "mint_contract", "background_url", "contract_type", "logo_url", "description", "external_token_ids"}
 	collectionColumnsWithDefault    = []string{"id", "updated_at", "created_at", "stake_contract", "is_visible"}
 	collectionPrimaryKeyColumns     = []string{"id"}
 )

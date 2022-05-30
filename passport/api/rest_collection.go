@@ -14,13 +14,13 @@ import (
 )
 
 type Collections1155Resp struct {
-	Name          string               `json:"name"`
-	Description   null.String          `json:"description"`
-	Slug          string               `json:"slug"`
-	MintContract  null.String          `json:"mint_contract"`
-	LogoURL       null.String          `json:"logo_url"`
-	BackgroundURL null.String          `json:"background_url"`
-	Balances      []*AvantUserBalances `json:"balances,omitempty"`
+	Name          string             `json:"name"`
+	Description   null.String        `json:"description"`
+	Slug          string             `json:"slug"`
+	MintContract  null.String        `json:"mint_contract"`
+	LogoURL       null.String        `json:"logo_url"`
+	BackgroundURL null.String        `json:"background_url"`
+	Balances      *AvantUserBalances `json:"balances,omitempty"`
 }
 
 func (api *API) Get1155Collections(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -107,7 +107,7 @@ func (api *API) Get1155Collection(w http.ResponseWriter, r *http.Request) (int, 
 		MintContract:  collection.MintContract,
 		LogoURL:       collection.LogoURL,
 		BackgroundURL: collection.BackgroundURL,
-		Balances:      result,
+		Balances:      result[0],
 	})
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get 1155 collections")

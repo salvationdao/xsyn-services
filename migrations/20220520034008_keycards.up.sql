@@ -5,7 +5,8 @@ ALTER TABLE collections
     ADD COLUMN background_url TEXT,
     ADD COLUMN contract_type  CONTRACT_TYPE,
     ADD COLUMN logo_url       TEXT,
-    ADD COLUMN description    TEXT;
+    ADD COLUMN description    TEXT,
+    ADD COLUMN external_token_ids BIGINT[];
 
 INSERT INTO collections (id, name, logo_url, slug, mint_contract, stake_contract, is_visible, contract_type)
 VALUES ('8ccb689f-f6fe-43dd-92f5-dcd6e61b5614', 'Supremacy Achievements', null, 'supremacy-achievements',
@@ -16,7 +17,8 @@ UPDATE collections
 SET logo_url       = 'https://afiles.ninja-cdn.com/passport/collections/supremacy-achievements/logo.png',
     background_url = 'https://afiles.ninja-cdn.com/passport/collections/supremacy-achievements/background.png',
     is_visible     = true,
-    description    = 'Supremacy is a collection of games that connect players into one immersive, interactive, and interconnected universe offering a unique experience to those looking for a Metaverse that blurs the line between the real world and the game world.'
+    description    = 'Supremacy is a collection of games that connect players into one immersive, interactive, and interconnected universe offering a unique experience to those looking for a Metaverse that blurs the line between the real world and the game world.',
+    external_token_ids = ARRAY[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ,11, 12, 13, 14, 15, 16, 17, 18, 19]
 WHERE slug = 'supremacy-achievements';
 
 UPDATE collections
