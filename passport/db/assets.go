@@ -1,6 +1,8 @@
 package db
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -44,16 +46,15 @@ func IsUserAssetColumn(col string) bool {
 	}
 }
 
-
 type AssetListOpts struct {
-	UserID              xsynTypes.UserID
-	Sort              *ListSortRequest
-	Filter              *ListFilterRequest
-	AttributeFilter     *AttributeFilterRequest
-	AssetType           string
-	Search              string
-	PageSize            int
-	Page                int
+	UserID          xsynTypes.UserID
+	Sort            *ListSortRequest
+	Filter          *ListFilterRequest
+	AttributeFilter *AttributeFilterRequest
+	AssetType       string
+	Search          string
+	PageSize        int
+	Page            int
 }
 
 func AssetList(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
@@ -138,56 +139,106 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTyp
 	resp := &supremacy_rpcclient.TemplateRegisterResp{}
 	err := supremacy_rpcclient.SupremacyClient.Call("S.TemplateRegisterHandler", req, resp)
 	if err != nil {
-		return nil, terror.Error(err,  "communication to supremacy has failed")
+		return nil, terror.Error(err, "communication to supremacy has failed")
 	}
 	var newItems []*xsynTypes.UserAsset
 	// for each asset, assign it on our database
 	for _, itm := range resp.Assets {
-		// get collection
-		collection, err := CollectionBySlug(itm.CollectionSlug)
+		userAsset, err := RegisterUserAsset(itm, xsynTypes.SupremacyGameUserID.String())
 		if err != nil {
-			return nil, terror.Error(err)
+			return nil, terror.Error(err, "Failed to register new user asset.")
 		}
 
-		var jsonAtrribs types.JSON
-		err = jsonAtrribs.Marshal(itm.Attributes)
-		if err != nil {
-			return nil, terror.Error(err)
-		}
-
-		boilerAsset := &boiler.UserAsset{
-			CollectionID:    collection.ID,
-			ID:              itm.ID,
-			TokenID: itm.TokenID,
-			Tier:            itm.Tier,
-			Hash:            itm.Hash,
-			OwnerID:         itm.OwnerID,
-			Data:            itm.Data,
-			Attributes:      jsonAtrribs,
-			Name:            itm.Name,
-			AssetType: itm.AssetType,
-			ImageURL:        itm.ImageURL,
-			ExternalURL:     itm.ExternalURL,
-			Description:     itm.Description,
-			BackgroundColor: itm.BackgroundColor,
-			AnimationURL: itm.AnimationURL,
-			YoutubeURL: itm.YoutubeURL,
-			UnlockedAt: itm.UnlockedAt,
-			AvatarURL: itm.AvatarURL,
-			MintedAt: itm.MintedAt,
-			OnChainStatus: itm.OnChainStatus,
-			DataRefreshedAt: time.Now(),
-			LockedToService: null.StringFrom(xsynTypes.SupremacyGameUserID.String()),
-		}
-
-		err = boilerAsset.Insert(passdb.StdConn, boil.Infer())
-		if err != nil {
-			passlog.L.Error().Interface("req", req).Err(err).Msg("failed to register new asset - can't insert asset")
-			return nil, err
-		}
-
-		newItems = append(newItems, xsynTypes.UserAssetFromBoiler(boilerAsset))
+		newItems = append(newItems, xsynTypes.UserAssetFromBoiler(userAsset))
 	}
 
 	return newItems, nil
+}
+
+func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string) (*boiler.UserAsset, error) {
+	// get collection
+	collection, err := CollectionBySlug(itm.CollectionSlug)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	var jsonAtrribs types.JSON
+	err = jsonAtrribs.Marshal(itm.Attributes)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	boilerAsset := &boiler.UserAsset{
+		CollectionID:    collection.ID,
+		ID:              itm.ID,
+		TokenID:         itm.TokenID,
+		Tier:            itm.Tier,
+		Hash:            itm.Hash,
+		OwnerID:         itm.OwnerID,
+		Data:            itm.Data,
+		Attributes:      jsonAtrribs,
+		Name:            itm.Name,
+		AssetType:       itm.AssetType,
+		ImageURL:        itm.ImageURL,
+		ExternalURL:     itm.ExternalURL,
+		Description:     itm.Description,
+		BackgroundColor: itm.BackgroundColor,
+		AnimationURL:    itm.AnimationURL,
+		YoutubeURL:      itm.YoutubeURL,
+		UnlockedAt:      itm.UnlockedAt,
+		AvatarURL:       itm.AvatarURL,
+		MintedAt:        itm.MintedAt,
+		OnChainStatus:   itm.OnChainStatus,
+		DataRefreshedAt: time.Now(),
+		LockedToService: null.StringFrom(serviceID),
+	}
+
+	// see if old asset exists
+	oldAsset, err := boiler.PurchasedItemsOlds(
+		boiler.PurchasedItemsOldWhere.CollectionID.EQ(collection.ID),
+		boiler.PurchasedItemsOldWhere.ExternalTokenID.EQ(int(itm.TokenID)),
+	).One(passdb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, terror.Error(err)
+	}
+
+	if oldAsset != nil {
+		boilerAsset.MintedAt = oldAsset.MintedAt
+		boilerAsset.OnChainStatus = oldAsset.OnChainStatus
+		boilerAsset.UnlockedAt = oldAsset.UnlockedAt
+	}
+
+	// if minted tell gameserver item is xsyn locked
+	if boilerAsset.OnChainStatus == "STAKABLE" {
+		boilerAsset.LockedToService = null.String{}
+		err := supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(boilerAsset), 0)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+	}
+
+	// if staked tell gameserver item is market locked
+	if boilerAsset.OnChainStatus == "UNSTAKABLE" {
+		err := supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(boilerAsset), 0, false)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+	}
+
+	// if staked tell gameserver item is market locked
+	// UNSTAKABLE_OLD = still staked on old contract, not market tradable
+	if boilerAsset.OnChainStatus == "UNSTAKABLE_OLD" {
+		err := supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(boilerAsset), 0, true)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+	}
+
+	err = boilerAsset.Insert(passdb.StdConn, boil.Infer())
+	if err != nil {
+		passlog.L.Error().Interface("itm", itm).Err(err).Msg("failed to register new asset - can't insert asset")
+		return nil, err
+	}
+
+	return boilerAsset, nil
 }

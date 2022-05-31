@@ -285,6 +285,10 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 		return terror.Error(err, "Failed to get user asset from db")
 	}
 
+	if userAsset.OnChainStatus == "STAKABLE" {
+		return terror.Error(fmt.Errorf("trying to transfer unstaked asset to supremacy"), "Asset needs to be On-World before being able to transfer to Supremacy.")
+	}
+
 	if userAsset.OwnerID != user.ID {
 		return terror.Error(terror.ErrUnauthorised, "You don't own this asset.")
 	}
@@ -320,7 +324,12 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 		return terror.Error(err, "Failed to transfer asset to supremacy")
 	}
 
-	err = supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug, transferLog.ID)
+	marketLocked := true
+	if userAsset.OnChainStatus != "UNSTAKABLE_OLD" {
+		marketLocked = false
+	}
+
+	err = supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), transferLog.ID, marketLocked)
 	if err != nil {
 		_, _ = reverseAssetServiceTransaction(
 			ac.API.userCacheMap,
@@ -338,7 +347,7 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 			tx,
 			transferLog,
 			"Failed to transfer asset to supremacy")
-		err = supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug, reverseTransfer.ID)
+		err = supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), reverseTransfer.ID)
 		if err != nil {
 			_, _ = reverseAssetServiceTransaction(
 				ac.API.userCacheMap,
@@ -469,9 +478,9 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 		return terror.Error(err, "Failed to transfer asset to XSYN")
 	}
 
-	err = supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug, transferLog.ID)
+	err = supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), transferLog.ID)
 	if err != nil {
-		// TODO: in the future we should forcable be able to pull assets from services back to xsyn
+		// TODO: in the future we should forcibly be able to pull assets from services back to xsyn
 		reverseAssetServiceTransaction(
 			ac.API.userCacheMap,
 			tx,
@@ -490,7 +499,12 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 			transferLog,
 			"Failed to transfer asset from supremacy",
 		)
-		err = supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), userAsset.R.Collection.Slug, reverseTransferLog.ID)
+		marketLocked := true
+		if userAsset.OnChainStatus != "UNSTAKABLE_OLD" {
+			marketLocked = false
+		}
+
+		err = supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(userAsset),  reverseTransferLog.ID, marketLocked)
 		if err != nil {
 			_, _ = reverseAssetServiceTransaction(
 				ac.API.userCacheMap,
