@@ -15,13 +15,14 @@ import (
 )
 
 type Collections1155Resp struct {
-	Name          string           `json:"name"`
-	Description   null.String      `json:"description"`
-	Slug          string           `json:"slug"`
-	MintContract  null.String      `json:"mint_contract"`
-	LogoURL       null.String      `json:"logo_url"`
-	BackgroundURL null.String      `json:"background_url"`
-	TokenIDs      types.Int64Array `json:"token_ids"`
+	Name            string           `json:"name"`
+	Description     null.String      `json:"description"`
+	Slug            string           `json:"slug"`
+	MintContract    null.String      `json:"mint_contract"`
+	LogoURL         null.String      `json:"logo_url"`
+	BackgroundURL   null.String      `json:"background_url"`
+	TokenIDs        types.Int64Array `json:"token_ids"`
+	TransferAddress null.String      `json:"transfer_address"`
 }
 
 func (api *API) Get1155Collections(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -33,21 +34,22 @@ func (api *API) Get1155Collections(w http.ResponseWriter, r *http.Request) (int,
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get 1155 collections")
 	}
 
-	var collectionResp []Collections1155Resp
+	var collectionResp []*Collections1155Resp
 	for _, collection := range collections {
-		collectionResp = append(collectionResp, Collections1155Resp{
-			Name:          collection.Name,
-			Description:   collection.Description,
-			Slug:          collection.Slug,
-			MintContract:  collection.MintContract,
-			LogoURL:       collection.LogoURL,
-			BackgroundURL: collection.BackgroundURL,
-			TokenIDs:      collection.ExternalTokenIds,
+		fmt.Println(collection.TransferContract)
+		collectionResp = append(collectionResp, &Collections1155Resp{
+			Name:            collection.Name,
+			Description:     collection.Description,
+			Slug:            collection.Slug,
+			MintContract:    collection.MintContract,
+			LogoURL:         collection.LogoURL,
+			BackgroundURL:   collection.BackgroundURL,
+			TokenIDs:        collection.ExternalTokenIds,
+			TransferAddress: collection.TransferContract,
 		})
 	}
-
 	err = json.NewEncoder(w).Encode(struct {
-		Collections []Collections1155Resp `json:"collections"`
+		Collections []*Collections1155Resp `json:"collections"`
 	}{
 		Collections: collectionResp,
 	})
@@ -103,13 +105,14 @@ func (api *API) Get1155Collection(w http.ResponseWriter, r *http.Request) (int, 
 	}
 
 	err = json.NewEncoder(w).Encode(Collections1155Resp{
-		Name:          collection.Name,
-		Description:   collection.Description,
-		Slug:          collection.Slug,
-		MintContract:  collection.MintContract,
-		LogoURL:       collection.LogoURL,
-		BackgroundURL: collection.BackgroundURL,
-		TokenIDs:      collection.ExternalTokenIds,
+		Name:            collection.Name,
+		Description:     collection.Description,
+		Slug:            collection.Slug,
+		MintContract:    collection.MintContract,
+		LogoURL:         collection.LogoURL,
+		BackgroundURL:   collection.BackgroundURL,
+		TokenIDs:        collection.ExternalTokenIds,
+		TransferAddress: collection.TransferContract,
 	})
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get 1155 collections")

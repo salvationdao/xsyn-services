@@ -166,7 +166,7 @@ func getSUPTransferRecords(path Path, latestBlock int, testnet bool) ([]*SUPTran
 }
 
 func getNFT1155TransferRecords(path Path, latestBlock int, testnet bool, contractAddress string) ([]*NFT1155TransferRecord, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s", baseURL, path), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s", stagingURL, path), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +221,7 @@ func GetDeposits(testnet bool) ([]*SUPTransferRecord, error) {
 }
 
 func Get1155Deposits(testnet bool, contractAddress string) ([]*NFT1155TransferRecord, error) {
-	latestDepositBlock := db.GetInt(db.KeyLatest1155DepositBlock)
+	latestDepositBlock := db.GetIntWithDefault(db.KeyLatest1155DepositBlock, 0)
 	records, err := getNFT1155TransferRecords(MultiTokenTxs, latestDepositBlock, testnet, contractAddress)
 	if err != nil {
 		return nil, err

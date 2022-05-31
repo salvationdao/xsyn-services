@@ -247,7 +247,7 @@ func ReverseFailed1155(enabled1155Rollback bool) (int, int, error) {
 }
 
 func Process1155Deposits(records []*NFT1155TransferRecord, collectionSlug string) (int, int, error) {
-	l := passlog.L.With().Str("svc", "avant_deposit_processor").Logger()
+	l := passlog.L.With().Str("svc", "avant_1155deposit_processor").Logger()
 	success := 0
 	skipped := 0
 	supContract := db.GetStrWithDefault(db.KeySUPSPurchaseContract, "0x52b38626D3167e5357FE7348624352B7062fE271")
@@ -294,7 +294,7 @@ func Process1155Deposits(records []*NFT1155TransferRecord, collectionSlug string
 	l.Info().
 		Int("success", success).
 		Int("skipped", skipped).
-		Msg("synced deposits")
+		Msg("synced 1155 deposits")
 
 	return success, skipped, nil
 }

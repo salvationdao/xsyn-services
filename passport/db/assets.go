@@ -207,6 +207,9 @@ func AssetList1155(opts *AssetListOpts) (int64, []*xsynTypes.User1155Asset, erro
 		queryMods = append(queryMods, qm.Offset(opts.PageSize*(opts.Page-1)))
 	}
 
+	queryMods = append(queryMods, qm.Load(boiler.UserAssets1155Rels.Collection, qm.Select(boiler.CollectionColumns.Slug, boiler.CollectionColumns.ID)))
+	queryMods = append(queryMods, boiler.UserAssets1155Where.Count.GT(0))
+
 	boilerAssets, err := boiler.UserAssets1155S(queryMods...).All(passdb.StdConn)
 	if err != nil {
 		return 0, nil, err

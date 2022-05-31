@@ -35,8 +35,8 @@ type UserAssets1155 struct {
 	AnimationURL    null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
 	KeycardGroup    string      `boiler:"keycard_group" boil:"keycard_group" json:"keycard_group" toml:"keycard_group" yaml:"keycard_group"`
 	Attributes      types.JSON  `boiler:"attributes" boil:"attributes" json:"attributes" toml:"attributes" yaml:"attributes"`
-	ServiceID       null.String `boiler:"service_id" boil:"service_id" json:"service_id,omitempty" toml:"service_id" yaml:"service_id,omitempty"`
 	CreatedAt       time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ServiceID       null.String `boiler:"service_id" boil:"service_id" json:"service_id,omitempty" toml:"service_id" yaml:"service_id,omitempty"`
 
 	R *userAssets1155R `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userAssets1155L  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -54,8 +54,8 @@ var UserAssets1155Columns = struct {
 	AnimationURL    string
 	KeycardGroup    string
 	Attributes      string
-	ServiceID       string
 	CreatedAt       string
+	ServiceID       string
 }{
 	ID:              "id",
 	OwnerID:         "owner_id",
@@ -68,8 +68,8 @@ var UserAssets1155Columns = struct {
 	AnimationURL:    "animation_url",
 	KeycardGroup:    "keycard_group",
 	Attributes:      "attributes",
-	ServiceID:       "service_id",
 	CreatedAt:       "created_at",
+	ServiceID:       "service_id",
 }
 
 var UserAssets1155TableColumns = struct {
@@ -84,8 +84,8 @@ var UserAssets1155TableColumns = struct {
 	AnimationURL    string
 	KeycardGroup    string
 	Attributes      string
-	ServiceID       string
 	CreatedAt       string
+	ServiceID       string
 }{
 	ID:              "user_assets_1155.id",
 	OwnerID:         "user_assets_1155.owner_id",
@@ -98,8 +98,8 @@ var UserAssets1155TableColumns = struct {
 	AnimationURL:    "user_assets_1155.animation_url",
 	KeycardGroup:    "user_assets_1155.keycard_group",
 	Attributes:      "user_assets_1155.attributes",
-	ServiceID:       "user_assets_1155.service_id",
 	CreatedAt:       "user_assets_1155.created_at",
+	ServiceID:       "user_assets_1155.service_id",
 }
 
 // Generated where
@@ -116,8 +116,8 @@ var UserAssets1155Where = struct {
 	AnimationURL    whereHelpernull_String
 	KeycardGroup    whereHelperstring
 	Attributes      whereHelpertypes_JSON
-	ServiceID       whereHelpernull_String
 	CreatedAt       whereHelpertime_Time
+	ServiceID       whereHelpernull_String
 }{
 	ID:              whereHelperstring{field: "\"user_assets_1155\".\"id\""},
 	OwnerID:         whereHelperstring{field: "\"user_assets_1155\".\"owner_id\""},
@@ -130,8 +130,8 @@ var UserAssets1155Where = struct {
 	AnimationURL:    whereHelpernull_String{field: "\"user_assets_1155\".\"animation_url\""},
 	KeycardGroup:    whereHelperstring{field: "\"user_assets_1155\".\"keycard_group\""},
 	Attributes:      whereHelpertypes_JSON{field: "\"user_assets_1155\".\"attributes\""},
-	ServiceID:       whereHelpernull_String{field: "\"user_assets_1155\".\"service_id\""},
 	CreatedAt:       whereHelpertime_Time{field: "\"user_assets_1155\".\"created_at\""},
+	ServiceID:       whereHelpernull_String{field: "\"user_assets_1155\".\"service_id\""},
 }
 
 // UserAssets1155Rels is where relationship names are stored.
@@ -161,7 +161,7 @@ func (*userAssets1155R) NewStruct() *userAssets1155R {
 type userAssets1155L struct{}
 
 var (
-	userAssets1155AllColumns            = []string{"id", "owner_id", "collection_id", "external_token_id", "count", "label", "description", "image_url", "animation_url", "keycard_group", "attributes", "service_id", "created_at"}
+	userAssets1155AllColumns            = []string{"id", "owner_id", "collection_id", "external_token_id", "count", "label", "description", "image_url", "animation_url", "keycard_group", "attributes", "created_at", "service_id"}
 	userAssets1155ColumnsWithoutDefault = []string{"owner_id", "collection_id", "external_token_id", "label", "description", "image_url", "animation_url", "keycard_group", "attributes", "service_id"}
 	userAssets1155ColumnsWithDefault    = []string{"id", "count", "created_at"}
 	userAssets1155PrimaryKeyColumns     = []string{"id"}
