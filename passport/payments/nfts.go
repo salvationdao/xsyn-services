@@ -234,7 +234,17 @@ func ReverseFailed1155(enabled1155Rollback bool) (int, int, error) {
 
 		refund.R.Asset.Count += refund.Count
 
-		_, err := refund.R.Asset.Update(passdb.StdConn, boil.Infer())
+		refund.IsRefunded = true
+		refund.RefundCanceledAt = null.TimeFrom(time.Now())
+
+		_, err := refund.Update(passdb.StdConn, boil.Infer())
+		if err != nil {
+			l.Warn().Err(err).Msg("failed to rollback 1155 asset")
+			skipped++
+			continue
+		}
+
+		_, err = refund.R.Asset.Update(passdb.StdConn, boil.Whitelist(boiler.UserAssets1155Columns.ID, boiler.UserAssets1155Columns.Count))
 		if err != nil {
 			l.Warn().Err(err).Msg("failed to rollback 1155 asset")
 		}

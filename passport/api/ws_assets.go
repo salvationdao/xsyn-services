@@ -44,6 +44,7 @@ func NewAssetController(log *zerolog.Logger, api *API) *AssetController {
 
 	// assets list
 	api.SecureCommand(HubKeyAssetList, assetHub.AssetList721Handler)
+	api.SecureCommand(HubKey1155AssetList, assetHub.AssetList1155Handler)
 	api.SecureCommand(HubKeyAssetTransferToSupremacy, assetHub.AssetTransferToSupremacyHandler)
 	api.SecureCommand(HubKeyAssetTransferFromSupremacy, assetHub.AssetTransferFromSupremacyHandler)
 	api.Command(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)

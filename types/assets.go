@@ -43,6 +43,7 @@ type User1155Asset struct {
 	CollectionID    string      `json:"collection_id"`
 	CollectionSlug  string      `json:"collection_slug"`
 	ExternalTokenID int         `json:"external_token_id"`
+	MintContract    null.String `json:"mint_contract"`
 	Count           int         `json:"count"`
 	Label           string      `json:"label"`
 	Description     string      `json:"description"`
@@ -146,6 +147,7 @@ func UserAsset1155FromBoiler(us *boiler.UserAssets1155) *[]User1155Asset {
 			Attributes:      us.Attributes,
 			ServiceID:       us.ServiceID,
 			CreatedAt:       us.CreatedAt,
+			MintContract:    us.R.Collection.MintContract,
 		}
 
 		userAssets = append(userAssets, userAsset)

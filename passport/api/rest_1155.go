@@ -93,11 +93,7 @@ func (api *API) Withdraw1155(w http.ResponseWriter, r *http.Request) (int, error
 		return http.StatusInternalServerError, terror.Error(err, "Failed to process withdrawal. Please contract support or try again")
 	}
 
-	err = json.NewEncoder(w).Encode(struct {
-		MessageSignature string `json:"messageSignature"`
-	}{
-		MessageSignature: hexutil.Encode(messageSig),
-	})
+	err = json.NewEncoder(w).Encode(hexutil.Encode(messageSig))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to encode json. Please try again or contact support")
 	}
