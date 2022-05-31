@@ -9,3 +9,13 @@ CREATE TABLE asset_service_transfer_events
     transfer_tx_id TEXT        NOT NULL REFERENCES transactions (id),
     transferred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE purchased_items_old
+    DROP CONSTRAINT purchased_items_on_chain_status_check,
+    ADD CONSTRAINT purchased_items_on_chain_status_check CHECK (on_chain_status IN
+                                                                ('MINTABLE', 'STAKABLE', 'UNSTAKABLE',
+                                                                 'UNSTAKABLE_OLD'));
+
+UPDATE purchased_items_old
+SET on_chain_status = 'UNSTAKABLE_OLD'
+WHERE on_chain_status = 'UNSTAKABLE';
