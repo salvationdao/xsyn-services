@@ -13,6 +13,7 @@ import (
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/payments"
 	"xsyn-services/passport/supremacy_rpcclient"
+	xsynTypes "xsyn-services/types"
 )
 
 func (s *S) AssetOnChainStatusHandler(req AssetOnChainStatusReq, resp *AssetOnChainStatusResp) error {
@@ -131,20 +132,15 @@ type UpdateUser1155AssetReq struct {
 }
 
 type Supremacy1155Asset struct {
-	Label          string                      `json:"label"`
-	Description    string                      `json:"description"`
-	CollectionSlug string                      `json:"collection_slug"`
-	TokenID        int                         `json:"token_id"`
-	Count          int                         `json:"count"`
-	ImageURL       string                      `json:"image_url"`
-	AnimationURL   string                      `json:"animation_url"`
-	KeycardGroup   string                      `json:"keycard_group"`
-	Attributes     []SupremacyKeycardAttribute `json:"attributes"`
-}
-
-type SupremacyKeycardAttribute struct {
-	TraitType string `json:"trait_type"`
-	Value     string `json:"value,omitempty"`
+	Label          string                                `json:"label"`
+	Description    string                                `json:"description"`
+	CollectionSlug string                                `json:"collection_slug"`
+	TokenID        int                                   `json:"token_id"`
+	Count          int                                   `json:"count"`
+	ImageURL       string                                `json:"image_url"`
+	AnimationURL   string                                `json:"animation_url"`
+	KeycardGroup   string                                `json:"keycard_group"`
+	Attributes     []xsynTypes.SupremacyKeycardAttribute `json:"attributes"`
 }
 
 type UpdateUser1155AssetResp struct {

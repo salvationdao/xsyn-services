@@ -86,9 +86,7 @@ func UserAssets1155FromBoiler(us []*boiler.UserAssets1155) []*User1155Asset {
 	// Goes through count and return individual items of 1155 assets
 	for _, ass := range us {
 		userAssets := UserAsset1155FromBoiler(ass)
-		for _, asset := range *userAssets {
-			assets = append(assets, &asset)
-		}
+		assets = append(assets, userAssets)
 	}
 
 	return assets
@@ -129,7 +127,7 @@ func UserAssetFromBoiler(us *boiler.UserAsset) *UserAsset {
 	}
 }
 
-func UserAsset1155FromBoiler(us *boiler.UserAssets1155) *[]User1155Asset {
+func UserAsset1155CountFromBoiler(us *boiler.UserAssets1155) *[]User1155Asset {
 	var userAssets []User1155Asset
 
 	for i := 0; i < us.Count; i++ {
@@ -154,4 +152,30 @@ func UserAsset1155FromBoiler(us *boiler.UserAssets1155) *[]User1155Asset {
 	}
 
 	return &userAssets
+}
+
+func UserAsset1155FromBoiler(us *boiler.UserAssets1155) *User1155Asset {
+	userAsset := User1155Asset{
+		CollectionSlug:  us.R.Collection.Slug,
+		ID:              us.ID,
+		OwnerID:         us.OwnerID,
+		CollectionID:    us.CollectionID,
+		ExternalTokenID: us.ExternalTokenID,
+		Label:           us.Label,
+		Description:     us.Description,
+		ImageURL:        us.ImageURL,
+		AnimationURL:    us.AnimationURL,
+		KeycardGroup:    us.KeycardGroup,
+		Attributes:      us.Attributes,
+		ServiceID:       us.ServiceID,
+		CreatedAt:       us.CreatedAt,
+		MintContract:    us.R.Collection.MintContract,
+		Count:           us.Count,
+	}
+	return &userAsset
+}
+
+type SupremacyKeycardAttribute struct {
+	TraitType string `json:"trait_type"`
+	Value     string `json:"value,omitempty"`
 }

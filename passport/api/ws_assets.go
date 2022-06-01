@@ -2,8 +2,10 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/friendsofgo/errors"
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -47,7 +49,10 @@ func NewAssetController(log *zerolog.Logger, api *API) *AssetController {
 	api.SecureCommand(HubKey1155AssetList, assetHub.AssetList1155Handler)
 	api.SecureCommand(HubKeyAssetTransferToSupremacy, assetHub.AssetTransferToSupremacyHandler)
 	api.SecureCommand(HubKeyAssetTransferFromSupremacy, assetHub.AssetTransferFromSupremacyHandler)
+	api.SecureCommand(HubKeyAsset1155TransferToSupremacy, assetHub.Asset1155TransferToSupremacyHandler)
+	api.SecureCommand(HubKeyAsset1155TransferFromSupremacy, assetHub.Asset1155TransferFromSupremacyHandler)
 	api.Command(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)
+	api.Command(HubKeyAsset1155Subscribe, assetHub.Asset1155UpdatedSubscribeHandler)
 
 	return assetHub
 }
@@ -268,6 +273,117 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, key
 			UpdatedAt:           userAsset.UpdatedAt,
 			CreatedAt:           userAsset.CreatedAt,
 			LockedToServiceName: serviceName,
+		},
+		Collection: &Collection{
+			ID:            userAsset.R.Collection.ID,
+			Name:          userAsset.R.Collection.Name,
+			LogoBlobID:    userAsset.R.Collection.LogoBlobID,
+			Keywords:      userAsset.R.Collection.Keywords,
+			DeletedAt:     userAsset.R.Collection.DeletedAt,
+			UpdatedAt:     userAsset.R.Collection.UpdatedAt,
+			CreatedAt:     userAsset.R.Collection.CreatedAt,
+			Slug:          userAsset.R.Collection.Slug,
+			MintContract:  userAsset.R.Collection.MintContract,
+			StakeContract: userAsset.R.Collection.StakeContract,
+			IsVisible:     userAsset.R.Collection.IsVisible,
+			ContractType:  userAsset.R.Collection.ContractType,
+		},
+		Owner: &User{
+			ID:       userAsset.R.Owner.ID,
+			Username: userAsset.R.Owner.Username,
+		},
+	})
+	return nil
+}
+
+// Asset1155UpdatedSubscribeRequest requests an update for an xsyn_metadata
+type Asset1155UpdatedSubscribeRequest struct {
+	Payload struct {
+		CollectionSlug string `json:"collection_slug"`
+		Locked         bool   `json:"locked"`
+		TokenID        int    `json:"token_id"`
+		OwnerID        string `json:"owner_id"`
+	} `json:"payload"`
+}
+
+type User1155AssetView struct {
+	ID                  string      `json:"id"`
+	OwnerID             string      `json:"owner_id"`
+	ExternalTokenID     int         `json:"external_token_id"`
+	Count               int         `json:"count"`
+	Label               string      `json:"label"`
+	Description         string      `json:"description"`
+	ImageURL            string      `json:"image_url"`
+	AnimationURL        null.String `json:"animation_url"`
+	Attributes          types.JSON  `json:"attributes"`
+	ServiceNameLockedIn null.String `json:"service_name_locked_in"`
+}
+
+type Asset1155Response struct {
+	UserAsset  *User1155AssetView `json:"user_asset"`
+	Collection *Collection        `json:"collection"`
+	Owner      *User              `json:"owner"`
+}
+
+const HubKeyAsset1155Subscribe = "ASSET:GET:1155"
+
+func (ac *AssetController) Asset1155UpdatedSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	// errMsg := "Issue subscribing to asset updates, try again or contact support."
+	req := &Asset1155UpdatedSubscribeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	queries := []qm.QueryMod{
+		boiler.UserAssets1155Where.OwnerID.EQ(req.Payload.OwnerID),
+		boiler.UserAssets1155Where.ExternalTokenID.EQ(req.Payload.TokenID),
+		boiler.UserAssets1155Where.Count.GT(0),
+		qm.Load(boiler.UserAssets1155Rels.Collection),
+		qm.Load(boiler.UserAssets1155Rels.Owner),
+	}
+
+	if req.Payload.Locked {
+		queries = append(queries, boiler.UserAssets1155Where.ServiceID.IsNotNull())
+	} else {
+		queries = append(queries, boiler.UserAssets1155Where.ServiceID.IsNull())
+	}
+
+	userAsset, err := boiler.UserAssets1155S(
+		queries...,
+	).One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get user asset from db")
+	}
+
+	serviceName := null.NewString("", false)
+	if userAsset.ServiceID.Valid {
+		service, err := boiler.Users(
+			boiler.UserWhere.ID.EQ(userAsset.ServiceID.String),
+			qm.Select(
+				boiler.UserColumns.ID,
+				boiler.UserColumns.Username,
+			),
+		).One(passdb.StdConn)
+		if err != nil {
+			return terror.Error(err, "Failed to get service name")
+		}
+
+		serviceName = null.StringFrom(service.Username)
+	}
+
+	reply(&Asset1155Response{
+		UserAsset: &User1155AssetView{
+			ID:                  userAsset.ID,
+			OwnerID:             userAsset.OwnerID,
+			ExternalTokenID:     userAsset.ExternalTokenID,
+			Count:               userAsset.Count,
+			Label:               userAsset.Label,
+			Description:         userAsset.Description,
+			ImageURL:            userAsset.ImageURL,
+			AnimationURL:        userAsset.AnimationURL,
+			Attributes:          userAsset.Attributes,
+			ServiceNameLockedIn: serviceName,
 		},
 		Collection: &Collection{
 			ID:            userAsset.R.Collection.ID,
@@ -541,7 +657,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 			marketLocked = false
 		}
 
-		err = supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(userAsset),  reverseTransferLog.ID, marketLocked)
+		err = supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), reverseTransferLog.ID, marketLocked)
 		if err != nil {
 			_, _ = reverseAssetServiceTransaction(
 				ac.API.userCacheMap,
@@ -607,6 +723,384 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 	return nil
 }
 
+type Asset1155TransferToSupremacyRequest struct {
+	Payload struct {
+		TokenID        int    `json:"token_id"`
+		Amount         int    `json:"amount"`
+		CollectionSlug string `json:"collection_slug"`
+	} `json:"payload"`
+}
+
+const HubKeyAsset1155TransferToSupremacy = "ASSET:1155:TRANSFER:TO:SUPREMACY"
+
+func (ac *AssetController) Asset1155TransferToSupremacyHandler(ctx context.Context, user *xsynTypes.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &Asset1155TransferToSupremacyRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	asset, err := boiler.UserAssets1155S(
+		boiler.UserAssets1155Where.ExternalTokenID.EQ(req.Payload.TokenID),
+		boiler.UserAssets1155Where.OwnerID.EQ(user.ID),
+		boiler.UserAssets1155Where.ServiceID.IsNull(),
+		qm.Load(boiler.UserAssets1155Rels.Collection),
+	).One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get user 1155 asset")
+	}
+	if asset.OwnerID != user.ID {
+		return terror.Error(terror.ErrUnauthorised, "You don't own this asset.")
+	}
+	if asset.Count-req.Payload.Amount < 0 {
+		return terror.Error(fmt.Errorf("asset count below 0 after transfer"), "Cannot process transfer. Amount after transfer is below 0")
+	}
+
+	userUUID := uuid.Must(uuid.FromString(user.ID))
+
+	tx := &xsynTypes.NewTransaction{
+		From:                 xsynTypes.UserID(userUUID),
+		To:                   xsynTypes.XsynTreasuryUserID,
+		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "XSYN", req.Payload.TokenID, time.Now().UnixNano())),
+		Description:          fmt.Sprintf("Transfer of asset: %s to Supremacy", asset.Label),
+		Amount:               decimal.New(5, 18), // 5 sups
+		Group:                xsynTypes.TransactionGroupAssetManagement,
+		SubGroup:             "Transfer",
+		NotSafe:              true,
+	}
+
+	_, _, txID, err := ac.API.userCacheMap.Transact(tx)
+	if err != nil {
+		return terror.Error(err, "Failed to process asset transfer transaction")
+	}
+
+	transferLog := &boiler.Asset1155ServiceTransferEvent{
+		User1155AssetID: asset.ID,
+		UserID:          asset.OwnerID,
+		Amount:          req.Payload.Amount,
+		ToService:       null.StringFrom(xsynTypes.SupremacyGameUserID.String()),
+		TransferTXID:    txID,
+	}
+
+	err = transferLog.Insert(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to log transfer")
+	}
+
+	err = supremacy_rpcclient.Asset1155TransferToSupremacy(xsynTypes.UserAsset1155FromBoiler(asset), transferLog.ID, req.Payload.Amount)
+	if err != nil {
+		reverseAsset1155ServiceTransaction(
+			ac.API.userCacheMap,
+			tx,
+			transferLog,
+			"Failed to transfer asset to supremacy",
+		)
+
+		return terror.Error(err, "Failed to transfer asset to supremacy")
+	}
+
+	asset.Count -= req.Payload.Amount
+
+	_, err = asset.Update(passdb.StdConn, boil.Whitelist(boiler.UserAssets1155Columns.Count))
+	if err != nil {
+		passlog.L.Error().Err(err).Str("asset.id", asset.ID).Str("asset.owenr_id", asset.OwnerID).Msg("Failed to update asset count during transfer")
+		return terror.Error(err, "Failed to update asset count during transfer")
+	}
+
+	offXsynAsset, err := boiler.UserAssets1155S(
+		boiler.UserAssets1155Where.ExternalTokenID.EQ(req.Payload.TokenID),
+		boiler.UserAssets1155Where.OwnerID.EQ(user.ID),
+		boiler.UserAssets1155Where.ServiceID.EQ(null.StringFrom(xsynTypes.SupremacyGameUserID.String())),
+	).One(passdb.StdConn)
+	if errors.Is(err, sql.ErrNoRows) {
+		offXsynAsset = &boiler.UserAssets1155{
+			OwnerID:         asset.OwnerID,
+			CollectionID:    asset.CollectionID,
+			ExternalTokenID: asset.ExternalTokenID,
+			Label:           asset.Label,
+			Description:     asset.Description,
+			ImageURL:        asset.ImageURL,
+			AnimationURL:    asset.AnimationURL,
+			KeycardGroup:    asset.KeycardGroup,
+			Attributes:      asset.Attributes,
+			ServiceID:       null.StringFrom(xsynTypes.SupremacyGameUserID.String()),
+		}
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to get off xsyn asset")
+	}
+
+	offXsynAsset.Count += req.Payload.Amount
+
+	_, err = offXsynAsset.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to update off xsyn asset")
+	}
+
+	// TODO reply new asset1155 count and status
+
+	serviceName := null.NewString("", false)
+	if asset.ServiceID.Valid {
+		service, err := boiler.Users(
+			boiler.UserWhere.ID.EQ(asset.ServiceID.String),
+			qm.Select(
+				boiler.UserColumns.ID,
+				boiler.UserColumns.Username,
+			),
+		).One(passdb.StdConn)
+		if err != nil {
+			return terror.Error(err, "Failed to get service name")
+		}
+
+		serviceName = null.StringFrom(service.Username)
+	}
+
+	owner, err := asset.Owner().One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get owner data")
+	}
+
+	reply(&Asset1155Response{
+		UserAsset: &User1155AssetView{
+			ID:                  asset.ID,
+			OwnerID:             asset.OwnerID,
+			ExternalTokenID:     asset.ExternalTokenID,
+			Count:               asset.Count,
+			Label:               asset.Label,
+			Description:         asset.Description,
+			ImageURL:            asset.ImageURL,
+			AnimationURL:        asset.AnimationURL,
+			Attributes:          asset.Attributes,
+			ServiceNameLockedIn: serviceName,
+		},
+		Collection: &Collection{
+			ID:            asset.R.Collection.ID,
+			Name:          asset.R.Collection.Name,
+			LogoBlobID:    asset.R.Collection.LogoBlobID,
+			Keywords:      asset.R.Collection.Keywords,
+			DeletedAt:     asset.R.Collection.DeletedAt,
+			UpdatedAt:     asset.R.Collection.UpdatedAt,
+			CreatedAt:     asset.R.Collection.CreatedAt,
+			Slug:          asset.R.Collection.Slug,
+			MintContract:  asset.R.Collection.MintContract,
+			StakeContract: asset.R.Collection.StakeContract,
+			IsVisible:     asset.R.Collection.IsVisible,
+			ContractType:  asset.R.Collection.ContractType,
+		},
+		Owner: &User{
+			ID:       owner.ID,
+			Username: owner.Username,
+		},
+	})
+
+	return nil
+}
+
+const HubKeyAsset1155TransferFromSupremacy = "ASSET:1155:TRANSFER:FROM:SUPREMACY"
+
+func (ac *AssetController) Asset1155TransferFromSupremacyHandler(ctx context.Context, user *xsynTypes.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &Asset1155TransferToSupremacyRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	asset, err := boiler.UserAssets1155S(
+		boiler.UserAssets1155Where.ExternalTokenID.EQ(req.Payload.TokenID),
+		boiler.UserAssets1155Where.OwnerID.EQ(user.ID),
+		boiler.UserAssets1155Where.ServiceID.EQ(null.StringFrom(xsynTypes.SupremacyGameUserID.String())),
+		qm.Load(boiler.UserAssets1155Rels.Collection),
+		qm.Load(boiler.UserAssets1155Rels.Owner),
+	).One(passdb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to get user 1155 asset")
+	}
+
+	userUUID := uuid.Must(uuid.FromString(user.ID))
+
+	tx := &xsynTypes.NewTransaction{
+		From:                 xsynTypes.UserID(userUUID),
+		To:                   xsynTypes.XsynTreasuryUserID,
+		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "XSYN", req.Payload.TokenID, time.Now().UnixNano())),
+		Description:          fmt.Sprintf("Transfer of asset with token id of %d from collection %s to Xsyn", req.Payload.TokenID, req.Payload.CollectionSlug),
+		Amount:               decimal.New(5, 18), // 5 sups
+		Group:                xsynTypes.TransactionGroupAssetManagement,
+		SubGroup:             "Transfer",
+		NotSafe:              true,
+	}
+
+	_, _, txID, err := ac.API.userCacheMap.Transact(tx)
+	if err != nil {
+		return terror.Error(err, "Failed to process asset transfer transaction")
+	}
+
+	transferLog := &boiler.Asset1155ServiceTransferEvent{
+		User1155AssetID: asset.ID,
+		UserID:          asset.OwnerID,
+		Amount:          req.Payload.Amount,
+		TransferTXID:    txID,
+	}
+
+	err = transferLog.Insert(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to log transfer")
+	}
+
+	keycardData, err := supremacy_rpcclient.Asset1155TransferFromSupremacy(xsynTypes.UserAsset1155FromBoiler(asset), transferLog.ID, req.Payload.Amount)
+	if err != nil {
+		reverseAsset1155ServiceTransaction(
+			ac.API.userCacheMap,
+			tx,
+			transferLog,
+			"Failed to transfer asset to XSYN",
+		)
+
+		return terror.Error(err, "Failed to transfer asset to XSYN")
+	}
+
+	if asset == nil {
+		collection, err := db.CollectionBySlug(req.Payload.CollectionSlug)
+		if err != nil {
+			return terror.Error(err, "Failed to get collection data")
+		}
+
+		asset = &boiler.UserAssets1155{
+			OwnerID:         user.ID,
+			CollectionID:    collection.ID,
+			ExternalTokenID: req.Payload.TokenID,
+			Label:           keycardData.Label,
+			Description:     keycardData.Description,
+			ImageURL:        keycardData.ImageURL,
+			AnimationURL:    keycardData.AnimationURL,
+			KeycardGroup:    keycardData.KeycardGroup,
+			Count:           keycardData.Count,
+			ServiceID:       null.StringFrom(xsynTypes.SupremacyGameUserID.String()),
+		}
+
+		var assetJson types.JSON
+
+		value := keycardData.Syndicate.String
+
+		if !keycardData.Syndicate.Valid {
+			value = "N/A"
+		}
+
+		attribute := &xsynTypes.SupremacyKeycardAttribute{
+			TraitType: "Syndicate",
+			Value:     value,
+		}
+
+		if err := assetJson.Marshal(attribute); err != nil {
+			return terror.Error(err, "Failed to get assets attribute")
+		}
+
+		asset.Attributes = assetJson
+
+		if err := asset.Insert(passdb.StdConn, boil.Infer()); err != nil {
+			return terror.Error(err, "Failed to update asset")
+		}
+	}
+
+	asset.Count -= req.Payload.Amount
+
+	_, err = asset.Update(passdb.StdConn, boil.Whitelist(boiler.UserAssets1155Columns.Count))
+	if err != nil {
+		passlog.L.Error().Err(err).Str("asset.id", asset.ID).Str("asset.owner_id", asset.OwnerID).Msg("Failed to update asset count during transfer")
+		return terror.Error(err, "Failed to update asset count during transfer")
+	}
+
+	onXsynAsset, err := boiler.UserAssets1155S(
+		boiler.UserAssets1155Where.ExternalTokenID.EQ(req.Payload.TokenID),
+		boiler.UserAssets1155Where.OwnerID.EQ(user.ID),
+		boiler.UserAssets1155Where.ServiceID.IsNull(),
+	).One(passdb.StdConn)
+	if errors.Is(err, sql.ErrNoRows) {
+		onXsynAsset = &boiler.UserAssets1155{
+			OwnerID:         asset.OwnerID,
+			CollectionID:    asset.CollectionID,
+			ExternalTokenID: asset.ExternalTokenID,
+			Label:           asset.Label,
+			Description:     asset.Description,
+			ImageURL:        asset.ImageURL,
+			AnimationURL:    asset.AnimationURL,
+			KeycardGroup:    asset.KeycardGroup,
+			Attributes:      asset.Attributes,
+		}
+
+		if err := onXsynAsset.Insert(passdb.StdConn, boil.Infer()); err != nil {
+			return terror.Error(err, "Failed to insert new xsyn asset")
+		}
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to get on XSYN asset")
+	}
+
+	onXsynAsset.Count += req.Payload.Amount
+
+	_, err = onXsynAsset.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to update on XSYN asset")
+	}
+
+	// TODO reply new asset1155 count and status
+
+	serviceName := null.NewString("", false)
+	if asset.ServiceID.Valid {
+		service, err := boiler.Users(
+			boiler.UserWhere.ID.EQ(asset.ServiceID.String),
+			qm.Select(
+				boiler.UserColumns.ID,
+				boiler.UserColumns.Username,
+			),
+		).One(passdb.StdConn)
+		if err != nil {
+			return terror.Error(err, "Failed to get service name")
+		}
+
+		serviceName = null.StringFrom(service.Username)
+	}
+
+	owner, err := asset.Owner().One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get owner info")
+	}
+
+	reply(&Asset1155Response{
+		UserAsset: &User1155AssetView{
+			ID:                  asset.ID,
+			OwnerID:             asset.OwnerID,
+			ExternalTokenID:     asset.ExternalTokenID,
+			Count:               asset.Count,
+			Label:               asset.Label,
+			Description:         asset.Description,
+			ImageURL:            asset.ImageURL,
+			AnimationURL:        asset.AnimationURL,
+			Attributes:          asset.Attributes,
+			ServiceNameLockedIn: serviceName,
+		},
+		Collection: &Collection{
+			ID:            asset.R.Collection.ID,
+			Name:          asset.R.Collection.Name,
+			LogoBlobID:    asset.R.Collection.LogoBlobID,
+			Keywords:      asset.R.Collection.Keywords,
+			DeletedAt:     asset.R.Collection.DeletedAt,
+			UpdatedAt:     asset.R.Collection.UpdatedAt,
+			CreatedAt:     asset.R.Collection.CreatedAt,
+			Slug:          asset.R.Collection.Slug,
+			MintContract:  asset.R.Collection.MintContract,
+			StakeContract: asset.R.Collection.StakeContract,
+			IsVisible:     asset.R.Collection.IsVisible,
+			ContractType:  asset.R.Collection.ContractType,
+		},
+		Owner: &User{
+			ID:       owner.ID,
+			Username: owner.Username,
+		},
+	})
+
+	return nil
+}
+
 func reverseAssetServiceTransaction(
 	ucm *Transactor,
 	transactionToReverse *xsynTypes.NewTransaction,
@@ -640,6 +1134,52 @@ func reverseAssetServiceTransaction(
 		FromService:   transferToReverse.ToService,
 		ToService:     transferToReverse.FromService,
 		TransferTXID:  reverseID,
+	}
+	err = returnTransferLog.Insert(passdb.StdConn, boil.Infer())
+	if err != nil {
+		passlog.L.Error().
+			Err(err).
+			Interface("returnTransferLog", returnTransferLog).
+			Msg("failed to update transfer log in refund")
+		return
+	}
+	return
+}
+
+func reverseAsset1155ServiceTransaction(
+	ucm *Transactor,
+	transactionToReverse *xsynTypes.NewTransaction,
+	transferToReverse *boiler.Asset1155ServiceTransferEvent,
+	reason string,
+) (transaction *xsynTypes.NewTransaction, returnTransferLog *boiler.Asset1155ServiceTransferEvent) {
+	transaction = &xsynTypes.NewTransaction{
+		From:                 transactionToReverse.To,
+		To:                   transactionToReverse.From,
+		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("REFUND - %s", transactionToReverse.TransactionReference)),
+		Description:          fmt.Sprintf("Reverse transaction - %s. Reason: %s", transactionToReverse.Description, reason),
+		Amount:               transactionToReverse.Amount,
+		Group:                xsynTypes.TransactionGroupAssetManagement,
+		SubGroup:             "Transfer",
+		RelatedTransactionID: null.StringFrom(transactionToReverse.ID),
+	}
+
+	_, _, reverseID, err := ucm.Transact(transaction)
+	if err != nil {
+		passlog.L.Error().
+			Err(err).
+			Interface("transaction", transaction).
+			Msg("reverse failed")
+		return
+	}
+
+	returnTransferLog = &boiler.Asset1155ServiceTransferEvent{
+		User1155AssetID: transferToReverse.User1155AssetID,
+		UserID:          transferToReverse.UserID,
+		InitiatedFrom:   transferToReverse.InitiatedFrom,
+		Amount:          transferToReverse.Amount,
+		FromService:     transferToReverse.FromService,
+		ToService:       transferToReverse.ToService,
+		TransferTXID:    reverseID,
 	}
 	err = returnTransferLog.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
