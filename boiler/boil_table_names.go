@@ -6,6 +6,7 @@ package boiler
 var TableNames = struct {
 	APIKeys                 string
 	Blobs                   string
+	BlockWithdraw           string
 	Collections             string
 	DeathAddresses          string
 	DepositTransactions     string
@@ -34,6 +35,7 @@ var TableNames = struct {
 }{
 	APIKeys:                 "api_keys",
 	Blobs:                   "blobs",
+	BlockWithdraw:           "block_withdraw",
 	Collections:             "collections",
 	DeathAddresses:          "death_addresses",
 	DepositTransactions:     "deposit_transactions",
