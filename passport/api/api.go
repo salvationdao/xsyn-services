@@ -180,6 +180,7 @@ func NewAPI(
 	sc := NewSupremacyController(log, api)
 	_ = NewGamebarController(log, api)
 	_ = NewStoreController(log, api)
+	d := DevRoutes(ucm)
 
 	r.Mount("/api/admin", AdminRoutes(ucm))
 	r.Mount("/api/roadmap", roadmapRoutes)
@@ -193,7 +194,7 @@ func NewAPI(
 			r.Mount("/nfts", api.NFTRoutes())
 			r.Mount("/moderator", ModeratorRoutes())
 			if environment == "development" {
-				r.Mount("/dev", DevRoutes())
+				r.Mount("/dev", d.R)
 			}
 
 			//r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))

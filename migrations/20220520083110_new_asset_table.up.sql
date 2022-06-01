@@ -28,7 +28,9 @@ CREATE TABLE user_assets
     youtube_url        TEXT,
     unlocked_at        TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
     minted_at          TIMESTAMPTZ,
-    on_chain_status    TEXT             NOT NULL DEFAULT 'MINTABLE' CHECK (on_chain_status IN ('MINTABLE', 'STAKABLE', 'UNSTAKABLE')),
+    on_chain_status    TEXT             NOT NULL DEFAULT 'MINTABLE' CHECK (on_chain_status IN
+                                                                           ('MINTABLE', 'STAKABLE', 'UNSTAKABLE',
+                                                                            'UNSTAKABLE_OLD')),
     deleted_at         TIMESTAMPTZ,
     data_refreshed_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
     updated_at         TIMESTAMPTZ      NOT NULL DEFAULT NOW(),

@@ -129,18 +129,14 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (decimal.Decimal, deci
 		if !nt.From.IsSystemUser() {
 			if success {
 				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", from.ID), HubKeyUserLatestTransactionSubscribe, []*types.Transaction{tx})
-				//go ucm.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, from.ID)), []*types.Transaction{tx})
 			}
 			ws.PublishMessage(fmt.Sprintf("/user/%s/sups", from.ID), HubKeyUserSupsSubscribe, from.Sups.String())
-			// go ucm.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, from.ID)), from.Sups.String())
 		}
 		if !nt.To.IsSystemUser() {
 			if success {
 				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", to.ID), HubKeyUserLatestTransactionSubscribe, []*types.Transaction{tx})
-				// go ucm.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserLatestTransactionSubscribe, to.ID)), []*types.Transaction{tx})
 			}
-			ws.PublishMessage(fmt.Sprintf("/user/%s/sups", to.ID), HubKeyUserSupsSubscribe, from.Sups.String())
-			// go ucm.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsSubscribe, to.ID)), to.Sups.String())
+			ws.PublishMessage(fmt.Sprintf("/user/%s/sups", to.ID), HubKeyUserSupsSubscribe, to.Sups.String())
 		}
 	}
 

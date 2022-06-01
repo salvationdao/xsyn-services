@@ -70,8 +70,8 @@ func (s *S) UpdateStoreItemIDsHandler(req UpdateStoreItemIDsReq, resp *UpdateSto
 }
 
 type RegisterAssetReq struct {
-	ApiKey string                        `json:"api_key"`
-	Asset *supremacy_rpcclient.XsynAsset `json:"asset"`
+	ApiKey string                         `json:"api_key"`
+	Asset  *supremacy_rpcclient.XsynAsset `json:"asset"`
 }
 
 type RegisterAssetResp struct {
@@ -86,54 +86,9 @@ func (s *S) AssetRegisterHandler(req RegisterAssetReq, resp *RegisterAssetResp) 
 		return err
 	}
 
-	collection, err := boiler.Collections(boiler.CollectionWhere.Slug.EQ(req.Asset.CollectionSlug)).One(passdb.StdConn)
+	_, err = db.RegisterUserAsset(req.Asset, serviceID)
 	if err != nil {
-		passlog.L.Error().Interface("req", req).Err(err).Msg("failed to register new asset - can't get collection")
-		return err
-	}
-
-	var attributeJson types.JSON
-	if req.Asset.Attributes != nil {
-		err = attributeJson.Marshal(req.Asset.Attributes)
-		if err != nil {
-			passlog.L.Error().Interface("req", req).Interface("req.Asset.Attributes", req.Asset.Attributes).Err(err).Msg("failed to register new asset - can't marshall attributes")
-			return err
-		}
-	} else {
-		err = attributeJson.Marshal("{}")
-		if err != nil {
-			passlog.L.Error().Interface("req", req).Err(err).Msg("failed to register new asset - can't marshall '{}' attributes")
-			return err
-		}
-	}
-
-	boilerAsset := &boiler.UserAsset{
-		ID:              req.Asset.ID,
-		CollectionID:    collection.ID,
-		TokenID:         req.Asset.TokenID,
-		Tier:            req.Asset.Tier,
-		AssetType: req.Asset.AssetType,
-		Hash:            req.Asset.Hash,
-		OwnerID:         req.Asset.OwnerID,
-		Data:            req.Asset.Data,
-		Attributes:      attributeJson,
-		Name:            req.Asset.Name,
-		ImageURL:        req.Asset.ImageURL,
-		ExternalURL:     req.Asset.ExternalURL,
-		Description:     req.Asset.Description,
-		BackgroundColor: req.Asset.BackgroundColor,
-		AnimationURL:    req.Asset.AnimationURL,
-		YoutubeURL:      req.Asset.YoutubeURL,
-		AvatarURL: req.Asset.AvatarURL,
-		UnlockedAt:      req.Asset.UnlockedAt,
-		MintedAt:        req.Asset.MintedAt,
-		OnChainStatus:   req.Asset.OnChainStatus,
-		LockedToService: null.StringFrom(serviceID),
-	}
-
-	err = boilerAsset.Insert(passdb.StdConn, boil.Infer())
-	if err != nil {
-		passlog.L.Error().Interface("req", req).Err(err).Msg("failed to register new asset - can't insert asset")
+		passlog.L.Error().Err(err).Interface("req.Asset", req.Asset).Msg("failed to register new asset")
 		return err
 	}
 
@@ -154,59 +109,14 @@ type RegisterAssetsResp struct {
 func (s *S) AssetsRegisterHandler(req RegisterAssetsReq, resp *RegisterAssetsResp) error {
 	serviceID, err := IsServerClient(req.ApiKey)
 	if err != nil {
-		passlog.L.Error().Err(err).Msg("failed to register new asset")
+		passlog.L.Error().Err(err).Msg("failed to register new assets")
 		return err
 	}
 
-	for _, asset := range req.Assets {
-		collection, err := boiler.Collections(boiler.CollectionWhere.Slug.EQ(asset.CollectionSlug)).One(passdb.StdConn)
+	for i, asset := range req.Assets {
+		_, err = db.RegisterUserAsset(asset, serviceID)
 		if err != nil {
-			passlog.L.Error().Interface("req", req).Err(err).Msg("failed to register new asset - can't get collection")
-			return err
-		}
-
-		var attributeJson types.JSON
-		if asset.Attributes != nil {
-			err = attributeJson.Marshal(asset.Attributes)
-			if err != nil {
-				passlog.L.Error().Interface("req", req).Interface("asset.Attributes", asset.Attributes).Err(err).Msg("failed to register new asset - can't marshall attributes")
-				return err
-			}
-		} else {
-			err = attributeJson.Marshal("{}")
-			if err != nil {
-				passlog.L.Error().Interface("req", req).Err(err).Msg("failed to register new asset - can't marshall '{}' attributes")
-				return err
-			}
-		}
-
-		boilerAsset := &boiler.UserAsset{
-			ID:              asset.ID,
-			CollectionID:    collection.ID,
-			TokenID:         int64(int(asset.TokenID)),
-			Tier:            asset.Tier,
-			Hash:            asset.Hash,
-			AssetType: asset.AssetType,
-			OwnerID:         asset.OwnerID,
-			Data:            asset.Data,
-			Attributes:      attributeJson,
-			Name:            asset.Name,
-			ImageURL:        asset.ImageURL,
-			ExternalURL:     asset.ExternalURL,
-			Description:     asset.Description,
-			AvatarURL: asset.AvatarURL,
-			BackgroundColor: asset.BackgroundColor,
-			AnimationURL:    asset.AnimationURL,
-			YoutubeURL:      asset.YoutubeURL,
-			UnlockedAt:      asset.UnlockedAt,
-			MintedAt:        asset.MintedAt,
-			OnChainStatus:   asset.OnChainStatus,
-			LockedToService: null.StringFrom(serviceID),
-		}
-
-		err = boilerAsset.Insert(passdb.StdConn, boil.Infer())
-		if err != nil {
-			passlog.L.Error().Interface("req", req).Err(err).Msg(" failed to register new asset - can't insert asset")
+			passlog.L.Error().Err(err).Interface("asset", asset).Int("index of fail", i).Msg("failed to register new assets")
 			return err
 		}
 	}
@@ -307,5 +217,3 @@ func (s *S) InsertUser1155AssetHandler(req UpdateUser1155AssetReq, resp *UpdateU
 
 	return nil
 }
-
-
