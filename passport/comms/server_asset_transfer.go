@@ -1,11 +1,10 @@
 package comms
 
 import (
-	"fmt"
 	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"time"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/asset"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 )
@@ -30,70 +29,13 @@ func (s *S) AssetTransferOwnershipHandler(req AssetTransferOwnershipReq, resp *A
 		return err
 	}
 
-	// get asset
-	userAsset, err := boiler.UserAssets(
-		boiler.UserAssetWhere.Hash.EQ(req.Hash),
-		boiler.UserAssetWhere.OwnerID.EQ(req.FromOwnerID),
-	).One(passdb.StdConn)
+	transferID, err := asset.TransferAsset(req.Hash, req.FromOwnerID, req.ToOwnerID, serviceID,req.RelatedTransactionID)
 	if err != nil {
-		passlog.L.Error().Err(err).Interface("req", req).Msg("failed to get user asset - AssetTransferOwnershipHandler")
+		passlog.L.Error().Err(err).Interface("req", req).Msg("failed to transfer asset - AssetTransferOwnershipHandler")
 		return err
 	}
 
-	if userAsset.LockedToService.Valid || userAsset.LockedToService.String != serviceID {
-		err := fmt.Errorf("cannot transfer asset the service doesn't control")
-		passlog.L.Error().Err(err).
-			Interface("req", req).
-			Interface("userAsset", userAsset).
-			Str("serviceID", serviceID).
-			Msg("failed to transfer asset ownership - AssetTransferOwnershipHandler")
-		return err
-	}
-
-	tx, err := passdb.StdConn.Begin()
-	if err != nil {
-		passlog.L.Error().Err(err).Interface("req", req).Msg("failed to begin tx - AssetTransferOwnershipHandler")
-		return err
-	}
-
-	userAsset.OwnerID = req.ToOwnerID
-
-	_, err = userAsset.Update(tx, boil.Infer())
-	if err != nil {
-		passlog.L.Error().Err(err).Interface("userAsset", userAsset).Msg("failed to update asset ownership - AssetTransferOwnershipHandler")
-		return err
-	}
-
-	transferEvent := &boiler.AssetTransferEvent{
-		UserAssetID:   userAsset.ID,
-		UserAssetHash: userAsset.Hash,
-		FromUserID:    req.FromOwnerID,
-		ToUserID:      req.ToOwnerID,
-		InitiatedFrom: serviceID,
-		TransferTXID:  req.RelatedTransactionID,
-	}
-
-	err = transferEvent.Insert(tx, boil.Infer())
-	if err != nil {
-		passlog.L.Error().Err(err).
-			Interface("transferEvent", transferEvent).
-			Interface("userAsset", userAsset).
-			Interface("req", req).
-			Msg("failed to insert transferEvent - AssetTransferOwnershipHandler")
-		return err
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		passlog.L.Error().Err(err).
-			Interface("transferEvent", transferEvent).
-			Interface("userAsset", userAsset).
-			Interface("req", req).
-			Msg("failed to commit tx - AssetTransferOwnershipHandler")
-		return err
-	}
-
-	resp.TransferEventID = transferEvent.ID
+	resp.TransferEventID = transferID
 	return nil
 }
 
