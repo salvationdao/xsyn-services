@@ -220,8 +220,8 @@ db-restore:
 		psql -U ${LOCAL_DEV_DB_USER} -d postgres < init.sql
 		psql -U ${LOCAL_DEV_DB_USER} -d $(LOCAL_DEV_DB_DATABASE) < tmp/${LOCAL_DEV_DB_DATABASE}_dump.sql
 
-dev_tool_sups:
-	go run ./passport/devtool/*.go -fill_sups
+dev_tool_fill_bot_sups:
+	go run ./passport/devtool/*.go -fill_bot_sups
 
 dev_tool_gen_bot_100:
 	go run ./passport/devtool/*.go -bot_gen_number=100

@@ -21,10 +21,10 @@ import (
 )
 
 func main() {
-	if os.Getenv("PASSPORT_ENVIRONMENT") == "staging" || os.Getenv("PASSPORT_ENVIRONMENT") == "production" {
-		log.Fatal("Only works in dev environment")
+	if os.Getenv("PASSPORT_ENVIRONMENT") == "production" {
+		log.Fatal("Only works in dev and staging environment")
 	}
-	fillSups := flag.Bool("fill_sups", false, "trigger db to filled 1M sup for all users")
+	fillSups := flag.Bool("fill_bot_sups", false, "trigger db to filled 1M sup for bot users")
 	botGenNum := flag.Int("bot_gen_number", 0, "generate x amount of bot users on each faction")
 
 	flag.Parse()
@@ -52,7 +52,8 @@ func main() {
 	if fillSups != nil && *fillSups {
 		result, err := conn.Exec(
 			`
-			UPDATE users set sups = 1000000000000000000000000;
+			UPDATE users u set sups = 1000000000000000000000000
+			WHERE EXISTS (SELECT 1 FROM roles r WHERE r.id = u.role_id AND r.name = 'Bot');
 			`,
 		)
 		if err != nil {
