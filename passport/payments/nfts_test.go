@@ -2,11 +2,20 @@ package payments_test
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"github.com/jackc/pgx/v4/stdlib"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"log"
+	"math/rand"
+	"net/url"
 	"os"
 	"testing"
+	"time"
+	"xsyn-services/boiler"
 	"xsyn-services/passport/passlog"
+	"xsyn-services/passport/payments"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -18,7 +27,8 @@ import (
 	"github.com/ory/dockertest/v3/docker"
 )
 
-var conn *pgxpool.Pool
+var connPool *pgxpool.Pool
+var conn *sql.DB
 
 const initSQL = `
 CREATE USER passport WITH ENCRYPTED PASSWORD 'dev';
@@ -82,12 +92,30 @@ func TestMain(m *testing.M) {
 
 		pgxPoolConfig.ConnConfig.LogLevel = pgx.LogLevelTrace
 
-		conn, err = pgxpool.ConnectConfig(ctx, pgxPoolConfig)
+		connPool, err = pgxpool.ConnectConfig(ctx, pgxPoolConfig)
 		if err != nil {
 			passlog.L.Warn().Err(err).Msg("connect to db")
 			return terror.Error(err, "")
 		}
-		_, err = conn.Exec(ctx, initSQL)
+
+		// set up normal connPool
+		params := url.Values{}
+		params.Add("sslmode", "disable")
+
+		cfg, err := pgx.ParseConfig(connString)
+		if err != nil {
+			return terror.Error(err, "")
+
+		}
+		conn = stdlib.OpenDB(*cfg)
+		if err != nil {
+			return terror.Error(err, "")
+
+		}
+		conn.SetMaxIdleConns(100)
+		conn.SetMaxOpenConns(500)
+
+		_, err = connPool.Exec(ctx, initSQL)
 		if err != nil {
 			passlog.L.Err(err).Msg("setup roles")
 			return terror.Error(err, "")
@@ -121,11 +149,101 @@ func TestMain(m *testing.M) {
 }
 
 func TestAuth(t *testing.T) {
-	t.Run("user can login", func(t *testing.T) {
-		t.Log("here mate")
-		fmt.Println("here12")
+	const (
+		MINTABLE       = "MINTABLE"
+		STAKABLE       = "STAKABLE"
+		UNSTAKABLE     = "UNSTAKABLE"
+		UNSTAKABLE_OLD = "UNSTAKABLE_OLD"
+	)
+	onChainStatusSlice := []string{
+		MINTABLE,
+		STAKABLE,
+		UNSTAKABLE,
+		UNSTAKABLE_OLD,
+	}
+	var collection *boiler.Collection
+	var users []*boiler.User
+	var userAssets []*boiler.UserAsset
+
+	t.Run("Insert test collection", func(t *testing.T) {
+		collection = &boiler.Collection{
+			Name:               "test collection",
+			Slug:               "test-collection",
+			MintContract:       null.StringFrom("test-mint"),
+			StakeContract:      null.StringFrom("test-stake"),
+			StakingContractOld: null.StringFrom("test-stake old"),
+			IsVisible:          null.BoolFrom(true),
+			ContractType:       null.StringFrom("ERC-721"),
+		}
+
+		err := collection.Insert(conn, boil.Infer())
+		if err != nil {
+			t.Fatal("failed to insert col")
+		}
+	})
+	t.Run("Insert Users", func(t *testing.T) {
+		amount := 100
+		for i := 0; i < amount; i++ {
+			userDetails := fmt.Sprintf("%d%d%d%d", i, i, i, i)
+			usr := &boiler.User{
+				Username:      userDetails,
+				PublicAddress: null.StringFrom(userDetails),
+			}
+			err := usr.Insert(conn, boil.Infer())
+			if err != nil {
+				t.Fatal("failed to insert users")
+			}
+			users = append(users, usr)
+		}
+
+		userCount, err := boiler.Users().Count(conn)
+		if err != nil {
+			t.Fatal("failed to get user count")
+		}
+		if userCount != int64(amount) {
+			t.Fatalf("user count wrong, expected: %d, got: %d",int64(amount), userCount)
+		}
+	})
+	t.Run("Insert UserAssets", func(t *testing.T) {
+		amount := 100
+		for i := 0; i < amount; i++ {
+			rand.Seed(time.Now().UnixNano())
+			userAssetDeet := fmt.Sprintf("userasset-%d%d%d%d", i, i, i, i)
+
+			usrAss := &boiler.UserAsset{
+				CollectionID:  collection.ID,
+				TokenID:       int64(i),
+				Hash:          userAssetDeet,
+				OwnerID:       users[rand.Intn(len(users))].ID,
+				Name:          userAssetDeet,
+				OnChainStatus: onChainStatusSlice[rand.Intn(len(onChainStatusSlice))],
+			}
+			err := usrAss.Insert(conn, boil.Infer())
+			if err != nil {
+				t.Fatal("failed to insert user assets")
+			}
+
+			userAssets = append(userAssets, usrAss)
+		}
+
+		userAssCount, err := boiler.UserAssets().Count(conn)
+		if err != nil {
+			t.Fatal("failed to get user count")
+		}
+		if userAssCount != int64(amount) {
+			t.Fatalf("user asset count wrong, expected: %d, got: %d",int64(amount), userAssCount)
+		}
+	})
+  	var nftStatus map[int]*payments.NFTOwnerStatus
+
+	t.Run("UpdateOwners", func(t *testing.T) {
+		// seed items
+		// TODO: here
+		_,_, err := payments.UpdateOwners(nftStatus, collection)
+		if err != nil {
+			t.Fatal("failed to update owners")
+		}
+
 
 	})
-	t.Run("user can logout", func(t *testing.T) {})
 }
-
