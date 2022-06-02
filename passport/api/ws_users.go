@@ -1579,7 +1579,8 @@ func (uc *UserController) ExchangeRatesHandler(ctx context.Context, user *types.
 }
 
 const HubKeyUserTransactionsSubscribe = "USER:SUPS:TRANSACTIONS:SUBSCRIBE"
-const HubKeyUserLatestTransactionSubscribe = "USER:SUPS:LATEST_TRANSACTION:SUBSCRIBE"
+
+//const HubKeyUserLatestTransactionSubscribe = "USER:SUPS:LATEST_TRANSACTION:SUBSCRIBE"
 
 //func (uc *UserController) UserTransactionsSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 //	req := &UpdatedSubscribeRequest{}
