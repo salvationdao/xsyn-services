@@ -10,7 +10,7 @@ import (
 	"xsyn-services/passport/passlog"
 )
 
-func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransactionID null.String) (*boiler.UserAsset, int64, error){
+func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransactionID null.String) (*boiler.UserAsset, int64, error) {
 
 	// get asset
 	userAsset, err := boiler.UserAssets(
@@ -24,7 +24,7 @@ func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransaction
 			Str("toID", toID).
 			Str("serviceID", serviceID).
 			Msg("failed to get user asset - TransferAsset")
-		return nil,0, err
+		return nil, 0, err
 	}
 
 	if userAsset.LockedToService.Valid && userAsset.LockedToService.String != serviceID {
@@ -35,7 +35,7 @@ func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransaction
 			Str("toID", toID).
 			Str("serviceID", serviceID).
 			Msg("failed to transfer asset ownership - TransferAsset")
-		return nil,0, err
+		return nil, 0, err
 	}
 
 	tx, err := passdb.StdConn.Begin()
@@ -46,7 +46,7 @@ func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransaction
 			Str("toID", toID).
 			Str("serviceID", serviceID).
 			Msg("failed to begin tx - TransferAsset")
-		return nil,0, err
+		return nil, 0, err
 	}
 
 	userAsset.OwnerID = toID
@@ -60,7 +60,7 @@ func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransaction
 			Str("serviceID", serviceID).
 			Interface("userAsset", userAsset).
 			Msg("failed to update asset ownership - TransferAsset")
-		return nil,0, err
+		return nil, 0, err
 	}
 
 	transferEvent := &boiler.AssetTransferEvent{
@@ -81,7 +81,7 @@ func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransaction
 			Str("serviceID", serviceID).
 			Interface("transferEvent", transferEvent).
 			Msg("failed to insert transferEvent - TransferAsset")
-		return nil,0, err
+		return nil, 0, err
 	}
 
 	err = tx.Commit()
@@ -94,14 +94,14 @@ func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransaction
 			Str("toID", toID).
 			Str("serviceID", serviceID).
 			Msg("failed to commit tx - TransferAsset")
-		return nil,0, err
+		return nil, 0, err
 	}
 
-	return userAsset,transferEvent.ID, nil
+	return userAsset, transferEvent.ID, nil
 }
 
 // TransferAssetADMIN is used for admins to transfer assets, ignore service id and previous owner
-func TransferAssetADMIN(assetID, toID uuid.UUID) (int64, error){
+func TransferAssetADMIN(assetID, toID uuid.UUID) (int64, error) {
 	// get asset
 	userAsset, err := boiler.FindUserAsset(passdb.StdConn, assetID.String())
 	if err != nil {
