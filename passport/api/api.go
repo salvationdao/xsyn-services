@@ -254,11 +254,6 @@ func NewAPI(
 
 	api.SupremacyController = sc
 
-	//api.Hub.Events.AddEventHandler(hub.EventOnline, api.ClientOnline)
-	//api.Hub.Events.AddEventHandler(auth.EventLogin, api.ClientAuth, func(err error) {})
-	//api.Hub.Events.AddEventHandler(auth.EventLogout, api.ClientLogout, func(err error) {})
-	//api.Hub.Events.AddEventHandler(hub.EventOffline, api.ClientOffline, func(err error) {})
-
 	api.State, err = db.StateGet(isTestnetBlockchain)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		log.Fatal().Err(err).Msgf("failed to init state object")

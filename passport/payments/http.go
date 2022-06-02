@@ -7,7 +7,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
+	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -72,22 +74,22 @@ func getPurchaseRecords(path Path, latestBlock int, testnet bool) ([]*PurchaseRe
 	return result, latest, nil
 }
 
-const NFTTokens Path = "nft_tokens"
 
-func getNFTOwnerRecords(path Path, isTestnet bool, collectionSlug string) (map[int]*NFTOwnerStatus, error) {
+func getNFTOwnerRecords(path Path, collectionSlug string) (map[int]*NFTOwnerStatus, error) {
 	l := passlog.L.With().Str("svc", "avant_nft_ownership_update").Logger()
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s", baseURL, "nft_tokens"), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s", baseURL, path), nil)
 	if err != nil {
 		return nil, err
 	}
 	q := req.URL.Query()
-	NFTAddr, err := getNFTContract(collectionSlug, isTestnet)
+
+	collection, err := boiler.Collections(boiler.CollectionWhere.Slug.EQ(collectionSlug)).One(passdb.StdConn)
 	if err != nil {
-		return nil, err
+		// handle
 	}
+
 	l.Debug().Str("url", req.URL.String()).Msg("fetch NFT owners from Avant API")
-	q.Add("contract_address", NFTAddr.Hex())
-	q.Add("is_testnet", fmt.Sprintf("%v", isTestnet))
+	q.Add("contract_address", collection.MintContract.String)
 	req.URL.RawQuery = q.Encode()
 
 	resp, err := http.DefaultClient.Do(req)
@@ -97,33 +99,35 @@ func getNFTOwnerRecords(path Path, isTestnet bool, collectionSlug string) (map[i
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("non 200 response for %s: %d", req.URL.String(), resp.StatusCode)
 	}
-	records := []*NFTOwnerRecord{}
+	var records []*NFTOwnerRecord
 	err = json.NewDecoder(resp.Body).Decode(&records)
 	if err != nil {
 		return nil, err
-	}
-
-	StakingAddr := MainnetStaking
-	if isTestnet {
-		StakingAddr = TestnetStaking
 	}
 
 	result := map[int]*NFTOwnerStatus{}
 	for _, record := range records {
 		// Current owner owns it; or
 		owner := common.HexToAddress(record.ToAddress)
-		if owner.Hex() == StakingAddr.Hex() {
+		if owner.Hex() ==  common.HexToAddress(collection.StakeContract.String).Hex() || owner.Hex() ==  common.HexToAddress(collection.StakingContractOld.String).Hex()  {
 			// Address who sent it to the staking contract owns it
 			owner = common.HexToAddress(record.FromAddress)
 		}
 
-		stakable := common.HexToAddress(record.ToAddress).Hex() != StakingAddr.Hex()   // Current owner is NOT staking contract
-		unstakable := common.HexToAddress(record.ToAddress).Hex() == StakingAddr.Hex() // Current owner IS staking contract
+		onChainStatus := db.STAKABLE
+		// Current owner IS staking contract
+		 if common.HexToAddress(record.ToAddress).Hex() == common.HexToAddress(collection.StakeContract.String).Hex() {
+			 onChainStatus = db.UNSTAKABLE
+		 }
+		// Current owner IS staking contract
+		if common.HexToAddress(record.ToAddress).Hex() == common.HexToAddress(collection.StakingContractOld.String).Hex() {
+			onChainStatus = db.UNSTAKABLEOLD
+		}
+
 		result[record.TokenID] = &NFTOwnerStatus{
-			Collection: NFTAddr,
-			Owner:      owner,
-			Stakable:   stakable,
-			Unstakable: unstakable,
+			Collection:    common.HexToAddress(collection.MintContract.String),
+			Owner:         owner,
+			OnChainStatus: onChainStatus,
 		}
 
 	}
@@ -184,8 +188,8 @@ func GetDeposits(testnet bool) ([]*SUPTransferRecord, error) {
 	return records, nil
 }
 
-func GetNFTOwnerRecords(isTestnet bool, collectionSlug string) (map[int]*NFTOwnerStatus, error) {
-	return getNFTOwnerRecords(NFTOwnerPath, isTestnet, collectionSlug)
+func GetNFTOwnerRecords(collectionSlug string) (map[int]*NFTOwnerStatus, error) {
+	return getNFTOwnerRecords(NFTOwnerPath, collectionSlug)
 }
 
 func latestPurchaseBlockFromRecords(currentBlock int, records []*PurchaseRecord) int {

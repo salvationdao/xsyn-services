@@ -9,3 +9,6 @@ CREATE TABLE asset_transfer_events
     transfer_tx_id  TEXT REFERENCES transactions (id),
     transferred_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE collections
+    ADD COLUMN staking_contract_old TEXT;
