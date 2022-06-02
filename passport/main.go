@@ -171,6 +171,7 @@ func main() {
 					// wallet/contract addresses
 					&cli.StringFlag{Name: "operator_addr", Value: "0xc01c2f6DD7cCd2B9F8DB9aa1Da9933edaBc5079E", EnvVars: []string{envPrefix + "_OPERATOR_WALLET_ADDR"}, Usage: "Wallet address for administration"},
 					&cli.StringFlag{Name: "signer_private_key", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing (usually operator)"},
+					&cli.StringFlag{Name: "achievement_signer_private_key", Value: "0x9878e47371dc28d434b8e5a2e36a5ac2fad84af4ebcd8ea34470b2417590e087", EnvVars: []string{envPrefix + "ACHIEVEMENT_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing achievement contract (usually operator)"},
 
 					// chain id
 					&cli.Int64Flag{Name: "bsc_chain_id", Value: 97, EnvVars: []string{envPrefix + "_BSC_CHAIN_ID"}, Usage: "BSC Chain ID"},
@@ -715,6 +716,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	SupAddr := ctxCLI.String("sup_addr")
 	OperatorAddr := ctxCLI.String("operator_addr")
 	SignerPrivateKey := ctxCLI.String("signer_private_key")
+	AchievementSignerKey := ctxCLI.String("achievement_signer_private_key")
 	BscNodeAddr := ctxCLI.String("bsc_node_addr")
 	EthNodeAddr := ctxCLI.String("eth_node_addr")
 	BSCChainID := ctxCLI.Int64("bsc_chain_id")
@@ -800,17 +802,18 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		TokenExpirationDays: ctxCLI.Int("jwt_expiry_days"),
 		MetaMaskSignMessage: ctxCLI.String("metamask_sign_message"),
 		BridgeParams: &types.BridgeParams{
-			MoralisKey:       MoralisKey,
-			OperatorAddr:     common.HexToAddress(OperatorAddr),
-			UsdcAddr:         common.HexToAddress(UsdcAddr),
-			BusdAddr:         common.HexToAddress(BusdAddr),
-			SupAddr:          common.HexToAddress(SupAddr),
-			SignerPrivateKey: SignerPrivateKey,
-			BscNodeAddr:      BscNodeAddr,
-			EthNodeAddr:      EthNodeAddr,
-			BSCChainID:       BSCChainID,
-			ETHChainID:       ETHChainID,
-			BSCRouterAddr:    common.HexToAddress(BSCRouterAddr),
+			MoralisKey:            MoralisKey,
+			OperatorAddr:          common.HexToAddress(OperatorAddr),
+			UsdcAddr:              common.HexToAddress(UsdcAddr),
+			BusdAddr:              common.HexToAddress(BusdAddr),
+			SupAddr:               common.HexToAddress(SupAddr),
+			SignerPrivateKey:      SignerPrivateKey,
+			BscNodeAddr:           BscNodeAddr,
+			EthNodeAddr:           EthNodeAddr,
+			BSCChainID:            BSCChainID,
+			ETHChainID:            ETHChainID,
+			BSCRouterAddr:         common.HexToAddress(BSCRouterAddr),
+			AchievementsSignerKey: AchievementSignerKey,
 		},
 		OnlyWalletConnect:       ctxCLI.Bool("only_wallet"),
 		WhitelistEndpoint:       ctxCLI.String("whitelist_check_endpoint"),

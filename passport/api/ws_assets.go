@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/friendsofgo/errors"
 	"github.com/gofrs/uuid"
+	"github.com/kevinms/leakybucket-go"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -338,7 +339,6 @@ func (ac *AssetController) Asset1155UpdatedSubscribeHandler(ctx context.Context,
 	queries := []qm.QueryMod{
 		boiler.UserAssets1155Where.OwnerID.EQ(req.Payload.OwnerID),
 		boiler.UserAssets1155Where.ExternalTokenID.EQ(req.Payload.TokenID),
-		boiler.UserAssets1155Where.Count.GT(0),
 		qm.Load(boiler.UserAssets1155Rels.Collection),
 		qm.Load(boiler.UserAssets1155Rels.Owner),
 	}
@@ -733,11 +733,18 @@ type Asset1155TransferToSupremacyRequest struct {
 
 const HubKeyAsset1155TransferToSupremacy = "ASSET:1155:TRANSFER:TO:SUPREMACY"
 
+var TransferBucket = leakybucket.NewCollector(0.5, 1, true)
+
 func (ac *AssetController) Asset1155TransferToSupremacyHandler(ctx context.Context, user *xsynTypes.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &Asset1155TransferToSupremacyRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
+	}
+
+	b := TransferBucket.Add(fmt.Sprintf("%s_%s_%d", user.ID, req.Payload.CollectionSlug, req.Payload.TokenID), 1)
+	if b == 0 {
+		return terror.Error(fmt.Errorf("too many requests"), "Too many request made for transfer")
 	}
 
 	asset, err := boiler.UserAssets1155S(
@@ -905,6 +912,11 @@ func (ac *AssetController) Asset1155TransferFromSupremacyHandler(ctx context.Con
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	b := TransferBucket.Add(fmt.Sprintf("%s_%s_%d", user.ID, req.Payload.CollectionSlug, req.Payload.TokenID), 1)
+	if b == 0 {
+		return terror.Error(fmt.Errorf("too many requests"), "Too many request made for transfer")
+	}
+
 	asset, err := boiler.UserAssets1155S(
 		boiler.UserAssets1155Where.ExternalTokenID.EQ(req.Payload.TokenID),
 		boiler.UserAssets1155Where.OwnerID.EQ(user.ID),
@@ -912,7 +924,7 @@ func (ac *AssetController) Asset1155TransferFromSupremacyHandler(ctx context.Con
 		qm.Load(boiler.UserAssets1155Rels.Collection),
 		qm.Load(boiler.UserAssets1155Rels.Owner),
 	).One(passdb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
 		return terror.Error(err, "Failed to get user 1155 asset")
 	}
 
@@ -946,7 +958,7 @@ func (ac *AssetController) Asset1155TransferFromSupremacyHandler(ctx context.Con
 		return terror.Error(err, "Failed to log transfer")
 	}
 
-	keycardData, err := supremacy_rpcclient.Asset1155TransferFromSupremacy(xsynTypes.UserAsset1155FromBoiler(asset), transferLog.ID, req.Payload.Amount)
+	_, err = supremacy_rpcclient.Asset1155TransferFromSupremacy(xsynTypes.UserAsset1155FromBoiler(asset), transferLog.ID, req.Payload.Amount)
 	if err != nil {
 		reverseAsset1155ServiceTransaction(
 			ac.API.userCacheMap,
@@ -956,49 +968,6 @@ func (ac *AssetController) Asset1155TransferFromSupremacyHandler(ctx context.Con
 		)
 
 		return terror.Error(err, "Failed to transfer asset to XSYN")
-	}
-
-	if asset == nil {
-		collection, err := db.CollectionBySlug(req.Payload.CollectionSlug)
-		if err != nil {
-			return terror.Error(err, "Failed to get collection data")
-		}
-
-		asset = &boiler.UserAssets1155{
-			OwnerID:         user.ID,
-			CollectionID:    collection.ID,
-			ExternalTokenID: req.Payload.TokenID,
-			Label:           keycardData.Label,
-			Description:     keycardData.Description,
-			ImageURL:        keycardData.ImageURL,
-			AnimationURL:    keycardData.AnimationURL,
-			KeycardGroup:    keycardData.KeycardGroup,
-			Count:           keycardData.Count,
-			ServiceID:       null.StringFrom(xsynTypes.SupremacyGameUserID.String()),
-		}
-
-		var assetJson types.JSON
-
-		value := keycardData.Syndicate.String
-
-		if !keycardData.Syndicate.Valid {
-			value = "N/A"
-		}
-
-		attribute := &xsynTypes.SupremacyKeycardAttribute{
-			TraitType: "Syndicate",
-			Value:     value,
-		}
-
-		if err := assetJson.Marshal(attribute); err != nil {
-			return terror.Error(err, "Failed to get assets attribute")
-		}
-
-		asset.Attributes = assetJson
-
-		if err := asset.Insert(passdb.StdConn, boil.Infer()); err != nil {
-			return terror.Error(err, "Failed to update asset")
-		}
 	}
 
 	asset.Count -= req.Payload.Amount
@@ -1037,7 +1006,7 @@ func (ac *AssetController) Asset1155TransferFromSupremacyHandler(ctx context.Con
 
 	onXsynAsset.Count += req.Payload.Amount
 
-	_, err = onXsynAsset.Update(passdb.StdConn, boil.Infer())
+	_, err = onXsynAsset.Update(passdb.StdConn, boil.Whitelist(boiler.UserAssets1155Columns.Count))
 	if err != nil {
 		return terror.Error(err, "Failed to update on XSYN asset")
 	}
