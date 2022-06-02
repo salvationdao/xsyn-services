@@ -7,13 +7,12 @@ import (
 	"os"
 	"xsyn-services/boiler"
 
-	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/bxcodec/faker/v3"
 
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/volatiletech/null/v8"
-
-	"github.com/gofrs/uuid"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/stdlib"
@@ -96,7 +95,7 @@ func main() {
 				i++
 
 				user := boiler.User{
-					Username:  uuid.Must(uuid.NewV4()).String(),
+					Username:  faker.Name(),
 					FactionID: null.StringFrom(faction.ID),
 					RoleID:    null.StringFrom(botRole.ID),
 					Verified:  true,

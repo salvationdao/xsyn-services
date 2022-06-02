@@ -59,6 +59,7 @@ type API struct {
 	GameserverHostUrl   string
 	Commander           *ws.Commander
 	BridgeParams        *types.BridgeParams
+	botSecretKey        string
 
 	// online user cache
 	users chan func(userCacheList Transactor)
@@ -125,8 +126,9 @@ func NewAPI(
 		walletOnlyConnect:    config.OnlyWalletConnect,
 		storeItemExternalUrl: externalUrl,
 
-		ClientMap: &sync.Map{},
-		JWTKey:    jwtKey,
+		ClientMap:    &sync.Map{},
+		JWTKey:       jwtKey,
+		botSecretKey: config.BotSecret,
 	}
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
@@ -220,6 +222,7 @@ func NewAPI(
 				r.Post("/token", api.TokenLoginHandler)
 				r.Post("/wallet", api.WalletLoginHandler)
 
+				r.Get("/bot_list", api.BotListHandler)
 				r.Post("/bot_token", api.BotTokenLoginHandler)
 			})
 		})

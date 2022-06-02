@@ -691,9 +691,64 @@ func (api *API) TokenLogin(tokenBase64 string, twitchExtensionJWT string) (*Toke
 	return &TokenLoginResponse{user}, nil
 }
 
+type BotListResponse struct {
+	RedMountainBotIDs []string `json:"red_mountain_bot_ids"`
+	BostonBotIDs      []string `json:"boston_bot_ids"`
+	ZaibatsuBotIDs    []string `json:"zaibatsu_bot_ids"`
+}
+
+func (api *API) BotListHandler(w http.ResponseWriter, r *http.Request) {
+	// check header
+	if r.Header.Get("bot_secret_key") != api.botSecretKey {
+		http.Error(w, "auth fail", http.StatusBadRequest)
+		return
+	}
+
+	bots, err := boiler.Users(
+		qm.Select(
+			fmt.Sprintf("%s as id", qm.Rels(boiler.TableNames.Users, boiler.UserColumns.ID)),
+			boiler.UserColumns.FactionID,
+		),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s ON %s = %s AND %s = 'Bot'",
+				boiler.TableNames.Roles,
+				qm.Rels(boiler.TableNames.Roles, boiler.RoleColumns.ID),
+				qm.Rels(boiler.TableNames.Users, boiler.UserColumns.RoleID),
+				qm.Rels(boiler.TableNames.Roles, boiler.RoleColumns.Name),
+			),
+		),
+	).All(passdb.StdConn)
+	if err != nil {
+		http.Error(w, "failed to get bot list", http.StatusInternalServerError)
+		return
+	}
+
+	resp := &BotListResponse{
+		RedMountainBotIDs: []string{},
+		BostonBotIDs:      []string{},
+		ZaibatsuBotIDs:    []string{},
+	}
+
+	for _, b := range bots {
+		switch b.FactionID.String {
+		case types.RedMountainFactionID.String():
+			resp.RedMountainBotIDs = append(resp.RedMountainBotIDs, b.ID)
+		case types.BostonCyberneticsFactionID.String():
+			resp.BostonBotIDs = append(resp.BostonBotIDs, b.ID)
+		case types.ZaibatsuFactionID.String():
+			resp.ZaibatsuBotIDs = append(resp.ZaibatsuBotIDs, b.ID)
+		}
+	}
+
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		http.Error(w, "failed state", http.StatusBadRequest)
+	}
+}
+
 type BotTokenLoginRequest struct {
-	BotToken  string `json:"bot_token"`
-	FactionID string `json:"faction_id"`
+	BotID string `json:"bot_id"`
 }
 
 type BotTokenResponse struct {
@@ -703,6 +758,11 @@ type BotTokenResponse struct {
 
 // BotTokenLoginHandler return a bot user and access token from the given bot token
 func (api *API) BotTokenLoginHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("bot_secret_key") != api.botSecretKey {
+		http.Error(w, "auth fail", http.StatusBadRequest)
+		return
+	}
+
 	req := &BotTokenLoginRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
@@ -710,15 +770,9 @@ func (api *API) BotTokenLoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check bot token
-	if req.BotToken != "bot_token" {
-		http.Error(w, "invalid bot token", http.StatusBadRequest)
-		return
-	}
-
 	// return a bot user and generate an access_token
 	user, err := boiler.Users(
-		boiler.UserWhere.FactionID.EQ(null.StringFrom(req.FactionID)),
+		boiler.UserWhere.ID.EQ(req.BotID),
 		qm.InnerJoin(
 			fmt.Sprintf(
 				"%s ON %s = %s AND %s = 'Bot'",
