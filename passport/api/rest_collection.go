@@ -36,7 +36,6 @@ func (api *API) Get1155Collections(w http.ResponseWriter, r *http.Request) (int,
 
 	var collectionResp []*Collections1155Resp
 	for _, collection := range collections {
-		fmt.Println(collection.TransferContract)
 		collectionResp = append(collectionResp, &Collections1155Resp{
 			Name:            collection.Name,
 			Description:     collection.Description,
@@ -88,7 +87,6 @@ func (api *API) Get1155Collection(w http.ResponseWriter, r *http.Request) (int, 
 	}
 	url := fmt.Sprintf("http://v3-staging.supremacy-api.avantdata.com:3001/api/multi_token_balance?contract_address=%s&owner_address=%s&is_testnet=%t", collection.MintContract.String, address, true)
 	req, err := http.NewRequest("GET", url, nil)
-	fmt.Println(url)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get collection details")
