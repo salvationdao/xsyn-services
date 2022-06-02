@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"errors"
+	"github.com/volatiletech/null/v8"
 	"net/http"
 	"net/url"
 	"os/signal"
@@ -526,7 +527,8 @@ func SyncWithdraw(ucm *api.Transactor, isTestnet, enableWithdrawRollback bool) e
 
 }
 func SyncNFTs() error {
-	allCollections, err := boiler.Collections(boiler.CollectionWhere.MintContract.IsNotNull()).All(passdb.StdConn)
+	allCollections, err := boiler.Collections(boiler.CollectionWhere.MintContract.IsNotNull(),
+		boiler.CollectionWhere.ContractType.EQ(null.StringFrom("ERC-721"))).All(passdb.StdConn)
 	if err != nil {
 		return fmt.Errorf("failed to get limited release collection: %w", err)
 	}
