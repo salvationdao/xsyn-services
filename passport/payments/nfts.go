@@ -23,13 +23,8 @@ type NFTOwnerStatus struct {
 }
 
 
-func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collectionSlug string) (int, int, error) {
+func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collection) (int, int, error) {
 	l := passlog.L.With().Str("svc", "avant_nft_ownership_update").Logger()
-
-	collection, err := boiler.Collections(boiler.CollectionWhere.Slug.EQ(collectionSlug)).One(passdb.StdConn)
-	if err != nil {
-		// handle
-	}
 
 	updated := 0
 	skipped := 0

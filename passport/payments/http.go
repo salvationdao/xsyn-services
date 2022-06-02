@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
-	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -75,18 +74,13 @@ func getPurchaseRecords(path Path, latestBlock int, testnet bool) ([]*PurchaseRe
 }
 
 
-func getNFTOwnerRecords(path Path, collectionSlug string) (map[int]*NFTOwnerStatus, error) {
+func getNFTOwnerRecords(path Path, collection *boiler.Collection) (map[int]*NFTOwnerStatus, error) {
 	l := passlog.L.With().Str("svc", "avant_nft_ownership_update").Logger()
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s", baseURL, path), nil)
 	if err != nil {
 		return nil, err
 	}
 	q := req.URL.Query()
-
-	collection, err := boiler.Collections(boiler.CollectionWhere.Slug.EQ(collectionSlug)).One(passdb.StdConn)
-	if err != nil {
-		// handle
-	}
 
 	l.Debug().Str("url", req.URL.String()).Msg("fetch NFT owners from Avant API")
 	q.Add("contract_address", collection.MintContract.String)
@@ -188,8 +182,8 @@ func GetDeposits(testnet bool) ([]*SUPTransferRecord, error) {
 	return records, nil
 }
 
-func GetNFTOwnerRecords(collectionSlug string) (map[int]*NFTOwnerStatus, error) {
-	return getNFTOwnerRecords(NFTOwnerPath, collectionSlug)
+func GetNFTOwnerRecords(collection *boiler.Collection) (map[int]*NFTOwnerStatus, error) {
+	return getNFTOwnerRecords(NFTOwnerPath, collection)
 }
 
 func latestPurchaseBlockFromRecords(currentBlock int, records []*PurchaseRecord) int {

@@ -532,15 +532,16 @@ func SyncNFTs() error {
 	}
 
 	for _, collection := range allCollections {
-		collectionNftOwnerStatuses, err := payments.GetNFTOwnerRecords(collection.Slug)
+		collectionNftOwnerStatuses, err := payments.GetNFTOwnerRecords(collection)
 		if err != nil {
 			return fmt.Errorf("get nft owners: %w", err)
 		}
 
-		ownerUpdated, ownerSkipped, err := payments.UpdateOwners(collectionNftOwnerStatuses, collection.Slug)
+		ownerUpdated, ownerSkipped, err := payments.UpdateOwners(collectionNftOwnerStatuses, collection)
 		if err != nil {
 			return fmt.Errorf("update nft owners: %w", err)
 		}
+
 		passlog.L.Info().
 			Str("collection", collection.Slug).
 			Int("updated", ownerUpdated).
