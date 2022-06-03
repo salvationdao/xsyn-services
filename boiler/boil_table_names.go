@@ -6,6 +6,7 @@ package boiler
 var TableNames = struct {
 	APIKeys                    string
 	AssetServiceTransferEvents string
+	AssetTransferEvents        string
 	Blobs                      string
 	Collections                string
 	DeathAddresses             string
@@ -37,6 +38,7 @@ var TableNames = struct {
 }{
 	APIKeys:                    "api_keys",
 	AssetServiceTransferEvents: "asset_service_transfer_events",
+	AssetTransferEvents:        "asset_transfer_events",
 	Blobs:                      "blobs",
 	Collections:                "collections",
 	DeathAddresses:             "death_addresses",
