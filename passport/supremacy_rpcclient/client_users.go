@@ -1,6 +1,7 @@
 package supremacy_rpcclient
 
 import (
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
 	"xsyn-services/passport/passlog"
@@ -22,6 +23,11 @@ func PlayerRegister(
 	FactionID uuid.UUID,
 	PublicAddress common.Address,
 ) error {
+	if SupremacyClient == nil {
+		err := fmt.Errorf("SupremacyClient is nil")
+		passlog.L.Error().Err(err).Msg("failed to insert player to supremacy server")
+		return err
+	}
 	resp := &PlayerRegisterResp{}
 	err := SupremacyClient.Call("S.PlayerRegisterHandler", &PlayerRegisterReq{UserID, Username, FactionID, PublicAddress}, resp)
 	if err != nil {
