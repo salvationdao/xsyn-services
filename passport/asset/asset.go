@@ -11,7 +11,6 @@ import (
 )
 
 func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransactionID null.String) (*boiler.UserAsset, int64, error) {
-
 	// get asset
 	userAsset, err := boiler.UserAssets(
 		boiler.UserAssetWhere.Hash.EQ(assetHash),

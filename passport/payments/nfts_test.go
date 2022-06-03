@@ -2,33 +2,33 @@ package payments_test
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/jackc/pgx/v4/stdlib"
+	"github.com/ninja-software/terror/v2"
+	"github.com/ory/dockertest/v3"
+	"github.com/ory/dockertest/v3/docker"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"log"
 	"math/rand"
 	"net/url"
 	"os"
+	"strconv"
 	"testing"
-	"time"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/db"
+	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/payments"
-
-	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/terror/v2"
-	"github.com/ory/dockertest/v3"
-	"github.com/ory/dockertest/v3/docker"
 )
 
 var connPool *pgxpool.Pool
-var conn *sql.DB
 
 const initSQL = `
 CREATE USER passport WITH ENCRYPTED PASSWORD 'dev';
@@ -107,13 +107,17 @@ func TestMain(m *testing.M) {
 			return terror.Error(err, "")
 
 		}
-		conn = stdlib.OpenDB(*cfg)
+		conn := stdlib.OpenDB(*cfg)
 		if err != nil {
 			return terror.Error(err, "")
 
 		}
 		conn.SetMaxIdleConns(100)
 		conn.SetMaxOpenConns(500)
+		err = passdb.New(conn)
+		if err != nil {
+			log.Fatalf("Could not start resource: %s", err)
+		}
 
 		_, err = connPool.Exec(ctx, initSQL)
 		if err != nil {
@@ -149,101 +153,393 @@ func TestMain(m *testing.M) {
 }
 
 func TestAuth(t *testing.T) {
-	const (
-		MINTABLE       = "MINTABLE"
-		STAKABLE       = "STAKABLE"
-		UNSTAKABLE     = "UNSTAKABLE"
-		UNSTAKABLE_OLD = "UNSTAKABLE_OLD"
-	)
-	onChainStatusSlice := []string{
-		MINTABLE,
-		STAKABLE,
-		UNSTAKABLE,
-		UNSTAKABLE_OLD,
-	}
 	var collection *boiler.Collection
 	var users []*boiler.User
 	var userAssets []*boiler.UserAsset
 
+	t.Run("Insert user roles", func(t *testing.T) {
+		role := &boiler.Role{
+			ID:          "cca82653-c071-4171-92da-05b0808542e7",
+			Name:        "Member",
+			Tier:        3,
+			Reserved:    true,
+			Permissions: []string{},
+		}
+
+		err := role.Insert(passdb.StdConn, boil.Infer())
+		if err != nil {
+			t.Fatalf("failed to insert role: %s", err.Error())
+		}
+	})
 	t.Run("Insert test collection", func(t *testing.T) {
 		collection = &boiler.Collection{
 			Name:               "test collection",
 			Slug:               "test-collection",
-			MintContract:       null.StringFrom("test-mint"),
-			StakeContract:      null.StringFrom("test-stake"),
-			StakingContractOld: null.StringFrom("test-stake old"),
+			MintContract:       null.StringFrom(common.HexToAddress(strconv.FormatUint(rand.Uint64(), 16)).Hex()),
+			StakeContract:      null.StringFrom(common.HexToAddress(strconv.FormatUint(rand.Uint64(), 16)).Hex()),
+			StakingContractOld: null.StringFrom(common.HexToAddress(strconv.FormatUint(rand.Uint64(), 16)).Hex()),
 			IsVisible:          null.BoolFrom(true),
 			ContractType:       null.StringFrom("ERC-721"),
 		}
 
-		err := collection.Insert(conn, boil.Infer())
+		err := collection.Insert(passdb.StdConn, boil.Infer())
 		if err != nil {
-			t.Fatal("failed to insert col")
+			t.Fatalf("failed to insert col: %s", err.Error())
 		}
 	})
 	t.Run("Insert Users", func(t *testing.T) {
 		amount := 100
 		for i := 0; i < amount; i++ {
-			userDetails := fmt.Sprintf("%d%d%d%d", i, i, i, i)
+			userDetails := fmt.Sprintf("%d%d%d%d%d%d%d%d", i, i, i, i, i, i, i, i)
 			usr := &boiler.User{
 				Username:      userDetails,
-				PublicAddress: null.StringFrom(userDetails),
+				PublicAddress: null.StringFrom(common.HexToAddress(strconv.FormatUint(rand.Uint64(), 16)).Hex()),
 			}
-			err := usr.Insert(conn, boil.Infer())
+			err := usr.Insert(passdb.StdConn, boil.Infer())
 			if err != nil {
-				t.Fatal("failed to insert users")
+				t.Fatalf("failed to insert users: %s", err.Error())
 			}
 			users = append(users, usr)
 		}
 
-		userCount, err := boiler.Users().Count(conn)
+		userCount, err := boiler.Users().Count(passdb.StdConn)
 		if err != nil {
-			t.Fatal("failed to get user count")
+			t.Fatalf("failed to get user count: %s", err.Error())
 		}
 		if userCount != int64(amount) {
-			t.Fatalf("user count wrong, expected: %d, got: %d",int64(amount), userCount)
+			t.Fatalf("user count wrong, expected: %d, got: %d", int64(amount), userCount)
 		}
 	})
 	t.Run("Insert UserAssets", func(t *testing.T) {
 		amount := 100
 		for i := 0; i < amount; i++ {
-			rand.Seed(time.Now().UnixNano())
 			userAssetDeet := fmt.Sprintf("userasset-%d%d%d%d", i, i, i, i)
+			chainStatus := db.MINTABLE
+			if i >= 25 {
+				chainStatus = db.STAKABLE
+			}
+			if i >= 50 {
+				chainStatus = db.UNSTAKABLE
+			}
+			if i >= 75 {
+				chainStatus = db.UNSTAKABLEOLD
+			}
 
 			usrAss := &boiler.UserAsset{
 				CollectionID:  collection.ID,
 				TokenID:       int64(i),
 				Hash:          userAssetDeet,
-				OwnerID:       users[rand.Intn(len(users))].ID,
+				OwnerID:       users[i].ID,
 				Name:          userAssetDeet,
-				OnChainStatus: onChainStatusSlice[rand.Intn(len(onChainStatusSlice))],
+				OnChainStatus: string(chainStatus),
 			}
-			err := usrAss.Insert(conn, boil.Infer())
+			err := usrAss.Insert(passdb.StdConn, boil.Infer())
 			if err != nil {
-				t.Fatal("failed to insert user assets")
+				t.Fatalf("failed to insert user assets: %s", err.Error())
 			}
 
 			userAssets = append(userAssets, usrAss)
 		}
 
-		userAssCount, err := boiler.UserAssets().Count(conn)
+		userAssCount, err := boiler.UserAssets().Count(passdb.StdConn)
 		if err != nil {
-			t.Fatal("failed to get user count")
+			t.Fatalf("failed to get user count: %s", err.Error())
 		}
 		if userAssCount != int64(amount) {
-			t.Fatalf("user asset count wrong, expected: %d, got: %d",int64(amount), userAssCount)
+			t.Fatalf("user asset count wrong, expected: %d, got: %d", int64(amount), userAssCount)
+		}
+
+		userAssCountMintable, err := boiler.UserAssets(
+			boiler.UserAssetWhere.OnChainStatus.EQ(string(db.MINTABLE)),
+		).Count(passdb.StdConn)
+		if err != nil {
+			t.Fatalf("failed to get user mintable count: %s", err.Error())
+		}
+		if userAssCountMintable != int64(25) {
+			t.Fatalf("user asset count wrong, expected: %d, got: %d", int64(25), userAssCountMintable)
+		}
+
+		userAssCountStakable, err := boiler.UserAssets(
+			boiler.UserAssetWhere.OnChainStatus.EQ(string(db.STAKABLE)),
+		).Count(passdb.StdConn)
+		if err != nil {
+			t.Fatalf("failed to get user stakable count: %s", err.Error())
+		}
+		if userAssCountStakable != int64(25) {
+			t.Fatalf("user asset count wrong, expected: %d, got: %d", int64(25), userAssCountStakable)
+		}
+
+		userAssCountUnstakable, err := boiler.UserAssets(
+			boiler.UserAssetWhere.OnChainStatus.EQ(string(db.UNSTAKABLE)),
+		).Count(passdb.StdConn)
+		if err != nil {
+			t.Fatalf("failed to get user unstakable count: %s", err.Error())
+		}
+		if userAssCountUnstakable != int64(25) {
+			t.Fatalf("user asset count wrong, expected: %d, got: %d", int64(25), userAssCountUnstakable)
+		}
+
+		userAssCountUnstakableOld, err := boiler.UserAssets(
+			boiler.UserAssetWhere.OnChainStatus.EQ(string(db.UNSTAKABLEOLD)),
+		).Count(passdb.StdConn)
+		if err != nil {
+			t.Fatalf("failed to get user unstakable old count: %s", err.Error())
+		}
+		if userAssCountUnstakableOld != int64(25) {
+			t.Fatalf("user asset count wrong, expected: %d, got: %d", int64(25), userAssCountUnstakableOld)
 		}
 	})
-  	var nftStatus map[int]*payments.NFTOwnerStatus
+	t.Run("UpdateOwners mintable to stakable", func(t *testing.T) {
+		mintableToStakable := map[int]*payments.NFTOwnerStatus{}
 
-	t.Run("UpdateOwners", func(t *testing.T) {
-		// seed items
-		// TODO: here
-		_,_, err := payments.UpdateOwners(nftStatus, collection)
-		if err != nil {
-			t.Fatal("failed to update owners")
+		firstAssetOwner := common.HexToAddress(users[0].PublicAddress.String)
+		firstAssetOwnerID := users[0].ID
+		secondAssetOwner := common.HexToAddress(users[1].PublicAddress.String)
+		secondAssetOwnerID := users[1].ID
+
+		mintableToStakable[0] = &payments.NFTOwnerStatus{
+			Collection:    common.HexToAddress(collection.MintContract.String),
+			Owner:         firstAssetOwner,
+			OnChainStatus: db.STAKABLE,
+		}
+		mintableToStakable[1] = &payments.NFTOwnerStatus{
+			Collection:    common.HexToAddress(collection.MintContract.String),
+			Owner:         secondAssetOwner,
+			OnChainStatus: db.STAKABLE,
 		}
 
+		success, fail, err := payments.UpdateOwners(mintableToStakable, collection)
+		if err != nil {
+			t.Fatalf("failed to update owners: %s", err.Error())
+		}
 
+		if fail > 0 {
+			t.Fatalf("mintableToStakable UpdateOwners failed wrong, expected: %d, got: %d", 0, fail)
+		}
+
+		if success != 2 {
+			t.Fatalf("mintableToStakable UpdateOwners success wrong, expected: %d, got: %d", 2, success)
+		}
+
+		// get items and check status
+		err = userAssets[0].Reload(passdb.StdConn)
+		if err != nil {
+			t.Fatalf("failed to reload asset 1: %s", err.Error())
+		}
+		err = userAssets[1].Reload(passdb.StdConn)
+		if err != nil {
+			t.Fatalf("failed to reload asset 2: %s", err.Error())
+		}
+
+		// check owner id is right
+		if userAssets[0].OwnerID != firstAssetOwnerID {
+			t.Fatalf("asset 1 owner changed, expected: %s, got: %s", firstAssetOwnerID, userAssets[0].OwnerID)
+		}
+		if userAssets[1].OwnerID != secondAssetOwnerID {
+			t.Fatalf("asset 2 owner changed, expected: %s, got: %s", secondAssetOwnerID, userAssets[1].OwnerID)
+		}
+		// check on chain status is right
+		if userAssets[0].OnChainStatus != string(db.STAKABLE) {
+			t.Fatalf("asset 1 wrong on chain status, expected: %s, got: %s", string(db.STAKABLE), userAssets[0].OnChainStatus)
+		}
+		if userAssets[1].OnChainStatus != string(db.STAKABLE) {
+			t.Fatalf("asset 2 wrong on chain status, expected: %s, got: %s", string(db.STAKABLE), userAssets[1].OnChainStatus)
+		}
+
+	})
+	t.Run("UpdateOwners stakable to unstakable", func(t *testing.T) {
+		stakableToUnstakable := map[int]*payments.NFTOwnerStatus{}
+
+		firstAssetIndex := 25
+		secondAssetIndex := 26
+		firstAssetOwner := common.HexToAddress(users[firstAssetIndex].PublicAddress.String)
+		firstAssetOwnerID := users[firstAssetIndex].ID
+		secondAssetOwner := common.HexToAddress(users[secondAssetIndex].PublicAddress.String)
+		secondAssetOwnerID := users[secondAssetIndex].ID
+
+		stakableToUnstakable[firstAssetIndex] = &payments.NFTOwnerStatus{
+			Collection:    common.HexToAddress(collection.MintContract.String),
+			Owner:         firstAssetOwner,
+			OnChainStatus: db.UNSTAKABLE,
+		}
+		stakableToUnstakable[secondAssetIndex] = &payments.NFTOwnerStatus{
+			Collection:    common.HexToAddress(collection.MintContract.String),
+			Owner:         secondAssetOwner,
+			OnChainStatus: db.UNSTAKABLE,
+		}
+
+		success, fail, err := payments.UpdateOwners(stakableToUnstakable, collection)
+		if err != nil {
+			t.Fatalf("failed to update owners: %s", err.Error())
+		}
+
+		if fail > 0 {
+			t.Fatalf("stakableToUnstakable UpdateOwners failed wrong, expected: %d, got: %d", 0, fail)
+		}
+
+		if success != 2 {
+			t.Fatalf("stakableToUnstakable UpdateOwners success wrong, expected: %d, got: %d", 2, success)
+		}
+
+		// get items and check status
+		err = userAssets[firstAssetIndex].Reload(passdb.StdConn)
+		if err != nil {
+			t.Fatalf("failed to reload asset 1: %s", err.Error())
+		}
+		err = userAssets[secondAssetIndex].Reload(passdb.StdConn)
+		if err != nil {
+			t.Fatalf("failed to reload asset 2: %s", err.Error())
+		}
+
+		// check owner id is right
+		if userAssets[firstAssetIndex].OwnerID != firstAssetOwnerID {
+			t.Fatalf("asset 1 owner changed, expected: %s, got: %s", firstAssetOwnerID, userAssets[firstAssetIndex].OwnerID)
+		}
+		if userAssets[secondAssetIndex].OwnerID != secondAssetOwnerID {
+			t.Fatalf("asset 2 owner changed, expected: %s, got: %s", secondAssetOwnerID, userAssets[secondAssetIndex].OwnerID)
+		}
+		// check on chain status is right
+		if userAssets[firstAssetIndex].OnChainStatus != string(db.UNSTAKABLE) {
+			t.Fatalf("asset 1 wrong on chain status, expected: %s, got: %s", string(db.UNSTAKABLE), userAssets[firstAssetIndex].OnChainStatus)
+		}
+		if userAssets[secondAssetIndex].OnChainStatus != string(db.UNSTAKABLE) {
+			t.Fatalf("asset 2 wrong on chain status, expected: %s, got: %s", string(db.UNSTAKABLE), userAssets[secondAssetIndex].OnChainStatus)
+		}
+
+	})
+	t.Run("UpdateOwners unstakable to stakable", func(t *testing.T) {
+		unstakableToStakable := map[int]*payments.NFTOwnerStatus{}
+
+		firstAssetIndex := 50
+		secondAssetIndex := 51
+		firstAssetOwner := common.HexToAddress(users[firstAssetIndex].PublicAddress.String)
+		firstAssetOwnerID := users[firstAssetIndex].ID
+		secondAssetOwner := common.HexToAddress(users[secondAssetIndex].PublicAddress.String)
+		secondAssetOwnerID := users[secondAssetIndex].ID
+
+		unstakableToStakable[firstAssetIndex] = &payments.NFTOwnerStatus{
+			Collection:    common.HexToAddress(collection.MintContract.String),
+			Owner:         firstAssetOwner,
+			OnChainStatus: db.STAKABLE,
+		}
+		unstakableToStakable[secondAssetIndex] = &payments.NFTOwnerStatus{
+			Collection:    common.HexToAddress(collection.MintContract.String),
+			Owner:         secondAssetOwner,
+			OnChainStatus: db.STAKABLE,
+		}
+
+		success, fail, err := payments.UpdateOwners(unstakableToStakable, collection)
+		if err != nil {
+			t.Fatalf("failed to update owners: %s", err.Error())
+		}
+
+		if fail > 0 {
+			t.Fatalf("unstakableToStakable UpdateOwners failed wrong, expected: %d, got: %d", 0, fail)
+		}
+
+		if success != 2 {
+			t.Fatalf("unstakableToStakable UpdateOwners success wrong, expected: %d, got: %d", 2, success)
+		}
+
+		// get items and check status
+		err = userAssets[firstAssetIndex].Reload(passdb.StdConn)
+		if err != nil {
+			t.Fatalf("failed to reload asset 1: %s", err.Error())
+		}
+		err = userAssets[secondAssetIndex].Reload(passdb.StdConn)
+		if err != nil {
+			t.Fatalf("failed to reload asset 2: %s", err.Error())
+		}
+
+		// check owner id is right
+		if userAssets[firstAssetIndex].OwnerID != firstAssetOwnerID {
+			t.Fatalf("asset 1 owner changed, expected: %s, got: %s", firstAssetOwnerID, userAssets[firstAssetIndex].OwnerID)
+		}
+		if userAssets[secondAssetIndex].OwnerID != secondAssetOwnerID {
+			t.Fatalf("asset 2 owner changed, expected: %s, got: %s", secondAssetOwnerID, userAssets[secondAssetIndex].OwnerID)
+		}
+		// check on chain status is right
+		if userAssets[firstAssetIndex].OnChainStatus != string(db.STAKABLE) {
+			t.Fatalf("asset 1 wrong on chain status, expected: %s, got: %s", string(db.STAKABLE), userAssets[firstAssetIndex].OnChainStatus)
+		}
+		if userAssets[secondAssetIndex].OnChainStatus != string(db.STAKABLE) {
+			t.Fatalf("asset 2 wrong on chain status, expected: %s, got: %s", string(db.STAKABLE), userAssets[secondAssetIndex].OnChainStatus)
+		}
+	})
+	t.Run("UpdateOwners on chain transfer", func(t *testing.T) {
+		onChainTransfer := map[int]*payments.NFTOwnerStatus{}
+
+		assetIndex := 27
+		assetOldOwnerID := userAssets[assetIndex].OwnerID
+		assetNewOwnerID := users[80].ID
+		assetNewOwnerPublicAddress := users[80].PublicAddress
+
+		onChainTransfer[assetIndex] = &payments.NFTOwnerStatus{
+			Collection:    common.HexToAddress(collection.MintContract.String),
+			Owner:         common.HexToAddress(assetNewOwnerPublicAddress.String),
+			OnChainStatus: db.STAKABLE,
+		}
+
+		success, fail, err := payments.UpdateOwners(onChainTransfer, collection)
+		if err != nil {
+			t.Fatalf("failed to update owners: %s", err.Error())
+		}
+
+		if fail > 0 {
+			t.Fatalf("unstakableToStakable UpdateOwners failed wrong, expected: %d, got: %d", 0, fail)
+		}
+
+		if success != 1 {
+			t.Fatalf("unstakableToStakable UpdateOwners success wrong, expected: %d, got: %d", 1, success)
+		}
+
+		// get items and check status
+		err = userAssets[assetIndex].Reload(passdb.StdConn)
+		if err != nil {
+			t.Fatalf("failed to reload asset 1: %s", err.Error())
+		}
+
+		// check owner id is right
+		if userAssets[assetIndex].OwnerID != assetNewOwnerID {
+			t.Fatalf("asset 1 owner changed, expected: %s, got: %s, old: %s", assetNewOwnerID, userAssets[assetIndex].OwnerID, assetOldOwnerID)
+		}
+
+		// check on chain status is right
+		if userAssets[assetIndex].OnChainStatus != string(db.STAKABLE) {
+			t.Fatalf("asset 1 wrong on chain status, expected: %s, got: %s", string(db.STAKABLE), userAssets[assetIndex].OnChainStatus)
+		}
+	})
+	t.Run("OwnerRecordToOwnerStatus", func(t *testing.T) {
+		from1 :=  common.HexToAddress(strconv.FormatUint(rand.Uint64(), 16)).Hex()
+		from2 :=  common.HexToAddress(strconv.FormatUint(rand.Uint64(), 16)).Hex()
+
+		records := []*payments.NFTOwnerRecord{
+			{
+				FromAddress:from1,
+				ToAddress:   common.HexToAddress(collection.StakeContract.String).Hex(),
+				TokenID:     0,
+			},
+			{
+				FromAddress: from2,
+				ToAddress:   common.HexToAddress(collection.StakingContractOld.String).Hex(),
+				TokenID:     1,
+			},
+		}
+
+		results := payments.OwnerRecordToOwnerStatus(records, collection)
+		// check owner hasnt changed
+		if results[0].Owner.Hex() != from1 {
+			t.Fatalf("owner changed, expected: %s, got %s", from1, results[0].Owner.Hex())
+		}
+		if results[1].Owner.Hex() != from2 {
+			t.Fatalf("owner changed, expected: %s, got %s", from2, results[1].Owner.Hex())
+		}
+
+		if results[0].OnChainStatus != db.UNSTAKABLE {
+			t.Fatalf("wrong on chain status returned for token: %d, expected: %s, got %s", 0, db.UNSTAKABLE, results[0].OnChainStatus)
+		}
+		if results[1].OnChainStatus != db.UNSTAKABLEOLD {
+			t.Fatalf("wrong on chain status returnedfor token: %d, expected: %s, got %s", 1, db.UNSTAKABLEOLD, results[1].OnChainStatus)
+		}
 	})
 }

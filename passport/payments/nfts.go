@@ -13,15 +13,13 @@ import (
 	"xsyn-services/passport/passlog"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/gofrs/uuid"
 )
 
 type NFTOwnerStatus struct {
-	Collection common.Address
-	Owner      common.Address
+	Collection    common.Address
+	Owner         common.Address
 	OnChainStatus db.OnChainStatus
 }
-
 
 func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collection) (int, int, error) {
 	l := passlog.L.With().Str("svc", "avant_nft_ownership_update").Logger()
@@ -42,12 +40,12 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 		userAsset, err := boiler.UserAssets(
 			boiler.UserAssetWhere.CollectionID.EQ(collection.ID),
 			boiler.UserAssetWhere.TokenID.EQ(int64(tokenID)),
-			).One(passdb.StdConn)
+		).One(passdb.StdConn)
 		if err != nil && errors.Is(err, sql.ErrNoRows) {
 			l.Debug().Str("collection_addr", collection.MintContract.String).Int("external_token_id", tokenID).Msg("item not found")
 			skipped++
 			continue
-		} else if  err != nil {
+		} else if err != nil {
 			return 0, 0, fmt.Errorf("get purchased item: %w", err)
 		}
 
@@ -69,25 +67,29 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 		l.Debug().
 			Str("off_chain_user", offChainAddr.Hex()).
 			Str("on_chain_user", onChainAddr.Hex()).
-			Bool("matches", offChainAddr.Hex() != onChainAddr.Hex()).
+			Bool("matches", offChainAddr.Hex() == onChainAddr.Hex()).
 			Msg("check if nft owners match")
+
+		updatedBool := false
 
 		// if the owner is different, transfer asset to new owner
 		if offChainAddr.Hex() != onChainAddr.Hex() {
-			itemID := uuid.Must(uuid.FromString(userAsset.ID))
-			newOffChainOwnerID := uuid.FromStringOrNil(onChainOwner.ID)
-			l.Debug().Str("new_owner", newOffChainOwnerID.String()).Str("item_id", itemID.String()).Msg("setting new nft owner")
+			l.Debug().
+				Str("new_owner", onChainOwner.ID).
+				Str("old_owner", offChainOwner.ID).
+				Str("item_id", userAsset.ID).
+				Msg("setting new nft owner")
 
-			userAsset, _, err = asset.TransferAsset(userAsset.Hash, userAsset.OwnerID, onChainOwner.ID, "",null.String{})
+			userAsset, _, err = asset.TransferAsset(userAsset.Hash, offChainOwner.ID, onChainOwner.ID, "", null.String{})
 			if err != nil {
 				passlog.L.Error().Err(err).
-					Str("userAsset.Hash",userAsset.Hash).
-					Str("userAsset.OwnerID",userAsset.OwnerID).
-					Str("onChainOwner.ID",onChainOwner.ID).
+					Str("userAsset.Hash", userAsset.Hash).
+					Str("offChainOwner.ID", offChainOwner.ID).
+					Str("onChainOwner.ID", onChainOwner.ID).
 					Msg("failed to transfer asset - UpdateOwners")
 				return 0, 0, fmt.Errorf("set new nft owner: %w", err)
 			}
-			updated++
+			updatedBool = true
 		}
 
 		if string(nftStatus.OnChainStatus) != userAsset.OnChainStatus {
@@ -96,6 +98,9 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 			if err != nil {
 				return 0, 0, err
 			}
+			updatedBool = true
+		}
+		if updatedBool {
 			updated++
 		}
 	}

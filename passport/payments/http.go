@@ -99,6 +99,12 @@ func getNFTOwnerRecords(path Path, collection *boiler.Collection) (map[int]*NFTO
 		return nil, err
 	}
 
+	result := OwnerRecordToOwnerStatus(records, collection)
+
+	return result, nil
+}
+
+func OwnerRecordToOwnerStatus(records []*NFTOwnerRecord, collection *boiler.Collection) map[int]*NFTOwnerStatus {
 	result := map[int]*NFTOwnerStatus{}
 	for _, record := range records {
 		// Current owner owns it; or
@@ -110,9 +116,9 @@ func getNFTOwnerRecords(path Path, collection *boiler.Collection) (map[int]*NFTO
 
 		onChainStatus := db.STAKABLE
 		// Current owner IS staking contract
-		 if common.HexToAddress(record.ToAddress).Hex() == common.HexToAddress(collection.StakeContract.String).Hex() {
-			 onChainStatus = db.UNSTAKABLE
-		 }
+		if common.HexToAddress(record.ToAddress).Hex() == common.HexToAddress(collection.StakeContract.String).Hex() {
+			onChainStatus = db.UNSTAKABLE
+		}
 		// Current owner IS staking contract
 		if common.HexToAddress(record.ToAddress).Hex() == common.HexToAddress(collection.StakingContractOld.String).Hex() {
 			onChainStatus = db.UNSTAKABLEOLD
@@ -123,10 +129,8 @@ func getNFTOwnerRecords(path Path, collection *boiler.Collection) (map[int]*NFTO
 			Owner:         owner,
 			OnChainStatus: onChainStatus,
 		}
-
 	}
-
-	return result, nil
+	return result
 }
 
 func getSUPTransferRecords(path Path, latestBlock int, testnet bool) ([]*SUPTransferRecord, error) {
