@@ -78,7 +78,6 @@ func NewUserController(log *zerolog.Logger, api *API, googleConfig *auth.GoogleC
 	api.SecureCommand(HubKeyUserCreate, userHub.CreateHandler)
 	api.SecureCommand(HubKeyUserLock, userHub.LockHandler)
 
-
 	//api.SecureCommand(HubKeyUserTransactionsSubscribe, userHub.UserTransactionsSubscribeHandler)
 	//api.SecureCommand(HubKeyUserLatestTransactionSubscribe, userHub.UserLatestTransactionsSubscribeHandler)
 	api.SecureCommand(HubKeyUser, userHub.UpdatedSubscribeHandler)
@@ -1580,7 +1579,8 @@ func (uc *UserController) ExchangeRatesHandler(ctx context.Context, user *types.
 }
 
 const HubKeyUserTransactionsSubscribe = "USER:SUPS:TRANSACTIONS:SUBSCRIBE"
-const HubKeyUserLatestTransactionSubscribe = "USER:SUPS:LATEST_TRANSACTION:SUBSCRIBE"
+
+//const HubKeyUserLatestTransactionSubscribe = "USER:SUPS:LATEST_TRANSACTION:SUBSCRIBE"
 
 //func (uc *UserController) UserTransactionsSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 //	req := &UpdatedSubscribeRequest{}

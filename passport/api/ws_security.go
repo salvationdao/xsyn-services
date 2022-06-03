@@ -135,18 +135,22 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			var token string
+			var ok bool
 
 			cookie, err := r.Cookie("xsyn-token")
 			if err != nil {
-				fmt.Fprintf(w, "cookie not found: %v", err)
 				token = r.URL.Query().Get("token")
 				if token == "" {
-					return
+					token, ok = r.Context().Value("token").(string)
+					if !ok || token == "" {
+						http.Error(w, "Unauthorized", http.StatusUnauthorized)
+						return
+					}
 				}
 			} else {
 				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-					fmt.Fprintf(w, "decryption error: %v", err)
 					if required {
+						http.Error(w, "Unauthorized: cookie error", http.StatusUnauthorized)
 						return
 					}
 					next.ServeHTTP(w, r)
@@ -155,8 +159,8 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 			}
 			resp, err := api.TokenLogin(token, "")
 			if err != nil {
-				fmt.Fprintf(w, "authentication error: %v", err)
 				if required {
+					http.Error(w, "Unauthorized: token login failed", http.StatusUnauthorized)
 					return
 				}
 				next.ServeHTTP(w, r)
@@ -166,7 +170,7 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 			if userIDMustMatch {
 				userID := chi.URLParam(r, "userId")
 				if userID == "" || userID != resp.User.ID {
-					fmt.Fprintf(w, "authentication location error: %v", err)
+					http.Error(w, "user id not match", http.StatusUnauthorized)
 					return
 				}
 			}
