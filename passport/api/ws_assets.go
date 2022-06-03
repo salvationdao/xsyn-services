@@ -796,7 +796,7 @@ func (ac *AssetController) Asset1155TransferToSupremacyHandler(ctx context.Conte
 		return terror.Error(err, "Failed to log transfer")
 	}
 
-	err = supremacy_rpcclient.Asset1155TransferToSupremacy(xsynTypes.UserAsset1155FromBoiler(asset), transferLog.ID, req.Payload.Amount)
+	err = supremacy_rpcclient.KeycardsTransferToSupremacy(xsynTypes.UserAsset1155FromBoiler(asset), transferLog.ID, req.Payload.Amount)
 	if err != nil {
 		reverseAsset1155ServiceTransaction(
 			ac.API.userCacheMap,
@@ -960,7 +960,7 @@ func (ac *AssetController) Asset1155TransferFromSupremacyHandler(ctx context.Con
 		return terror.Error(err, "Failed to log transfer")
 	}
 
-	_, err = supremacy_rpcclient.Asset1155TransferFromSupremacy(xsynTypes.UserAsset1155FromBoiler(asset), transferLog.ID, req.Payload.Amount)
+	_, err = supremacy_rpcclient.KeycardsTransferFromSupremacy(xsynTypes.UserAsset1155FromBoiler(asset), transferLog.ID, req.Payload.Amount)
 	if err != nil {
 		reverseAsset1155ServiceTransaction(
 			ac.API.userCacheMap,

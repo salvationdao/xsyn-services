@@ -43,7 +43,6 @@ func AdminRoutes(ucm *Transactor) chi.Router {
 
 	r.Post("/purchased_items/register/{template_id}/{owner_id}", WithError(WithAdmin(PurchasedItemRegisterHandler)))
 	r.Post("/purchased_items/set_owner/{purchased_item_id}/{owner_id}", WithError(WithAdmin(PurchasedItemSetOwner)))
-	//r.Post("/purchased_items/set_owner/{purchased_item_id}/{owner_id}", WithError(WithAdmin(PurchasedItemSetOwner)))  //TODO: Vinnie fix ASSET TRANSFER
 	r.Post("/purchased_items/register/1155/{public_address}/{collection_slug}/{token_id}/{amount}", WithError(WithAdmin(Register1155Asset)))
 
 	r.Post("/transactions/create", WithError(WithAdmin(CreateTransaction(ucm))))

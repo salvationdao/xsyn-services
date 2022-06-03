@@ -173,7 +173,7 @@ func main() {
 					// wallet/contract addresses
 					&cli.StringFlag{Name: "operator_addr", Value: "0xc01c2f6DD7cCd2B9F8DB9aa1Da9933edaBc5079E", EnvVars: []string{envPrefix + "_OPERATOR_WALLET_ADDR"}, Usage: "Wallet address for administration"},
 					&cli.StringFlag{Name: "signer_private_key", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing (usually operator)"},
-					&cli.StringFlag{Name: "achievement_signer_private_key", Value: "0x9878e47371dc28d434b8e5a2e36a5ac2fad84af4ebcd8ea34470b2417590e087", EnvVars: []string{envPrefix + "ACHIEVEMENT_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing achievement contract (usually operator)"},
+					&cli.StringFlag{Name: "achievement_signer_private_key", Value: "0x9878e47371dc28d434b8e5a2e36a5ac2fad84af4ebcd8ea34470b2417590e087", EnvVars: []string{envPrefix + "_ACHIEVEMENT_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing achievement contract (usually operator)"},
 
 					// chain id
 					&cli.Int64Flag{Name: "bsc_chain_id", Value: 97, EnvVars: []string{envPrefix + "_BSC_CHAIN_ID"}, Usage: "BSC Chain ID"},
@@ -513,8 +513,11 @@ func SyncDeposits(ucm *api.Transactor, isTestnet bool) error {
 
 func Sync1155Deposits(collectionSlug string, isTestnet bool) error {
 	collection, err := db.CollectionBySlug(collectionSlug)
-	if err != nil || !collection.MintContract.Valid {
+	if err != nil {
 		return err
+	}
+	if !collection.MintContract.Valid {
+		return fmt.Errorf("failed to get mint contract")
 	}
 
 	depositRecords, err := payments.Get1155Deposits(isTestnet, collection.MintContract.String)
@@ -577,9 +580,13 @@ func SyncNFTs() error {
 
 func Sync1155Withdraw(collectionSlug string, isTestnet, enable1155Rollback bool) error {
 	collection, err := db.CollectionBySlug(collectionSlug)
-	if err != nil || !collection.MintContract.Valid {
+	if err != nil {
 		return err
 	}
+	if !collection.MintContract.Valid {
+		return fmt.Errorf("failed to get mint contract")
+	}
+
 	// Update with TX hash first
 	records, err := payments.Get1155Withdraws(isTestnet, collection.MintContract.String)
 	if err != nil {
@@ -654,22 +661,22 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 			}
 		}
 	}(ucm, isTestnet)
-	go func(ucm *api.Transactor, isTestnet bool) {
+	go func(isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSync1155, false) {
 			err := Sync1155Withdraw("supremacy-achievements", isTestnet, enableWithdrawRollback)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync 1155")
 			}
 		}
-	}(ucm, isTestnet)
-	go func(ucm *api.Transactor, isTestnet bool) {
+	}(isTestnet)
+	go func(isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSync1155, false) {
 			err := Sync1155Deposits("supremacy-achievements", isTestnet)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync 1155")
 			}
 		}
-	}(ucm, isTestnet)
+	}(isTestnet)
 	return nil
 }
 func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {

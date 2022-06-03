@@ -72,8 +72,8 @@ type Asset1155LockToSupremacyReq struct {
 	TransferEventID int64  `json:"transfer_event_id"`
 }
 
-// Asset1155TransferToSupremacy request an un-lock of an asset
-func Asset1155TransferToSupremacy(asset *types.User1155Asset, transferEventID int64, amount int) error {
+// KeycardsTransferToSupremacy request an un-lock of an asset
+func KeycardsTransferToSupremacy(asset *types.User1155Asset, transferEventID int64, amount int) error {
 	req := &Asset1155LockToSupremacyReq{
 		OwnerID:         asset.OwnerID,
 		Amount:          amount,
@@ -81,8 +81,7 @@ func Asset1155TransferToSupremacy(asset *types.User1155Asset, transferEventID in
 		TransferEventID: transferEventID,
 	}
 
-	resp := &GenesisOrLimitedMechResp{}
-	err := SupremacyClient.Call("S.KeycardTransferToSupremacyHandler", req, resp)
+	err := SupremacyClient.Call("S.KeycardTransferToSupremacyHandler", req, &Asset1155FromSupremacyResp{})
 	if err != nil {
 		passlog.L.Error().Err(err).Interface("asset", asset).Msg("failed to unlock asset on supremacy")
 		return terror.Error(err, "communication to supremacy has failed")
@@ -101,8 +100,8 @@ type Asset1155FromSupremacyResp struct {
 	Count        int
 }
 
-// Asset1155TransferFromSupremacy request an un-lock of an asset
-func Asset1155TransferFromSupremacy(asset *types.User1155Asset, transferEventID int64, amount int) (*Asset1155FromSupremacyResp, error) {
+// KeycardsTransferFromSupremacy request an un-lock of an asset
+func KeycardsTransferFromSupremacy(asset *types.User1155Asset, transferEventID int64, amount int) (*Asset1155FromSupremacyResp, error) {
 	req := &Asset1155LockToSupremacyReq{
 		OwnerID:         asset.OwnerID,
 		Amount:          amount,

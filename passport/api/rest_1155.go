@@ -57,14 +57,14 @@ func (api *API) Withdraw1155(w http.ResponseWriter, r *http.Request) (int, error
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("user: %s, attempting to withdraw while account is locked.", user.ID), "Withdrawals is locked, contact support to unlock.")
 	}
 
-	//userAsset, err := boiler.UserAssets1155S(
-	//	boiler.UserAssets1155Where.OwnerID.EQ(user.ID),
-	//	boiler.UserAssets1155Where.ExternalTokenID.EQ(tokenInt),
-	//	boiler.UserAssets1155Where.ServiceID.IsNull(),
-	//).One(passdb.StdConn)
-	//if err != nil {
-	//	return http.StatusBadRequest, terror.Error(err, "Failed to get user asset info")
-	//}
+	userAsset, err := boiler.UserAssets1155S(
+		boiler.UserAssets1155Where.OwnerID.EQ(user.ID),
+		boiler.UserAssets1155Where.ExternalTokenID.EQ(tokenInt),
+		boiler.UserAssets1155Where.ServiceID.IsNull(),
+	).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to get user asset info")
+	}
 
 	nonceInt, err := strconv.Atoi(nonce)
 	if err != nil {
@@ -76,11 +76,11 @@ func (api *API) Withdraw1155(w http.ResponseWriter, r *http.Request) (int, error
 		return http.StatusBadRequest, err
 	}
 
-	//total := userAsset.Count - amountInt
+	total := userAsset.Count - amountInt
 
-	//if total < 0 {
-	//	return http.StatusBadRequest, terror.Error(fmt.Errorf("amount total after withdraw is below 0"), "Amount total after withdraw is less than 0")
-	//}
+	if total < 0 {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("amount total after withdraw is below 0"), "Amount total after withdraw is less than 0")
+	}
 
 	signer := bridge.NewSigner(api.BridgeParams.AchievementsSignerKey)
 	_, messageSig, err := signer.GenerateSignature(toAddress, big.NewInt(int64(tokenInt)), big.NewInt(int64(nonceInt)))
