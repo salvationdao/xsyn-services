@@ -26,7 +26,7 @@ type AssetLockToServiceReq struct {
 func (s *S) AssetLockToServiceHandler(req AssetLockToServiceReq, resp *AssetLockToServiceResp) error {
 	serviceID, err := IsServerClient(req.ApiKey)
 	if err != nil {
-		passlog.L.Error().Err(err).Msg("failed to service lock asst")
+		passlog.L.Error().Err(err).Msg("failed to get service id - AssetLockToServiceHandler")
 		return err
 	}
 
@@ -80,7 +80,7 @@ type AssetUnlockToServiceReq struct {
 func (s *S) AssetUnlockFromServiceHandler(req AssetUnlockToServiceReq, resp *AssetUnlockToServiceResp) error {
 	serviceID, err := IsServerClient(req.ApiKey)
 	if err != nil {
-		passlog.L.Error().Err(err).Msg("failed to service unlock asset")
+		passlog.L.Error().Err(err).Msg("failed to get service id - AssetUnlockFromServiceHandler")
 		return err
 	}
 

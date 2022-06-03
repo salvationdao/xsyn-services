@@ -128,13 +128,13 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (decimal.Decimal, deci
 	blast := func(from *boiler.User, to *boiler.User, success bool) {
 		if !nt.From.IsSystemUser() {
 			if success {
-				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", from.ID), HubKeyUserLatestTransactionSubscribe, []*types.Transaction{tx})
+				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", from.ID), HubKeyUserTransactionsSubscribe, []*types.Transaction{tx})
 			}
 			ws.PublishMessage(fmt.Sprintf("/user/%s/sups", from.ID), HubKeyUserSupsSubscribe, from.Sups.String())
 		}
 		if !nt.To.IsSystemUser() {
 			if success {
-				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", to.ID), HubKeyUserLatestTransactionSubscribe, []*types.Transaction{tx})
+				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", to.ID), HubKeyUserTransactionsSubscribe, []*types.Transaction{tx})
 			}
 			ws.PublishMessage(fmt.Sprintf("/user/%s/sups", to.ID), HubKeyUserSupsSubscribe, to.Sups.String())
 		}

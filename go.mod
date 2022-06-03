@@ -13,7 +13,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/cors v1.2.0
 	github.com/gofrs/uuid v4.2.0+incompatible
-	github.com/golang-migrate/migrate/v4 v4.15.1
+	github.com/golang-migrate/migrate/v4 v4.15.2
 	github.com/h2non/filetype v1.1.3
 	github.com/jackc/pgconn v1.10.1
 	github.com/jackc/pgx/v4 v4.14.1
@@ -29,7 +29,7 @@ require (
 	github.com/ninja-software/terror/v2 v2.0.7
 	github.com/ninja-syndicate/hub v1.9.2
 	github.com/ninja-syndicate/supremacy-bridge v0.1.43
-	github.com/ninja-syndicate/ws v0.10.1
+	github.com/ninja-syndicate/ws v0.10.2
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/prometheus/client_golang v1.11.0
@@ -40,7 +40,7 @@ require (
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/victorspringer/http-cache v0.0.0-20220131145941-ef3624e6666f
 	github.com/volatiletech/null/v8 v8.1.2
-	github.com/volatiletech/sqlboiler/v4 v4.8.0
+	github.com/volatiletech/sqlboiler/v4 v4.8.6
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.0.0-20220210151621-f4118a5b28e2
 	google.golang.org/api v0.63.0
@@ -49,10 +49,11 @@ require (
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
+	github.com/bxcodec/faker/v3 v3.8.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
-	github.com/containerd/continuity v0.1.0 // indirect
+	github.com/containerd/continuity v0.2.2 // indirect
 	github.com/docker/cli v20.10.11+incompatible // indirect
-	github.com/docker/docker v20.10.9+incompatible // indirect
+	github.com/docker/docker v20.10.13+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
@@ -67,7 +68,7 @@ require (
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
-	github.com/opencontainers/runc v1.0.2 // indirect
+	github.com/opencontainers/runc v1.1.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/valyala/fastjson v1.6.3 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
@@ -141,8 +142,8 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pquerna/cachecontrol v0.1.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
-	github.com/prometheus/common v0.26.0 // indirect
-	github.com/prometheus/procfs v0.6.0 // indirect
+	github.com/prometheus/common v0.30.0 // indirect
+	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rjeczalik/notify v0.9.2 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
@@ -167,7 +168,7 @@ require (
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect
+	google.golang.org/genproto v0.0.0-20220314164441-57ef72a4c106 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/ini.v1 v1.63.2 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
@@ -180,7 +181,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1
-	google.golang.org/grpc v1.43.0 // indirect
+	google.golang.org/grpc v1.45.0 // indirect
 )
 
 require (
@@ -196,7 +197,7 @@ require (
 	github.com/volatiletech/strmangle v0.0.1
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
-	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
+	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/sys v0.0.0-20220405210540-1e041c57c461 // indirect
 	gopkg.in/DataDog/dd-trace-go.v1 v1.37.1
 )

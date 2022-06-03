@@ -18,6 +18,7 @@ type OnChainStatus string
 const MINTABLE OnChainStatus = "MINTABLE"
 const STAKABLE OnChainStatus = "STAKABLE"
 const UNSTAKABLE OnChainStatus = "UNSTAKABLE"
+const UNSTAKABLEOLD OnChainStatus = "UNSTAKABLE_OLD"
 
 func PurchasedItemIsMintedDEPRECATE(collectionAddr common.Address, tokenID int) (bool, error) {
 	item, err := PurchasedItemByMintContractAndTokenIDDEPRECATE(collectionAddr, tokenID)

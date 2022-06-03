@@ -4,12 +4,14 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"errors"
+	"github.com/volatiletech/null/v8"
 	"net/http"
 	"net/url"
 	"os/signal"
 	"runtime"
 	"strings"
 	"time"
+	"xsyn-services/boiler"
 	"xsyn-services/passport/api"
 	"xsyn-services/passport/comms"
 	"xsyn-services/passport/db"
@@ -192,6 +194,7 @@ func main() {
 					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
 					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 					&cli.StringFlag{Name: "moralis_key", Value: "91Xp2ke5eOVMavAsqdOoiXN4lg0n0AieW5kTJoupdyQBhL2k9XvMQtFPSA4opX2s", EnvVars: []string{envPrefix + "_MORALIS_KEY"}, Usage: "Key to connect to moralis API"},
+					&cli.StringFlag{Name: "bot_secret_key", Value: `HsZ8DGnNshjkvbvdmJvjLY0CEaoAyn0SnzHjLaCESL91YwsRELsaGyvJsteUf6kI`, EnvVars: []string{envPrefix + "_BOT_SECRET_KEY"}, Usage: "Key for verifying requests from our own bots"},
 				},
 
 				Usage: "run server",
@@ -544,39 +547,31 @@ func SyncWithdraw(ucm *api.Transactor, isTestnet, enableWithdrawRollback bool) e
 	return nil
 
 }
-func SyncNFTs(isTestnet bool) error {
-	limitedReleaseCollection, err := db.LimitedReleaseCollection()
+func SyncNFTs() error {
+	allCollections, err := boiler.Collections(boiler.CollectionWhere.MintContract.IsNotNull(),
+		boiler.CollectionWhere.ContractType.EQ(null.StringFrom("ERC-721"))).All(passdb.StdConn)
 	if err != nil {
 		return fmt.Errorf("failed to get limited release collection: %w", err)
 	}
-	nftOwnerStatusesLimited, err := payments.GetNFTOwnerRecords(isTestnet, limitedReleaseCollection.Slug)
-	if err != nil {
-		return fmt.Errorf("get nft owners: %w", err)
+
+	for _, collection := range allCollections {
+		collectionNftOwnerStatuses, err := payments.GetNFTOwnerRecords(collection)
+		if err != nil {
+			return fmt.Errorf("get nft owners: %w", err)
+		}
+
+		ownerUpdated, ownerSkipped, err := payments.UpdateOwners(collectionNftOwnerStatuses, collection)
+		if err != nil {
+			return fmt.Errorf("update nft owners: %w", err)
+		}
+
+		passlog.L.Info().
+			Str("collection", collection.Slug).
+			Int("updated", ownerUpdated).
+			Int("skipped", ownerSkipped).
+			Msg("synced nft ownerships")
 	}
 
-	genesisCollection, err := db.GenesisCollection()
-	if err != nil {
-		return fmt.Errorf("failed to get genesis collection: %w", err)
-	}
-	nftOwnerStatusesGenesis, err := payments.GetNFTOwnerRecords(isTestnet, genesisCollection.Slug)
-	if err != nil {
-		return fmt.Errorf("get nft owners: %w", err)
-	}
-
-	ownerUpdatedLimited, ownerSkippedLimited, err := payments.UpdateOwners(nftOwnerStatusesLimited, isTestnet, limitedReleaseCollection.Slug)
-	if err != nil {
-		return fmt.Errorf("update nft owners: %w", err)
-	}
-
-	ownerUpdatedGenesis, ownerSkippedGenesis, err := payments.UpdateOwners(nftOwnerStatusesGenesis, isTestnet, genesisCollection.Slug)
-	if err != nil {
-		return fmt.Errorf("update nft owners: %w", err)
-	}
-
-	totalUpdated := ownerUpdatedGenesis + ownerUpdatedLimited
-	totalSkipped := ownerSkippedGenesis + ownerSkippedLimited
-
-	passlog.L.Info().Int("updated", totalUpdated).Int("skipped", totalSkipped).Msg("synced nft ownerships")
 	return nil
 }
 
@@ -643,14 +638,14 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 			}
 		}
 	}(ucm, log, isTestnet)
-	go func(isTestnet bool) {
+	go func() {
 		if db.GetBoolWithDefault(db.KeyEnableSyncNFTOwners, false) {
-			err := SyncNFTs(isTestnet)
+			err := SyncNFTs()
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync nfts")
 			}
 		}
-	}(isTestnet)
+	}()
 	go func(ucm *api.Transactor, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncWithdraw, false) {
 			err := SyncWithdraw(ucm, isTestnet, enableWithdrawRollback)
@@ -832,6 +827,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 			GameserverWebhookToken: gameserverWebhookToken,
 			GameserverHostUrl:      gameserverHostUrl,
 		},
+		BotSecret: ctxCLI.String("bot_secret_key"),
 	}
 
 	sqlConnect, err := sqlConnect(

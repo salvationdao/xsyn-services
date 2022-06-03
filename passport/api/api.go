@@ -59,6 +59,7 @@ type API struct {
 	GameserverHostUrl   string
 	Commander           *ws.Commander
 	BridgeParams        *types.BridgeParams
+	botSecretKey        string
 
 	// online user cache
 	users chan func(userCacheList Transactor)
@@ -125,8 +126,9 @@ func NewAPI(
 		walletOnlyConnect:    config.OnlyWalletConnect,
 		storeItemExternalUrl: externalUrl,
 
-		ClientMap: &sync.Map{},
-		JWTKey:    jwtKey,
+		ClientMap:    &sync.Map{},
+		JWTKey:       jwtKey,
+		botSecretKey: config.BotSecret,
 	}
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
@@ -225,6 +227,9 @@ func NewAPI(
 				r.Post("/external", api.ExternalLoginHandler)
 				r.Post("/token", api.TokenLoginHandler)
 				r.Post("/wallet", api.WalletLoginHandler)
+
+				r.Get("/bot_list", api.BotListHandler)
+				r.Post("/bot_token", api.BotTokenLoginHandler)
 			})
 		})
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
@@ -258,11 +263,6 @@ func NewAPI(
 	})
 
 	api.SupremacyController = sc
-
-	//api.Hub.Events.AddEventHandler(hub.EventOnline, api.ClientOnline)
-	//api.Hub.Events.AddEventHandler(auth.EventLogin, api.ClientAuth, func(err error) {})
-	//api.Hub.Events.AddEventHandler(auth.EventLogout, api.ClientLogout, func(err error) {})
-	//api.Hub.Events.AddEventHandler(hub.EventOffline, api.ClientOffline, func(err error) {})
 
 	api.State, err = db.StateGet(isTestnetBlockchain)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {

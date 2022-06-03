@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/asset"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/nft1155"
 	"xsyn-services/passport/passdb"
@@ -41,6 +42,7 @@ func AdminRoutes(ucm *Transactor) chi.Router {
 	r.Get("/store_items", WithError(WithAdmin(ListStoreItems)))
 
 	r.Post("/purchased_items/register/{template_id}/{owner_id}", WithError(WithAdmin(PurchasedItemRegisterHandler)))
+	r.Post("/purchased_items/set_owner/{purchased_item_id}/{owner_id}", WithError(WithAdmin(PurchasedItemSetOwner)))
 	//r.Post("/purchased_items/set_owner/{purchased_item_id}/{owner_id}", WithError(WithAdmin(PurchasedItemSetOwner)))  //TODO: Vinnie fix ASSET TRANSFER
 	r.Post("/purchased_items/register/1155/{public_address}/{collection_slug}/{token_id}/{amount}", WithError(WithAdmin(Register1155Asset)))
 
@@ -407,6 +409,27 @@ func PurchasedItemRegisterHandler(w http.ResponseWriter, r *http.Request) (int, 
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not encode JSON")
 	}
+	return http.StatusOK, nil
+}
+
+func PurchasedItemSetOwner(w http.ResponseWriter, r *http.Request) (int, error) {
+	ownerIDStr := chi.URLParam(r, "owner_id")
+	ownerID, err := uuid.FromString(ownerIDStr)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Bad owner ID")
+	}
+
+	assetIDstr := chi.URLParam(r, "purchased_item_id")
+	assetID, err := uuid.FromString(assetIDstr)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Bad asset ID")
+	}
+
+	_, err = asset.TransferAssetADMIN(assetID, ownerID)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to transfer asset.")
+	}
+
 	return http.StatusOK, nil
 }
 
