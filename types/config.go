@@ -19,6 +19,7 @@ type Config struct {
 	InsecureSkipVerifyCheck bool
 	AuthParams              *AuthParams
 	WebhookParams           *WebhookParams
+	BotSecret               string
 }
 
 type BridgeParams struct {
