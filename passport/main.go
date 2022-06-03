@@ -191,6 +191,7 @@ func main() {
 					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
 					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 					&cli.StringFlag{Name: "moralis_key", Value: "91Xp2ke5eOVMavAsqdOoiXN4lg0n0AieW5kTJoupdyQBhL2k9XvMQtFPSA4opX2s", EnvVars: []string{envPrefix + "_MORALIS_KEY"}, Usage: "Key to connect to moralis API"},
+					&cli.StringFlag{Name: "bot_secret_key", Value: `HsZ8DGnNshjkvbvdmJvjLY0CEaoAyn0SnzHjLaCESL91YwsRELsaGyvJsteUf6kI`, EnvVars: []string{envPrefix + "_BOT_SECRET_KEY"}, Usage: "Key for verifying requests from our own bots"},
 				},
 
 				Usage: "run server",
@@ -772,6 +773,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 			GameserverWebhookToken: gameserverWebhookToken,
 			GameserverHostUrl:      gameserverHostUrl,
 		},
+		BotSecret: ctxCLI.String("bot_secret_key"),
 	}
 
 	sqlConnect, err := sqlConnect(
