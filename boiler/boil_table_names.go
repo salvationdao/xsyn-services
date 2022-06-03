@@ -10,6 +10,7 @@ var TableNames = struct {
 	Blobs                          string
 	Collections                    string
 	DeathAddresses                 string
+	DepositAsset1155Transactions   string
 	DepositTransactions            string
 	Factions                       string
 	FailedTransactions             string
@@ -43,6 +44,7 @@ var TableNames = struct {
 	Blobs:                          "blobs",
 	Collections:                    "collections",
 	DeathAddresses:                 "death_addresses",
+	DepositAsset1155Transactions:   "deposit_asset1155_transactions",
 	DepositTransactions:            "deposit_transactions",
 	Factions:                       "factions",
 	FailedTransactions:             "failed_transactions",

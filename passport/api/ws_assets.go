@@ -52,6 +52,8 @@ func NewAssetController(log *zerolog.Logger, api *API) *AssetController {
 	api.SecureCommand(HubKeyAssetTransferFromSupremacy, assetHub.AssetTransferFromSupremacyHandler)
 	api.SecureCommand(HubKeyAsset1155TransferToSupremacy, assetHub.Asset1155TransferToSupremacyHandler)
 	api.SecureCommand(HubKeyAsset1155TransferFromSupremacy, assetHub.Asset1155TransferFromSupremacyHandler)
+	api.SecureCommand(HubKeyDeposit1155Asset, assetHub.DepositAsset1155Handler)
+	api.SecureCommand(HubKeyDepositAsset1155List, assetHub.DepositAsset1155ListHandler)
 	api.Command(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)
 	api.Command(HubKeyAsset1155Subscribe, assetHub.Asset1155UpdatedSubscribeHandler)
 
@@ -1067,6 +1069,110 @@ func (ac *AssetController) Asset1155TransferFromSupremacyHandler(ctx context.Con
 		},
 	})
 
+	return nil
+}
+
+type Asset115DepositRequest struct {
+	Payload struct {
+		TransactionHash string `json:"transaction_hash"`
+		Amount          int    `json:"amount"`
+		CollectionSlug  string `json:"collection_slug"`
+		TokenID         int    `json:"token_id"`
+	} `json:"payload"`
+}
+
+const HubKeyDeposit1155Asset = "ASSET:1155:DEPOSIT"
+
+func (ac *AssetController) DepositAsset1155Handler(ctx context.Context, user *xsynTypes.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue processing 11555 asset transaction, try again or contact support."
+
+	req := &Asset115DepositRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if req.Payload.TransactionHash == "" {
+		passlog.L.Error().Str("func", "DepositAsset1155Handler").Msg("deposit transaction hash was not provided")
+		return terror.Error(fmt.Errorf("transaction hash was not provided"), errMsg)
+	}
+
+	if req.Payload.Amount <= 0 {
+		passlog.L.Error().Str("func", "DepositAsset1155Handler").Msg("deposit transaction amount is lower than the minimum required amount")
+		return terror.Error(fmt.Errorf("deposit transaction amount is lower than the minimum required amount"), "Deposit transaction amount is lower than the minimum required amount.")
+	}
+
+	dtx := boiler.DepositAsset1155Transaction{
+		UserID:         user.ID,
+		TXHash:         req.Payload.TransactionHash,
+		Amount:         req.Payload.Amount,
+		CollectionSlug: req.Payload.CollectionSlug,
+		TokenID:        req.Payload.TokenID,
+	}
+	err = dtx.Insert(passdb.StdConn, boil.Infer())
+	if err != nil {
+		passlog.L.Error().Str("func", "DepositSupHandler").Msg("failed to create deposit transaction in db")
+		return terror.Error(err, errMsg)
+	}
+
+	reply(true)
+	return nil
+}
+
+type DepositAsset1155ListResponse struct {
+	Total        int                       `json:"total"`
+	Transactions []*depositTransactionItem `json:"transactions"`
+}
+
+type depositTransactionItem struct {
+	Username       string    `json:"username"`
+	TxHash         string    `json:"tx_hash"`
+	Amount         int       `json:"amount"`
+	TokenID        int       `json:"token_id"`
+	CollectionName string    `json:"collection_name"`
+	Status         string    `json:"status"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      null.Time `json:"updated_at"`
+}
+
+const HubKeyDepositAsset1155List = "ASSET:1155:DEPOSIT:LIST"
+
+func (ac *AssetController) DepositAsset1155ListHandler(ctx context.Context, user *xsynTypes.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue getting deposit transaction list, try again or contact support."
+
+	dtxs, err := boiler.DepositAsset1155Transactions(boiler.DepositAsset1155TransactionWhere.UserID.EQ(user.ID), qm.Load(boiler.DepositAsset1155TransactionRels.User), qm.Limit(10), qm.OrderBy("created_at DESC")).All(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	transactions := make([]*depositTransactionItem, 0)
+
+	for _, depositTx := range dtxs {
+		collection, err := db.CollectionBySlug(depositTx.CollectionSlug)
+		if err != nil {
+			continue
+		}
+
+		deposit := &depositTransactionItem{
+			Username:       depositTx.R.User.Username,
+			TxHash:         depositTx.TXHash,
+			Amount:         depositTx.Amount,
+			TokenID:        depositTx.TokenID,
+			CollectionName: collection.Name,
+			Status:         depositTx.Status,
+			CreatedAt:      depositTx.CreatedAt,
+			UpdatedAt:      depositTx.UpdatedAt,
+		}
+
+		transactions = append(transactions, deposit)
+	}
+
+	resp := &DepositAsset1155ListResponse{
+		Total:        len(dtxs),
+		Transactions: transactions,
+	}
+
+	reply(resp)
 	return nil
 }
 

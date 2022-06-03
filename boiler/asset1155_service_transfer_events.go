@@ -209,8 +209,8 @@ type asset1155ServiceTransferEventL struct{}
 
 var (
 	asset1155ServiceTransferEventAllColumns            = []string{"id", "user1155_asset_id", "user_id", "initiated_from", "amount", "from_service", "to_service", "transfer_tx_id", "transferred_at"}
-	asset1155ServiceTransferEventColumnsWithoutDefault = []string{"user1155_asset_id", "user_id", "from_service", "to_service", "transfer_tx_id"}
-	asset1155ServiceTransferEventColumnsWithDefault    = []string{"id", "initiated_from", "amount", "transferred_at"}
+	asset1155ServiceTransferEventColumnsWithoutDefault = []string{"user1155_asset_id", "user_id", "amount", "from_service", "to_service", "transfer_tx_id"}
+	asset1155ServiceTransferEventColumnsWithDefault    = []string{"id", "initiated_from", "transferred_at"}
 	asset1155ServiceTransferEventPrimaryKeyColumns     = []string{"id"}
 )
 

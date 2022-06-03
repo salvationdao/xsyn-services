@@ -287,6 +287,7 @@ var UserRels = struct {
 	FromServiceAssetServiceTransferEvents     string
 	ToServiceAssetServiceTransferEvents       string
 	AssetServiceTransferEvents                string
+	DepositAsset1155Transactions              string
 	DepositTransactions                       string
 	CreditFailedTransactions                  string
 	DebitFailedTransactions                   string
@@ -316,6 +317,7 @@ var UserRels = struct {
 	FromServiceAssetServiceTransferEvents:     "FromServiceAssetServiceTransferEvents",
 	ToServiceAssetServiceTransferEvents:       "ToServiceAssetServiceTransferEvents",
 	AssetServiceTransferEvents:                "AssetServiceTransferEvents",
+	DepositAsset1155Transactions:              "DepositAsset1155Transactions",
 	DepositTransactions:                       "DepositTransactions",
 	CreditFailedTransactions:                  "CreditFailedTransactions",
 	DebitFailedTransactions:                   "DebitFailedTransactions",
@@ -348,6 +350,7 @@ type userR struct {
 	FromServiceAssetServiceTransferEvents     AssetServiceTransferEventSlice     `boiler:"FromServiceAssetServiceTransferEvents" boil:"FromServiceAssetServiceTransferEvents" json:"FromServiceAssetServiceTransferEvents" toml:"FromServiceAssetServiceTransferEvents" yaml:"FromServiceAssetServiceTransferEvents"`
 	ToServiceAssetServiceTransferEvents       AssetServiceTransferEventSlice     `boiler:"ToServiceAssetServiceTransferEvents" boil:"ToServiceAssetServiceTransferEvents" json:"ToServiceAssetServiceTransferEvents" toml:"ToServiceAssetServiceTransferEvents" yaml:"ToServiceAssetServiceTransferEvents"`
 	AssetServiceTransferEvents                AssetServiceTransferEventSlice     `boiler:"AssetServiceTransferEvents" boil:"AssetServiceTransferEvents" json:"AssetServiceTransferEvents" toml:"AssetServiceTransferEvents" yaml:"AssetServiceTransferEvents"`
+	DepositAsset1155Transactions              DepositAsset1155TransactionSlice   `boiler:"DepositAsset1155Transactions" boil:"DepositAsset1155Transactions" json:"DepositAsset1155Transactions" toml:"DepositAsset1155Transactions" yaml:"DepositAsset1155Transactions"`
 	DepositTransactions                       DepositTransactionSlice            `boiler:"DepositTransactions" boil:"DepositTransactions" json:"DepositTransactions" toml:"DepositTransactions" yaml:"DepositTransactions"`
 	CreditFailedTransactions                  FailedTransactionSlice             `boiler:"CreditFailedTransactions" boil:"CreditFailedTransactions" json:"CreditFailedTransactions" toml:"CreditFailedTransactions" yaml:"CreditFailedTransactions"`
 	DebitFailedTransactions                   FailedTransactionSlice             `boiler:"DebitFailedTransactions" boil:"DebitFailedTransactions" json:"DebitFailedTransactions" toml:"DebitFailedTransactions" yaml:"DebitFailedTransactions"`
@@ -823,6 +826,27 @@ func (o *User) AssetServiceTransferEvents(mods ...qm.QueryMod) assetServiceTrans
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"asset_service_transfer_events\".*"})
+	}
+
+	return query
+}
+
+// DepositAsset1155Transactions retrieves all the deposit_asset1155_transaction's DepositAsset1155Transactions with an executor.
+func (o *User) DepositAsset1155Transactions(mods ...qm.QueryMod) depositAsset1155TransactionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"deposit_asset1155_transactions\".\"user_id\"=?", o.ID),
+	)
+
+	query := DepositAsset1155Transactions(queryMods...)
+	queries.SetFrom(query.Query, "\"deposit_asset1155_transactions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"deposit_asset1155_transactions\".*"})
 	}
 
 	return query
@@ -2298,6 +2322,104 @@ func (userL) LoadAssetServiceTransferEvents(e boil.Executor, singular bool, mayb
 				local.R.AssetServiceTransferEvents = append(local.R.AssetServiceTransferEvents, foreign)
 				if foreign.R == nil {
 					foreign.R = &assetServiceTransferEventR{}
+				}
+				foreign.R.User = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadDepositAsset1155Transactions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadDepositAsset1155Transactions(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`deposit_asset1155_transactions`),
+		qm.WhereIn(`deposit_asset1155_transactions.user_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load deposit_asset1155_transactions")
+	}
+
+	var resultSlice []*DepositAsset1155Transaction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice deposit_asset1155_transactions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on deposit_asset1155_transactions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for deposit_asset1155_transactions")
+	}
+
+	if len(depositAsset1155TransactionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.DepositAsset1155Transactions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &depositAsset1155TransactionR{}
+			}
+			foreign.R.User = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.UserID {
+				local.R.DepositAsset1155Transactions = append(local.R.DepositAsset1155Transactions, foreign)
+				if foreign.R == nil {
+					foreign.R = &depositAsset1155TransactionR{}
 				}
 				foreign.R.User = local
 				break
@@ -4916,6 +5038,58 @@ func (o *User) AddAssetServiceTransferEvents(exec boil.Executor, insert bool, re
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &assetServiceTransferEventR{
+				User: o,
+			}
+		} else {
+			rel.R.User = o
+		}
+	}
+	return nil
+}
+
+// AddDepositAsset1155Transactions adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.DepositAsset1155Transactions.
+// Sets related.R.User appropriately.
+func (o *User) AddDepositAsset1155Transactions(exec boil.Executor, insert bool, related ...*DepositAsset1155Transaction) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.UserID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"deposit_asset1155_transactions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
+				strmangle.WhereClause("\"", "\"", 2, depositAsset1155TransactionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.UserID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			DepositAsset1155Transactions: related,
+		}
+	} else {
+		o.R.DepositAsset1155Transactions = append(o.R.DepositAsset1155Transactions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &depositAsset1155TransactionR{
 				User: o,
 			}
 		} else {

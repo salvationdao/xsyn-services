@@ -298,6 +298,26 @@ func Process1155Deposits(records []*NFT1155TransferRecord, collectionSlug string
 			continue
 		}
 
+		depositAssetTransaction, err := boiler.DepositAsset1155Transactions(
+			boiler.DepositAsset1155TransactionWhere.CollectionSlug.EQ(collectionSlug),
+			boiler.DepositAsset1155TransactionWhere.TXHash.EQ(record.TxHash),
+		).One(passdb.StdConn)
+		if err != nil {
+			l.Error().Interface("asset", asset).Err(err).Msg("failed to find asset transaction history")
+			skipped++
+			continue
+		}
+
+		depositAssetTransaction.Status = "confirmed"
+		depositAssetTransaction.UpdatedAt = null.TimeFrom(time.Now())
+
+		_, err = depositAssetTransaction.Update(passdb.StdConn, boil.Infer())
+		if err != nil {
+			l.Error().Interface("asset", asset).Err(err).Msg("failed to update asset transaction history")
+			skipped++
+			continue
+		}
+
 		success++
 
 	}
