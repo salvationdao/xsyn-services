@@ -834,6 +834,10 @@ func (ac *AssetController) Asset1155TransferToSupremacyHandler(ctx context.Conte
 			Attributes:      asset.Attributes,
 			ServiceID:       null.StringFrom(xsynTypes.SupremacyGameUserID.String()),
 		}
+
+		if err := offXsynAsset.Insert(passdb.StdConn, boil.Infer()); err != nil {
+			return terror.Error(err, "failed to create new off xsyn asset")
+		}
 	}
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Failed to get off xsyn asset")
