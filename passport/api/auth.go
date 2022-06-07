@@ -697,11 +697,21 @@ type BotListResponse struct {
 	ZaibatsuBotIDs    []string `json:"zaibatsu_bot_ids"`
 }
 
+type BotListHandlerRequest struct {
+	BotSecretKey string `json:"bot_secret_key"`
+}
+
 func (api *API) BotListHandler(w http.ResponseWriter, r *http.Request) {
-	// check header
-	if r.Header.Get("bot_secret_key") != api.botSecretKey {
-		passlog.L.Warn().Str("expected secret key", api.botSecretKey).Str("provided secret key", r.Header.Get("bot_secret_key")).Msg("bot secret key check failed")
+	req := &BotListHandlerRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
 		http.Error(w, "auth fail", http.StatusBadRequest)
+		return
+	}
+	// check header
+	if req.BotSecretKey == "" || req.BotSecretKey != api.botSecretKey {
+		passlog.L.Warn().Str("expected secret key", api.botSecretKey).Str("provided secret key", r.Header.Get("bot_secret_key")).Msg("bot secret key check failed")
+		http.Error(w, "auth fail", http.StatusUnauthorized)
 		return
 	}
 
@@ -749,7 +759,8 @@ func (api *API) BotListHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type BotTokenLoginRequest struct {
-	BotID string `json:"bot_id"`
+	BotSecretKey string `json:"bot_secret_key"`
+	BotID        string `json:"bot_id"`
 }
 
 type BotTokenResponse struct {
@@ -759,16 +770,16 @@ type BotTokenResponse struct {
 
 // BotTokenLoginHandler return a bot user and access token from the given bot token
 func (api *API) BotTokenLoginHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("bot_secret_key") != api.botSecretKey {
-		passlog.L.Warn().Str("expected secret key", api.botSecretKey).Str("provided secret key", r.Header.Get("bot_secret_key")).Msg("bot secret key check failed")
-		http.Error(w, "auth fail", http.StatusBadRequest)
-		return
-	}
-
 	req := &BotTokenLoginRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		http.Error(w, "auth fail", http.StatusBadRequest)
+		return
+	}
+
+	if req.BotSecretKey == "" || req.BotSecretKey != api.botSecretKey {
+		passlog.L.Warn().Str("expected secret key", api.botSecretKey).Str("provided secret key", r.Header.Get("bot_secret_key")).Msg("bot secret key check failed")
+		http.Error(w, "auth fail", http.StatusUnauthorized)
 		return
 	}
 
