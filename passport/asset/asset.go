@@ -23,7 +23,7 @@ func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransaction
 			Str("toID", toID).
 			Str("serviceID", serviceID).
 			Msg("failed to get user asset - TransferAsset")
-		return nil, 0, err
+		return userAsset, 0, err
 	}
 
 	if userAsset.LockedToService.Valid && userAsset.LockedToService.String != serviceID {
@@ -34,7 +34,7 @@ func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransaction
 			Str("toID", toID).
 			Str("serviceID", serviceID).
 			Msg("failed to transfer asset ownership - TransferAsset")
-		return nil, 0, err
+		return userAsset, 0, err
 	}
 
 	tx, err := passdb.StdConn.Begin()
@@ -45,7 +45,7 @@ func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransaction
 			Str("toID", toID).
 			Str("serviceID", serviceID).
 			Msg("failed to begin tx - TransferAsset")
-		return nil, 0, err
+		return userAsset, 0, err
 	}
 
 	userAsset.OwnerID = toID
@@ -59,7 +59,7 @@ func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransaction
 			Str("serviceID", serviceID).
 			Interface("userAsset", userAsset).
 			Msg("failed to update asset ownership - TransferAsset")
-		return nil, 0, err
+		return userAsset, 0, err
 	}
 
 	transferEvent := &boiler.AssetTransferEvent{
@@ -80,7 +80,7 @@ func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransaction
 			Str("serviceID", serviceID).
 			Interface("transferEvent", transferEvent).
 			Msg("failed to insert transferEvent - TransferAsset")
-		return nil, 0, err
+		return userAsset, 0, err
 	}
 
 	err = tx.Commit()
@@ -93,7 +93,7 @@ func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransaction
 			Str("toID", toID).
 			Str("serviceID", serviceID).
 			Msg("failed to commit tx - TransferAsset")
-		return nil, 0, err
+		return userAsset, 0, err
 	}
 
 	return userAsset, transferEvent.ID, nil
