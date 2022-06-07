@@ -173,6 +173,7 @@ func main() {
 					// wallet/contract addresses
 					&cli.StringFlag{Name: "operator_addr", Value: "0xc01c2f6DD7cCd2B9F8DB9aa1Da9933edaBc5079E", EnvVars: []string{envPrefix + "_OPERATOR_WALLET_ADDR"}, Usage: "Wallet address for administration"},
 					&cli.StringFlag{Name: "signer_private_key", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing (usually operator)"},
+					&cli.StringFlag{Name: "achievement_signer_private_key", Value: "0x9878e47371dc28d434b8e5a2e36a5ac2fad84af4ebcd8ea34470b2417590e087", EnvVars: []string{envPrefix + "_ACHIEVEMENT_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing achievement contract (usually operator)"},
 
 					// chain id
 					&cli.Int64Flag{Name: "bsc_chain_id", Value: 97, EnvVars: []string{envPrefix + "_BSC_CHAIN_ID"}, Usage: "BSC Chain ID"},
@@ -509,6 +510,28 @@ func SyncDeposits(ucm *api.Transactor, isTestnet bool) error {
 	return nil
 
 }
+
+func Sync1155Deposits(collectionSlug string, isTestnet bool) error {
+	collection, err := db.CollectionBySlug(collectionSlug)
+	if err != nil {
+		return err
+	}
+	if !collection.MintContract.Valid {
+		return fmt.Errorf("failed to get mint contract")
+	}
+
+	depositRecords, err := payments.Get1155Deposits(isTestnet, collection.MintContract.String)
+	if err != nil {
+		return fmt.Errorf("get deposits: %w", err)
+	}
+	_, _, err = payments.Process1155Deposits(depositRecords, collectionSlug)
+	if err != nil {
+		return fmt.Errorf("process deposits: %w", err)
+	}
+
+	return nil
+
+}
 func SyncWithdraw(ucm *api.Transactor, isTestnet, enableWithdrawRollback bool) error {
 	// Update with TX hash first
 	withdrawRecords, err := payments.GetWithdraws(isTestnet)
@@ -551,6 +574,32 @@ func SyncNFTs() error {
 			Int("skipped", ownerSkipped).
 			Msg("synced nft ownerships")
 	}
+
+	return nil
+}
+
+func Sync1155Withdraw(collectionSlug string, isTestnet, enable1155Rollback bool) error {
+	collection, err := db.CollectionBySlug(collectionSlug)
+	if err != nil {
+		return err
+	}
+	if !collection.MintContract.Valid {
+		return fmt.Errorf("failed to get mint contract")
+	}
+
+	// Update with TX hash first
+	records, err := payments.Get1155Withdraws(isTestnet, collection.MintContract.String)
+	if err != nil {
+		return fmt.Errorf("get 1155: %w", err)
+	}
+	success, skipped := payments.UpdateSuccessful1155WithdrawalsWithTxHash(records, collection.MintContract.String)
+	passlog.L.Info().Int("success", success).Int("skipped", skipped).Msg("add tx hashes to pending refunds")
+
+	refundsSuccess, refundsSkipped, err := payments.ReverseFailed1155(enable1155Rollback)
+	if err != nil {
+		return fmt.Errorf("process withdraws: %w", err)
+	}
+	passlog.L.Info().Int("success", refundsSuccess).Int("skipped", refundsSkipped).Msg("refunds processed")
 
 	return nil
 }
@@ -612,6 +661,22 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 			}
 		}
 	}(ucm, isTestnet)
+	go func(isTestnet bool) {
+		if db.GetBoolWithDefault(db.KeyEnableSync1155, false) {
+			err := Sync1155Withdraw("supremacy-achievements", isTestnet, enableWithdrawRollback)
+			if err != nil {
+				passlog.L.Err(err).Msg("failed to sync 1155")
+			}
+		}
+	}(isTestnet)
+	go func(isTestnet bool) {
+		if db.GetBoolWithDefault(db.KeyEnableSync1155, false) {
+			err := Sync1155Deposits("supremacy-achievements", isTestnet)
+			if err != nil {
+				passlog.L.Err(err).Msg("failed to sync 1155")
+			}
+		}
+	}(isTestnet)
 	return nil
 }
 func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
@@ -653,6 +718,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	SupAddr := ctxCLI.String("sup_addr")
 	OperatorAddr := ctxCLI.String("operator_addr")
 	SignerPrivateKey := ctxCLI.String("signer_private_key")
+	AchievementSignerKey := ctxCLI.String("achievement_signer_private_key")
 	BscNodeAddr := ctxCLI.String("bsc_node_addr")
 	EthNodeAddr := ctxCLI.String("eth_node_addr")
 	BSCChainID := ctxCLI.Int64("bsc_chain_id")
@@ -738,17 +804,18 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		TokenExpirationDays: ctxCLI.Int("jwt_expiry_days"),
 		MetaMaskSignMessage: ctxCLI.String("metamask_sign_message"),
 		BridgeParams: &types.BridgeParams{
-			MoralisKey:       MoralisKey,
-			OperatorAddr:     common.HexToAddress(OperatorAddr),
-			UsdcAddr:         common.HexToAddress(UsdcAddr),
-			BusdAddr:         common.HexToAddress(BusdAddr),
-			SupAddr:          common.HexToAddress(SupAddr),
-			SignerPrivateKey: SignerPrivateKey,
-			BscNodeAddr:      BscNodeAddr,
-			EthNodeAddr:      EthNodeAddr,
-			BSCChainID:       BSCChainID,
-			ETHChainID:       ETHChainID,
-			BSCRouterAddr:    common.HexToAddress(BSCRouterAddr),
+			MoralisKey:            MoralisKey,
+			OperatorAddr:          common.HexToAddress(OperatorAddr),
+			UsdcAddr:              common.HexToAddress(UsdcAddr),
+			BusdAddr:              common.HexToAddress(BusdAddr),
+			SupAddr:               common.HexToAddress(SupAddr),
+			SignerPrivateKey:      SignerPrivateKey,
+			BscNodeAddr:           BscNodeAddr,
+			EthNodeAddr:           EthNodeAddr,
+			BSCChainID:            BSCChainID,
+			ETHChainID:            ETHChainID,
+			BSCRouterAddr:         common.HexToAddress(BSCRouterAddr),
+			AchievementsSignerKey: AchievementSignerKey,
 		},
 		OnlyWalletConnect:       ctxCLI.Bool("only_wallet"),
 		WhitelistEndpoint:       ctxCLI.String("whitelist_check_endpoint"),

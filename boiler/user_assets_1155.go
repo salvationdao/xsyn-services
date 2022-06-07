@@ -35,6 +35,8 @@ type UserAssets1155 struct {
 	AnimationURL    null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
 	KeycardGroup    string      `boiler:"keycard_group" boil:"keycard_group" json:"keycard_group" toml:"keycard_group" yaml:"keycard_group"`
 	Attributes      types.JSON  `boiler:"attributes" boil:"attributes" json:"attributes" toml:"attributes" yaml:"attributes"`
+	CreatedAt       time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ServiceID       null.String `boiler:"service_id" boil:"service_id" json:"service_id,omitempty" toml:"service_id" yaml:"service_id,omitempty"`
 
 	R *userAssets1155R `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userAssets1155L  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -52,6 +54,8 @@ var UserAssets1155Columns = struct {
 	AnimationURL    string
 	KeycardGroup    string
 	Attributes      string
+	CreatedAt       string
+	ServiceID       string
 }{
 	ID:              "id",
 	OwnerID:         "owner_id",
@@ -64,6 +68,8 @@ var UserAssets1155Columns = struct {
 	AnimationURL:    "animation_url",
 	KeycardGroup:    "keycard_group",
 	Attributes:      "attributes",
+	CreatedAt:       "created_at",
+	ServiceID:       "service_id",
 }
 
 var UserAssets1155TableColumns = struct {
@@ -78,6 +84,8 @@ var UserAssets1155TableColumns = struct {
 	AnimationURL    string
 	KeycardGroup    string
 	Attributes      string
+	CreatedAt       string
+	ServiceID       string
 }{
 	ID:              "user_assets_1155.id",
 	OwnerID:         "user_assets_1155.owner_id",
@@ -90,6 +98,8 @@ var UserAssets1155TableColumns = struct {
 	AnimationURL:    "user_assets_1155.animation_url",
 	KeycardGroup:    "user_assets_1155.keycard_group",
 	Attributes:      "user_assets_1155.attributes",
+	CreatedAt:       "user_assets_1155.created_at",
+	ServiceID:       "user_assets_1155.service_id",
 }
 
 // Generated where
@@ -106,6 +116,8 @@ var UserAssets1155Where = struct {
 	AnimationURL    whereHelpernull_String
 	KeycardGroup    whereHelperstring
 	Attributes      whereHelpertypes_JSON
+	CreatedAt       whereHelpertime_Time
+	ServiceID       whereHelpernull_String
 }{
 	ID:              whereHelperstring{field: "\"user_assets_1155\".\"id\""},
 	OwnerID:         whereHelperstring{field: "\"user_assets_1155\".\"owner_id\""},
@@ -118,21 +130,29 @@ var UserAssets1155Where = struct {
 	AnimationURL:    whereHelpernull_String{field: "\"user_assets_1155\".\"animation_url\""},
 	KeycardGroup:    whereHelperstring{field: "\"user_assets_1155\".\"keycard_group\""},
 	Attributes:      whereHelpertypes_JSON{field: "\"user_assets_1155\".\"attributes\""},
+	CreatedAt:       whereHelpertime_Time{field: "\"user_assets_1155\".\"created_at\""},
+	ServiceID:       whereHelpernull_String{field: "\"user_assets_1155\".\"service_id\""},
 }
 
 // UserAssets1155Rels is where relationship names are stored.
 var UserAssets1155Rels = struct {
-	Collection string
-	Owner      string
+	Collection                                  string
+	Owner                                       string
+	User1155AssetAsset1155ServiceTransferEvents string
+	AssetPending1155Rollbacks                   string
 }{
 	Collection: "Collection",
 	Owner:      "Owner",
+	User1155AssetAsset1155ServiceTransferEvents: "User1155AssetAsset1155ServiceTransferEvents",
+	AssetPending1155Rollbacks:                   "AssetPending1155Rollbacks",
 }
 
 // userAssets1155R is where relationships are stored.
 type userAssets1155R struct {
-	Collection *Collection `boiler:"Collection" boil:"Collection" json:"Collection" toml:"Collection" yaml:"Collection"`
-	Owner      *User       `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	Collection                                  *Collection                        `boiler:"Collection" boil:"Collection" json:"Collection" toml:"Collection" yaml:"Collection"`
+	Owner                                       *User                              `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	User1155AssetAsset1155ServiceTransferEvents Asset1155ServiceTransferEventSlice `boiler:"User1155AssetAsset1155ServiceTransferEvents" boil:"User1155AssetAsset1155ServiceTransferEvents" json:"User1155AssetAsset1155ServiceTransferEvents" toml:"User1155AssetAsset1155ServiceTransferEvents" yaml:"User1155AssetAsset1155ServiceTransferEvents"`
+	AssetPending1155Rollbacks                   Pending1155RollbackSlice           `boiler:"AssetPending1155Rollbacks" boil:"AssetPending1155Rollbacks" json:"AssetPending1155Rollbacks" toml:"AssetPending1155Rollbacks" yaml:"AssetPending1155Rollbacks"`
 }
 
 // NewStruct creates a new relationship struct
@@ -144,9 +164,9 @@ func (*userAssets1155R) NewStruct() *userAssets1155R {
 type userAssets1155L struct{}
 
 var (
-	userAssets1155AllColumns            = []string{"id", "owner_id", "collection_id", "external_token_id", "count", "label", "description", "image_url", "animation_url", "keycard_group", "attributes"}
-	userAssets1155ColumnsWithoutDefault = []string{"owner_id", "collection_id", "external_token_id", "label", "description", "image_url", "animation_url", "keycard_group", "attributes"}
-	userAssets1155ColumnsWithDefault    = []string{"id", "count"}
+	userAssets1155AllColumns            = []string{"id", "owner_id", "collection_id", "external_token_id", "count", "label", "description", "image_url", "animation_url", "keycard_group", "attributes", "created_at", "service_id"}
+	userAssets1155ColumnsWithoutDefault = []string{"owner_id", "collection_id", "external_token_id", "label", "description", "image_url", "animation_url", "keycard_group", "attributes", "service_id"}
+	userAssets1155ColumnsWithDefault    = []string{"id", "count", "created_at"}
 	userAssets1155PrimaryKeyColumns     = []string{"id"}
 )
 
@@ -419,6 +439,49 @@ func (o *UserAssets1155) Owner(mods ...qm.QueryMod) userQuery {
 	return query
 }
 
+// User1155AssetAsset1155ServiceTransferEvents retrieves all the asset1155_service_transfer_event's Asset1155ServiceTransferEvents with an executor via user1155_asset_id column.
+func (o *UserAssets1155) User1155AssetAsset1155ServiceTransferEvents(mods ...qm.QueryMod) asset1155ServiceTransferEventQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"asset1155_service_transfer_events\".\"user1155_asset_id\"=?", o.ID),
+	)
+
+	query := Asset1155ServiceTransferEvents(queryMods...)
+	queries.SetFrom(query.Query, "\"asset1155_service_transfer_events\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"asset1155_service_transfer_events\".*"})
+	}
+
+	return query
+}
+
+// AssetPending1155Rollbacks retrieves all the pending_1155_rollback's Pending1155Rollbacks with an executor via asset_id column.
+func (o *UserAssets1155) AssetPending1155Rollbacks(mods ...qm.QueryMod) pending1155RollbackQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"pending_1155_rollback\".\"asset_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"pending_1155_rollback\".\"deleted_at\""),
+	)
+
+	query := Pending1155Rollbacks(queryMods...)
+	queries.SetFrom(query.Query, "\"pending_1155_rollback\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"pending_1155_rollback\".*"})
+	}
+
+	return query
+}
+
 // LoadCollection allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (userAssets1155L) LoadCollection(e boil.Executor, singular bool, maybeUserAssets1155 interface{}, mods queries.Applicator) error {
@@ -629,6 +692,203 @@ func (userAssets1155L) LoadOwner(e boil.Executor, singular bool, maybeUserAssets
 	return nil
 }
 
+// LoadUser1155AssetAsset1155ServiceTransferEvents allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userAssets1155L) LoadUser1155AssetAsset1155ServiceTransferEvents(e boil.Executor, singular bool, maybeUserAssets1155 interface{}, mods queries.Applicator) error {
+	var slice []*UserAssets1155
+	var object *UserAssets1155
+
+	if singular {
+		object = maybeUserAssets1155.(*UserAssets1155)
+	} else {
+		slice = *maybeUserAssets1155.(*[]*UserAssets1155)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userAssets1155R{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userAssets1155R{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`asset1155_service_transfer_events`),
+		qm.WhereIn(`asset1155_service_transfer_events.user1155_asset_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load asset1155_service_transfer_events")
+	}
+
+	var resultSlice []*Asset1155ServiceTransferEvent
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice asset1155_service_transfer_events")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on asset1155_service_transfer_events")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for asset1155_service_transfer_events")
+	}
+
+	if len(asset1155ServiceTransferEventAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.User1155AssetAsset1155ServiceTransferEvents = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &asset1155ServiceTransferEventR{}
+			}
+			foreign.R.User1155Asset = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.User1155AssetID {
+				local.R.User1155AssetAsset1155ServiceTransferEvents = append(local.R.User1155AssetAsset1155ServiceTransferEvents, foreign)
+				if foreign.R == nil {
+					foreign.R = &asset1155ServiceTransferEventR{}
+				}
+				foreign.R.User1155Asset = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadAssetPending1155Rollbacks allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userAssets1155L) LoadAssetPending1155Rollbacks(e boil.Executor, singular bool, maybeUserAssets1155 interface{}, mods queries.Applicator) error {
+	var slice []*UserAssets1155
+	var object *UserAssets1155
+
+	if singular {
+		object = maybeUserAssets1155.(*UserAssets1155)
+	} else {
+		slice = *maybeUserAssets1155.(*[]*UserAssets1155)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userAssets1155R{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userAssets1155R{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`pending_1155_rollback`),
+		qm.WhereIn(`pending_1155_rollback.asset_id in ?`, args...),
+		qmhelper.WhereIsNull(`pending_1155_rollback.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load pending_1155_rollback")
+	}
+
+	var resultSlice []*Pending1155Rollback
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice pending_1155_rollback")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on pending_1155_rollback")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for pending_1155_rollback")
+	}
+
+	if len(pending1155RollbackAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.AssetPending1155Rollbacks = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &pending1155RollbackR{}
+			}
+			foreign.R.Asset = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.AssetID {
+				local.R.AssetPending1155Rollbacks = append(local.R.AssetPending1155Rollbacks, foreign)
+				if foreign.R == nil {
+					foreign.R = &pending1155RollbackR{}
+				}
+				foreign.R.Asset = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetCollection of the userAssets1155 to the related item.
 // Sets o.R.Collection to related.
 // Adds o to related.R.UserAssets1155S.
@@ -721,6 +981,110 @@ func (o *UserAssets1155) SetOwner(exec boil.Executor, insert bool, related *User
 	return nil
 }
 
+// AddUser1155AssetAsset1155ServiceTransferEvents adds the given related objects to the existing relationships
+// of the user_assets_1155, optionally inserting them as new records.
+// Appends related to o.R.User1155AssetAsset1155ServiceTransferEvents.
+// Sets related.R.User1155Asset appropriately.
+func (o *UserAssets1155) AddUser1155AssetAsset1155ServiceTransferEvents(exec boil.Executor, insert bool, related ...*Asset1155ServiceTransferEvent) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.User1155AssetID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"asset1155_service_transfer_events\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"user1155_asset_id"}),
+				strmangle.WhereClause("\"", "\"", 2, asset1155ServiceTransferEventPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.User1155AssetID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userAssets1155R{
+			User1155AssetAsset1155ServiceTransferEvents: related,
+		}
+	} else {
+		o.R.User1155AssetAsset1155ServiceTransferEvents = append(o.R.User1155AssetAsset1155ServiceTransferEvents, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &asset1155ServiceTransferEventR{
+				User1155Asset: o,
+			}
+		} else {
+			rel.R.User1155Asset = o
+		}
+	}
+	return nil
+}
+
+// AddAssetPending1155Rollbacks adds the given related objects to the existing relationships
+// of the user_assets_1155, optionally inserting them as new records.
+// Appends related to o.R.AssetPending1155Rollbacks.
+// Sets related.R.Asset appropriately.
+func (o *UserAssets1155) AddAssetPending1155Rollbacks(exec boil.Executor, insert bool, related ...*Pending1155Rollback) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.AssetID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"pending_1155_rollback\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"asset_id"}),
+				strmangle.WhereClause("\"", "\"", 2, pending1155RollbackPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.AssetID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userAssets1155R{
+			AssetPending1155Rollbacks: related,
+		}
+	} else {
+		o.R.AssetPending1155Rollbacks = append(o.R.AssetPending1155Rollbacks, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &pending1155RollbackR{
+				Asset: o,
+			}
+		} else {
+			rel.R.Asset = o
+		}
+	}
+	return nil
+}
+
 // UserAssets1155S retrieves all the records using an executor.
 func UserAssets1155S(mods ...qm.QueryMod) userAssets1155Query {
 	mods = append(mods, qm.From("\"user_assets_1155\""))
@@ -765,6 +1129,11 @@ func (o *UserAssets1155) Insert(exec boil.Executor, columns boil.Columns) error 
 	}
 
 	var err error
+	currTime := time.Now().In(boil.GetLocation())
+
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
+	}
 
 	if err := o.doBeforeInsertHooks(exec); err != nil {
 		return err
@@ -966,6 +1335,11 @@ func (o UserAssets1155Slice) UpdateAll(exec boil.Executor, cols M) (int64, error
 func (o *UserAssets1155) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
 		return errors.New("boiler: no user_assets_1155 provided for upsert")
+	}
+	currTime := time.Now().In(boil.GetLocation())
+
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
 	}
 
 	if err := o.doBeforeUpsertHooks(exec); err != nil {

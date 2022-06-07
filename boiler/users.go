@@ -276,89 +276,104 @@ var UserWhere = struct {
 
 // UserRels is where relationship names are stored.
 var UserRels = struct {
-	Avatar                                string
-	Faction                               string
-	Role                                  string
-	PasswordHash                          string
-	APIKeys                               string
-	FromServiceAssetServiceTransferEvents string
-	ToServiceAssetServiceTransferEvents   string
-	AssetServiceTransferEvents            string
-	FromUserAssetTransferEvents           string
-	ToUserAssetTransferEvents             string
-	DepositTransactions                   string
-	CreditFailedTransactions              string
-	DebitFailedTransactions               string
-	IssueTokens                           string
-	PendingRefunds                        string
-	OwnerPurchasedItemsOlds               string
-	CreditTransactions                    string
-	DebitTransactions                     string
-	ServiceTransactions                   string
-	UserActivities                        string
-	LockedToServiceUserAssets             string
-	OwnerUserAssets                       string
-	OwnerUserAssets1155S                  string
-	UserFingerprints                      string
-	UserRecoveryCodes                     string
-	UsernameHistories                     string
+	Avatar                                    string
+	Faction                                   string
+	Role                                      string
+	PasswordHash                              string
+	APIKeys                                   string
+	FromServiceAsset1155ServiceTransferEvents string
+	ToServiceAsset1155ServiceTransferEvents   string
+	Asset1155ServiceTransferEvents            string
+	FromServiceAssetServiceTransferEvents     string
+	ToServiceAssetServiceTransferEvents       string
+	AssetServiceTransferEvents                string
+	FromUserAssetTransferEvents               string
+	ToUserAssetTransferEvents                 string
+	DepositAsset1155Transactions              string
+	DepositTransactions                       string
+	CreditFailedTransactions                  string
+	DebitFailedTransactions                   string
+	IssueTokens                               string
+	Pending1155Rollbacks                      string
+	PendingRefunds                            string
+	OwnerPurchasedItemsOlds                   string
+	CreditTransactions                        string
+	DebitTransactions                         string
+	ServiceTransactions                       string
+	UserActivities                            string
+	LockedToServiceUserAssets                 string
+	OwnerUserAssets                           string
+	OwnerUserAssets1155S                      string
+	UserFingerprints                          string
+	UserRecoveryCodes                         string
+	UsernameHistories                         string
 }{
-	Avatar:                                "Avatar",
-	Faction:                               "Faction",
-	Role:                                  "Role",
-	PasswordHash:                          "PasswordHash",
-	APIKeys:                               "APIKeys",
-	FromServiceAssetServiceTransferEvents: "FromServiceAssetServiceTransferEvents",
-	ToServiceAssetServiceTransferEvents:   "ToServiceAssetServiceTransferEvents",
-	AssetServiceTransferEvents:            "AssetServiceTransferEvents",
-	FromUserAssetTransferEvents:           "FromUserAssetTransferEvents",
-	ToUserAssetTransferEvents:             "ToUserAssetTransferEvents",
-	DepositTransactions:                   "DepositTransactions",
-	CreditFailedTransactions:              "CreditFailedTransactions",
-	DebitFailedTransactions:               "DebitFailedTransactions",
-	IssueTokens:                           "IssueTokens",
-	PendingRefunds:                        "PendingRefunds",
-	OwnerPurchasedItemsOlds:               "OwnerPurchasedItemsOlds",
-	CreditTransactions:                    "CreditTransactions",
-	DebitTransactions:                     "DebitTransactions",
-	ServiceTransactions:                   "ServiceTransactions",
-	UserActivities:                        "UserActivities",
-	LockedToServiceUserAssets:             "LockedToServiceUserAssets",
-	OwnerUserAssets:                       "OwnerUserAssets",
-	OwnerUserAssets1155S:                  "OwnerUserAssets1155S",
-	UserFingerprints:                      "UserFingerprints",
-	UserRecoveryCodes:                     "UserRecoveryCodes",
-	UsernameHistories:                     "UsernameHistories",
+	Avatar:       "Avatar",
+	Faction:      "Faction",
+	Role:         "Role",
+	PasswordHash: "PasswordHash",
+	APIKeys:      "APIKeys",
+	FromServiceAsset1155ServiceTransferEvents: "FromServiceAsset1155ServiceTransferEvents",
+	ToServiceAsset1155ServiceTransferEvents:   "ToServiceAsset1155ServiceTransferEvents",
+	Asset1155ServiceTransferEvents:            "Asset1155ServiceTransferEvents",
+	FromServiceAssetServiceTransferEvents:     "FromServiceAssetServiceTransferEvents",
+	ToServiceAssetServiceTransferEvents:       "ToServiceAssetServiceTransferEvents",
+	AssetServiceTransferEvents:                "AssetServiceTransferEvents",
+	FromUserAssetTransferEvents:               "FromUserAssetTransferEvents",
+	ToUserAssetTransferEvents:                 "ToUserAssetTransferEvents",
+	DepositAsset1155Transactions:              "DepositAsset1155Transactions",
+	DepositTransactions:                       "DepositTransactions",
+	CreditFailedTransactions:                  "CreditFailedTransactions",
+	DebitFailedTransactions:                   "DebitFailedTransactions",
+	IssueTokens:                               "IssueTokens",
+	Pending1155Rollbacks:                      "Pending1155Rollbacks",
+	PendingRefunds:                            "PendingRefunds",
+	OwnerPurchasedItemsOlds:                   "OwnerPurchasedItemsOlds",
+	CreditTransactions:                        "CreditTransactions",
+	DebitTransactions:                         "DebitTransactions",
+	ServiceTransactions:                       "ServiceTransactions",
+	UserActivities:                            "UserActivities",
+	LockedToServiceUserAssets:                 "LockedToServiceUserAssets",
+	OwnerUserAssets:                           "OwnerUserAssets",
+	OwnerUserAssets1155S:                      "OwnerUserAssets1155S",
+	UserFingerprints:                          "UserFingerprints",
+	UserRecoveryCodes:                         "UserRecoveryCodes",
+	UsernameHistories:                         "UsernameHistories",
 }
 
 // userR is where relationships are stored.
 type userR struct {
-	Avatar                                *Blob                          `boiler:"Avatar" boil:"Avatar" json:"Avatar" toml:"Avatar" yaml:"Avatar"`
-	Faction                               *Faction                       `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	Role                                  *Role                          `boiler:"Role" boil:"Role" json:"Role" toml:"Role" yaml:"Role"`
-	PasswordHash                          *PasswordHash                  `boiler:"PasswordHash" boil:"PasswordHash" json:"PasswordHash" toml:"PasswordHash" yaml:"PasswordHash"`
-	APIKeys                               APIKeySlice                    `boiler:"APIKeys" boil:"APIKeys" json:"APIKeys" toml:"APIKeys" yaml:"APIKeys"`
-	FromServiceAssetServiceTransferEvents AssetServiceTransferEventSlice `boiler:"FromServiceAssetServiceTransferEvents" boil:"FromServiceAssetServiceTransferEvents" json:"FromServiceAssetServiceTransferEvents" toml:"FromServiceAssetServiceTransferEvents" yaml:"FromServiceAssetServiceTransferEvents"`
-	ToServiceAssetServiceTransferEvents   AssetServiceTransferEventSlice `boiler:"ToServiceAssetServiceTransferEvents" boil:"ToServiceAssetServiceTransferEvents" json:"ToServiceAssetServiceTransferEvents" toml:"ToServiceAssetServiceTransferEvents" yaml:"ToServiceAssetServiceTransferEvents"`
-	AssetServiceTransferEvents            AssetServiceTransferEventSlice `boiler:"AssetServiceTransferEvents" boil:"AssetServiceTransferEvents" json:"AssetServiceTransferEvents" toml:"AssetServiceTransferEvents" yaml:"AssetServiceTransferEvents"`
-	FromUserAssetTransferEvents           AssetTransferEventSlice        `boiler:"FromUserAssetTransferEvents" boil:"FromUserAssetTransferEvents" json:"FromUserAssetTransferEvents" toml:"FromUserAssetTransferEvents" yaml:"FromUserAssetTransferEvents"`
-	ToUserAssetTransferEvents             AssetTransferEventSlice        `boiler:"ToUserAssetTransferEvents" boil:"ToUserAssetTransferEvents" json:"ToUserAssetTransferEvents" toml:"ToUserAssetTransferEvents" yaml:"ToUserAssetTransferEvents"`
-	DepositTransactions                   DepositTransactionSlice        `boiler:"DepositTransactions" boil:"DepositTransactions" json:"DepositTransactions" toml:"DepositTransactions" yaml:"DepositTransactions"`
-	CreditFailedTransactions              FailedTransactionSlice         `boiler:"CreditFailedTransactions" boil:"CreditFailedTransactions" json:"CreditFailedTransactions" toml:"CreditFailedTransactions" yaml:"CreditFailedTransactions"`
-	DebitFailedTransactions               FailedTransactionSlice         `boiler:"DebitFailedTransactions" boil:"DebitFailedTransactions" json:"DebitFailedTransactions" toml:"DebitFailedTransactions" yaml:"DebitFailedTransactions"`
-	IssueTokens                           IssueTokenSlice                `boiler:"IssueTokens" boil:"IssueTokens" json:"IssueTokens" toml:"IssueTokens" yaml:"IssueTokens"`
-	PendingRefunds                        PendingRefundSlice             `boiler:"PendingRefunds" boil:"PendingRefunds" json:"PendingRefunds" toml:"PendingRefunds" yaml:"PendingRefunds"`
-	OwnerPurchasedItemsOlds               PurchasedItemsOldSlice         `boiler:"OwnerPurchasedItemsOlds" boil:"OwnerPurchasedItemsOlds" json:"OwnerPurchasedItemsOlds" toml:"OwnerPurchasedItemsOlds" yaml:"OwnerPurchasedItemsOlds"`
-	CreditTransactions                    TransactionSlice               `boiler:"CreditTransactions" boil:"CreditTransactions" json:"CreditTransactions" toml:"CreditTransactions" yaml:"CreditTransactions"`
-	DebitTransactions                     TransactionSlice               `boiler:"DebitTransactions" boil:"DebitTransactions" json:"DebitTransactions" toml:"DebitTransactions" yaml:"DebitTransactions"`
-	ServiceTransactions                   TransactionSlice               `boiler:"ServiceTransactions" boil:"ServiceTransactions" json:"ServiceTransactions" toml:"ServiceTransactions" yaml:"ServiceTransactions"`
-	UserActivities                        UserActivitySlice              `boiler:"UserActivities" boil:"UserActivities" json:"UserActivities" toml:"UserActivities" yaml:"UserActivities"`
-	LockedToServiceUserAssets             UserAssetSlice                 `boiler:"LockedToServiceUserAssets" boil:"LockedToServiceUserAssets" json:"LockedToServiceUserAssets" toml:"LockedToServiceUserAssets" yaml:"LockedToServiceUserAssets"`
-	OwnerUserAssets                       UserAssetSlice                 `boiler:"OwnerUserAssets" boil:"OwnerUserAssets" json:"OwnerUserAssets" toml:"OwnerUserAssets" yaml:"OwnerUserAssets"`
-	OwnerUserAssets1155S                  UserAssets1155Slice            `boiler:"OwnerUserAssets1155S" boil:"OwnerUserAssets1155S" json:"OwnerUserAssets1155S" toml:"OwnerUserAssets1155S" yaml:"OwnerUserAssets1155S"`
-	UserFingerprints                      UserFingerprintSlice           `boiler:"UserFingerprints" boil:"UserFingerprints" json:"UserFingerprints" toml:"UserFingerprints" yaml:"UserFingerprints"`
-	UserRecoveryCodes                     UserRecoveryCodeSlice          `boiler:"UserRecoveryCodes" boil:"UserRecoveryCodes" json:"UserRecoveryCodes" toml:"UserRecoveryCodes" yaml:"UserRecoveryCodes"`
-	UsernameHistories                     UsernameHistorySlice           `boiler:"UsernameHistories" boil:"UsernameHistories" json:"UsernameHistories" toml:"UsernameHistories" yaml:"UsernameHistories"`
+	Avatar                                    *Blob                              `boiler:"Avatar" boil:"Avatar" json:"Avatar" toml:"Avatar" yaml:"Avatar"`
+	Faction                                   *Faction                           `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	Role                                      *Role                              `boiler:"Role" boil:"Role" json:"Role" toml:"Role" yaml:"Role"`
+	PasswordHash                              *PasswordHash                      `boiler:"PasswordHash" boil:"PasswordHash" json:"PasswordHash" toml:"PasswordHash" yaml:"PasswordHash"`
+	APIKeys                                   APIKeySlice                        `boiler:"APIKeys" boil:"APIKeys" json:"APIKeys" toml:"APIKeys" yaml:"APIKeys"`
+	FromServiceAsset1155ServiceTransferEvents Asset1155ServiceTransferEventSlice `boiler:"FromServiceAsset1155ServiceTransferEvents" boil:"FromServiceAsset1155ServiceTransferEvents" json:"FromServiceAsset1155ServiceTransferEvents" toml:"FromServiceAsset1155ServiceTransferEvents" yaml:"FromServiceAsset1155ServiceTransferEvents"`
+	ToServiceAsset1155ServiceTransferEvents   Asset1155ServiceTransferEventSlice `boiler:"ToServiceAsset1155ServiceTransferEvents" boil:"ToServiceAsset1155ServiceTransferEvents" json:"ToServiceAsset1155ServiceTransferEvents" toml:"ToServiceAsset1155ServiceTransferEvents" yaml:"ToServiceAsset1155ServiceTransferEvents"`
+	Asset1155ServiceTransferEvents            Asset1155ServiceTransferEventSlice `boiler:"Asset1155ServiceTransferEvents" boil:"Asset1155ServiceTransferEvents" json:"Asset1155ServiceTransferEvents" toml:"Asset1155ServiceTransferEvents" yaml:"Asset1155ServiceTransferEvents"`
+	FromServiceAssetServiceTransferEvents     AssetServiceTransferEventSlice     `boiler:"FromServiceAssetServiceTransferEvents" boil:"FromServiceAssetServiceTransferEvents" json:"FromServiceAssetServiceTransferEvents" toml:"FromServiceAssetServiceTransferEvents" yaml:"FromServiceAssetServiceTransferEvents"`
+	ToServiceAssetServiceTransferEvents       AssetServiceTransferEventSlice     `boiler:"ToServiceAssetServiceTransferEvents" boil:"ToServiceAssetServiceTransferEvents" json:"ToServiceAssetServiceTransferEvents" toml:"ToServiceAssetServiceTransferEvents" yaml:"ToServiceAssetServiceTransferEvents"`
+	AssetServiceTransferEvents                AssetServiceTransferEventSlice     `boiler:"AssetServiceTransferEvents" boil:"AssetServiceTransferEvents" json:"AssetServiceTransferEvents" toml:"AssetServiceTransferEvents" yaml:"AssetServiceTransferEvents"`
+	FromUserAssetTransferEvents               AssetTransferEventSlice            `boiler:"FromUserAssetTransferEvents" boil:"FromUserAssetTransferEvents" json:"FromUserAssetTransferEvents" toml:"FromUserAssetTransferEvents" yaml:"FromUserAssetTransferEvents"`
+	ToUserAssetTransferEvents                 AssetTransferEventSlice            `boiler:"ToUserAssetTransferEvents" boil:"ToUserAssetTransferEvents" json:"ToUserAssetTransferEvents" toml:"ToUserAssetTransferEvents" yaml:"ToUserAssetTransferEvents"`
+	DepositAsset1155Transactions              DepositAsset1155TransactionSlice   `boiler:"DepositAsset1155Transactions" boil:"DepositAsset1155Transactions" json:"DepositAsset1155Transactions" toml:"DepositAsset1155Transactions" yaml:"DepositAsset1155Transactions"`
+	DepositTransactions                       DepositTransactionSlice            `boiler:"DepositTransactions" boil:"DepositTransactions" json:"DepositTransactions" toml:"DepositTransactions" yaml:"DepositTransactions"`
+	CreditFailedTransactions                  FailedTransactionSlice             `boiler:"CreditFailedTransactions" boil:"CreditFailedTransactions" json:"CreditFailedTransactions" toml:"CreditFailedTransactions" yaml:"CreditFailedTransactions"`
+	DebitFailedTransactions                   FailedTransactionSlice             `boiler:"DebitFailedTransactions" boil:"DebitFailedTransactions" json:"DebitFailedTransactions" toml:"DebitFailedTransactions" yaml:"DebitFailedTransactions"`
+	IssueTokens                               IssueTokenSlice                    `boiler:"IssueTokens" boil:"IssueTokens" json:"IssueTokens" toml:"IssueTokens" yaml:"IssueTokens"`
+	Pending1155Rollbacks                      Pending1155RollbackSlice           `boiler:"Pending1155Rollbacks" boil:"Pending1155Rollbacks" json:"Pending1155Rollbacks" toml:"Pending1155Rollbacks" yaml:"Pending1155Rollbacks"`
+	PendingRefunds                            PendingRefundSlice                 `boiler:"PendingRefunds" boil:"PendingRefunds" json:"PendingRefunds" toml:"PendingRefunds" yaml:"PendingRefunds"`
+	OwnerPurchasedItemsOlds                   PurchasedItemsOldSlice             `boiler:"OwnerPurchasedItemsOlds" boil:"OwnerPurchasedItemsOlds" json:"OwnerPurchasedItemsOlds" toml:"OwnerPurchasedItemsOlds" yaml:"OwnerPurchasedItemsOlds"`
+	CreditTransactions                        TransactionSlice                   `boiler:"CreditTransactions" boil:"CreditTransactions" json:"CreditTransactions" toml:"CreditTransactions" yaml:"CreditTransactions"`
+	DebitTransactions                         TransactionSlice                   `boiler:"DebitTransactions" boil:"DebitTransactions" json:"DebitTransactions" toml:"DebitTransactions" yaml:"DebitTransactions"`
+	ServiceTransactions                       TransactionSlice                   `boiler:"ServiceTransactions" boil:"ServiceTransactions" json:"ServiceTransactions" toml:"ServiceTransactions" yaml:"ServiceTransactions"`
+	UserActivities                            UserActivitySlice                  `boiler:"UserActivities" boil:"UserActivities" json:"UserActivities" toml:"UserActivities" yaml:"UserActivities"`
+	LockedToServiceUserAssets                 UserAssetSlice                     `boiler:"LockedToServiceUserAssets" boil:"LockedToServiceUserAssets" json:"LockedToServiceUserAssets" toml:"LockedToServiceUserAssets" yaml:"LockedToServiceUserAssets"`
+	OwnerUserAssets                           UserAssetSlice                     `boiler:"OwnerUserAssets" boil:"OwnerUserAssets" json:"OwnerUserAssets" toml:"OwnerUserAssets" yaml:"OwnerUserAssets"`
+	OwnerUserAssets1155S                      UserAssets1155Slice                `boiler:"OwnerUserAssets1155S" boil:"OwnerUserAssets1155S" json:"OwnerUserAssets1155S" toml:"OwnerUserAssets1155S" yaml:"OwnerUserAssets1155S"`
+	UserFingerprints                          UserFingerprintSlice               `boiler:"UserFingerprints" boil:"UserFingerprints" json:"UserFingerprints" toml:"UserFingerprints" yaml:"UserFingerprints"`
+	UserRecoveryCodes                         UserRecoveryCodeSlice              `boiler:"UserRecoveryCodes" boil:"UserRecoveryCodes" json:"UserRecoveryCodes" toml:"UserRecoveryCodes" yaml:"UserRecoveryCodes"`
+	UsernameHistories                         UsernameHistorySlice               `boiler:"UsernameHistories" boil:"UsernameHistories" json:"UsernameHistories" toml:"UsernameHistories" yaml:"UsernameHistories"`
 }
 
 // NewStruct creates a new relationship struct
@@ -696,6 +711,69 @@ func (o *User) APIKeys(mods ...qm.QueryMod) apiKeyQuery {
 	return query
 }
 
+// FromServiceAsset1155ServiceTransferEvents retrieves all the asset1155_service_transfer_event's Asset1155ServiceTransferEvents with an executor via from_service column.
+func (o *User) FromServiceAsset1155ServiceTransferEvents(mods ...qm.QueryMod) asset1155ServiceTransferEventQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"asset1155_service_transfer_events\".\"from_service\"=?", o.ID),
+	)
+
+	query := Asset1155ServiceTransferEvents(queryMods...)
+	queries.SetFrom(query.Query, "\"asset1155_service_transfer_events\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"asset1155_service_transfer_events\".*"})
+	}
+
+	return query
+}
+
+// ToServiceAsset1155ServiceTransferEvents retrieves all the asset1155_service_transfer_event's Asset1155ServiceTransferEvents with an executor via to_service column.
+func (o *User) ToServiceAsset1155ServiceTransferEvents(mods ...qm.QueryMod) asset1155ServiceTransferEventQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"asset1155_service_transfer_events\".\"to_service\"=?", o.ID),
+	)
+
+	query := Asset1155ServiceTransferEvents(queryMods...)
+	queries.SetFrom(query.Query, "\"asset1155_service_transfer_events\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"asset1155_service_transfer_events\".*"})
+	}
+
+	return query
+}
+
+// Asset1155ServiceTransferEvents retrieves all the asset1155_service_transfer_event's Asset1155ServiceTransferEvents with an executor.
+func (o *User) Asset1155ServiceTransferEvents(mods ...qm.QueryMod) asset1155ServiceTransferEventQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"asset1155_service_transfer_events\".\"user_id\"=?", o.ID),
+	)
+
+	query := Asset1155ServiceTransferEvents(queryMods...)
+	queries.SetFrom(query.Query, "\"asset1155_service_transfer_events\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"asset1155_service_transfer_events\".*"})
+	}
+
+	return query
+}
+
 // FromServiceAssetServiceTransferEvents retrieves all the asset_service_transfer_event's AssetServiceTransferEvents with an executor via from_service column.
 func (o *User) FromServiceAssetServiceTransferEvents(mods ...qm.QueryMod) assetServiceTransferEventQuery {
 	var queryMods []qm.QueryMod
@@ -801,6 +879,27 @@ func (o *User) ToUserAssetTransferEvents(mods ...qm.QueryMod) assetTransferEvent
 	return query
 }
 
+// DepositAsset1155Transactions retrieves all the deposit_asset1155_transaction's DepositAsset1155Transactions with an executor.
+func (o *User) DepositAsset1155Transactions(mods ...qm.QueryMod) depositAsset1155TransactionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"deposit_asset1155_transactions\".\"user_id\"=?", o.ID),
+	)
+
+	query := DepositAsset1155Transactions(queryMods...)
+	queries.SetFrom(query.Query, "\"deposit_asset1155_transactions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"deposit_asset1155_transactions\".*"})
+	}
+
+	return query
+}
+
 // DepositTransactions retrieves all the deposit_transaction's DepositTransactions with an executor.
 func (o *User) DepositTransactions(mods ...qm.QueryMod) depositTransactionQuery {
 	var queryMods []qm.QueryMod
@@ -882,6 +981,28 @@ func (o *User) IssueTokens(mods ...qm.QueryMod) issueTokenQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"issue_tokens\".*"})
+	}
+
+	return query
+}
+
+// Pending1155Rollbacks retrieves all the pending_1155_rollback's Pending1155Rollbacks with an executor.
+func (o *User) Pending1155Rollbacks(mods ...qm.QueryMod) pending1155RollbackQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"pending_1155_rollback\".\"user_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"pending_1155_rollback\".\"deleted_at\""),
+	)
+
+	query := Pending1155Rollbacks(queryMods...)
+	queries.SetFrom(query.Query, "\"pending_1155_rollback\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"pending_1155_rollback\".*"})
 	}
 
 	return query
@@ -1671,6 +1792,300 @@ func (userL) LoadAPIKeys(e boil.Executor, singular bool, maybeUser interface{}, 
 	return nil
 }
 
+// LoadFromServiceAsset1155ServiceTransferEvents allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadFromServiceAsset1155ServiceTransferEvents(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`asset1155_service_transfer_events`),
+		qm.WhereIn(`asset1155_service_transfer_events.from_service in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load asset1155_service_transfer_events")
+	}
+
+	var resultSlice []*Asset1155ServiceTransferEvent
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice asset1155_service_transfer_events")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on asset1155_service_transfer_events")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for asset1155_service_transfer_events")
+	}
+
+	if len(asset1155ServiceTransferEventAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.FromServiceAsset1155ServiceTransferEvents = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &asset1155ServiceTransferEventR{}
+			}
+			foreign.R.FromServiceUser = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.FromService) {
+				local.R.FromServiceAsset1155ServiceTransferEvents = append(local.R.FromServiceAsset1155ServiceTransferEvents, foreign)
+				if foreign.R == nil {
+					foreign.R = &asset1155ServiceTransferEventR{}
+				}
+				foreign.R.FromServiceUser = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadToServiceAsset1155ServiceTransferEvents allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadToServiceAsset1155ServiceTransferEvents(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`asset1155_service_transfer_events`),
+		qm.WhereIn(`asset1155_service_transfer_events.to_service in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load asset1155_service_transfer_events")
+	}
+
+	var resultSlice []*Asset1155ServiceTransferEvent
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice asset1155_service_transfer_events")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on asset1155_service_transfer_events")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for asset1155_service_transfer_events")
+	}
+
+	if len(asset1155ServiceTransferEventAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.ToServiceAsset1155ServiceTransferEvents = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &asset1155ServiceTransferEventR{}
+			}
+			foreign.R.ToServiceUser = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.ToService) {
+				local.R.ToServiceAsset1155ServiceTransferEvents = append(local.R.ToServiceAsset1155ServiceTransferEvents, foreign)
+				if foreign.R == nil {
+					foreign.R = &asset1155ServiceTransferEventR{}
+				}
+				foreign.R.ToServiceUser = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadAsset1155ServiceTransferEvents allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadAsset1155ServiceTransferEvents(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`asset1155_service_transfer_events`),
+		qm.WhereIn(`asset1155_service_transfer_events.user_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load asset1155_service_transfer_events")
+	}
+
+	var resultSlice []*Asset1155ServiceTransferEvent
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice asset1155_service_transfer_events")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on asset1155_service_transfer_events")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for asset1155_service_transfer_events")
+	}
+
+	if len(asset1155ServiceTransferEventAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.Asset1155ServiceTransferEvents = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &asset1155ServiceTransferEventR{}
+			}
+			foreign.R.User = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.UserID {
+				local.R.Asset1155ServiceTransferEvents = append(local.R.Asset1155ServiceTransferEvents, foreign)
+				if foreign.R == nil {
+					foreign.R = &asset1155ServiceTransferEventR{}
+				}
+				foreign.R.User = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadFromServiceAssetServiceTransferEvents allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (userL) LoadFromServiceAssetServiceTransferEvents(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
@@ -2161,6 +2576,104 @@ func (userL) LoadToUserAssetTransferEvents(e boil.Executor, singular bool, maybe
 	return nil
 }
 
+// LoadDepositAsset1155Transactions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadDepositAsset1155Transactions(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`deposit_asset1155_transactions`),
+		qm.WhereIn(`deposit_asset1155_transactions.user_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load deposit_asset1155_transactions")
+	}
+
+	var resultSlice []*DepositAsset1155Transaction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice deposit_asset1155_transactions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on deposit_asset1155_transactions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for deposit_asset1155_transactions")
+	}
+
+	if len(depositAsset1155TransactionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.DepositAsset1155Transactions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &depositAsset1155TransactionR{}
+			}
+			foreign.R.User = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.UserID {
+				local.R.DepositAsset1155Transactions = append(local.R.DepositAsset1155Transactions, foreign)
+				if foreign.R == nil {
+					foreign.R = &depositAsset1155TransactionR{}
+				}
+				foreign.R.User = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadDepositTransactions allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (userL) LoadDepositTransactions(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
@@ -2545,6 +3058,105 @@ func (userL) LoadIssueTokens(e boil.Executor, singular bool, maybeUser interface
 				local.R.IssueTokens = append(local.R.IssueTokens, foreign)
 				if foreign.R == nil {
 					foreign.R = &issueTokenR{}
+				}
+				foreign.R.User = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadPending1155Rollbacks allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadPending1155Rollbacks(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`pending_1155_rollback`),
+		qm.WhereIn(`pending_1155_rollback.user_id in ?`, args...),
+		qmhelper.WhereIsNull(`pending_1155_rollback.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load pending_1155_rollback")
+	}
+
+	var resultSlice []*Pending1155Rollback
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice pending_1155_rollback")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on pending_1155_rollback")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for pending_1155_rollback")
+	}
+
+	if len(pending1155RollbackAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.Pending1155Rollbacks = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &pending1155RollbackR{}
+			}
+			foreign.R.User = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.UserID {
+				local.R.Pending1155Rollbacks = append(local.R.Pending1155Rollbacks, foreign)
+				if foreign.R == nil {
+					foreign.R = &pending1155RollbackR{}
 				}
 				foreign.R.User = local
 				break
@@ -4075,6 +4687,308 @@ func (o *User) AddAPIKeys(exec boil.Executor, insert bool, related ...*APIKey) e
 	return nil
 }
 
+// AddFromServiceAsset1155ServiceTransferEvents adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.FromServiceAsset1155ServiceTransferEvents.
+// Sets related.R.FromServiceUser appropriately.
+func (o *User) AddFromServiceAsset1155ServiceTransferEvents(exec boil.Executor, insert bool, related ...*Asset1155ServiceTransferEvent) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.FromService, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"asset1155_service_transfer_events\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"from_service"}),
+				strmangle.WhereClause("\"", "\"", 2, asset1155ServiceTransferEventPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.FromService, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			FromServiceAsset1155ServiceTransferEvents: related,
+		}
+	} else {
+		o.R.FromServiceAsset1155ServiceTransferEvents = append(o.R.FromServiceAsset1155ServiceTransferEvents, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &asset1155ServiceTransferEventR{
+				FromServiceUser: o,
+			}
+		} else {
+			rel.R.FromServiceUser = o
+		}
+	}
+	return nil
+}
+
+// SetFromServiceAsset1155ServiceTransferEvents removes all previously related items of the
+// user replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.FromServiceUser's FromServiceAsset1155ServiceTransferEvents accordingly.
+// Replaces o.R.FromServiceAsset1155ServiceTransferEvents with related.
+// Sets related.R.FromServiceUser's FromServiceAsset1155ServiceTransferEvents accordingly.
+func (o *User) SetFromServiceAsset1155ServiceTransferEvents(exec boil.Executor, insert bool, related ...*Asset1155ServiceTransferEvent) error {
+	query := "update \"asset1155_service_transfer_events\" set \"from_service\" = null where \"from_service\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.FromServiceAsset1155ServiceTransferEvents {
+			queries.SetScanner(&rel.FromService, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.FromServiceUser = nil
+		}
+
+		o.R.FromServiceAsset1155ServiceTransferEvents = nil
+	}
+	return o.AddFromServiceAsset1155ServiceTransferEvents(exec, insert, related...)
+}
+
+// RemoveFromServiceAsset1155ServiceTransferEvents relationships from objects passed in.
+// Removes related items from R.FromServiceAsset1155ServiceTransferEvents (uses pointer comparison, removal does not keep order)
+// Sets related.R.FromServiceUser.
+func (o *User) RemoveFromServiceAsset1155ServiceTransferEvents(exec boil.Executor, related ...*Asset1155ServiceTransferEvent) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.FromService, nil)
+		if rel.R != nil {
+			rel.R.FromServiceUser = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("from_service")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.FromServiceAsset1155ServiceTransferEvents {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.FromServiceAsset1155ServiceTransferEvents)
+			if ln > 1 && i < ln-1 {
+				o.R.FromServiceAsset1155ServiceTransferEvents[i] = o.R.FromServiceAsset1155ServiceTransferEvents[ln-1]
+			}
+			o.R.FromServiceAsset1155ServiceTransferEvents = o.R.FromServiceAsset1155ServiceTransferEvents[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+// AddToServiceAsset1155ServiceTransferEvents adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.ToServiceAsset1155ServiceTransferEvents.
+// Sets related.R.ToServiceUser appropriately.
+func (o *User) AddToServiceAsset1155ServiceTransferEvents(exec boil.Executor, insert bool, related ...*Asset1155ServiceTransferEvent) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.ToService, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"asset1155_service_transfer_events\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"to_service"}),
+				strmangle.WhereClause("\"", "\"", 2, asset1155ServiceTransferEventPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.ToService, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			ToServiceAsset1155ServiceTransferEvents: related,
+		}
+	} else {
+		o.R.ToServiceAsset1155ServiceTransferEvents = append(o.R.ToServiceAsset1155ServiceTransferEvents, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &asset1155ServiceTransferEventR{
+				ToServiceUser: o,
+			}
+		} else {
+			rel.R.ToServiceUser = o
+		}
+	}
+	return nil
+}
+
+// SetToServiceAsset1155ServiceTransferEvents removes all previously related items of the
+// user replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.ToServiceUser's ToServiceAsset1155ServiceTransferEvents accordingly.
+// Replaces o.R.ToServiceAsset1155ServiceTransferEvents with related.
+// Sets related.R.ToServiceUser's ToServiceAsset1155ServiceTransferEvents accordingly.
+func (o *User) SetToServiceAsset1155ServiceTransferEvents(exec boil.Executor, insert bool, related ...*Asset1155ServiceTransferEvent) error {
+	query := "update \"asset1155_service_transfer_events\" set \"to_service\" = null where \"to_service\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.ToServiceAsset1155ServiceTransferEvents {
+			queries.SetScanner(&rel.ToService, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.ToServiceUser = nil
+		}
+
+		o.R.ToServiceAsset1155ServiceTransferEvents = nil
+	}
+	return o.AddToServiceAsset1155ServiceTransferEvents(exec, insert, related...)
+}
+
+// RemoveToServiceAsset1155ServiceTransferEvents relationships from objects passed in.
+// Removes related items from R.ToServiceAsset1155ServiceTransferEvents (uses pointer comparison, removal does not keep order)
+// Sets related.R.ToServiceUser.
+func (o *User) RemoveToServiceAsset1155ServiceTransferEvents(exec boil.Executor, related ...*Asset1155ServiceTransferEvent) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.ToService, nil)
+		if rel.R != nil {
+			rel.R.ToServiceUser = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("to_service")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.ToServiceAsset1155ServiceTransferEvents {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.ToServiceAsset1155ServiceTransferEvents)
+			if ln > 1 && i < ln-1 {
+				o.R.ToServiceAsset1155ServiceTransferEvents[i] = o.R.ToServiceAsset1155ServiceTransferEvents[ln-1]
+			}
+			o.R.ToServiceAsset1155ServiceTransferEvents = o.R.ToServiceAsset1155ServiceTransferEvents[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+// AddAsset1155ServiceTransferEvents adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.Asset1155ServiceTransferEvents.
+// Sets related.R.User appropriately.
+func (o *User) AddAsset1155ServiceTransferEvents(exec boil.Executor, insert bool, related ...*Asset1155ServiceTransferEvent) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.UserID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"asset1155_service_transfer_events\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
+				strmangle.WhereClause("\"", "\"", 2, asset1155ServiceTransferEventPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.UserID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			Asset1155ServiceTransferEvents: related,
+		}
+	} else {
+		o.R.Asset1155ServiceTransferEvents = append(o.R.Asset1155ServiceTransferEvents, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &asset1155ServiceTransferEventR{
+				User: o,
+			}
+		} else {
+			rel.R.User = o
+		}
+	}
+	return nil
+}
+
 // AddFromServiceAssetServiceTransferEvents adds the given related objects to the existing relationships
 // of the user, optionally inserting them as new records.
 // Appends related to o.R.FromServiceAssetServiceTransferEvents.
@@ -4481,6 +5395,58 @@ func (o *User) AddToUserAssetTransferEvents(exec boil.Executor, insert bool, rel
 	return nil
 }
 
+// AddDepositAsset1155Transactions adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.DepositAsset1155Transactions.
+// Sets related.R.User appropriately.
+func (o *User) AddDepositAsset1155Transactions(exec boil.Executor, insert bool, related ...*DepositAsset1155Transaction) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.UserID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"deposit_asset1155_transactions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
+				strmangle.WhereClause("\"", "\"", 2, depositAsset1155TransactionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.UserID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			DepositAsset1155Transactions: related,
+		}
+	} else {
+		o.R.DepositAsset1155Transactions = append(o.R.DepositAsset1155Transactions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &depositAsset1155TransactionR{
+				User: o,
+			}
+		} else {
+			rel.R.User = o
+		}
+	}
+	return nil
+}
+
 // AddDepositTransactions adds the given related objects to the existing relationships
 // of the user, optionally inserting them as new records.
 // Appends related to o.R.DepositTransactions.
@@ -4680,6 +5646,58 @@ func (o *User) AddIssueTokens(exec boil.Executor, insert bool, related ...*Issue
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &issueTokenR{
+				User: o,
+			}
+		} else {
+			rel.R.User = o
+		}
+	}
+	return nil
+}
+
+// AddPending1155Rollbacks adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.Pending1155Rollbacks.
+// Sets related.R.User appropriately.
+func (o *User) AddPending1155Rollbacks(exec boil.Executor, insert bool, related ...*Pending1155Rollback) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.UserID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"pending_1155_rollback\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
+				strmangle.WhereClause("\"", "\"", 2, pending1155RollbackPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.UserID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			Pending1155Rollbacks: related,
+		}
+	} else {
+		o.R.Pending1155Rollbacks = append(o.R.Pending1155Rollbacks, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &pending1155RollbackR{
 				User: o,
 			}
 		} else {

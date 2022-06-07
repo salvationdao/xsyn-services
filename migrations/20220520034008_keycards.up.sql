@@ -2,7 +2,7 @@ DROP TYPE IF EXISTS CONTRACT_TYPE;
 CREATE TYPE CONTRACT_TYPE AS ENUM ('ERC-721', 'EIP-1155');
 
 ALTER TABLE collections
-ADD contract_type CONTRACT_TYPE;
+    ADD contract_type CONTRACT_TYPE;
 
 INSERT INTO collections (id, name, logo_blob_id, slug, mint_contract, stake_contract, is_visible, contract_type)
 VALUES ('8ccb689f-f6fe-43dd-92f5-dcd6e61b5614', 'Supremacy Achievements', null, 'supremacy-achievements', '0x17F5655c7D834e4772171F30E7315bbc3221F1eE', null,

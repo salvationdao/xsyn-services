@@ -13,6 +13,7 @@ import (
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/payments"
 	"xsyn-services/passport/supremacy_rpcclient"
+	xsynTypes "xsyn-services/types"
 )
 
 func (s *S) AssetOnChainStatusHandler(req AssetOnChainStatusReq, resp *AssetOnChainStatusResp) error {
@@ -125,25 +126,21 @@ func (s *S) AssetsRegisterHandler(req RegisterAssetsReq, resp *RegisterAssetsRes
 }
 
 type UpdateUser1155AssetReq struct {
+	ApiKey        string               `json:"api_key"`
 	PublicAddress string               `json:"public_address"`
 	AssetData     []Supremacy1155Asset `json:"asset_data"`
 }
 
 type Supremacy1155Asset struct {
-	Label          string                      `json:"label"`
-	Description    string                      `json:"description"`
-	CollectionSlug string                      `json:"collection_slug"`
-	TokenID        int                         `json:"token_id"`
-	Count          int                         `json:"count"`
-	ImageURL       string                      `json:"image_url"`
-	AnimationURL   string                      `json:"animation_url"`
-	KeycardGroup   string                      `json:"keycard_group"`
-	Attributes     []SupremacyKeycardAttribute `json:"attributes"`
-}
-
-type SupremacyKeycardAttribute struct {
-	TraitType string `json:"trait_type"`
-	Value     string `json:"value,omitempty"`
+	Label          string                                `json:"label"`
+	Description    string                                `json:"description"`
+	CollectionSlug string                                `json:"collection_slug"`
+	TokenID        int                                   `json:"token_id"`
+	Count          int                                   `json:"count"`
+	ImageURL       string                                `json:"image_url"`
+	AnimationURL   string                                `json:"animation_url"`
+	KeycardGroup   string                                `json:"keycard_group"`
+	Attributes     []xsynTypes.SupremacyKeycardAttribute `json:"attributes"`
 }
 
 type UpdateUser1155AssetResp struct {
@@ -153,8 +150,12 @@ type UpdateUser1155AssetResp struct {
 	PublicAddress null.String `json:"public_address"`
 }
 
-//InsertUser1155Asset inserts keycards
-func (s *S) InsertUser1155Asset(req UpdateUser1155AssetReq, resp *UpdateUser1155AssetResp) error {
+//InsertUser1155AssetHandler inserts keycards
+func (s *S) InsertUser1155AssetHandler(req UpdateUser1155AssetReq, resp *UpdateUser1155AssetResp) error {
+	serviceID, err := IsServerClient(req.ApiKey)
+	if err != nil {
+		return err
+	}
 	user, err := payments.CreateOrGetUser(common.HexToAddress(req.PublicAddress))
 	if err != nil {
 		passlog.L.Error().Str("req.PublicAddress", req.PublicAddress).Err(err).Msg("Failed to get or create user while updating 1155 asset")
@@ -194,6 +195,7 @@ func (s *S) InsertUser1155Asset(req UpdateUser1155AssetReq, resp *UpdateUser1155
 			KeycardGroup:    asset.KeycardGroup,
 			Attributes:      assetJson,
 			CollectionID:    collection.ID,
+			ServiceID:       null.StringFrom(serviceID),
 		}
 
 		err = newAsset.Insert(passdb.StdConn, boil.Infer())

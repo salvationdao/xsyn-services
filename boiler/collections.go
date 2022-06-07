@@ -18,24 +18,30 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"
+	"github.com/volatiletech/sqlboiler/v4/types"
 	"github.com/volatiletech/strmangle"
 )
 
 // Collection is an object representing the database table.
 type Collection struct {
-	ID                 string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Name               string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	LogoBlobID         null.String `boiler:"logo_blob_id" boil:"logo_blob_id" json:"logo_blob_id,omitempty" toml:"logo_blob_id" yaml:"logo_blob_id,omitempty"`
-	Keywords           null.String `boiler:"keywords" boil:"keywords" json:"keywords,omitempty" toml:"keywords" yaml:"keywords,omitempty"`
-	DeletedAt          null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt          time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt          time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	Slug               string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	MintContract       null.String `boiler:"mint_contract" boil:"mint_contract" json:"mint_contract,omitempty" toml:"mint_contract" yaml:"mint_contract,omitempty"`
-	StakeContract      null.String `boiler:"stake_contract" boil:"stake_contract" json:"stake_contract,omitempty" toml:"stake_contract" yaml:"stake_contract,omitempty"`
-	IsVisible          null.Bool   `boiler:"is_visible" boil:"is_visible" json:"is_visible,omitempty" toml:"is_visible" yaml:"is_visible,omitempty"`
-	ContractType       null.String `boiler:"contract_type" boil:"contract_type" json:"contract_type,omitempty" toml:"contract_type" yaml:"contract_type,omitempty"`
-	StakingContractOld null.String `boiler:"staking_contract_old" boil:"staking_contract_old" json:"staking_contract_old,omitempty" toml:"staking_contract_old" yaml:"staking_contract_old,omitempty"`
+	ID                 string           `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Name               string           `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
+	LogoBlobID         null.String      `boiler:"logo_blob_id" boil:"logo_blob_id" json:"logo_blob_id,omitempty" toml:"logo_blob_id" yaml:"logo_blob_id,omitempty"`
+	Keywords           null.String      `boiler:"keywords" boil:"keywords" json:"keywords,omitempty" toml:"keywords" yaml:"keywords,omitempty"`
+	DeletedAt          null.Time        `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt          time.Time        `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt          time.Time        `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	Slug               string           `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	MintContract       null.String      `boiler:"mint_contract" boil:"mint_contract" json:"mint_contract,omitempty" toml:"mint_contract" yaml:"mint_contract,omitempty"`
+	StakeContract      null.String      `boiler:"stake_contract" boil:"stake_contract" json:"stake_contract,omitempty" toml:"stake_contract" yaml:"stake_contract,omitempty"`
+	IsVisible          null.Bool        `boiler:"is_visible" boil:"is_visible" json:"is_visible,omitempty" toml:"is_visible" yaml:"is_visible,omitempty"`
+	ContractType       null.String      `boiler:"contract_type" boil:"contract_type" json:"contract_type,omitempty" toml:"contract_type" yaml:"contract_type,omitempty"`
+	BackgroundURL      null.String      `boiler:"background_url" boil:"background_url" json:"background_url,omitempty" toml:"background_url" yaml:"background_url,omitempty"`
+	LogoURL            null.String      `boiler:"logo_url" boil:"logo_url" json:"logo_url,omitempty" toml:"logo_url" yaml:"logo_url,omitempty"`
+	Description        null.String      `boiler:"description" boil:"description" json:"description,omitempty" toml:"description" yaml:"description,omitempty"`
+	ExternalTokenIds   types.Int64Array `boiler:"external_token_ids" boil:"external_token_ids" json:"external_token_ids,omitempty" toml:"external_token_ids" yaml:"external_token_ids,omitempty"`
+	TransferContract   null.String      `boiler:"transfer_contract" boil:"transfer_contract" json:"transfer_contract,omitempty" toml:"transfer_contract" yaml:"transfer_contract,omitempty"`
+	StakingContractOld null.String      `boiler:"staking_contract_old" boil:"staking_contract_old" json:"staking_contract_old,omitempty" toml:"staking_contract_old" yaml:"staking_contract_old,omitempty"`
 
 	R *collectionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L collectionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -54,6 +60,11 @@ var CollectionColumns = struct {
 	StakeContract      string
 	IsVisible          string
 	ContractType       string
+	BackgroundURL      string
+	LogoURL            string
+	Description        string
+	ExternalTokenIds   string
+	TransferContract   string
 	StakingContractOld string
 }{
 	ID:                 "id",
@@ -68,6 +79,11 @@ var CollectionColumns = struct {
 	StakeContract:      "stake_contract",
 	IsVisible:          "is_visible",
 	ContractType:       "contract_type",
+	BackgroundURL:      "background_url",
+	LogoURL:            "logo_url",
+	Description:        "description",
+	ExternalTokenIds:   "external_token_ids",
+	TransferContract:   "transfer_contract",
 	StakingContractOld: "staking_contract_old",
 }
 
@@ -84,6 +100,11 @@ var CollectionTableColumns = struct {
 	StakeContract      string
 	IsVisible          string
 	ContractType       string
+	BackgroundURL      string
+	LogoURL            string
+	Description        string
+	ExternalTokenIds   string
+	TransferContract   string
 	StakingContractOld string
 }{
 	ID:                 "collections.id",
@@ -98,6 +119,11 @@ var CollectionTableColumns = struct {
 	StakeContract:      "collections.stake_contract",
 	IsVisible:          "collections.is_visible",
 	ContractType:       "collections.contract_type",
+	BackgroundURL:      "collections.background_url",
+	LogoURL:            "collections.logo_url",
+	Description:        "collections.description",
+	ExternalTokenIds:   "collections.external_token_ids",
+	TransferContract:   "collections.transfer_contract",
 	StakingContractOld: "collections.staking_contract_old",
 }
 
@@ -127,6 +153,30 @@ func (w whereHelpernull_Bool) GTE(x null.Bool) qm.QueryMod {
 func (w whereHelpernull_Bool) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
 func (w whereHelpernull_Bool) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
+type whereHelpertypes_Int64Array struct{ field string }
+
+func (w whereHelpertypes_Int64Array) EQ(x types.Int64Array) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpertypes_Int64Array) NEQ(x types.Int64Array) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpertypes_Int64Array) LT(x types.Int64Array) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpertypes_Int64Array) LTE(x types.Int64Array) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpertypes_Int64Array) GT(x types.Int64Array) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpertypes_Int64Array) GTE(x types.Int64Array) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelpertypes_Int64Array) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpertypes_Int64Array) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
+
 var CollectionWhere = struct {
 	ID                 whereHelperstring
 	Name               whereHelperstring
@@ -140,6 +190,11 @@ var CollectionWhere = struct {
 	StakeContract      whereHelpernull_String
 	IsVisible          whereHelpernull_Bool
 	ContractType       whereHelpernull_String
+	BackgroundURL      whereHelpernull_String
+	LogoURL            whereHelpernull_String
+	Description        whereHelpernull_String
+	ExternalTokenIds   whereHelpertypes_Int64Array
+	TransferContract   whereHelpernull_String
 	StakingContractOld whereHelpernull_String
 }{
 	ID:                 whereHelperstring{field: "\"collections\".\"id\""},
@@ -154,6 +209,11 @@ var CollectionWhere = struct {
 	StakeContract:      whereHelpernull_String{field: "\"collections\".\"stake_contract\""},
 	IsVisible:          whereHelpernull_Bool{field: "\"collections\".\"is_visible\""},
 	ContractType:       whereHelpernull_String{field: "\"collections\".\"contract_type\""},
+	BackgroundURL:      whereHelpernull_String{field: "\"collections\".\"background_url\""},
+	LogoURL:            whereHelpernull_String{field: "\"collections\".\"logo_url\""},
+	Description:        whereHelpernull_String{field: "\"collections\".\"description\""},
+	ExternalTokenIds:   whereHelpertypes_Int64Array{field: "\"collections\".\"external_token_ids\""},
+	TransferContract:   whereHelpernull_String{field: "\"collections\".\"transfer_contract\""},
 	StakingContractOld: whereHelpernull_String{field: "\"collections\".\"staking_contract_old\""},
 }
 
@@ -193,8 +253,8 @@ func (*collectionR) NewStruct() *collectionR {
 type collectionL struct{}
 
 var (
-	collectionAllColumns            = []string{"id", "name", "logo_blob_id", "keywords", "deleted_at", "updated_at", "created_at", "slug", "mint_contract", "stake_contract", "is_visible", "contract_type", "staking_contract_old"}
-	collectionColumnsWithoutDefault = []string{"name", "logo_blob_id", "keywords", "deleted_at", "slug", "mint_contract", "contract_type", "staking_contract_old"}
+	collectionAllColumns            = []string{"id", "name", "logo_blob_id", "keywords", "deleted_at", "updated_at", "created_at", "slug", "mint_contract", "stake_contract", "is_visible", "contract_type", "background_url", "logo_url", "description", "external_token_ids", "transfer_contract", "staking_contract_old"}
+	collectionColumnsWithoutDefault = []string{"name", "logo_blob_id", "keywords", "deleted_at", "slug", "mint_contract", "contract_type", "background_url", "logo_url", "description", "external_token_ids", "transfer_contract", "staking_contract_old"}
 	collectionColumnsWithDefault    = []string{"id", "updated_at", "created_at", "stake_contract", "is_visible"}
 	collectionPrimaryKeyColumns     = []string{"id"}
 )
