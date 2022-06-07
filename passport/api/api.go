@@ -139,7 +139,7 @@ func NewAPI(
 	r := chi.NewRouter()
 	r.Use(cors.New(
 		cors.Options{
-			AllowedOrigins:   []string{"https://*", "http://*"},
+			AllowedOrigins:   []string{"*"},
 			AllowedHeaders:   []string{"*"},
 			AllowCredentials: true,
 		}).Handler)
