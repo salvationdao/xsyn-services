@@ -38,6 +38,15 @@ func GenesisCollection() (*boiler.Collection, error) {
 	}
 	return collection, nil
 }
+func AchievementsCollection() (*boiler.Collection, error) {
+	collection, err := boiler.Collections(
+		boiler.CollectionWhere.Name.EQ("Supremacy Achievements"),
+	).One(passdb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+	return collection, nil
+}
 func LimitedReleaseCollection() (*boiler.Collection, error) {
 	collection, err := boiler.Collections(
 		boiler.CollectionWhere.Name.EQ("Supremacy Limited Release"),

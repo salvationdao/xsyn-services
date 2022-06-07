@@ -15,6 +15,7 @@ import (
 )
 
 const baseURL = "http://v3.supremacy-api.avantdata.com:3001"
+const stagingURL = "http://v3-staging.supremacy-api.avantdata.com:3001"
 
 type Path string
 
@@ -25,6 +26,7 @@ const BNBPurchasePath Path = "bnb_txs"
 const BUSDPurchasePath Path = "busd_txs"
 const ETHPurchasePath Path = "eth_txs"
 const USDCPurchasePath Path = "usdc_txs"
+const MultiTokenTxs Path = "multi_token_txs"
 
 func Ping() error {
 	u := fmt.Sprintf("%s/ping", baseURL)
@@ -73,7 +75,6 @@ func getPurchaseRecords(path Path, latestBlock int, testnet bool) ([]*PurchaseRe
 	return result, latest, nil
 }
 
-
 func getNFTOwnerRecords(path Path, collection *boiler.Collection) (map[int]*NFTOwnerStatus, error) {
 	l := passlog.L.With().Str("svc", "avant_nft_ownership_update").Logger()
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s?contract_address=%s?confirmations=3", baseURL, path, collection.MintContract.String), nil)
@@ -109,7 +110,7 @@ func OwnerRecordToOwnerStatus(records []*NFTOwnerRecord, collection *boiler.Coll
 	for _, record := range records {
 		// Current owner owns it; or
 		owner := common.HexToAddress(record.ToAddress)
-		if owner.Hex() ==  common.HexToAddress(collection.StakeContract.String).Hex() || owner.Hex() ==  common.HexToAddress(collection.StakingContractOld.String).Hex()  {
+		if owner.Hex() == common.HexToAddress(collection.StakeContract.String).Hex() || owner.Hex() == common.HexToAddress(collection.StakingContractOld.String).Hex() {
 			// Address who sent it to the staking contract owns it
 			owner = common.HexToAddress(record.FromAddress)
 		}
@@ -165,6 +166,40 @@ func getSUPTransferRecords(path Path, latestBlock int, testnet bool) ([]*SUPTran
 	return result, nil
 }
 
+func getNFT1155TransferRecords(path Path, latestBlock int, testnet bool, contractAddress string) ([]*NFT1155TransferRecord, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s", stagingURL, path), nil)
+	if err != nil {
+		return nil, err
+	}
+	q := req.URL.Query()
+	q.Add("since_block", strconv.Itoa(latestBlock))
+	if testnet {
+		q.Add("is_testnet", "true")
+	}
+
+	q.Add("contract_address", contractAddress)
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("non 200 response for %s: %d", req.URL.String(), resp.StatusCode)
+	}
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	result := []*NFT1155TransferRecord{}
+	err = json.Unmarshal(b, &result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func GetWithdraws(testnet bool) ([]*SUPTransferRecord, error) {
 	latestWithdrawBlock := db.GetInt(db.KeyLatestWithdrawBlock)
 	records, err := getSUPTransferRecords(SUPSWithdrawTxs, latestWithdrawBlock, testnet)
@@ -190,6 +225,27 @@ func GetNFTOwnerRecords(collection *boiler.Collection) (map[int]*NFTOwnerStatus,
 	return getNFTOwnerRecords(NFTOwnerPath, collection)
 }
 
+func Get1155Deposits(testnet bool, contractAddress string) ([]*NFT1155TransferRecord, error) {
+	latestDepositBlock := db.GetIntWithDefault(db.KeyLatest1155DepositBlock, 0)
+	records, err := getNFT1155TransferRecords(MultiTokenTxs, latestDepositBlock, testnet, contractAddress)
+	if err != nil {
+		return nil, err
+	}
+	db.PutInt(db.KeyLatest1155DepositBlock, latestNFT1155TransferBlockFromRecords(latestDepositBlock, records))
+	return records, nil
+}
+
+func Get1155Withdraws(testnet bool, contractAddress string) ([]*NFT1155TransferRecord, error) {
+	latest1155Block := db.GetInt(db.KeyLatest1155WithdrawBlock)
+	records, err := getNFT1155TransferRecords(MultiTokenTxs, latest1155Block, testnet, contractAddress)
+	if err != nil {
+		return nil, fmt.Errorf("get 1155 txes: %w", err)
+	}
+	newLatestWithdrawBlock := latestNFT1155TransferBlockFromRecords(latest1155Block, records)
+	db.PutInt(db.KeyLatest1155WithdrawBlock, newLatestWithdrawBlock)
+	return records, nil
+}
+
 func latestPurchaseBlockFromRecords(currentBlock int, records []*PurchaseRecord) int {
 	latestBlock := currentBlock
 	for _, record := range records {
@@ -202,6 +258,17 @@ func latestPurchaseBlockFromRecords(currentBlock int, records []*PurchaseRecord)
 }
 
 func latestSUPTransferBlockFromRecords(currentBlock int, records []*SUPTransferRecord) int {
+	latestBlock := currentBlock
+	for _, record := range records {
+		if record.BlockNumber > latestBlock {
+			latestBlock = record.BlockNumber
+		}
+	}
+	passlog.L.Debug().Int("latest_block", latestBlock).Msg("Get latest block for sup transfer records")
+	return latestBlock
+}
+
+func latestNFT1155TransferBlockFromRecords(currentBlock int, records []*NFT1155TransferRecord) int {
 	latestBlock := currentBlock
 	for _, record := range records {
 		if record.BlockNumber > latestBlock {

@@ -207,9 +207,15 @@ func NewAPI(
 			r.Get("/withdraw/check", WithError(api.CheckCanWithdraw))
 			r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSups))
 
+			r.Get("/1155/{address}/{token_id}/{nonce}/{amount}", WithError(api.Withdraw1155))
+			r.Get("/1155/contracts", WithError(api.Get1155Contracts))
+
 			r.Get("/asset/{hash}", WithError(api.AssetGet))
 			r.Get("/asset/{collection_address}/{token_id}", WithError(api.AssetGetByCollectionAndTokenID))
 			r.Get("/whitelist/check", WithError(api.WhitelistOnlyWalletCheck))
+
+			r.Get("/collection/1155/all", WithError(api.Get1155Collections))
+			r.Get("/collection/{collection_slug}/{public_address}", WithError(api.Get1155Collection))
 
 			r.Route("/early", func(r chi.Router) {
 				r.Get("/check", WithError(api.CheckUserEarlyContributor))
