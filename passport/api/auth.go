@@ -779,7 +779,7 @@ func (api *API) BotTokenLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	if req.BotSecretKey == "" || req.BotSecretKey != api.botSecretKey {
 		passlog.L.Warn().Str("expected secret key", api.botSecretKey).Str("provided secret key", r.Header.Get("bot_secret_key")).Msg("bot secret key check failed")
-		http.Error(w, "auth fail", http.StatusBadRequest)
+		http.Error(w, "auth fail", http.StatusUnauthorized)
 		return
 	}
 
