@@ -228,7 +228,7 @@ func NewAPI(
 				r.Post("/token", api.TokenLoginHandler)
 				r.Post("/wallet", api.WalletLoginHandler)
 
-				r.Get("/bot_list", api.BotListHandler)
+				r.Post("/bot_list", api.BotListHandler)
 				r.Post("/bot_token", api.BotTokenLoginHandler)
 			})
 		})
