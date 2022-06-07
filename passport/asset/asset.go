@@ -26,7 +26,7 @@ func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransaction
 		return userAsset, 0, err
 	}
 
-	if userAsset.LockedToService.Valid && userAsset.LockedToService.String != serviceID {
+	if serviceID != "" && userAsset.LockedToService.Valid && userAsset.LockedToService.String != serviceID {
 		err := fmt.Errorf("cannot transfer asset the service doesn't control")
 		passlog.L.Error().Err(err).
 			Str("assetHash", assetHash).

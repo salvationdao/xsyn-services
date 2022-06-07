@@ -646,7 +646,7 @@ func (api *API) TokenLogin(tokenBase64 string, twitchExtensionJWT string) (*Toke
 			if err != nil {
 				return nil, err
 			}
-			return nil, terror.Warn(err, "Session has expired, please log in again.")
+			return nil, terror.Warn(readErr, "Session has expired, please log in again.")
 		}
 		return nil, readErr
 	}
