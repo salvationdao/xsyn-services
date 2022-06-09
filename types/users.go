@@ -59,8 +59,8 @@ type User struct {
 	Online   bool            `json:"online"`
 	Pass2FA  bool            `json:"pass_2_fa"`
 	Metadata UserMetadata    `json:"metadata" db:"metadata"`
-	NoNonce  *struct{}       `json:"nonce,omitempty"`
-	NoSups   *struct{}       `json:"sups,omitempty"`
+	//NoNonce  *struct{}       `json:"nonce,omitempty"`
+	//NoSups   *struct{}       `json:"sups,omitempty"`
 }
 
 func UserFromBoil(u *boiler.User) (*User, error) {

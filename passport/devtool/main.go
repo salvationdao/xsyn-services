@@ -1,13 +1,15 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"net/url"
 	"os"
+	"time"
 	"xsyn-services/boiler"
 
 	"github.com/bxcodec/faker/v3"
+	"github.com/ninja-software/terror/v2"
+	"github.com/urfave/cli/v2"
 
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -20,14 +22,71 @@ import (
 	"log"
 )
 
+const envPrefix = "PASSPORT"
+
 func main() {
 	if os.Getenv("PASSPORT_ENVIRONMENT") == "production" {
 		log.Fatal("Only works in dev and staging environment")
-	}
-	fillSups := flag.Bool("fill_bot_sups", false, "trigger db to filled 1M sup for bot users")
-	botGenNum := flag.Int("bot_gen_number", 0, "generate x amount of bot users on each faction")
 
-	flag.Parse()
+	}
+
+	app := &cli.App{
+		Compiled: time.Now(),
+		Usage:    "Run the passport server or database administration commands",
+		Authors: []*cli.Author{
+			{
+				Name:  "Ninja Software",
+				Email: "hello@ninjasoftware.com.au",
+			},
+		},
+		Flags: []cli.Flag{},
+		Commands: []*cli.Command{
+			{
+				Name:    "serve",
+				Aliases: []string{"s"},
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "database_user", Value: "passport", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
+					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
+					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
+					&cli.StringFlag{Name: "database_port", Value: "5432", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
+					&cli.StringFlag{Name: "database_name", Value: "passport", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
+					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+				},
+
+				Usage: "run server",
+				Action: func(c *cli.Context) error {
+					params := url.Values{}
+					params.Add("sslmode", "disable")
+
+					connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
+						"passport",
+						"dev",
+						"localhost",
+						"5432",
+						"passport",
+						params.Encode(),
+					)
+					cfg, err := pgx.ParseConfig(connString)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					conn := stdlib.OpenDB(*cfg)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					return nil
+				},
+			},
+		},
+	}
+
+	err := app.Run(os.Args)
+	if err != nil {
+		terror.Echo(err)
+		os.Exit(1) // so ci knows it no good
+	}
 
 	params := url.Values{}
 	params.Add("sslmode", "disable")

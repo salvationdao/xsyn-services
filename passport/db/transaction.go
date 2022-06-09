@@ -175,7 +175,7 @@ func TransactionList(
 	}
 
 	if userID != nil {
-		args = append(args, userID)
+		args = append(args, *userID)
 		filterConditionsString += fmt.Sprintf(" AND (credit = $%[1]d OR debit = $%[1]d) ", len(args))
 	}
 
@@ -247,25 +247,30 @@ func TransactionList(
 		ts := &types.Transaction{}
 
 		err = r.Scan(
-			ts.To,
-			ts.From,
-			ts.ID,
-			ts.Description,
-			ts.TransactionReference,
-			ts.Amount,
-			ts.Credit,
-			ts.Debit,
-			ts.Reason,
-			ts.ServiceID,
-			ts.RelatedTransactionID,
-			ts.CreatedAt,
-			ts.Group,
-			ts.SubGroup,
+			&ts.To,
+			&ts.From,
+			&ts.ID,
+			&ts.Description,
+			&ts.TransactionReference,
+			&ts.Amount,
+			&ts.Credit,
+			&ts.Debit,
+			&ts.Reason,
+			&ts.ServiceID,
+			&ts.RelatedTransactionID,
+			&ts.CreatedAt,
+			&ts.Group,
+			&ts.SubGroup,
 		)
 		if err != nil {
 			return 0, nil, err
 		}
+
+		result = append(result, ts)
 	}
+
+	//fmt.Println(totalRows)
+	//fmt.Println(len(result))
 
 	return totalRows, result, nil
 }

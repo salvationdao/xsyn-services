@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -751,6 +752,18 @@ func (api *API) BotListHandler(w http.ResponseWriter, r *http.Request) {
 			resp.ZaibatsuBotIDs = append(resp.ZaibatsuBotIDs, b.ID)
 		}
 	}
+
+	// shuffle bot id
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(resp.RedMountainBotIDs), func(i, j int) {
+		resp.RedMountainBotIDs[i], resp.RedMountainBotIDs[j] = resp.RedMountainBotIDs[j], resp.RedMountainBotIDs[i]
+	})
+	rand.Shuffle(len(resp.BostonBotIDs), func(i, j int) {
+		resp.BostonBotIDs[i], resp.BostonBotIDs[j] = resp.BostonBotIDs[j], resp.BostonBotIDs[i]
+	})
+	rand.Shuffle(len(resp.ZaibatsuBotIDs), func(i, j int) {
+		resp.ZaibatsuBotIDs[i], resp.ZaibatsuBotIDs[j] = resp.ZaibatsuBotIDs[j], resp.ZaibatsuBotIDs[i]
+	})
 
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
