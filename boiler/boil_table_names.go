@@ -9,6 +9,7 @@ var TableNames = struct {
 	AssetServiceTransferEvents     string
 	AssetTransferEvents            string
 	Blobs                          string
+	BlockWithdraw                  string
 	Collections                    string
 	DeathAddresses                 string
 	DepositAsset1155Transactions   string
@@ -44,6 +45,7 @@ var TableNames = struct {
 	AssetServiceTransferEvents:     "asset_service_transfer_events",
 	AssetTransferEvents:            "asset_transfer_events",
 	Blobs:                          "blobs",
+	BlockWithdraw:                  "block_withdraw",
 	Collections:                    "collections",
 	DeathAddresses:                 "death_addresses",
 	DepositAsset1155Transactions:   "deposit_asset1155_transactions",

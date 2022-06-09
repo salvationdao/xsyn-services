@@ -182,6 +182,18 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 
 	toAddress := common.HexToAddress(address)
 
+	//checks block_withdraw table and returns if user's connected wallet is found
+	blockedExists, err := boiler.BlockWithdraws(
+		boiler.BlockWithdrawWhere.PublicAddress.EQ(toAddress.String()),
+	).Exists(passdb.StdConn)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not run checks on public address.")
+	}
+
+	if blockedExists {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("user is blocked from withdrawing"), "The address connected to this account may not withdraw SUPS.")
+	}
+
 	amountBigInt := new(big.Int)
 	_, ok := amountBigInt.SetString(amount, 10)
 	if !ok {
