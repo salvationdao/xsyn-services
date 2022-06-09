@@ -11,6 +11,8 @@ import (
 	"xsyn-services/passport/tokens"
 	"xsyn-services/types"
 
+	"github.com/kevinms/leakybucket-go"
+
 	"github.com/gofrs/uuid"
 	"github.com/lestrrat-go/jwx/jwt/openid"
 
@@ -24,6 +26,7 @@ func IsServerClient(apikey string) (string, error) {
 		return "", terror.Error(fmt.Errorf("missing api key"))
 	}
 
+	ApiKeyBucketWait()
 	apiKeyEntry, err := boiler.FindAPIKey(passdb.StdConn, apikey)
 	if err != nil {
 		passlog.L.Err(err).Str("api_key", apikey).Msg("error finding api key")
@@ -38,6 +41,20 @@ func IsServerClient(apikey string) (string, error) {
 	return apiKeyEntry.UserID, nil
 }
 
+var ApiKeyBucket = leakybucket.NewCollector(50, 1, true)
+
+// ApiKeyBucketWait block api key entry request if it is too noisy
+func ApiKeyBucketWait() {
+	for {
+		b := ApiKeyBucket.Add("", 1)
+		if b == 0 {
+			time.Sleep(20 * time.Millisecond)
+			continue
+		}
+		return
+	}
+}
+
 // IsSupremacyClient checks if the given api key belongs to the supremacy user
 func IsSupremacyClient(apikey string) (string, error) {
 	if apikey == "" {
@@ -45,6 +62,7 @@ func IsSupremacyClient(apikey string) (string, error) {
 		return "", terror.Error(fmt.Errorf("missing api key"))
 	}
 
+	ApiKeyBucketWait()
 	apiKeyEntry, err := boiler.FindAPIKey(passdb.StdConn, apikey)
 	if err != nil {
 		passlog.L.Err(err).Str("api_key", apikey).Msg("error finding api key")

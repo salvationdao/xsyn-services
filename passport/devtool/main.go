@@ -8,7 +8,6 @@ import (
 	"xsyn-services/boiler"
 
 	"github.com/bxcodec/faker/v3"
-
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
@@ -20,10 +19,14 @@ import (
 	"log"
 )
 
+const envPrefix = "PASSPORT"
+
 func main() {
 	if os.Getenv("PASSPORT_ENVIRONMENT") == "production" {
 		log.Fatal("Only works in dev and staging environment")
+
 	}
+
 	fillSups := flag.Bool("fill_bot_sups", false, "trigger db to filled 1M sup for bot users")
 	botGenNum := flag.Int("bot_gen_number", 0, "generate x amount of bot users on each faction")
 
