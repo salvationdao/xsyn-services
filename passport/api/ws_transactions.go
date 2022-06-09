@@ -86,7 +86,7 @@ func (tc *TransactionController) TransactionListHandler(ctx context.Context, use
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	total, transactions, err := db.TransactionList(
+	total, txIDs, err := db.TransactionIDList(
 		&user.ID,
 		req.Payload.Search,
 		req.Payload.Filter,
@@ -99,14 +99,9 @@ func (tc *TransactionController) TransactionListHandler(ctx context.Context, use
 		return terror.Error(err, errMsg)
 	}
 
-	resultTransactionIDs := make([]string, 0)
-	for _, s := range transactions {
-		resultTransactionIDs = append(resultTransactionIDs, s.ID)
-	}
-
 	resp := &TransactionListResponse{
 		total,
-		resultTransactionIDs,
+		txIDs,
 	}
 
 	reply(resp)

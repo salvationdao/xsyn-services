@@ -133,8 +133,8 @@ func UsersTransactionGroups(
 	return result, nil
 }
 
-// TransactionList gets a list of Transactions depending on the filters
-func TransactionList(
+// TransactionIDList
+func TransactionIDList(
 	userID *string, // if user id is provided, returns transactions that only matter to this user
 	search string,
 	filter *ListFilterRequest,
@@ -142,7 +142,7 @@ func TransactionList(
 	pageSize int,
 	sortBy TransactionColumn,
 	sortDir SortByDir,
-) (int, []*types.Transaction, error) {
+) (int, []string, error) {
 	var args []interface{}
 
 	// Prepare Filters
@@ -175,7 +175,7 @@ func TransactionList(
 	}
 
 	if userID != nil {
-		args = append(args, *userID)
+		args = append(args, userID)
 		filterConditionsString += fmt.Sprintf(" AND (credit = $%[1]d OR debit = $%[1]d) ", len(args))
 	}
 
@@ -207,17 +207,17 @@ func TransactionList(
 		return 0, nil, err
 	}
 	if totalRows == 0 {
-		return 0, make([]*types.Transaction, 0), nil
+		return 0, []string{}, nil
 	}
 
 	// Order and Limit
-	orderBy := " ORDER BY created_at desc"
+	orderBy := " ORDER BY transactions.created_at desc"
 	if sortBy != "" {
 		err := sortBy.IsValid()
 		if err != nil {
 			return 0, nil, err
 		}
-		orderBy = fmt.Sprintf(" ORDER BY %s %s", sortBy, sortDir)
+		orderBy = fmt.Sprintf(" ORDER BY transactions.%s %s", sortBy, sortDir)
 	}
 	limit := ""
 	if pageSize > 0 {
@@ -225,52 +225,39 @@ func TransactionList(
 	}
 
 	// Get Paginated Result
-	q := fmt.Sprintf(
-		TransactionGetQuery+`--sql
+	q := fmt.Sprintf(`--sql
+		SELECT 
+		transactions.id
+		%s
 		WHERE transactions.id IS NOT NULL
 		%s
 		%s
 		%s
 		%s`,
+		TransactionGetQueryFrom,
 		filterConditionsString,
 		searchCondition,
 		orderBy,
 		limit,
 	)
 
-	result := make([]*types.Transaction, 0)
+	result := make([]string, 0)
 	r, err := passdb.StdConn.Query(q, args...)
 	if err != nil {
 		return 0, nil, err
 	}
 	for r.Next() {
-		ts := &types.Transaction{}
+		txid := ""
 
 		err = r.Scan(
-			&ts.To,
-			&ts.From,
-			&ts.ID,
-			&ts.Description,
-			&ts.TransactionReference,
-			&ts.Amount,
-			&ts.Credit,
-			&ts.Debit,
-			&ts.Reason,
-			&ts.ServiceID,
-			&ts.RelatedTransactionID,
-			&ts.CreatedAt,
-			&ts.Group,
-			&ts.SubGroup,
+			&txid,
 		)
 		if err != nil {
 			return 0, nil, err
 		}
 
-		result = append(result, ts)
+		result = append(result, txid)
 	}
-
-	//fmt.Println(totalRows)
-	//fmt.Println(len(result))
 
 	return totalRows, result, nil
 }
