@@ -12,3 +12,7 @@ CREATE TABLE asset_transfer_events
 
 ALTER TABLE collections
     ADD COLUMN staking_contract_old TEXT;
+
+UPDATE collections
+SET contract_type = 'ERC-721'
+WHERE slug = 'supremacy-general';

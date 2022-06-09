@@ -637,6 +637,7 @@ func (api *API) TokenLogin(tokenBase64 string, twitchExtensionJWT string) (*Toke
 
 	token, err := tokens.ReadJWT(tokenStr, true, api.TokenEncryptionKey)
 	if err != nil {
+		readErr := err
 		if errors.Is(err, tokens.ErrTokenExpired) {
 			tknUuid, err := tokens.TokenID(token)
 			if err != nil {
@@ -646,9 +647,9 @@ func (api *API) TokenLogin(tokenBase64 string, twitchExtensionJWT string) (*Toke
 			if err != nil {
 				return nil, err
 			}
-			return nil, terror.Warn(err, "Session has expired, please log in again.")
+			return nil, terror.Warn(readErr, "Session has expired, please log in again.")
 		}
-		return nil, err
+		return nil, readErr
 	}
 
 	jwtIDI, ok := token.Get(openid.JwtIDKey)
