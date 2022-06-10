@@ -91,9 +91,9 @@ func (ac *AssetController) AssetList721Handler(ctx context.Context, user *xsynTy
 		Filter:          req.Payload.Filter,
 		AttributeFilter: req.Payload.AttributeFilter,
 		//AssetType:       "mech", // for now this is hardcoded to hide all the other assets
-		Search:          req.Payload.Search,
-		PageSize:        req.Payload.PageSize,
-		Page:            req.Payload.Page,
+		Search:   req.Payload.Search,
+		PageSize: req.Payload.PageSize,
+		Page:     req.Payload.Page,
 	})
 	if err != nil {
 		return terror.Error(err, "Unable to retrieve assets at this time, please try again or contact support.")
@@ -188,18 +188,19 @@ type UserAsset struct {
 }
 
 type Collection struct {
-	ID            string      `json:"id"`
-	Name          string      `json:"name"`
-	LogoBlobID    null.String `json:"logo_blob_id,omitempty"`
-	Keywords      null.String `json:"keywords,omitempty"`
-	DeletedAt     null.Time   `json:"deleted_at,omitempty"`
-	UpdatedAt     time.Time   `json:"updated_at"`
-	CreatedAt     time.Time   `json:"created_at"`
-	Slug          string      `json:"slug"`
-	MintContract  null.String `json:"mint_contract,omitempty"`
-	StakeContract null.String `json:"stake_contract,omitempty"`
-	IsVisible     null.Bool   `json:"is_visible,omitempty"`
-	ContractType  null.String `json:"contract_type,omitempty"`
+	ID                 string      `json:"id"`
+	Name               string      `json:"name"`
+	LogoBlobID         null.String `json:"logo_blob_id,omitempty"`
+	Keywords           null.String `json:"keywords,omitempty"`
+	DeletedAt          null.Time   `json:"deleted_at,omitempty"`
+	UpdatedAt          time.Time   `json:"updated_at"`
+	CreatedAt          time.Time   `json:"created_at"`
+	Slug               string      `json:"slug"`
+	MintContract       null.String `json:"mint_contract,omitempty"`
+	StakeContract      null.String `json:"stake_contract,omitempty"`
+	StakingContractOld null.String `json:"staking_contract_old,omitempty"`
+	IsVisible          null.Bool   `json:"is_visible,omitempty"`
+	ContractType       null.String `json:"contract_type,omitempty"`
 }
 
 type User struct {
@@ -285,8 +286,9 @@ func (ac *AssetController) AssetUpdatedGetHandler(ctx context.Context, key strin
 			Slug:          userAsset.R.Collection.Slug,
 			MintContract:  userAsset.R.Collection.MintContract,
 			StakeContract: userAsset.R.Collection.StakeContract,
-			IsVisible:     userAsset.R.Collection.IsVisible,
-			ContractType:  userAsset.R.Collection.ContractType,
+			StakingContractOld: userAsset.R.Collection.StakingContractOld,
+			IsVisible:    userAsset.R.Collection.IsVisible,
+			ContractType: userAsset.R.Collection.ContractType,
 		},
 		Owner: &User{
 			ID:       userAsset.R.Owner.ID,
