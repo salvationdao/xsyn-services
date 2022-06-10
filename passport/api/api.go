@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"net/http"
 	"os"
 	"sync"
@@ -196,14 +195,7 @@ func NewAPI(
 			r.Mount("/files", FileRouter(api))
 			r.Mount("/nfts", api.NFTRoutes())
 			r.Mount("/moderator", ModeratorRoutes())
-			fmt.Println(environment)
-			fmt.Println(environment)
-			fmt.Println(environment)
-			fmt.Println(environment)
-			fmt.Println(environment)
-			fmt.Println(environment)
 			if environment == "development" {
-				fmt.Println("HERER!@#!#")
 				r.Mount("/dev", d.R)
 			}
 
