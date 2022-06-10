@@ -996,10 +996,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	if !skipUpdateUsersMixedCase {
 		go func() {
 			passlog.L.Info().Msg("updating all users to mixed case")
-			err = db.UserMixedCaseUpdateAll()
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("updating all users to mixed case failed")
-			}
+			db.UserMixedCaseUpdateAll()
 		}()
 	}
 

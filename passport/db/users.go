@@ -327,11 +327,13 @@ func UserTransactionGetList(userID string, limit int) ([]*boiler.Transaction, er
 func UserMixedCaseUpdateAll() error {
 	tx, err := passdb.StdConn.Begin()
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("updating all users to mixed case failed")
 		return err
 	}
 	defer tx.Rollback()
 	users, err := boiler.Users().All(tx)
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("updating all users to mixed case failed")
 		return err
 	}
 	for _, u := range users {
@@ -345,11 +347,13 @@ func UserMixedCaseUpdateAll() error {
 		u.PublicAddress = null.StringFrom(common.HexToAddress(u.PublicAddress.String).Hex())
 		_, err = u.Update(tx, boil.Whitelist(boiler.UserColumns.PublicAddress))
 		if err != nil {
+			passlog.L.Error().Err(err).Interface("user", u).Msg("updating all users to mixed case failed")
 			return err
 		}
 	}
 	err = tx.Commit()
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("updating all users to mixed case failed")
 		return err
 	}
 	return nil
