@@ -77,7 +77,7 @@ func getPurchaseRecords(path Path, latestBlock int, testnet bool) ([]*PurchaseRe
 
 func getNFTOwnerRecords(path Path, collection *boiler.Collection, testnet bool) (map[int]*NFTOwnerStatus, error) {
 	l := passlog.L.With().Str("svc", "avant_nft_ownership_update").Logger()
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s?contract_address=%s?is_testnet=%v?confirmations=3", baseURL, path, collection.MintContract.String, testnet), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s?contract_address=%s&is_testnet=%v&confirmations=3", baseURL, path, collection.MintContract.String, testnet), nil)
 	if err != nil {
 		return nil, err
 	}
