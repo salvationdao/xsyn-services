@@ -42,9 +42,6 @@ func NewAssetController(log *zerolog.Logger, api *API) *AssetController {
 		API: api,
 	}
 
-	//const HubKeyAssetTransferFromSupremacy = "ASSET:TRANSFER:FROM:SUPREMACY"
-	//AssetTransferFromSupremacyHandler
-
 	// assets list
 	api.SecureCommand(HubKeyAssetList, assetHub.AssetList721Handler)
 	api.SecureCommand(HubKey1155AssetList, assetHub.AssetList1155Handler)
@@ -54,8 +51,8 @@ func NewAssetController(log *zerolog.Logger, api *API) *AssetController {
 	api.SecureCommand(HubKeyAsset1155TransferFromSupremacy, assetHub.Asset1155TransferFromSupremacyHandler)
 	api.SecureCommand(HubKeyDeposit1155Asset, assetHub.DepositAsset1155Handler)
 	api.SecureCommand(HubKeyDepositAsset1155List, assetHub.DepositAsset1155ListHandler)
-	api.Command(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)
-	api.Command(HubKeyAsset1155Subscribe, assetHub.Asset1155UpdatedSubscribeHandler)
+	api.Command(HubKeyAssetGet, assetHub.AssetUpdatedGetHandler)
+	api.Command(HubKeyAsset1155Get, assetHub.Asset1155UpdatedGetHandler)
 
 	return assetHub
 }
@@ -216,9 +213,9 @@ type AssetResponse struct {
 	Owner      *User       `json:"owner"`
 }
 
-const HubKeyAssetSubscribe = "ASSET:GET:721"
+const HubKeyAssetGet = "ASSET:GET:721"
 
-func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (ac *AssetController) AssetUpdatedGetHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	// errMsg := "Issue subscribing to asset updates, try again or contact support."
 	req := &AssetUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
@@ -328,9 +325,9 @@ type Asset1155Response struct {
 	Owner      *User              `json:"owner"`
 }
 
-const HubKeyAsset1155Subscribe = "ASSET:GET:1155"
+const HubKeyAsset1155Get = "ASSET:GET:1155"
 
-func (ac *AssetController) Asset1155UpdatedSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (ac *AssetController) Asset1155UpdatedGetHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	// errMsg := "Issue subscribing to asset updates, try again or contact support."
 	req := &Asset1155UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
