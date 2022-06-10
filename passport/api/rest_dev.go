@@ -56,6 +56,8 @@ func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error)) fun
 
 
 func (d *Dev)devGiveMechs(w http.ResponseWriter, r *http.Request) (int, error) {
+	fmt.Printf("here1231")
+
 	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
 	user, err := payments.CreateOrGetUser(publicAddress)
 	if err != nil {

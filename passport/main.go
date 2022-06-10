@@ -550,7 +550,7 @@ func SyncWithdraw(ucm *api.Transactor, isTestnet, enableWithdrawRollback bool) e
 	return nil
 
 }
-func SyncNFTs() error {
+func SyncNFTs(isTestnet bool) error {
 	allCollections, err := boiler.Collections(boiler.CollectionWhere.MintContract.IsNotNull(),
 		boiler.CollectionWhere.ContractType.EQ(null.StringFrom("ERC-721"))).All(passdb.StdConn)
 	if err != nil {
@@ -558,7 +558,7 @@ func SyncNFTs() error {
 	}
 
 	for _, collection := range allCollections {
-		collectionNftOwnerStatuses, err := payments.GetNFTOwnerRecords(collection)
+		collectionNftOwnerStatuses, err := payments.GetNFTOwnerRecords(isTestnet, collection)
 		if err != nil {
 			return fmt.Errorf("get nft owners: %w", err)
 		}
@@ -647,7 +647,7 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 	}(ucm, log, isTestnet)
 	go func() {
 		if db.GetBoolWithDefault(db.KeyEnableSyncNFTOwners, false) {
-			err := SyncNFTs()
+			err := SyncNFTs(isTestnet)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync nfts")
 			}

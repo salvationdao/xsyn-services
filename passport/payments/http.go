@@ -75,9 +75,9 @@ func getPurchaseRecords(path Path, latestBlock int, testnet bool) ([]*PurchaseRe
 	return result, latest, nil
 }
 
-func getNFTOwnerRecords(path Path, collection *boiler.Collection) (map[int]*NFTOwnerStatus, error) {
+func getNFTOwnerRecords(path Path, collection *boiler.Collection, testnet bool) (map[int]*NFTOwnerStatus, error) {
 	l := passlog.L.With().Str("svc", "avant_nft_ownership_update").Logger()
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s?contract_address=%s?confirmations=3", baseURL, path, collection.MintContract.String), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s?contract_address=%s?is_testnet=%v?confirmations=3", baseURL, path, collection.MintContract.String, testnet), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func getSUPTransferRecords(path Path, latestBlock int, testnet bool) ([]*SUPTran
 }
 
 func getNFT1155TransferRecords(path Path, latestBlock int, testnet bool, contractAddress string) ([]*NFT1155TransferRecord, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s", stagingURL, path), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/%s", baseURL, path), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -221,8 +221,8 @@ func GetDeposits(testnet bool) ([]*SUPTransferRecord, error) {
 	return records, nil
 }
 
-func GetNFTOwnerRecords(collection *boiler.Collection) (map[int]*NFTOwnerStatus, error) {
-	return getNFTOwnerRecords(NFTOwnerPath, collection)
+func GetNFTOwnerRecords(testnet bool, collection *boiler.Collection) (map[int]*NFTOwnerStatus, error) {
+	return getNFTOwnerRecords(NFTOwnerPath, collection, testnet)
 }
 
 func Get1155Deposits(testnet bool, contractAddress string) ([]*NFT1155TransferRecord, error) {
