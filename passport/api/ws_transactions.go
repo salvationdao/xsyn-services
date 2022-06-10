@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
+	"xsyn-services/passport/passdb"
 	"xsyn-services/types"
 
 	"github.com/ninja-software/log_helpers"
@@ -116,6 +118,12 @@ type TransactionSubscribeRequest struct {
 	} `json:"payload"`
 }
 
+type TransactionResponse struct {
+	*boiler.Transaction
+	CreditUser *boiler.User `json:"to"`
+	DebitUser  *boiler.User `json:"from"`
+}
+
 func (tc *TransactionController) TransactionSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue subscribing user to transactions lists, try again or contact support."
 	req := &TransactionSubscribeRequest{}
@@ -133,6 +141,19 @@ func (tc *TransactionController) TransactionSubscribeHandler(ctx context.Context
 		return terror.Error(fmt.Errorf("unauthorized"), "You do not have permission to view this item.")
 	}
 
-	reply(transaction)
+	creditUser, err := transaction.CreditUser().One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get credit user")
+	}
+	debitUser, err := transaction.DebitUser().One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get debit user")
+	}
+
+	reply(&TransactionResponse{
+		Transaction: transaction,
+		CreditUser:  creditUser,
+		DebitUser:   debitUser,
+	})
 	return err
 }
