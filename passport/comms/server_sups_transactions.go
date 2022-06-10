@@ -3,6 +3,7 @@ package comms
 import (
 	"fmt"
 	"xsyn-services/passport/api/users"
+	"xsyn-services/passport/benchmark"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
@@ -84,7 +85,11 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 }
 
 func (s *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) error {
+	bm := benchmark.New()
+
+	bm.Start("check_is_supremacy_client")
 	serviceID, err := IsSupremacyClient(req.ApiKey)
+	bm.End("check_is_supremacy_client")
 	if err != nil {
 		return err
 	}
@@ -98,7 +103,9 @@ func (s *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 		return err
 	}
 
+	bm.Start("check_user_is_locked")
 	isLocked := user.CheckUserIsLocked("account")
+	bm.End("check_user_is_locked")
 	if isLocked {
 		return terror.Error(fmt.Errorf("user: %s attempting to purchase on Supremacy while locked", user.ID), "This account is locked, contact support to unlock.")
 	}
@@ -126,8 +133,9 @@ func (s *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 	if req.NotSafe {
 		tx.NotSafe = true
 	}
-
+	bm.Start("update_insert_transaction")
 	_, _, txID, err := s.UserCacheMap.Transact(tx)
+	bm.End("update_insert_transaction")
 	if err != nil {
 		return terror.Error(err, "failed to process sups")
 	}
@@ -135,5 +143,7 @@ func (s *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 	tx.ID = txID
 
 	resp.TransactionID = txID
+
+	bm.Alert(100)
 	return nil
 }
