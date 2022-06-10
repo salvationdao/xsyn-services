@@ -26,7 +26,7 @@ func (api *API) NFTRoutes() chi.Router {
 	r.Get("/check", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	r.Get("/owner_address/{owner_address}/nonce/{nonce}/collection_slug/{collection_slug}/token_id/{external_token_id}", WithError(api.MintAsset))
 	r.Post("/owner_address/{owner_address}/collection_slug/{collection_slug}/token_id/{external_token_id}", WithError(api.LockNFT))
-	r.Post("/unstake/owner_address/{owner_address}/collection_slug/{collection_slug}/token_id/{external_token_id}", WithError(api.LockNFT))
+	r.Post("/unstake/owner_address/{owner_address}/nonce/{nonce}/collection_slug/{collection_slug}/token_id/{external_token_id}", WithError(api.LockNFT))
 	return r
 }
 
