@@ -569,7 +569,12 @@ func SyncNFTs(isTestnet bool) error {
 		}
 
 		passlog.L.Info().
-			Str("collection", collection.Slug).
+			Str("collection.Slug", collection.Slug).
+			Str("collection.MintContract.String", collection.MintContract.String).
+			Str("collection.StakeContract.String", collection.StakeContract.String).
+			Str("collection.StakingContractOld.String", collection.StakingContractOld.String).
+			Bool("isTestnet",isTestnet).
+			Int("records",len(collectionNftOwnerStatuses)).
 			Int("updated", ownerUpdated).
 			Int("skipped", ownerSkipped).
 			Msg("synced nft ownerships")
