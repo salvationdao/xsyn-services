@@ -192,8 +192,8 @@ func main() {
 					//moralis key- set in env vars
 					//moralis key- set in env vars
 					//moralis key- set in env vars
-					&cli.IntFlag{Name: "database_max_idle_conns", Value: 10, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
-					&cli.IntFlag{Name: "database_max_open_conns", Value: 10, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
+					&cli.IntFlag{Name: "database_max_idle_conns", Value: 40, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
+					&cli.IntFlag{Name: "database_max_open_conns", Value: 50, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 					&cli.StringFlag{Name: "moralis_key", Value: "91Xp2ke5eOVMavAsqdOoiXN4lg0n0AieW5kTJoupdyQBhL2k9XvMQtFPSA4opX2s", EnvVars: []string{envPrefix + "_MORALIS_KEY"}, Usage: "Key to connect to moralis API"},
 					&cli.StringFlag{Name: "bot_secret_key", Value: `HsZ8DGnNshjkvbvdmJvjLY0CEaoAyn0SnzHjLaCESL91YwsRELsaGyvJsteUf6kI`, EnvVars: []string{envPrefix + "_BOT_SECRET_KEY"}, Usage: "Key for verifying requests from our own bots"},
 				},
