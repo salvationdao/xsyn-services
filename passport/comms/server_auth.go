@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"time"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/benchmark"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/tokens"
 	"xsyn-services/types"
-
-	"github.com/kevinms/leakybucket-go"
 
 	"github.com/gofrs/uuid"
 	"github.com/lestrrat-go/jwx/jwt/openid"
@@ -26,7 +25,6 @@ func IsServerClient(apikey string) (string, error) {
 		return "", terror.Error(fmt.Errorf("missing api key"))
 	}
 
-	ApiKeyBucketWait()
 	apiKeyEntry, err := boiler.FindAPIKey(passdb.StdConn, apikey)
 	if err != nil {
 		passlog.L.Err(err).Str("api_key", apikey).Msg("error finding api key")
@@ -41,29 +39,17 @@ func IsServerClient(apikey string) (string, error) {
 	return apiKeyEntry.UserID, nil
 }
 
-var ApiKeyBucket = leakybucket.NewCollector(50, 1, true)
-
-// ApiKeyBucketWait block api key entry request if it is too noisy
-func ApiKeyBucketWait() {
-	for {
-		b := ApiKeyBucket.Add("", 1)
-		if b == 0 {
-			time.Sleep(20 * time.Millisecond)
-			continue
-		}
-		return
-	}
-}
-
 // IsSupremacyClient checks if the given api key belongs to the supremacy user
 func IsSupremacyClient(apikey string) (string, error) {
+	bm := benchmark.New()
 	if apikey == "" {
 		passlog.L.Err(fmt.Errorf("missing api key")).Msg("api key empty")
 		return "", terror.Error(fmt.Errorf("missing api key"))
 	}
 
-	ApiKeyBucketWait()
+	bm.Start("find_api_key")
 	apiKeyEntry, err := boiler.FindAPIKey(passdb.StdConn, apikey)
+	bm.End("find_api_key")
 	if err != nil {
 		passlog.L.Err(err).Str("api_key", apikey).Msg("error finding api key")
 		return "", err
@@ -74,7 +60,9 @@ func IsSupremacyClient(apikey string) (string, error) {
 		return "", terror.Error(fmt.Errorf("api key is missing SERVER_CLIENT permission"))
 	}
 
+	bm.Start("find_user")
 	user, err := boiler.FindUser(passdb.StdConn, apiKeyEntry.UserID)
+	bm.End("find_user")
 	if err != nil {
 		passlog.L.Err(err).Str("api_key", apikey).Str("user_id", apiKeyEntry.UserID).Msg("error finding user from api key")
 		return "", err
@@ -84,6 +72,8 @@ func IsSupremacyClient(apikey string) (string, error) {
 		passlog.L.Err(err).Str("api_key", apikey).Str("key_username", user.Username).Str("expect_username", types.SupremacyGameUsername).Msg("username mismatch")
 		return "", terror.Error(fmt.Errorf("api key owner username mismatch"))
 	}
+
+	bm.Alert(50)
 	return user.ID, nil
 }
 
