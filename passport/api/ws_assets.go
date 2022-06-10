@@ -93,7 +93,7 @@ func (ac *AssetController) AssetList721Handler(ctx context.Context, user *xsynTy
 		Sort:            req.Payload.Sort,
 		Filter:          req.Payload.Filter,
 		AttributeFilter: req.Payload.AttributeFilter,
-		AssetType:       "mech", // for now this is hardcoded to hide all the other assets
+		//AssetType:       "mech", // for now this is hardcoded to hide all the other assets
 		Search:          req.Payload.Search,
 		PageSize:        req.Payload.PageSize,
 		Page:            req.Payload.Page,
