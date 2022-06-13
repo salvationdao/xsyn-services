@@ -10,7 +10,6 @@ import (
 )
 
 type AssetLockToServiceResp struct {
-
 }
 
 type AssetLockToServiceReq struct {
@@ -20,7 +19,6 @@ type AssetLockToServiceReq struct {
 	OwnerID        string `json:"owner_id,omitempty"`
 	Hash           string `json:"hash,omitempty"`
 }
-
 
 // AssetLockToServiceHandler request a service lock of an asset
 func (s *S) AssetLockToServiceHandler(req AssetLockToServiceReq, resp *AssetLockToServiceResp) error {
@@ -33,7 +31,7 @@ func (s *S) AssetLockToServiceHandler(req AssetLockToServiceReq, resp *AssetLock
 	// get collection
 	collection, err := boiler.Collections(boiler.CollectionWhere.Slug.EQ(req.CollectionSlug)).One(passdb.StdConn)
 	if err != nil {
-		passlog.L.Error().Err(err).Str("req.CollectionSlug",req.CollectionSlug).Msg("failed to get collection - AssetLockToServiceHandler")
+		passlog.L.Error().Err(err).Str("req.CollectionSlug", req.CollectionSlug).Msg("failed to get collection - AssetLockToServiceHandler")
 		return err
 	}
 
@@ -43,7 +41,7 @@ func (s *S) AssetLockToServiceHandler(req AssetLockToServiceReq, resp *AssetLock
 		boiler.UserAssetWhere.TokenID.EQ(req.TokenID),
 		boiler.UserAssetWhere.Hash.EQ(req.Hash),
 		boiler.UserAssetWhere.CollectionID.EQ(collection.ID),
-		).One(passdb.StdConn)
+	).One(passdb.StdConn)
 	if err != nil {
 		passlog.L.Error().Err(err).Interface("req", req).Msg("failed to get user asset - AssetLockToServiceHandler")
 		return err
@@ -84,11 +82,10 @@ func (s *S) AssetUnlockFromServiceHandler(req AssetUnlockToServiceReq, resp *Ass
 		return err
 	}
 
-
 	// get collection
 	collection, err := boiler.Collections(boiler.CollectionWhere.Slug.EQ(req.CollectionSlug)).One(passdb.StdConn)
 	if err != nil {
-		passlog.L.Error().Err(err).Str("req.CollectionSlug",req.CollectionSlug).Msg("failed to get collection - AssetUnlockFromServiceHandler")
+		passlog.L.Error().Err(err).Str("req.CollectionSlug", req.CollectionSlug).Msg("failed to get collection - AssetUnlockFromServiceHandler")
 		return err
 	}
 

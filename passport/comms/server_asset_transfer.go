@@ -1,21 +1,13 @@
 package comms
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/types"
-	"time"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/asset"
-	"xsyn-services/passport/nft1155"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
-	"xsyn-services/passport/payments"
 	xsynTypes "xsyn-services/types"
-	"xsyn-services/types"
 )
 
 type AssetTransferOwnershipResp struct {
@@ -49,7 +41,7 @@ func (s *S) AssetTransferOwnershipHandler(req AssetTransferOwnershipReq, resp *A
 }
 
 type GetAssetTransferEventsResp struct {
-	TransferEvents []*types.TransferEvent `json:"transfer_events"`
+	TransferEvents []*xsynTypes.TransferEvent `json:"transfer_events"`
 }
 
 type GetAssetTransferEventsReq struct {
@@ -76,9 +68,11 @@ func (s *S) GetAssetTransferEventsHandler(req GetAssetTransferEventsReq, resp *G
 		return err
 	}
 
-	var events []*types.TransferEvent
+	var (
+		events []*xsynTypes.TransferEvent
+	)
 	for _, te := range transferEvents {
-		evt := &types.TransferEvent{
+		evt := &xsynTypes.TransferEvent{
 			TransferEventID: te.ID,
 			AssetHash:       te.UserAssetHash,
 			FromUserID:      te.FromUserID,
@@ -94,59 +88,4 @@ func (s *S) GetAssetTransferEventsHandler(req GetAssetTransferEventsReq, resp *G
 
 	resp.TransferEvents = events
 	return nil
-}
-
-type Asset1155CountUpdateSupremacyReq struct {
-	ApiKey         string      `json:"api_key"`
-	TokenID        int         `json:"token_id"`
-	Address        string      `json:"address"`
-	CollectionSlug string      `json:"collection_slug"`
-	Amount         int         `json:"amount"`
-	ImageURL       string      `json:"image_url"`
-	AnimationURL   null.String `json:"animation_url"`
-	KeycardGroup   string      `json:"keycard_group"`
-	Attributes     types.JSON  `json:"attributes"`
-	IsAdd          bool        `json:"is_add"`
-}
-
-type Asset1155CountUpdateSupremacyResp struct {
-	Count int `json:"count"`
-}
-
-func (s *S) Asset1155CountUpdateSupremacy(req Asset1155CountUpdateSupremacyReq, resp Asset1155CountUpdateSupremacyResp) error {
-	_, err := IsServerClient(req.ApiKey)
-	if err != nil {
-		passlog.L.Error().Err(err).Msg("failed to get service id - Asset1155CountUpdateSupremacy")
-		return err
-	}
-	user, err := payments.CreateOrGetUser(common.HexToAddress(req.Address))
-	if err != nil {
-		return terror.Error(err, "Failed to get user")
-	}
-
-	asset, err := nft1155.CreateOrGet1155AssetWithService(req.TokenID, user, req.CollectionSlug, xsynTypes.SupremacyGameUserID.String())
-	if err != nil {
-		return terror.Error(err, "Failed to create or get asset with service id")
-	}
-
-	if req.IsAdd {
-		asset.Count += req.Amount
-	} else {
-		asset.Count -= req.Amount
-	}
-
-	asset.ImageURL = req.ImageURL
-	asset.AnimationURL = req.AnimationURL
-	asset.KeycardGroup = req.KeycardGroup
-	asset.Attributes = req.Attributes
-
-	_, err = asset.Update(passdb.StdConn, boil.Whitelist(boiler.UserAssets1155Columns.Count))
-	if err != nil {
-		return terror.Error(err, "Failed to  service id")
-	}
-
-	resp.Count = asset.Count
-
-	return nil
-
 }
