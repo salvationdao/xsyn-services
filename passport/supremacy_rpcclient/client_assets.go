@@ -4,6 +4,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"xsyn-services/passport/passlog"
+	"xsyn-services/types"
 )
 
 type GenesisOrLimitedMechReq struct {
@@ -56,4 +57,24 @@ func Get1155Details(tokenID int, collectionSlug string) (*NFT1155DetailsResp, er
 	}
 
 	return resp, nil
+}
+
+type AssetTransferReq struct {
+	TransferEvent *types.TransferEvent `json:"transfer_event"`
+}
+
+type AssetTransferResp struct {
+}
+
+func SupremacyAssetTransferEvent(TransferEvent *types.TransferEvent) error {
+	req := &AssetTransferReq{
+		TransferEvent: TransferEvent,
+	}
+	resp := &AssetTransferResp{}
+	err := SupremacyClient.Call("S.AssetTransferHandler", req, resp)
+	if err != nil {
+		return terror.Error(err, "communication to supremacy has failed")
+	}
+
+	return  nil
 }

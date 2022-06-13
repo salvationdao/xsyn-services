@@ -179,3 +179,14 @@ type SupremacyKeycardAttribute struct {
 	TraitType string `json:"trait_type"`
 	Value     string `json:"value,omitempty"`
 }
+
+
+type TransferEvent struct {
+	TransferEventID int64       `json:"transfer_event_id"`
+	AssetHash       string      `json:"asset_hash,omitempty"`
+	FromUserID      string      `json:"from_user_id,omitempty"`
+	ToUserID        string      `json:"to_user_id,omitempty"`
+	TransferredAt   time.Time   `json:"transferred_at"`
+	TransferTXID    null.String `json:"transfer_tx_id"`
+	OwnedService    null.String `json:"owned_service"`
+}

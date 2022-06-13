@@ -18,6 +18,8 @@ import (
 	"xsyn-services/passport/nft1155"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
+	"xsyn-services/passport/supremacy_rpcclient"
+	"xsyn-services/types"
 )
 
 type NFTOwnerStatus struct {
@@ -85,7 +87,23 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 				Str("item_id", userAsset.ID).
 				Msg("setting new nft owner")
 
-			userAsset, _, err = asset.TransferAsset(userAsset.Hash, offChainOwner.ID, onChainOwner.ID, "", null.String{})
+			userAsset, _, err = asset.TransferAsset(
+				userAsset.Hash,
+				offChainOwner.ID,
+				onChainOwner.ID,
+				"",
+				null.String{},
+				func(te *boiler.AssetTransferEvent){
+					supremacy_rpcclient.SupremacyAssetTransferEvent(&types.TransferEvent{
+						TransferEventID: te.ID,
+						AssetHash:       te.UserAssetHash,
+						FromUserID:      te.FromUserID,
+						ToUserID:        te.ToUserID,
+						TransferredAt:   te.TransferredAt,
+						TransferTXID:    te.TransferTXID,
+					})
+				},
+				)
 			if err != nil {
 				passlog.L.Error().Err(err).
 					Str("userAsset.Hash", userAsset.Hash).

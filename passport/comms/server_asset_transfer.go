@@ -2,11 +2,12 @@ package comms
 
 import (
 	"github.com/volatiletech/null/v8"
-	"time"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/asset"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
+	"xsyn-services/types"
 )
 
 type AssetTransferOwnershipResp struct {
@@ -29,7 +30,7 @@ func (s *S) AssetTransferOwnershipHandler(req AssetTransferOwnershipReq, resp *A
 		return err
 	}
 
-	_, transferID, err := asset.TransferAsset(req.Hash, req.FromOwnerID, req.ToOwnerID, serviceID,req.RelatedTransactionID)
+	_, transferID, err := asset.TransferAsset(req.Hash, req.FromOwnerID, req.ToOwnerID, serviceID, req.RelatedTransactionID, nil)
 	if err != nil {
 		passlog.L.Error().Err(err).Interface("req", req).Msg("failed to transfer asset - AssetTransferOwnershipHandler")
 		return err
@@ -39,22 +40,13 @@ func (s *S) AssetTransferOwnershipHandler(req AssetTransferOwnershipReq, resp *A
 	return nil
 }
 
-type TransferEvent struct {
-	TransferEventID int64       `json:"transfer_event_id"`
-	AssetHast       string      `json:"asset_hast,omitempty"`
-	FromUserID      string      `json:"from_user_id,omitempty"`
-	ToUserID        string      `json:"to_user_id,omitempty"`
-	TransferredAt   time.Time   `json:"transferred_at"`
-	TransferTXID    null.String `json:"transfer_tx_id"`
-}
-
 type GetAssetTransferEventsResp struct {
-	TransferEvents []*TransferEvent `json:"transfer_events"`
+	TransferEvents []*types.TransferEvent `json:"transfer_events"`
 }
 
 type GetAssetTransferEventsReq struct {
 	ApiKey      string `json:"api_key"`
-	FromEventID int64 `json:"from_event_id"`
+	FromEventID int64  `json:"from_event_id"`
 }
 
 // GetAssetTransferEventsHandler request all asset events since given int64
@@ -65,7 +57,10 @@ func (s *S) GetAssetTransferEventsHandler(req GetAssetTransferEventsReq, resp *G
 		return err
 	}
 
-	transferEvents, err := boiler.AssetTransferEvents(boiler.AssetTransferEventWhere.ID.GTE(req.FromEventID)).All(passdb.StdConn)
+	transferEvents, err := boiler.AssetTransferEvents(
+		boiler.AssetTransferEventWhere.ID.GTE(req.FromEventID),
+		qm.Load(boiler.AssetTransferEventRels.UserAsset, qm.Select(boiler.UserAssetColumns.LockedToService)),
+	).All(passdb.StdConn)
 	if err != nil {
 		passlog.L.Error().Err(err).
 			Interface("req", req).
@@ -73,16 +68,20 @@ func (s *S) GetAssetTransferEventsHandler(req GetAssetTransferEventsReq, resp *G
 		return err
 	}
 
-	var events []*TransferEvent
+	var events []*types.TransferEvent
 	for _, te := range transferEvents {
-		events = append(events, &TransferEvent{
+		evt := &types.TransferEvent{
 			TransferEventID: te.ID,
-			AssetHast:       te.UserAssetHash,
+			AssetHash:       te.UserAssetHash,
 			FromUserID:      te.FromUserID,
 			ToUserID:        te.ToUserID,
 			TransferredAt:   te.TransferredAt,
 			TransferTXID:    te.TransferTXID,
-		})
+		}
+		if te.R != nil && te.R.UserAsset != nil {
+			evt.OwnedService = te.R.UserAsset.LockedToService
+		}
+		events = append(events, evt)
 	}
 
 	resp.TransferEvents = events
