@@ -935,6 +935,10 @@ func (ac *AssetController) Asset1155TransferFromSupremacyHandler(ctx context.Con
 
 	userUUID := uuid.Must(uuid.FromString(user.ID))
 
+	if asset.Count-req.Payload.Amount < 0 {
+		return terror.Error(err, "Total asset amount after is less than zero")
+	}
+
 	tx := &xsynTypes.NewTransaction{
 		From:                 xsynTypes.UserID(userUUID),
 		To:                   xsynTypes.XsynTreasuryUserID,
