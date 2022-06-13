@@ -219,7 +219,7 @@ func NewAPI(
 			r.Get("/whitelist/check", WithError(api.WhitelistOnlyWalletCheck))
 
 			r.Get("/collection/1155/all", WithError(api.Get1155Collections))
-			r.Get("/collection/{collection_slug}/{public_address}", WithError(api.Get1155Collection))
+			r.Get("/collection/{collection_slug}", WithError(api.Get1155Collection))
 
 			r.Route("/early", func(r chi.Router) {
 				r.Get("/check", WithError(api.CheckUserEarlyContributor))

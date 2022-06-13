@@ -7,7 +7,6 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/types"
-	"io/ioutil"
 	"net/http"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
@@ -76,30 +75,10 @@ func (api *API) Get1155Collection(w http.ResponseWriter, r *http.Request) (int, 
 	if collectionSlug == "" {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to provide collection slug"), "Please provide collection slug")
 	}
-	address := chi.URLParam(r, "public_address")
-	if collectionSlug == "" {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to provide collection slug"), "Please provide collection slug")
-	}
 
 	collection, err := db.CollectionBySlug(collectionSlug)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get collection details")
-	}
-	url := fmt.Sprintf("http://v3-staging.supremacy-api.avantdata.com:3001/api/multi_token_balance?contract_address=%s&owner_address=%s&is_testnet=%t", collection.MintContract.String, address, true)
-	req, err := http.NewRequest("GET", url, nil)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to get collection details")
-	}
-	if resp.StatusCode != http.StatusOK {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("response code"), "Failed to get balances")
-	}
-	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
-	var result []*AvantUserBalances
-	err = json.Unmarshal(b, &result)
-	if err != nil {
-		return http.StatusInternalServerError, err
 	}
 
 	err = json.NewEncoder(w).Encode(Collections1155Resp{
