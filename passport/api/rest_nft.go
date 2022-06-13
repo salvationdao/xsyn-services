@@ -327,7 +327,7 @@ func (api *API) UnstakeNFT(w http.ResponseWriter, r *http.Request) (int, error) 
 	expiry := time.Now().Add(5 * time.Minute)
 	signer := bridge.NewSigner(api.BridgeParams.SignerPrivateKey)
 
-	_, messageSig, err := signer.GenerateSignatureWithExpiryAndCollection(common.HexToAddress(address), common.HexToAddress(collection.MintContract.String), tokenAsBigInt, nonceBigInt, big.NewInt(expiry.Unix()))
+	_, messageSig, err := signer.GenerateSignatureWithExpiryAndCollection(common.HexToAddress(collection.MintContract.String), common.HexToAddress(address),  tokenAsBigInt, nonceBigInt, big.NewInt(expiry.Unix()))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to create withdraw signature, please try again or contact support.")
 	}
