@@ -7,12 +7,8 @@ import (
 	"xsyn-services/passport/passlog"
 	xsynTypes "xsyn-services/types"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 type AssetTransferOwnershipResp struct {
