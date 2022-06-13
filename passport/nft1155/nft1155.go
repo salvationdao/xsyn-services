@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"xsyn-services/boiler"
@@ -75,6 +76,75 @@ func CreateOrGet1155Asset(externalTokenID int, user *types2.User, collectionSlug
 			AnimationURL:    assetDetail.AnimationUrl,
 			KeycardGroup:    assetDetail.Group,
 			Attributes:      assetJson,
+		}
+
+		err = asset.Insert(passdb.StdConn, boil.Infer())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, terror.Error(err, "Failed to get asset")
+	}
+
+	return asset, nil
+}
+
+func CreateOrGet1155AssetWithService(externalTokenID int, user *types2.User, collectionSlug, serviceID string) (*boiler.UserAssets1155, error) {
+	collection, err := db.CollectionBySlug(collectionSlug)
+	if err != nil {
+		return nil, err
+	}
+
+	asset, err := boiler.UserAssets1155S(
+		boiler.UserAssets1155Where.ExternalTokenID.EQ(externalTokenID),
+		boiler.UserAssets1155Where.OwnerID.EQ(user.ID),
+		boiler.UserAssets1155Where.CollectionID.EQ(collection.ID),
+		boiler.UserAssets1155Where.ServiceID.EQ(null.StringFrom(serviceID)),
+	).One(passdb.StdConn)
+	if errors.Is(err, sql.ErrNoRows) {
+
+		assetDetail, err := supremacy_rpcclient.Get1155Details(externalTokenID, collection.Slug)
+		if err != nil {
+			return nil, err
+		}
+
+		var assetJson types.JSON
+
+		if !assetDetail.Syndicate.Valid {
+			assetDetail.Syndicate.String = "N/A"
+		}
+
+		inner := &AttributeInner{
+			TraitType: "Syndicate",
+			Value:     assetDetail.Syndicate.String,
+		}
+
+		var inners []*AttributeInner
+
+		inners = append(inners, inner)
+
+		aType := &AttributeType{
+			Attributes: inners,
+		}
+
+		err = assetJson.Marshal(aType)
+		if err != nil {
+			return nil, err
+		}
+
+		asset = &boiler.UserAssets1155{
+			OwnerID:         user.ID,
+			CollectionID:    collection.ID,
+			ExternalTokenID: externalTokenID,
+			Label:           assetDetail.Label,
+			Description:     assetDetail.Description,
+			ImageURL:        assetDetail.ImageURL,
+			AnimationURL:    assetDetail.AnimationUrl,
+			KeycardGroup:    assetDetail.Group,
+			Attributes:      assetJson,
+			ServiceID:       null.StringFrom(serviceID),
 		}
 
 		err = asset.Insert(passdb.StdConn, boil.Infer())

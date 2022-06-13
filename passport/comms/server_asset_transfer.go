@@ -1,13 +1,14 @@
 package comms
 
 import (
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/asset"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
-	"xsyn-services/types"
+	xsynTypes "xsyn-services/types"
+
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type AssetTransferOwnershipResp struct {
@@ -41,7 +42,7 @@ func (s *S) AssetTransferOwnershipHandler(req AssetTransferOwnershipReq, resp *A
 }
 
 type GetAssetTransferEventsResp struct {
-	TransferEvents []*types.TransferEvent `json:"transfer_events"`
+	TransferEvents []*xsynTypes.TransferEvent `json:"transfer_events"`
 }
 
 type GetAssetTransferEventsReq struct {
@@ -68,9 +69,9 @@ func (s *S) GetAssetTransferEventsHandler(req GetAssetTransferEventsReq, resp *G
 		return err
 	}
 
-	var events []*types.TransferEvent
+	var events []*xsynTypes.TransferEvent
 	for _, te := range transferEvents {
-		evt := &types.TransferEvent{
+		evt := &xsynTypes.TransferEvent{
 			TransferEventID: te.ID,
 			AssetHash:       te.UserAssetHash,
 			FromUserID:      te.FromUserID,
