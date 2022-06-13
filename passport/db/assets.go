@@ -125,6 +125,7 @@ func AssetList721(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 		queryMods...,
 	).Count(passdb.StdConn)
 	if err != nil {
+		passlog.L.Error().Err(err).Interface("queryMods", queryMods).Msg("failed to count user asset list")
 		return 0, nil, err
 	}
 	// Sort
@@ -144,6 +145,7 @@ func AssetList721(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 
 	boilerAssets, err := boiler.UserAssets(queryMods...).All(passdb.StdConn)
 	if err != nil {
+		passlog.L.Error().Err(err).Interface("queryMods", queryMods).Msg("failed to get user asset list")
 		return 0, nil, err
 	}
 

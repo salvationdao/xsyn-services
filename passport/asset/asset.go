@@ -10,7 +10,14 @@ import (
 	"xsyn-services/passport/passlog"
 )
 
-func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransactionID null.String) (*boiler.UserAsset, int64, error) {
+func TransferAsset(
+	assetHash,
+	fromID,
+	toID,
+	serviceID string,
+	relatedTransactionID null.String,
+	assetTransferNotify func(te *boiler.AssetTransferEvent),
+	) (*boiler.UserAsset, int64, error) {
 	// get asset
 	userAsset, err := boiler.UserAssets(
 		boiler.UserAssetWhere.Hash.EQ(assetHash),
@@ -96,6 +103,9 @@ func TransferAsset(assetHash, fromID, toID, serviceID string, relatedTransaction
 		return userAsset, 0, err
 	}
 
+	if assetTransferNotify != nil {
+		assetTransferNotify(transferEvent)
+	}
 	return userAsset, transferEvent.ID, nil
 }
 

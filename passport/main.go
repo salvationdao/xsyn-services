@@ -196,6 +196,7 @@ func main() {
 					&cli.IntFlag{Name: "database_max_open_conns", Value: 50, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 					&cli.StringFlag{Name: "moralis_key", Value: "91Xp2ke5eOVMavAsqdOoiXN4lg0n0AieW5kTJoupdyQBhL2k9XvMQtFPSA4opX2s", EnvVars: []string{envPrefix + "_MORALIS_KEY"}, Usage: "Key to connect to moralis API"},
 					&cli.StringFlag{Name: "bot_secret_key", Value: `HsZ8DGnNshjkvbvdmJvjLY0CEaoAyn0SnzHjLaCESL91YwsRELsaGyvJsteUf6kI`, EnvVars: []string{envPrefix + "_BOT_SECRET_KEY"}, Usage: "Key for verifying requests from our own bots"},
+					&cli.StringFlag{Name: "ignore_rate_limit_ips", Value: "127.0.0.1", EnvVars: []string{envPrefix + "_IGNORE_RATE_LIMIT_IP"}, Usage: "Ignore rate limiting on these IPs"},
 				},
 
 				Usage: "run server",
@@ -551,7 +552,7 @@ func SyncWithdraw(ucm *api.Transactor, isTestnet, enableWithdrawRollback bool) e
 	return nil
 
 }
-func SyncNFTs() error {
+func SyncNFTs(isTestnet bool) error {
 	allCollections, err := boiler.Collections(boiler.CollectionWhere.MintContract.IsNotNull(),
 		boiler.CollectionWhere.ContractType.EQ(null.StringFrom("ERC-721"))).All(passdb.StdConn)
 	if err != nil {
@@ -559,7 +560,7 @@ func SyncNFTs() error {
 	}
 
 	for _, collection := range allCollections {
-		collectionNftOwnerStatuses, err := payments.GetNFTOwnerRecords(collection)
+		collectionNftOwnerStatuses, err := payments.GetNFTOwnerRecords(isTestnet, collection)
 		if err != nil {
 			return fmt.Errorf("get nft owners: %w", err)
 		}
@@ -570,7 +571,12 @@ func SyncNFTs() error {
 		}
 
 		passlog.L.Info().
-			Str("collection", collection.Slug).
+			Str("collection.Slug", collection.Slug).
+			Str("collection.MintContract.String", collection.MintContract.String).
+			Str("collection.StakeContract.String", collection.StakeContract.String).
+			Str("collection.StakingContractOld.String", collection.StakingContractOld.String).
+			Bool("isTestnet",isTestnet).
+			Int("records",len(collectionNftOwnerStatuses)).
 			Int("updated", ownerUpdated).
 			Int("skipped", ownerSkipped).
 			Msg("synced nft ownerships")
@@ -648,7 +654,7 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 	}(ucm, log, isTestnet)
 	go func() {
 		if db.GetBoolWithDefault(db.KeyEnableSyncNFTOwners, false) {
-			err := SyncNFTs()
+			err := SyncNFTs(isTestnet)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync nfts")
 			}
@@ -902,6 +908,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		enablePurchaseSubscription,
 		jwtKeyByteArray,
 		environment,
+		strings.Split(ctxCLI.String("ignore_rate_limit_ips"), ","),
 	)
 
 	passlog.L.Info().Msg("start rpc server")
@@ -992,10 +999,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	if !skipUpdateUsersMixedCase {
 		go func() {
 			passlog.L.Info().Msg("updating all users to mixed case")
-			err = db.UserMixedCaseUpdateAll()
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("updating all users to mixed case failed")
-			}
+			db.UserMixedCaseUpdateAll()
 		}()
 	}
 

@@ -42,9 +42,6 @@ func NewAssetController(log *zerolog.Logger, api *API) *AssetController {
 		API: api,
 	}
 
-	//const HubKeyAssetTransferFromSupremacy = "ASSET:TRANSFER:FROM:SUPREMACY"
-	//AssetTransferFromSupremacyHandler
-
 	// assets list
 	api.SecureCommand(HubKeyAssetList, assetHub.AssetList721Handler)
 	api.SecureCommand(HubKey1155AssetList, assetHub.AssetList1155Handler)
@@ -54,8 +51,8 @@ func NewAssetController(log *zerolog.Logger, api *API) *AssetController {
 	api.SecureCommand(HubKeyAsset1155TransferFromSupremacy, assetHub.Asset1155TransferFromSupremacyHandler)
 	api.SecureCommand(HubKeyDeposit1155Asset, assetHub.DepositAsset1155Handler)
 	api.SecureCommand(HubKeyDepositAsset1155List, assetHub.DepositAsset1155ListHandler)
-	api.Command(HubKeyAssetSubscribe, assetHub.AssetUpdatedSubscribeHandler)
-	api.Command(HubKeyAsset1155Subscribe, assetHub.Asset1155UpdatedSubscribeHandler)
+	api.Command(HubKeyAssetGet, assetHub.AssetUpdatedGetHandler)
+	api.Command(HubKeyAsset1155Get, assetHub.Asset1155UpdatedGetHandler)
 
 	return assetHub
 }
@@ -93,10 +90,10 @@ func (ac *AssetController) AssetList721Handler(ctx context.Context, user *xsynTy
 		Sort:            req.Payload.Sort,
 		Filter:          req.Payload.Filter,
 		AttributeFilter: req.Payload.AttributeFilter,
-		AssetType:       "mech", // for now this is hardcoded to hide all the other assets
-		Search:          req.Payload.Search,
-		PageSize:        req.Payload.PageSize,
-		Page:            req.Payload.Page,
+		//AssetType:       "mech", // for now this is hardcoded to hide all the other assets
+		Search:   req.Payload.Search,
+		PageSize: req.Payload.PageSize,
+		Page:     req.Payload.Page,
 	})
 	if err != nil {
 		return terror.Error(err, "Unable to retrieve assets at this time, please try again or contact support.")
@@ -191,18 +188,19 @@ type UserAsset struct {
 }
 
 type Collection struct {
-	ID            string      `json:"id"`
-	Name          string      `json:"name"`
-	LogoBlobID    null.String `json:"logo_blob_id,omitempty"`
-	Keywords      null.String `json:"keywords,omitempty"`
-	DeletedAt     null.Time   `json:"deleted_at,omitempty"`
-	UpdatedAt     time.Time   `json:"updated_at"`
-	CreatedAt     time.Time   `json:"created_at"`
-	Slug          string      `json:"slug"`
-	MintContract  null.String `json:"mint_contract,omitempty"`
-	StakeContract null.String `json:"stake_contract,omitempty"`
-	IsVisible     null.Bool   `json:"is_visible,omitempty"`
-	ContractType  null.String `json:"contract_type,omitempty"`
+	ID                 string      `json:"id"`
+	Name               string      `json:"name"`
+	LogoBlobID         null.String `json:"logo_blob_id,omitempty"`
+	Keywords           null.String `json:"keywords,omitempty"`
+	DeletedAt          null.Time   `json:"deleted_at,omitempty"`
+	UpdatedAt          time.Time   `json:"updated_at"`
+	CreatedAt          time.Time   `json:"created_at"`
+	Slug               string      `json:"slug"`
+	MintContract       null.String `json:"mint_contract,omitempty"`
+	StakeContract      null.String `json:"stake_contract,omitempty"`
+	StakingContractOld null.String `json:"staking_contract_old,omitempty"`
+	IsVisible          null.Bool   `json:"is_visible,omitempty"`
+	ContractType       null.String `json:"contract_type,omitempty"`
 }
 
 type User struct {
@@ -216,9 +214,9 @@ type AssetResponse struct {
 	Owner      *User       `json:"owner"`
 }
 
-const HubKeyAssetSubscribe = "ASSET:GET:721"
+const HubKeyAssetGet = "ASSET:GET:721"
 
-func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (ac *AssetController) AssetUpdatedGetHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	// errMsg := "Issue subscribing to asset updates, try again or contact support."
 	req := &AssetUpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)
@@ -288,8 +286,9 @@ func (ac *AssetController) AssetUpdatedSubscribeHandler(ctx context.Context, key
 			Slug:          userAsset.R.Collection.Slug,
 			MintContract:  userAsset.R.Collection.MintContract,
 			StakeContract: userAsset.R.Collection.StakeContract,
-			IsVisible:     userAsset.R.Collection.IsVisible,
-			ContractType:  userAsset.R.Collection.ContractType,
+			StakingContractOld: userAsset.R.Collection.StakingContractOld,
+			IsVisible:    userAsset.R.Collection.IsVisible,
+			ContractType: userAsset.R.Collection.ContractType,
 		},
 		Owner: &User{
 			ID:       userAsset.R.Owner.ID,
@@ -328,9 +327,9 @@ type Asset1155Response struct {
 	Owner      *User              `json:"owner"`
 }
 
-const HubKeyAsset1155Subscribe = "ASSET:GET:1155"
+const HubKeyAsset1155Get = "ASSET:GET:1155"
 
-func (ac *AssetController) Asset1155UpdatedSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (ac *AssetController) Asset1155UpdatedGetHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	// errMsg := "Issue subscribing to asset updates, try again or contact support."
 	req := &Asset1155UpdatedSubscribeRequest{}
 	err := json.Unmarshal(payload, req)

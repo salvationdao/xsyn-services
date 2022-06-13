@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ninja-software/terror/v2"
@@ -49,13 +50,11 @@ type ListFilterRequest struct {
 
 // ListFilterRequestItem contains instructions on filtering
 type ListFilterRequestItem struct {
-	Table         string
-	Column   string
-	Operator OperatorValueType
-	Value    string
+	Table    string            `json:"table"`
+	Column   string            `json:"column"`
+	Operator OperatorValueType `json:"operator"`
+	Value    string            `json:"value"`
 }
-
-
 
 // GenerateListFilterSQL generates SQL for filtering a column
 func GenerateListFilterSQL(column string, value string, operator OperatorValueType, index int) (string, string) {

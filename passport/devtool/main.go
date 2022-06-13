@@ -37,10 +37,10 @@ func main() {
 
 	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
 		"passport",
-		"dev",
+		"LDs!Eb3z6LDC9axTrtEZWynme",
 		"localhost",
-		"5432",
-		"passport",
+		"5454",
+		"passport-db",
 		params.Encode(),
 	)
 	cfg, err := pgx.ParseConfig(connString)

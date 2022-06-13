@@ -2,7 +2,6 @@ package api
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -43,36 +42,15 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) h
 	// TODO: Ask about sentry ideas?
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		contents, err := ioutil.ReadAll(r.Body)
-
 		r.Body = ioutil.NopCloser(bytes.NewReader(contents))
 		defer r.Body.Close()
 		code, err := next(w, r)
-		if err != nil && errors.Is(err, sql.ErrNoRows) {
-			errStr := terror.Echo(err, true)
-			passlog.L.Warn().Err(err).Msg("rest record not found. " + errStr)
-
-			errObj := &ErrorObject{
-				Message:   "record not found",
-				ErrorCode: fmt.Sprintf("%d", http.StatusNotFound),
-			}
-			jsonErr, err := json.Marshal(errObj)
-			if err != nil {
-				terror.Echo(err)
-				http.Error(w, `{"message":"JSON failed, please contact IT.","error_code":"00001"}`, http.StatusInternalServerError)
-				DatadogTracer.HttpFinishSpan(r.Context(), http.StatusInternalServerError, err)
-				return
-			}
-			DatadogTracer.HttpFinishSpan(r.Context(), http.StatusNotFound, err)
-			http.Error(w, string(jsonErr), http.StatusNotFound)
-			return
-		}
 		if err != nil {
 			terror.Echo(err)
 			errObj := &ErrorObject{
 				Message:   err.Error(),
 				ErrorCode: fmt.Sprintf("%d", code),
 			}
-
 			var bErr *terror.TError
 			if errors.As(err, &bErr) {
 				errObj.Message = bErr.Message
@@ -108,7 +86,7 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) h
 					}
 				}
 			} else {
-				passlog.L.Err(err).Msg("rest error")
+				passlog.L.Err(err).Str("r.URL.Path",r.URL.Path).Msg("rest error")
 			}
 
 			jsonErr, err := json.Marshal(errObj)
