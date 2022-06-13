@@ -95,6 +95,7 @@ func NewAPI(
 	enablePurchaseSubscription bool,
 	jwtKey []byte,
 	environment string,
+	ignoreRateLimitIPs []string,
 ) (*API, chi.Router) {
 
 	api := &API{
@@ -156,7 +157,10 @@ func NewAPI(
 		log.Fatal().Msgf("failed to roadmap routes: %s", err.Error())
 	}
 
-	ws.Init(&ws.Config{passlog.L})
+	ws.Init(&ws.Config{
+		Logger:             passlog.L,
+		IgnoreRateLimitIPs: ignoreRateLimitIPs,
+	})
 
 	if runBlockchainBridge {
 		_ = NewSupController(log, api, cc)
