@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"xsyn-services/boiler"
@@ -100,7 +101,7 @@ func CreateOrGet1155AssetWithService(externalTokenID int, user *types2.User, col
 		boiler.UserAssets1155Where.ExternalTokenID.EQ(externalTokenID),
 		boiler.UserAssets1155Where.OwnerID.EQ(user.ID),
 		boiler.UserAssets1155Where.CollectionID.EQ(collection.ID),
-		boiler.UserAssets1155Where.ServiceID.IsNull(),
+		boiler.UserAssets1155Where.ServiceID.EQ(null.StringFrom(serviceID)),
 	).One(passdb.StdConn)
 	if errors.Is(err, sql.ErrNoRows) {
 
@@ -143,6 +144,7 @@ func CreateOrGet1155AssetWithService(externalTokenID int, user *types2.User, col
 			AnimationURL:    assetDetail.AnimationUrl,
 			KeycardGroup:    assetDetail.Group,
 			Attributes:      assetJson,
+			ServiceID:       null.StringFrom(serviceID),
 		}
 
 		err = asset.Insert(passdb.StdConn, boil.Infer())

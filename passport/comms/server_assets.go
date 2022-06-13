@@ -234,7 +234,7 @@ type Asset1155CountUpdateSupremacyResp struct {
 }
 
 // AssetKeycardCountUpdateSupremacy update keycard count
-func (s *S) AssetKeycardCountUpdateSupremacy(req Asset1155CountUpdateSupremacyReq, resp Asset1155CountUpdateSupremacyResp) error {
+func (s *S) AssetKeycardCountUpdateSupremacy(req Asset1155CountUpdateSupremacyReq, resp *Asset1155CountUpdateSupremacyResp) error {
 	_, err := IsServerClient(req.ApiKey)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("failed to get service id - Asset1155CountUpdateSupremacy")
