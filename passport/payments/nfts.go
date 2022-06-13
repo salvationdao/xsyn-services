@@ -80,7 +80,7 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 		updatedBool := false
 
 		// if the owner is different, transfer asset to new owner
-		if offChainAddr.Hex() != onChainAddr.Hex() {
+		if offChainAddr.Hex() != onChainAddr.Hex() && !userAsset.LockedToService.Valid {
 			l.Debug().
 				Str("new_owner", onChainOwner.ID).
 				Str("old_owner", offChainOwner.ID).
