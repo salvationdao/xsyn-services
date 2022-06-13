@@ -1,13 +1,6 @@
 package comms
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/types"
-	"time"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/asset"
 	"xsyn-services/passport/nft1155"
@@ -15,7 +8,13 @@ import (
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/payments"
 	xsynTypes "xsyn-services/types"
-	"xsyn-services/types"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 type AssetTransferOwnershipResp struct {
@@ -49,7 +48,7 @@ func (s *S) AssetTransferOwnershipHandler(req AssetTransferOwnershipReq, resp *A
 }
 
 type GetAssetTransferEventsResp struct {
-	TransferEvents []*types.TransferEvent `json:"transfer_events"`
+	TransferEvents []*xsynTypes.TransferEvent `json:"transfer_events"`
 }
 
 type GetAssetTransferEventsReq struct {
@@ -76,9 +75,9 @@ func (s *S) GetAssetTransferEventsHandler(req GetAssetTransferEventsReq, resp *G
 		return err
 	}
 
-	var events []*types.TransferEvent
+	var events []*xsynTypes.TransferEvent
 	for _, te := range transferEvents {
-		evt := &types.TransferEvent{
+		evt := &xsynTypes.TransferEvent{
 			TransferEventID: te.ID,
 			AssetHash:       te.UserAssetHash,
 			FromUserID:      te.FromUserID,
