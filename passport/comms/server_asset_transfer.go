@@ -1,13 +1,18 @@
 package comms
 
 import (
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/asset"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	xsynTypes "xsyn-services/types"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 type AssetTransferOwnershipResp struct {
@@ -68,9 +73,7 @@ func (s *S) GetAssetTransferEventsHandler(req GetAssetTransferEventsReq, resp *G
 		return err
 	}
 
-	var (
-		events []*xsynTypes.TransferEvent
-	)
+	var events []*xsynTypes.TransferEvent
 	for _, te := range transferEvents {
 		evt := &xsynTypes.TransferEvent{
 			TransferEventID: te.ID,
