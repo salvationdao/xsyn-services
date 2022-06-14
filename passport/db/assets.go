@@ -39,6 +39,7 @@ func IsUserAssetColumn(col string) bool {
 		boiler.UserAssetColumns.MintedAt,
 		boiler.UserAssetColumns.OnChainStatus,
 		boiler.UserAssetColumns.DeletedAt,
+		boiler.UserAssetColumns.Keywords,
 		boiler.UserAssetColumns.DataRefreshedAt:
 		return true
 	default:
@@ -112,9 +113,10 @@ func AssetList721(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 		if len(xSearch) > 0 {
 			queryMods = append(queryMods,
 				qm.And(fmt.Sprintf(
-					"((to_tsvector('english', %[1]s.%[2]s) @@ to_tsquery(?))",
+					//user_assets.keywords is already a ts_vector that can be compared to tsquery
+					"(%[1]s.%[2]s @@ to_tsquery(?))",
 					boiler.TableNames.UserAssets,
-					boiler.UserAssetColumns.Name,
+					boiler.UserAssetColumns.Keywords,
 				),
 					xSearch,
 				))
@@ -128,6 +130,7 @@ func AssetList721(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 		passlog.L.Error().Err(err).Interface("queryMods", queryMods).Msg("failed to count user asset list")
 		return 0, nil, err
 	}
+
 	// Sort
 	if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.UserAssets && IsUserAssetColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
 		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.UserAssets, opts.Sort.Column, opts.Sort.Direction)))
