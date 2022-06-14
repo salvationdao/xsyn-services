@@ -51,6 +51,7 @@ type UserAsset struct {
 	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	LockedToService  null.String `boiler:"locked_to_service" boil:"locked_to_service" json:"locked_to_service,omitempty" toml:"locked_to_service" yaml:"locked_to_service,omitempty"`
+	Keywords         null.String `boiler:"keywords" boil:"keywords" json:"keywords,omitempty" toml:"keywords" yaml:"keywords,omitempty"`
 
 	R *userAssetR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userAssetL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -84,6 +85,7 @@ var UserAssetColumns = struct {
 	UpdatedAt        string
 	CreatedAt        string
 	LockedToService  string
+	Keywords         string
 }{
 	ID:               "id",
 	CollectionID:     "collection_id",
@@ -112,6 +114,7 @@ var UserAssetColumns = struct {
 	UpdatedAt:        "updated_at",
 	CreatedAt:        "created_at",
 	LockedToService:  "locked_to_service",
+	Keywords:         "keywords",
 }
 
 var UserAssetTableColumns = struct {
@@ -142,6 +145,7 @@ var UserAssetTableColumns = struct {
 	UpdatedAt        string
 	CreatedAt        string
 	LockedToService  string
+	Keywords         string
 }{
 	ID:               "user_assets.id",
 	CollectionID:     "user_assets.collection_id",
@@ -170,6 +174,7 @@ var UserAssetTableColumns = struct {
 	UpdatedAt:        "user_assets.updated_at",
 	CreatedAt:        "user_assets.created_at",
 	LockedToService:  "user_assets.locked_to_service",
+	Keywords:         "user_assets.keywords",
 }
 
 // Generated where
@@ -202,6 +207,7 @@ var UserAssetWhere = struct {
 	UpdatedAt        whereHelpertime_Time
 	CreatedAt        whereHelpertime_Time
 	LockedToService  whereHelpernull_String
+	Keywords         whereHelpernull_String
 }{
 	ID:               whereHelperstring{field: "\"user_assets\".\"id\""},
 	CollectionID:     whereHelperstring{field: "\"user_assets\".\"collection_id\""},
@@ -230,6 +236,7 @@ var UserAssetWhere = struct {
 	UpdatedAt:        whereHelpertime_Time{field: "\"user_assets\".\"updated_at\""},
 	CreatedAt:        whereHelpertime_Time{field: "\"user_assets\".\"created_at\""},
 	LockedToService:  whereHelpernull_String{field: "\"user_assets\".\"locked_to_service\""},
+	Keywords:         whereHelpernull_String{field: "\"user_assets\".\"keywords\""},
 }
 
 // UserAssetRels is where relationship names are stored.
@@ -268,9 +275,9 @@ func (*userAssetR) NewStruct() *userAssetR {
 type userAssetL struct{}
 
 var (
-	userAssetAllColumns            = []string{"id", "collection_id", "token_id", "tier", "hash", "owner_id", "data", "attributes", "name", "asset_type", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "on_chain_status", "deleted_at", "data_refreshed_at", "updated_at", "created_at", "locked_to_service"}
+	userAssetAllColumns            = []string{"id", "collection_id", "token_id", "tier", "hash", "owner_id", "data", "attributes", "name", "asset_type", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "on_chain_status", "deleted_at", "data_refreshed_at", "updated_at", "created_at", "locked_to_service", "keywords"}
 	userAssetColumnsWithoutDefault = []string{"collection_id", "token_id", "tier", "hash", "owner_id", "name"}
-	userAssetColumnsWithDefault    = []string{"id", "data", "attributes", "asset_type", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "on_chain_status", "deleted_at", "data_refreshed_at", "updated_at", "created_at", "locked_to_service"}
+	userAssetColumnsWithDefault    = []string{"id", "data", "attributes", "asset_type", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "on_chain_status", "deleted_at", "data_refreshed_at", "updated_at", "created_at", "locked_to_service", "keywords"}
 	userAssetPrimaryKeyColumns     = []string{"id"}
 	userAssetGeneratedColumns      = []string{}
 )
