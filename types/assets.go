@@ -98,6 +98,7 @@ func UserAssetFromBoiler(us *boiler.UserAsset) *UserAsset {
 	if err != nil {
 		passlog.L.Error().Err(err).Interface("us.Attributes", us.Attributes).Msg("failed to unmarshall attributes")
 	}
+
 	return &UserAsset{
 		ID:               us.ID,
 		CollectionID:     us.CollectionID,
@@ -107,6 +108,7 @@ func UserAssetFromBoiler(us *boiler.UserAsset) *UserAsset {
 		OwnerID:          us.OwnerID,
 		Data:             us.Data,
 		Attributes:       attribes,
+		AssetType:        us.AssetType,
 		Name:             us.Name,
 		ImageURL:         us.ImageURL,
 		ExternalURL:      us.ExternalURL,
@@ -179,7 +181,6 @@ type SupremacyKeycardAttribute struct {
 	TraitType string `json:"trait_type"`
 	Value     string `json:"value,omitempty"`
 }
-
 
 type TransferEvent struct {
 	TransferEventID int64       `json:"transfer_event_id"`
