@@ -23,44 +23,65 @@ import (
 
 // BlockWithdraw is an object representing the database table.
 type BlockWithdraw struct {
-	PublicAddress string      `boiler:"public_address" boil:"public_address" json:"public_address" toml:"public_address" yaml:"public_address"`
-	Note          null.String `boiler:"note" boil:"note" json:"note,omitempty" toml:"note" yaml:"note,omitempty"`
-	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	PublicAddress      string      `boiler:"public_address" boil:"public_address" json:"public_address" toml:"public_address" yaml:"public_address"`
+	Note               null.String `boiler:"note" boil:"note" json:"note,omitempty" toml:"note" yaml:"note,omitempty"`
+	CreatedAt          time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID                 string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BlockSupsWithdraws time.Time   `boiler:"block_sups_withdraws" boil:"block_sups_withdraws" json:"block_sups_withdraws" toml:"block_sups_withdraws" yaml:"block_sups_withdraws"`
+	BlockNFTWithdraws  time.Time   `boiler:"block_nft_withdraws" boil:"block_nft_withdraws" json:"block_nft_withdraws" toml:"block_nft_withdraws" yaml:"block_nft_withdraws"`
 
 	R *blockWithdrawR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blockWithdrawL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BlockWithdrawColumns = struct {
-	PublicAddress string
-	Note          string
-	CreatedAt     string
+	PublicAddress      string
+	Note               string
+	CreatedAt          string
+	ID                 string
+	BlockSupsWithdraws string
+	BlockNFTWithdraws  string
 }{
-	PublicAddress: "public_address",
-	Note:          "note",
-	CreatedAt:     "created_at",
+	PublicAddress:      "public_address",
+	Note:               "note",
+	CreatedAt:          "created_at",
+	ID:                 "id",
+	BlockSupsWithdraws: "block_sups_withdraws",
+	BlockNFTWithdraws:  "block_nft_withdraws",
 }
 
 var BlockWithdrawTableColumns = struct {
-	PublicAddress string
-	Note          string
-	CreatedAt     string
+	PublicAddress      string
+	Note               string
+	CreatedAt          string
+	ID                 string
+	BlockSupsWithdraws string
+	BlockNFTWithdraws  string
 }{
-	PublicAddress: "block_withdraw.public_address",
-	Note:          "block_withdraw.note",
-	CreatedAt:     "block_withdraw.created_at",
+	PublicAddress:      "block_withdraw.public_address",
+	Note:               "block_withdraw.note",
+	CreatedAt:          "block_withdraw.created_at",
+	ID:                 "block_withdraw.id",
+	BlockSupsWithdraws: "block_withdraw.block_sups_withdraws",
+	BlockNFTWithdraws:  "block_withdraw.block_nft_withdraws",
 }
 
 // Generated where
 
 var BlockWithdrawWhere = struct {
-	PublicAddress whereHelperstring
-	Note          whereHelpernull_String
-	CreatedAt     whereHelpertime_Time
+	PublicAddress      whereHelperstring
+	Note               whereHelpernull_String
+	CreatedAt          whereHelpertime_Time
+	ID                 whereHelperstring
+	BlockSupsWithdraws whereHelpertime_Time
+	BlockNFTWithdraws  whereHelpertime_Time
 }{
-	PublicAddress: whereHelperstring{field: "\"block_withdraw\".\"public_address\""},
-	Note:          whereHelpernull_String{field: "\"block_withdraw\".\"note\""},
-	CreatedAt:     whereHelpertime_Time{field: "\"block_withdraw\".\"created_at\""},
+	PublicAddress:      whereHelperstring{field: "\"block_withdraw\".\"public_address\""},
+	Note:               whereHelpernull_String{field: "\"block_withdraw\".\"note\""},
+	CreatedAt:          whereHelpertime_Time{field: "\"block_withdraw\".\"created_at\""},
+	ID:                 whereHelperstring{field: "\"block_withdraw\".\"id\""},
+	BlockSupsWithdraws: whereHelpertime_Time{field: "\"block_withdraw\".\"block_sups_withdraws\""},
+	BlockNFTWithdraws:  whereHelpertime_Time{field: "\"block_withdraw\".\"block_nft_withdraws\""},
 }
 
 // BlockWithdrawRels is where relationship names are stored.
@@ -80,10 +101,10 @@ func (*blockWithdrawR) NewStruct() *blockWithdrawR {
 type blockWithdrawL struct{}
 
 var (
-	blockWithdrawAllColumns            = []string{"public_address", "note", "created_at"}
+	blockWithdrawAllColumns            = []string{"public_address", "note", "created_at", "id", "block_sups_withdraws", "block_nft_withdraws"}
 	blockWithdrawColumnsWithoutDefault = []string{"public_address"}
-	blockWithdrawColumnsWithDefault    = []string{"note", "created_at"}
-	blockWithdrawPrimaryKeyColumns     = []string{"public_address"}
+	blockWithdrawColumnsWithDefault    = []string{"note", "created_at", "id", "block_sups_withdraws", "block_nft_withdraws"}
+	blockWithdrawPrimaryKeyColumns     = []string{"id"}
 	blockWithdrawGeneratedColumns      = []string{}
 )
 
@@ -337,7 +358,7 @@ func BlockWithdraws(mods ...qm.QueryMod) blockWithdrawQuery {
 
 // FindBlockWithdraw retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindBlockWithdraw(exec boil.Executor, publicAddress string, selectCols ...string) (*BlockWithdraw, error) {
+func FindBlockWithdraw(exec boil.Executor, iD string, selectCols ...string) (*BlockWithdraw, error) {
 	blockWithdrawObj := &BlockWithdraw{}
 
 	sel := "*"
@@ -345,10 +366,10 @@ func FindBlockWithdraw(exec boil.Executor, publicAddress string, selectCols ...s
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"block_withdraw\" where \"public_address\"=$1", sel,
+		"select %s from \"block_withdraw\" where \"id\"=$1", sel,
 	)
 
-	q := queries.Raw(query, publicAddress)
+	q := queries.Raw(query, iD)
 
 	err := q.Bind(nil, exec, blockWithdrawObj)
 	if err != nil {
@@ -706,7 +727,7 @@ func (o *BlockWithdraw) Delete(exec boil.Executor) (int64, error) {
 	}
 
 	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), blockWithdrawPrimaryKeyMapping)
-	sql := "DELETE FROM \"block_withdraw\" WHERE \"public_address\"=$1"
+	sql := "DELETE FROM \"block_withdraw\" WHERE \"id\"=$1"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -801,7 +822,7 @@ func (o BlockWithdrawSlice) DeleteAll(exec boil.Executor) (int64, error) {
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *BlockWithdraw) Reload(exec boil.Executor) error {
-	ret, err := FindBlockWithdraw(exec, o.PublicAddress)
+	ret, err := FindBlockWithdraw(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -840,15 +861,15 @@ func (o *BlockWithdrawSlice) ReloadAll(exec boil.Executor) error {
 }
 
 // BlockWithdrawExists checks if the BlockWithdraw row exists.
-func BlockWithdrawExists(exec boil.Executor, publicAddress string) (bool, error) {
+func BlockWithdrawExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"block_withdraw\" where \"public_address\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"block_withdraw\" where \"id\"=$1 limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
-		fmt.Fprintln(boil.DebugWriter, publicAddress)
+		fmt.Fprintln(boil.DebugWriter, iD)
 	}
-	row := exec.QueryRow(sql, publicAddress)
+	row := exec.QueryRow(sql, iD)
 
 	err := row.Scan(&exists)
 	if err != nil {
