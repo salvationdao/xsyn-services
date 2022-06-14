@@ -146,7 +146,7 @@ func CreateTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Requ
 			Group:                types.TransactionGroupStore,
 			SubGroup:             "Transfer",
 		}
-		_, _, _, err = ucm.Transact(newTx)
+		_, err = ucm.Transact(newTx)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not get transaction")
 		}
@@ -172,7 +172,7 @@ func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http
 			SubGroup:             "Refund",
 			RelatedTransactionID: null.StringFrom(tx.ID),
 		}
-		_, _, _, err = ucm.Transact(refundTx)
+		 _, err = ucm.Transact(refundTx)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not get transaction")
 		}

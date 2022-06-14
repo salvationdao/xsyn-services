@@ -96,7 +96,7 @@ func (gc *GamebarController) GetFreeSups(ctx context.Context, user *types.User, 
 		Description:          "100 SUPS giveaway for testing",
 		Group:                types.TransactionGroupTesting,
 	}
-	_, _, _, err := gc.API.userCacheMap.Transact(tx)
+	_, err := gc.API.userCacheMap.Transact(tx)
 	if err != nil {
 		passlog.L.
 			Err(err).

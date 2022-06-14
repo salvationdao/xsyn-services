@@ -96,7 +96,7 @@ func (d *Dev)devGiveMechs(w http.ResponseWriter, r *http.Request) (int, error) {
 		NotSafe:              false,
 	}
 
-	_, _, _, err = d.userCacheMap.Transact(tx)
+	_, err = d.userCacheMap.Transact(tx)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("failed to give dev sups")
 		return 0, err

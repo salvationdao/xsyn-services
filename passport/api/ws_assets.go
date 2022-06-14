@@ -461,7 +461,7 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 		NotSafe:              true,
 	}
 
-	_, _, txID, err := ac.API.userCacheMap.Transact(tx)
+	txID, err := ac.API.userCacheMap.Transact(tx)
 	if err != nil {
 		return terror.Error(err, "failed to process sups")
 	}
@@ -615,7 +615,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 		NotSafe:              true,
 	}
 
-	_, _, txID, err := ac.API.userCacheMap.Transact(tx)
+	 txID, err := ac.API.userCacheMap.Transact(tx)
 	if err != nil {
 		return err
 	}
@@ -777,7 +777,7 @@ func (ac *AssetController) Asset1155TransferToSupremacyHandler(ctx context.Conte
 		NotSafe:              true,
 	}
 
-	_, _, txID, err := ac.API.userCacheMap.Transact(tx)
+	txID, err := ac.API.userCacheMap.Transact(tx)
 	if err != nil {
 		return terror.Error(err, "Failed to process asset transfer transaction")
 	}
@@ -950,7 +950,7 @@ func (ac *AssetController) Asset1155TransferFromSupremacyHandler(ctx context.Con
 		NotSafe:              true,
 	}
 
-	_, _, txID, err := ac.API.userCacheMap.Transact(tx)
+	txID, err := ac.API.userCacheMap.Transact(tx)
 	if err != nil {
 		return terror.Error(err, "Failed to process asset transfer transaction")
 	}
@@ -1200,7 +1200,7 @@ func reverseAssetServiceTransaction(
 		RelatedTransactionID: null.StringFrom(transactionToReverse.ID),
 	}
 
-	_, _, reverseID, err := ucm.Transact(transaction)
+	reverseID, err := ucm.Transact(transaction)
 	if err != nil {
 		passlog.L.Error().
 			Err(err).
@@ -1245,7 +1245,7 @@ func reverseAsset1155ServiceTransaction(
 		RelatedTransactionID: null.StringFrom(transactionToReverse.ID),
 	}
 
-	_, _, reverseID, err := ucm.Transact(transaction)
+	reverseID, err := ucm.Transact(transaction)
 	if err != nil {
 		passlog.L.Error().
 			Err(err).

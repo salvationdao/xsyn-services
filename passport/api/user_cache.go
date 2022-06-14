@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
-	"xsyn-services/boiler"
+	"xsyn-services/passport/benchmark"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
@@ -12,13 +12,9 @@ import (
 
 	"github.com/ninja-syndicate/ws"
 
-	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-
 	"github.com/gofrs/uuid"
+	"github.com/shopspring/decimal"
 
-	"github.com/ninja-software/terror/v2"
 	"github.com/sasha-s/go-deadlock"
 )
 
@@ -47,60 +43,10 @@ var TransactionFailed = "TRANSACTION_FAILED"
 var zero = decimal.New(0, 18)
 var ErrNotEnoughFunds = fmt.Errorf("account does not have enough funds")
 
-func (ucm *Transactor) Transact(nt *types.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error) {
+func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
+
+
 	transactionID := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
-	nt.ID = transactionID
-	fromUser, toUser, msg, err := (func() (*boiler.User, *boiler.User, string, error) {
-		if nt.Amount.LessThanOrEqual(zero) {
-			return nil, nil, TransactionFailed, terror.Error(fmt.Errorf("amount should be a positive number: %s", nt.Amount.String()), "Amount should be greater than zero")
-		}
-
-		fromUser, err := boiler.FindUser(passdb.StdConn, nt.From.String())
-		if err != nil {
-			passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
-			return nil, nil, TransactionFailed, terror.Error(err, "Failed to process transaction.")
-		}
-
-		toUser, err := boiler.FindUser(passdb.StdConn, nt.To.String())
-		if err != nil {
-			passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
-			return nil, nil, TransactionFailed, terror.Error(err, "Failed to process transaction.")
-		}
-
-		if fromUser.ID != types.OnChainUserID.String() {
-			remaining := fromUser.Sups.Sub(nt.Amount)
-			if remaining.LessThan(zero) {
-				passlog.L.Info().Str("from_id", fromUser.ID).Str("to_user", nt.To.String()).Msg("account would go into negative")
-				return fromUser, toUser, TransactionFailed, terror.Error(ErrNotEnoughFunds, "Not enough funds.")
-			}
-		}
-
-		return fromUser, toUser, "", nil
-	})()
-
-	if err != nil {
-		if toUser != nil || fromUser != nil {
-			failedTx := &boiler.FailedTransaction{
-				ID:              transactionID,
-				Credit:          toUser.ID,
-				Debit:           fromUser.ID,
-				Amount:          nt.Amount,
-				FailedReference: string(nt.TransactionReference),
-				Description:     nt.Description,
-				CreatedAt:       nt.CreatedAt,
-				Group:           null.StringFrom(string(nt.Group)),
-				SubGroup:        null.StringFrom(string(nt.SubGroup)),
-				ServiceID:       null.StringFrom(nt.ServiceID.String()),
-			}
-
-			errFailedTx := failedTx.Insert(passdb.StdConn, boil.Infer())
-			if errFailedTx != nil {
-				passlog.L.Error().Err(err).Msg("failed to insert failed transaction")
-			}
-		}
-		return decimal.Zero, decimal.Zero, msg, err
-	}
-
 	tx := &types.Transaction{
 		ID:                   transactionID,
 		Credit:               nt.To,
@@ -114,63 +60,43 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (decimal.Decimal, deci
 		RelatedTransactionID: nt.RelatedTransactionID,
 		ServiceID:            nt.ServiceID,
 	}
-
-	//passlog.L.Info().
-	//	Str("id", nt.ID).
-	//	Str("from.id", fromUser.ID).
-	//	Str("from.address", fromUser.PublicAddress.String).
-	//	Str("to.id", toUser.ID).
-	//	Str("to.address", toUser.PublicAddress.String).
-	//	Str("amount", tx.Amount.Shift(-18).StringFixed(4)).
-	//	Str("txref", tx.TransactionReference).
-	//	Msg("processing transaction")
-
-	blast := func(from *boiler.User, to *boiler.User, success bool) {
-		if !nt.From.IsSystemUser() {
-			if success {
-				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", from.ID), HubKeyUserTransactionsSubscribe, []*types.Transaction{tx})
-			}
-			ws.PublishMessage(fmt.Sprintf("/user/%s/sups", from.ID), HubKeyUserSupsSubscribe, from.Sups.String())
-		}
-		if !nt.To.IsSystemUser() {
-			if success {
-				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", to.ID), HubKeyUserTransactionsSubscribe, []*types.Transaction{tx})
-			}
-			ws.PublishMessage(fmt.Sprintf("/user/%s/sups", to.ID), HubKeyUserSupsSubscribe, to.Sups.String())
-		}
-	}
-
-	err = CreateTransactionEntry(passdb.StdConn, nt)
+	bm := benchmark.New()
+	bm.Start("Transact func CreateTransactionEntry")
+	err := CreateTransactionEntry(passdb.StdConn, nt)
 	if err != nil {
-		ucm.Store(fromUser.ID, fromUser.Sups)
-		ucm.Store(toUser.ID, toUser.Sups)
-		blast(fromUser, toUser, false)
-		passlog.L.Error().Err(err).Str("from", fromUser.ID).Str("to", toUser.ID).Str("id", nt.ID).Msg("transaction failed")
-		return decimal.Zero, decimal.Zero, TransactionFailed, err
+		passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("id", nt.ID).Msg("transaction failed")
+		return TransactionFailed, err
 	}
+	bm.End("Transact func CreateTransactionEntry")
+	bm.Alert(75)
 	tx.CreatedAt = nt.CreatedAt
 
-	didErr := false
-	fromUser, err = boiler.FindUser(passdb.StdConn, nt.From.String())
-	if err != nil {
-		passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
-		didErr = true
-	}
+	go func(fromID, toID types.UserID, amount decimal.Decimal, _tx *types.Transaction) {
+		fromBalance, err := ucm.Get(fromID.String())
+		if err == nil {
+			newFromBalance := fromBalance.Sub(amount)
+			ucm.Store(fromID, newFromBalance)
 
-	toUser, err = boiler.FindUser(passdb.StdConn, nt.To.String())
-	if err != nil {
-		passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("reason", "failed to retrieve user from database").Str("id", nt.ID).Msg("transaction failed")
-		didErr = true
-	}
+			if !fromID.IsSystemUser() {
+				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", fromID), HubKeyUserTransactionsSubscribe, []*types.Transaction{_tx})
+				ws.PublishMessage(fmt.Sprintf("/user/%s/sups", fromID), HubKeyUserSupsSubscribe, newFromBalance.String())
+			}
+		}
 
-	if !didErr {
-		// store back to the map
-		ucm.Store(fromUser.ID, fromUser.Sups)
-		ucm.Store(toUser.ID, toUser.Sups)
-		blast(fromUser, toUser, true)
-	}
+		toBalance, err := ucm.Get(toID.String())
+		if err == nil {
+			newToBalance := toBalance.Add(amount)
+			ucm.Store(toID, newToBalance)
 
-	return fromUser.Sups, toUser.Sups, transactionID, nil
+			if !toID.IsSystemUser() {
+				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", toID), HubKeyUserTransactionsSubscribe, []*types.Transaction{_tx})
+				ws.PublishMessage(fmt.Sprintf("/user/%s/sups", toID), HubKeyUserSupsSubscribe, newToBalance.String())
+			}
+		}
+	}(nt.From, nt.To, nt.Amount, tx)
+
+
+	return transactionID, nil
 }
 
 func (ucm *Transactor) SetAndGet(id string) (decimal.Decimal, error) {

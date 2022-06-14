@@ -24,7 +24,7 @@ import (
 func Purchase(
 	log *zerolog.Logger,
 	supPrice decimal.Decimal,
-	ucmProcess func(*types.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error),
+	ucmProcess func(*types.NewTransaction) (string, error),
 	user *types.User,
 	storeItemID types.StoreItemID,
 ) error {
@@ -79,13 +79,10 @@ func Purchase(
 		SubGroup:             "Purchase",
 	}
 
-	nfb, ntb, txID, err := ucmProcess(trans)
+	 txID, err := ucmProcess(trans)
 	if err != nil {
 		return err
 	}
-
-	ws.PublishMessage("/user/"+trans.From.String()+"/sups", "USER:SUPS", nfb.String())
-	ws.PublishMessage("/user/"+trans.To.String()+"/sups", "USER:SUPS", ntb.String())
 
 	//go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.From)), nfb.String())
 	//go bus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", "USER:SUPS:SUBSCRIBE", trans.To)), ntb.String())
@@ -103,14 +100,11 @@ func Purchase(
 			SubGroup:             "Refund",
 		}
 
-		nfb, ntb, _, err := ucmProcess(trans)
+		_, err := ucmProcess(trans)
 		if err != nil {
 			log.Err(err).Msg("failed to process refund")
 			return
 		}
-
-		ws.PublishMessage("/user/"+trans.From.String()+"/sups", "USER:SUPS", nfb.String())
-		ws.PublishMessage("/user/"+trans.To.String()+"/sups", "USER:SUPS", ntb.String())
 	}
 
 	// let's assign the item.

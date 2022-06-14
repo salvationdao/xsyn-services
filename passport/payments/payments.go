@@ -30,7 +30,7 @@ type PriceExchangeRates struct {
 	EnableSale bool            `json:"enable_sale"`
 }
 type UserCacheMap interface {
-	Transact(nt *types.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error)
+	Transact(nt *types.NewTransaction) (string, error)
 }
 
 const SUPDecimals = 18
@@ -84,7 +84,7 @@ func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.Us
 		Group:                types.TransactionGroupStore,
 	}
 
-	_, _, _, err = ucm.Transact(trans)
+	_, err = ucm.Transact(trans)
 	if err != nil {
 		return fmt.Errorf("create tx entry for tx %s: %w", record.TxHash, err)
 	}

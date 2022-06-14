@@ -59,7 +59,7 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 		RelatedTransactionID: null.StringFrom(transaction.ID),
 	}
 
-	_, _, txID, err := s.UserCacheMap.Transact(tx)
+	txID, err := s.UserCacheMap.Transact(tx)
 	if err != nil {
 		passlog.L.Error().
 			Err(err).
@@ -134,7 +134,7 @@ func (s *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 		tx.NotSafe = true
 	}
 	bm.Start("update_insert_transaction")
-	_, _, txID, err := s.UserCacheMap.Transact(tx)
+	txID, err := s.UserCacheMap.Transact(tx)
 	bm.End("update_insert_transaction")
 	if err != nil {
 		return terror.Error(err, "failed to process sups")

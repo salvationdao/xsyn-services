@@ -205,17 +205,11 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, user *types.Use
 		Group:                types.TransactionGroupWithdrawal,
 	}
 
-	nfb, ntb, _, err := sc.API.userCacheMap.Transact(trans)
+	_, err = sc.API.userCacheMap.Transact(trans)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
-	if !trans.From.IsSystemUser() {
-		ws.PublishMessage("/user/"+trans.From.String()+"/sups", "USER:SUPS", nfb.String())
-	}
-	if !trans.To.IsSystemUser() {
-		ws.PublishMessage("/user/"+trans.To.String()+"/sups", "USER:SUPS", ntb.String())
-	}
 
 	// refund callback
 	refund := func(reason string) {
@@ -229,19 +223,11 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, user *types.Use
 			Group:                types.TransactionGroupWithdrawal,
 		}
 
-		_, _, _, err := sc.API.userCacheMap.Transact(trans)
+		_, err := sc.API.userCacheMap.Transact(trans)
 		if err != nil {
 			sc.API.Log.Err(fmt.Errorf("failed to process user fund"))
 			return
 		}
-
-		if !trans.From.IsSystemUser() {
-			ws.PublishMessage("/user/"+trans.From.String()+"/sups", "USER:SUPS", nfb.String())
-		}
-		if !trans.To.IsSystemUser() {
-			ws.PublishMessage("/user/"+trans.To.String()+"/sups", "USER:SUPS", ntb.String())
-		}
-
 	}
 	tx, err := sc.cc.SUPS.Transfer(ctx, common.HexToAddress(user.PublicAddress.String), withdrawAmount.BigInt())
 	if err != nil {

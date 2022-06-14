@@ -72,7 +72,7 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, 
 			Description:          msg,
 			Group:                types.TransactionGroupStore,
 		}
-		_, _, _, err = ucm.Transact(trans)
+		_, err = ucm.Transact(trans)
 		if err != nil {
 			l.Err(err).Str("txid", record.TxHash).Msg("failed to create tx entry for deposit")
 			skipped++
