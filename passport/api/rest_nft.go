@@ -45,6 +45,19 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing address"), "Missing address.")
 	}
 
+	//checks block_withdraw table and returns if user's connected wallet is found
+	blockedExists, err := boiler.BlockWithdraws(
+		boiler.BlockWithdrawWhere.PublicAddress.EQ(address),
+		boiler.BlockWithdrawWhere.BlockNFTWithdraws.GTE(time.Now()),
+	).Exists(passdb.StdConn)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to check ability to mint asset.")
+	}
+
+	if blockedExists {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("user is blocked from minting assets"), "The address connected to this account may not mint assets.")
+	}
+
 	nonce := chi.URLParam(r, "nonce")
 	if nonce == "" {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing nonce"), "Missing nonce.")
@@ -99,7 +112,7 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 			),
 		),
 		qm.Load(boiler.UserAssetRels.LockedToServiceUser),
-		).One(passdb.StdConn)
+	).One(passdb.StdConn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
 	}
@@ -177,7 +190,6 @@ func (api *API) LockNFT(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing tokenID"), "Missing tokenID.")
 	}
 
-
 	tokenIDuint64, err := strconv.ParseUint(tokenIDStr, 10, 64)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to convert token id.")
@@ -239,6 +251,19 @@ func (api *API) UnstakeNFT(w http.ResponseWriter, r *http.Request) (int, error) 
 	address := chi.URLParam(r, "owner_address")
 	if address == "" {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing address"), "Missing address.")
+	}
+
+	//checks block_withdraw table and returns if user's connected wallet is found
+	blockedExists, err := boiler.BlockWithdraws(
+		boiler.BlockWithdrawWhere.PublicAddress.EQ(address),
+		boiler.BlockWithdrawWhere.BlockNFTWithdraws.GTE(time.Now()),
+	).Exists(passdb.StdConn)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to check ability to mint asset.")
+	}
+
+	if blockedExists {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("user is blocked from unstaking assets"), "The address connected to this account may not unstake assets.")
 	}
 
 	nonce := chi.URLParam(r, "nonce")
@@ -328,7 +353,7 @@ func (api *API) UnstakeNFT(w http.ResponseWriter, r *http.Request) (int, error) 
 	signer := bridge.NewSigner(api.BridgeParams.SignerPrivateKey)
 
 	// TODO: Create a new signer func that takes collectio and THEN user address
-	_, messageSig, err := signer.GenerateSignatureWithExpiryAndCollection(common.HexToAddress(collection.MintContract.String), common.HexToAddress(address),  tokenAsBigInt, nonceBigInt, big.NewInt(expiry.Unix()))
+	_, messageSig, err := signer.GenerateSignatureWithExpiryAndCollection(common.HexToAddress(collection.MintContract.String), common.HexToAddress(address), tokenAsBigInt, nonceBigInt, big.NewInt(expiry.Unix()))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to create withdraw signature, please try again or contact support.")
 	}
