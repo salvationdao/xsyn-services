@@ -86,7 +86,7 @@ func (ucm *Transactor) RunBalanceUpdate() {
 		fromBalance, err := ucm.Get(tx.Debit.String())
 		if err == nil {
 			newFromBalance := fromBalance.Sub(tx.Amount)
-			ucm.Store(tx.Debit, newFromBalance)
+			ucm.Store(tx.Debit.String(), newFromBalance)
 
 			if !tx.Debit.IsSystemUser() {
 				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", tx.Debit), HubKeyUserTransactionsSubscribe, []*types.Transaction{tx})
@@ -97,7 +97,7 @@ func (ucm *Transactor) RunBalanceUpdate() {
 		toBalance, err := ucm.Get(tx.Credit.String())
 		if err == nil {
 			newToBalance := toBalance.Add(tx.Amount)
-			ucm.Store(tx.Credit, newToBalance)
+			ucm.Store(tx.Credit.String(), newToBalance)
 
 			if !tx.Credit.IsSystemUser() {
 				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", tx.Credit), HubKeyUserTransactionsSubscribe, []*types.Transaction{tx})
