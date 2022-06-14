@@ -158,8 +158,8 @@ func NewAPI(
 	}
 
 	ws.Init(&ws.Config{
-		Logger:             passlog.L,
-		IgnoreRateLimitIPs: ignoreRateLimitIPs,
+		Logger:        passlog.L,
+		SkipRateLimit: os.Getenv("PASSPORT_ENVIRONMENT") == "staging" || os.Getenv("PASSPORT_ENVIRONMENT") == "development",
 	})
 
 	if runBlockchainBridge {
