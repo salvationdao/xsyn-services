@@ -52,12 +52,13 @@ type LoginResponse struct {
 	RedirectToken *string     `json:"redirect_token,omitempty"`
 }
 
-func (api *API) WriteCookie(w http.ResponseWriter, token string) error {
+func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string) error {
 	b64, err := api.Cookie.EncryptToBase64(token)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Encryption error: %v", err), http.StatusBadRequest)
 		return err
 	}
+
 	cookie := &http.Cookie{
 		Name:     "xsyn-token",
 		Value:    b64,
@@ -66,12 +67,19 @@ func (api *API) WriteCookie(w http.ResponseWriter, token string) error {
 		Secure:   api.IsCookieSecure,
 		HttpOnly: true,
 		SameSite: http.SameSiteNoneMode,
+		Domain:   domain(r.Host),
 	}
 	http.SetCookie(w, cookie)
 	return nil
 }
 
-func (api *API) DeleteCookie(w http.ResponseWriter) error {
+func domain(host string) string {
+	parts := strings.Split(host, ".")
+	//this is rigid as fuck
+	return parts[len(parts)-2] + "." + parts[len(parts)-1]
+}
+
+func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
 	cookie := &http.Cookie{
 		Name:     "xsyn-token",
 		Value:    "",
@@ -80,6 +88,7 @@ func (api *API) DeleteCookie(w http.ResponseWriter) error {
 		Secure:   api.IsCookieSecure,
 		HttpOnly: true,
 		SameSite: http.SameSiteNoneMode,
+		Domain:   domain(r.Host),
 	}
 	http.SetCookie(w, cookie)
 	return nil
@@ -95,6 +104,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	authType := r.Form.Get("authType")
 	redir := r.Form.Get("redirectURL")
 	isHangar := r.URL.Query().Get("isHangar") != ""
+	isWebsite := r.URL.Query().Get("website") != ""
 
 	switch authType {
 	case "wallet":
@@ -111,9 +121,16 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = api.WriteCookie(w, resp.Token)
+		err = api.WriteCookie(w, r, resp.Token)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if isWebsite {
+			if redir != "" {
+				redir += "?token=true"
+				http.Redirect(w, r, redir, http.StatusSeeOther)
+			}
 			return
 		}
 		if resp.RedirectToken != nil && redir != "" {
@@ -135,7 +152,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = api.WriteCookie(w, req.Token)
+		err = api.WriteCookie(w, r, req.Token)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -201,6 +218,38 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+	case "website":
+		cookie, err := r.Cookie("xsyn-token")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		var token string
+		if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// check user from token
+		_, err = api.TokenLogin(token, "")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// write cookie on domain
+		err = api.WriteCookie(w, r, token)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if redir != "" {
+			redir += "?token=true"
+			http.Redirect(w, r, redir, http.StatusSeeOther)
+			return
+		}
 	}
 
 }
@@ -217,7 +266,7 @@ func (api *API) WalletLoginHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	err = api.WriteCookie(w, resp.Token)
+	err = api.WriteCookie(w, r, resp.Token)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
@@ -596,7 +645,7 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 		}
 
 		// write cookie
-		err = api.WriteCookie(w, token)
+		err = api.WriteCookie(w, r, token)
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err, "Failed to write cookie")
 		}
@@ -626,7 +675,7 @@ func (api *API) AuthLogoutHandler(w http.ResponseWriter, r *http.Request) (int, 
 	}
 
 	// clear and expire cookie and push to browser
-	err = api.DeleteCookie(w)
+	err = api.DeleteCookie(w, r)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to logout user.")
 	}
@@ -649,7 +698,7 @@ func (api *API) TokenLoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = api.WriteCookie(w, req.Token)
+	err = api.WriteCookie(w, r, req.Token)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
