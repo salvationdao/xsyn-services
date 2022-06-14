@@ -44,9 +44,8 @@ var zero = decimal.New(0, 18)
 var ErrNotEnoughFunds = fmt.Errorf("account does not have enough funds")
 
 func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
-
-
 	transactionID := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
+	nt.ID = transactionID
 	tx := &types.Transaction{
 		ID:                   transactionID,
 		Credit:               nt.To,
