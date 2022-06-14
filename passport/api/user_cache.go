@@ -3,14 +3,13 @@ package api
 import (
 	"database/sql"
 	"fmt"
+	"github.com/ninja-syndicate/ws"
 	"time"
 	"xsyn-services/passport/benchmark"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
-
-	"github.com/ninja-syndicate/ws"
 
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
@@ -20,11 +19,13 @@ import (
 
 type Transactor struct {
 	deadlock.Map
+	updateBalance chan *types.Transaction
 }
 
 func NewTX() (*Transactor, error) {
 	ucm := &Transactor{
 		deadlock.Map{},
+		make(chan *types.Transaction, 100),
 	}
 	balances, err := db.UserBalances()
 
@@ -36,6 +37,9 @@ func NewTX() (*Transactor, error) {
 	for _, b := range balances {
 		ucm.Store(b.ID.String(), b.Sups)
 	}
+
+	go ucm.RunBalanceUpdate()
+
 	return ucm, nil
 }
 
@@ -70,32 +74,37 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 	bm.Alert(75)
 	tx.CreatedAt = nt.CreatedAt
 
-	go func(fromID, toID types.UserID, amount decimal.Decimal, _tx *types.Transaction) {
-		fromBalance, err := ucm.Get(fromID.String())
-		if err == nil {
-			newFromBalance := fromBalance.Sub(amount)
-			ucm.Store(fromID, newFromBalance)
-
-			if !fromID.IsSystemUser() {
-				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", fromID), HubKeyUserTransactionsSubscribe, []*types.Transaction{_tx})
-				ws.PublishMessage(fmt.Sprintf("/user/%s/sups", fromID), HubKeyUserSupsSubscribe, newFromBalance.String())
-			}
-		}
-
-		toBalance, err := ucm.Get(toID.String())
-		if err == nil {
-			newToBalance := toBalance.Add(amount)
-			ucm.Store(toID, newToBalance)
-
-			if !toID.IsSystemUser() {
-				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", toID), HubKeyUserTransactionsSubscribe, []*types.Transaction{_tx})
-				ws.PublishMessage(fmt.Sprintf("/user/%s/sups", toID), HubKeyUserSupsSubscribe, newToBalance.String())
-			}
-		}
-	}(nt.From, nt.To, nt.Amount, tx)
-
+	ucm.updateBalance <- tx
 
 	return transactionID, nil
+}
+
+func (ucm *Transactor) RunBalanceUpdate() {
+	for {
+		tx := <- ucm.updateBalance
+
+		fromBalance, err := ucm.Get(tx.Debit.String())
+		if err == nil {
+			newFromBalance := fromBalance.Sub(tx.Amount)
+			ucm.Store(tx.Debit, newFromBalance)
+
+			if !tx.Debit.IsSystemUser() {
+				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", tx.Debit), HubKeyUserTransactionsSubscribe, []*types.Transaction{tx})
+				ws.PublishMessage(fmt.Sprintf("/user/%s/sups", tx.Debit), HubKeyUserSupsSubscribe, newFromBalance.String())
+			}
+		}
+
+		toBalance, err := ucm.Get(tx.Credit.String())
+		if err == nil {
+			newToBalance := toBalance.Add(tx.Amount)
+			ucm.Store(tx.Credit, newToBalance)
+
+			if !tx.Credit.IsSystemUser() {
+				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", tx.Credit), HubKeyUserTransactionsSubscribe, []*types.Transaction{tx})
+				ws.PublishMessage(fmt.Sprintf("/user/%s/sups", tx.Credit), HubKeyUserSupsSubscribe, newToBalance.String())
+			}
+		}
+	}
 }
 
 func (ucm *Transactor) SetAndGet(id string) (decimal.Decimal, error) {
