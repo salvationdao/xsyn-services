@@ -151,13 +151,14 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, user *types.Use
 	//checks block_withdraw table and returns if user's connected wallet is found
 	blockedExists, err := boiler.BlockWithdraws(
 		boiler.BlockWithdrawWhere.PublicAddress.EQ(user.PublicAddress.String),
+		boiler.BlockWithdrawWhere.BlockNFTWithdraws.GTE(time.Now()),
 	).Exists(passdb.StdConn)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
 	if blockedExists {
-		return terror.Error(fmt.Errorf("user is blocked from withdrawing"), "The address connected to this account may not withdraw SUPS.")
+		return terror.Error(fmt.Errorf("user is blocked from withdrawing sups"), "The address connected to this account may not withdraw SUPS.")
 	}
 
 	// if balance too low
