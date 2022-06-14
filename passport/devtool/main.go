@@ -24,7 +24,6 @@ const envPrefix = "PASSPORT"
 func main() {
 	if os.Getenv("PASSPORT_ENVIRONMENT") == "production" {
 		log.Fatal("Only works in dev and staging environment")
-
 	}
 
 	fillSups := flag.Bool("fill_bot_sups", false, "trigger db to filled 1M sup for bot users")
