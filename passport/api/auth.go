@@ -269,6 +269,8 @@ func (api *API) WalletLoginHandler(w http.ResponseWriter, r *http.Request) {
 	err = api.WriteCookie(w, r, resp.Token)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		passlog.L.Error().Err(err).Msg("error writing cookie")
+		return
 	}
 
 	b, _ := json.Marshal(resp.User)
