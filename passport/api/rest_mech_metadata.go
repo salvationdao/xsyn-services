@@ -95,9 +95,9 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 			return http.StatusInternalServerError, terror.Error(err, "Failed find asset")
 		}
 
-		var attribes []*types.Attribute
+		attribes := []*types.Attribute{}
 		if asset.Attributes != nil {
-			err := asset.Attributes.Unmarshal(attribes)
+			err := asset.Attributes.Unmarshal(&attribes)
 			if err != nil {
 				return http.StatusInternalServerError, terror.Error(err, "Failed find asset")
 			}
@@ -115,9 +115,6 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-
-
-
 	jsonObject, err := json.Marshal(openseaAsset)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed marshall asset")
@@ -132,15 +129,15 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 
 // openSeaMetaData data structure, reference https://docs.opensea.io/docs/metadata-standards
 type openSeaMetaData struct {
-	Image           string            `json:"image"`            // image url, to be cached by opensea
-	ImageData       string            `json:"image_data"`       // raw image svg
-	ExternalURL     string            `json:"external_url"`     // direct url link to image asset
-	Description     string            `json:"description"`      // item description
-	Name            string            `json:"name"`             // item name
+	Image           string             `json:"image"`            // image url, to be cached by opensea
+	ImageData       string             `json:"image_data"`       // raw image svg
+	ExternalURL     string             `json:"external_url"`     // direct url link to image asset
+	Description     string             `json:"description"`      // item description
+	Name            string             `json:"name"`             // item name
 	Attributes      []*types.Attribute `json:"attributes"`       // item attributes
-	BackgroundColor string            `json:"background_color"` // openseas page background
-	AnimationURL    string            `json:"animation_url"`    // direct url link to video asset
-	YoutubeURL      string            `json:"youtube_url"`      // url to youtube video
+	BackgroundColor string             `json:"background_color"` // openseas page background
+	AnimationURL    string             `json:"animation_url"`    // direct url link to video asset
+	YoutubeURL      string             `json:"youtube_url"`      // url to youtube video
 }
 
 // purchasedItemMetaData shape of the purchased_items.metadata in the database
