@@ -103,7 +103,10 @@ func ReadJWT(tokenB []byte, decryptToken bool, decryptKey []byte) (jwt.Token, er
 			return nil, terror.Error(err, "token verification failed")
 		}
 		if token.Expiration().Before(time.Now()) {
-			passlog.L.Info().Time("now", time.Now()).Time("token.Expiration()", token.Expiration()).Bool("token.Expiration().Before(time.Now())",token.Expiration().Before(time.Now())).Msg("vinnie here mate")
+			passlog.L.Info().
+				Time("now", time.Now()).
+				Time("token expiration", token.Expiration()).
+				Bool("token expiration before(time.Now())",token.Expiration().Before(time.Now())).Msg("vinnie here mate")
 			return token, ErrTokenExpired
 		}
 
