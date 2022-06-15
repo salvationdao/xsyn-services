@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
@@ -308,6 +309,7 @@ func UserTransactionGetList(userID string, limit int) ([]*boiler.Transaction, er
 				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.CreatedAt),
 			),
 		),
+		boiler.TransactionWhere.CreatedAt.GT(time.Now().AddDate(0,0,-1)),
 		qm.Limit(limit),
 	).All(passdb.StdConn)
 	if err != nil {
