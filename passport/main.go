@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"os/signal"
-	"runtime"
 	"strings"
 	"time"
 	"xsyn-services/boiler"
@@ -64,7 +63,6 @@ const SentryReleasePrefix = "ninja_syndicate-passport_api"
 const envPrefix = "PASSPORT"
 
 func main() {
-	runtime.GOMAXPROCS(2)
 	app := &cli.App{
 		Compiled: time.Now(),
 		Usage:    "Run the passport server or database administration commands",
