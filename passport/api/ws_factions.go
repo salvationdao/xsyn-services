@@ -3,21 +3,22 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
+	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/helpers"
+	"xsyn-services/passport/passdb"
+	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
+
+	"github.com/ninja-syndicate/ws"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/ninja-software/log_helpers"
 
-	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 )
 
@@ -32,42 +33,34 @@ var Profanities = []string{
 
 // FactionController holds handlers for roles
 type FactionController struct {
-	Conn *pgxpool.Pool
-	Log  *zerolog.Logger
-	API  *API
+	Log *zerolog.Logger
+	API *API
 }
 
 // NewFactionController creates the role hub
-func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *FactionController {
+func NewFactionController(log *zerolog.Logger, api *API) *FactionController {
 	factionHub := &FactionController{
-		Conn: conn,
-		Log:  log_helpers.NamedLogger(log, "role_hub"),
-		API:  api,
+		Log: log_helpers.NamedLogger(log, "role_hub"),
+		API: api,
 	}
 
 	api.Command(HubKeyFactionAll, factionHub.FactionAllHandler)
 	api.SecureCommand(HubKeyFactionEnlist, factionHub.FactionEnlistHandler)
 
-	api.SubscribeCommand(HubKeyFactionUpdatedSubscribe, factionHub.FactionUpdatedSubscribeHandler)
-	api.SubscribeCommand(HubKeyFactionStatUpdatedSubscribe, factionHub.FactionStatUpdatedSubscribeHandler)
+	//api.SubscribeCommand(HubKeyFactionUpdatedSubscribe, factionHub.FactionUpdatedSubscribeHandler)
 	// api.SecureUserSubscribeCommand(HubKeyFactionContractRewardSubscribe, factionHub.FactionContractRewardUpdateSubscriber)
 
 	return factionHub
 }
 
 // 	rootHub.SecureCommand(HubKeyFactionAll, UserController.GetHandler)
-const HubKeyFactionAll hub.HubCommandKey = "FACTION:ALL"
+const HubKeyFactionAll = "FACTION:ALL"
 
-func (fc *FactionController) FactionAllHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (fc *FactionController) FactionAllHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Failed to query factions, try again or contact support."
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
 
 	// Get all factions
-	factions, err := db.FactionAll(ctx, fc.Conn)
+	factions, err := boiler.Factions().All(passdb.StdConn)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -79,17 +72,16 @@ func (fc *FactionController) FactionAllHandler(ctx context.Context, hubc *hub.Cl
 
 // FactionEnlistRequest enlist a faction
 type FactionEnlistRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
-		FactionID types.FactionID `json:"faction_id"`
+		FactionID string `json:"faction_id"`
 	} `json:"payload"`
 }
 
 // rootHub.SecureCommand(HubKeyFactionEnlist, factionHub.FactionEnlistHandler)
-const HubKeyFactionEnlist hub.HubCommandKey = "FACTION:ENLIST"
+const HubKeyFactionEnlist = "FACTION:ENLIST"
 
 // FactionEnlistHandler assign faction to user
-func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (fc *FactionController) FactionEnlistHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Failed to enlist user into faction, try again or contact support."
 	req := &FactionEnlistRequest{}
 	err := json.Unmarshal(payload, req)
@@ -97,46 +89,34 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	userID := types.UserID(uuid.FromStringOrNil(hubc.Identifier()))
-	if userID.IsNil() {
-		return terror.Error(terror.ErrForbidden, "User is not logged in, access forbidden.")
-	}
-
-	// get user
-	user, err := db.UserGet(ctx, fc.Conn, userID)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	if user.FactionID != nil && !user.FactionID.IsNil() {
+	if user.FactionID.Valid {
 		return terror.Error(terror.ErrInvalidInput, "User has already enlisted in a faction.")
 	}
 
 	// record old user state
 	oldUser := *user
 
-	faction, err := db.FactionGet(ctx, fc.Conn, req.Payload.FactionID)
+	faction, err := boiler.FindFaction(passdb.StdConn, req.Payload.FactionID)
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Failed to get faction")
 	}
-	user.Faction = faction
 
 	// assign faction to current user
-	user.FactionID = &req.Payload.FactionID
+	user.FactionID = null.StringFrom(faction.ID)
 
-	err = db.UserFactionEnlist(ctx, fc.Conn, user)
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.FactionID))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
 	// record user activity
 	fc.API.RecordUserActivity(ctx,
-		hubc.Identifier(),
+		user.ID,
 		"Enlist faction",
 		types.ObjectTypeUser,
-		helpers.StringPointer(user.ID.String()),
+		helpers.StringPointer(user.ID),
 		&user.Username,
-		helpers.StringPointer(user.FirstName+" "+user.LastName),
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
 		&types.UserActivityChangeData{
 			Name: db.TableNames.Users,
 			From: oldUser,
@@ -144,21 +124,25 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 		},
 	)
 
+	// assign faction to user
+	user.Faction = faction
+
 	// broadcast updated user to gamebar user
-	go fc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID.String())), user)
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
 
 	var resp struct {
 		IsSuccess bool `json:"is_success"`
 	}
 
 	err = fc.API.GameserverRequest(http.MethodPost, "/user_enlist_faction", struct {
-		UserID    types.UserID    `json:"user_id"`
-		FactionID types.FactionID `json:"faction_id"`
+		UserID    string `json:"user_id"`
+		FactionID string `json:"faction_id"`
 	}{
-		UserID:    userID,
-		FactionID: req.Payload.FactionID,
+		UserID:    user.ID,
+		FactionID: user.FactionID.String,
 	}, &resp)
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("gameserver request failed")
 		return terror.Error(err, "Error requesting game server, try again or contact support.")
 	}
 
@@ -174,116 +158,7 @@ func (fc *FactionController) FactionEnlistHandler(ctx context.Context, hubc *hub
 
 // FactionUpdatedSubscribeRequest subscribe to faction updates
 type FactionUpdatedSubscribeRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
-		FactionID types.FactionID `json:""`
+		FactionID types.FactionID `json:"faction_id"`
 	} `json:"payload"`
-}
-
-const HubKeyFactionUpdatedSubscribe hub.HubCommandKey = "FACTION:SUBSCRIBE"
-
-func (fc *FactionController) FactionUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	errMsg := "Failed to subscribe to faction updates, try again or contact support."
-	req := &FactionUpdatedSubscribeRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
-	}
-
-	if req.Payload.FactionID.IsNil() {
-		return "", "", terror.Error(terror.ErrInvalidInput, errMsg)
-	}
-
-	// get faction detail
-	faction, err := db.FactionGet(ctx, fc.Conn, req.Payload.FactionID)
-	if err != nil {
-		return "", "", terror.Error(err, errMsg)
-	}
-
-	reply(faction)
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionUpdatedSubscribe, req.Payload.FactionID)), nil
-}
-
-const HubKeyFactionStatUpdatedSubscribe hub.HubCommandKey = "FACTION:STAT:SUBSCRIBE"
-
-func (fc *FactionController) FactionStatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	errMsg := "Failed to subscribe to faction stat updates, try again or contact support."
-	req := &FactionUpdatedSubscribeRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
-	}
-
-	if req.Payload.FactionID.IsNil() {
-		return "", "", terror.Error(terror.ErrInvalidInput, errMsg)
-	}
-
-	factionStat := &types.FactionStat{}
-	err = fc.API.GameserverRequest(http.MethodPost, "/faction_stat", struct {
-		FactionID types.FactionID `json:"faction_id"`
-	}{
-		FactionID: req.Payload.FactionID,
-	}, factionStat)
-	if err != nil {
-		return "", "", terror.Error(err, errMsg)
-	}
-
-	user, err := db.FactionMvpGet(ctx, fc.Conn, req.Payload.FactionID)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return "", "", terror.Error(err, errMsg)
-	}
-	voteSup, err := db.FactionSupsVotedGet(ctx, fc.Conn, req.Payload.FactionID)
-	if err != nil {
-		return "", "", terror.Error(err, errMsg)
-	}
-	num, err := db.FactionGetRecruitNumber(ctx, fc.Conn, req.Payload.FactionID)
-	if err != nil {
-		return "", "", terror.Error(err, errMsg)
-	}
-	factionStat.RecruitNumber = num
-	factionStat.MVP = user
-	factionStat.SupsVoted = voteSup.String()
-
-	reply(factionStat)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionStatUpdatedSubscribe, req.Payload.FactionID)), nil
-}
-
-const HubKeyFactionContractRewardSubscribe hub.HubCommandKey = "FACTION:CONTRACT:REWARD:SUBSCRIBE"
-
-func (fc *FactionController) FactionContractRewardUpdateSubscriber(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	errMsg := "There was a problem fetching the reward, try again or contact support."
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err)
-	}
-
-	userID := types.UserID(uuid.FromStringOrNil(client.Identifier()))
-	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrForbidden, "User is not logged in, access forbidden.")
-	}
-
-	// get user faction
-	faction, err := db.FactionGetByUserID(ctx, fc.Conn, userID)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return "", "", terror.Error(err, errMsg)
-	}
-
-	var resp struct {
-		ContractReward string `json:"contract_reward"`
-	}
-	// get contract reward from web hook
-	err = fc.API.GameserverRequest(http.MethodPost, "/faction_contract_reward", struct {
-		FactionID types.FactionID `json:"faction_id"`
-	}{
-		FactionID: faction.ID,
-	}, &resp)
-	if err != nil {
-		return "", "", terror.Error(err, errMsg)
-	}
-
-	reply(resp.ContractReward)
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionContractRewardSubscribe, faction.ID)), nil
 }

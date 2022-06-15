@@ -3,6 +3,8 @@ package db
 import (
 	"fmt"
 
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -48,12 +50,13 @@ type ListFilterRequest struct {
 
 // ListFilterRequestItem contains instructions on filtering
 type ListFilterRequestItem struct {
-	ColumnField   string            `json:"columnField"`
-	OperatorValue OperatorValueType `json:"operatorValue"`
-	Value         string            `json:"value"`
+	Table    string            `json:"table"`
+	Column   string            `json:"column"`
+	Operator OperatorValueType `json:"operator"`
+	Value    string            `json:"value"`
 }
 
-// ColumnFilter generates SQL for filtering a column
+// GenerateListFilterSQL generates SQL for filtering a column
 func GenerateListFilterSQL(column string, value string, operator OperatorValueType, index int) (string, string) {
 	checkValue := value
 	condition := ""
@@ -194,4 +197,78 @@ func GenerateDataSearchStoreItemsSQL(trait string, search string, index int, tab
 	indexStr := fmt.Sprintf("$%d", index)
 	condition := fmt.Sprintf(`(%[1]s."data"::json -> 'template' -> '%[2]s')::text ILIKE %[3]s`, tableName, trait, indexStr)
 	return search, condition
+}
+
+func GenerateListFilterQueryMod(filterItem ListFilterRequestItem, index int, linkOperator LinkOperatorType) qm.QueryMod {
+	checkValue := filterItem.Value
+	checkColumn := filterItem.Column
+	if filterItem.Table != "" {
+		checkColumn = fmt.Sprintf("%s.%s", filterItem.Table, filterItem.Column)
+	}
+	condition := fmt.Sprintf("%s %s ?", checkColumn, filterItem.Operator)
+
+	switch filterItem.Operator {
+	case OperatorValueTypeContains, OperatorValueTypeStartsWith, OperatorValueTypeEndsWith:
+		switch filterItem.Operator {
+		case OperatorValueTypeContains:
+			checkValue = "%" + filterItem.Value + "%"
+		case OperatorValueTypeStartsWith:
+			checkValue = filterItem.Value + "%"
+		case OperatorValueTypeEndsWith:
+			checkValue = "%" + filterItem.Value
+		}
+		break
+	}
+
+	switch filterItem.Operator {
+	case OperatorValueTypeIsNull:
+		condition = fmt.Sprintf("%s IS NULL", checkColumn)
+		break
+	case OperatorValueTypeIsNotNull:
+		condition = fmt.Sprintf("%s IS NOT NULL", checkColumn)
+		break
+	case OperatorValueTypeEquals, OperatorValueTypeIs, OperatorValueTypeNumberEquals:
+		condition = fmt.Sprintf("%s = ?", checkColumn)
+		break
+	case OperatorValueTypeIsNot, OperatorValueTypeNumberNotEquals:
+		condition = fmt.Sprintf("%s <> ?", checkColumn)
+		break
+	case OperatorValueTypeIsAfter, OperatorValueTypeGreaterThan:
+		condition = fmt.Sprintf("%s > ?", checkColumn)
+		break
+	case OperatorValueTypeIsOnOrAfter, OperatorValueTypeGreaterOrEqual:
+		condition = fmt.Sprintf("%s >= ?", checkColumn)
+		break
+	case OperatorValueTypeIsBefore, OperatorValueTypeLessThan:
+		condition = fmt.Sprintf("%s < ?", checkColumn)
+		break
+	case OperatorValueTypeIsOnOrBefore, OperatorValueTypeLessOrEqual:
+		condition = fmt.Sprintf("%s <= ?", checkColumn)
+		break
+	case OperatorValueTypeContains, OperatorValueTypeStartsWith, OperatorValueTypeEndsWith:
+		condition = fmt.Sprintf("%s ILIKE ?", checkColumn)
+	}
+
+	if index == 0 {
+		return qm.Where(condition, checkValue)
+	}
+	if linkOperator == LinkOperatorTypeOr {
+		return qm.Or(condition, checkValue)
+	}
+	return qm.And(condition, checkValue)
+}
+
+type ListSortRequest struct {
+	Table     string    `json:"table"`
+	Column    string    `json:"column"`
+	Direction SortByDir `json:"direction"`
+}
+
+func (s SortByDir) IsValid() bool {
+	switch s {
+	case SortByDirAsc, SortByDirDesc:
+		return true
+	default:
+		return false
+	}
 }

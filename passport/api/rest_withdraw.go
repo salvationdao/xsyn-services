@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -10,13 +9,14 @@ import (
 	"net/http"
 	"time"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/helpers"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/payments"
+	"xsyn-services/types"
 
-	"github.com/jackc/pgx/v4"
 	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -104,13 +104,13 @@ type HoldingResp struct {
 
 func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error) {
 	address := common.HexToAddress(chi.URLParam(r, "user_address"))
-	u, err := db.UserByPublicAddress(r.Context(), passdb.Conn, address)
-	if err != nil && errors.Is(err, pgx.ErrNoRows) {
+	u, err := boiler.Users(boiler.UserWhere.PublicAddress.EQ(null.StringFrom(address.String()))).One(passdb.StdConn)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		passlog.L.Error().Str("user_address", address.Hex()).Err(err).Msg("failed to find user by public address")
 		return http.StatusBadRequest, err
 	}
 
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		err = json.NewEncoder(w).Encode(&HoldingResp{Amount: decimal.Zero.String()})
 		if err != nil {
 			return http.StatusInternalServerError, err
@@ -119,7 +119,7 @@ func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error)
 	}
 
 	exists, err := boiler.PendingRefunds(
-		boiler.PendingRefundWhere.UserID.EQ(u.ID.String()),
+		boiler.PendingRefundWhere.UserID.EQ(u.ID),
 		boiler.PendingRefundWhere.IsRefunded.EQ(false),      // Only those not refunded by avant scraper yet
 		boiler.PendingRefundWhere.RefundedAt.GT(time.Now()), // Only those with unexpired signatures
 	).Exists(passdb.StdConn)
@@ -136,12 +136,12 @@ func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error)
 	}
 
 	records, err := boiler.PendingRefunds(
-		boiler.PendingRefundWhere.UserID.EQ(u.ID.String()),
+		boiler.PendingRefundWhere.UserID.EQ(u.ID),
 		boiler.PendingRefundWhere.IsRefunded.EQ(false),      // Only those not refunded by avant scraper yet
 		boiler.PendingRefundWhere.RefundedAt.GT(time.Now()), // Only those with unexpired signatures
 	).All(passdb.StdConn)
 	if err != nil {
-		passlog.L.Error().Str("pending_refunds", u.ID.String()).Err(err).Msg("failed to find pending refunds")
+		passlog.L.Error().Str("pending_refunds", u.ID).Err(err).Msg("failed to find pending refunds")
 		return http.StatusInternalServerError, err
 	}
 	total := decimal.Zero
@@ -185,13 +185,14 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 	//checks block_withdraw table and returns if user's connected wallet is found
 	blockedExists, err := boiler.BlockWithdraws(
 		boiler.BlockWithdrawWhere.PublicAddress.EQ(toAddress.String()),
+		boiler.BlockWithdrawWhere.BlockNFTWithdraws.GTE(time.Now()),
 	).Exists(passdb.StdConn)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not run checks on public address.")
 	}
 
 	if blockedExists {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("user is blocked from withdrawing"), "The address connected to this account may not withdraw SUPS.")
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("user is blocked from withdrawing sups"), "The address connected to this account may not withdraw SUPS.")
 	}
 
 	amountBigInt := new(big.Int)
@@ -207,12 +208,17 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 	}
 
 	// check balance
-	user, err := db.UserByPublicAddress(context.Background(), api.Conn, common.HexToAddress(address))
+	user, err := users.PublicAddress(common.HexToAddress(address))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find user with this wallet address.")
 	}
 
-	userSups, err := db.UserBalance(context.Background(), passdb.Conn, user.ID.String())
+	isLocked := user.CheckUserIsLocked("withdrawals")
+	if isLocked {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("user: %s, attempting to withdraw while account is locked.", user.ID), "Withdrawals is locked, contact support to unlock.")
+	}
+
+	userSups, err := db.UserBalance(user.ID)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not find SUPS balance")
 	}
@@ -240,7 +246,7 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 
 	if !infinite {
 		// extraWithdraw := db.ExtraWithdraw(user.ID)
-		// passlog.L.Debug().Str("amount", extraWithdraw.Shift(-18).StringFixed(4)).Str("user_id", user.ID.String()).Msg("extra refund")
+		// passlog.L.Debug().Str("amount", extraWithdraw.Shift(-18).StringFixed(4)).Str("user_id", user.).Msg("extra refund")
 		// amountCanRefund = amountCanRefund.Add(extraWithdraw)
 
 		amountCanRefund = decimal.NewFromBigInt(amountCanRefund.BigInt(), -18)
@@ -267,7 +273,7 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 		}
 	}
 
-	refundID, err := payments.InsertPendingRefund(api.userCacheMap, user.ID, decimal.NewFromBigInt(amountBigInt, 0), expiry)
+	refundID, err := payments.InsertPendingRefund(api.userCacheMap, types.UserIDFromString(user.ID), decimal.NewFromBigInt(amountBigInt, 0), expiry)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to create withdraw signature, please try again or contact support.")
 	}
@@ -282,7 +288,7 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 		RefundID:         refundID,
 	})
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
+		return http.StatusInternalServerError, err
 	}
 	return http.StatusOK, nil
 }

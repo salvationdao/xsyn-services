@@ -6,6 +6,7 @@ import (
 
 type Config struct {
 	CookieSecure            bool
+	CookieKey               string
 	EncryptTokens           bool
 	EncryptTokensKey        string
 	TokenExpirationDays     int
@@ -18,21 +19,23 @@ type Config struct {
 	InsecureSkipVerifyCheck bool
 	AuthParams              *AuthParams
 	WebhookParams           *WebhookParams
+	BotSecret               string
 }
 
 type BridgeParams struct {
-	OperatorAddr     common.Address
-	MoralisKey       string
-	UsdcAddr         common.Address
-	BusdAddr         common.Address
-	SupAddr          common.Address
-	DepositAddr      common.Address
-	SignerPrivateKey string
-	BscNodeAddr      string
-	EthNodeAddr      string
-	BSCChainID       int64
-	ETHChainID       int64
-	BSCRouterAddr    common.Address
+	OperatorAddr          common.Address
+	MoralisKey            string
+	UsdcAddr              common.Address
+	BusdAddr              common.Address
+	SupAddr               common.Address
+	DepositAddr           common.Address
+	SignerPrivateKey      string
+	BscNodeAddr           string
+	EthNodeAddr           string
+	BSCChainID            int64
+	ETHChainID            int64
+	BSCRouterAddr         common.Address
+	AchievementsSignerKey string
 }
 
 type AuthParams struct {

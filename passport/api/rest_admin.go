@@ -10,9 +10,12 @@ import (
 	"strings"
 	"time"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/asset"
 	"xsyn-services/passport/db"
+	"xsyn-services/passport/nft1155"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
+	"xsyn-services/passport/payments"
 	"xsyn-services/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -36,20 +39,20 @@ func AdminRoutes(ucm *Transactor) chi.Router {
 	r.Get("/chat_timeout_userid/{userID}/{minutes}", WithError(WithAdmin(ChatTimeoutUserID)))
 	r.Get("/rename_ban_username/{username}/{banned}", WithError(WithAdmin(RenameBanUsername)))
 	r.Get("/rename_ban_userID/{userID}/{banned}", WithError(WithAdmin(RenameBanUserID)))
-	r.Get("/rename_asset/{hash}/{newName}", WithError(WithAdmin(RenameAsset)))
-	r.Get("/purchased_items", WithError(WithAdmin(ListPurchasedItems)))
 	r.Get("/store_items", WithError(WithAdmin(ListStoreItems)))
 
 	r.Post("/purchased_items/register/{template_id}/{owner_id}", WithError(WithAdmin(PurchasedItemRegisterHandler)))
 	r.Post("/purchased_items/set_owner/{purchased_item_id}/{owner_id}", WithError(WithAdmin(PurchasedItemSetOwner)))
-	r.Post("/purchased_items/transfer/from/{from}/to/{to}/collection_id/{collection_id}/token_id/{token_id}", WithError(WithAdmin(TransferAsset())))
+	r.Post("/purchased_items/register/1155/{public_address}/{collection_slug}/{token_id}/{amount}", WithError(WithAdmin(Register1155Asset)))
 
 	r.Post("/transactions/create", WithError(WithAdmin(CreateTransaction(ucm))))
 	r.Post("/transactions/reverse/{transaction_id}", WithError(WithAdmin(ReverseUserTransaction(ucm))))
 	r.Get("/transactions/list/user/{public_address}", WithError(WithAdmin(ListUserTransactions)))
 
-	r.Post("/sync/store_items", WithError(WithAdmin(SyncStoreItems)))
-	r.Post("/sync/purchased_items", WithError(WithAdmin(SyncPurchasedItems)))
+	r.Get("/users/unlock_account/{public_address}", WithError(WithAdmin(UnlockAccount)))
+	r.Get("/users/unlock_withdraw/{public_address}", WithError(WithAdmin(UnlockWithdraw)))
+	r.Get("/users/unlock_mint/{public_address}", WithError(WithAdmin(UnlockMint)))
+
 	return r
 }
 
@@ -99,9 +102,9 @@ func TransferAsset() func(w http.ResponseWriter, r *http.Request) (int, error) {
 			return http.StatusBadRequest, terror.Error(err, "Could not get collection")
 		}
 
-		item, err := boiler.PurchasedItems(
-			boiler.PurchasedItemWhere.ExternalTokenID.EQ(tokenID),
-			boiler.PurchasedItemWhere.CollectionID.EQ(c.ID),
+		item, err := boiler.PurchasedItemsOlds(
+			boiler.PurchasedItemsOldWhere.ExternalTokenID.EQ(tokenID),
+			boiler.PurchasedItemsOldWhere.CollectionID.EQ(c.ID),
 		).One(passdb.StdConn)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not get purchased item")
@@ -110,7 +113,7 @@ func TransferAsset() func(w http.ResponseWriter, r *http.Request) (int, error) {
 			return http.StatusBadRequest, errors.New("from user does not own the asset")
 		}
 		item.OwnerID = to
-		_, err = item.Update(passdb.StdConn, boil.Whitelist(boiler.PurchasedItemColumns.OwnerID))
+		_, err = item.Update(passdb.StdConn, boil.Whitelist(boiler.PurchasedItemsOldColumns.OwnerID))
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not update purchased item")
 		}
@@ -143,7 +146,7 @@ func CreateTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Requ
 			Group:                types.TransactionGroupStore,
 			SubGroup:             "Transfer",
 		}
-		_, _, _, err = ucm.Transact(newTx)
+		_, err = ucm.Transact(newTx)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not get transaction")
 		}
@@ -169,7 +172,7 @@ func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http
 			SubGroup:             "Refund",
 			RelatedTransactionID: null.StringFrom(tx.ID),
 		}
-		_, _, _, err = ucm.Transact(refundTx)
+		 _, err = ucm.Transact(refundTx)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not get transaction")
 		}
@@ -237,20 +240,6 @@ func GetUserByUsername(w http.ResponseWriter, r *http.Request) (int, error) {
 	return http.StatusOK, nil
 }
 
-func SyncStoreItems(w http.ResponseWriter, r *http.Request) (int, error) {
-	err := db.SyncStoreItems()
-	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Could not sync store items")
-	}
-	return http.StatusOK, nil
-}
-func SyncPurchasedItems(w http.ResponseWriter, r *http.Request) (int, error) {
-	err := db.SyncPurchasedItems()
-	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Could not sync purchased items")
-	}
-	return http.StatusOK, nil
-}
 func ListUserTransactions(w http.ResponseWriter, r *http.Request) (int, error) {
 	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
 	u, err := boiler.Users(boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex()))).One(passdb.StdConn)
@@ -269,7 +258,7 @@ func ListUserTransactions(w http.ResponseWriter, r *http.Request) (int, error) {
 }
 func ListUsers(w http.ResponseWriter, r *http.Request) (int, error) {
 	result := []*types.User{}
-	_, err := db.UserList(r.Context(), passdb.Conn, &result, "", false, nil, 0, 20000, db.UserColumnUsername, db.SortByDirAsc)
+	_, err := db.UserList(result, "", false, nil, 0, 20000, db.UserColumnUsername, db.SortByDirAsc)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not list users")
 	}
@@ -303,33 +292,6 @@ func RenameBanUserID(w http.ResponseWriter, r *http.Request) (int, error) {
 	_, err = user.Update(passdb.StdConn, boil.Infer())
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to update user renamed banned status")
-	}
-
-	return http.StatusOK, nil
-}
-
-func RenameAsset(w http.ResponseWriter, r *http.Request) (int, error) {
-	hash := chi.URLParam(r, "hash")
-	if hash == "" {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("hash cannot be empty"), "Unable to find hash, hash empty.")
-	}
-	newName := chi.URLParam(r, "newName")
-	if newName == "" {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("newName cannot be empty"), "Unable to find newName, newName empty.")
-	}
-
-	item, err := db.PurchasedItemByHash(hash)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Unable to find asset.")
-	}
-	if item == nil {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("asset is nil"), "Unable to find asset, asset nil.")
-	}
-
-	// update asset name
-	item, err = db.PurchasedItemSetName(uuid.Must(uuid.FromString(item.ID)), newName)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Unable to update asset name.")
 	}
 
 	return http.StatusOK, nil
@@ -427,33 +389,18 @@ func ListStoreItems(w http.ResponseWriter, r *http.Request) (int, error) {
 	return http.StatusOK, nil
 }
 
-func ListPurchasedItems(w http.ResponseWriter, r *http.Request) (int, error) {
-	purchasedItems, err := db.PurchasedItems()
-	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Could not list store items")
-	}
-	if len(purchasedItems) == 0 {
-		purchasedItems = []*boiler.PurchasedItem{}
-	}
-	err = json.NewEncoder(w).Encode(purchasedItems)
-	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Could not encode JSON")
-	}
-	return http.StatusOK, nil
-}
-
 func PurchasedItemRegisterHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	templateIdStr := chi.URLParam(r, "template_id")
 	templateId, err := uuid.FromString(templateIdStr)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Bad template ID")
 	}
-	ownerIdStr := chi.URLParam(r, "owner_id")
-	ownerId, err := uuid.FromString(ownerIdStr)
+	ownerId := chi.URLParam(r, "owner_id")
+	ownerUUID, err := uuid.FromString(ownerId)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Bad owner ID")
 	}
-	result, err := db.PurchasedItemRegister(templateId, ownerId)
+	result, err := db.PurchasedItemRegister(templateId, ownerUUID)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not register new purchased item")
 	}
@@ -465,29 +412,124 @@ func PurchasedItemRegisterHandler(w http.ResponseWriter, r *http.Request) (int, 
 }
 
 func PurchasedItemSetOwner(w http.ResponseWriter, r *http.Request) (int, error) {
-	purchasedItemIdStr := chi.URLParam(r, "purchased_item_id")
-	purchasedItemId, err := uuid.FromString(purchasedItemIdStr)
-	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Bad purchasedItem ID")
-	}
-	ownerIdStr := chi.URLParam(r, "owner_id")
-	ownerId, err := uuid.FromString(ownerIdStr)
+	ownerIDStr := chi.URLParam(r, "owner_id")
+	ownerID, err := uuid.FromString(ownerIDStr)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Bad owner ID")
 	}
-	result, err := db.PurchasedItemSetOwner(purchasedItemId, ownerId)
-	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Could not change owner")
-	}
-	err = json.NewEncoder(w).Encode(result)
-	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Could not encode JSON")
-	}
-	return http.StatusOK, nil
 
+	assetIDstr := chi.URLParam(r, "purchased_item_id")
+	assetID, err := uuid.FromString(assetIDstr)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Bad asset ID")
+	}
+
+	_, err = asset.TransferAssetADMIN(assetID, ownerID)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to transfer asset.")
+	}
+
+	return http.StatusOK, nil
 }
 
 func AdminCheck(w http.ResponseWriter, r *http.Request) (int, error) {
 	w.Write([]byte("ok"))
+	return http.StatusOK, nil
+}
+
+func UnlockAccount(w http.ResponseWriter, r *http.Request) (int, error) {
+	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
+	u, err := boiler.Users(
+		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex())),
+	).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not get user")
+	}
+
+	u.WithdrawLock = false
+	u.MintLock = false
+	u.TotalLock = false
+
+	_, err = u.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not update user to unlock account.")
+	}
+
+	return http.StatusOK, nil
+}
+
+func UnlockWithdraw(w http.ResponseWriter, r *http.Request) (int, error) {
+	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
+	u, err := boiler.Users(
+		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex())),
+	).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not get user")
+	}
+
+	u.WithdrawLock = false
+
+	_, err = u.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not update user to unlock withdrawals.")
+	}
+
+	return http.StatusOK, nil
+}
+
+func UnlockMint(w http.ResponseWriter, r *http.Request) (int, error) {
+	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
+	u, err := boiler.Users(
+		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex())),
+	).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not get user")
+	}
+
+	u.MintLock = false
+
+	_, err = u.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not update user to unlock minting.")
+	}
+
+	return http.StatusOK, nil
+}
+
+func Register1155Asset(w http.ResponseWriter, r *http.Request) (int, error) {
+	address := chi.URLParam(r, "public_address")
+	if address == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("no public address provided when registering 1155 asset"), "No public address given")
+	}
+	collectionSlug := chi.URLParam(r, "collection_slug")
+	if collectionSlug == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("no collection slug provided when registering 1155 asset"), "No collection slug given")
+	}
+	tokenID, err := strconv.Atoi(chi.URLParam(r, "token_id"))
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to read token id")
+	}
+	amount, err := strconv.Atoi(chi.URLParam(r, "amount"))
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to read amount")
+	}
+
+	user, err := payments.CreateOrGetUser(common.HexToAddress(address))
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to get user")
+	}
+
+	asset, err := nft1155.CreateOrGet1155Asset(tokenID, user, collectionSlug)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to create or get 1155 asset")
+	}
+
+	asset.Count += amount
+
+	_, err = asset.Update(passdb.StdConn, boil.Whitelist(boiler.UserAssets1155Columns.Count))
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to update assets count")
+	}
+
 	return http.StatusOK, nil
 }

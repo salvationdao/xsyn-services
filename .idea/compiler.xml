@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="TypeScriptCompiler">
+    <option name="nodeInterpreterTextField" value="wsl://Ubuntu-20.04@/home/vinnie/.nvm/versions/node/v16.15.0/bin/node" />
+    <option name="versionType" value="EMBEDDED" />
+  </component>
+</project>

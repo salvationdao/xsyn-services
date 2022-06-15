@@ -1,11 +1,11 @@
 package payments
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
@@ -19,8 +19,6 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-
-	"github.com/ninja-software/terror/v2"
 )
 
 // InsertPendingRefund inserts a pending refund to the pending_refunds table
@@ -37,9 +35,9 @@ func InsertPendingRefund(ucm UserCacheMap, userID types.UserID, amount decimal.D
 		Group:                types.TransactionGroupWithdrawal,
 	}
 
-	_, _, txID, err := ucm.Transact(newTx)
+	txID, err := ucm.Transact(newTx)
 	if err != nil {
-		return "", terror.Error(err)
+		return "", err
 	}
 
 	txHold := boiler.PendingRefund{
@@ -52,7 +50,7 @@ func InsertPendingRefund(ucm UserCacheMap, userID types.UserID, amount decimal.D
 
 	err = txHold.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
-		return "", terror.Error(err)
+		return "", err
 	}
 
 	return txHold.ID, nil
@@ -82,14 +80,14 @@ func UpdateSuccessfulWithdrawsWithTxHash(records []*SUPTransferRecord) (int, int
 			continue
 		}
 
-		u, err := db.UserByPublicAddress(context.Background(), passdb.Conn, common.HexToAddress(record.ToAddress))
+		u, err := users.PublicAddress(common.HexToAddress(record.ToAddress))
 		if err != nil {
 			skipped++
 			continue
 		}
 
 		filter := []qm.QueryMod{
-			boiler.PendingRefundWhere.UserID.EQ(u.ID.String()),
+			boiler.PendingRefundWhere.UserID.EQ(u.ID),
 			boiler.PendingRefundWhere.AmountSups.EQ(val),
 			boiler.PendingRefundWhere.IsRefunded.EQ(false),
 			boiler.PendingRefundWhere.RefundCanceledAt.IsNull(), // Not cancelled yet
@@ -202,7 +200,7 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 			Logger()
 
 		if enableWithdrawRollback {
-			_, _, txID, err := ucm.Transact(newTx)
+			txID, err := ucm.Transact(newTx)
 			if err != nil {
 				skipped++
 				l.Warn().Err(err).Msg("failed to process refund")

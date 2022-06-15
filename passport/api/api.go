@@ -3,23 +3,22 @@ package api
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"net/http"
+	"os"
 	"sync"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/email"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
+	"github.com/meehow/securebytes"
 	"github.com/ninja-software/log_helpers"
 
 	"github.com/shopspring/decimal"
 
-	"nhooyr.io/websocket"
-
 	"github.com/gofrs/uuid"
-	"github.com/ninja-syndicate/hub"
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/ninja-syndicate/ws"
 
 	"errors"
 
@@ -27,13 +26,17 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-syndicate/hub/ext/auth"
-	zerologger "github.com/ninja-syndicate/hub/ext/zerolog"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 )
+
+type TwitchConfig struct {
+	ExtensionSecret []byte
+	ClientID        string
+	ClientSecret    string
+}
 
 // API server
 type API struct {
@@ -45,15 +48,18 @@ type API struct {
 	Mailer              *email.Mailer
 	SMS                 types.SMS
 	HTMLSanitize        *bluemonday.Policy
-	Hub                 *hub.Hub
-	Conn                *pgxpool.Pool
-	Tokens              *Tokens
-	*auth.Auth
-	*messagebus.MessageBus
-	ClientToken       string
-	WebhookToken      string
-	GameserverHostUrl string
-	BridgeParams      *types.BridgeParams
+	Cookie              *securebytes.SecureBytes
+	IsCookieSecure      bool
+	TokenExpirationDays int
+	TokenEncryptionKey  []byte
+	Eip712Message       string
+	Twitch              *TwitchConfig
+	ClientToken         string
+	WebhookToken        string
+	GameserverHostUrl   string
+	Commander           *ws.Commander
+	BridgeParams        *types.BridgeParams
+	botSecretKey        string
 
 	// online user cache
 	users chan func(userCacheList Transactor)
@@ -77,8 +83,6 @@ type API struct {
 // NewAPI registers routes
 func NewAPI(
 	log *zerolog.Logger,
-	conn *pgxpool.Pool,
-	txConn *sql.DB,
 	mailer *email.Mailer,
 	twilio types.SMS,
 	addr string,
@@ -88,9 +92,10 @@ func NewAPI(
 	ucm *Transactor,
 	isTestnetBlockchain bool,
 	runBlockchainBridge bool,
-	msgBus *messagebus.MessageBus,
 	enablePurchaseSubscription bool,
 	jwtKey []byte,
+	environment string,
+	ignoreRateLimitIPs []string,
 ) (*API, chi.Router) {
 
 	api := &API{
@@ -101,53 +106,35 @@ func NewAPI(
 		WebhookToken:      config.WebhookParams.GameserverWebhookToken,
 		GameserverHostUrl: config.WebhookParams.GameserverHostUrl,
 
-		Tokens: &Tokens{
-			Conn:                conn,
-			Mailer:              mailer,
-			tokenExpirationDays: config.TokenExpirationDays,
-			encryptToken:        config.EncryptTokens,
-			encryptTokenKey:     config.EncryptTokensKey,
+		TokenExpirationDays: config.TokenExpirationDays,
+		TokenEncryptionKey:  []byte(config.EncryptTokensKey),
+		Twitch: &TwitchConfig{
+			ClientID:     config.AuthParams.TwitchClientID,
+			ClientSecret: config.AuthParams.TwitchClientSecret,
 		},
-		MessageBus: msgBus,
-		Hub: hub.New(&hub.Config{
-			LoggingEnabled: false,
-			ClientOfflineFn: func(client *hub.Client) {
-				msgBus.UnsubAll(client)
-			},
-			Log:    zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
-			Tracer: DatadogTracer.New(),
-			WelcomeMsg: &hub.WelcomeMsg{
-				Key:     "WELCOME",
-				Payload: nil,
-			},
-			AcceptOptions: &websocket.AcceptOptions{
-				InsecureSkipVerify: config.InsecureSkipVerifyCheck,
-				OriginPatterns:     []string{"*"},
-			},
-			WebsocketReadLimit: 104857600,
-		}),
-		Log:          log_helpers.NamedLogger(log, "api"),
-		Conn:         conn,
-		Addr:         addr,
-		Mailer:       mailer,
-		SMS:          twilio,
-		HTMLSanitize: HTMLSanitize,
-		// server clients
-		// serverClients:       make(chan func(serverClients ServerClientsList)),
-		// sendToServerClients: make(chan *ServerClientMessage),
-		//382
-		// user cache map
-		users: make(chan func(userList Transactor)),
-
-		// object to hold transaction stuff
-		userCacheMap: ucm,
-
+		Eip712Message: config.MetaMaskSignMessage,
+		Cookie: securebytes.New(
+			[]byte(config.CookieKey),
+			securebytes.ASN1Serializer{}),
+		IsCookieSecure:       config.CookieSecure,
+		Log:                  log_helpers.NamedLogger(log, "api"),
+		Addr:                 addr,
+		Mailer:               mailer,
+		SMS:                  twilio,
+		HTMLSanitize:         HTMLSanitize,
+		users:                make(chan func(userList Transactor)),
+		userCacheMap:         ucm,
 		walletOnlyConnect:    config.OnlyWalletConnect,
 		storeItemExternalUrl: externalUrl,
 
-		ClientMap: &sync.Map{},
-		JWTKey:    jwtKey,
+		ClientMap:    &sync.Map{},
+		JWTKey:       jwtKey,
+		botSecretKey: config.BotSecret,
 	}
+
+	api.Commander = ws.NewCommander(func(c *ws.Commander) {
+		c.RestBridge("/rest")
+	})
 
 	cc := NewChainClients(log, api, config.BridgeParams, isTestnetBlockchain, runBlockchainBridge, enablePurchaseSubscription)
 	r := chi.NewRouter()
@@ -160,90 +147,31 @@ func NewAPI(
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(passlog.ChiLogger(zerolog.InfoLevel))
-	r.Use(DatadogTracer.Middleware())
-
-	var err error
-	api.Auth, err = auth.New(api.Hub, &auth.Config{
-		CreateUserIfNotExist:     true,
-		CreateAndGetOAuthUserVia: auth.IdTypeID,
-		Google: &auth.GoogleConfig{
-			ClientID: config.AuthParams.GoogleClientID,
-		},
-		Twitch: &auth.TwitchConfig{
-			ClientID:     config.AuthParams.TwitchClientID,
-			ClientSecret: config.AuthParams.TwitchClientSecret,
-		},
-		Twitter: &auth.TwitterConfig{
-			APIKey:    config.AuthParams.TwitterAPIKey,
-			APISecret: config.AuthParams.TwitterAPISecret,
-		},
-		Discord: &auth.DiscordConfig{
-			ClientID:     config.AuthParams.DiscordClientID,
-			ClientSecret: config.AuthParams.DiscordClientSecret,
-		},
-		CookieSecure: config.CookieSecure,
-		UserController: &UserGetter{
-			Log:    log_helpers.NamedLogger(log, "user getter"),
-			Conn:   conn,
-			Mailer: mailer,
-		},
-		Tokens:                 api.Tokens,
-		Eip712Message:          config.MetaMaskSignMessage,
-		OnlyWalletConnect:      config.OnlyWalletConnect,
-		WhitelistCheckEndpoint: fmt.Sprintf("%s/api/whitelist", config.WhitelistEndpoint),
-	})
-	if err != nil {
-		log.Fatal().Msgf("failed to init hub auther: %s", err.Error())
+	if os.Getenv("PASSPORT_ENVIRONMENT") != "development" {
+		r.Use(DatadogTracer.Middleware())
 	}
 
+	var err error
 	roadmapRoutes, err := RoadmapRoutes()
 	if err != nil {
 		log.Fatal().Msgf("failed to roadmap routes: %s", err.Error())
 	}
-	r.Mount("/api/admin", AdminRoutes(ucm))
-	r.Mount("/api/roadmap", roadmapRoutes)
-	r.Handle("/metrics", promhttp.Handler())
-	r.Route("/api", func(r chi.Router) {
-		r.Group(func(r chi.Router) {
-			sentryHandler := sentryhttp.New(sentryhttp.Options{})
-			r.Use(sentryHandler.Handle)
-			r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn))
-			r.Mount("/files", FileRouter(conn, api))
-			r.Mount("/nfts", api.NFTRoutes())
-			r.Mount("/moderator", ModeratorRoutes())
 
-			r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
-			r.Get("/get-nonce", WithError(api.Auth.GetNonce))
-			r.Get("/withdraw/holding/{user_address}", WithError(api.HoldingSups))
-			r.Get("/withdraw/check/{address}", WithError(api.GetMaxWithdrawAmount))
-			r.Get("/withdraw/check", WithError(api.CheckCanWithdraw))
-			r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSups))
-
-			r.Get("/asset/{hash}", WithError(api.AssetGet))
-			r.Get("/asset/{collection_address}/{token_id}", WithError(api.AssetGetByCollectionAndTokenID))
-			r.Get("/auth/twitter", WithError(api.Auth.TwitterAuth))
-			r.Get("/whitelist/check", WithError(api.WhitelistOnlyWalletCheck))
-			r.Get("/faction-data", WithError(api.FactionGetData))
-			r.Route("/early", func(r chi.Router) {
-				r.Get("/check", WithError(api.CheckUserEarlyContributor))
-				r.Post("/sign", WithError(api.EarlyContributorSignMessage))
-			})
-		})
-		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
-		// See roothub.ServeHTTP for the setup of sentry on this route.
-		r.Handle("/ws", api.Hub)
+	ws.Init(&ws.Config{
+		Logger:        passlog.L,
+		SkipRateLimit: os.Getenv("PASSPORT_ENVIRONMENT") == "staging" || os.Getenv("PASSPORT_ENVIRONMENT") == "development",
 	})
 
 	if runBlockchainBridge {
-		_ = NewSupController(log, conn, api, cc)
+		_ = NewSupController(log, api, cc)
 	}
 
-	_ = NewAssetController(log, conn, api)
-	_ = NewCollectionController(log, conn, api, isTestnetBlockchain)
-	_ = NewServerClientController(log, conn, api)
-	_ = NewCheckController(log, conn, api)
-	_ = NewUserActivityController(log, conn, api)
-	_ = NewUserController(log, conn, api, &auth.GoogleConfig{
+	_ = NewAssetController(log, api)
+	_ = NewCollectionController(log, api, isTestnetBlockchain)
+
+	_ = NewCheckController(log, api)
+	_ = NewUserActivityController(log, api)
+	uc := NewUserController(log, api, &auth.GoogleConfig{
 		ClientID: config.AuthParams.GoogleClientID,
 	}, &auth.TwitchConfig{
 		ClientID:     config.AuthParams.TwitchClientID,
@@ -252,21 +180,95 @@ func NewAPI(
 		ClientID:     config.AuthParams.DiscordClientID,
 		ClientSecret: config.AuthParams.DiscordClientSecret,
 	})
-	_ = NewTransactionController(log, conn, api)
-	_ = NewFactionController(log, conn, api)
-	_ = NewRoleController(log, conn, api)
-	sc := NewSupremacyController(log, conn, api)
-	_ = NewGamebarController(log, conn, api)
-	_ = NewStoreController(log, conn, api)
+	_ = NewTransactionController(log, api)
+	_ = NewFactionController(log, api)
+	_ = NewRoleController(log, api)
+	sc := NewSupremacyController(log, api)
+	_ = NewGamebarController(log, api)
+	_ = NewStoreController(log, api)
+	d := DevRoutes(ucm)
+
+	r.Mount("/api/admin", AdminRoutes(ucm))
+	r.Mount("/api/roadmap", roadmapRoutes)
+	r.Handle("/metrics", promhttp.Handler())
+	r.Route("/api", func(r chi.Router) {
+		r.Group(func(r chi.Router) {
+			sentryHandler := sentryhttp.New(sentryhttp.Options{})
+			r.Use(sentryHandler.Handle)
+			r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router")))
+			r.Mount("/files", FileRouter(api))
+			r.Mount("/nfts", api.NFTRoutes())
+			r.Mount("/moderator", ModeratorRoutes())
+			if environment == "development" {
+				r.Mount("/dev", d.R)
+			}
+
+			//r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
+			r.Get("/get-nonce", WithError(api.GetNonce))
+			//r.Get("/auth/twitter", WithError(api.Auth.TwitterAuth))
+			r.Get("/withdraw/holding/{user_address}", WithError(api.HoldingSups))
+			r.Get("/withdraw/check/{address}", WithError(api.GetMaxWithdrawAmount))
+			r.Get("/withdraw/check", WithError(api.CheckCanWithdraw))
+			r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSups))
+
+			r.Get("/1155/{address}/{token_id}/{nonce}/{amount}", WithError(api.Withdraw1155))
+			r.Get("/1155/contracts", WithError(api.Get1155Contracts))
+
+			r.Get("/asset/{hash}", WithError(api.AssetGet))
+			r.Get("/asset/{collection_address}/{token_id}", WithError(api.AssetGetByCollectionAndTokenID))
+			r.Get("/whitelist/check", WithError(api.WhitelistOnlyWalletCheck))
+
+			r.Get("/collection/1155/all", WithError(api.Get1155Collections))
+			r.Get("/collection/{collection_slug}", WithError(api.Get1155Collection))
+
+			r.Route("/early", func(r chi.Router) {
+				r.Get("/check", WithError(api.CheckUserEarlyContributor))
+				r.Post("/sign", WithError(api.EarlyContributorSignMessage))
+			})
+			r.Route("/auth", func(r chi.Router) {
+				r.Get("/check", WithError(api.AuthCheckHandler))
+				r.Get("/logout", WithError(api.AuthLogoutHandler))
+				r.Post("/external", api.ExternalLoginHandler)
+				r.Post("/token", api.TokenLoginHandler)
+				r.Post("/wallet", api.WalletLoginHandler)
+
+				r.Post("/bot_list", api.BotListHandler)
+				r.Post("/bot_token", api.BotTokenLoginHandler)
+			})
+		})
+		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
+		// See roothub.ServeHTTP for the setup of sentry on this route.
+
+		r.Route("/ws", func(r chi.Router) {
+			r.Use(ws.TrimPrefix("/api/ws"))
+			r.Mount("/public/{username}", ws.NewServer(func(s *ws.Server) {
+				s.Use(func(next http.Handler) http.Handler {
+					return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						username := chi.URLParam(r, "username")
+						if username == "" {
+							http.Error(w, "no username provided", http.StatusBadRequest)
+							return
+						}
+
+						next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), "username", username)))
+					})
+				})
+			}))
+			r.Mount("/store", ws.NewServer(func(s *ws.Server) {
+			}))
+			r.Mount("/user/{userId}", ws.NewServer(func(s *ws.Server) {
+				s.Use(api.AuthWS(true, true))
+				s.WS("/*", HubKeyUserGet, api.MustSecure(uc.GetHandler))
+				s.Mount("/commander", api.Commander)
+				s.WS("/sups", HubKeyUserSupsSubscribe, api.MustSecure(api.UserSupsUpdatedSubscribeHandler))
+				s.WS("/transactions", HubKeyUserTransactionsSubscribe, api.MustSecure(api.UserTransactionsSubscribeHandler))
+			}))
+		})
+	})
 
 	api.SupremacyController = sc
 
-	//api.Hub.Events.AddEventHandler(hub.EventOnline, api.ClientOnline)
-	api.Hub.Events.AddEventHandler(auth.EventLogin, api.ClientAuth, func(err error) {})
-	api.Hub.Events.AddEventHandler(auth.EventLogout, api.ClientLogout, func(err error) {})
-	api.Hub.Events.AddEventHandler(hub.EventOffline, api.ClientOffline, func(err error) {})
-
-	api.State, err = db.StateGet(context.Background(), isTestnetBlockchain, api.Conn)
+	api.State, err = db.StateGet(isTestnetBlockchain)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		log.Fatal().Err(err).Msgf("failed to init state object")
 	}
@@ -295,8 +297,6 @@ func (api *API) RecordUserActivity(
 	}
 
 	err = db.UserActivityCreate(
-		ctx,
-		api.Conn,
 		types.UserID(userUUID),
 		action,
 		objectType,

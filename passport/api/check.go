@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"xsyn-services/passport/db"
 
@@ -14,14 +13,10 @@ var (
 )
 
 // check checks server is working correctly
-func check(ctx context.Context, conn db.Conn) error {
-	count := 0
-	err := db.IsSchemaDirty(ctx, conn, &count)
+func check() error {
+	err := db.IsSchemaDirty()
 	if err != nil {
 		return terror.Error(ErrCheckDBQuery)
-	}
-	if count > 0 {
-		return terror.Error(ErrCheckDBDirty)
 	}
 	return nil
 }

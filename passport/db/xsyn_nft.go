@@ -1,59 +1,23 @@
 package db
 
 import (
-	"context"
-	"fmt"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"xsyn-services/boiler"
-	"xsyn-services/passport/helpers"
 	"xsyn-services/passport/passdb"
-	"xsyn-services/types"
-
-	"github.com/georgysavva/scany/pgxscan"
-	"github.com/ninja-software/terror/v2"
 )
 
-// XsynMetadataInsert inserts a new item metadata
-func XsynMetadataInsert(ctx context.Context, conn Conn, item *types.XsynMetadata, externalUrl string) error {
-	// generate token id
-	q := `SELECT coalesce(max(external_token_id), 0) from xsyn_metadata WHERE collection_id = $1`
-	err := pgxscan.Get(ctx, conn, &item.ExternalTokenID, q, item.CollectionID)
-	if err != nil {
-		return terror.Error(err)
-	}
-	item.ExternalTokenID++
-	// generate hash
-	// TODO: get this to handle uint64
-	item.Hash, err = helpers.GenerateMetadataHashID(item.CollectionID.String(), int(item.ExternalTokenID), false)
-	if err != nil {
-		return terror.Error(err)
-	}
+func Withdraw1155AssetWithPendingRollback(count, externalTokenID int, ownerID string) error {
+	q := `WITH ass AS (
+    UPDATE user_assets_1155 ua1 set count = count - $1
+           WHERE ua1.owner_id = $2 AND ua1.external_token_id = $3 AND ua1.service_id is null
+           RETURNING ua1.owner_id, ua1.id
+	) INSERT INTO pending_1155_rollback(user_id, asset_id, count, refunded_at)
+	SELECT ass.owner_id, ass.id, $1, NOW() + interval '10' MINUTE
+	FROM ass;`
 
-	q = `	INSERT INTO xsyn_metadata (hash, external_token_id, name, collection_id, game_object, description, image, animation_url, attributes, additional_metadata, external_url, image_avatar)
-			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-			RETURNING hash, external_token_id, name, collection_id, game_object, description, image, animation_url,  attributes, additional_metadata, external_url, image_avatar`
-
-	err = pgxscan.Get(ctx, conn, item, q,
-		item.Hash,
-		item.ExternalTokenID,
-		item.Name,
-		item.CollectionID,
-		item.GameObject,
-		item.Description,
-		item.Image,
-		item.AnimationURL,
-		item.Attributes,
-		item.AdditionalMetadata,
-		fmt.Sprintf("%s/asset/%s", externalUrl, item.Hash),
-		item.ImageAvatar,
-	)
+	_, err := boiler.NewQuery(qm.SQL(q, count, ownerID, externalTokenID)).Exec(passdb.StdConn)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	return nil
-}
-
-// DefaultWarMachineGet return given amount of default war machines for given faction
-func DefaultWarMachineGet(ctx context.Context, conn Conn, userID types.UserID) ([]*boiler.PurchasedItem, error) {
-	return boiler.PurchasedItems(boiler.PurchasedItemWhere.IsDefault.EQ(true)).All(passdb.StdConn)
-
 }

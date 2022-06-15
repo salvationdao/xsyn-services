@@ -69,6 +69,10 @@ func (id *BlobID) Scan(src interface{}) error {
 // Doing this prevents situations where you use UserID where it doesn't belong.
 type UserID uuid.UUID
 
+func UserIDFromString(id string) UserID {
+	return UserID(uuid.FromStringOrNil(id))
+}
+
 // IsNil returns true for a nil uuid.
 func (id UserID) IsNil() bool {
 	return id == UserID{}
@@ -238,6 +242,11 @@ type RoleID uuid.UUID
 // IsNil returns true for a nil uuid.
 func (id RoleID) IsNil() bool {
 	return id == RoleID{}
+}
+
+// NullString returns a null.String
+func (id RoleID) NullString() null.String {
+	return null.StringFrom(id.String())
 }
 
 // String aliases UUID.String which returns a canonical RFC-4122 string representation of the UUID.

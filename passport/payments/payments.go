@@ -2,21 +2,20 @@ package payments
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
+	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/db"
+	"xsyn-services/passport/helpers"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
 )
 
 type AvantDataResp struct {
@@ -31,28 +30,28 @@ type PriceExchangeRates struct {
 	EnableSale bool            `json:"enable_sale"`
 }
 type UserCacheMap interface {
-	Transact(nt *types.NewTransaction) (decimal.Decimal, decimal.Decimal, string, error)
+	Transact(nt *types.NewTransaction) (string, error)
 }
 
 const SUPDecimals = 18
 
-func CreateOrGetUser(ctx context.Context, conn *pgxpool.Pool, userAddr common.Address) (*types.User, error) {
+func CreateOrGetUser(userAddr common.Address) (*types.User, error) {
 	var user *types.User
 	var err error
-	user, err = db.UserByPublicAddress(ctx, conn, userAddr)
-	if errors.Is(err, pgx.ErrNoRows) {
-		user = &types.User{}
-		user.Username = userAddr.Hex()
-		user.PublicAddress = null.NewString(userAddr.Hex(), true)
-		user.RoleID = types.UserRoleMemberID
-		err := db.UserCreate(ctx, conn, user)
+	user, err = users.PublicAddress(userAddr)
+	if errors.Is(err, sql.ErrNoRows) {
+		username := helpers.TrimUsername(userAddr.Hex())
+		runes := []rune(username)
+		username = string(runes[0:10])
+		user, err = users.UserCreator("", "", username, "", "", "", "", "", "", "", userAddr, "")
 		if err != nil {
-			return nil, terror.Error(err)
+			return nil, err
 		}
 	}
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, terror.Error(err)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
 	}
+
 	return user, nil
 }
 
@@ -85,7 +84,7 @@ func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.Us
 		Group:                types.TransactionGroupStore,
 	}
 
-	_, _, _, err = ucm.Transact(trans)
+	_, err = ucm.Transact(trans)
 	if err != nil {
 		return fmt.Errorf("create tx entry for tx %s: %w", record.TxHash, err)
 	}

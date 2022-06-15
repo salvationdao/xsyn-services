@@ -10,8 +10,6 @@ import (
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
-	"github.com/ninja-software/terror/v2"
-
 	"github.com/jpillora/backoff"
 	"github.com/rs/zerolog"
 
@@ -134,11 +132,11 @@ func NewChainClients(log *zerolog.Logger, api *API, p *types.BridgeParams, isTes
 			cc.API.State.BNBtoUSD = amount
 		}
 
-		_, err := db.UpdateExchangeRates(ctx, isTestnetBlockchain, cc.API.Conn, cc.API.State)
+		_, err := db.UpdateExchangeRates(isTestnetBlockchain, cc.API.State)
 		if err != nil {
 			api.Log.Err(err).Msg("failed to update exchange rates")
 		}
-		cc.Log.Debug().
+		cc.Log.Info().
 			Str(symbol, amount.String()).
 			Msg("update rate")
 
@@ -221,7 +219,7 @@ func pingFunc(ctx context.Context, client *ethclient.Client) error {
 	defer cancel()
 	_, err := client.BlockNumber(ctxTimeout)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	return nil
 }

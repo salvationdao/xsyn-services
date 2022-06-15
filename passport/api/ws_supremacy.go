@@ -34,11 +34,10 @@ type Transactions struct {
 }
 
 // NewSupremacyController creates the supremacy hub
-func NewSupremacyController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *SupremacyControllerWS {
+func NewSupremacyController(log *zerolog.Logger, api *API) *SupremacyControllerWS {
 	supremacyHub := &SupremacyControllerWS{
-		Conn: conn,
-		Log:  log_helpers.NamedLogger(log, "supremacy"),
-		API:  api,
+		Log: log_helpers.NamedLogger(log, "supremacy"),
+		API: api,
 		TickerPoolCache: &TickerPoolCache{
 			outerMx:            deadlock.Mutex{},
 			nextAccessMx:       deadlock.Mutex{},

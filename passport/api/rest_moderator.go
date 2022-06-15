@@ -1,9 +1,12 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
+	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 
 	"github.com/go-chi/chi/v5"
@@ -19,11 +22,23 @@ func ModeratorRoutes() chi.Router {
 	r.Get("/chat_timeout_userid/{userID}/{minutes}", WithError(WithModerator(ChatTimeoutUserID)))
 	r.Get("/rename_ban_username/{username}/{banned}", WithError(WithModerator(RenameBanUsername)))
 	r.Get("/rename_ban_userID/{userID}/{banned}", WithError(WithModerator(RenameBanUserID)))
-	r.Get("/rename_asset/{hash}/{newName}", WithError(WithModerator(RenameAsset)))
-	r.Get("/purchased_items", WithError(WithModerator(ListPurchasedItems)))
+	r.Get("/purchased_items", WithError(WithModerator(ListAssets)))
 	r.Get("/store_items", WithError(WithModerator(ListStoreItems)))
 
 	return r
+}
+
+func ListAssets(w http.ResponseWriter, r *http.Request) (int, error) {
+	userAssets, err := boiler.UserAssets().All(passdb.StdConn)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not list assets")
+	}
+
+	err = json.NewEncoder(w).Encode(userAssets)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not encode JSON")
+	}
+	return http.StatusOK, nil
 }
 
 // WithModerator checks that mod key is in the header.

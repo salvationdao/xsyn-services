@@ -155,7 +155,7 @@ go-mod-download:
 
 .PHONY: go-mod-tidy
 go-mod-tidy:
-	go mod tidy -compat=1.17
+	go mod tidy -compat=1.18
 
 .PHONY: init
 init: db-setup deps tools go-mod-tidy db-reset
@@ -219,3 +219,17 @@ db-restore:
 		psql -U ${LOCAL_DEV_DB_USER} -d postgres -c "DROP DATABASE $(LOCAL_DEV_DB_DATABASE)"
 		psql -U ${LOCAL_DEV_DB_USER} -d postgres < init.sql
 		psql -U ${LOCAL_DEV_DB_USER} -d $(LOCAL_DEV_DB_DATABASE) < tmp/${LOCAL_DEV_DB_DATABASE}_dump.sql
+
+dev_tool_fill_bot_sups:
+	go run ./passport/devtool/*.go -fill_bot_sups
+
+dev_tool_gen_bot_100:
+	go run ./passport/devtool/*.go -bot_gen_number=100
+
+.PHONE: dev-give-mech
+dev-give-mech:
+	curl -i -H "X-Authorization: NinjaDojo_!" -k https://api.xsyndev.io/api/dev/give-mechs/${public_address}
+
+.PHONE: dev-give-mechs
+dev-give-mechs:
+	make dev-give-mech public_address=0xb22074387299D3f6B08Bb06EB2568C8CEc0df8c7

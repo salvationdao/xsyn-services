@@ -3,7 +3,6 @@ package helpers
 import (
 	"fmt"
 
-	"github.com/ninja-software/terror/v2"
 	"github.com/speps/go-hashids/v2"
 )
 
@@ -13,16 +12,16 @@ func GenerateMetadataHashID(uuidString string, tokenID int, debugPrint bool) (st
 	hd.MinLength = 10
 	h, err := hashids.NewWithData(hd)
 	if err != nil {
-		return "", terror.Error(err)
+		return "", err
 	}
 
 	e, err := h.Encode([]int{tokenID})
 	if err != nil {
-		return "", terror.Error(err)
+		return "", err
 	}
 	d, err := h.DecodeWithError(e)
 	if err != nil {
-		return "", terror.Error(err)
+		return "", err
 	}
 
 	if debugPrint {
@@ -40,12 +39,12 @@ func UnhashMetadataHashID(collectionUUID, hash string) (int, error) {
 	hd.MinLength = 10
 	h, err := hashids.NewWithData(hd)
 	if err != nil {
-		return 0, terror.Error(err)
+		return 0, err
 	}
 
 	d, err := h.DecodeWithError(hash)
 	if err != nil {
-		return 0, terror.Error(err)
+		return 0, err
 	}
 
 	return d[0], nil
