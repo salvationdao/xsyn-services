@@ -55,8 +55,14 @@ type LoginResponse struct {
 func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string) error {
 	b64, err := api.Cookie.EncryptToBase64(token)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Encryption error: %v", err), http.StatusBadRequest)
 		return err
+	}
+
+	// get domain
+	d := domain(r.Host)
+	if d == "" {
+		passlog.L.Warn().Msg("Cookie's domain not found")
+		return fmt.Errorf("failed to write cookie")
 	}
 
 	cookie := &http.Cookie{
@@ -67,7 +73,7 @@ func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string
 		Secure:   api.IsCookieSecure,
 		HttpOnly: true,
 		SameSite: http.SameSiteNoneMode,
-		Domain:   domain(r.Host),
+		Domain:   d,
 	}
 	http.SetCookie(w, cookie)
 	return nil
@@ -75,11 +81,16 @@ func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string
 
 func domain(host string) string {
 	parts := strings.Split(host, ".")
+
+	if len(parts) < 2 {
+		return ""
+	}
 	//this is rigid as fuck
 	return parts[len(parts)-2] + "." + parts[len(parts)-1]
 }
 
 func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
+	// remove cookie on domain
 	cookie := &http.Cookie{
 		Name:     "xsyn-token",
 		Value:    "",
@@ -89,6 +100,18 @@ func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
 		HttpOnly: true,
 		SameSite: http.SameSiteNoneMode,
 		Domain:   domain(r.Host),
+	}
+	http.SetCookie(w, cookie)
+
+	// remove cookie on the site, just in case there is one
+	cookie = &http.Cookie{
+		Name:     "xsyn-token",
+		Value:    "",
+		Expires:  time.Now().AddDate(0, 0, -1),
+		Path:     "/",
+		Secure:   api.IsCookieSecure,
+		HttpOnly: true,
+		SameSite: http.SameSiteNoneMode,
 	}
 	http.SetCookie(w, cookie)
 	return nil
@@ -264,11 +287,13 @@ func (api *API) WalletLoginHandler(w http.ResponseWriter, r *http.Request) {
 	resp, err := api.WalletLogin(req, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	err = api.WriteCookie(w, r, resp.Token)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	b, _ := json.Marshal(resp.User)

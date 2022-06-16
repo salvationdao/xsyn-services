@@ -16,6 +16,7 @@ import (
 	"path"
 	"time"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/passlog"
 
 	"github.com/gofrs/uuid"
 	"github.com/lestrrat-go/jwx/jwa"
@@ -102,6 +103,7 @@ func ReadJWT(tokenB []byte, decryptToken bool, decryptKey []byte) (jwt.Token, er
 			return nil, terror.Error(err, "token verification failed")
 		}
 		if token.Expiration().Before(time.Now()) {
+			passlog.L.Error().Time("expiry", token.Expiration()).Time("Now", time.Now()).Msg("token expired")
 			return token, ErrTokenExpired
 		}
 

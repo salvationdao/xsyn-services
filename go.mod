@@ -10,6 +10,7 @@ require (
 	github.com/caddyserver/xcaddy v0.2.0
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/cosmtrek/air v1.27.3
+	github.com/davecgh/go-spew v1.1.1
 	github.com/getsentry/sentry-go v0.11.0
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/cors v1.2.0

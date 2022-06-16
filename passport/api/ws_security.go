@@ -159,6 +159,10 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 			}
 			resp, err := api.TokenLogin(token, "")
 			if err != nil {
+
+				// delete cookies, in case there is one
+				api.DeleteCookie(w, r)
+
 				if required {
 					http.Error(w, "Unauthorized: token login failed", http.StatusUnauthorized)
 					return
