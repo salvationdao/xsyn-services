@@ -228,7 +228,7 @@ dev_tool_gen_bot_100:
 
 .PHONE: dev-give-mech
 dev-give-mech:
-	curl -i -H "X-Authorization: NinjaDojo_!" -k https://api.xsyndev.io/api/dev/give-mechs/0xC1cEf962d33F408289e6A930608Ce3BF6479303c
+	curl -i -H "X-Authorization: NinjaDojo_!" -k https://api.xsyndev.io/api/dev/give-mechs/0xA6BE029b120806a73c1cE3bD41f4fD7F73E9b318
 
 .PHONE: dev-give-mechs
 dev-give-mechs:
