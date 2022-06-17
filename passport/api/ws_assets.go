@@ -423,6 +423,11 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	if !db.GetBool(db.KeyEnableSyncNFTOwners) {
+		return terror.Error(fmt.Errorf("asset syncing system down"))
+	}
+
+
 	userAsset, err := boiler.UserAssets(
 		boiler.UserAssetWhere.Hash.EQ(req.Payload.AssetHash),
 		qm.Load(boiler.UserAssetRels.Collection),
