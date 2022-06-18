@@ -92,8 +92,10 @@ func getNFTOwnerRecords(path Path, collection *boiler.Collection, testnet bool) 
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
+		db.PutBool(db.KeyEnableSyncNFTOwners, false)
 		return nil, fmt.Errorf("non 200 response for %s: %d", req.URL.String(), resp.StatusCode)
 	}
+
 	var records []*NFTOwnerRecord
 	err = json.NewDecoder(resp.Body).Decode(&records)
 	if err != nil {

@@ -563,6 +563,7 @@ func SyncNFTs(isTestnet bool) error {
 			return fmt.Errorf("get nft owners: %w", err)
 		}
 
+
 		ownerUpdated, ownerSkipped, err := payments.UpdateOwners(collectionNftOwnerStatuses, collection)
 		if err != nil {
 			return fmt.Errorf("update nft owners: %w", err)
@@ -579,7 +580,7 @@ func SyncNFTs(isTestnet bool) error {
 			Int("skipped", ownerSkipped).
 			Msg("synced nft ownerships")
 	}
-
+	db.PutBool(db.KeyEnableSyncNFTOwners, true)
 	return nil
 }
 
@@ -651,11 +652,9 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 		}
 	}(ucm, log, isTestnet)
 	go func() {
-		if db.GetBoolWithDefault(db.KeyEnableSyncNFTOwners, false) {
-			err := SyncNFTs(isTestnet)
-			if err != nil {
-				passlog.L.Err(err).Msg("failed to sync nfts")
-			}
+		err := SyncNFTs(isTestnet)
+		if err != nil {
+			passlog.L.Err(err).Msg("failed to sync nfts")
 		}
 	}()
 	go func(ucm *api.Transactor, isTestnet bool) {
