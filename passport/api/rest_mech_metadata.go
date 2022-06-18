@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/volatiletech/null/v8"
 	"net/http"
 	"strconv"
@@ -65,7 +66,9 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 		return http.StatusBadRequest, terror.Warn(err, "get asset from db")
 	}
 
-	collection, err := boiler.Collections(boiler.CollectionWhere.MintContract.EQ(null.StringFrom(collectionAddress))).One(passdb.StdConn)
+	collection, err := boiler.Collections(
+		boiler.CollectionWhere.MintContract.EQ(null.StringFrom(common.HexToAddress(collectionAddress).Hex())),
+		).One(passdb.StdConn)
 	if err != nil {
 		return http.StatusBadRequest, terror.Warn(err, "get collection from db")
 	}
@@ -129,15 +132,15 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 
 // openSeaMetaData data structure, reference https://docs.opensea.io/docs/metadata-standards
 type openSeaMetaData struct {
-	Image           string             `json:"image"`            // image url, to be cached by opensea
-	ImageData       string             `json:"image_data"`       // raw image svg
-	ExternalURL     string             `json:"external_url"`     // direct url link to image asset
-	Description     string             `json:"description"`      // item description
-	Name            string             `json:"name"`             // item name
-	Attributes      []*types.Attribute `json:"attributes"`       // item attributes
-	BackgroundColor string             `json:"background_color"` // openseas page background
-	AnimationURL    string             `json:"animation_url"`    // direct url link to video asset
-	YoutubeURL      string             `json:"youtube_url"`      // url to youtube video
+	Image           string             `json:"image,omitempty"`            // image url, to be cached by opensea
+	ImageData       string             `json:"image_data,omitempty"`       // raw image svg
+	ExternalURL     string             `json:"external_url,omitempty"`     // direct url link to image asset
+	Description     string             `json:"description,omitempty"`      // item description
+	Name            string             `json:"name,omitempty"`             // item name
+	Attributes      []*types.Attribute `json:"attributes,omitempty"`       // item attributes
+	BackgroundColor string             `json:"background_color,omitempty"` // openseas page background
+	AnimationURL    string             `json:"animation_url,omitempty"`    // direct url link to video asset
+	YoutubeURL      string             `json:"youtube_url,omitempty"`      // url to youtube video
 }
 
 // purchasedItemMetaData shape of the purchased_items.metadata in the database
