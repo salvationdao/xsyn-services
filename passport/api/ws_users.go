@@ -81,10 +81,6 @@ func NewUserController(log *zerolog.Logger, api *API, googleConfig *auth.GoogleC
 	//api.SecureCommand(HubKeyUserTransactionsSubscribe, userHub.UserTransactionsSubscribeHandler)
 	//api.SecureCommand(HubKeyUserLatestTransactionSubscribe, userHub.UserLatestTransactionsSubscribeHandler)
 	api.SecureCommand(HubKeyUser, userHub.UpdatedSubscribeHandler)
-
-	api.SecureCommand(HubKeySUPSRemainingSubscribe, userHub.TotalSupRemainingHandler) // TODO: shouldn't be in ws_user since its nothing to do with user sups
-	api.SecureCommand(HubKeySUPSExchangeRates, userHub.ExchangeRatesHandler)
-
 	api.SecureCommand(HubKeyUserSupsSubscribe, api.UserSupsUpdatedSubscribeHandler)
 
 	return userHub
@@ -1545,36 +1541,26 @@ func getUserServiceCount(user *types.User) int {
 
 const HubKeySUPSRemainingSubscribe = "SUPS:TREASURY"
 
-func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &UpdatedSubscribeRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
+func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 
 	sups, err := uc.API.userCacheMap.Get(types.XsynSaleUserID.String())
 	if err != nil {
 		return terror.Error(err, "Issue getting total SUPs remaining handler, try again or contact support.")
 	}
 
+	fmt.Println(sups.String())
 	reply(sups.String())
 	return nil
 }
 
 const HubKeySUPSExchangeRates = "SUPS:EXCHANGE"
 
-func (uc *UserController) ExchangeRatesHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &UpdatedSubscribeRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
+func (uc *UserController) ExchangeRatesHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	exchangeRates, err := payments.FetchExchangeRates()
 	if err != nil {
 		return terror.Error(err, "Unable to fetch exchange rates.")
 	}
 	reply(exchangeRates)
-	//  req.TransactionID, messagebus.BusKey(HubKeySUPSExchangeRates), nil
 	return nil
 }
 
