@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"database/sql"
-	"net/http"
 	"os"
 	"sync"
 	"xsyn-services/passport/db"
@@ -241,18 +240,9 @@ func NewAPI(
 
 		r.Route("/ws", func(r chi.Router) {
 			r.Use(ws.TrimPrefix("/api/ws"))
-			r.Mount("/public/{username}", ws.NewServer(func(s *ws.Server) {
-				s.Use(func(next http.Handler) http.Handler {
-					return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-						username := chi.URLParam(r, "username")
-						if username == "" {
-							http.Error(w, "no username provided", http.StatusBadRequest)
-							return
-						}
-
-						next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), "username", username)))
-					})
-				})
+			r.Mount("/public", ws.NewServer(func(s *ws.Server) {
+				s.WS("/exchange_rates", HubKeySUPSExchangeRates, uc.ExchangeRatesHandler)
+				s.WS("/sups_remaining", HubKeySUPSRemainingSubscribe, uc.TotalSupRemainingHandler)
 			}))
 			r.Mount("/store", ws.NewServer(func(s *ws.Server) {
 			}))

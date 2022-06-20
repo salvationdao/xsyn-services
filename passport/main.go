@@ -433,7 +433,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) erro
 	}
 	log.Info().Int("records", len(records4)).Str("sym", "USDC").Msg("fetch exchange rates")
 
-	ws.PublishMessage("/ws/global/exchange", api.HubKeySUPSExchangeRates, exchangeRates)
+	ws.PublishMessage("/public/exchange_rates", api.HubKeySUPSExchangeRates, exchangeRates)
 
 	records := []*payments.PurchaseRecord{}
 	records = append(records, records1...)
@@ -563,7 +563,6 @@ func SyncNFTs(isTestnet bool) error {
 			return fmt.Errorf("get nft owners: %w", err)
 		}
 
-
 		ownerUpdated, ownerSkipped, err := payments.UpdateOwners(collectionNftOwnerStatuses, collection)
 		if err != nil {
 			return fmt.Errorf("update nft owners: %w", err)
@@ -574,8 +573,8 @@ func SyncNFTs(isTestnet bool) error {
 			Str("collection.MintContract.String", collection.MintContract.String).
 			Str("collection.StakeContract.String", collection.StakeContract.String).
 			Str("collection.StakingContractOld.String", collection.StakingContractOld.String).
-			Bool("isTestnet",isTestnet).
-			Int("records",len(collectionNftOwnerStatuses)).
+			Bool("isTestnet", isTestnet).
+			Int("records", len(collectionNftOwnerStatuses)).
 			Int("updated", ownerUpdated).
 			Int("skipped", ownerSkipped).
 			Msg("synced nft ownerships")
