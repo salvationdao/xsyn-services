@@ -80,7 +80,7 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 		updatedBool := false
 
 		// if the owner is different, transfer asset to new owner
-		if offChainAddr.Hex() != onChainAddr.Hex() && !userAsset.LockedToService.Valid {
+		if offChainAddr.Hex() != onChainAddr.Hex() {
 			l.Debug().
 				Str("new_owner", onChainOwner.ID).
 				Str("old_owner", offChainOwner.ID).
@@ -93,7 +93,7 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 				onChainOwner.ID,
 				"",
 				null.String{},
-				func(te *boiler.AssetTransferEvent){
+				func(te *boiler.AssetTransferEvent) {
 					supremacy_rpcclient.SupremacyAssetTransferEvent(&types.TransferEvent{
 						TransferEventID: te.ID,
 						AssetHash:       te.UserAssetHash,
@@ -103,7 +103,7 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 						TransferTXID:    te.TransferTXID,
 					})
 				},
-				)
+			)
 			if err != nil {
 				passlog.L.Error().Err(err).
 					Str("userAsset.Hash", userAsset.Hash).
