@@ -55,7 +55,10 @@ func TransferAsset(
 	}
 
 	userAsset.OwnerID = toID
-	userAsset.LockedToService = null.StringFrom(serviceID)
+	userAsset.LockedToService = null.String{}
+	if serviceID != "" {
+		userAsset.LockedToService = null.StringFrom(serviceID)
+	}
 
 	_, err = userAsset.Update(tx, boil.Infer())
 	if err != nil {
