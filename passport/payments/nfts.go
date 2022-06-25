@@ -23,9 +23,12 @@ import (
 )
 
 type NFTOwnerStatus struct {
-	Collection    common.Address
-	Owner         common.Address
-	OnChainStatus db.OnChainStatus
+	Collection     common.Address
+	Owner          common.Address
+	OnChainStatus  db.OnChainStatus
+	TxHash         string
+	BlockNumber    int
+	BlockTimestamp time.Time
 }
 
 func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collection) (int, int, error) {
@@ -44,6 +47,17 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 			Str("on_chain_status", string(nftStatus.OnChainStatus)).
 			Msg("processing new owner for NFT")
 
+		// if tx exists, continue
+		txExists, err := boiler.ItemOnchainTransactions(
+			boiler.ItemOnchainTransactionWhere.TXID.EQ(nftStatus.TxHash),
+		).Exists(passdb.StdConn)
+		if err != nil {
+			return 0, 0, fmt.Errorf("get purchased item: %w", err)
+		}
+		if txExists {
+			continue
+		}
+
 		userAsset, err := boiler.UserAssets(
 			boiler.UserAssetWhere.CollectionID.EQ(collection.ID),
 			boiler.UserAssetWhere.TokenID.EQ(int64(tokenID)),
@@ -54,6 +68,36 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 			continue
 		} else if err != nil {
 			return 0, 0, fmt.Errorf("get purchased item: %w", err)
+		}
+
+		// if a newer tx exists, insert the tx and continue
+		// this is for when nodes don't align and avoids assets being able to bounce back due to delayed/stale nodes
+		newerExists, err := boiler.ItemOnchainTransactions(
+			boiler.ItemOnchainTransactionWhere.CollectionID.EQ(collection.ID),
+			boiler.ItemOnchainTransactionWhere.ExternalTokenID.EQ(tokenID),
+			boiler.ItemOnchainTransactionWhere.BlockTimestamp.GT(nftStatus.BlockTimestamp), // if timestamp greater than new tx timestamp
+		).Exists(passdb.StdConn)
+		if err != nil {
+			return 0, 0, fmt.Errorf("get purchased item: %w", err)
+		}
+		if newerExists {
+			// insert older and continue
+			newItemOnChainTransaction := &boiler.ItemOnchainTransaction{
+				CollectionID:    collection.ID,
+				ExternalTokenID: tokenID,
+				TXID:            nftStatus.TxHash,
+				ContractAddr:    collection.MintContract.String,
+				FromAddr:        userAsset.OwnerID,
+				ToAddr:          nftStatus.Owner.Hex(),
+				BlockNumber:     nftStatus.BlockNumber,
+				BlockTimestamp:  nftStatus.BlockTimestamp,
+			}
+			err = newItemOnChainTransaction.Insert(passdb.StdConn, boil.Infer())
+			if err != nil {
+				passlog.L.Error().Err(err).Interface("newItemOnChainTransaction", newItemOnChainTransaction).Msg("failed to insert new on chain tx history")
+			}
+
+			continue
 		}
 
 		// on chain user may not exist in our db
@@ -125,6 +169,22 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 		}
 		if updatedBool {
 			updated++
+		}
+
+		// insert older and continue
+		newItemOnChainTransaction := &boiler.ItemOnchainTransaction{
+			CollectionID:    collection.ID,
+			ExternalTokenID: tokenID,
+			TXID:            nftStatus.TxHash,
+			ContractAddr:    collection.MintContract.String,
+			FromAddr:        userAsset.OwnerID,
+			ToAddr:          nftStatus.Owner.Hex(),
+			BlockNumber:     nftStatus.BlockNumber,
+			BlockTimestamp:  nftStatus.BlockTimestamp,
+		}
+		err = newItemOnChainTransaction.Insert(passdb.StdConn, boil.Infer())
+		if err != nil {
+			passlog.L.Error().Err(err).Interface("newItemOnChainTransaction", newItemOnChainTransaction).Msg("failed to insert new on chain tx history")
 		}
 	}
 

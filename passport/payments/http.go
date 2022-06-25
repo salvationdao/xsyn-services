@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passlog"
@@ -128,9 +129,12 @@ func OwnerRecordToOwnerStatus(records []*NFTOwnerRecord, collection *boiler.Coll
 		}
 
 		result[record.TokenID] = &NFTOwnerStatus{
-			Collection:    common.HexToAddress(collection.MintContract.String),
-			Owner:         owner,
-			OnChainStatus: onChainStatus,
+			Collection:     common.HexToAddress(collection.MintContract.String),
+			Owner:          owner,
+			OnChainStatus:  onChainStatus,
+			TxHash:         record.TxHash,
+			BlockNumber:    record.BlockNumber,
+			BlockTimestamp: time.Unix(int64(record.Time), 0),
 		}
 	}
 	return result
