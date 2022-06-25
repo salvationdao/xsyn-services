@@ -21,6 +21,7 @@ func TransferAsset(
 	// get asset
 	userAsset, err := boiler.UserAssets(
 		boiler.UserAssetWhere.Hash.EQ(assetHash),
+		boiler.UserAssetWhere.OwnerID.EQ(fromID),
 	).One(passdb.StdConn)
 	if err != nil {
 		passlog.L.Error().Err(err).
