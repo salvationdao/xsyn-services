@@ -69,16 +69,55 @@ func ProcessValues(sups string, inputValue string, inputTokenDecimals int) (deci
 }
 
 func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.UserID, ucm UserCacheMap, record *PurchaseRecord) error {
-	input, output, err := ProcessValues(record.Sups, record.ValueInt, record.ValueDecimals)
+
+	tokenValue, supsValue, err := ProcessValues(record.Sups, record.ValueInt, record.ValueDecimals)
 	if err != nil {
 		return err
 	}
 
-	msg := fmt.Sprintf("purchased %s SUPS for %s [%s]", output.Shift(-1*types.SUPSDecimals).StringFixed(4), input.Shift(-1*int32(record.ValueDecimals)).StringFixed(4), strings.ToUpper(record.Symbol))
+	isCurrentBlockAfter :=
+		db.GetIntWithDefault(db.KeyLatestETHBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, 0)
+
+	if record.Symbol == "bnb" {
+		isCurrentBlockAfter = db.GetIntWithDefault(db.KeyLatestBNBBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBNBBlock, 0)
+	}
+
+	if db.GetBoolWithDefault(db.KeyEnablePassportExchangeRate, false) && isCurrentBlockAfter {
+		// From Record
+		usdRate, err := decimal.NewFromString(record.UsdRate)
+		if err != nil {
+			return err
+		}
+		supsAmt, err := decimal.NewFromString(record.Sups)
+		if err != nil {
+			return err
+		}
+		supToUsd := tokenValue.Mul(usdRate).Div(supsAmt)
+
+		// From DB
+		priceFloor := db.GetDecimal(db.KeyPurchaseSupsFloorPrice)
+		marketPriceMultiplier := db.GetDecimal(db.KeyPurchaseSupsMarketPriceMultiplier)
+
+		rateDifference := priceFloor.Mul(marketPriceMultiplier).Div(supToUsd)
+		decimalSups, err := decimal.NewFromString(record.Sups)
+		if err != nil {
+			return err
+		}
+
+		record.Sups = decimalSups.Mul(rateDifference).String()
+
+		tokenValue, supsValue, err = ProcessValues(record.Sups, record.ValueInt, record.ValueDecimals)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	msg := fmt.Sprintf("purchased %s SUPS for %s [%s]", supsValue.Shift(-1*types.SUPSDecimals).StringFixed(4), tokenValue.Shift(-1*int32(record.ValueDecimals)).StringFixed(4), strings.ToUpper(record.Symbol))
 	trans := &types.NewTransaction{
 		To:                   toUserID,
 		From:                 fromUserID,
-		Amount:               output,
+		Amount:               supsValue,
 		TransactionReference: types.TransactionReference(record.TxHash),
 		Description:          msg,
 		Group:                types.TransactionGroupStore,
@@ -91,21 +130,22 @@ func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.Us
 	return nil
 }
 
-func BUSD() ([]*PurchaseRecord, error) {
+func BUSD(isTestnet bool) ([]*PurchaseRecord, error) {
 	currentBlock := db.GetInt(db.KeyLatestBUSDBlock)
-	records, latestBlock, err := getPurchaseRecords(BUSDPurchasePath, currentBlock, false)
+	records, latestBlock, err := getPurchaseRecords(BUSDPurchasePath, currentBlock, isTestnet)
 	if err != nil {
 		return nil, err
 	}
 	if latestBlock > currentBlock {
 		db.PutInt(db.KeyLatestBUSDBlock, latestBlock)
 	}
+
 	return records, nil
 }
 
-func USDC() ([]*PurchaseRecord, error) {
+func USDC(isTestnet bool) ([]*PurchaseRecord, error) {
 	currentBlock := db.GetInt(db.KeyLatestUSDCBlock)
-	records, latestBlock, err := getPurchaseRecords(USDCPurchasePath, currentBlock, false)
+	records, latestBlock, err := getPurchaseRecords(USDCPurchasePath, currentBlock, isTestnet)
 	if err != nil {
 		return nil, err
 	}
@@ -117,9 +157,9 @@ func USDC() ([]*PurchaseRecord, error) {
 	return records, nil
 }
 
-func ETH() ([]*PurchaseRecord, error) {
+func ETH(isTestnet bool) ([]*PurchaseRecord, error) {
 	currentBlock := db.GetInt(db.KeyLatestETHBlock)
-	records, latestBlock, err := getPurchaseRecords(ETHPurchasePath, currentBlock, false)
+	records, latestBlock, err := getPurchaseRecords(ETHPurchasePath, currentBlock, isTestnet)
 	if err != nil {
 		return nil, err
 	}
@@ -127,17 +167,26 @@ func ETH() ([]*PurchaseRecord, error) {
 	if latestBlock > currentBlock {
 		db.PutInt(db.KeyLatestETHBlock, latestBlock)
 	}
+
+	if db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, 0) == 0 {
+		db.PutInt(db.KeyEnablePassportExchangeRateAfterETHBlock, latestBlock)
+	}
+
 	return records, nil
 }
 
-func BNB() ([]*PurchaseRecord, error) {
+func BNB(isTestnet bool) ([]*PurchaseRecord, error) {
 	currentBlock := db.GetInt(db.KeyLatestBNBBlock)
-	records, latestBlock, err := getPurchaseRecords(BNBPurchasePath, currentBlock, false)
+	records, latestBlock, err := getPurchaseRecords(BNBPurchasePath, currentBlock, isTestnet)
 	if err != nil {
 		return nil, err
 	}
 	if latestBlock > currentBlock {
 		db.PutInt(db.KeyLatestBNBBlock, latestBlock)
+	}
+
+	if db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBNBBlock, 0) == 0 {
+		db.PutInt(db.KeyEnablePassportExchangeRateAfterBNBBlock, latestBlock)
 	}
 
 	return records, nil
@@ -171,13 +220,15 @@ func fetchPrice(symbol string) (decimal.Decimal, error) {
 
 	if symbol == "sups" {
 		priceFloor := db.GetDecimalWithDefault(db.KeyPurchaseSupsFloorPrice, decimal.Zero)
-		marketPriceMultiplier := db.GetDecimalWithDefault(db.KeyPurchaseSupsMarketPriceMultiplier, decimal.Zero)
+		marketPriceMultiplier := db.GetDecimalWithDefault(db.KeyPurchaseSupsMarketPriceMultiplier, decimal.NewFromInt(1))
+
 		// Increase market price
 		dec = dec.Mul(marketPriceMultiplier)
 		// Check if less than floor price
 		if dec.LessThan(priceFloor) {
 			dec = priceFloor
 		}
+
 	}
 
 	if dec.LessThanOrEqual(decimal.Zero) {
