@@ -98,7 +98,6 @@ func NewAPI(
 ) (*API, chi.Router) {
 
 	api := &API{
-		SupUSD:       db.GetDecimal(db.KeySupsToUSD),
 		BridgeParams: config.BridgeParams,
 		ClientToken:  config.AuthParams.GameserverToken,
 		// webhook setup

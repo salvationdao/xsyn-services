@@ -60,7 +60,11 @@ func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, user *type
 	}
 
 	//  sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe),
-	err = items.Purchase(sc.Log, db.GetDecimal(db.KeySupsToUSD), sc.API.userCacheMap.Transact, user, req.Payload.StoreItemID)
+	supPrice, err := fetchPrice("sups")
+	if err != nil {
+		return terror.Error(err, "Unable to retrieve sup price for purchasing item")
+	}
+	err = items.Purchase(sc.Log, supPrice, sc.API.userCacheMap.Transact, user, req.Payload.StoreItemID)
 	if err != nil {
 		return err
 	}
