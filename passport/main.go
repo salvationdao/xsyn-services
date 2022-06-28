@@ -427,6 +427,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) erro
 	}
 	log.Info().Int("records", len(records4)).Str("sym", "USDC").Msg("fetch purchases")
 
+	// Sale stuff
 	exchangeRates, err := payments.FetchExchangeRates()
 	if err != nil {
 		return fmt.Errorf("get all exchange rates: %w", err)

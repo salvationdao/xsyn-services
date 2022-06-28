@@ -170,8 +170,8 @@ func fetchPrice(symbol string) (decimal.Decimal, error) {
 	}
 
 	if symbol == "sups" {
-		priceFloor := db.GetDecimal(db.KeyPurchaseSupsFloorPrice)
-		marketPriceMultiplier := db.GetDecimal(db.KeyPurchaseSupsMarketPriceMultiplier)
+		priceFloor := db.GetDecimalWithDefault(db.KeyPurchaseSupsFloorPrice, decimal.Zero)
+		marketPriceMultiplier := db.GetDecimalWithDefault(db.KeyPurchaseSupsMarketPriceMultiplier, decimal.Zero)
 		// Increase market price
 		dec = dec.Mul(marketPriceMultiplier)
 		// Check if less than floor price
@@ -198,6 +198,8 @@ func catchPriceFetchError(symbol string, dbKey db.KVKey) (decimal.Decimal, error
 }
 
 func FetchExchangeRates() (*PriceExchangeRates, error) {
+	enableSale := db.GetBoolWithDefault(db.KeyEnableSyncSale, false)
+
 	supsPrice, err := fetchPrice("sups")
 	if err != nil {
 		supsPrice, err = catchPriceFetchError("sups", db.KeySupsToUSD)
@@ -214,12 +216,13 @@ func FetchExchangeRates() (*PriceExchangeRates, error) {
 	}
 	bnbPrice, err := fetchPrice("bnb")
 	if err != nil {
-		bnbPrice, err = catchPriceFetchError("bnb", db.KeyBNBToUSD)
 		if err != nil {
+			bnbPrice, err = catchPriceFetchError("bnb", db.KeyBNBToUSD)
 			return nil, err
 		}
 	}
-	priceExchangeRates := &PriceExchangeRates{SUPtoUSD: supsPrice, ETHtoUSD: ethPrice, BNBtoUSD: bnbPrice, EnableSale: db.GetBool(db.KeyEnableSyncSale)}
+
+	priceExchangeRates := &PriceExchangeRates{SUPtoUSD: supsPrice, ETHtoUSD: ethPrice, BNBtoUSD: bnbPrice, EnableSale: enableSale}
 
 	db.PutDecimal(db.KeySupsToUSD, priceExchangeRates.SUPtoUSD)
 	db.PutDecimal(db.KeyEthToUSD, priceExchangeRates.ETHtoUSD)
