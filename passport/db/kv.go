@@ -42,7 +42,7 @@ const KeyPurchaseSupsFloorPrice KVKey = "purchase_sups_floor_price"
 const KeyPurchaseSupsMarketPriceMultiplier KVKey = "purchase_sups_market_price_multiplier"
 const KeyEnablePassportExchangeRate KVKey = "enable_passport_exchange_rate"
 const KeyEnablePassportExchangeRateAfterETHBlock KVKey = "passport_exchange_rate_after_eth_block"
-const KeyEnablePassportExchangeRateAfterBNBBlock KVKey = "passport_exchange_rate_after_bnb_block"
+const KeyEnablePassportExchangeRateAfterBSCBlock KVKey = "passport_exchange_rate_after_bsc_block"
 
 const KeySUPSPurchaseContract KVKey = "contract_purchase_address"
 const KeySUPSWithdrawContract KVKey = "contract_withdraw_address"
