@@ -1,37 +1,42 @@
 package api
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"math/rand"
 	"net/http"
 	"os"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
+	"xsyn-services/passport/nft1155"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/payments"
+	"xsyn-services/passport/supremacy_rpcclient"
 	"xsyn-services/types"
 )
 
 type Dev struct {
 	userCacheMap *Transactor
-	R *chi.Mux
+	R            *chi.Mux
 }
 
 func DevRoutes(userCacheMap *Transactor) *Dev {
 	dev := &Dev{
-		R: chi.NewRouter(),
+		R:            chi.NewRouter(),
 		userCacheMap: userCacheMap,
 	}
 
 	dev.R.Get("/give-mechs/{public_address}", WithError(WithDev(dev.devGiveMechs)))
-
 
 	return dev
 }
@@ -54,10 +59,7 @@ func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error)) fun
 	return fn
 }
 
-
-func (d *Dev)devGiveMechs(w http.ResponseWriter, r *http.Request) (int, error) {
-	fmt.Printf("here1231")
-
+func (d *Dev) devGiveMechs(w http.ResponseWriter, r *http.Request) (int, error) {
 	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
 	user, err := payments.CreateOrGetUser(publicAddress)
 	if err != nil {
@@ -84,11 +86,11 @@ func (d *Dev)devGiveMechs(w http.ResponseWriter, r *http.Request) (int, error) {
 			break
 		}
 	}
-	
+
 	// give account some suppies
 	tx := &types.NewTransaction{
-		To: types.UserID(uuid.Must(uuid.FromString(user.ID))),
-		From:                types.XsynSaleUserID,
+		To:                   types.UserID(uuid.Must(uuid.FromString(user.ID))),
+		From:                 types.XsynSaleUserID,
 		Amount:               decimal.New(10000, 18),
 		TransactionReference: types.TransactionReference(fmt.Sprintf("DEV SEED SUPS - %v", time.Now().UnixNano())),
 		Description:          "Dev Seed Sups",
@@ -101,7 +103,61 @@ func (d *Dev)devGiveMechs(w http.ResponseWriter, r *http.Request) (int, error) {
 		passlog.L.Error().Err(err).Msg("failed to give dev sups")
 		return 0, err
 	}
-	
+
+	collections, err := boiler.Collections(
+		boiler.CollectionWhere.ContractType.EQ(null.StringFrom("EIP-1155")),
+	).All(passdb.StdConn)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to get collections")
+		return http.StatusInternalServerError, err
+	}
+
+	// give account some keycardies
+	for _, col := range collections {
+		for _, tid := range col.ExternalTokenIds {
+			asset, err := nft1155.CreateOrGet1155Asset(int(tid), user, col.Slug)
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("failed to CreateOrGet1155Asset")
+				return http.StatusInternalServerError, terror.Error(err, "Failed to create or get 1155 asset")
+			}
+			asset.Count += 5
+
+			_, err = asset.Update(passdb.StdConn, boil.Whitelist(boiler.UserAssets1155Columns.Count))
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("failed to update asset")
+				return http.StatusInternalServerError, terror.Error(err, "Failed to update assets count")
+			}
+			err = supremacy_rpcclient.KeycardsTransferToSupremacy(types.UserAsset1155FromBoiler(asset), 0, 5)
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("failed to transfer to supremacy")
+				return http.StatusInternalServerError, terror.Error(err, "Failed to update assets count on supremacy")
+			}
+			offXsynAsset, err := boiler.UserAssets1155S(
+				boiler.UserAssets1155Where.ExternalTokenID.EQ(int(tid)),
+				boiler.UserAssets1155Where.OwnerID.EQ(user.ID),
+				boiler.UserAssets1155Where.ServiceID.EQ(null.StringFrom(types.SupremacyGameUserID.String())),
+			).One(passdb.StdConn)
+			if errors.Is(err, sql.ErrNoRows) {
+				offXsynAsset = &boiler.UserAssets1155{
+					OwnerID:         asset.OwnerID,
+					CollectionID:    asset.CollectionID,
+					ExternalTokenID: asset.ExternalTokenID,
+					Label:           asset.Label,
+					Description:     asset.Description,
+					Count:           5,
+					ImageURL:        asset.ImageURL,
+					AnimationURL:    asset.AnimationURL,
+					KeycardGroup:    asset.KeycardGroup,
+					Attributes:      asset.Attributes,
+					ServiceID:       null.StringFrom(types.SupremacyGameUserID.String()),
+				}
+				if err := offXsynAsset.Insert(passdb.StdConn, boil.Infer()); err != nil {
+					passlog.L.Error().Err(err).Msg("failed insert new keycards")
+					return http.StatusInternalServerError, terror.Error(err, "Failed to update assets count on supremacy")
+				}
+			}
+		}
+	}
 
 	return http.StatusOK, nil
 }
