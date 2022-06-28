@@ -94,10 +94,11 @@ func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.Us
 
 		supToUsd := tokenValue.Shift(-1 * int32(record.ValueDecimals)).Mul(usdRate).Div(supsAmt)
 
-		// From DB
-		priceFloor := db.GetDecimal(db.KeyPurchaseSupsFloorPrice)
-		marketPriceMultiplier := db.GetDecimal(db.KeyPurchaseSupsMarketPriceMultiplier)
-		rateDifference := (supToUsd).Div(priceFloor.Mul(marketPriceMultiplier))
+		supPrice, err := fetchPrice("sups")
+		if err != nil {
+			return err
+		}
+		rateDifference := (supToUsd).Div(supPrice)
 
 		record.Sups = supsAmt.Mul(rateDifference).String()
 
