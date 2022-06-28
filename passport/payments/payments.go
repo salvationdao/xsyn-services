@@ -238,6 +238,13 @@ func fetchPrice(symbol string) (decimal.Decimal, error) {
 	if dec.LessThanOrEqual(decimal.Zero) {
 		return decimal.Zero, fmt.Errorf("0 price returned")
 	}
+
+	if db.GetBoolWithDefault(db.KeyEnablePassportExchangeRate, false) == false {
+		dec, err = decimal.NewFromString("0.12")
+		if err != nil {
+			return decimal.Zero, err
+		}
+	}
 	return dec, nil
 }
 func catchPriceFetchError(symbol string, dbKey db.KVKey) (decimal.Decimal, error) {
