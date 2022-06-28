@@ -1549,7 +1549,7 @@ func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, key stri
 	}
 
 	fmt.Println(sups.String())
-	reply(sups.String())
+	reply(sups.StringFixed(0))
 	return nil
 }
 

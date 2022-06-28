@@ -402,26 +402,26 @@ func txConnect(
 
 func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) error {
 
-	records1, err := payments.BNB()
+	records1, err := payments.BNB(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get bnb payments: %w", err)
 	}
 
 	log.Info().Int("records", len(records1)).Str("sym", "BNB").Msg("fetch purchases")
 
-	records2, err := payments.BUSD()
+	records2, err := payments.BUSD(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get busd payments: %w", err)
 	}
 
 	log.Info().Int("records", len(records2)).Str("sym", "BUSD").Msg("fetch purchases")
 
-	records3, err := payments.ETH()
+	records3, err := payments.ETH(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get eth payments: %w", err)
 	}
 	log.Info().Int("records", len(records3)).Str("sym", "ETH").Msg("fetch purchases")
-	records4, err := payments.USDC()
+	records4, err := payments.USDC(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get usdc payments: %w", err)
 	}
