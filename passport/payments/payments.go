@@ -81,7 +81,6 @@ func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.Us
 	if record.Symbol == "bnb" {
 		isCurrentBlockAfter = db.GetIntWithDefault(db.KeyLatestBNBBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBNBBlock, 0)
 	}
-
 	if db.GetBoolWithDefault(db.KeyEnablePassportExchangeRate, false) && isCurrentBlockAfter {
 		// From Record
 		usdRate, err := decimal.NewFromString(record.UsdRate)
@@ -92,19 +91,15 @@ func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.Us
 		if err != nil {
 			return err
 		}
-		supToUsd := tokenValue.Mul(usdRate).Div(supsAmt)
+
+		supToUsd := tokenValue.Shift(-1 * int32(record.ValueDecimals)).Mul(usdRate).Div(supsAmt)
 
 		// From DB
 		priceFloor := db.GetDecimal(db.KeyPurchaseSupsFloorPrice)
 		marketPriceMultiplier := db.GetDecimal(db.KeyPurchaseSupsMarketPriceMultiplier)
+		rateDifference := (supToUsd).Div(priceFloor.Mul(marketPriceMultiplier))
 
-		rateDifference := priceFloor.Mul(marketPriceMultiplier).Div(supToUsd)
-		decimalSups, err := decimal.NewFromString(record.Sups)
-		if err != nil {
-			return err
-		}
-
-		record.Sups = decimalSups.Mul(rateDifference).String()
+		record.Sups = supsAmt.Mul(rateDifference).String()
 
 		tokenValue, supsValue, err = ProcessValues(record.Sups, record.ValueInt, record.ValueDecimals)
 		if err != nil {
