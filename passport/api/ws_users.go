@@ -1547,8 +1547,6 @@ func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, key stri
 	if err != nil {
 		return terror.Error(err, "Issue getting total SUPs remaining handler, try again or contact support.")
 	}
-
-	fmt.Println(sups.String())
 	reply(sups.StringFixed(0))
 	return nil
 }
