@@ -400,7 +400,7 @@ func txConnect(
 	return conn, nil
 }
 
-func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) error {
+func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, isCurrentBlockAfter *bool) error {
 
 	records1, err := payments.BNB(isTestnet)
 	if err != nil {
@@ -429,8 +429,23 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) erro
 
 	// Sale stuff
 	// Passport exchange rate after block
-	isCurrentBlockAfterETH := false
-	isCurrentBlockAfterBSC := false
+	if !*isCurrentBlockAfter {
+		latestBNBBlock := db.GetIntWithDefault(db.KeyLatestBNBBlock, 0)
+		latestBUSDBlock := db.GetIntWithDefault(db.KeyLatestBUSDBlock, 0)
+		afterBSCBlock := db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, 0)
+
+		latestETHBlock := db.GetIntWithDefault(db.KeyLatestETHBlock, 0)
+		latestUSDCBlock := db.GetIntWithDefault(db.KeyLatestUSDCBlock, 0)
+		afterETHBlock := db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, 0)
+
+		*isCurrentBlockAfter = latestBNBBlock > afterBSCBlock &&
+			latestBUSDBlock > afterBSCBlock && latestETHBlock > afterETHBlock &&
+			latestUSDCBlock > afterETHBlock
+
+		if afterBSCBlock == 0 && afterETHBlock == 0 {
+			*isCurrentBlockAfter = false
+		}
+	}
 
 	records := []*payments.PurchaseRecord{}
 	records = append(records, records1...)
@@ -452,6 +467,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) erro
 			failed++
 			continue
 		}
+
 		if exists {
 			skipped++
 			continue
@@ -475,7 +491,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) erro
 			continue
 		}
 
-		err = payments.StoreRecord(ctx, types.XsynSaleUserID, types.UserIDFromString(user.ID), ucm, r, &isCurrentBlockAfterETH, &isCurrentBlockAfterBSC)
+		err = payments.StoreRecord(ctx, types.XsynSaleUserID, types.UserIDFromString(user.ID), ucm, r, *isCurrentBlockAfter)
 		if err != nil && strings.Contains(err.Error(), "duplicate key") {
 			skipped++
 			continue
@@ -494,8 +510,9 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) erro
 	}
 	log.Info().Int("records", len(records4)).Str("sym", "USDC").Msg("fetch exchange rates")
 
-	exchangeRates, err := payments.FetchExchangeRates(isCurrentBlockAfterETH && isCurrentBlockAfterBSC)
+	exchangeRates, err := payments.FetchExchangeRates(*isCurrentBlockAfter)
 	ws.PublishMessage("/public/exchange_rates", api.HubKeySUPSExchangeRates, exchangeRates)
+
 	log.Info().Int("skipped", skipped).Int("successful", successful).Int("failed", failed).Msg("synced payments")
 
 	return nil
@@ -640,7 +657,8 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 	}()
 	go func(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncPayments, false) {
-			err := SyncPayments(ucm, log, isTestnet)
+			isCurrentBlockAfter := false
+			err := SyncPayments(ucm, log, isTestnet, &isCurrentBlockAfter)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync payments")
 			}

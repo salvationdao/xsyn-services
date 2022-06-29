@@ -68,38 +68,13 @@ func ProcessValues(sups string, inputValue string, inputTokenDecimals int) (deci
 	return inputAmt, bigOutputAmt, nil
 }
 
-func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.UserID, ucm UserCacheMap, record *PurchaseRecord, isCurrentBlockAfterETH *bool, isCurrentBlockAfterBSC *bool) error {
+func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.UserID, ucm UserCacheMap, record *PurchaseRecord, isCurrentBlockAfter bool) error {
 
 	tokenValue, supsValue, err := ProcessValues(record.Sups, record.ValueInt, record.ValueDecimals)
 
 	if err != nil {
 		return err
 	}
-
-	if (record.Chain == 56 || record.Chain == 97) && !*isCurrentBlockAfterBSC {
-		latestBNBBlock := db.GetIntWithDefault(db.KeyLatestBNBBlock, 0)
-		latestBUSDBlock := db.GetIntWithDefault(db.KeyLatestBUSDBlock, 0)
-		afterBSCBlock := db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, 0)
-
-		if afterBSCBlock != 0 {
-			*isCurrentBlockAfterBSC = latestBNBBlock > afterBSCBlock &&
-				latestBUSDBlock > afterBSCBlock
-		}
-
-	} else if (record.Chain == 1 || record.Chain == 5) && !*isCurrentBlockAfterETH {
-		latestETHBlock := db.GetIntWithDefault(db.KeyLatestETHBlock, 0)
-		latestUSDCBlock := db.GetIntWithDefault(db.KeyLatestUSDCBlock, 0)
-		afterETHBlock := db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, 0)
-
-		if afterETHBlock != 0 {
-			*isCurrentBlockAfterETH =
-				latestETHBlock > afterETHBlock &&
-					latestUSDCBlock > afterETHBlock
-		}
-
-	}
-
-	isCurrentBlockAfter := *isCurrentBlockAfterETH && *isCurrentBlockAfterBSC
 
 	if db.GetBoolWithDefault(db.KeyEnablePassportExchangeRate, false) && isCurrentBlockAfter {
 		// From Record
@@ -152,13 +127,13 @@ func BUSD(isTestnet bool) ([]*PurchaseRecord, error) {
 	if err != nil {
 		return nil, err
 	}
-	if latestBlock > currentBlock {
-		db.PutInt(db.KeyLatestBUSDBlock, latestBlock)
-	}
-
 	// Avant data testnet BUSD doesnt work
 	if latestBlock == 0 {
 		db.PutInt(db.KeyLatestBUSDBlock, db.GetIntWithDefault(db.KeyLatestBNBBlock, 0))
+		return records, nil
+	}
+	if latestBlock > currentBlock {
+		db.PutInt(db.KeyLatestBUSDBlock, latestBlock)
 	}
 
 	return records, nil
@@ -171,16 +146,17 @@ func USDC(isTestnet bool) ([]*PurchaseRecord, error) {
 		return nil, err
 	}
 
+	// Avant data testnet USDC doesnt work
+	if latestBlock == 0 {
+		db.PutInt(db.KeyLatestUSDCBlock, db.GetIntWithDefault(db.KeyLatestETHBlock, 0))
+		return records, nil
+	}
+
 	if latestBlock > currentBlock {
 		db.PutInt(db.KeyLatestUSDCBlock, latestBlock)
 	}
-
-	// Avant data testnet USDC doesnt work
-	if latestBlock == 0 {
-		db.PutInt(db.KeyLatestBUSDBlock, db.GetIntWithDefault(db.KeyLatestETHBlock, 0))
-	}
-
 	return records, nil
+
 }
 
 func ETH(isTestnet bool) ([]*PurchaseRecord, error) {
