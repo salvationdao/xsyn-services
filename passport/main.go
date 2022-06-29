@@ -400,7 +400,7 @@ func txConnect(
 	return conn, nil
 }
 
-func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, isCurrentBlockAfter *bool) error {
+func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, isCurrentBlockAfter *bool, enablePassportExchangeRate *bool) error {
 
 	records1, err := payments.BNB(isTestnet)
 	if err != nil {
@@ -447,6 +447,10 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, isCu
 		}
 	}
 
+	if !*enablePassportExchangeRate {
+		*enablePassportExchangeRate = db.GetBoolWithDefault(db.KeyEnablePassportExchangeRate, false)
+	}
+
 	records := []*payments.PurchaseRecord{}
 	records = append(records, records1...)
 	records = append(records, records2...)
@@ -491,7 +495,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, isCu
 			continue
 		}
 
-		err = payments.StoreRecord(ctx, types.XsynSaleUserID, types.UserIDFromString(user.ID), ucm, r, *isCurrentBlockAfter)
+		err = payments.StoreRecord(ctx, types.XsynSaleUserID, types.UserIDFromString(user.ID), ucm, r, *isCurrentBlockAfter, *enablePassportExchangeRate)
 		if err != nil && strings.Contains(err.Error(), "duplicate key") {
 			skipped++
 			continue
@@ -510,7 +514,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, isCu
 	}
 	log.Info().Int("records", len(records4)).Str("sym", "USDC").Msg("fetch exchange rates")
 
-	exchangeRates, err := payments.FetchExchangeRates(*isCurrentBlockAfter)
+	exchangeRates, err := payments.FetchExchangeRates(*isCurrentBlockAfter, *enablePassportExchangeRate)
 	ws.PublishMessage("/public/exchange_rates", api.HubKeySUPSExchangeRates, exchangeRates)
 
 	log.Info().Int("skipped", skipped).Int("successful", successful).Int("failed", failed).Msg("synced payments")
@@ -658,7 +662,8 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 	go func(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncPayments, false) {
 			isCurrentBlockAfter := false
-			err := SyncPayments(ucm, log, isTestnet, &isCurrentBlockAfter)
+			enablePassportExchangeRate := false
+			err := SyncPayments(ucm, log, isTestnet, &isCurrentBlockAfter, &enablePassportExchangeRate)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync payments")
 			}

@@ -1563,14 +1563,14 @@ func (uc *UserController) ExchangeRatesHandler(ctx context.Context, key string, 
 	afterETHBlock := db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, 0)
 
 	isCurrentBlockAfter := false
-
+	enablePassportExchangeRate := db.GetBoolWithDefault(db.KeyEnablePassportExchangeRate, false)
 	if afterBSCBlock != 0 && afterETHBlock != 0 {
 		isCurrentBlockAfter = latestBNBBlock > afterBSCBlock &&
 			latestBUSDBlock > afterBSCBlock && latestETHBlock > afterETHBlock &&
 			latestUSDCBlock > afterETHBlock
 	}
 
-	exchangeRates, err := payments.FetchExchangeRates(isCurrentBlockAfter)
+	exchangeRates, err := payments.FetchExchangeRates(isCurrentBlockAfter, enablePassportExchangeRate)
 	if err != nil {
 		return terror.Error(err, "Unable to fetch exchange rates.")
 	}
