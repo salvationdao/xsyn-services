@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
-	"xsyn-services/passport/items"
 	"xsyn-services/types"
 
 	"github.com/gofrs/uuid"
@@ -53,24 +52,25 @@ type PurchaseRequest struct {
 }
 
 func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &PurchaseRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
+	// req := &PurchaseRequest{}
+	// err := json.Unmarshal(payload, req)
+	// if err != nil {
+	// 	return terror.Error(err, "Invalid request received.")
+	// }
 
-	//  sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe),
-	supPrice, err := fetchPrice("sups")
-	if err != nil {
-		return terror.Error(err, "Unable to retrieve sup price for purchasing item")
-	}
-	err = items.Purchase(sc.Log, supPrice, sc.API.userCacheMap.Transact, user, req.Payload.StoreItemID)
-	if err != nil {
-		return err
-	}
+	// //  sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe),
+	// supPrice ,err := fetchPrice("sups")
+	// if err != nil {
+	// 	return terror.Error(err, "Unable to retrieve sup price for purchasing items")
+	// }
+	// err = items.Purchase(sc.Log, supPrice, sc.API.userCacheMap.Transact, user, req.Payload.StoreItemID)
+	// if err != nil {
+	// 	return err
+	// }
 
-	reply(true)
-	return nil
+	// reply(true)
+	// return nil
+	return terror.Warn(fmt.Errorf("store closed"), "The XSYN Store is currently closed.")
 }
 
 type PurchaseLootboxRequest struct {
