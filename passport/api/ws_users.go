@@ -1554,7 +1554,11 @@ func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, key stri
 const HubKeySUPSExchangeRates = "SUPS:EXCHANGE"
 
 func (uc *UserController) ExchangeRatesHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	exchangeRates, err := payments.FetchExchangeRates()
+	isCurrentBlockAfter := db.GetIntWithDefault(db.KeyLatestBNBBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, 0) &&
+		db.GetIntWithDefault(db.KeyLatestBUSDBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, 0) && db.GetIntWithDefault(db.KeyLatestETHBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, 0) &&
+		db.GetIntWithDefault(db.KeyLatestUSDCBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, 0)
+
+	exchangeRates, err := payments.FetchExchangeRates(isCurrentBlockAfter)
 	if err != nil {
 		return terror.Error(err, "Unable to fetch exchange rates.")
 	}

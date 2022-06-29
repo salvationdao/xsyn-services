@@ -428,13 +428,9 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) erro
 	log.Info().Int("records", len(records4)).Str("sym", "USDC").Msg("fetch purchases")
 
 	// Sale stuff
-	exchangeRates, err := payments.FetchExchangeRates()
-	if err != nil {
-		return fmt.Errorf("get all exchange rates: %w", err)
-	}
-	log.Info().Int("records", len(records4)).Str("sym", "USDC").Msg("fetch exchange rates")
-
-	ws.PublishMessage("/public/exchange_rates", api.HubKeySUPSExchangeRates, exchangeRates)
+	// Passport exchange rate after block
+	isCurrentBlockAfterETH := false
+	isCurrentBlockAfterBSC := false
 
 	records := []*payments.PurchaseRecord{}
 	records = append(records, records1...)
@@ -446,7 +442,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) erro
 	successful := 0
 	skipped := 0
 	failed := 0
-	isCurrentBlockAfter := false
+
 	for _, r := range records {
 		ctx := context.Background()
 
@@ -479,7 +475,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) erro
 			continue
 		}
 
-		err = payments.StoreRecord(ctx, types.XsynSaleUserID, types.UserIDFromString(user.ID), ucm, r)
+		err = payments.StoreRecord(ctx, types.XsynSaleUserID, types.UserIDFromString(user.ID), ucm, r, &isCurrentBlockAfterETH, &isCurrentBlockAfterBSC)
 		if err != nil && strings.Contains(err.Error(), "duplicate key") {
 			skipped++
 			continue
@@ -493,7 +489,13 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) erro
 		successful++
 
 	}
+	if err != nil {
+		return fmt.Errorf("get all exchange rates: %w", err)
+	}
+	log.Info().Int("records", len(records4)).Str("sym", "USDC").Msg("fetch exchange rates")
 
+	exchangeRates, err := payments.FetchExchangeRates(isCurrentBlockAfterETH && isCurrentBlockAfterBSC)
+	ws.PublishMessage("/public/exchange_rates", api.HubKeySUPSExchangeRates, exchangeRates)
 	log.Info().Int("skipped", skipped).Int("successful", successful).Int("failed", failed).Msg("synced payments")
 
 	return nil
