@@ -430,21 +430,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, isCu
 	// Sale stuff
 	// Passport exchange rate after block
 	if !*isCurrentBlockAfter {
-		latestBNBBlock := db.GetIntWithDefault(db.KeyLatestBNBBlock, 0)
-		latestBUSDBlock := db.GetIntWithDefault(db.KeyLatestBUSDBlock, 0)
-		afterBSCBlock := db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, 0)
-
-		latestETHBlock := db.GetIntWithDefault(db.KeyLatestETHBlock, 0)
-		latestUSDCBlock := db.GetIntWithDefault(db.KeyLatestUSDCBlock, 0)
-		afterETHBlock := db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, 0)
-
-		*isCurrentBlockAfter = latestBNBBlock > afterBSCBlock &&
-			latestBUSDBlock > afterBSCBlock && latestETHBlock > afterETHBlock &&
-			latestUSDCBlock > afterETHBlock
-
-		if afterBSCBlock == 0 && afterETHBlock == 0 {
-			*isCurrentBlockAfter = false
-		}
+		*isCurrentBlockAfter = payments.CheckIsCurrentBlockAfter()
 	}
 
 	if !*enablePassportExchangeRate {
@@ -995,7 +981,10 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 			l.Debug().Bool("enable_withdraw_rollback", enableWithdrawRollback).Msg("withdraw rollback is enabled")
 		}
 		avantTestnet := ctxCLI.Bool("avant_testnet")
-		var isCurrentBlockAfter, enablePassportExchangeRate bool
+
+		isCurrentBlockAfter := payments.CheckIsCurrentBlockAfter()
+		enablePassportExchangeRate := db.GetBoolWithDefault(db.KeyEnablePassportExchangeRate, false)
+
 		err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback, &isCurrentBlockAfter, &enablePassportExchangeRate)
 
 		if err != nil {

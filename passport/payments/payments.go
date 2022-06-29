@@ -121,6 +121,24 @@ func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.Us
 	return nil
 }
 
+func CheckIsCurrentBlockAfter() bool {
+	latestBNBBlock := db.GetIntWithDefault(db.KeyLatestBNBBlock, 0)
+	latestBUSDBlock := db.GetIntWithDefault(db.KeyLatestBUSDBlock, 0)
+	afterBSCBlock := db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, 0)
+
+	latestETHBlock := db.GetIntWithDefault(db.KeyLatestETHBlock, 0)
+	latestUSDCBlock := db.GetIntWithDefault(db.KeyLatestUSDCBlock, 0)
+	afterETHBlock := db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, 0)
+
+	if afterBSCBlock == 0 && afterETHBlock == 0 {
+		return false
+	}
+
+	return latestBNBBlock > afterBSCBlock &&
+		latestBUSDBlock > afterBSCBlock && latestETHBlock > afterETHBlock &&
+		latestUSDCBlock > afterETHBlock
+}
+
 func BUSD(isTestnet bool) ([]*PurchaseRecord, error) {
 	currentBlock := db.GetInt(db.KeyLatestBUSDBlock)
 	records, latestBlock, err := getPurchaseRecords(BUSDPurchasePath, currentBlock, isTestnet)
