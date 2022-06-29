@@ -446,6 +446,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) erro
 	successful := 0
 	skipped := 0
 	failed := 0
+	isCurrentBlockAfter := false
 	for _, r := range records {
 		ctx := context.Background()
 

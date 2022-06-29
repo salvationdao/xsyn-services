@@ -68,21 +68,30 @@ func ProcessValues(sups string, inputValue string, inputTokenDecimals int) (deci
 	return inputAmt, bigOutputAmt, nil
 }
 
-func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.UserID, ucm UserCacheMap, record *PurchaseRecord) error {
+func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.UserID, ucm UserCacheMap, record *PurchaseRecord, isCurrentBlockAfterETH *bool, isCurrentBlockAfterBSC *bool) error {
 
 	tokenValue, supsValue, err := ProcessValues(record.Sups, record.ValueInt, record.ValueDecimals)
+
 	if err != nil {
 		return err
 	}
-
-	isCurrentBlockAfter :=
-		db.GetIntWithDefault(db.KeyLatestETHBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, 0) &&
-			db.GetIntWithDefault(db.KeyLatestUSDCBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, 0)
+	isCurrentBlockAfter := false
 
 	if record.Chain == 56 || record.Chain == 97 {
-		isCurrentBlockAfter = db.GetIntWithDefault(db.KeyLatestBNBBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, 0) &&
-			db.GetIntWithDefault(db.KeyLatestBUSDBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, 0)
+		if !*isCurrentBlockAfterBSC {
+			*isCurrentBlockAfterBSC = db.GetIntWithDefault(db.KeyLatestBNBBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, 0) &&
+				db.GetIntWithDefault(db.KeyLatestBUSDBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, 0)
+		}
+		isCurrentBlockAfter = *isCurrentBlockAfterBSC
+	} else if record.Chain == 1 || record.Chain == 5 {
+		if !*isCurrentBlockAfterETH {
+			*isCurrentBlockAfterETH =
+				db.GetIntWithDefault(db.KeyLatestETHBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, 0) &&
+					db.GetIntWithDefault(db.KeyLatestUSDCBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, 0)
+		}
+		isCurrentBlockAfter = *isCurrentBlockAfterETH
 	}
+
 	if db.GetBoolWithDefault(db.KeyEnablePassportExchangeRate, false) && isCurrentBlockAfter {
 		// From Record
 		usdRate, err := decimal.NewFromString(record.UsdRate)
@@ -223,8 +232,17 @@ func fetchPrice(symbol string) (decimal.Decimal, error) {
 	}
 
 	if symbol == "sups" {
-		priceFloor := db.GetDecimalWithDefault(db.KeyPurchaseSupsFloorPrice, decimal.Zero)
-		marketPriceMultiplier := db.GetDecimalWithDefault(db.KeyPurchaseSupsMarketPriceMultiplier, decimal.NewFromInt(1))
+		defaultFloorPrice, err := decimal.NewFromString("0.2")
+		if err != nil {
+			return decimal.Zero, err
+		}
+		defaultMarketMultiplier, err := decimal.NewFromString("1.1")
+		if err != nil {
+			return decimal.Zero, err
+		}
+
+		priceFloor := db.GetDecimalWithDefault(db.KeyPurchaseSupsFloorPrice, defaultFloorPrice)
+		marketPriceMultiplier := db.GetDecimalWithDefault(db.KeyPurchaseSupsMarketPriceMultiplier, defaultMarketMultiplier)
 
 		// Increase market price
 		dec = dec.Mul(marketPriceMultiplier)
@@ -239,7 +257,7 @@ func fetchPrice(symbol string) (decimal.Decimal, error) {
 		return decimal.Zero, fmt.Errorf("0 price returned")
 	}
 
-	if db.GetBoolWithDefault(db.KeyEnablePassportExchangeRate, false) == false {
+	if !db.GetBoolWithDefault(db.KeyEnablePassportExchangeRate, false) {
 		dec, err = decimal.NewFromString("0.12")
 		if err != nil {
 			return decimal.Zero, err
@@ -250,6 +268,13 @@ func fetchPrice(symbol string) (decimal.Decimal, error) {
 func catchPriceFetchError(symbol string, dbKey db.KVKey) (decimal.Decimal, error) {
 	passlog.L.Warn().Msg(fmt.Sprintf("could not fetch %s price", symbol))
 	dec, err := decimal.NewFromString(db.GetStr(dbKey))
+
+	if !db.GetBoolWithDefault(db.KeyEnablePassportExchangeRate, false) {
+		dec, err = decimal.NewFromString("0.12")
+		if err != nil {
+			return decimal.Zero, err
+		}
+	}
 	if err != nil {
 		return decimal.Zero, err
 	}
