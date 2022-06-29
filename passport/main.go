@@ -634,7 +634,7 @@ func Sync1155Withdraw(collectionSlug string, isTestnet, enable1155Rollback bool)
 	return nil
 }
 
-func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool) error {
+func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool, isCurrentBlockAfter *bool, enablePassportExchangeRate *bool) error {
 	go func() {
 		l := passlog.L.With().Str("svc", "avant_ping").Logger()
 		failureCount := db.GetIntWithDefault(db.KeyAvantFailureCount, 0)
@@ -661,9 +661,7 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 	}()
 	go func(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncPayments, false) {
-			isCurrentBlockAfter := false
-			enablePassportExchangeRate := false
-			err := SyncPayments(ucm, log, isTestnet, &isCurrentBlockAfter, &enablePassportExchangeRate)
+			err := SyncPayments(ucm, log, isTestnet, isCurrentBlockAfter, enablePassportExchangeRate)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync payments")
 			}
@@ -997,7 +995,9 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 			l.Debug().Bool("enable_withdraw_rollback", enableWithdrawRollback).Msg("withdraw rollback is enabled")
 		}
 		avantTestnet := ctxCLI.Bool("avant_testnet")
-		err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback)
+		var isCurrentBlockAfter, enablePassportExchangeRate bool
+		err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback, &isCurrentBlockAfter, &enablePassportExchangeRate)
+
 		if err != nil {
 			log.Error().Err(err).Msg("sync")
 		}
@@ -1011,7 +1011,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 				} else {
 					l.Debug().Bool("enable_withdraw_rollback", enableWithdrawRollback).Msg("withdraw rollback is enabled")
 				}
-				err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback)
+				err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback, &isCurrentBlockAfter, &enablePassportExchangeRate)
 				if err != nil {
 					log.Error().Err(err).Msg("sync")
 				}
