@@ -1554,9 +1554,21 @@ func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, key stri
 const HubKeySUPSExchangeRates = "SUPS:EXCHANGE"
 
 func (uc *UserController) ExchangeRatesHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	isCurrentBlockAfter := db.GetIntWithDefault(db.KeyLatestBNBBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, 0) &&
-		db.GetIntWithDefault(db.KeyLatestBUSDBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, 0) && db.GetIntWithDefault(db.KeyLatestETHBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, 0) &&
-		db.GetIntWithDefault(db.KeyLatestUSDCBlock, 0) > db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, 0)
+	latestBNBBlock := db.GetIntWithDefault(db.KeyLatestBNBBlock, 0)
+	latestBUSDBlock := db.GetIntWithDefault(db.KeyLatestBUSDBlock, 0)
+	afterBSCBlock := db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, 0)
+
+	latestETHBlock := db.GetIntWithDefault(db.KeyLatestETHBlock, 0)
+	latestUSDCBlock := db.GetIntWithDefault(db.KeyLatestUSDCBlock, 0)
+	afterETHBlock := db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, 0)
+
+	isCurrentBlockAfter := false
+
+	if afterBSCBlock != 0 && afterETHBlock != 0 {
+		isCurrentBlockAfter = latestBNBBlock > afterBSCBlock &&
+			latestBUSDBlock > afterBSCBlock && latestETHBlock > afterETHBlock &&
+			latestUSDCBlock > afterETHBlock
+	}
 
 	exchangeRates, err := payments.FetchExchangeRates(isCurrentBlockAfter)
 	if err != nil {
