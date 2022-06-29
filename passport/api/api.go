@@ -146,9 +146,6 @@ func NewAPI(
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(passlog.ChiLogger(zerolog.InfoLevel))
-	if os.Getenv("PASSPORT_ENVIRONMENT") != "development" {
-		r.Use(DatadogTracer.Middleware())
-	}
 
 	var err error
 	roadmapRoutes, err := RoadmapRoutes()
@@ -192,6 +189,10 @@ func NewAPI(
 	r.Handle("/metrics", promhttp.Handler())
 	r.Route("/api", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
+			if environment != "development" {
+				r.Use(DatadogTracer.Middleware())
+			}
+
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
 			r.Use(sentryHandler.Handle)
 			r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router")))
