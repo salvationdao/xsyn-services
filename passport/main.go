@@ -447,6 +447,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, pxr 
 		passportExchangeRatesEnabled = true
 
 	}
+	log.Info().Bool("Passport Exchange Rates Enabled:", passportExchangeRatesEnabled).Msg("KV has been enabled and current block is after")
 
 	records := []*payments.PurchaseRecord{}
 	records = append(records, records1...)
