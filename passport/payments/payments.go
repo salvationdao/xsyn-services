@@ -124,11 +124,17 @@ func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.Us
 func CheckIsCurrentBlockAfter() bool {
 	latestBNBBlock := db.GetIntWithDefault(db.KeyLatestBNBBlock, 0)
 	latestBUSDBlock := db.GetIntWithDefault(db.KeyLatestBUSDBlock, 0)
-	afterBSCBlock := db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, 0)
+	afterBSCBlock := db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, latestBNBBlock)
+	if latestBUSDBlock > latestBNBBlock {
+		afterBSCBlock = db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, latestBUSDBlock)
+	}
 
 	latestETHBlock := db.GetIntWithDefault(db.KeyLatestETHBlock, 0)
 	latestUSDCBlock := db.GetIntWithDefault(db.KeyLatestUSDCBlock, 0)
-	afterETHBlock := db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, 0)
+	afterETHBlock := db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, latestETHBlock)
+	if latestUSDCBlock > latestETHBlock {
+		afterETHBlock = db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, latestUSDCBlock)
+	}
 
 	if afterBSCBlock == 0 && afterETHBlock == 0 {
 		return false

@@ -407,25 +407,26 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, pxr 
 		return fmt.Errorf("get bnb payments: %w", err)
 	}
 
-	log.Info().Int("records", len(records1)).Str("sym", "BNB").Msg("fetch purchases")
-
 	records2, err := payments.BUSD(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get busd payments: %w", err)
 	}
 
-	log.Info().Int("records", len(records2)).Str("sym", "BUSD").Msg("fetch purchases")
-
 	records3, err := payments.ETH(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get eth payments: %w", err)
 	}
-	log.Info().Int("records", len(records3)).Str("sym", "ETH").Msg("fetch purchases")
 	records4, err := payments.USDC(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get usdc payments: %w", err)
 	}
-	log.Info().Int("records", len(records4)).Str("sym", "USDC").Msg("fetch purchases")
+
+	log.Info().
+		Int("BNB records", len(records1)).
+		Int("BUSD records", len(records2)).
+		Int("ETH records", len(records3)).
+		Int("USDC records", len(records4)).
+		Msg("fetch purchases")
 
 	// Sale stuff
 	// Passport exchange rate after block
@@ -447,7 +448,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, pxr 
 		passportExchangeRatesEnabled = true
 
 	}
-	log.Info().Bool("Passport Exchange Rates Enabled:", passportExchangeRatesEnabled).Msg("KV has been enabled and current block is after")
+	log.Debug().Bool("Passport Exchange Rates Enabled:", passportExchangeRatesEnabled).Msg("KV has been enabled and current block is after")
 
 	records := []*payments.PurchaseRecord{}
 	records = append(records, records1...)
@@ -455,7 +456,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, pxr 
 	records = append(records, records3...)
 	records = append(records, records4...)
 
-	log.Info().Int("records", len(records1)).Msg("Syncing payments...")
+	log.Info().Int("records", len(records)).Msg("Syncing payments...")
 	successful := 0
 	skipped := 0
 	failed := 0
@@ -510,7 +511,6 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, pxr 
 	if err != nil {
 		return fmt.Errorf("get all exchange rates: %w", err)
 	}
-	log.Info().Int("records", len(records4)).Str("sym", "USDC").Msg("fetch exchange rates")
 
 	exchangeRates, err := payments.FetchExchangeRates(passportExchangeRatesEnabled)
 	ws.PublishMessage("/public/exchange_rates", api.HubKeySUPSExchangeRates, exchangeRates)
