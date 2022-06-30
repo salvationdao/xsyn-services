@@ -68,17 +68,47 @@ func ProcessValues(sups string, inputValue string, inputTokenDecimals int) (deci
 	return inputAmt, bigOutputAmt, nil
 }
 
-func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.UserID, ucm UserCacheMap, record *PurchaseRecord) error {
-	input, output, err := ProcessValues(record.Sups, record.ValueInt, record.ValueDecimals)
+func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.UserID, ucm UserCacheMap, record *PurchaseRecord, passportExchangeRatesEnabled bool) error {
+
+	tokenValue, supsValue, err := ProcessValues(record.Sups, record.ValueInt, record.ValueDecimals)
+
 	if err != nil {
 		return err
 	}
 
-	msg := fmt.Sprintf("purchased %s SUPS for %s [%s]", output.Shift(-1*types.SUPSDecimals).StringFixed(4), input.Shift(-1*int32(record.ValueDecimals)).StringFixed(4), strings.ToUpper(record.Symbol))
+	if passportExchangeRatesEnabled {
+		// From Record
+		usdRate, err := decimal.NewFromString(record.UsdRate)
+		if err != nil {
+			return err
+		}
+		supsAmt, err := decimal.NewFromString(record.Sups)
+		if err != nil {
+			return err
+		}
+
+		supToUsd := tokenValue.Shift(-1 * int32(record.ValueDecimals)).Mul(usdRate).Div(supsAmt)
+
+		supPrice, err := fetchPrice("sups", passportExchangeRatesEnabled)
+		if err != nil {
+			return err
+		}
+		rateDifference := (supToUsd).Div(supPrice)
+
+		record.Sups = supsAmt.Mul(rateDifference).String()
+
+		tokenValue, supsValue, err = ProcessValues(record.Sups, record.ValueInt, record.ValueDecimals)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	msg := fmt.Sprintf("purchased %s SUPS for %s [%s]", supsValue.Shift(-1*types.SUPSDecimals).StringFixed(4), tokenValue.Shift(-1*int32(record.ValueDecimals)).StringFixed(4), strings.ToUpper(record.Symbol))
 	trans := &types.NewTransaction{
 		To:                   toUserID,
 		From:                 fromUserID,
-		Amount:               output,
+		Amount:               supsValue,
 		TransactionReference: types.TransactionReference(record.TxHash),
 		Description:          msg,
 		Group:                types.TransactionGroupStore,
@@ -91,35 +121,71 @@ func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.Us
 	return nil
 }
 
-func BUSD() ([]*PurchaseRecord, error) {
+func CheckIsCurrentBlockAfter() bool {
+	latestBNBBlock := db.GetIntWithDefault(db.KeyLatestBNBBlock, 0)
+	latestBUSDBlock := db.GetIntWithDefault(db.KeyLatestBUSDBlock, 0)
+	afterBSCBlock := db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, latestBNBBlock)
+	if latestBUSDBlock > latestBNBBlock {
+		afterBSCBlock = db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterBSCBlock, latestBUSDBlock)
+	}
+
+	latestETHBlock := db.GetIntWithDefault(db.KeyLatestETHBlock, 0)
+	latestUSDCBlock := db.GetIntWithDefault(db.KeyLatestUSDCBlock, 0)
+	afterETHBlock := db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, latestETHBlock)
+	if latestUSDCBlock > latestETHBlock {
+		afterETHBlock = db.GetIntWithDefault(db.KeyEnablePassportExchangeRateAfterETHBlock, latestUSDCBlock)
+	}
+
+	if afterBSCBlock == 0 && afterETHBlock == 0 {
+		return false
+	}
+
+	return latestBNBBlock > afterBSCBlock &&
+		latestBUSDBlock > afterBSCBlock && latestETHBlock > afterETHBlock &&
+		latestUSDCBlock > afterETHBlock
+}
+
+func BUSD(isTestnet bool) ([]*PurchaseRecord, error) {
 	currentBlock := db.GetInt(db.KeyLatestBUSDBlock)
-	records, latestBlock, err := getPurchaseRecords(BUSDPurchasePath, currentBlock, false)
+	records, latestBlock, err := getPurchaseRecords(BUSDPurchasePath, currentBlock, isTestnet)
 	if err != nil {
 		return nil, err
+	}
+	// Avant data testnet BUSD doesnt work
+	if latestBlock == 0 {
+		db.PutInt(db.KeyLatestBUSDBlock, db.GetIntWithDefault(db.KeyLatestBNBBlock, 0))
+		return records, nil
 	}
 	if latestBlock > currentBlock {
 		db.PutInt(db.KeyLatestBUSDBlock, latestBlock)
 	}
+
 	return records, nil
 }
 
-func USDC() ([]*PurchaseRecord, error) {
+func USDC(isTestnet bool) ([]*PurchaseRecord, error) {
 	currentBlock := db.GetInt(db.KeyLatestUSDCBlock)
-	records, latestBlock, err := getPurchaseRecords(USDCPurchasePath, currentBlock, false)
+	records, latestBlock, err := getPurchaseRecords(USDCPurchasePath, currentBlock, isTestnet)
 	if err != nil {
 		return nil, err
+	}
+
+	// Avant data testnet USDC doesnt work
+	if latestBlock == 0 {
+		db.PutInt(db.KeyLatestUSDCBlock, db.GetIntWithDefault(db.KeyLatestETHBlock, 0))
+		return records, nil
 	}
 
 	if latestBlock > currentBlock {
 		db.PutInt(db.KeyLatestUSDCBlock, latestBlock)
 	}
-
 	return records, nil
+
 }
 
-func ETH() ([]*PurchaseRecord, error) {
+func ETH(isTestnet bool) ([]*PurchaseRecord, error) {
 	currentBlock := db.GetInt(db.KeyLatestETHBlock)
-	records, latestBlock, err := getPurchaseRecords(ETHPurchasePath, currentBlock, false)
+	records, latestBlock, err := getPurchaseRecords(ETHPurchasePath, currentBlock, isTestnet)
 	if err != nil {
 		return nil, err
 	}
@@ -127,12 +193,13 @@ func ETH() ([]*PurchaseRecord, error) {
 	if latestBlock > currentBlock {
 		db.PutInt(db.KeyLatestETHBlock, latestBlock)
 	}
+
 	return records, nil
 }
 
-func BNB() ([]*PurchaseRecord, error) {
+func BNB(isTestnet bool) ([]*PurchaseRecord, error) {
 	currentBlock := db.GetInt(db.KeyLatestBNBBlock)
-	records, latestBlock, err := getPurchaseRecords(BNBPurchasePath, currentBlock, false)
+	records, latestBlock, err := getPurchaseRecords(BNBPurchasePath, currentBlock, isTestnet)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +209,7 @@ func BNB() ([]*PurchaseRecord, error) {
 
 	return records, nil
 }
-func fetchPrice(symbol string) (decimal.Decimal, error) {
+func fetchPrice(symbol string, passportExchangeRateEnabled bool) (decimal.Decimal, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf(`%s/api/%s_price`, baseURL, symbol), nil)
 
 	if err != nil {
@@ -170,24 +237,48 @@ func fetchPrice(symbol string) (decimal.Decimal, error) {
 	}
 
 	if symbol == "sups" {
-		priceFloor := db.GetDecimal(db.KeyPurchaseSupsFloorPrice)
-		marketPriceMultiplier := db.GetDecimal(db.KeyPurchaseSupsMarketPriceMultiplier)
+		defaultFloorPrice, err := decimal.NewFromString("0.02")
+		if err != nil {
+			return decimal.Zero, err
+		}
+		defaultMarketMultiplier, err := decimal.NewFromString("1.1")
+		if err != nil {
+			return decimal.Zero, err
+		}
+
+		priceFloor := db.GetDecimalWithDefault(db.KeyPurchaseSupsFloorPrice, defaultFloorPrice)
+		marketPriceMultiplier := db.GetDecimalWithDefault(db.KeyPurchaseSupsMarketPriceMultiplier, defaultMarketMultiplier)
+
 		// Increase market price
 		dec = dec.Mul(marketPriceMultiplier)
 		// Check if less than floor price
 		if dec.LessThan(priceFloor) {
 			dec = priceFloor
 		}
-	}
 
-	if dec.LessThanOrEqual(decimal.Zero) {
-		return decimal.Zero, fmt.Errorf("0 price returned")
+		if dec.LessThanOrEqual(decimal.Zero) {
+			return decimal.Zero, fmt.Errorf("0 price returned")
+		}
+
+		if !passportExchangeRateEnabled {
+			dec, err = decimal.NewFromString("0.12")
+			if err != nil {
+				return decimal.Zero, err
+			}
+		}
 	}
 	return dec, nil
 }
-func catchPriceFetchError(symbol string, dbKey db.KVKey) (decimal.Decimal, error) {
+func catchPriceFetchError(symbol string, dbKey db.KVKey, passportExchangeRatesEnabled bool) (decimal.Decimal, error) {
 	passlog.L.Warn().Msg(fmt.Sprintf("could not fetch %s price", symbol))
 	dec, err := decimal.NewFromString(db.GetStr(dbKey))
+
+	if !passportExchangeRatesEnabled {
+		dec, err = decimal.NewFromString("0.12")
+		if err != nil {
+			return decimal.Zero, err
+		}
+	}
 	if err != nil {
 		return decimal.Zero, err
 	}
@@ -197,29 +288,32 @@ func catchPriceFetchError(symbol string, dbKey db.KVKey) (decimal.Decimal, error
 	return dec, nil
 }
 
-func FetchExchangeRates() (*PriceExchangeRates, error) {
-	supsPrice, err := fetchPrice("sups")
+func FetchExchangeRates(passportExchangeRatesEnabled bool) (*PriceExchangeRates, error) {
+	enableSale := db.GetBoolWithDefault(db.KeyEnableSyncSale, true)
+
+	supsPrice, err := fetchPrice("sups", passportExchangeRatesEnabled)
 	if err != nil {
-		supsPrice, err = catchPriceFetchError("sups", db.KeySupsToUSD)
+		supsPrice, err = catchPriceFetchError("sups", db.KeySupsToUSD, passportExchangeRatesEnabled)
 		if err != nil {
 			return nil, err
 		}
 	}
-	ethPrice, err := fetchPrice("eth")
+	ethPrice, err := fetchPrice("eth", passportExchangeRatesEnabled)
 	if err != nil {
-		ethPrice, err = catchPriceFetchError("eth", db.KeyEthToUSD)
+		ethPrice, err = catchPriceFetchError("eth", db.KeyEthToUSD, passportExchangeRatesEnabled)
 		if err != nil {
 			return nil, err
 		}
 	}
-	bnbPrice, err := fetchPrice("bnb")
+	bnbPrice, err := fetchPrice("bnb", passportExchangeRatesEnabled)
 	if err != nil {
-		bnbPrice, err = catchPriceFetchError("bnb", db.KeyBNBToUSD)
 		if err != nil {
+			bnbPrice, err = catchPriceFetchError("bnb", db.KeyBNBToUSD, passportExchangeRatesEnabled)
 			return nil, err
 		}
 	}
-	priceExchangeRates := &PriceExchangeRates{SUPtoUSD: supsPrice, ETHtoUSD: ethPrice, BNBtoUSD: bnbPrice, EnableSale: db.GetBool(db.KeyEnableSyncSale)}
+
+	priceExchangeRates := &PriceExchangeRates{SUPtoUSD: supsPrice, ETHtoUSD: ethPrice, BNBtoUSD: bnbPrice, EnableSale: enableSale}
 
 	db.PutDecimal(db.KeySupsToUSD, priceExchangeRates.SUPtoUSD)
 	db.PutDecimal(db.KeyEthToUSD, priceExchangeRates.ETHtoUSD)

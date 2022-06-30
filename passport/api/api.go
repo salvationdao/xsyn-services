@@ -8,10 +8,13 @@ import (
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/email"
 	"xsyn-services/passport/passlog"
+	"xsyn-services/passport/payments"
 	"xsyn-services/types"
 
 	"github.com/meehow/securebytes"
 	"github.com/ninja-software/log_helpers"
+	"github.com/ninja-software/terror/v2"
+	"go.uber.org/atomic"
 
 	"github.com/shopspring/decimal"
 
@@ -95,10 +98,11 @@ func NewAPI(
 	jwtKey []byte,
 	environment string,
 	ignoreRateLimitIPs []string,
+	pxr *PassportExchangeRate,
+
 ) (*API, chi.Router) {
 
 	api := &API{
-		SupUSD:       decimal.New(12, -2),
 		BridgeParams: config.BridgeParams,
 		ClientToken:  config.AuthParams.GameserverToken,
 		// webhook setup
@@ -242,7 +246,7 @@ func NewAPI(
 		r.Route("/ws", func(r chi.Router) {
 			r.Use(ws.TrimPrefix("/api/ws"))
 			r.Mount("/public", ws.NewServer(func(s *ws.Server) {
-				s.WS("/exchange_rates", HubKeySUPSExchangeRates, uc.ExchangeRatesHandler)
+				s.WS("/exchange_rates", HubKeySUPSExchangeRates, WithPassportExchangeRate(pxr, ExchangeRatesHandler))
 				s.WS("/sups_remaining", HubKeySUPSRemainingSubscribe, uc.TotalSupRemainingHandler)
 			}))
 			r.Mount("/store", ws.NewServer(func(s *ws.Server) {
@@ -300,4 +304,42 @@ func (api *API) RecordUserActivity(
 	if err != nil {
 		api.Log.Err(err).Msg("issue saving user activity")
 	}
+}
+
+type PassportExchangeRate struct {
+	isEnabled           atomic.Bool
+	isCurrentBlockAfter atomic.Bool
+}
+
+func (pxr *PassportExchangeRate) GetIsEnable() bool {
+	return pxr.isEnabled.Load()
+}
+
+func (pxr *PassportExchangeRate) GetIsCurrentBlockAfter() bool {
+	return pxr.isCurrentBlockAfter.Load()
+}
+
+func (pxr *PassportExchangeRate) SetIsEnabledTrue() {
+	pxr.isEnabled.Store(true)
+}
+
+func (pxr *PassportExchangeRate) SetIsCurrentBlockAfterTrue() {
+	pxr.isCurrentBlockAfter.Store(true)
+}
+
+func WithPassportExchangeRate(pxr *PassportExchangeRate, fn func(ctx context.Context, pxr *PassportExchangeRate, key string, payload []byte, reply ws.ReplyFunc) error) ws.CommandFunc {
+	return func(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+		return fn(ctx, pxr, key, payload, reply)
+	}
+}
+
+const HubKeySUPSExchangeRates = "SUPS:EXCHANGE"
+
+func ExchangeRatesHandler(ctx context.Context, pxr *PassportExchangeRate, key string, payload []byte, reply ws.ReplyFunc) error {
+	exchangeRates, err := payments.FetchExchangeRates(pxr.GetIsEnable() && pxr.GetIsCurrentBlockAfter())
+	if err != nil {
+		return terror.Error(err, "Unable to fetch exchange rates.")
+	}
+	reply(exchangeRates)
+	return nil
 }
