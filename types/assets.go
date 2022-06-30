@@ -158,7 +158,6 @@ func UserAsset1155CountFromBoiler(us *boiler.UserAssets1155) *[]User1155Asset {
 
 func UserAsset1155FromBoiler(us *boiler.UserAssets1155) *User1155Asset {
 	userAsset := User1155Asset{
-		CollectionSlug:  us.R.Collection.Slug,
 		ID:              us.ID,
 		OwnerID:         us.OwnerID,
 		CollectionID:    us.CollectionID,
@@ -171,8 +170,11 @@ func UserAsset1155FromBoiler(us *boiler.UserAssets1155) *User1155Asset {
 		Attributes:      us.Attributes,
 		ServiceID:       us.ServiceID,
 		CreatedAt:       us.CreatedAt,
-		MintContract:    us.R.Collection.MintContract,
 		Count:           us.Count,
+	}
+	if us.R != nil && us.R.Collection != nil {
+		userAsset.CollectionSlug = us.R.Collection.Slug
+		userAsset.MintContract = us.R.Collection.MintContract
 	}
 	return &userAsset
 }

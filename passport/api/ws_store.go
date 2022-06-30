@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gofrs/uuid"
-	"github.com/shopspring/decimal"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
-	"xsyn-services/passport/items"
 	"xsyn-services/types"
+
+	"github.com/gofrs/uuid"
+	"github.com/shopspring/decimal"
 
 	"github.com/ninja-syndicate/ws"
 
@@ -18,7 +18,6 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 )
-
 
 // StoreControllerWS holds handlers for serverClienting serverClient status
 type StoreControllerWS struct {
@@ -53,20 +52,25 @@ type PurchaseRequest struct {
 }
 
 func (sc *StoreControllerWS) PurchaseItemHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &PurchaseRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
+	// req := &PurchaseRequest{}
+	// err := json.Unmarshal(payload, req)
+	// if err != nil {
+	// 	return terror.Error(err, "Invalid request received.")
+	// }
 
-	//  sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe),
-	err = items.Purchase(sc.Log, decimal.New(12, -2), sc.API.userCacheMap.Transact, user, req.Payload.StoreItemID)
-	if err != nil {
-		return err
-	}
+	// //  sc.API.MessageBus, messagebus.BusKey(HubKeyStoreItemSubscribe),
+	// supPrice ,err := fetchPrice("sups")
+	// if err != nil {
+	// 	return terror.Error(err, "Unable to retrieve sup price for purchasing items")
+	// }
+	// err = items.Purchase(sc.Log, supPrice, sc.API.userCacheMap.Transact, user, req.Payload.StoreItemID)
+	// if err != nil {
+	// 	return err
+	// }
 
-	reply(true)
-	return nil
+	// reply(true)
+	// return nil
+	return terror.Warn(fmt.Errorf("store closed"), "The XSYN Store is currently closed.")
 }
 
 type PurchaseLootboxRequest struct {
@@ -122,8 +126,6 @@ func (sc *StoreControllerWS) LootboxAmountHandler(ctx context.Context, user *typ
 		return terror.Error(err, "Invalid request received.")
 	}
 
-
-
 	reply(-1)
 	return nil
 }
@@ -132,16 +134,16 @@ const HubKeyStoreList = "STORE:LIST"
 
 type StoreListRequest struct {
 	Payload struct {
-		UserID              types.UserID               `json:"user_id"`
-		SortDir             db.SortByDir               `json:"sort_dir"`
-		SortBy              string                     `json:"sortBy"`
-		Filter              *db.ListFilterRequest      `json:"filter,omitempty"`
-		AttributeFilter     *db.AttributeFilterRequest `json:"attribute_filter,omitempty"`
-		AssetType           string                     `json:"asset_type"`
-		Archived            bool                       `json:"archived"`
-		Search              string                     `json:"search"`
-		PageSize            int                        `json:"page_size"`
-		Page                int                        `json:"page"`
+		UserID          types.UserID               `json:"user_id"`
+		SortDir         db.SortByDir               `json:"sort_dir"`
+		SortBy          string                     `json:"sortBy"`
+		Filter          *db.ListFilterRequest      `json:"filter,omitempty"`
+		AttributeFilter *db.AttributeFilterRequest `json:"attribute_filter,omitempty"`
+		AssetType       string                     `json:"asset_type"`
+		Archived        bool                       `json:"archived"`
+		Search          string                     `json:"search"`
+		PageSize        int                        `json:"page_size"`
+		Page            int                        `json:"page"`
 	} `json:"payload"`
 }
 
@@ -157,7 +159,7 @@ func (sc *StoreControllerWS) StoreListHandler(ctx context.Context, user *types.U
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
-	
+
 	offset := 0
 	if req.Payload.Page > 0 {
 		offset = req.Payload.Page * req.Payload.PageSize
