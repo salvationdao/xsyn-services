@@ -140,9 +140,17 @@ func CheckIsCurrentBlockAfter() bool {
 		return false
 	}
 
-	return latestBNBBlock > afterBSCBlock &&
-		latestBUSDBlock > afterBSCBlock && latestETHBlock > afterETHBlock &&
-		latestUSDCBlock > afterETHBlock
+	latestBSC := latestBNBBlock
+	if latestBUSDBlock > latestBNBBlock {
+		latestBSC = latestBUSDBlock
+	}
+
+	latestETH := latestETHBlock
+	if latestUSDCBlock > latestETHBlock {
+		latestETH = latestETHBlock
+	}
+
+	return latestETH >= afterETHBlock && latestBSC >= afterBSCBlock
 }
 
 func BUSD(isTestnet bool) ([]*PurchaseRecord, error) {
