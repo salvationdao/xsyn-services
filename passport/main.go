@@ -400,7 +400,7 @@ func txConnect(
 	return conn, nil
 }
 
-func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, isCurrentBlockAfter *bool, enablePassportExchangeRate *bool) error {
+func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, pxr *api.PassportExchangeRate) error {
 
 	records1, err := payments.BNB(isTestnet)
 	if err != nil {
@@ -429,12 +429,23 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, isCu
 
 	// Sale stuff
 	// Passport exchange rate after block
-	if !*isCurrentBlockAfter {
-		*isCurrentBlockAfter = payments.CheckIsCurrentBlockAfter()
-	}
 
-	if !*enablePassportExchangeRate {
-		*enablePassportExchangeRate = db.GetBoolWithDefault(db.KeyEnablePassportExchangeRate, false)
+	passportExchangeRatesEnabled := pxr.GetIsEnable() && pxr.GetIsCurrentBlockAfter()
+
+	if !pxr.GetIsEnable() {
+		if db.GetBoolWithDefault(db.KeyEnablePassportExchangeRate, false) {
+			pxr.SetIsEnabledTrue()
+		}
+
+		if pxr.GetIsEnable() && payments.CheckIsCurrentBlockAfter() {
+			pxr.SetIsCurrentBlockAfterTrue()
+			passportExchangeRatesEnabled = true
+		}
+
+	} else if !pxr.GetIsCurrentBlockAfter() && payments.CheckIsCurrentBlockAfter() {
+		pxr.SetIsCurrentBlockAfterTrue()
+		passportExchangeRatesEnabled = true
+
 	}
 
 	records := []*payments.PurchaseRecord{}
@@ -481,7 +492,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, isCu
 			continue
 		}
 
-		err = payments.StoreRecord(ctx, types.XsynSaleUserID, types.UserIDFromString(user.ID), ucm, r, *isCurrentBlockAfter, *enablePassportExchangeRate)
+		err = payments.StoreRecord(ctx, types.XsynSaleUserID, types.UserIDFromString(user.ID), ucm, r, passportExchangeRatesEnabled)
 		if err != nil && strings.Contains(err.Error(), "duplicate key") {
 			skipped++
 			continue
@@ -500,7 +511,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, isCu
 	}
 	log.Info().Int("records", len(records4)).Str("sym", "USDC").Msg("fetch exchange rates")
 
-	exchangeRates, err := payments.FetchExchangeRates(*isCurrentBlockAfter, *enablePassportExchangeRate)
+	exchangeRates, err := payments.FetchExchangeRates(passportExchangeRatesEnabled)
 	ws.PublishMessage("/public/exchange_rates", api.HubKeySUPSExchangeRates, exchangeRates)
 
 	log.Info().Int("skipped", skipped).Int("successful", successful).Int("failed", failed).Msg("synced payments")
@@ -620,7 +631,7 @@ func Sync1155Withdraw(collectionSlug string, isTestnet, enable1155Rollback bool)
 	return nil
 }
 
-func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool, isCurrentBlockAfter *bool, enablePassportExchangeRate *bool) error {
+func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool, pxr *api.PassportExchangeRate) error {
 	go func() {
 		l := passlog.L.With().Str("svc", "avant_ping").Logger()
 		failureCount := db.GetIntWithDefault(db.KeyAvantFailureCount, 0)
@@ -647,7 +658,7 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 	}()
 	go func(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncPayments, false) {
-			err := SyncPayments(ucm, log, isTestnet, isCurrentBlockAfter, enablePassportExchangeRate)
+			err := SyncPayments(ucm, log, isTestnet, pxr)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync payments")
 			}
@@ -693,6 +704,7 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 	}(isTestnet)
 	return nil
 }
+
 func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	databaseMaxIdleConns := ctxCLI.Int("database_max_idle_conns")
 	databaseMaxOpenConns := ctxCLI.Int("database_max_open_conns")
@@ -901,6 +913,8 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		return terror.Error(err, "Failed to convert string to byte array")
 	}
 
+	passportExchangeRate := &api.PassportExchangeRate{}
+
 	// API Server
 	api, routes := api.NewAPI(log,
 		mailer,
@@ -916,6 +930,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		jwtKeyByteArray,
 		environment,
 		strings.Split(ctxCLI.String("ignore_rate_limit_ips"), ","),
+		passportExchangeRate,
 	)
 
 	passlog.L.Info().Msg("start rpc server")
@@ -982,10 +997,16 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		}
 		avantTestnet := ctxCLI.Bool("avant_testnet")
 
-		isCurrentBlockAfter := payments.CheckIsCurrentBlockAfter()
-		enablePassportExchangeRate := db.GetBoolWithDefault(db.KeyEnablePassportExchangeRate, false)
+		if db.GetBoolWithDefault(db.KeyEnablePassportExchangeRate, false) {
+			passportExchangeRate.SetIsEnabledTrue()
 
-		err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback, &isCurrentBlockAfter, &enablePassportExchangeRate)
+			if payments.CheckIsCurrentBlockAfter() {
+				passportExchangeRate.SetIsCurrentBlockAfterTrue()
+			}
+
+		}
+
+		err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback, passportExchangeRate)
 
 		if err != nil {
 			log.Error().Err(err).Msg("sync")
@@ -1000,7 +1021,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 				} else {
 					l.Debug().Bool("enable_withdraw_rollback", enableWithdrawRollback).Msg("withdraw rollback is enabled")
 				}
-				err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback, &isCurrentBlockAfter, &enablePassportExchangeRate)
+				err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback, passportExchangeRate)
 				if err != nil {
 					log.Error().Err(err).Msg("sync")
 				}
