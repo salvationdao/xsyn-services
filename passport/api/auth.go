@@ -44,6 +44,12 @@ type WalletLoginRequest struct {
 	Fingerprint   *users.Fingerprint `json:"fingerprint"`
 }
 
+type EmailLoginRequest struct {
+	RedirectURL *string            `json:"redirectURL"`
+	SessionID   hub.SessionID      `json:"session_id"`
+	Fingerprint *users.Fingerprint `json:"fingerprint"`
+}
+
 // LoginResponse is a response for login
 type LoginResponse struct {
 	User          *types.User `json:"user"`
@@ -301,6 +307,53 @@ func (api *API) WalletLoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *API) WalletLogin(req *WalletLoginRequest, r *http.Request) (*LoginResponse, error) {
+	// Take public address Hex to address(Make it a checksum mixed case address) convert back to Hex for string of checksum
+	commonAddr := common.HexToAddress(req.PublicAddress)
+
+	// Check if there are any existing users associated with the public address
+	user, err := users.PublicAddress(commonAddr)
+	if err != nil {
+		return nil, fmt.Errorf("public address fail: %w", err)
+	}
+
+	// Fingerprint user
+	if req.Fingerprint != nil {
+		// todo: include ip in upsert
+		err = api.DoFingerprintUpsert(*req.Fingerprint, user.ID)
+		if err != nil {
+			return nil, fmt.Errorf("browser identification fail: %w", err)
+		}
+	}
+
+	user, _, token, err := api.IssueToken(&IssueTokenConfig{
+		Encrypted: true,
+		Key:       api.TokenEncryptionKey,
+		Device:    r.UserAgent(),
+		Action:    "login",
+		User:      user.User,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("There was a problem creating a session for your account, please try again. %w", err)
+	}
+
+	err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	if user.DeletedAt.Valid {
+		return nil, fmt.Errorf("user does not exist")
+	}
+
+	var otToken *string = nil
+	if req.RedirectURL != nil {
+		otToken = api.OneTimeToken(user.ID, r.UserAgent())
+	}
+
+	return &LoginResponse{user, token, false, otToken}, nil
+}
+
+func (api *API) EmailLogin(req *WalletLoginRequest, r *http.Request) (*LoginResponse, error) {
 	// Take public address Hex to address(Make it a checksum mixed case address) convert back to Hex for string of checksum
 	commonAddr := common.HexToAddress(req.PublicAddress)
 

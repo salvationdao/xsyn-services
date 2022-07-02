@@ -4,8 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/shopspring/decimal"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"strings"
 	"sync"
 	"xsyn-services/boiler"
@@ -16,6 +14,9 @@ import (
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/supremacy_rpcclient"
 	"xsyn-services/types"
+
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
@@ -295,6 +296,8 @@ func PublicAddress(s common.Address) (*types.User, error) {
 	return types.UserFromBoil(user)
 }
 
+
+
 func UUID(id uuid.UUID) (*types.User, error) {
 	return ID(id.String())
 }
@@ -334,6 +337,24 @@ func Email(email string) (*types.User, error) {
 		boiler.UserWhere.Email.EQ(null.StringFrom(strings.ToLower(email))),
 		qm.Load(qm.Rels(boiler.UserRels.Faction)),
 	).One(passdb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	return types.UserFromBoil(user)
+}
+
+func EmailPassword (email string, password string) (*types.User, error) {
+
+	user, err := boiler.Users(
+		boiler.UserWhere.Email.EQ(null.StringFrom(strings.ToLower(email))),
+		qm.Load(qm.Rels(boiler.UserRels.Faction)),
+	).One(passdb.StdConn)
+
+	if crypto.ComparePassword(user., email) {
+		
+	}
+
 	if err != nil {
 		return nil, err
 	}
