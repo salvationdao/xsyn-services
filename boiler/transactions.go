@@ -28,14 +28,17 @@ type Transaction struct {
 	Description          string          `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
 	TransactionReference string          `boiler:"transaction_reference" boil:"transaction_reference" json:"transaction_reference" toml:"transaction_reference" yaml:"transaction_reference"`
 	Amount               decimal.Decimal `boiler:"amount" boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
-	Credit               string          `boiler:"credit" boil:"credit" json:"credit" toml:"credit" yaml:"credit"`
-	Debit                string          `boiler:"debit" boil:"debit" json:"debit" toml:"debit" yaml:"debit"`
+	Credit               null.String     `boiler:"credit" boil:"credit" json:"credit,omitempty" toml:"credit" yaml:"credit,omitempty"`
+	Debit                null.String     `boiler:"debit" boil:"debit" json:"debit,omitempty" toml:"debit" yaml:"debit,omitempty"`
 	Reason               null.String     `boiler:"reason" boil:"reason" json:"reason,omitempty" toml:"reason" yaml:"reason,omitempty"`
 	CreatedAt            time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	Group                string          `boiler:"group" boil:"group" json:"group" toml:"group" yaml:"group"`
 	SubGroup             null.String     `boiler:"sub_group" boil:"sub_group" json:"sub_group,omitempty" toml:"sub_group" yaml:"sub_group,omitempty"`
 	RelatedTransactionID null.String     `boiler:"related_transaction_id" boil:"related_transaction_id" json:"related_transaction_id,omitempty" toml:"related_transaction_id" yaml:"related_transaction_id,omitempty"`
 	ServiceID            null.String     `boiler:"service_id" boil:"service_id" json:"service_id,omitempty" toml:"service_id" yaml:"service_id,omitempty"`
+	Type                 string          `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	DebitSyndicate       null.String     `boiler:"debit_syndicate" boil:"debit_syndicate" json:"debit_syndicate,omitempty" toml:"debit_syndicate" yaml:"debit_syndicate,omitempty"`
+	CreditSyndicate      null.String     `boiler:"credit_syndicate" boil:"credit_syndicate" json:"credit_syndicate,omitempty" toml:"credit_syndicate" yaml:"credit_syndicate,omitempty"`
 
 	R *transactionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L transactionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -54,6 +57,9 @@ var TransactionColumns = struct {
 	SubGroup             string
 	RelatedTransactionID string
 	ServiceID            string
+	Type                 string
+	DebitSyndicate       string
+	CreditSyndicate      string
 }{
 	ID:                   "id",
 	Description:          "description",
@@ -67,6 +73,9 @@ var TransactionColumns = struct {
 	SubGroup:             "sub_group",
 	RelatedTransactionID: "related_transaction_id",
 	ServiceID:            "service_id",
+	Type:                 "type",
+	DebitSyndicate:       "debit_syndicate",
+	CreditSyndicate:      "credit_syndicate",
 }
 
 var TransactionTableColumns = struct {
@@ -82,6 +91,9 @@ var TransactionTableColumns = struct {
 	SubGroup             string
 	RelatedTransactionID string
 	ServiceID            string
+	Type                 string
+	DebitSyndicate       string
+	CreditSyndicate      string
 }{
 	ID:                   "transactions.id",
 	Description:          "transactions.description",
@@ -95,6 +107,9 @@ var TransactionTableColumns = struct {
 	SubGroup:             "transactions.sub_group",
 	RelatedTransactionID: "transactions.related_transaction_id",
 	ServiceID:            "transactions.service_id",
+	Type:                 "transactions.type",
+	DebitSyndicate:       "transactions.debit_syndicate",
+	CreditSyndicate:      "transactions.credit_syndicate",
 }
 
 // Generated where
@@ -104,33 +119,41 @@ var TransactionWhere = struct {
 	Description          whereHelperstring
 	TransactionReference whereHelperstring
 	Amount               whereHelperdecimal_Decimal
-	Credit               whereHelperstring
-	Debit                whereHelperstring
+	Credit               whereHelpernull_String
+	Debit                whereHelpernull_String
 	Reason               whereHelpernull_String
 	CreatedAt            whereHelpertime_Time
 	Group                whereHelperstring
 	SubGroup             whereHelpernull_String
 	RelatedTransactionID whereHelpernull_String
 	ServiceID            whereHelpernull_String
+	Type                 whereHelperstring
+	DebitSyndicate       whereHelpernull_String
+	CreditSyndicate      whereHelpernull_String
 }{
 	ID:                   whereHelperstring{field: "\"transactions\".\"id\""},
 	Description:          whereHelperstring{field: "\"transactions\".\"description\""},
 	TransactionReference: whereHelperstring{field: "\"transactions\".\"transaction_reference\""},
 	Amount:               whereHelperdecimal_Decimal{field: "\"transactions\".\"amount\""},
-	Credit:               whereHelperstring{field: "\"transactions\".\"credit\""},
-	Debit:                whereHelperstring{field: "\"transactions\".\"debit\""},
+	Credit:               whereHelpernull_String{field: "\"transactions\".\"credit\""},
+	Debit:                whereHelpernull_String{field: "\"transactions\".\"debit\""},
 	Reason:               whereHelpernull_String{field: "\"transactions\".\"reason\""},
 	CreatedAt:            whereHelpertime_Time{field: "\"transactions\".\"created_at\""},
 	Group:                whereHelperstring{field: "\"transactions\".\"group\""},
 	SubGroup:             whereHelpernull_String{field: "\"transactions\".\"sub_group\""},
 	RelatedTransactionID: whereHelpernull_String{field: "\"transactions\".\"related_transaction_id\""},
 	ServiceID:            whereHelpernull_String{field: "\"transactions\".\"service_id\""},
+	Type:                 whereHelperstring{field: "\"transactions\".\"type\""},
+	DebitSyndicate:       whereHelpernull_String{field: "\"transactions\".\"debit_syndicate\""},
+	CreditSyndicate:      whereHelpernull_String{field: "\"transactions\".\"credit_syndicate\""},
 }
 
 // TransactionRels is where relationship names are stored.
 var TransactionRels = struct {
 	CreditUser                               string
+	CreditSyndicateSyndicate                 string
 	DebitUser                                string
+	DebitSyndicateSyndicate                  string
 	RelatedTransaction                       string
 	Service                                  string
 	TransferTXAsset1155ServiceTransferEvents string
@@ -142,7 +165,9 @@ var TransactionRels = struct {
 	RelatedTransactionTransactions           string
 }{
 	CreditUser:                               "CreditUser",
+	CreditSyndicateSyndicate:                 "CreditSyndicateSyndicate",
 	DebitUser:                                "DebitUser",
+	DebitSyndicateSyndicate:                  "DebitSyndicateSyndicate",
 	RelatedTransaction:                       "RelatedTransaction",
 	Service:                                  "Service",
 	TransferTXAsset1155ServiceTransferEvents: "TransferTXAsset1155ServiceTransferEvents",
@@ -157,7 +182,9 @@ var TransactionRels = struct {
 // transactionR is where relationships are stored.
 type transactionR struct {
 	CreditUser                               *User                              `boiler:"CreditUser" boil:"CreditUser" json:"CreditUser" toml:"CreditUser" yaml:"CreditUser"`
+	CreditSyndicateSyndicate                 *Syndicate                         `boiler:"CreditSyndicateSyndicate" boil:"CreditSyndicateSyndicate" json:"CreditSyndicateSyndicate" toml:"CreditSyndicateSyndicate" yaml:"CreditSyndicateSyndicate"`
 	DebitUser                                *User                              `boiler:"DebitUser" boil:"DebitUser" json:"DebitUser" toml:"DebitUser" yaml:"DebitUser"`
+	DebitSyndicateSyndicate                  *Syndicate                         `boiler:"DebitSyndicateSyndicate" boil:"DebitSyndicateSyndicate" json:"DebitSyndicateSyndicate" toml:"DebitSyndicateSyndicate" yaml:"DebitSyndicateSyndicate"`
 	RelatedTransaction                       *Transaction                       `boiler:"RelatedTransaction" boil:"RelatedTransaction" json:"RelatedTransaction" toml:"RelatedTransaction" yaml:"RelatedTransaction"`
 	Service                                  *User                              `boiler:"Service" boil:"Service" json:"Service" toml:"Service" yaml:"Service"`
 	TransferTXAsset1155ServiceTransferEvents Asset1155ServiceTransferEventSlice `boiler:"TransferTXAsset1155ServiceTransferEvents" boil:"TransferTXAsset1155ServiceTransferEvents" json:"TransferTXAsset1155ServiceTransferEvents" toml:"TransferTXAsset1155ServiceTransferEvents" yaml:"TransferTXAsset1155ServiceTransferEvents"`
@@ -178,9 +205,9 @@ func (*transactionR) NewStruct() *transactionR {
 type transactionL struct{}
 
 var (
-	transactionAllColumns            = []string{"id", "description", "transaction_reference", "amount", "credit", "debit", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
-	transactionColumnsWithoutDefault = []string{"id", "amount", "credit", "debit"}
-	transactionColumnsWithDefault    = []string{"description", "transaction_reference", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
+	transactionAllColumns            = []string{"id", "description", "transaction_reference", "amount", "credit", "debit", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id", "type", "debit_syndicate", "credit_syndicate"}
+	transactionColumnsWithoutDefault = []string{"id", "amount"}
+	transactionColumnsWithDefault    = []string{"description", "transaction_reference", "credit", "debit", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id", "type", "debit_syndicate", "credit_syndicate"}
 	transactionPrimaryKeyColumns     = []string{"id"}
 	transactionGeneratedColumns      = []string{}
 )
@@ -442,6 +469,21 @@ func (o *Transaction) CreditUser(mods ...qm.QueryMod) userQuery {
 	return query
 }
 
+// CreditSyndicateSyndicate pointed to by the foreign key.
+func (o *Transaction) CreditSyndicateSyndicate(mods ...qm.QueryMod) syndicateQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.CreditSyndicate),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Syndicates(queryMods...)
+	queries.SetFrom(query.Query, "\"syndicates\"")
+
+	return query
+}
+
 // DebitUser pointed to by the foreign key.
 func (o *Transaction) DebitUser(mods ...qm.QueryMod) userQuery {
 	queryMods := []qm.QueryMod{
@@ -453,6 +495,21 @@ func (o *Transaction) DebitUser(mods ...qm.QueryMod) userQuery {
 
 	query := Users(queryMods...)
 	queries.SetFrom(query.Query, "\"users\"")
+
+	return query
+}
+
+// DebitSyndicateSyndicate pointed to by the foreign key.
+func (o *Transaction) DebitSyndicateSyndicate(mods ...qm.QueryMod) syndicateQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.DebitSyndicate),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Syndicates(queryMods...)
+	queries.SetFrom(query.Query, "\"syndicates\"")
 
 	return query
 }
@@ -653,7 +710,9 @@ func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransact
 		if object.R == nil {
 			object.R = &transactionR{}
 		}
-		args = append(args, object.Credit)
+		if !queries.IsNil(object.Credit) {
+			args = append(args, object.Credit)
+		}
 
 	} else {
 	Outer:
@@ -663,12 +722,14 @@ func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransact
 			}
 
 			for _, a := range args {
-				if a == obj.Credit {
+				if queries.Equal(a, obj.Credit) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.Credit)
+			if !queries.IsNil(obj.Credit) {
+				args = append(args, obj.Credit)
+			}
 
 		}
 	}
@@ -727,12 +788,121 @@ func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransact
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.Credit == foreign.ID {
+			if queries.Equal(local.Credit, foreign.ID) {
 				local.R.CreditUser = foreign
 				if foreign.R == nil {
 					foreign.R = &userR{}
 				}
 				foreign.R.CreditTransactions = append(foreign.R.CreditTransactions, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadCreditSyndicateSyndicate allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (transactionL) LoadCreditSyndicateSyndicate(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
+	var slice []*Transaction
+	var object *Transaction
+
+	if singular {
+		object = maybeTransaction.(*Transaction)
+	} else {
+		slice = *maybeTransaction.(*[]*Transaction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &transactionR{}
+		}
+		if !queries.IsNil(object.CreditSyndicate) {
+			args = append(args, object.CreditSyndicate)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &transactionR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.CreditSyndicate) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.CreditSyndicate) {
+				args = append(args, obj.CreditSyndicate)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`syndicates`),
+		qm.WhereIn(`syndicates.id in ?`, args...),
+		qmhelper.WhereIsNull(`syndicates.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Syndicate")
+	}
+
+	var resultSlice []*Syndicate
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Syndicate")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for syndicates")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicates")
+	}
+
+	if len(transactionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.CreditSyndicateSyndicate = foreign
+		if foreign.R == nil {
+			foreign.R = &syndicateR{}
+		}
+		foreign.R.CreditSyndicateTransactions = append(foreign.R.CreditSyndicateTransactions, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.CreditSyndicate, foreign.ID) {
+				local.R.CreditSyndicateSyndicate = foreign
+				if foreign.R == nil {
+					foreign.R = &syndicateR{}
+				}
+				foreign.R.CreditSyndicateTransactions = append(foreign.R.CreditSyndicateTransactions, local)
 				break
 			}
 		}
@@ -758,7 +928,9 @@ func (transactionL) LoadDebitUser(e boil.Executor, singular bool, maybeTransacti
 		if object.R == nil {
 			object.R = &transactionR{}
 		}
-		args = append(args, object.Debit)
+		if !queries.IsNil(object.Debit) {
+			args = append(args, object.Debit)
+		}
 
 	} else {
 	Outer:
@@ -768,12 +940,14 @@ func (transactionL) LoadDebitUser(e boil.Executor, singular bool, maybeTransacti
 			}
 
 			for _, a := range args {
-				if a == obj.Debit {
+				if queries.Equal(a, obj.Debit) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.Debit)
+			if !queries.IsNil(obj.Debit) {
+				args = append(args, obj.Debit)
+			}
 
 		}
 	}
@@ -832,12 +1006,121 @@ func (transactionL) LoadDebitUser(e boil.Executor, singular bool, maybeTransacti
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.Debit == foreign.ID {
+			if queries.Equal(local.Debit, foreign.ID) {
 				local.R.DebitUser = foreign
 				if foreign.R == nil {
 					foreign.R = &userR{}
 				}
 				foreign.R.DebitTransactions = append(foreign.R.DebitTransactions, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadDebitSyndicateSyndicate allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (transactionL) LoadDebitSyndicateSyndicate(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
+	var slice []*Transaction
+	var object *Transaction
+
+	if singular {
+		object = maybeTransaction.(*Transaction)
+	} else {
+		slice = *maybeTransaction.(*[]*Transaction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &transactionR{}
+		}
+		if !queries.IsNil(object.DebitSyndicate) {
+			args = append(args, object.DebitSyndicate)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &transactionR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.DebitSyndicate) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.DebitSyndicate) {
+				args = append(args, obj.DebitSyndicate)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`syndicates`),
+		qm.WhereIn(`syndicates.id in ?`, args...),
+		qmhelper.WhereIsNull(`syndicates.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Syndicate")
+	}
+
+	var resultSlice []*Syndicate
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Syndicate")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for syndicates")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicates")
+	}
+
+	if len(transactionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.DebitSyndicateSyndicate = foreign
+		if foreign.R == nil {
+			foreign.R = &syndicateR{}
+		}
+		foreign.R.DebitSyndicateTransactions = append(foreign.R.DebitSyndicateTransactions, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.DebitSyndicate, foreign.ID) {
+				local.R.DebitSyndicateSyndicate = foreign
+				if foreign.R == nil {
+					foreign.R = &syndicateR{}
+				}
+				foreign.R.DebitSyndicateTransactions = append(foreign.R.DebitSyndicateTransactions, local)
 				break
 			}
 		}
@@ -1778,7 +2061,7 @@ func (o *Transaction) SetCreditUser(exec boil.Executor, insert bool, related *Us
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.Credit = related.ID
+	queries.Assign(&o.Credit, related.ID)
 	if o.R == nil {
 		o.R = &transactionR{
 			CreditUser: related,
@@ -1795,6 +2078,118 @@ func (o *Transaction) SetCreditUser(exec boil.Executor, insert bool, related *Us
 		related.R.CreditTransactions = append(related.R.CreditTransactions, o)
 	}
 
+	return nil
+}
+
+// RemoveCreditUser relationship.
+// Sets o.R.CreditUser to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *Transaction) RemoveCreditUser(exec boil.Executor, related *User) error {
+	var err error
+
+	queries.SetScanner(&o.Credit, nil)
+	if _, err = o.Update(exec, boil.Whitelist("credit")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.CreditUser = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.CreditTransactions {
+		if queries.Equal(o.Credit, ri.Credit) {
+			continue
+		}
+
+		ln := len(related.R.CreditTransactions)
+		if ln > 1 && i < ln-1 {
+			related.R.CreditTransactions[i] = related.R.CreditTransactions[ln-1]
+		}
+		related.R.CreditTransactions = related.R.CreditTransactions[:ln-1]
+		break
+	}
+	return nil
+}
+
+// SetCreditSyndicateSyndicate of the transaction to the related item.
+// Sets o.R.CreditSyndicateSyndicate to related.
+// Adds o to related.R.CreditSyndicateTransactions.
+func (o *Transaction) SetCreditSyndicateSyndicate(exec boil.Executor, insert bool, related *Syndicate) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"transactions\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"credit_syndicate"}),
+		strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.CreditSyndicate, related.ID)
+	if o.R == nil {
+		o.R = &transactionR{
+			CreditSyndicateSyndicate: related,
+		}
+	} else {
+		o.R.CreditSyndicateSyndicate = related
+	}
+
+	if related.R == nil {
+		related.R = &syndicateR{
+			CreditSyndicateTransactions: TransactionSlice{o},
+		}
+	} else {
+		related.R.CreditSyndicateTransactions = append(related.R.CreditSyndicateTransactions, o)
+	}
+
+	return nil
+}
+
+// RemoveCreditSyndicateSyndicate relationship.
+// Sets o.R.CreditSyndicateSyndicate to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *Transaction) RemoveCreditSyndicateSyndicate(exec boil.Executor, related *Syndicate) error {
+	var err error
+
+	queries.SetScanner(&o.CreditSyndicate, nil)
+	if _, err = o.Update(exec, boil.Whitelist("credit_syndicate")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.CreditSyndicateSyndicate = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.CreditSyndicateTransactions {
+		if queries.Equal(o.CreditSyndicate, ri.CreditSyndicate) {
+			continue
+		}
+
+		ln := len(related.R.CreditSyndicateTransactions)
+		if ln > 1 && i < ln-1 {
+			related.R.CreditSyndicateTransactions[i] = related.R.CreditSyndicateTransactions[ln-1]
+		}
+		related.R.CreditSyndicateTransactions = related.R.CreditSyndicateTransactions[:ln-1]
+		break
+	}
 	return nil
 }
 
@@ -1824,7 +2219,7 @@ func (o *Transaction) SetDebitUser(exec boil.Executor, insert bool, related *Use
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.Debit = related.ID
+	queries.Assign(&o.Debit, related.ID)
 	if o.R == nil {
 		o.R = &transactionR{
 			DebitUser: related,
@@ -1841,6 +2236,118 @@ func (o *Transaction) SetDebitUser(exec boil.Executor, insert bool, related *Use
 		related.R.DebitTransactions = append(related.R.DebitTransactions, o)
 	}
 
+	return nil
+}
+
+// RemoveDebitUser relationship.
+// Sets o.R.DebitUser to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *Transaction) RemoveDebitUser(exec boil.Executor, related *User) error {
+	var err error
+
+	queries.SetScanner(&o.Debit, nil)
+	if _, err = o.Update(exec, boil.Whitelist("debit")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.DebitUser = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.DebitTransactions {
+		if queries.Equal(o.Debit, ri.Debit) {
+			continue
+		}
+
+		ln := len(related.R.DebitTransactions)
+		if ln > 1 && i < ln-1 {
+			related.R.DebitTransactions[i] = related.R.DebitTransactions[ln-1]
+		}
+		related.R.DebitTransactions = related.R.DebitTransactions[:ln-1]
+		break
+	}
+	return nil
+}
+
+// SetDebitSyndicateSyndicate of the transaction to the related item.
+// Sets o.R.DebitSyndicateSyndicate to related.
+// Adds o to related.R.DebitSyndicateTransactions.
+func (o *Transaction) SetDebitSyndicateSyndicate(exec boil.Executor, insert bool, related *Syndicate) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"transactions\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"debit_syndicate"}),
+		strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.DebitSyndicate, related.ID)
+	if o.R == nil {
+		o.R = &transactionR{
+			DebitSyndicateSyndicate: related,
+		}
+	} else {
+		o.R.DebitSyndicateSyndicate = related
+	}
+
+	if related.R == nil {
+		related.R = &syndicateR{
+			DebitSyndicateTransactions: TransactionSlice{o},
+		}
+	} else {
+		related.R.DebitSyndicateTransactions = append(related.R.DebitSyndicateTransactions, o)
+	}
+
+	return nil
+}
+
+// RemoveDebitSyndicateSyndicate relationship.
+// Sets o.R.DebitSyndicateSyndicate to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *Transaction) RemoveDebitSyndicateSyndicate(exec boil.Executor, related *Syndicate) error {
+	var err error
+
+	queries.SetScanner(&o.DebitSyndicate, nil)
+	if _, err = o.Update(exec, boil.Whitelist("debit_syndicate")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.DebitSyndicateSyndicate = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.DebitSyndicateTransactions {
+		if queries.Equal(o.DebitSyndicate, ri.DebitSyndicate) {
+			continue
+		}
+
+		ln := len(related.R.DebitSyndicateTransactions)
+		if ln > 1 && i < ln-1 {
+			related.R.DebitSyndicateTransactions[i] = related.R.DebitSyndicateTransactions[ln-1]
+		}
+		related.R.DebitSyndicateTransactions = related.R.DebitSyndicateTransactions[:ln-1]
+		break
+	}
 	return nil
 }
 

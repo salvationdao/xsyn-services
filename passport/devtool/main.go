@@ -34,21 +34,19 @@ func main() {
 	params := url.Values{}
 	params.Add("sslmode", "disable")
 
-	//connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
-	//	"passport",
-	//	"LDs!Eb3z6LDC9axTrtEZWynme",
-	//	"localhost",
-	//	"5454",
-	//	"passport-db",
-	//	params.Encode(),
-	//)
+	// data detail
+	dbUser := flag.String("database_user", "passport", "database user")
+	dbPass := flag.String("database_pass", "dev", "database password")
+	dbHost := flag.String("database_host", "localhost", "database host")
+	dbPost := flag.String("database_port", "5432", "database port")
+	dbName := flag.String("database_name", "passport", "database name")
 
 	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
-		"passport",
-		"dev",
-		"localhost",
-		"5432",
-		"passport",
+		*dbUser,
+		*dbPass,
+		*dbHost,
+		*dbPost,
+		*dbName,
 		params.Encode(),
 	)
 	cfg, err := pgx.ParseConfig(connString)
