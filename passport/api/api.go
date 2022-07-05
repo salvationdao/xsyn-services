@@ -260,7 +260,7 @@ func NewAPI(
 				s.Use(api.AuthWS(true, true))
 				s.WS("/*", HubKeyUserGet, api.MustSecure(uc.GetHandler))
 				s.Mount("/commander", api.Commander)
-				s.WS("/logout", HubKeyUserLogout, api.MustSecure(uc.LogoutHandler))
+				s.WS("/init", HubKeyUserInit, api.MustSecure(uc.InitHandler))
 				s.WS("/sups", HubKeyUserSupsSubscribe, api.MustSecure(api.UserSupsUpdatedSubscribeHandler))
 				s.WS("/transactions", HubKeyUserTransactionsSubscribe, api.MustSecure(api.UserTransactionsSubscribeHandler))
 			}))

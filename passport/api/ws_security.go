@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
@@ -87,9 +88,16 @@ func RetrieveUser(ctx context.Context) (*types.User, error) {
 		faction = Faction(user.FactionID.String)
 	}
 
+	hasPassword:=false
+	_,err = db.HashByUserID(user.ID)
+	if err == nil {
+	hasPassword = true
+	}
+
 	return &types.User{
 		User:    user,
 		Faction: faction,
+		HasPassword: hasPassword,
 	}, nil
 }
 

@@ -511,12 +511,14 @@ func (api *API) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) (in
 		return http.StatusBadRequest, err
 	}
 
-	issueToken, err := boiler.FindIssueToken(passdb.StdConn, req.TokenID)
+	// Delete all issued token
+	_, err = user.User.IssueTokens().DeleteAll(passdb.StdConn, true)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-	// Delete jwt token
-	issueToken.Delete(passdb.StdConn, true)
+	URI := fmt.Sprintf("/user/%s/init", user.User.ID)
+
+	ws.PublishMessage(URI, HubKeyUserInit, nil)
 
 	// Commit transaction
 	err = tx.Commit()
@@ -532,6 +534,7 @@ func (api *API) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) (in
 			return http.StatusBadRequest, err
 		}
 	}
+	
 	u, _, token, err := api.IssueToken(&IssueTokenConfig{
 		Encrypted: true,
 		Key:       api.TokenEncryptionKey,
@@ -619,11 +622,10 @@ func (api *API) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) (i
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-	URI := fmt.Sprintf("/user/%s/logout", req.UserID)
+	URI := fmt.Sprintf("/user/%s/init", req.UserID)
 
-	ws.PublishMessage(URI, HubKeyUserLogout, user)
+	ws.PublishMessage(URI, HubKeyUserInit, nil)
 
-	fmt.Println(URI)
 
 	// Commit transaction
 	err = tx.Commit()

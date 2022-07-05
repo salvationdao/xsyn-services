@@ -57,6 +57,7 @@ type User struct {
 	*boiler.User
 	Faction  *boiler.Faction `json:"faction"`
 	Online   bool            `json:"online"`
+	HasPassword   bool            `json:"has_password"`
 	Pass2FA  bool            `json:"pass_2_fa"`
 	Metadata UserMetadata    `json:"metadata" db:"metadata"`
 	//NoNonce  *struct{}       `json:"nonce,omitempty"`

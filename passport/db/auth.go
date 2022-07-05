@@ -34,6 +34,7 @@ func HashByUserID(userID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	
 	return result, nil
 }
 
