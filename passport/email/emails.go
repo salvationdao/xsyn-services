@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"xsyn-services/types"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 )
 
 type HostFrom = string
@@ -44,48 +46,44 @@ func (m *Mailer) SendBasicEmail(ctx context.Context, to string, subject string, 
 }
 
 // SendForgotPasswordEmail sends an email with the forgot_password template
-func (m *Mailer) SendForgotPasswordEmail(ctx context.Context, user *User, token string) error {
+func (m *Mailer) SendForgotPasswordEmail(ctx context.Context, user *types.User, token string, tokenID uuid.UUID) error {
 	hostURL := m.PassportWebHostURL
-	if user.IsAdmin {
-		hostURL = m.PassportWebHostURL
-	}
+
 	err := m.SendEmail(ctx,
-		user.Email,
+		user.Email.String,
 		"Forgot Password",
 		"forgot_password",
 		struct {
 			MagicLink string `handlebars:"magic_link"`
 			Name      string `handlebars:"name"`
 		}{
-			MagicLink: fmt.Sprintf("%s/verify?token=%s&forgot=true", hostURL, token),
-			Name:      user.FirstName + " " + user.LastName,
+			MagicLink: fmt.Sprintf("%s/reset-password?id=%s&token=%s", hostURL, tokenID, token),
+			Name:      user.Username,
 		},
 		"",
 	)
 	if err != nil {
-		return terror.Error(err, " Failed tosend forgot password email")
+		return terror.Error(err, " Failed to send forgot password email")
 	}
 	return nil
 }
 
 // SendVerificationEmail sends an email with the confirm_email template
-func (m *Mailer) SendVerificationEmail(ctx context.Context, user *User, token string, newAccount bool) error {
+func (m *Mailer) SendVerificationEmail(ctx context.Context, user *types.User, token string, newAccount bool) error {
 	hostURL := m.PassportWebHostURL
-	if user.IsAdmin {
-		hostURL = m.PassportWebHostURL
-	}
+
 	err := m.SendEmail(ctx,
-		user.Email,
+		user.Email.String,
 		"Verify Email",
 		"confirm_email",
 		struct {
-			MagicLink  string `handlebars:"magic_link"`
-			Name       string `handlebars:"name"`
-			Email      string `handlebars:"email"`
-			NewAccount bool   `handlebars:"new_account"`
+			MagicLink  string      `handlebars:"magic_link"`
+			Name       string      `handlebars:"name"`
+			Email      null.String `handlebars:"email"`
+			NewAccount bool        `handlebars:"new_account"`
 		}{
 			MagicLink:  fmt.Sprintf("%s/verify?token=%s", hostURL, token),
-			Name:       user.FirstName + " " + user.LastName,
+			Name:       user.Username,
 			Email:      user.Email,
 			NewAccount: newAccount,
 		},

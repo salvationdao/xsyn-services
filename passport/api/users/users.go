@@ -8,6 +8,7 @@ import (
 	"sync"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/crypto"
+	"xsyn-services/passport/db"
 	"xsyn-services/passport/email"
 	"xsyn-services/passport/helpers"
 	"xsyn-services/passport/passdb"
@@ -155,6 +156,14 @@ func UserExists(email string) (bool, error) {
 }
 
 func UserCreator(firstName, lastName, username, email, facebookID, googleID, twitchID, twitterID, discordID, phNumber string, publicAddress common.Address, password string, other ...interface{}) (*types.User, error) {
+	if password != "" {
+		err := helpers.IsValidPassword(password)
+		if err != nil {
+			return nil, err
+		}
+
+	}
+
 	throughOauth := true
 	if facebookID == "" && googleID == "" && publicAddress.Hex() == "" && twitchID == "" && twitterID == "" && discordID == "" {
 		if email == "" {
@@ -177,37 +186,41 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		}
 	}
 
-	trimmedUsername := "noob-" + username
 	bm := bluemonday.StrictPolicy()
-	sanitizedUsername := bm.Sanitize(trimmedUsername)
+	sanitizedUsername := bm.Sanitize(username)
 
 	err := helpers.IsValidUsername(sanitizedUsername)
 	if err != nil {
 		return nil, err
 	}
 
-	usExists, err := boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(trimmedUsername))).One(passdb.StdConn)
+	usExists, _ := boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(sanitizedUsername))).One(passdb.StdConn)
+
 	n := 1
 	for usExists != nil {
-		trimmedUsername = helpers.RandStringBytes(n) + trimmedUsername
+		sanitizedUsername = helpers.RandStringBytes(n) + sanitizedUsername
 		n++
-		usExists, err = boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(trimmedUsername))).One(passdb.StdConn)
+		usExists, _ = boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(sanitizedUsername))).One(passdb.StdConn)
 		if n > 10 {
 			return nil, fmt.Errorf("unable to generate a unique username")
 		}
+	}
+	hexPublicAddress := ""
+	if publicAddress != common.HexToAddress("") {
+		hexPublicAddress = publicAddress.Hex()
 	}
 
 	user := &boiler.User{
 		FirstName:     null.StringFrom(firstName),
 		LastName:      null.StringFrom(lastName),
-		Username:      trimmedUsername,
+		Username:      sanitizedUsername,
 		FacebookID:    types.NewString(facebookID),
 		GoogleID:      types.NewString(googleID),
 		TwitchID:      types.NewString(twitchID),
 		TwitterID:     types.NewString(twitterID),
 		DiscordID:     types.NewString(discordID),
 		Email:         types.NewString(email),
-		PublicAddress: types.NewString(publicAddress.Hex()),
+		PublicAddress: types.NewString(hexPublicAddress),
 		RoleID:        types.NewString(types.UserRoleMemberID.String()),
 		Verified:      throughOauth, // verify users directly if they go through Oauth
 	}
@@ -296,8 +309,6 @@ func PublicAddress(s common.Address) (*types.User, error) {
 	return types.UserFromBoil(user)
 }
 
-
-
 func UUID(id uuid.UUID) (*types.User, error) {
 	return ID(id.String())
 }
@@ -344,19 +355,29 @@ func Email(email string) (*types.User, error) {
 	return types.UserFromBoil(user)
 }
 
-func EmailPassword (email string, password string) (*types.User, error) {
+func EmailPassword(email string, password string) (*types.User, error) {
+
+	errMsg := "invalid email or password, please try again."
 
 	user, err := boiler.Users(
 		boiler.UserWhere.Email.EQ(null.StringFrom(strings.ToLower(email))),
 		qm.Load(qm.Rels(boiler.UserRels.Faction)),
 	).One(passdb.StdConn)
 
-	if crypto.ComparePassword(user., email) {
-		
+	if err != nil {
+		return nil, fmt.Errorf(errMsg)
 	}
+
+	userPassword, err := db.HashByUserID(user.ID)
 
 	if err != nil {
 		return nil, err
+	}
+
+	err = crypto.ComparePassword(userPassword, password)
+
+	if err != nil {
+		return nil, fmt.Errorf(errMsg)
 	}
 
 	return types.UserFromBoil(user)

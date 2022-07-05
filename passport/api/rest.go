@@ -6,16 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gofrs/uuid"
-	"github.com/lestrrat-go/jwx/jwt/openid"
-	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub/ext/auth"
-	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	"io/ioutil"
 	"net/http"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
+
+	"github.com/gofrs/uuid"
+	"github.com/lestrrat-go/jwx/jwt/openid"
+	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub/ext/auth"
+	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 )
 
 type ErrorMessage string
@@ -86,7 +87,7 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) h
 					}
 				}
 			} else {
-				passlog.L.Err(err).Str("r.URL.Path",r.URL.Path).Msg("rest error")
+				passlog.L.Err(err).Str("r.URL.Path", r.URL.Path).Msg("rest error")
 			}
 
 			jsonErr, err := json.Marshal(errObj)

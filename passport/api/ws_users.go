@@ -81,6 +81,7 @@ func NewUserController(log *zerolog.Logger, api *API, googleConfig *auth.GoogleC
 	//api.SecureCommand(HubKeyUserLatestTransactionSubscribe, userHub.UserLatestTransactionsSubscribeHandler)
 	api.SecureCommand(HubKeyUser, userHub.UpdatedSubscribeHandler)
 	api.SecureCommand(HubKeyUserSupsSubscribe, api.UserSupsUpdatedSubscribeHandler)
+	api.SecureCommand(HubKeyUserLogout, userHub.LogoutHandler)
 
 	return userHub
 }
@@ -136,6 +137,14 @@ func (uc *UserController) GetHandler(ctx context.Context, user *types.User, key 
 	}
 	return nil
 
+}
+
+const HubKeyUserLogout = "USER:LOGOUT"
+
+// GetHandler gets the details for a user
+func (uc *UserController) LogoutHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	reply(nil)
+	return nil
 }
 
 type UpdateUserUsernameRequest struct {

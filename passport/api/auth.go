@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
@@ -14,6 +15,8 @@ import (
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/api/users"
+	pCrypto "xsyn-services/passport/crypto"
+	"xsyn-services/passport/db"
 	"xsyn-services/passport/helpers"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
@@ -31,6 +34,7 @@ import (
 	"github.com/lestrrat-go/jwx/jwt/openid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -46,6 +50,32 @@ type WalletLoginRequest struct {
 
 type EmailLoginRequest struct {
 	RedirectURL *string            `json:"redirectURL"`
+	Username    string             `json:"username"`
+	Email       string             `json:"email"`
+	Password    string             `json:"password"`
+	SessionID   hub.SessionID      `json:"session_id"`
+	Fingerprint *users.Fingerprint `json:"fingerprint"`
+}
+type ForgotPasswordRequest struct {
+	Email       string             `json:"email"`
+	SessionID   hub.SessionID      `json:"session_id"`
+	Fingerprint *users.Fingerprint `json:"fingerprint"`
+}
+
+type ResetPasswordRequest struct {
+	RedirectURL *string            `json:"redirectURL"`
+	Password    string             `json:"password"`
+	TokenID     string             `json:"id"`
+	Token       string             `json:"token"`
+	SessionID   hub.SessionID      `json:"session_id"`
+	Fingerprint *users.Fingerprint `json:"fingerprint"`
+}
+
+type ChangePasswordRequest struct {
+	RedirectURL *string            `json:"redirectURL"`
+	Password    string             `json:"password"`
+	UserID      string             `json:"user_id"`
+	NewPassword string             `json:"new_password"`
 	SessionID   hub.SessionID      `json:"session_id"`
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
 }
@@ -56,6 +86,10 @@ type LoginResponse struct {
 	Token         string      `json:"token"`
 	IsNew         bool        `json:"is_new"`
 	RedirectToken *string     `json:"redirect_token,omitempty"`
+}
+
+type ForgotPasswordResponse struct {
+	Message string `json:"message"`
 }
 
 func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string) error {
@@ -282,6 +316,362 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
+func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &EmailLoginRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Check if there are any existing users associated with the email address
+	user, _ := users.Email(req.Email)
+
+	if user != nil {
+		userExistError := fmt.Errorf("User with that email already exists")
+		return http.StatusBadRequest, userExistError
+	}
+
+	if req.Password != "" {
+		err := helpers.IsValidPassword(req.Password)
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+
+	}
+
+	commonAddress := common.HexToAddress("")
+
+	user, err = users.UserCreator("", "", req.Username, req.Email, "", "", "", "", "", "", commonAddress, req.Password)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Fingerprint user
+	if req.Fingerprint != nil {
+		// todo: include ip in upsert
+		err = api.DoFingerprintUpsert(*req.Fingerprint, user.ID)
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+	}
+
+	user, _, token, err := api.IssueToken(&IssueTokenConfig{
+		Encrypted: true,
+		Key:       api.TokenEncryptionKey,
+		Device:    r.UserAgent(),
+		Action:    "signup",
+		User:      user.User,
+	})
+
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	if user.DeletedAt.Valid {
+		return http.StatusBadRequest, err
+	}
+
+	var otToken *string = nil
+	if req.RedirectURL != nil {
+		otToken = api.OneTimeToken(user.ID, r.UserAgent())
+	}
+
+	resp := &LoginResponse{user, token, false, otToken}
+
+	err = api.WriteCookie(w, r, resp.Token)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	b, _ := json.Marshal(resp.User)
+	_, _ = w.Write(b)
+	return http.StatusCreated, nil
+}
+
+func (api *API) EmailLogin(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &EmailLoginRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	user, err := users.EmailPassword(req.Email, req.Password)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Fingerprint user
+	if req.Fingerprint != nil {
+		// todo: include ip in upsert
+		err = api.DoFingerprintUpsert(*req.Fingerprint, user.ID)
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+	}
+	user, _, token, err := api.IssueToken(&IssueTokenConfig{
+		Encrypted: true,
+		Key:       api.TokenEncryptionKey,
+		Device:    r.UserAgent(),
+		Action:    "login",
+		User:      user.User,
+	})
+
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	if user.DeletedAt.Valid {
+		return http.StatusBadRequest, fmt.Errorf("user does not exist")
+	}
+
+	var otToken *string = nil
+	if req.RedirectURL != nil {
+		otToken = api.OneTimeToken(user.ID, r.UserAgent())
+	}
+	resp := &LoginResponse{user, token, false, otToken}
+
+	err = api.WriteCookie(w, r, resp.Token)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	b, _ := json.Marshal(resp.User)
+	_, _ = w.Write(b)
+	return http.StatusCreated, nil
+}
+
+func (api *API) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &ForgotPasswordRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	user, err := users.Email(req.Email)
+	if err != nil {
+		return http.StatusBadRequest, fmt.Errorf("no user found with email: %q", req.Email)
+	}
+	user, tokenID, token, err := api.ResetPasswordToken(&IssueTokenConfig{
+		Encrypted: true,
+		Key:       api.TokenEncryptionKey,
+		Device:    r.UserAgent(),
+		Action:    "forgot",
+		User:      user.User,
+	})
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	err = api.Mailer.SendForgotPasswordEmail(context.Background(), user, token, tokenID)
+	if err != nil {
+		return http.StatusBadRequest, err
+
+	}
+
+	resp := &ForgotPasswordResponse{Message: "Success! An email has been sent with steps to recover your account"}
+
+	b, _ := json.Marshal(resp.Message)
+	_, _ = w.Write(b)
+	return http.StatusCreated, nil
+
+}
+
+func (api *API) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &ResetPasswordRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Decode token
+	user, err := api.TokenLogin(req.Token, "")
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Check if password is valid
+	err = helpers.IsValidPassword(req.Password)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	newPasswordHash := pCrypto.HashPassword(req.Password)
+
+	// Start transaction
+	tx, err := passdb.StdConn.Begin()
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	defer tx.Rollback()
+
+	// Change password
+	err = db.AuthSetPasswordHash(tx, user.User.ID, newPasswordHash)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	issueToken, err := boiler.FindIssueToken(passdb.StdConn, req.TokenID)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+	// Delete jwt token
+	issueToken.Delete(passdb.StdConn, true)
+
+	// Commit transaction
+	err = tx.Commit()
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Fingerprint user
+	if req.Fingerprint != nil {
+		// todo: include ip in upsert
+		err = api.DoFingerprintUpsert(*req.Fingerprint, user.User.ID)
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+	}
+	u, _, token, err := api.IssueToken(&IssueTokenConfig{
+		Encrypted: true,
+		Key:       api.TokenEncryptionKey,
+		Device:    r.UserAgent(),
+		Action:    "reset",
+		User:      user.User,
+	})
+
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	if u.DeletedAt.Valid {
+		return http.StatusBadRequest, fmt.Errorf("user does not exist")
+	}
+
+	var otToken *string = nil
+	if req.RedirectURL != nil {
+		otToken = api.OneTimeToken(u.ID, r.UserAgent())
+	}
+	resp := &LoginResponse{u, token, false, otToken}
+
+	err = api.WriteCookie(w, r, resp.Token)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	b, _ := json.Marshal(resp.User)
+	_, _ = w.Write(b)
+	return http.StatusCreated, nil
+
+}
+
+func (api *API) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &ChangePasswordRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	passwordHash, err := db.HashByUserID(req.UserID)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Check if current password is correct
+	err = pCrypto.ComparePassword(passwordHash, req.Password)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Check if new password is valid
+	err = helpers.IsValidPassword(req.Password)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	newPasswordHash := pCrypto.HashPassword(req.NewPassword)
+
+	// Start transaction
+	tx, err := passdb.StdConn.Begin()
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	defer tx.Rollback()
+
+	// Change password
+	err = db.AuthSetPasswordHash(tx, req.UserID, newPasswordHash)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Get user
+	user, err := boiler.Users(
+		boiler.UserWhere.ID.EQ(req.UserID),
+		qm.Load(qm.Rels(boiler.UserRels.Faction)),
+	).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Delete all issued token
+	_, err = user.IssueTokens().DeleteAll(passdb.StdConn, true)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+	URI := fmt.Sprintf("/user/%s/logout", req.UserID)
+
+	ws.PublishMessage(URI, HubKeyUserLogout, user)
+
+	fmt.Println(URI)
+
+	// Commit transaction
+	err = tx.Commit()
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Fingerprint user
+	if req.Fingerprint != nil {
+		// todo: include ip in upsert
+		err = api.DoFingerprintUpsert(*req.Fingerprint, req.UserID)
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+	}
+
+	u, _, token, err := api.IssueToken(&IssueTokenConfig{
+		Encrypted: true,
+		Key:       api.TokenEncryptionKey,
+		Device:    r.UserAgent(),
+		Action:    "reset",
+		User:      user,
+	})
+
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	if u.DeletedAt.Valid {
+		return http.StatusBadRequest, fmt.Errorf("user does not exist")
+	}
+
+	var otToken *string = nil
+	if req.RedirectURL != nil {
+		otToken = api.OneTimeToken(u.ID, r.UserAgent())
+	}
+	resp := &LoginResponse{u, token, false, otToken}
+
+	err = api.WriteCookie(w, r, resp.Token)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	b, _ := json.Marshal(resp.User)
+	_, _ = w.Write(b)
+	return http.StatusCreated, nil
+
+}
 
 func (api *API) WalletLoginHandler(w http.ResponseWriter, r *http.Request) {
 	req := &WalletLoginRequest{}
@@ -307,53 +697,6 @@ func (api *API) WalletLoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *API) WalletLogin(req *WalletLoginRequest, r *http.Request) (*LoginResponse, error) {
-	// Take public address Hex to address(Make it a checksum mixed case address) convert back to Hex for string of checksum
-	commonAddr := common.HexToAddress(req.PublicAddress)
-
-	// Check if there are any existing users associated with the public address
-	user, err := users.PublicAddress(commonAddr)
-	if err != nil {
-		return nil, fmt.Errorf("public address fail: %w", err)
-	}
-
-	// Fingerprint user
-	if req.Fingerprint != nil {
-		// todo: include ip in upsert
-		err = api.DoFingerprintUpsert(*req.Fingerprint, user.ID)
-		if err != nil {
-			return nil, fmt.Errorf("browser identification fail: %w", err)
-		}
-	}
-
-	user, _, token, err := api.IssueToken(&IssueTokenConfig{
-		Encrypted: true,
-		Key:       api.TokenEncryptionKey,
-		Device:    r.UserAgent(),
-		Action:    "login",
-		User:      user.User,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("There was a problem creating a session for your account, please try again. %w", err)
-	}
-
-	err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	if user.DeletedAt.Valid {
-		return nil, fmt.Errorf("user does not exist")
-	}
-
-	var otToken *string = nil
-	if req.RedirectURL != nil {
-		otToken = api.OneTimeToken(user.ID, r.UserAgent())
-	}
-
-	return &LoginResponse{user, token, false, otToken}, nil
-}
-
-func (api *API) EmailLogin(req *WalletLoginRequest, r *http.Request) (*LoginResponse, error) {
 	// Take public address Hex to address(Make it a checksum mixed case address) convert back to Hex for string of checksum
 	commonAddr := common.HexToAddress(req.PublicAddress)
 
@@ -460,7 +803,7 @@ func (api *API) OneTimeToken(userID string, userAgent string) *string {
 	return &token
 }
 
-func (api *API) IssueToken(config *IssueTokenConfig) (*types.User, uuid.UUID, string, error) {
+func issueToken(api *API, config *IssueTokenConfig, expireInDays int) (*types.User, uuid.UUID, string, error) {
 	var err error
 	errMsg := "There was a problem with your authentication, please check your details and try again."
 
@@ -488,7 +831,8 @@ func (api *API) IssueToken(config *IssueTokenConfig) (*types.User, uuid.UUID, st
 		user.User,
 		config.Device,
 		config.Action,
-		api.TokenExpirationDays)
+		expireInDays)
+
 	if err != nil {
 		return nil, uuid.Nil, "", terror.Error(err, errMsg)
 	}
@@ -509,6 +853,15 @@ func (api *API) IssueToken(config *IssueTokenConfig) (*types.User, uuid.UUID, st
 	}
 
 	return user, tokenID, token, nil
+}
+
+func (api *API) ResetPasswordToken(config *IssueTokenConfig) (*types.User, uuid.UUID, string, error) {
+	return issueToken(api, config, 1)
+
+}
+
+func (api *API) IssueToken(config *IssueTokenConfig) (*types.User, uuid.UUID, string, error) {
+	return issueToken(api, config, api.TokenExpirationDays)
 }
 
 func (api *API) VerifySignature(signature string, nonce string, publicKey common.Address) error {

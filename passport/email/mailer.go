@@ -29,7 +29,7 @@ type Mailer struct {
 	Templates map[string]*raymond.Template
 }
 
-// NewMailer returns a new Mailer controller
+// NewMailer returns a new Mailer controller479cdb8edd99f3b88ea95a0866ffeb41-30b9cd6d-ababd0cd
 func NewMailer(domain string, apiKey string, systemAddress string, config *types.Config, log *zerolog.Logger) (*Mailer, error) {
 	mailer := &Mailer{
 		MailGun:            mailgun.NewMailgun(domain, apiKey),
@@ -46,7 +46,7 @@ func NewMailer(domain string, apiKey string, systemAddress string, config *types
 
 	// Parse email templates
 	var templates []string
-	templatesFolder := "./email/templates"
+	templatesFolder := "./passport/email/templates"
 	err := filepath.Walk(templatesFolder, func(path string, info os.FileInfo, err error) error {
 		if strings.Contains(path, ".html") {
 			templates = append(templates, path)
@@ -119,7 +119,7 @@ func (m *Mailer) SendEmail(
 	// Setup Email
 	message := m.MailGun.NewMessage(m.SystemAddress, subject, "", strings.Split(to, ",")...)
 	message.SetHtml(body)
-	message.AddInline("./email/templates/logo.png")
+	message.AddInline("./passport/email/templates/logo.png")
 	if bcc != "" {
 		for _, b := range strings.Split(bcc, ",") {
 			message.AddBCC(b)

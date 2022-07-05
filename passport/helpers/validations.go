@@ -54,10 +54,10 @@ func IsValidPassword(password string) error {
 	hasUpper := false
 	hasLower := false
 	hasNumber := false
-	hasSymbol := false
-	if PasswordRegExp.Match([]byte(password)) {
-		hasSymbol = true
-	}
+	// hasSymbol := false
+	// if PasswordRegExp.Match([]byte(password)) {
+	// 	hasSymbol = true
+	// }
 	for _, r := range password {
 		if unicode.IsUpper(r) {
 			hasUpper = true
@@ -81,9 +81,9 @@ func IsValidPassword(password string) error {
 	if !hasLower {
 		return terror.Error(err, "Invalid password. Your password must contain at least 1 lowercase letter.")
 	}
-	if !hasSymbol {
-		return terror.Error(err, "Invalid password. Your password must contain at least 1 symbol.")
-	}
+	// if !hasSymbol {
+	// 	return terror.Error(err, "Invalid password. Your password must contain at least 1 symbol.")
+	// }
 	return nil
 }
 
