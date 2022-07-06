@@ -62,19 +62,13 @@ type ForgotPasswordRequest struct {
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
 }
 
-type ResetPasswordRequest struct {
+
+type PasswordUpdateRequest struct {
 	RedirectURL *string            `json:"redirectURL"`
+	UserID   	string             `json:"user_id"`
 	Password    string             `json:"password"`
 	TokenID     string             `json:"id"`
 	Token       string             `json:"token"`
-	SessionID   hub.SessionID      `json:"session_id"`
-	Fingerprint *users.Fingerprint `json:"fingerprint"`
-}
-
-type ChangePasswordRequest struct {
-	RedirectURL *string            `json:"redirectURL"`
-	Password    string             `json:"password"`
-	UserID      string             `json:"user_id"`
 	NewPassword string             `json:"new_password"`
 	SessionID   hub.SessionID      `json:"session_id"`
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
@@ -477,7 +471,7 @@ func (api *API) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) (i
 }
 
 func (api *API) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &ResetPasswordRequest{}
+	req := &PasswordUpdateRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		return http.StatusBadRequest, err
@@ -488,88 +482,12 @@ func (api *API) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) (in
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-
-	// Check if password is valid
-	err = helpers.IsValidPassword(req.Password)
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	newPasswordHash := pCrypto.HashPassword(req.Password)
-
-	// Start transaction
-	tx, err := passdb.StdConn.Begin()
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	defer tx.Rollback()
-
-	// Change password
-	err = db.AuthSetPasswordHash(tx, user.User.ID, newPasswordHash)
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	// Delete all issued token
-	_, err = user.User.IssueTokens().DeleteAll(passdb.StdConn, true)
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-	URI := fmt.Sprintf("/user/%s/init", user.User.ID)
-
-	ws.PublishMessage(URI, HubKeyUserInit, nil)
-
-	// Commit transaction
-	err = tx.Commit()
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	// Fingerprint user
-	if req.Fingerprint != nil {
-		// todo: include ip in upsert
-		err = api.DoFingerprintUpsert(*req.Fingerprint, user.User.ID)
-		if err != nil {
-			return http.StatusBadRequest, err
-		}
-	}
-	
-	u, _, token, err := api.IssueToken(&IssueTokenConfig{
-		Encrypted: true,
-		Key:       api.TokenEncryptionKey,
-		Device:    r.UserAgent(),
-		Action:    "reset",
-		User:      user.User,
-	})
-
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	if u.DeletedAt.Valid {
-		return http.StatusBadRequest, fmt.Errorf("user does not exist")
-	}
-
-	var otToken *string = nil
-	if req.RedirectURL != nil {
-		otToken = api.OneTimeToken(u.ID, r.UserAgent())
-	}
-	resp := &LoginResponse{u, token, false, otToken}
-
-	err = api.WriteCookie(w, r, resp.Token)
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	b, _ := json.Marshal(resp.User)
-	_, _ = w.Write(b)
-	return http.StatusCreated, nil
+return  passwordReset(api, w, r, req,user.User)
 
 }
 
 func (api *API) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &ChangePasswordRequest{}
+	req := &PasswordUpdateRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		return http.StatusBadRequest, err
@@ -586,8 +504,48 @@ func (api *API) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) (i
 		return http.StatusBadRequest, err
 	}
 
+	// Get user
+	user, err := boiler.Users(
+		boiler.UserWhere.ID.EQ(req.UserID),
+		qm.Load(qm.Rels(boiler.UserRels.Faction)),
+	).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	return  passwordReset(api, w, r, req,user)
+
+}
+
+
+func (api *API) NewPasswordHandler (w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &PasswordUpdateRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Find user by id
+	user, err := boiler.Users(
+		boiler.UserWhere.ID.EQ(req.UserID),
+		qm.Load(qm.Rels(boiler.UserRels.Faction)),
+	).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Check if user has password already
+	_, err = db.HashByUserID(req.UserID)
+	if err == nil  {
+		return http.StatusBadRequest, fmt.Errorf("user already has a password")
+	}
+
+	return  passwordReset(api, w, r, req,user)
+}
+
+func passwordReset (api *API, w http.ResponseWriter, r *http.Request, req *PasswordUpdateRequest, user *boiler.User) (int, error) {
 	// Check if new password is valid
-	err = helpers.IsValidPassword(req.Password)
+	err := helpers.IsValidPassword(req.NewPassword)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -603,16 +561,7 @@ func (api *API) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) (i
 	defer tx.Rollback()
 
 	// Change password
-	err = db.AuthSetPasswordHash(tx, req.UserID, newPasswordHash)
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	// Get user
-	user, err := boiler.Users(
-		boiler.UserWhere.ID.EQ(req.UserID),
-		qm.Load(qm.Rels(boiler.UserRels.Faction)),
-	).One(passdb.StdConn)
+	err = db.AuthSetPasswordHash(tx, user.ID, newPasswordHash)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -622,10 +571,9 @@ func (api *API) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) (i
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-	URI := fmt.Sprintf("/user/%s/init", req.UserID)
+	URI := fmt.Sprintf("/user/%s/init", user.ID)
 
 	ws.PublishMessage(URI, HubKeyUserInit, nil)
-
 
 	// Commit transaction
 	err = tx.Commit()
@@ -636,12 +584,12 @@ func (api *API) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) (i
 	// Fingerprint user
 	if req.Fingerprint != nil {
 		// todo: include ip in upsert
-		err = api.DoFingerprintUpsert(*req.Fingerprint, req.UserID)
+		err = api.DoFingerprintUpsert(*req.Fingerprint, user.ID)
 		if err != nil {
 			return http.StatusBadRequest, err
 		}
 	}
-
+	
 	u, _, token, err := api.IssueToken(&IssueTokenConfig{
 		Encrypted: true,
 		Key:       api.TokenEncryptionKey,
@@ -672,7 +620,6 @@ func (api *API) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) (i
 	b, _ := json.Marshal(resp.User)
 	_, _ = w.Write(b)
 	return http.StatusCreated, nil
-
 }
 
 func (api *API) WalletLoginHandler(w http.ResponseWriter, r *http.Request) {

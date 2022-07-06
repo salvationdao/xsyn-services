@@ -240,14 +240,15 @@ func NewAPI(
 				r.Post("/forgot", WithError(api.ForgotPasswordHandler))
 				r.Post("/reset", WithError(api.ResetPasswordHandler))
 				r.Post("/change_password", WithError(api.ChangePasswordHandler))
+				r.Post("/new_password", WithError(api.NewPasswordHandler))
 
 				r.Post("/bot_list", api.BotListHandler)
 				r.Post("/bot_token", api.BotTokenLoginHandler)
 			})
 		})
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
-		// See roothub.ServeHTTP for the setup of sentry on this route.
 
+		// See roothub.ServeHTTP for the setup of sentry on this route.
 		r.Route("/ws", func(r chi.Router) {
 			r.Use(ws.TrimPrefix("/api/ws"))
 			r.Mount("/public", ws.NewServer(func(s *ws.Server) {
