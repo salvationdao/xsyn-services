@@ -1415,7 +1415,7 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, user *types.User
 	user.PublicAddress = null.StringFrom(req.Payload.PublicAddress)
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.PublicAddress))
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(terror.ErrInvalidInput, "Wallet is already being used by a different user.")
 	}
 
 	reply(user)

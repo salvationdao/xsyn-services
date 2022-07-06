@@ -241,6 +241,7 @@ func NewAPI(
 				r.Post("/reset", WithError(api.ResetPasswordHandler))
 				r.Post("/change_password", WithError(api.ChangePasswordHandler))
 				r.Post("/new_password", WithError(api.NewPasswordHandler))
+				r.Post("/connect", WithError(api.NewPasswordHandler))
 
 				r.Post("/bot_list", api.BotListHandler)
 				r.Post("/bot_token", api.BotTokenLoginHandler)
@@ -261,7 +262,6 @@ func NewAPI(
 				s.Use(api.AuthWS(true, true))
 				s.WS("/*", HubKeyUserGet, api.MustSecure(uc.GetHandler))
 				s.Mount("/commander", api.Commander)
-				s.WS("/init", HubKeyUserInit, api.MustSecure(uc.InitHandler))
 				s.WS("/sups", HubKeyUserSupsSubscribe, api.MustSecure(api.UserSupsUpdatedSubscribeHandler))
 				s.WS("/transactions", HubKeyUserTransactionsSubscribe, api.MustSecure(api.UserTransactionsSubscribeHandler))
 			}))
