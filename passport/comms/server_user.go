@@ -2,14 +2,13 @@ package comms
 
 import (
 	"fmt"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 
 	"github.com/ninja-software/terror/v2"
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -57,20 +56,13 @@ func (s *S) UserBalanceGetHandler(req UserBalanceGetReq, resp *UserBalanceGetRes
 		return err
 	}
 
-	balance, err := s.UserCacheMap.Get(req.UserID.String())
+	account, err := s.UserCacheMap.Get(req.UserID.String())
 	if err != nil {
 		passlog.L.Error().Str("user_id", req.UserID.String()).Err(err).Msg("Failed to get user balance")
 		return err
 	}
 
-	// convert balance from big int to decimal
-	b, err := decimal.NewFromString(balance.String())
-	if err != nil {
-		passlog.L.Error().Str("big int amount", balance.String()).Err(err).Msg("Failed to get convert big int to decimal")
-		return terror.Error(err, "failed to convert big int to decimal")
-	}
-
-	resp.Balance = b
+	resp.Balance = account.Sups
 	return nil
 }
 

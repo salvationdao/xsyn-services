@@ -25,6 +25,7 @@ import (
 // Account is an object representing the database table.
 type Account struct {
 	ID        string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Type      string          `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
 	Sups      decimal.Decimal `boiler:"sups" boil:"sups" json:"sups" toml:"sups" yaml:"sups"`
 	CreatedAt time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
@@ -36,12 +37,14 @@ type Account struct {
 
 var AccountColumns = struct {
 	ID        string
+	Type      string
 	Sups      string
 	CreatedAt string
 	UpdatedAt string
 	DeletedAt string
 }{
 	ID:        "id",
+	Type:      "type",
 	Sups:      "sups",
 	CreatedAt: "created_at",
 	UpdatedAt: "updated_at",
@@ -50,12 +53,14 @@ var AccountColumns = struct {
 
 var AccountTableColumns = struct {
 	ID        string
+	Type      string
 	Sups      string
 	CreatedAt string
 	UpdatedAt string
 	DeletedAt string
 }{
 	ID:        "accounts.id",
+	Type:      "accounts.type",
 	Sups:      "accounts.sups",
 	CreatedAt: "accounts.created_at",
 	UpdatedAt: "accounts.updated_at",
@@ -155,12 +160,14 @@ func (w whereHelpernull_Time) IsNotNull() qm.QueryMod { return qmhelper.WhereIsN
 
 var AccountWhere = struct {
 	ID        whereHelperstring
+	Type      whereHelperstring
 	Sups      whereHelperdecimal_Decimal
 	CreatedAt whereHelpertime_Time
 	UpdatedAt whereHelpertime_Time
 	DeletedAt whereHelpernull_Time
 }{
 	ID:        whereHelperstring{field: "\"accounts\".\"id\""},
+	Type:      whereHelperstring{field: "\"accounts\".\"type\""},
 	Sups:      whereHelperdecimal_Decimal{field: "\"accounts\".\"sups\""},
 	CreatedAt: whereHelpertime_Time{field: "\"accounts\".\"created_at\""},
 	UpdatedAt: whereHelpertime_Time{field: "\"accounts\".\"updated_at\""},
@@ -169,17 +176,23 @@ var AccountWhere = struct {
 
 // AccountRels is where relationship names are stored.
 var AccountRels = struct {
-	Syndicates string
-	Users      string
+	Syndicates                string
+	CreditAccountTransactions string
+	DebitAccountTransactions  string
+	Users                     string
 }{
-	Syndicates: "Syndicates",
-	Users:      "Users",
+	Syndicates:                "Syndicates",
+	CreditAccountTransactions: "CreditAccountTransactions",
+	DebitAccountTransactions:  "DebitAccountTransactions",
+	Users:                     "Users",
 }
 
 // accountR is where relationships are stored.
 type accountR struct {
-	Syndicates SyndicateSlice `boiler:"Syndicates" boil:"Syndicates" json:"Syndicates" toml:"Syndicates" yaml:"Syndicates"`
-	Users      UserSlice      `boiler:"Users" boil:"Users" json:"Users" toml:"Users" yaml:"Users"`
+	Syndicates                SyndicateSlice   `boiler:"Syndicates" boil:"Syndicates" json:"Syndicates" toml:"Syndicates" yaml:"Syndicates"`
+	CreditAccountTransactions TransactionSlice `boiler:"CreditAccountTransactions" boil:"CreditAccountTransactions" json:"CreditAccountTransactions" toml:"CreditAccountTransactions" yaml:"CreditAccountTransactions"`
+	DebitAccountTransactions  TransactionSlice `boiler:"DebitAccountTransactions" boil:"DebitAccountTransactions" json:"DebitAccountTransactions" toml:"DebitAccountTransactions" yaml:"DebitAccountTransactions"`
+	Users                     UserSlice        `boiler:"Users" boil:"Users" json:"Users" toml:"Users" yaml:"Users"`
 }
 
 // NewStruct creates a new relationship struct
@@ -191,8 +204,8 @@ func (*accountR) NewStruct() *accountR {
 type accountL struct{}
 
 var (
-	accountAllColumns            = []string{"id", "sups", "created_at", "updated_at", "deleted_at"}
-	accountColumnsWithoutDefault = []string{}
+	accountAllColumns            = []string{"id", "type", "sups", "created_at", "updated_at", "deleted_at"}
+	accountColumnsWithoutDefault = []string{"type"}
 	accountColumnsWithDefault    = []string{"id", "sups", "created_at", "updated_at", "deleted_at"}
 	accountPrimaryKeyColumns     = []string{"id"}
 	accountGeneratedColumns      = []string{}
@@ -462,6 +475,48 @@ func (o *Account) Syndicates(mods ...qm.QueryMod) syndicateQuery {
 	return query
 }
 
+// CreditAccountTransactions retrieves all the transaction's Transactions with an executor via credit_account_id column.
+func (o *Account) CreditAccountTransactions(mods ...qm.QueryMod) transactionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"transactions\".\"credit_account_id\"=?", o.ID),
+	)
+
+	query := Transactions(queryMods...)
+	queries.SetFrom(query.Query, "\"transactions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"transactions\".*"})
+	}
+
+	return query
+}
+
+// DebitAccountTransactions retrieves all the transaction's Transactions with an executor via debit_account_id column.
+func (o *Account) DebitAccountTransactions(mods ...qm.QueryMod) transactionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"transactions\".\"debit_account_id\"=?", o.ID),
+	)
+
+	query := Transactions(queryMods...)
+	queries.SetFrom(query.Query, "\"transactions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"transactions\".*"})
+	}
+
+	return query
+}
+
 // Users retrieves all the user's Users with an executor.
 func (o *Account) Users(mods ...qm.QueryMod) userQuery {
 	var queryMods []qm.QueryMod
@@ -575,6 +630,202 @@ func (accountL) LoadSyndicates(e boil.Executor, singular bool, maybeAccount inte
 					foreign.R = &syndicateR{}
 				}
 				foreign.R.Account = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadCreditAccountTransactions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (accountL) LoadCreditAccountTransactions(e boil.Executor, singular bool, maybeAccount interface{}, mods queries.Applicator) error {
+	var slice []*Account
+	var object *Account
+
+	if singular {
+		object = maybeAccount.(*Account)
+	} else {
+		slice = *maybeAccount.(*[]*Account)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &accountR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &accountR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`transactions`),
+		qm.WhereIn(`transactions.credit_account_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load transactions")
+	}
+
+	var resultSlice []*Transaction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice transactions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on transactions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions")
+	}
+
+	if len(transactionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.CreditAccountTransactions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &transactionR{}
+			}
+			foreign.R.CreditAccount = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.CreditAccountID {
+				local.R.CreditAccountTransactions = append(local.R.CreditAccountTransactions, foreign)
+				if foreign.R == nil {
+					foreign.R = &transactionR{}
+				}
+				foreign.R.CreditAccount = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadDebitAccountTransactions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (accountL) LoadDebitAccountTransactions(e boil.Executor, singular bool, maybeAccount interface{}, mods queries.Applicator) error {
+	var slice []*Account
+	var object *Account
+
+	if singular {
+		object = maybeAccount.(*Account)
+	} else {
+		slice = *maybeAccount.(*[]*Account)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &accountR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &accountR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`transactions`),
+		qm.WhereIn(`transactions.debit_account_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load transactions")
+	}
+
+	var resultSlice []*Transaction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice transactions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on transactions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions")
+	}
+
+	if len(transactionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.DebitAccountTransactions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &transactionR{}
+			}
+			foreign.R.DebitAccount = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.DebitAccountID {
+				local.R.DebitAccountTransactions = append(local.R.DebitAccountTransactions, foreign)
+				if foreign.R == nil {
+					foreign.R = &transactionR{}
+				}
+				foreign.R.DebitAccount = local
 				break
 			}
 		}
@@ -729,6 +980,110 @@ func (o *Account) AddSyndicates(exec boil.Executor, insert bool, related ...*Syn
 			}
 		} else {
 			rel.R.Account = o
+		}
+	}
+	return nil
+}
+
+// AddCreditAccountTransactions adds the given related objects to the existing relationships
+// of the account, optionally inserting them as new records.
+// Appends related to o.R.CreditAccountTransactions.
+// Sets related.R.CreditAccount appropriately.
+func (o *Account) AddCreditAccountTransactions(exec boil.Executor, insert bool, related ...*Transaction) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.CreditAccountID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"transactions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"credit_account_id"}),
+				strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.CreditAccountID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &accountR{
+			CreditAccountTransactions: related,
+		}
+	} else {
+		o.R.CreditAccountTransactions = append(o.R.CreditAccountTransactions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &transactionR{
+				CreditAccount: o,
+			}
+		} else {
+			rel.R.CreditAccount = o
+		}
+	}
+	return nil
+}
+
+// AddDebitAccountTransactions adds the given related objects to the existing relationships
+// of the account, optionally inserting them as new records.
+// Appends related to o.R.DebitAccountTransactions.
+// Sets related.R.DebitAccount appropriately.
+func (o *Account) AddDebitAccountTransactions(exec boil.Executor, insert bool, related ...*Transaction) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.DebitAccountID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"transactions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"debit_account_id"}),
+				strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.DebitAccountID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &accountR{
+			DebitAccountTransactions: related,
+		}
+	} else {
+		o.R.DebitAccountTransactions = append(o.R.DebitAccountTransactions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &transactionR{
+				DebitAccount: o,
+			}
+		} else {
+			rel.R.DebitAccount = o
 		}
 	}
 	return nil

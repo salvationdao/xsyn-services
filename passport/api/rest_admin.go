@@ -138,8 +138,8 @@ func CreateTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Requ
 
 		ref := fmt.Sprintf("TRANSFER - %d", time.Now().UnixNano())
 		newTx := &types.NewTransaction{
-			To:                   types.UserID(req.Credit),
-			From:                 types.UserID(req.Debit),
+			Credit:               req.Credit.String(),
+			Debit:                req.Debit.String(),
 			Amount:               req.Amount,
 			TransactionReference: types.TransactionReference(ref),
 			Description:          ref,
@@ -162,9 +162,18 @@ func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not get transaction")
 		}
+		debitAccountOwnerID, _, err := ucm.GetAccountLookup(tx.DebitAccountID)
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err, "Failed to find debit account owner")
+		}
+		creditAccountOwnerID, _, err := ucm.GetAccountLookup(tx.CreditAccountID)
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err, "Failed to find credit account owner")
+		}
+
 		refundTx := &types.NewTransaction{
-			To:                   types.UserID(uuid.Must(uuid.FromString(tx.Debit))),
-			From:                 types.UserID(uuid.Must(uuid.FromString(tx.Credit))),
+			Credit:               debitAccountOwnerID,
+			Debit:                creditAccountOwnerID,
 			Amount:               tx.Amount,
 			TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", tx.TransactionReference)),
 			Description:          "Reverse transaction",
@@ -172,7 +181,7 @@ func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http
 			SubGroup:             "Refund",
 			RelatedTransactionID: null.StringFrom(tx.ID),
 		}
-		 _, err = ucm.Transact(refundTx)
+		_, err = ucm.Transact(refundTx)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not get transaction")
 		}

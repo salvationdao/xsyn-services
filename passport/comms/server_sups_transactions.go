@@ -47,9 +47,19 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 		return terror.Error(terror.ErrForbidden, "You can only refund transactions you made.")
 	}
 
+	creditAccountOwnerID, _, err := s.UserCacheMap.GetAccountLookup(transaction.CreditAccountID)
+	if err != nil {
+		return terror.Error(err, "Failed to get owner of the original credit account")
+	}
+
+	debitAccountOwnerID, _, err := s.UserCacheMap.GetAccountLookup(transaction.DebitAccountID)
+	if err != nil {
+		return terror.Error(err, "Failed to get owner of the original debit account")
+	}
+
 	tx := &types.NewTransaction{
-		From:                 types.UserID(uuid.FromStringOrNil(transaction.Credit)),
-		To:                   types.UserID(uuid.FromStringOrNil(transaction.Debit)),
+		Debit:                creditAccountOwnerID,
+		Credit:               debitAccountOwnerID,
 		TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", transaction.TransactionReference)),
 		Description:          fmt.Sprintf("Reverse transaction - %s", transaction.Description),
 		Amount:               transaction.Amount,
@@ -120,8 +130,8 @@ func (s *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 	}
 
 	tx := &types.NewTransaction{
-		From:                 types.UserID(req.FromUserID),
-		To:                   types.UserID(req.ToUserID),
+		Debit:                req.FromUserID.String(),
+		Credit:               req.ToUserID.String(),
 		TransactionReference: req.TransactionReference,
 		Description:          req.Description,
 		Amount:               amt,

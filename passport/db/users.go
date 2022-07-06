@@ -65,13 +65,14 @@ func (ic UserColumn) IsValid() error {
 const UserGetQuery string = `--sql
 SELECT 
 	users.id, users.role_id, users.two_factor_authentication_activated, users.two_factor_authentication_is_set, users.first_name, users.last_name, users.email, users.username, users.avatar_id, users.verified, users.old_password_required,
-	users.created_at, sups, users.updated_at, users.deleted_at, users.facebook_id, users.google_id, users.twitch_id, users.twitter_id, users.discord_id, users.public_address, users.nonce, users.faction_id, users.withdraw_lock, users.mint_lock, users.total_lock,
+	users.created_at, accounts.sups, users.updated_at, users.deleted_at, users.facebook_id, users.google_id, users.twitch_id, users.twitter_id, users.discord_id, users.public_address, users.nonce, users.faction_id, users.withdraw_lock, users.mint_lock, users.total_lock,
 	(SELECT COUNT(id) FROM user_recovery_codes urc WHERE urc.user_id = users.id) > 0 as has_recovery_code, users.mobile_number,
 	row_to_json(role) as role,
 	row_to_json(faction) as faction
 ` + UserGetQueryFrom
 const UserGetQueryFrom string = `--sql
 FROM users
+INNER JOIN (SELECT id, sups FROM accounts) accounts ON accounts.id = users.account_id
 LEFT JOIN (SELECT id, name, permissions, tier FROM roles) role ON role.id = users.role_id
 LEFT JOIN (
     SELECT id, label, theme, logo_blob_id
@@ -292,16 +293,16 @@ func IsUserDeathlisted(walletAddress string) (bool, error) {
 }
 
 // UserTransactionGetList returns list of transactions based on userid == credit/ debit
-func UserTransactionGetList(userID string, limit int) ([]*boiler.Transaction, error) {
+func UserTransactionGetList(accountID string, limit int) ([]*boiler.Transaction, error) {
 	transactions, err := boiler.Transactions(
 		qm.Where(
 			fmt.Sprintf(
 				"%s = ? OR %s = ?",
-				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.Credit),
-				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.Debit),
+				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.CreditAccountID),
+				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.DebitAccountID),
 			),
-			userID,
-			userID,
+			accountID,
+			accountID,
 		),
 		qm.OrderBy(
 			fmt.Sprintf(
@@ -309,7 +310,7 @@ func UserTransactionGetList(userID string, limit int) ([]*boiler.Transaction, er
 				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.CreatedAt),
 			),
 		),
-		boiler.TransactionWhere.CreatedAt.GT(time.Now().AddDate(0,0,-1)),
+		boiler.TransactionWhere.CreatedAt.GT(time.Now().AddDate(0, 0, -1)),
 		qm.Limit(limit),
 	).All(passdb.StdConn)
 	if err != nil {

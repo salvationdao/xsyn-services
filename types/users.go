@@ -35,16 +35,28 @@ var (
 	XsynSaleUserID                   = UserID(uuid.Must(uuid.FromString("1429a004-84a1-11ec-a8a3-0242ac120002")))
 )
 
-func (e UserID) IsSystemUser() bool {
-	switch e {
-	case XsynTreasuryUserID,
-		SupremacyGameUserID,
-		OnChainUserID,
-		SupremacyBattleUserID,
-		SupremacySupPoolUserID,
-		SupremacyZaibatsuUserID,
-		SupremacyRedMountainUserID,
-		SupremacyBostonCyberneticsUserID:
+var (
+	XsynTreasuryUserAccountID               = AccountID(uuid.FromStringOrNil("f16e175e-769d-4cfc-9c17-acdd433ecaf2"))
+	SupremacyGameUserAccountID              = AccountID(uuid.FromStringOrNil("e7b5b572-90ee-461b-bd12-b73a90f96cbf"))
+	SupremacyBattleUserAccountID            = AccountID(uuid.FromStringOrNil("ca9cac28-986b-409c-a9a1-6f0d4d86c125"))
+	SupremacySupPoolUserAccountID           = AccountID(uuid.FromStringOrNil("dd686216-d3b9-4f6d-b33d-a03756208bfa"))
+	SupremacyZaibatsuUserAccountID          = AccountID(uuid.FromStringOrNil("8d3c2947-0c03-4d42-bf36-023abff2ffe0"))
+	SupremacyRedMountainUserAccountID       = AccountID(uuid.FromStringOrNil("e21cb722-f01f-4690-ae85-7903e96bc52b"))
+	SupremacyBostonCyberneticsUserAccountID = AccountID(uuid.FromStringOrNil("96d889e6-826b-4f21-941a-b3fdf063637a"))
+	OnChainUserAccountID                    = AccountID(uuid.FromStringOrNil("0a17f4af-afff-4ff4-8410-0e53f84e2ef9"))
+	XsynSaleUserAccountID                   = AccountID(uuid.FromStringOrNil("572f781a-50e5-4ab4-98b5-33d6fd1b5dbe"))
+)
+
+func IsSystemUser(userID string) bool {
+	switch userID {
+	case XsynTreasuryUserID.String(),
+		SupremacyGameUserID.String(),
+		OnChainUserID.String(),
+		SupremacyBattleUserID.String(),
+		SupremacySupPoolUserID.String(),
+		SupremacyZaibatsuUserID.String(),
+		SupremacyRedMountainUserID.String(),
+		SupremacyBostonCyberneticsUserID.String():
 		return true
 	}
 	return false
@@ -59,6 +71,7 @@ type User struct {
 	Online   bool            `json:"online"`
 	Pass2FA  bool            `json:"pass_2_fa"`
 	Metadata UserMetadata    `json:"metadata" db:"metadata"`
+	Sups     decimal.Decimal `json:"sups" db:"sups"`
 	//NoNonce  *struct{}       `json:"nonce,omitempty"`
 	//NoSups   *struct{}       `json:"sups,omitempty"`
 }

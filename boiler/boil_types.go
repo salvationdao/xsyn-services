@@ -51,12 +51,18 @@ func makeCacheKey(cols boil.Columns, nzDefaults []string) string {
 	return str
 }
 
+// Enum values for AccountType
+const (
+	AccountTypeUSER      = "USER"
+	AccountTypeSYNDICATE = "SYNDICATE"
+)
+
 // Enum values for  are not proper Go identifiers, cannot emit constants
 
-// Enum values for TransactionType
+// Enum values for TransactionDirection
 const (
-	TransactionTypeP2P = "P2P"
-	TransactionTypeP2S = "P2S"
-	TransactionTypeS2P = "S2P"
-	TransactionTypeS2S = "S2S"
+	TransactionDirectionP2P = "P2P"
+	TransactionDirectionP2S = "P2S"
+	TransactionDirectionS2P = "S2P"
+	TransactionDirectionS2S = "S2S"
 )

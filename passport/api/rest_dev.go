@@ -3,14 +3,6 @@ package api
 import (
 	"database/sql"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/friendsofgo/errors"
-	"github.com/go-chi/chi/v5"
-	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
-	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"math/rand"
 	"net/http"
 	"os"
@@ -23,6 +15,15 @@ import (
 	"xsyn-services/passport/payments"
 	"xsyn-services/passport/supremacy_rpcclient"
 	"xsyn-services/types"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/friendsofgo/errors"
+	"github.com/go-chi/chi/v5"
+	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type Dev struct {
@@ -89,8 +90,8 @@ func (d *Dev) devGiveMechs(w http.ResponseWriter, r *http.Request) (int, error) 
 
 	// give account some suppies
 	tx := &types.NewTransaction{
-		To:                   types.UserID(uuid.Must(uuid.FromString(user.ID))),
-		From:                 types.XsynSaleUserID,
+		Credit:               user.ID,
+		Debit:                types.XsynSaleUserID.String(),
 		Amount:               decimal.New(10000, 18),
 		TransactionReference: types.TransactionReference(fmt.Sprintf("DEV SEED SUPS - %v", time.Now().UnixNano())),
 		Description:          "Dev Seed Sups",
