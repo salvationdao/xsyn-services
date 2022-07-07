@@ -81,8 +81,9 @@ ALTER TABLE users
 
 CREATE TABLE syndicates(
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    faction_id uuid not null references factions (id),
     founded_by_id uuid not null references users(id),
-    name text NOT NULL,
+    name text NOT NULL UNIQUE,
     account_id uuid not null references accounts(id),
     created_at timestamptz not null default NOW(),
     updated_at timestamptz NOT NULL DEFAULT NOW(),

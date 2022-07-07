@@ -75,3 +75,11 @@ type UserFactionEnlistReq struct {
 }
 
 type UserFactionEnlistResp struct{}
+
+type SyndicateCreateReq struct {
+	ApiKey      string `json:"apiKey"`
+	ID          string `json:"id"`
+	FoundedByID string `json:"foundedByID"`
+	Name        string `json:"name"`
+}
+type SyndicateCreateResp struct{}

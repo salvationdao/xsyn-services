@@ -24,6 +24,7 @@ import (
 // Syndicate is an object representing the database table.
 type Syndicate struct {
 	ID          string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	FactionID   string    `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
 	FoundedByID string    `boiler:"founded_by_id" boil:"founded_by_id" json:"founded_by_id" toml:"founded_by_id" yaml:"founded_by_id"`
 	Name        string    `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
 	AccountID   string    `boiler:"account_id" boil:"account_id" json:"account_id" toml:"account_id" yaml:"account_id"`
@@ -37,6 +38,7 @@ type Syndicate struct {
 
 var SyndicateColumns = struct {
 	ID          string
+	FactionID   string
 	FoundedByID string
 	Name        string
 	AccountID   string
@@ -45,6 +47,7 @@ var SyndicateColumns = struct {
 	DeletedAt   string
 }{
 	ID:          "id",
+	FactionID:   "faction_id",
 	FoundedByID: "founded_by_id",
 	Name:        "name",
 	AccountID:   "account_id",
@@ -55,6 +58,7 @@ var SyndicateColumns = struct {
 
 var SyndicateTableColumns = struct {
 	ID          string
+	FactionID   string
 	FoundedByID string
 	Name        string
 	AccountID   string
@@ -63,6 +67,7 @@ var SyndicateTableColumns = struct {
 	DeletedAt   string
 }{
 	ID:          "syndicates.id",
+	FactionID:   "syndicates.faction_id",
 	FoundedByID: "syndicates.founded_by_id",
 	Name:        "syndicates.name",
 	AccountID:   "syndicates.account_id",
@@ -75,6 +80,7 @@ var SyndicateTableColumns = struct {
 
 var SyndicateWhere = struct {
 	ID          whereHelperstring
+	FactionID   whereHelperstring
 	FoundedByID whereHelperstring
 	Name        whereHelperstring
 	AccountID   whereHelperstring
@@ -83,6 +89,7 @@ var SyndicateWhere = struct {
 	DeletedAt   whereHelpernull_Time
 }{
 	ID:          whereHelperstring{field: "\"syndicates\".\"id\""},
+	FactionID:   whereHelperstring{field: "\"syndicates\".\"faction_id\""},
 	FoundedByID: whereHelperstring{field: "\"syndicates\".\"founded_by_id\""},
 	Name:        whereHelperstring{field: "\"syndicates\".\"name\""},
 	AccountID:   whereHelperstring{field: "\"syndicates\".\"account_id\""},
@@ -94,15 +101,18 @@ var SyndicateWhere = struct {
 // SyndicateRels is where relationship names are stored.
 var SyndicateRels = struct {
 	Account   string
+	Faction   string
 	FoundedBy string
 }{
 	Account:   "Account",
+	Faction:   "Faction",
 	FoundedBy: "FoundedBy",
 }
 
 // syndicateR is where relationships are stored.
 type syndicateR struct {
 	Account   *Account `boiler:"Account" boil:"Account" json:"Account" toml:"Account" yaml:"Account"`
+	Faction   *Faction `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	FoundedBy *User    `boiler:"FoundedBy" boil:"FoundedBy" json:"FoundedBy" toml:"FoundedBy" yaml:"FoundedBy"`
 }
 
@@ -115,8 +125,8 @@ func (*syndicateR) NewStruct() *syndicateR {
 type syndicateL struct{}
 
 var (
-	syndicateAllColumns            = []string{"id", "founded_by_id", "name", "account_id", "created_at", "updated_at", "deleted_at"}
-	syndicateColumnsWithoutDefault = []string{"founded_by_id", "name", "account_id"}
+	syndicateAllColumns            = []string{"id", "faction_id", "founded_by_id", "name", "account_id", "created_at", "updated_at", "deleted_at"}
+	syndicateColumnsWithoutDefault = []string{"faction_id", "founded_by_id", "name", "account_id"}
 	syndicateColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at"}
 	syndicatePrimaryKeyColumns     = []string{"id"}
 	syndicateGeneratedColumns      = []string{}
@@ -379,6 +389,20 @@ func (o *Syndicate) Account(mods ...qm.QueryMod) accountQuery {
 	return query
 }
 
+// Faction pointed to by the foreign key.
+func (o *Syndicate) Faction(mods ...qm.QueryMod) factionQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.FactionID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Factions(queryMods...)
+	queries.SetFrom(query.Query, "\"factions\"")
+
+	return query
+}
+
 // FoundedBy pointed to by the foreign key.
 func (o *Syndicate) FoundedBy(mods ...qm.QueryMod) userQuery {
 	queryMods := []qm.QueryMod{
@@ -489,6 +513,110 @@ func (syndicateL) LoadAccount(e boil.Executor, singular bool, maybeSyndicate int
 				local.R.Account = foreign
 				if foreign.R == nil {
 					foreign.R = &accountR{}
+				}
+				foreign.R.Syndicates = append(foreign.R.Syndicates, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadFaction allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (syndicateL) LoadFaction(e boil.Executor, singular bool, maybeSyndicate interface{}, mods queries.Applicator) error {
+	var slice []*Syndicate
+	var object *Syndicate
+
+	if singular {
+		object = maybeSyndicate.(*Syndicate)
+	} else {
+		slice = *maybeSyndicate.(*[]*Syndicate)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &syndicateR{}
+		}
+		args = append(args, object.FactionID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &syndicateR{}
+			}
+
+			for _, a := range args {
+				if a == obj.FactionID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.FactionID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`factions`),
+		qm.WhereIn(`factions.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Faction")
+	}
+
+	var resultSlice []*Faction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Faction")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for factions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for factions")
+	}
+
+	if len(syndicateAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Faction = foreign
+		if foreign.R == nil {
+			foreign.R = &factionR{}
+		}
+		foreign.R.Syndicates = append(foreign.R.Syndicates, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.FactionID == foreign.ID {
+				local.R.Faction = foreign
+				if foreign.R == nil {
+					foreign.R = &factionR{}
 				}
 				foreign.R.Syndicates = append(foreign.R.Syndicates, local)
 				break
@@ -641,6 +769,52 @@ func (o *Syndicate) SetAccount(exec boil.Executor, insert bool, related *Account
 
 	if related.R == nil {
 		related.R = &accountR{
+			Syndicates: SyndicateSlice{o},
+		}
+	} else {
+		related.R.Syndicates = append(related.R.Syndicates, o)
+	}
+
+	return nil
+}
+
+// SetFaction of the syndicate to the related item.
+// Sets o.R.Faction to related.
+// Adds o to related.R.Syndicates.
+func (o *Syndicate) SetFaction(exec boil.Executor, insert bool, related *Faction) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"syndicates\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
+		strmangle.WhereClause("\"", "\"", 2, syndicatePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.FactionID = related.ID
+	if o.R == nil {
+		o.R = &syndicateR{
+			Faction: related,
+		}
+	} else {
+		o.R.Faction = related
+	}
+
+	if related.R == nil {
+		related.R = &factionR{
 			Syndicates: SyndicateSlice{o},
 		}
 	} else {
