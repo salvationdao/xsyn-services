@@ -51,7 +51,7 @@ func (m *Mailer) SendForgotPasswordEmail(ctx context.Context, user *types.User, 
 
 	err := m.SendEmail(ctx,
 		user.Email.String,
-		"Forgot Password",
+		"Forgot Password - Passport XSYN",
 		"forgot_password",
 		struct {
 			MagicLink string `handlebars:"magic_link"`

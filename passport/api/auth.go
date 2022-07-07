@@ -462,7 +462,7 @@ func (api *API) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) (i
 
 	}
 
-	resp := &ForgotPasswordResponse{Message: "Success! An email has been sent with steps to recover your account"}
+	resp := &ForgotPasswordResponse{Message: "Success! An email has been sent to recover your account."}
 
 	b, _ := json.Marshal(resp.Message)
 	_, _ = w.Write(b)
