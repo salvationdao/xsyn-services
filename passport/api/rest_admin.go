@@ -172,7 +172,7 @@ func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http
 			SubGroup:             "Refund",
 			RelatedTransactionID: null.StringFrom(tx.ID),
 		}
-		 _, err = ucm.Transact(refundTx)
+		_, err = ucm.Transact(refundTx)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not get transaction")
 		}
@@ -194,6 +194,26 @@ func UserHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	err = json.NewEncoder(w).Encode(u)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not marshal user")
+	}
+	return http.StatusOK, nil
+}
+
+func UserGiveAdminPermission(w http.ResponseWriter, r *http.Request) (int, error) {
+	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
+	permission := chi.URLParam(r, "ADMIN")
+	u, err := boiler.Users(
+		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex())),
+	).One(passdb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return http.StatusBadRequest, terror.Error(err, "Could not get user")
+	}
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return http.StatusBadRequest, terror.Error(err, "User does not exist")
+	}
+	u.Permissions = null.StringFrom(permission)
+	_, err = u.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Permissions))
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not update user")
 	}
 	return http.StatusOK, nil
 }
