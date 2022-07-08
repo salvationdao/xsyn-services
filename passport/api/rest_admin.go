@@ -198,9 +198,9 @@ func UserHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	return http.StatusOK, nil
 }
 
-func UserGiveAdminPermission(w http.ResponseWriter, r *http.Request) (int, error) {
+// GiveUserAdminPermission will set the user to be an admin via public address
+func GiveUserAdminPermission(w http.ResponseWriter, r *http.Request) (int, error) {
 	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
-	permission := chi.URLParam(r, "ADMIN")
 	u, err := boiler.Users(
 		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex())),
 	).One(passdb.StdConn)
@@ -210,7 +210,8 @@ func UserGiveAdminPermission(w http.ResponseWriter, r *http.Request) (int, error
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return http.StatusBadRequest, terror.Error(err, "User does not exist")
 	}
-	u.Permissions = null.StringFrom(permission)
+	u.Permissions = null.StringFrom(types.Admin.UserString())
+	fmt.Println(u.Permissions)
 	_, err = u.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Permissions))
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not update user")
