@@ -53,6 +53,8 @@ func AdminRoutes(ucm *Transactor) chi.Router {
 	r.Get("/users/unlock_withdraw/{public_address}", WithError(WithAdmin(UnlockWithdraw)))
 	r.Get("/users/unlock_mint/{public_address}", WithError(WithAdmin(UnlockMint)))
 
+	r.Post("/users/set_admin/{public_address}", WithError(WithAdmin(GiveUserAdminPermission)))
+
 	return r
 }
 
