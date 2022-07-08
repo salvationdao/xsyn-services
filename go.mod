@@ -2,6 +2,8 @@ module xsyn-services
 
 go 1.18
 
+replace github.com/ninja-syndicate/ws => /home/darren/go/src/github.com/ninja-syndicate/ws
+
 require (
 	github.com/TwiN/go-away v1.6.0
 	github.com/aymerick/raymond v2.0.3-0.20180322193309-b565731e1464+incompatible
