@@ -23,6 +23,8 @@ import (
 	"xsyn-services/passport/tokens"
 	"xsyn-services/types"
 
+	"github.com/dghubble/oauth1"
+	"github.com/dghubble/oauth1/twitter"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -62,14 +64,29 @@ type ForgotPasswordRequest struct {
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
 }
 
-
 type PasswordUpdateRequest struct {
 	RedirectURL *string            `json:"redirectURL"`
-	UserID   	string             `json:"user_id"`
+	UserID      string             `json:"user_id"`
 	Password    string             `json:"password"`
 	TokenID     string             `json:"id"`
 	Token       string             `json:"token"`
 	NewPassword string             `json:"new_password"`
+	SessionID   hub.SessionID      `json:"session_id"`
+	Fingerprint *users.Fingerprint `json:"fingerprint"`
+}
+
+type GoogleLoginRequest struct {
+	RedirectURL *string            `json:"redirectURL"`
+	GoogleID    string             `json:"google_id"`
+	Username    string             `json:"username"`
+	SessionID   hub.SessionID      `json:"session_id"`
+	Fingerprint *users.Fingerprint `json:"fingerprint"`
+}
+
+type FacebookLoginRequest struct {
+	RedirectURL *string            `json:"redirectURL"`
+	FacebookID  string             `json:"facebook_id"`
+	Name        string             `json:"name"`
 	SessionID   hub.SessionID      `json:"session_id"`
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
 }
@@ -318,9 +335,9 @@ func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int,
 	}
 
 	// Check if there are any existing users associated with the email address
-	user, _ := users.Email(req.Email)
+	user, err := users.Email(req.Email)
 
-	if user != nil {
+	if err != nil {
 		userExistError := fmt.Errorf("User with that email already exists")
 		return http.StatusBadRequest, userExistError
 	}
@@ -482,7 +499,7 @@ func (api *API) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) (in
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-return  passwordReset(api, w, r, req,user.User)
+	return passwordReset(api, w, r, req, user.User)
 
 }
 
@@ -513,12 +530,11 @@ func (api *API) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) (i
 		return http.StatusBadRequest, err
 	}
 
-	return  passwordReset(api, w, r, req,user)
+	return passwordReset(api, w, r, req, user)
 
 }
 
-
-func (api *API) NewPasswordHandler (w http.ResponseWriter, r *http.Request) (int, error) {
+func (api *API) NewPasswordHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &PasswordUpdateRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
@@ -536,14 +552,14 @@ func (api *API) NewPasswordHandler (w http.ResponseWriter, r *http.Request) (int
 
 	// Check if user has password already
 	_, err = db.HashByUserID(req.UserID)
-	if err == nil  {
+	if err == nil {
 		return http.StatusBadRequest, fmt.Errorf("user already has a password")
 	}
 
-	return  passwordReset(api, w, r, req,user)
+	return passwordReset(api, w, r, req, user)
 }
 
-func passwordReset (api *API, w http.ResponseWriter, r *http.Request, req *PasswordUpdateRequest, user *boiler.User) (int, error) {
+func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *PasswordUpdateRequest, user *boiler.User) (int, error) {
 	// Check if new password is valid
 	err := helpers.IsValidPassword(req.NewPassword)
 	if err != nil {
@@ -589,7 +605,7 @@ func passwordReset (api *API, w http.ResponseWriter, r *http.Request, req *Passw
 			return http.StatusBadRequest, err
 		}
 	}
-	
+
 	u, _, token, err := api.IssueToken(&IssueTokenConfig{
 		Encrypted: true,
 		Key:       api.TokenEncryptionKey,
@@ -699,6 +715,158 @@ func (api *API) DoFingerprintUpsert(fingerprint users.Fingerprint, userID string
 	}
 
 	return nil
+}
+
+func (api *API) GoogleLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &GoogleLoginRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Check if there are any existing users associated with the email address
+	user, err := users.GoogleID(req.GoogleID)
+
+	if err != nil && errors.Is(sql.ErrNoRows, err) {
+		commonAddress := common.HexToAddress("")
+		u, err := users.UserCreator("", "", req.Username, "", "", req.GoogleID, "", "", "", "", commonAddress, "")
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+		user = u.User
+	}
+
+	// Fingerprint user
+	if req.Fingerprint != nil {
+		// todo: include ip in upsert
+		err = api.DoFingerprintUpsert(*req.Fingerprint, user.ID)
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+	}
+
+	u, _, token, err := api.IssueToken(&IssueTokenConfig{
+		Encrypted: true,
+		Key:       api.TokenEncryptionKey,
+		Device:    r.UserAgent(),
+		Action:    "loginOauth",
+		User:      user,
+	})
+
+	user = u.User
+
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	if user.DeletedAt.Valid {
+		return http.StatusBadRequest, err
+	}
+
+	var otToken *string = nil
+	if req.RedirectURL != nil {
+		otToken = api.OneTimeToken(user.ID, r.UserAgent())
+	}
+
+	resp := &LoginResponse{u, token, false, otToken}
+
+	err = api.WriteCookie(w, r, resp.Token)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	b, _ := json.Marshal(resp.User)
+	_, _ = w.Write(b)
+	return http.StatusCreated, nil
+}
+
+func (api *API) FacebookLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &FacebookLoginRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Check if there are any existing users associated with the email address
+	user, err := users.FacebookID(req.FacebookID)
+
+	if err != nil && errors.Is(sql.ErrNoRows, err) {
+		commonAddress := common.HexToAddress("")
+		username := fmt.Sprintf(("%s%d"), req.Name, rand.Intn(1000))
+		u, err := users.UserCreator("", "", username, "", req.FacebookID, "", "", "", "", "", commonAddress, "")
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+		user = u.User
+	}
+
+	// Fingerprint user
+	if req.Fingerprint != nil {
+		// todo: include ip in upsert
+		err = api.DoFingerprintUpsert(*req.Fingerprint, user.ID)
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+	}
+
+	u, _, token, err := api.IssueToken(&IssueTokenConfig{
+		Encrypted: true,
+		Key:       api.TokenEncryptionKey,
+		Device:    r.UserAgent(),
+		Action:    "loginOauth",
+		User:      user,
+	})
+
+	user = u.User
+
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	if user.DeletedAt.Valid {
+		return http.StatusBadRequest, err
+	}
+
+	var otToken *string = nil
+	if req.RedirectURL != nil {
+		otToken = api.OneTimeToken(user.ID, r.UserAgent())
+	}
+
+	resp := &LoginResponse{u, token, false, otToken}
+
+	err = api.WriteCookie(w, r, resp.Token)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	b, _ := json.Marshal(resp.User)
+	_, _ = w.Write(b)
+	return http.StatusCreated, nil
+}
+
+// The TwitterAuth endpoint kicks off the OAuth 1.0a flow
+func (api *API) TwitterLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	oauthCallback := r.URL.Query().Get("oauth_callback")
+	if oauthCallback == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("Invalid OAuth callback url provided"))
+	}
+
+	fmt.Println(api.Twitter.APISecret)
+
+	oauthConfig := oauth1.Config{
+		ConsumerKey:    api.Twitter.APIKey,
+		ConsumerSecret: api.Twitter.APISecret,
+		CallbackURL:    oauthCallback,
+		Endpoint:       twitter.AuthorizeEndpoint,
+	}
+
+	requestToken, _, err := oauthConfig.RequestToken()
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("https://api.twitter.com/oauth/authorize?oauth_token=%s", requestToken), http.StatusSeeOther)
+	return http.StatusOK, nil
 }
 
 type IssueTokenConfig struct {

@@ -67,18 +67,14 @@ func Faction(id string) *boiler.Faction {
 	return factions[id]
 }
 
-func FacebookID(s string) (*types.User, error) {
-	fbid := null.StringFrom(s)
-
-	u, err := boiler.Users(boiler.UserWhere.FacebookID.EQ(fbid)).One(passdb.StdConn)
+func FacebookID(s string) (*boiler.User, error) {
+	user, err := boiler.Users(boiler.UserWhere.FacebookID.EQ(null.StringFrom(s))).One(passdb.StdConn)
 	if err != nil {
 		return nil, err
 	}
 
-	user := &types.User{User: u}
-
 	if user.FactionID.Valid {
-		user.Faction = Faction(user.FactionID.String)
+		user.L.LoadFaction(passdb.StdConn, true, user, nil)
 	}
 
 	return user, nil
@@ -186,8 +182,9 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		}
 	}
 
+	trimmedUsername := "noob-" + username
 	bm := bluemonday.StrictPolicy()
-	sanitizedUsername := bm.Sanitize(username)
+	sanitizedUsername := bm.Sanitize(trimmedUsername)
 
 	err := helpers.IsValidUsername(sanitizedUsername)
 	if err != nil {

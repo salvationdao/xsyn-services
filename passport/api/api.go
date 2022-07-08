@@ -56,6 +56,7 @@ type API struct {
 	TokenEncryptionKey  []byte
 	Eip712Message       string
 	Twitch              *TwitchConfig
+	Twitter             *auth.TwitterConfig
 	ClientToken         string
 	WebhookToken        string
 	GameserverHostUrl   string
@@ -114,6 +115,10 @@ func NewAPI(
 		Twitch: &TwitchConfig{
 			ClientID:     config.AuthParams.TwitchClientID,
 			ClientSecret: config.AuthParams.TwitchClientSecret,
+		},
+		Twitter: &auth.TwitterConfig{
+			APIKey:    config.AuthParams.TwitterAPIKey,
+			APISecret: config.AuthParams.TwitterAPISecret,
 		},
 		Eip712Message: config.MetaMaskSignMessage,
 		Cookie: securebytes.New(
@@ -241,7 +246,9 @@ func NewAPI(
 				r.Post("/reset", WithError(api.ResetPasswordHandler))
 				r.Post("/change_password", WithError(api.ChangePasswordHandler))
 				r.Post("/new_password", WithError(api.NewPasswordHandler))
-				r.Post("/connect", WithError(api.NewPasswordHandler))
+				r.Post("/google", WithError(api.GoogleLoginHandler))
+				r.Post("/facebook", WithError(api.FacebookLoginHandler))
+				r.Get("/twitter", WithError(api.TwitterLoginHandler))
 
 				r.Post("/bot_list", api.BotListHandler)
 				r.Post("/bot_token", api.BotTokenLoginHandler)
