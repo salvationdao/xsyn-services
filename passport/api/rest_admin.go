@@ -54,6 +54,7 @@ func AdminRoutes(ucm *Transactor) chi.Router {
 	r.Get("/users/unlock_mint/{public_address}", WithError(WithAdmin(UnlockMint)))
 
 	r.Post("/users/set_admin/{public_address}", WithError(WithAdmin(GiveUserAdminPermission)))
+	r.Post("/users/set_moderator/{public_address}", WithError(WithAdmin(GiveUserModeratorPermission)))
 
 	return r
 }
@@ -213,6 +214,27 @@ func GiveUserAdminPermission(w http.ResponseWriter, r *http.Request) (int, error
 		return http.StatusBadRequest, terror.Error(err, "User does not exist")
 	}
 	u.Permissions = null.StringFrom(types.Admin.UserString())
+	fmt.Println(u.Permissions)
+	_, err = u.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Permissions))
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Could not update user")
+	}
+	return http.StatusOK, nil
+}
+
+// GiveUserModeratorPermission will set the user to be an moderator via public address
+func GiveUserModeratorPermission(w http.ResponseWriter, r *http.Request) (int, error) {
+	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
+	u, err := boiler.Users(
+		boiler.UserWhere.PublicAddress.EQ(null.StringFrom(publicAddress.Hex())),
+	).One(passdb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return http.StatusBadRequest, terror.Error(err, "Could not get user")
+	}
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return http.StatusBadRequest, terror.Error(err, "User does not exist")
+	}
+	u.Permissions = null.StringFrom(types.Moderator.UserString())
 	fmt.Println(u.Permissions)
 	_, err = u.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Permissions))
 	if err != nil {
