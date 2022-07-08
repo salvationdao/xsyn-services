@@ -222,7 +222,7 @@ func GiveUserAdminPermission(w http.ResponseWriter, r *http.Request) (int, error
 	return http.StatusOK, nil
 }
 
-// GiveUserModeratorPermission will set the user to be an moderator via public address
+// GiveUserModeratorPermission will set the user to be a moderator via public address
 func GiveUserModeratorPermission(w http.ResponseWriter, r *http.Request) (int, error) {
 	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
 	u, err := boiler.Users(
