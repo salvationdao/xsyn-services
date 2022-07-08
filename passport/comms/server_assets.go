@@ -273,3 +273,29 @@ func (s *S) AssetKeycardCountUpdateSupremacy(req Asset1155CountUpdateSupremacyRe
 
 	return nil
 }
+
+type DeleteAssetHandlerReq struct {
+	ApiKey  string `json:"api_key"`
+	AssetID string `json:"asset_id"`
+}
+
+type DeleteAssetHandlerResp struct {
+}
+
+func (s *S) DeleteAssetHandler(req DeleteAssetHandlerReq, resp *DeleteAssetHandlerResp) error {
+	_, err := IsServerClient(req.ApiKey)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to get service id - DeleteAssetHandler")
+		return err
+	}
+
+	_, err = boiler.UserAssets(
+		boiler.UserAssetWhere.ID.EQ(req.AssetID),
+	).DeleteAll(passdb.StdConn, false)
+	if err != nil {
+		passlog.L.Error().Err(err).Str("req.AssetID", req.AssetID).Msg("failed to delete asset - DeleteAssetHandler")
+		return err
+	}
+
+	return nil
+}

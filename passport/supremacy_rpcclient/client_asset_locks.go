@@ -3,6 +3,7 @@ package supremacy_rpcclient
 import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
+	"strings"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 )
@@ -57,6 +58,9 @@ func AssetUnlockFromSupremacy(assetToUnlock *types.UserAsset, transferEventID in
 	resp := &GenesisOrLimitedMechResp{}
 	err := SupremacyClient.Call("S.AssetUnlockFromSupremacyHandler", req, resp)
 	if err != nil {
+		if strings.Contains(err.Error(), "asset is equipped to another object") {
+			return terror.Warn(err)
+		}
 		passlog.L.Error().Err(err).Interface("assetToUnlock", assetToUnlock).Msg("failed to unlock asset on supremacy")
 		return terror.Error(err, "communication to supremacy has failed")
 	}
