@@ -82,7 +82,6 @@ func NewUserController(log *zerolog.Logger, api *API, googleConfig *auth.GoogleC
 	api.SecureCommand(HubKeyUser, userHub.UpdatedSubscribeHandler)
 	api.SecureCommand(HubKeyUserSupsSubscribe, api.UserSupsUpdatedSubscribeHandler)
 	api.SecureCommand(HubKeyUserInit, userHub.InitHandler)
-	api.Command(HubKeyAuthTwitter, userHub.TwitterAuthHandler)
 
 	return userHub
 }
@@ -152,14 +151,6 @@ const HubKeyAuthTwitter = "AUTH:TWITTER"
 
 type TwitterInitResponse struct {
 	Status string `json:"status"`
-}
-
-// Tracks if user should log out from change password
-func (uc *UserController) TwitterAuthHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	res := &TwitterInitResponse{}
-	res.Status = "ok"
-	reply(res)
-	return nil
 }
 
 type UpdateUserUsernameRequest struct {

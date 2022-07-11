@@ -903,8 +903,6 @@ func (api *API) TwitterLoginHandler(w http.ResponseWriter, r *http.Request) (int
 		}
 		http.Redirect(w, r, fmt.Sprintf("%s?token=%s", redirect, token), http.StatusSeeOther)
 
-		ws.PublishMessage("/twitter", HubKeyAuthTwitter, user)
-
 		return httpStatus, nil
 	}
 
