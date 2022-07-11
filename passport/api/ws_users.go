@@ -140,10 +140,6 @@ func (uc *UserController) GetHandler(ctx context.Context, user *types.User, key 
 
 }
 
-type UserInitPayload struct {
-	hash_password bool
-}
-
 const HubKeyUserInit = "USER:INIT"
 
 // Tracks if user should log out from change password
@@ -154,9 +150,15 @@ func (uc *UserController) InitHandler(ctx context.Context, user *types.User, key
 
 const HubKeyAuthTwitter = "AUTH:TWITTER"
 
+type TwitterInitResponse struct {
+	Status string `json:"status"`
+}
+
 // Tracks if user should log out from change password
 func (uc *UserController) TwitterAuthHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	reply(nil)
+	res := &TwitterInitResponse{}
+	res.Status = "ok"
+	reply(res)
 	return nil
 }
 

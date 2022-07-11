@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
@@ -844,19 +845,76 @@ func (api *API) FacebookLoginHandler(w http.ResponseWriter, r *http.Request) (in
 	return http.StatusCreated, nil
 }
 
+type TwitterAuthResponse struct {
+	UserID *string `json:"user_id"`
+}
+
 // The TwitterAuth endpoint kicks off the OAuth 1.0a flow
 func (api *API) TwitterLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	userID := r.URL.Query().Get("user_id")
+	oauthVerifier := r.URL.Query().Get("oauth_verifier")
 	oauthCallback := r.URL.Query().Get("oauth_callback")
-	if oauthCallback == "" {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("Invalid OAuth callback url provided"))
-	}
+	oauthToken := r.URL.Query().Get("oauth_token")
+	redirect := r.URL.Query().Get("redirect")
 
-	if oauthCallback != "" {
-		ws.PublishMessage("/twitter", HubKeyAuthTwitter, userID)
-	}
+	if oauthVerifier != "" {
+		params := url.Values{}
+		params.Set("oauth_token", oauthToken)
+		params.Set("oauth_verifier", oauthVerifier)
+		req, err := http.NewRequest("GET", fmt.Sprintf("https://api.twitter.com/oauth/access_token?%s", params.Encode()), nil)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err)
+		}
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err)
+		}
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err)
+		}
+		resp := &struct {
+			OauthToken       string
+			OauthTokenSecret string
+			UserID           string
+			ScreenName       string
+		}{}
+		values := strings.Split(string(body), "&")
+		for _, v := range values {
+			pair := strings.Split(v, "=")
+			switch pair[0] {
+			case "oauth_token":
+				resp.OauthToken = pair[1]
+			case "oauth_token_secret":
+				resp.OauthTokenSecret = pair[1]
+			case "user_id":
+				resp.UserID = pair[1]
+			case "screen_name":
+				resp.ScreenName = pair[1]
+			}
+		}
 
-	fmt.Println(api.Twitter.APISecret)
+		user, err := users.TwitterID(resp.UserID)
+
+		if err != nil && errors.Is(sql.ErrNoRows, err) {
+			commonAddress := common.HexToAddress("")
+			u, err := users.UserCreator("", "", resp.ScreenName, "", "", "", "", resp.UserID, "", "", commonAddress, "")
+			if err != nil {
+				return http.StatusBadRequest, err
+			}
+			user = u.User
+		}
+
+		if redirect == "" {
+			return http.StatusInternalServerError, terror.Error(err)
+		}
+		token, httpStatus, err := fingerprintAndIssueToken(api, w, r, nil, nil, user, true)
+		if err != nil {
+			return httpStatus, err
+		}
+		http.Redirect(w, r, fmt.Sprintf("%s?token=%s", redirect, token), http.StatusSeeOther)
+		ws.PublishMessage("/twitter", HubKeyAuthTwitter, user)
+		return httpStatus, nil
+	}
 
 	oauthConfig := oauth1.Config{
 		ConsumerKey:    api.Twitter.APIKey,
@@ -872,6 +930,53 @@ func (api *API) TwitterLoginHandler(w http.ResponseWriter, r *http.Request) (int
 
 	http.Redirect(w, r, fmt.Sprintf("https://api.twitter.com/oauth/authorize?oauth_token=%s", requestToken), http.StatusSeeOther)
 	return http.StatusOK, nil
+}
+
+func fingerprintAndIssueToken(api *API, w http.ResponseWriter, r *http.Request, redirectURL *string, fingerprint *users.Fingerprint, user *boiler.User, isRedirect bool) (string, int, error) {
+	// Fingerprint user
+	if fingerprint != nil {
+		// todo: include ip in upsert
+		err := api.DoFingerprintUpsert(*fingerprint, user.ID)
+		if err != nil {
+			return "", http.StatusBadRequest, err
+		}
+	}
+
+	u, _, token, err := api.IssueToken(&IssueTokenConfig{
+		Encrypted: true,
+		Key:       api.TokenEncryptionKey,
+		Device:    r.UserAgent(),
+		Action:    "loginOauth",
+		User:      user,
+	})
+
+	user = u.User
+
+	if err != nil {
+		return "", http.StatusBadRequest, err
+	}
+
+	if user.DeletedAt.Valid {
+		return "", http.StatusBadRequest, err
+	}
+
+	var otToken *string = nil
+	if redirectURL != nil {
+		otToken = api.OneTimeToken(user.ID, r.UserAgent())
+	}
+
+	resp := &LoginResponse{u, token, false, otToken}
+
+	err = api.WriteCookie(w, r, resp.Token)
+	if err != nil {
+		return "", http.StatusBadRequest, err
+	}
+	if !isRedirect {
+		b, _ := json.Marshal(resp.User)
+		_, _ = w.Write(b)
+	}
+
+	return token, http.StatusCreated, nil
 }
 
 type IssueTokenConfig struct {
