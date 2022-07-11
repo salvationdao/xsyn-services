@@ -777,6 +777,11 @@ type TwitterAuthResponse struct {
 	UserID *string `json:"user_id"`
 }
 
+type AddTwitterResponse struct {
+	Error string       `json:"error"`
+	User  *boiler.User `json:"user"`
+}
+
 // The TwitterAuth endpoint kicks off the OAuth 1.0a flow
 func (api *API) TwitterLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	oauthVerifier := r.URL.Query().Get("oauth_verifier")
@@ -784,6 +789,10 @@ func (api *API) TwitterLoginHandler(w http.ResponseWriter, r *http.Request) (int
 	oauthToken := r.URL.Query().Get("oauth_token")
 	redirect := r.URL.Query().Get("redirect")
 	addTwitter := r.URL.Query().Get("add")
+
+	if redirect == "" && oauthVerifier != "" {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("No redirect provided"))
+	}
 
 	if oauthVerifier != "" {
 		params := url.Values{}
@@ -822,45 +831,61 @@ func (api *API) TwitterLoginHandler(w http.ResponseWriter, r *http.Request) (int
 			}
 		}
 
+		URI := fmt.Sprintf("/user/%s/twitter", addTwitter)
+
+		// Check if user exist
 		user, err := users.TwitterID(resp.UserID)
 
-		if addTwitter != "false" && user != nil {
-			if err != nil {
-				return http.StatusBadRequest, fmt.Errorf("Twitter account already registered with a different user.")
-			}
-		}
+		// Add twitter user handler
+		if addTwitter != "" {
+			payload := &AddTwitterResponse{}
+			// Redirect to loading page
+			http.Redirect(w, r, fmt.Sprintf("%s?bypass=true", redirect), http.StatusSeeOther)
 
-		if addTwitter != "false" && user == nil {
-			user, err := users.ID(addTwitter)
-			if err != nil {
-				return http.StatusInternalServerError, terror.Error(fmt.Errorf("User id does not exist"))
-			}
-			// Activity tracking
-			var oldUser types.User = *user
+			if user != nil {
+				payload.Error = "Twitter account already registered with a different user"
+				ws.PublishMessage(URI, HubKeyUserAddTwitter, payload)
+				return http.StatusOK, nil
 
-			// Update user's Twitter ID
-			user.TwitterID = null.StringFrom(resp.UserID)
-			_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwitterID))
-			if err != nil {
-				return http.StatusInternalServerError, terror.Error(err)
-			}
+			} else {
+				// Check if user exist
+				user, err := users.ID(addTwitter)
+				if err != nil {
+					payload.Error = "User ID does not exist"
+					ws.PublishMessage(URI, HubKeyUserAddTwitter, payload)
+					return http.StatusOK, nil
+				}
+				// Activity tracking
+				var oldUser types.User = *user
 
-			// Record user activity
-			api.RecordUserActivity(context.Background(),
-				user.ID,
-				"Added Twitter account to User",
-				types.ObjectTypeUser,
-				helpers.StringPointer(user.ID),
-				&user.Username,
-				helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
-				&types.UserActivityChangeData{
-					Name: db.TableNames.Users,
-					From: oldUser,
-					To:   user,
-				},
-			)
-			URI := fmt.Sprintf("/user/%s/twitter", user.ID)
-			ws.PublishMessage(URI, HubKeyUserInit, nil)
+				// Update user's Twitter ID
+				user.TwitterID = null.StringFrom(resp.UserID)
+				_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwitterID))
+				if err != nil {
+					payload.Error = "Unable to update user"
+					ws.PublishMessage(URI, HubKeyUserAddTwitter, payload)
+					return http.StatusInternalServerError, terror.Error(err)
+				}
+
+				// Record user activity
+				api.RecordUserActivity(context.Background(),
+					user.ID,
+					"Added Twitter account to User",
+					types.ObjectTypeUser,
+					helpers.StringPointer(user.ID),
+					&user.Username,
+					helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
+					&types.UserActivityChangeData{
+						Name: db.TableNames.Users,
+						From: oldUser,
+						To:   user,
+					},
+				)
+
+				payload.User = user.User
+				ws.PublishMessage(URI, HubKeyUserAddTwitter, payload)
+				return http.StatusOK, nil
+			}
 		}
 
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
@@ -872,9 +897,6 @@ func (api *API) TwitterLoginHandler(w http.ResponseWriter, r *http.Request) (int
 			user = u.User
 		}
 
-		if redirect == "" {
-			return http.StatusInternalServerError, terror.Error(err)
-		}
 		token, httpStatus, err := fingerprintAndIssueToken(api, w, r, nil, nil, user, true)
 		if err != nil {
 			return httpStatus, err

@@ -641,7 +641,7 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, user *types
 	// Check if user can remove service
 	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
-		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+		return terror.Error(fmt.Errorf("You cannot unlink your only connection to this account"))
 	}
 
 	// Update user
@@ -687,7 +687,7 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, user *types.Us
 	// Check if Facebook ID is already taken
 	u, _ := users.FacebookID(req.Payload.FacebookID)
 	if u != nil {
-		return terror.Error(err, "This facebook account is already registered to a different user.")
+		return terror.Error(fmt.Errorf("This facebook account is already registered to a different user."))
 	}
 
 	// Setup user activity tracking
@@ -732,7 +732,7 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, user *types.U
 	// Check if user can remove service
 	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
-		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+		return terror.Error(fmt.Errorf("You cannot unlink your only connection to this account"))
 	}
 
 	// Update user
@@ -784,7 +784,7 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, user *types.User
 	// Check if Google ID is already taken
 	u, _ := users.GoogleID(req.Payload.GoogleID)
 	if u != nil {
-		return terror.Error(err, "This google account is already registered to a different user.")
+		return terror.Error(fmt.Errorf("This google account is already registered to a different user."))
 	}
 	// Setup user activity tracking
 	var oldUser types.User = *user
@@ -837,7 +837,7 @@ func (uc *UserController) RemoveTwitchHandler(ctx context.Context, user *types.U
 	// Check if user can remove service
 	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
-		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+		return terror.Error(fmt.Errorf("You cannot unlink your only connection to this account"))
 	}
 
 	// Update user
@@ -973,27 +973,18 @@ const HubKeyUserRemoveTwitter = "USER:REMOVE_TWITTER"
 
 func (uc *UserController) RemoveTwitterHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue removing user's twitter account, try again or contact support."
-	req := &RemoveServiceRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-	if req.Payload.ID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User ID is required")
-	}
-
 	// Setup user activity tracking
 	var oldUser types.User = *user
 
 	// Check if user can remove service
 	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
-		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+		return terror.Error(fmt.Errorf("You cannot unlink your only connection to this account"))
 	}
 
 	// Update user
 	user.TwitterID = null.NewString("", false)
-	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwitterID))
+	_, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwitterID))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1139,7 +1130,7 @@ func (uc *UserController) RemoveDiscordHandler(ctx context.Context, user *types.
 	// Check if user can remove service
 	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
-		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+		return terror.Error(fmt.Errorf("You cannot unlink your only connection to this account"))
 	}
 
 	// Update user
@@ -1313,7 +1304,7 @@ func (uc *UserController) RemoveWalletHandler(ctx context.Context, user *types.U
 	// Check if user can remove service
 	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
-		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+		return terror.Error(fmt.Errorf("You cannot unlink your only connection to this account"))
 	}
 
 	// Update user
