@@ -187,51 +187,15 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case "cookie":
-		cookie, err := r.Cookie("xsyn-token")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		var token string
-		if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		// check user from token
-		resp, err := api.TokenLogin(token, "")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
+		resp := externalLoginCheck(api, w, r)
 		redirectToken := api.OneTimeToken(resp.User.ID, r.UserAgent())
-
 		if redirectToken != nil && redir != "" {
 			escapedUrl := url.QueryEscape(*redirectToken)
 			http.Redirect(w, r, redir+"?token="+escapedUrl, http.StatusSeeOther)
 			return
 		}
 	case "hangar":
-		cookie, err := r.Cookie("xsyn-token")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		var token string
-		if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		// check user from token
-		resp, err := api.TokenLogin(token, "")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+		resp := externalLoginCheck(api, w, r)
 
 		redirectToken := api.OneTimeToken(resp.User.ID, r.UserAgent())
 
@@ -242,38 +206,51 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case "website":
-		cookie, err := r.Cookie("xsyn-token")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		externalLoginCheck(api, w, r)
+		if redir != "" {
+			redir += "?token=true"
+			http.Redirect(w, r, redir, http.StatusSeeOther)
 			return
 		}
-
-		var token string
-		if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		// check user from token
-		_, err = api.TokenLogin(token, "")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		// write cookie on domain
-		err = api.WriteCookie(w, r, token)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
+	case "admin":
+		externalLoginCheck(api, w, r)
 		if redir != "" {
 			redir += "?token=true"
 			http.Redirect(w, r, redir, http.StatusSeeOther)
 			return
 		}
 	}
+
+}
+
+func externalLoginCheck(api *API, w http.ResponseWriter, r *http.Request) *TokenLoginResponse {
+	cookie, err := r.Cookie("xsyn-token")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil
+	}
+
+	var token string
+	if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil
+	}
+
+	// check user from token
+	resp, err := api.TokenLogin(token, "")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil
+	}
+
+	// write cookie on domain
+	err = api.WriteCookie(w, r, token)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil
+	}
+
+	return resp
 
 }
 
