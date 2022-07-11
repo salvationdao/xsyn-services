@@ -265,6 +265,9 @@ func NewAPI(
 			}))
 			r.Mount("/store", ws.NewServer(func(s *ws.Server) {
 			}))
+			r.Mount("/twitter", ws.NewServer(func(s *ws.Server) {
+				s.WS("/*", HubKeyUserGet, uc.TwitterAuthHandler)
+			}))
 			r.Mount("/user/{userId}", ws.NewServer(func(s *ws.Server) {
 				s.Use(api.AuthWS(true, true))
 				s.WS("/*", HubKeyUserGet, api.MustSecure(uc.GetHandler))

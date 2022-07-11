@@ -846,9 +846,14 @@ func (api *API) FacebookLoginHandler(w http.ResponseWriter, r *http.Request) (in
 
 // The TwitterAuth endpoint kicks off the OAuth 1.0a flow
 func (api *API) TwitterLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	userID := r.URL.Query().Get("user_id")
 	oauthCallback := r.URL.Query().Get("oauth_callback")
 	if oauthCallback == "" {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("Invalid OAuth callback url provided"))
+	}
+
+	if oauthCallback != "" {
+		ws.PublishMessage("/twitter", HubKeyAuthTwitter, userID)
 	}
 
 	fmt.Println(api.Twitter.APISecret)
