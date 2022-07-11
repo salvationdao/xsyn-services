@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strings"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/crypto"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/helpers"
@@ -32,7 +33,6 @@ import (
 
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"google.golang.org/api/idtoken"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
@@ -625,9 +625,9 @@ type RemoveServiceRequest struct {
 	} `json:"payload"`
 }
 
-type AddServiceRequest struct {
+type AddFacebookRequest struct {
 	Payload struct {
-		Token string `json:"token"`
+		FacebookID string `json:"facebook_id"`
 	} `json:"payload"`
 }
 
@@ -635,15 +635,6 @@ type AddServiceRequest struct {
 const HubKeyUserRemoveFacebook = "USER:REMOVE_FACEBOOK"
 
 func (uc *UserController) RemoveFacebookHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &RemoveServiceRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-	if req.Payload.ID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User ID is required")
-	}
-
 	// Setup user activity tracking
 	var oldUser types.User = *user
 
@@ -656,7 +647,7 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, user *types
 	// Update user
 	errMsg := "Unable to update user, please try again."
 	user.FacebookID = null.NewString("", false)
-	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.FacebookID))
+	_, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.FacebookID))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -686,40 +677,27 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, user *types
 const HubKeyUserAddFacebook = "USER:ADD_FACEBOOK"
 
 func (uc *UserController) AddFacebookHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &AddServiceRequest{}
+
+	req := &AddFacebookRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	if req.Payload.Token == "" {
-		return terror.Error(terror.ErrInvalidInput, "Facebook token is empty")
-	}
-
-	// Validate Facebook token
-	errMsg := "There was a problem finding a user associated with the provided Facebook account, please check your details and try again."
-	r, err := http.Get("https://graph.facebook.com/me?&access_token=" + url.QueryEscape(req.Payload.Token))
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-	defer r.Body.Close()
-	resp := &struct {
-		ID string `json:"id"`
-	}{}
-	err = json.NewDecoder(r.Body).Decode(resp)
-	if err != nil {
-		return terror.Error(err, errMsg)
+	// Check if Facebook ID is already taken
+	u, _ := users.FacebookID(req.Payload.FacebookID)
+	if u != nil {
+		return terror.Error(err, "This facebook account is already registered to a different user.")
 	}
 
 	// Setup user activity tracking
 	var oldUser types.User = *user
 
 	// Update user's Facebook ID
-
-	user.FacebookID = null.StringFrom(resp.ID)
+	user.FacebookID = null.StringFrom(req.Payload.FacebookID)
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.FacebookID))
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Unable to update user details.")
 	}
 
 	reply(user)
@@ -747,14 +725,6 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, user *types.Us
 const HubKeyUserRemoveGoogle = "USER:REMOVE_GOOGLE"
 
 func (uc *UserController) RemoveGoogleHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &RemoveServiceRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-	if req.Payload.ID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User ID is required")
-	}
 
 	// Setup user activity tracking
 	var oldUser types.User = *user
@@ -768,7 +738,7 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, user *types.U
 	// Update user
 	errMsg := "Unable to update user, please try again."
 	user.GoogleID = null.NewString("", false)
-	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.GoogleID))
+	_, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.GoogleID))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -795,40 +765,35 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, user *types.U
 	return nil
 }
 
+type AddGoogleRequest struct {
+	Payload struct {
+		GoogleID string `json:"google_id"`
+	} `json:"payload"`
+}
+
 // HubKeyUserAddGoogle adds a linked Google account
 const HubKeyUserAddGoogle = "USER:ADD_GOOGLE"
 
 func (uc *UserController) AddGoogleHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &AddServiceRequest{}
+	req := &AddGoogleRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	if req.Payload.Token == "" {
-		return terror.Error(terror.ErrInvalidInput, "Google token is empty")
+	// Check if Google ID is already taken
+	u, _ := users.GoogleID(req.Payload.GoogleID)
+	if u != nil {
+		return terror.Error(err, "This google account is already registered to a different user.")
 	}
-
-	// Validate Google token
-	errMsg := "There was a problem finding a user associated with the provided Google account, please check your details and try again."
-	resp, err := idtoken.Validate(ctx, req.Payload.Token, uc.Google.ClientID)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	googleID, ok := resp.Claims["sub"].(string)
-	if !ok {
-		return terror.Error(err, errMsg)
-	}
-
 	// Setup user activity tracking
 	var oldUser types.User = *user
 
 	// Update user's Google ID
-	user.GoogleID = null.StringFrom(googleID)
+	user.GoogleID = null.StringFrom(req.Payload.GoogleID)
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.GoogleID))
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Unable to update user details.")
 	}
 
 	reply(user)
@@ -1434,7 +1399,7 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, user *types.User
 	// Record user activity
 	uc.API.RecordUserActivity(ctx,
 		user.ID,
-		"Updated User",
+		"Add User Wallet",
 		types.ObjectTypeUser,
 		helpers.StringPointer(user.ID),
 		&user.Username,
@@ -1541,7 +1506,10 @@ type WarMachineQueuePositionRequest struct {
 func getUserServiceCount(user *types.User) int {
 	count := 0
 	if user.Email.Valid {
-		count++
+		_, err := db.UserHasPassword(user.ID)
+		if err == nil {
+			count++
+		}
 	}
 	if user.FacebookID.Valid {
 		count++
@@ -1556,6 +1524,9 @@ func getUserServiceCount(user *types.User) int {
 		count++
 	}
 	if user.DiscordID.Valid {
+		count++
+	}
+	if user.PublicAddress.Valid {
 		count++
 	}
 

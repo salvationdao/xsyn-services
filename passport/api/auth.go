@@ -336,9 +336,9 @@ func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int,
 	}
 
 	// Check if there are any existing users associated with the email address
-	user, err := users.Email(req.Email)
+	user, _ := users.Email(req.Email)
 
-	if err != nil {
+	if user != nil {
 		userExistError := fmt.Errorf("User with that email already exists")
 		return http.StatusBadRequest, userExistError
 	}
@@ -584,7 +584,9 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 	}
 
 	// Delete all issued token
-	_, err = user.IssueTokens().DeleteAll(passdb.StdConn, true)
+	_, err = user.IssueTokens().UpdateAll(passdb.StdConn, boiler.M{
+		boiler.IssueTokenColumns.DeletedAt: time.Now(),
+	})
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -737,48 +739,11 @@ func (api *API) GoogleLoginHandler(w http.ResponseWriter, r *http.Request) (int,
 		user = u.User
 	}
 
-	// Fingerprint user
-	if req.Fingerprint != nil {
-		// todo: include ip in upsert
-		err = api.DoFingerprintUpsert(*req.Fingerprint, user.ID)
-		if err != nil {
-			return http.StatusBadRequest, err
-		}
-	}
-
-	u, _, token, err := api.IssueToken(&IssueTokenConfig{
-		Encrypted: true,
-		Key:       api.TokenEncryptionKey,
-		Device:    r.UserAgent(),
-		Action:    "loginOauth",
-		User:      user,
-	})
-
-	user = u.User
-
+	_, httpStatus, err := fingerprintAndIssueToken(api, w, r, nil, nil, user, false)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-
-	if user.DeletedAt.Valid {
-		return http.StatusBadRequest, err
-	}
-
-	var otToken *string = nil
-	if req.RedirectURL != nil {
-		otToken = api.OneTimeToken(user.ID, r.UserAgent())
-	}
-
-	resp := &LoginResponse{u, token, false, otToken}
-
-	err = api.WriteCookie(w, r, resp.Token)
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	b, _ := json.Marshal(resp.User)
-	_, _ = w.Write(b)
-	return http.StatusCreated, nil
+	return httpStatus, nil
 }
 
 func (api *API) FacebookLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -801,48 +766,11 @@ func (api *API) FacebookLoginHandler(w http.ResponseWriter, r *http.Request) (in
 		user = u.User
 	}
 
-	// Fingerprint user
-	if req.Fingerprint != nil {
-		// todo: include ip in upsert
-		err = api.DoFingerprintUpsert(*req.Fingerprint, user.ID)
-		if err != nil {
-			return http.StatusBadRequest, err
-		}
-	}
-
-	u, _, token, err := api.IssueToken(&IssueTokenConfig{
-		Encrypted: true,
-		Key:       api.TokenEncryptionKey,
-		Device:    r.UserAgent(),
-		Action:    "loginOauth",
-		User:      user,
-	})
-
-	user = u.User
-
+	_, httpStatus, err := fingerprintAndIssueToken(api, w, r, nil, nil, user, false)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-
-	if user.DeletedAt.Valid {
-		return http.StatusBadRequest, err
-	}
-
-	var otToken *string = nil
-	if req.RedirectURL != nil {
-		otToken = api.OneTimeToken(user.ID, r.UserAgent())
-	}
-
-	resp := &LoginResponse{u, token, false, otToken}
-
-	err = api.WriteCookie(w, r, resp.Token)
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	b, _ := json.Marshal(resp.User)
-	_, _ = w.Write(b)
-	return http.StatusCreated, nil
+	return httpStatus, nil
 }
 
 type TwitterAuthResponse struct {
@@ -855,6 +783,7 @@ func (api *API) TwitterLoginHandler(w http.ResponseWriter, r *http.Request) (int
 	oauthCallback := r.URL.Query().Get("oauth_callback")
 	oauthToken := r.URL.Query().Get("oauth_token")
 	redirect := r.URL.Query().Get("redirect")
+	addTwitter := r.URL.Query().Get("add")
 
 	if oauthVerifier != "" {
 		params := url.Values{}
@@ -895,6 +824,45 @@ func (api *API) TwitterLoginHandler(w http.ResponseWriter, r *http.Request) (int
 
 		user, err := users.TwitterID(resp.UserID)
 
+		if addTwitter != "false" && user != nil {
+			if err != nil {
+				return http.StatusBadRequest, fmt.Errorf("Twitter account already registered with a different user.")
+			}
+		}
+
+		if addTwitter != "false" && user == nil {
+			user, err := users.ID(addTwitter)
+			if err != nil {
+				return http.StatusInternalServerError, terror.Error(fmt.Errorf("User id does not exist"))
+			}
+			// Activity tracking
+			var oldUser types.User = *user
+
+			// Update user's Twitter ID
+			user.TwitterID = null.StringFrom(resp.UserID)
+			_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwitterID))
+			if err != nil {
+				return http.StatusInternalServerError, terror.Error(err)
+			}
+
+			// Record user activity
+			api.RecordUserActivity(context.Background(),
+				user.ID,
+				"Added Twitter account to User",
+				types.ObjectTypeUser,
+				helpers.StringPointer(user.ID),
+				&user.Username,
+				helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
+				&types.UserActivityChangeData{
+					Name: db.TableNames.Users,
+					From: oldUser,
+					To:   user,
+				},
+			)
+			URI := fmt.Sprintf("/user/%s/twitter", user.ID)
+			ws.PublishMessage(URI, HubKeyUserInit, nil)
+		}
+
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
 			commonAddress := common.HexToAddress("")
 			u, err := users.UserCreator("", "", resp.ScreenName, "", "", "", "", resp.UserID, "", "", commonAddress, "")
@@ -912,7 +880,9 @@ func (api *API) TwitterLoginHandler(w http.ResponseWriter, r *http.Request) (int
 			return httpStatus, err
 		}
 		http.Redirect(w, r, fmt.Sprintf("%s?token=%s", redirect, token), http.StatusSeeOther)
+
 		ws.PublishMessage("/twitter", HubKeyAuthTwitter, user)
+
 		return httpStatus, nil
 	}
 
