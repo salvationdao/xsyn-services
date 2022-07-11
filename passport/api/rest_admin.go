@@ -214,7 +214,6 @@ func GiveUserAdminPermission(w http.ResponseWriter, r *http.Request) (int, error
 		return http.StatusBadRequest, terror.Error(err, "User does not exist")
 	}
 	u.Permissions = null.StringFrom(types.Admin.UserString())
-	fmt.Println(u.Permissions)
 	_, err = u.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Permissions))
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not update user")
@@ -235,7 +234,6 @@ func GiveUserModeratorPermission(w http.ResponseWriter, r *http.Request) (int, e
 		return http.StatusBadRequest, terror.Error(err, "User does not exist")
 	}
 	u.Permissions = null.StringFrom(types.Moderator.UserString())
-	fmt.Println(u.Permissions)
 	_, err = u.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Permissions))
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not update user")
