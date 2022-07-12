@@ -6,9 +6,11 @@ import (
 	"strings"
 	"time"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/db"
 	"xsyn-services/passport/helpers"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
+	"xsyn-services/types"
 
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -126,6 +128,9 @@ func (s *S) UserUpdateUsername(req UsernameUpdateReq, resp *UserResp) error {
 		return terror.Error(err, "unable to get user")
 	}
 
+	// for activity record
+	oldUser := user
+
 	if req.NewUsername != "" {
 		// Validate username
 		err = helpers.IsValidUsername(req.NewUsername)
@@ -154,6 +159,19 @@ func (s *S) UserUpdateUsername(req UsernameUpdateReq, resp *UserResp) error {
 	}
 
 	// add to user activity
+	s.API.RecordUserActivity(nil,
+		user.ID,
+		"Updated User",
+		types.ObjectTypeUser,
+		helpers.StringPointer(user.ID),
+		&user.Username,
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
+		&types.UserActivityChangeData{
+			Name: db.TableNames.Users,
+			From: oldUser,
+			To:   user,
+		},
+	)
 
 	return nil
 }
