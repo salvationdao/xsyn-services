@@ -443,6 +443,10 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 		return terror.Error(err, "Failed to get user asset from db")
 	}
 
+	if userAsset.UnlockedAt.After(time.Now()) {
+		return terror.Error(fmt.Errorf("trying to transfer locked asset to supremacy"), "Asset is currently locked.")
+	}
+
 	if userAsset.OnChainStatus == "STAKABLE" {
 		return terror.Error(fmt.Errorf("trying to transfer unstaked asset to supremacy"), "Asset needs to be On-World before being able to transfer to Supremacy.")
 	}
