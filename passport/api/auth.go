@@ -94,10 +94,9 @@ type FacebookLoginRequest struct {
 
 // LoginResponse is a response for login
 type LoginResponse struct {
-	User          *types.User `json:"user"`
-	Token         string      `json:"token"`
-	IsNew         bool        `json:"is_new"`
-	RedirectToken *string     `json:"redirect_token,omitempty"`
+	User  *types.User `json:"user"`
+	Token string      `json:"token"`
+	IsNew bool        `json:"is_new"`
 }
 
 type ForgotPasswordResponse struct {
@@ -178,8 +177,10 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	authType := r.Form.Get("authType")
 	redir := r.Form.Get("redirectURL")
-	isHangar := r.URL.Query().Get("isHangar") != ""
-	isWebsite := r.URL.Query().Get("website") != ""
+	if redir == "" {
+		http.Error(w, "No redirectURL provided", http.StatusBadRequest)
+		return
+	}
 
 	switch authType {
 	case "wallet":
@@ -190,31 +191,44 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		if redir != "" {
 			req.RedirectURL = &redir
 		}
-		resp, err := api.WalletLogin(req, r)
+		err = api.WalletLogin(req, w, r, true)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-
-		err = api.WriteCookie(w, r, resp.Token)
+	case "email":
+		req := &EmailLoginRequest{
+			Email:    r.Form.Get("email"),
+			Password: r.Form.Get("password"),
+		}
+		user, err := users.EmailPassword(req.Email, req.Password)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+		_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, user.User, true)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if isWebsite {
-			if redir != "" {
-				redir += "?token=true"
-				http.Redirect(w, r, redir, http.StatusSeeOther)
-			}
+	case "facebook":
+		req := &FacebookLoginRequest{
+			FacebookID: r.Form.Get("facebook_id"),
+			Name:       r.Form.Get("name"),
+		}
+		err := api.FacebookLogin(req, w, r, true)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if resp.RedirectToken != nil && redir != "" {
-			escapedUrl := url.QueryEscape(*resp.RedirectToken)
-			hangerArg := ""
-			if isHangar {
-				hangerArg = "&isHangar=true"
-			}
-			http.Redirect(w, r, redir+"?token="+escapedUrl+hangerArg, http.StatusSeeOther)
+		http.Redirect(w, r, redir, http.StatusSeeOther)
+	case "google":
+		req := &GoogleLoginRequest{
+			GoogleID: r.Form.Get("google_id"),
+			Username: r.Form.Get("username"),
+		}
+		err := api.GoogleLogin(req, w, r, true)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 	case "token":
@@ -226,54 +240,54 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-
-		err = api.WriteCookie(w, r, req.Token)
+		err = api.WriteCookie(w, r, resp.Token)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	case "cookie":
+		_, token := externalLoginCheck(api, w, r)
+		err := api.WriteCookie(w, r, *token)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		if resp.RedirectToken != nil && redir != "" {
-			escapedUrl := url.QueryEscape(*resp.RedirectToken)
-			http.Redirect(w, r, redir+"?token="+escapedUrl, http.StatusSeeOther)
-			return
-		}
-	case "cookie":
-		resp := externalLoginCheck(api, w, r)
-		redirectToken := api.OneTimeToken(resp.User.ID, r.UserAgent())
-		if redirectToken != nil && redir != "" {
-			escapedUrl := url.QueryEscape(*redirectToken)
-			http.Redirect(w, r, redir+"?token="+escapedUrl, http.StatusSeeOther)
-			return
-		}
-	case "hangar":
-		resp := externalLoginCheck(api, w, r)
+	}
+	http.Redirect(w, r, redir, http.StatusSeeOther)
+}
 
-		redirectToken := api.OneTimeToken(resp.User.ID, r.UserAgent())
-
-		if redirectToken != nil && redir != "" {
-			escapedUrl := url.QueryEscape(*redirectToken)
-			http.Redirect(w, r, redir+"?token="+escapedUrl+"&isHangar=true", http.StatusSeeOther)
-			return
-		}
-
-	case "website":
-		externalLoginCheck(api, w, r)
-		if redir != "" {
-			redir += "?token=true"
-			http.Redirect(w, r, redir, http.StatusSeeOther)
-			return
-		}
-	case "admin":
-		externalLoginCheck(api, w, r)
-		if redir != "" {
-			redir += "?token=true"
-			http.Redirect(w, r, redir, http.StatusSeeOther)
-			return
-		}
+func externalLoginCheck(api *API, w http.ResponseWriter, r *http.Request) (*TokenLoginResponse, *string) {
+	cookie, err := r.Cookie("xsyn-token")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil, nil
 	}
 
+	var token string
+	if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil, nil
+	}
+
+	// check user from token
+	resp, err := api.TokenLogin(token, "")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil, nil
+	}
+
+	// write cookie on domain
+	err = api.WriteCookie(w, r, token)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil, nil
+	}
+
+	return resp, &token
+
 }
+
 func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &EmailLoginRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
@@ -296,54 +310,18 @@ func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int,
 		}
 
 	}
-
 	commonAddress := common.HexToAddress("")
 
 	user, err = users.UserCreator("", "", req.Username, req.Email, "", "", "", "", "", "", commonAddress, req.Password)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-
-	// Fingerprint user
-	if req.Fingerprint != nil {
-		// todo: include ip in upsert
-		err = api.DoFingerprintUpsert(*req.Fingerprint, user.ID)
-		if err != nil {
-			return http.StatusBadRequest, err
-		}
-	}
-
-	user, _, token, err := api.IssueToken(&IssueTokenConfig{
-		Encrypted: true,
-		Key:       api.TokenEncryptionKey,
-		Device:    r.UserAgent(),
-		Action:    "signup",
-		User:      user.User,
-	})
-
+	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, user.User, false)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
 
-	if user.DeletedAt.Valid {
-		return http.StatusBadRequest, err
-	}
-
-	var otToken *string = nil
-	if req.RedirectURL != nil {
-		otToken = api.OneTimeToken(user.ID, r.UserAgent())
-	}
-
-	resp := &LoginResponse{user, token, false, otToken}
-
-	err = api.WriteCookie(w, r, resp.Token)
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	b, _ := json.Marshal(resp.User)
-	_, _ = w.Write(b)
-	return http.StatusCreated, nil
+	return http.StatusOK, nil
 }
 
 func (api *API) EmailLogin(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -357,45 +335,11 @@ func (api *API) EmailLogin(w http.ResponseWriter, r *http.Request) (int, error) 
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-
-	// Fingerprint user
-	if req.Fingerprint != nil {
-		// todo: include ip in upsert
-		err = api.DoFingerprintUpsert(*req.Fingerprint, user.ID)
-		if err != nil {
-			return http.StatusBadRequest, err
-		}
-	}
-	user, _, token, err := api.IssueToken(&IssueTokenConfig{
-		Encrypted: true,
-		Key:       api.TokenEncryptionKey,
-		Device:    r.UserAgent(),
-		Action:    "login",
-		User:      user.User,
-	})
-
+	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, user.User, false)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-
-	if user.DeletedAt.Valid {
-		return http.StatusBadRequest, fmt.Errorf("user does not exist")
-	}
-
-	var otToken *string = nil
-	if req.RedirectURL != nil {
-		otToken = api.OneTimeToken(user.ID, r.UserAgent())
-	}
-	resp := &LoginResponse{user, token, false, otToken}
-
-	err = api.WriteCookie(w, r, resp.Token)
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	b, _ := json.Marshal(resp.User)
-	_, _ = w.Write(b)
-	return http.StatusCreated, nil
+	return http.StatusOK, nil
 }
 
 func (api *API) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -425,7 +369,6 @@ func (api *API) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) (i
 		return http.StatusBadRequest, err
 
 	}
-
 	resp := &ForgotPasswordResponse{Message: "Success! An email has been sent to recover your account."}
 
 	b, _ := json.Marshal(resp.Message)
@@ -546,76 +489,11 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 		return http.StatusBadRequest, err
 	}
 
-	// Fingerprint user
-	if req.Fingerprint != nil {
-		// todo: include ip in upsert
-		err = api.DoFingerprintUpsert(*req.Fingerprint, user.ID)
-		if err != nil {
-			return http.StatusBadRequest, err
-		}
-	}
-
-	u, _, token, err := api.IssueToken(&IssueTokenConfig{
-		Encrypted: true,
-		Key:       api.TokenEncryptionKey,
-		Device:    r.UserAgent(),
-		Action:    "reset",
-		User:      user,
-	})
-
+	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, user, false)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-
-	if u.DeletedAt.Valid {
-		return http.StatusBadRequest, fmt.Errorf("user does not exist")
-	}
-
-	var otToken *string = nil
-	if req.RedirectURL != nil {
-		otToken = api.OneTimeToken(u.ID, r.UserAgent())
-	}
-	resp := &LoginResponse{u, token, false, otToken}
-
-	err = api.WriteCookie(w, r, resp.Token)
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	b, _ := json.Marshal(resp.User)
-	_, _ = w.Write(b)
-	return http.StatusCreated, nil
-}
-
-func externalLoginCheck(api *API, w http.ResponseWriter, r *http.Request) *TokenLoginResponse {
-	cookie, err := r.Cookie("xsyn-token")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return nil
-	}
-
-	var token string
-	if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return nil
-	}
-
-	// check user from token
-	resp, err := api.TokenLogin(token, "")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return nil
-	}
-
-	// write cookie on domain
-	err = api.WriteCookie(w, r, token)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return nil
-	}
-
-	return resp
-
+	return http.StatusOK, nil
 }
 
 func (api *API) WalletLoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -624,68 +502,36 @@ func (api *API) WalletLoginHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-
-	resp, err := api.WalletLogin(req, r)
+	err = api.WalletLogin(req, w, r, false)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = api.WriteCookie(w, r, resp.Token)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	b, _ := json.Marshal(resp.User)
-	_, _ = w.Write(b)
 }
 
-func (api *API) WalletLogin(req *WalletLoginRequest, r *http.Request) (*LoginResponse, error) {
+func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *http.Request, isRedirect bool) error {
 	// Take public address Hex to address(Make it a checksum mixed case address) convert back to Hex for string of checksum
 	commonAddr := common.HexToAddress(req.PublicAddress)
 
 	// Check if there are any existing users associated with the public address
 	user, err := users.PublicAddress(commonAddr)
 	if err != nil {
-		return nil, fmt.Errorf("public address fail: %w", err)
+		return fmt.Errorf("public address fail: %w", err)
 	}
 
-	// Fingerprint user
-	if req.Fingerprint != nil {
-		// todo: include ip in upsert
-		err = api.DoFingerprintUpsert(*req.Fingerprint, user.ID)
-		if err != nil {
-			return nil, fmt.Errorf("browser identification fail: %w", err)
-		}
-	}
-
-	user, _, token, err := api.IssueToken(&IssueTokenConfig{
-		Encrypted: true,
-		Key:       api.TokenEncryptionKey,
-		Device:    r.UserAgent(),
-		Action:    "login",
-		User:      user.User,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("There was a problem creating a session for your account, please try again. %w", err)
-	}
+	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, user.User, isRedirect)
 
 	err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if user.DeletedAt.Valid {
-		return nil, fmt.Errorf("user does not exist")
+		return fmt.Errorf("user does not exist")
 	}
 
-	var otToken *string = nil
-	if req.RedirectURL != nil {
-		otToken = api.OneTimeToken(user.ID, r.UserAgent())
-	}
-
-	return &LoginResponse{user, token, false, otToken}, nil
+	return nil
 }
 
 func (api *API) DoFingerprintUpsert(fingerprint users.Fingerprint, userID string) error {
@@ -700,10 +546,18 @@ func (api *API) DoFingerprintUpsert(fingerprint users.Fingerprint, userID string
 func (api *API) GoogleLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &GoogleLoginRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
+
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
+	err = api.GoogleLogin(req, w, r, false)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+	return http.StatusCreated, nil
+}
 
+func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *http.Request, isRedirect bool) error {
 	// Check if there are any existing users associated with the email address
 	user, err := users.GoogleID(req.GoogleID)
 
@@ -711,16 +565,15 @@ func (api *API) GoogleLoginHandler(w http.ResponseWriter, r *http.Request) (int,
 		commonAddress := common.HexToAddress("")
 		u, err := users.UserCreator("", "", req.Username, "", "", req.GoogleID, "", "", "", "", commonAddress, "")
 		if err != nil {
-			return http.StatusBadRequest, err
+			return err
 		}
 		user = u.User
+	} else if err != nil {
+		return err
 	}
+	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, user, isRedirect)
 
-	_, httpStatus, err := fingerprintAndIssueToken(api, w, r, nil, nil, user, false)
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-	return httpStatus, nil
+	return err
 }
 
 func (api *API) FacebookLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -743,11 +596,31 @@ func (api *API) FacebookLoginHandler(w http.ResponseWriter, r *http.Request) (in
 		user = u.User
 	}
 
-	_, httpStatus, err := fingerprintAndIssueToken(api, w, r, nil, nil, user, false)
+	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, user, false)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-	return httpStatus, nil
+	return http.StatusOK, nil
+}
+
+func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, r *http.Request, isRedirect bool) error {
+	// Check if there are any existing users associated with the email address
+	user, err := users.FacebookID(req.FacebookID)
+
+	if err != nil && errors.Is(sql.ErrNoRows, err) {
+		commonAddress := common.HexToAddress("")
+		username := fmt.Sprintf(("%s%d"), req.Name, rand.Intn(1000))
+		u, err := users.UserCreator("", "", username, "", req.FacebookID, "", "", "", "", "", commonAddress, "")
+		if err != nil {
+			return err
+		}
+		user = u.User
+	} else if err != nil {
+		return err
+	}
+	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, user, isRedirect)
+
+	return err
 }
 
 type TwitterAuthResponse struct {
@@ -760,7 +633,7 @@ type AddTwitterResponse struct {
 }
 
 // The TwitterAuth endpoint kicks off the OAuth 1.0a flow
-func (api *API) TwitterLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error) {
 	oauthVerifier := r.URL.Query().Get("oauth_verifier")
 	oauthCallback := r.URL.Query().Get("oauth_callback")
 	oauthToken := r.URL.Query().Get("oauth_token")
@@ -787,12 +660,7 @@ func (api *API) TwitterLoginHandler(w http.ResponseWriter, r *http.Request) (int
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err)
 		}
-		resp := &struct {
-			OauthToken       string
-			OauthTokenSecret string
-			UserID           string
-			ScreenName       string
-		}{}
+		resp := &AuthTwitterResponse{}
 		values := strings.Split(string(body), "&")
 		for _, v := range values {
 			pair := strings.Split(v, "=")
@@ -808,61 +676,12 @@ func (api *API) TwitterLoginHandler(w http.ResponseWriter, r *http.Request) (int
 			}
 		}
 
-		URI := fmt.Sprintf("/user/%s/twitter", addTwitter)
-
 		// Check if user exist
 		user, err := users.TwitterID(resp.UserID)
 
 		// Add twitter user handler
 		if addTwitter != "" {
-			payload := &AddTwitterResponse{}
-			// Redirect to loading page
-			http.Redirect(w, r, fmt.Sprintf("%s?bypass=true", redirect), http.StatusSeeOther)
-
-			if user != nil {
-				payload.Error = "Twitter account already registered with a different user"
-				ws.PublishMessage(URI, HubKeyUserAddTwitter, payload)
-				return http.StatusOK, nil
-
-			} else {
-				// Check if user exist
-				user, err := users.ID(addTwitter)
-				if err != nil {
-					payload.Error = "User ID does not exist"
-					ws.PublishMessage(URI, HubKeyUserAddTwitter, payload)
-					return http.StatusOK, nil
-				}
-				// Activity tracking
-				var oldUser types.User = *user
-
-				// Update user's Twitter ID
-				user.TwitterID = null.StringFrom(resp.UserID)
-				_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwitterID))
-				if err != nil {
-					payload.Error = "Unable to update user"
-					ws.PublishMessage(URI, HubKeyUserAddTwitter, payload)
-					return http.StatusInternalServerError, terror.Error(err)
-				}
-
-				// Record user activity
-				api.RecordUserActivity(context.Background(),
-					user.ID,
-					"Added Twitter account to User",
-					types.ObjectTypeUser,
-					helpers.StringPointer(user.ID),
-					&user.Username,
-					helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
-					&types.UserActivityChangeData{
-						Name: db.TableNames.Users,
-						From: oldUser,
-						To:   user,
-					},
-				)
-
-				payload.User = user.User
-				ws.PublishMessage(URI, HubKeyUserAddTwitter, payload)
-				return http.StatusOK, nil
-			}
+			return api.AddTwitterUser(w, r, redirect, user, resp, addTwitter)
 		}
 
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
@@ -874,13 +693,13 @@ func (api *API) TwitterLoginHandler(w http.ResponseWriter, r *http.Request) (int
 			user = u.User
 		}
 
-		token, httpStatus, err := fingerprintAndIssueToken(api, w, r, nil, nil, user, true)
+		token, err := fingerprintAndIssueToken(api, w, r, nil, user, true)
 		if err != nil {
-			return httpStatus, err
+			return http.StatusBadRequest, err
 		}
-		http.Redirect(w, r, fmt.Sprintf("%s?token=%s", redirect, token), http.StatusSeeOther)
+		http.Redirect(w, r, fmt.Sprintf("%s?token=%s", redirect, *token), http.StatusSeeOther)
 
-		return httpStatus, nil
+		return http.StatusOK, nil
 	}
 
 	oauthConfig := oauth1.Config{
@@ -899,13 +718,72 @@ func (api *API) TwitterLoginHandler(w http.ResponseWriter, r *http.Request) (int
 	return http.StatusOK, nil
 }
 
-func fingerprintAndIssueToken(api *API, w http.ResponseWriter, r *http.Request, redirectURL *string, fingerprint *users.Fingerprint, user *boiler.User, isRedirect bool) (string, int, error) {
+type AuthTwitterResponse struct {
+	OauthToken       string
+	OauthTokenSecret string
+	UserID           string
+	ScreenName       string
+}
+
+func (api *API) AddTwitterUser(w http.ResponseWriter, r *http.Request, redirect string, user *boiler.User, resp *AuthTwitterResponse, addTwitter string) (int, error) {
+	payload := &AddTwitterResponse{}
+	URI := fmt.Sprintf("/user/%s/twitter", addTwitter)
+	// Redirect to loading page
+	http.Redirect(w, r, fmt.Sprintf("%s?bypass=true", redirect), http.StatusSeeOther)
+
+	if user != nil {
+		payload.Error = "Twitter account already registered with a different user"
+		ws.PublishMessage(URI, HubKeyUserAddTwitter, payload)
+		return http.StatusOK, nil
+
+	} else {
+		// Check if user exist
+		user, err := users.ID(addTwitter)
+		if err != nil {
+			payload.Error = "User ID does not exist"
+			ws.PublishMessage(URI, HubKeyUserAddTwitter, payload)
+			return http.StatusOK, nil
+		}
+		// Activity tracking
+		var oldUser types.User = *user
+
+		// Update user's Twitter ID
+		user.TwitterID = null.StringFrom(resp.UserID)
+		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwitterID))
+		if err != nil {
+			payload.Error = "Unable to update user"
+			ws.PublishMessage(URI, HubKeyUserAddTwitter, payload)
+			return http.StatusInternalServerError, terror.Error(err)
+		}
+
+		// Record user activity
+		api.RecordUserActivity(context.Background(),
+			user.ID,
+			"Added Twitter account to User",
+			types.ObjectTypeUser,
+			helpers.StringPointer(user.ID),
+			&user.Username,
+			helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
+			&types.UserActivityChangeData{
+				Name: db.TableNames.Users,
+				From: oldUser,
+				To:   user,
+			},
+		)
+
+		payload.User = user.User
+		ws.PublishMessage(URI, HubKeyUserAddTwitter, payload)
+		return http.StatusOK, nil
+	}
+}
+
+func fingerprintAndIssueToken(api *API, w http.ResponseWriter, r *http.Request, fingerprint *users.Fingerprint, user *boiler.User, isRedirect bool) (*string, error) {
 	// Fingerprint user
 	if fingerprint != nil {
 		// todo: include ip in upsert
 		err := api.DoFingerprintUpsert(*fingerprint, user.ID)
 		if err != nil {
-			return "", http.StatusBadRequest, err
+			return nil, err
 		}
 	}
 
@@ -913,37 +791,29 @@ func fingerprintAndIssueToken(api *API, w http.ResponseWriter, r *http.Request, 
 		Encrypted: true,
 		Key:       api.TokenEncryptionKey,
 		Device:    r.UserAgent(),
-		Action:    "loginOauth",
+		Action:    "login",
 		User:      user,
 	})
 
 	user = u.User
 
 	if err != nil {
-		return "", http.StatusBadRequest, err
+		return nil, err
 	}
-
 	if user.DeletedAt.Valid {
-		return "", http.StatusBadRequest, err
+		return nil, err
 	}
 
-	var otToken *string = nil
-	if redirectURL != nil {
-		otToken = api.OneTimeToken(user.ID, r.UserAgent())
-	}
-
-	resp := &LoginResponse{u, token, false, otToken}
-
-	err = api.WriteCookie(w, r, resp.Token)
+	err = api.WriteCookie(w, r, token)
 	if err != nil {
-		return "", http.StatusBadRequest, err
+		return nil, err
 	}
 	if !isRedirect {
-		b, _ := json.Marshal(resp.User)
+		b, _ := json.Marshal(u)
 		_, _ = w.Write(b)
 	}
 
-	return token, http.StatusCreated, nil
+	return &token, nil
 }
 
 type IssueTokenConfig struct {
@@ -1240,17 +1110,12 @@ func (api *API) TokenAuth(req *TokenLoginRequest, r *http.Request) (*LoginRespon
 		return nil, fmt.Errorf("user does not exist")
 	}
 
-	var otToken *string = nil
-	if req.RedirectURL != nil {
-		otToken = api.OneTimeToken(resp.User.ID, r.UserAgent())
-	}
-
 	user, err := types.UserFromBoil(resp.User)
 	if err != nil {
 		return nil, fmt.Errorf("failed to identify user: %w", err)
 	}
 
-	return &LoginResponse{user, req.Token, false, otToken}, nil
+	return &LoginResponse{user, req.Token, false}, nil
 }
 
 func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, error) {
