@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/mail"
 	"strings"
 	"sync"
 	"xsyn-services/boiler"
@@ -161,14 +162,19 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 	}
 
 	throughOauth := true
-	if facebookID == "" && googleID == "" && publicAddress.Hex() == "" && twitchID == "" && twitterID == "" && discordID == "" {
+	if facebookID == "" && googleID == "" && publicAddress == common.HexToAddress("") && twitchID == "" && twitterID == "" && discordID == "" {
 		if email == "" {
 			return nil, terror.Error(fmt.Errorf("email empty"), "Email cannot be empty")
 		}
 
+		_, err := mail.ParseAddress(email)
+		if err != nil {
+			return nil, err
+		}
+
 		throughOauth = false
 
-		err := helpers.IsValidPassword(password)
+		err = helpers.IsValidPassword(password)
 		if err != nil {
 			return nil, err
 		}

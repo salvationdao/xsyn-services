@@ -10,6 +10,7 @@ import (
 	"html"
 	"io/ioutil"
 	"net/http"
+	"net/mail"
 	"net/url"
 	"strings"
 	"xsyn-services/boiler"
@@ -285,12 +286,20 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 
 	// Update Values
 	confirmPassword := false
+
 	if req.Payload.Email.Valid {
+		_, err := mail.ParseAddress(req.Payload.Email.String)
+		if err != nil {
+			return terror.Error(err, "Invalid email address.")
+		}
+
 		email := strings.TrimSpace(req.Payload.Email.String)
 		email = strings.ToLower(email)
 
 		if user.Email.String != email {
 			user.Email = null.StringFrom(email)
+			// Will need to re-verify user email
+			user.Verified = false
 		}
 	}
 	if req.Payload.NewUsername != nil && req.Payload.Username != *req.Payload.NewUsername {
