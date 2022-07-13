@@ -363,8 +363,6 @@ func (api *API) EmailVerifyHandler(w http.ResponseWriter, r *http.Request) (int,
 
 	newEmail, ok := email.(string)
 	userID, ok := uID.(string)
-	fmt.Println("-------------------------")
-	fmt.Println(newEmail, userID)
 
 	if !ok {
 		return http.StatusBadRequest, fmt.Errorf("Invalid token provided")
@@ -394,6 +392,7 @@ func (api *API) EmailVerifyHandler(w http.ResponseWriter, r *http.Request) (int,
 		if err != nil {
 			return http.StatusBadRequest, err
 		}
+		ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
 	}
 
 	b, _ := json.Marshal(user)
