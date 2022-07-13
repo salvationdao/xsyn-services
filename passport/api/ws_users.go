@@ -23,6 +23,7 @@ import (
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
+	"github.com/bxcodec/faker/v3"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -90,10 +91,11 @@ func NewUserController(log *zerolog.Logger, api *API, googleConfig *auth.GoogleC
 
 	// TFA
 
-	// 	api.SecureCommand(HubKeyGenerateTFASecret, authHub.GenerateTFAHandler)
-	// api.SecureCommand(HubKeyTFACancel, authHub.CancelTFAHandler)
-	// api.SecureCommand(HubKeyTFAVerification, authHub.TFAVerificationHandler)
-	// api.SecureCommand(HubKeyTFARecovery, authHub.TFARecoveryHandler)
+	api.SecureCommand(HubKeyGenerateTFASecret, userHub.GenerateTFAHandler)
+	api.SecureCommand(HubKeyTFACancel, userHub.CancelTFAHandler)
+	api.SecureCommand(HubKeyTFAVerification, userHub.TFAVerificationHandler)
+	api.SecureCommand(HubKeyTFARecoveryGet, userHub.TFARecoveryCodeGetHandler)
+	api.SecureCommand(HubKeyTFARecoveryVerify, userHub.TFARecoveryVerifyHandler)
 
 	return userHub
 }
@@ -1710,7 +1712,7 @@ type GenerateTFAResponse struct {
 	QRCodeStr string `json:"qrCodeStr"`
 }
 
-// LockHandler return updates user table to lock account according to requested level
+// TFAVerificationHandler generate QR code and secret of user
 func (uc *UserController) GenerateTFAHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 
 	if user.TwoFactorAuthenticationIsSet {
@@ -1760,7 +1762,7 @@ func (uc *UserController) GenerateTFAHandler(ctx context.Context, user *types.Us
 
 const HubKeyTFACancel = "USER:TFA:CANCEL"
 
-// LockHandler return updates user table to lock account according to requested level
+// TFAVerificationHandler cancles TFA of user
 func (uc *UserController) CancelTFAHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue updating user details, try again or contact support."
 	oldUser := *user
@@ -1784,15 +1786,15 @@ func (uc *UserController) CancelTFAHandler(ctx context.Context, user *types.User
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationIsSet))
 	if err != nil {
 		return terror.Error(err, errMsg)
-	}GenerateTFAHandler
+	}
 
 	// delete recovery code
 	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID)).One(passdb.StdConn)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	userRecoveryCode.DeletedAt = null.TimeFrom(time.Now())
 
+	userRecoveryCode.DeletedAt = null.TimeFrom(time.Now())
 	_, err = userRecoveryCode.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.DeletedAt))
 	if err != nil {
 		return terror.Error(err, errMsg)
@@ -1824,7 +1826,9 @@ func (uc *UserController) CancelTFAHandler(ctx context.Context, user *types.User
 		},
 	)
 
-	reply(true)
+	reply(user)
+	
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)s
 
 	return nil
 }
@@ -1838,36 +1842,151 @@ type TFAVerificationRequest struct {
 	} `json:"payload"`
 }
 
-// LockHandler return updates user table to lock account according to requested level
+// TFAVerificationHandler handles user tfa verification
 func (uc *UserController) TFAVerificationHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue updating user details, try again or contact support."
 	req := &TFAVerificationRequest{}
 	err := json.Unmarshal(payload, req)
+
 	if err != nil {
-		return terror.Error(err, "")
+		return terror.Error(err, errMsg)
 	}
 
+	oldUser := *user
+
 	if !totp.Validate(req.Payload.Passcode, user.TwoFactorAuthenticationSecret) {
-		return terror.Error(fmt.Errorf("Invalid passcode"), "Invalid pass code")
+		return terror.Error(fmt.Errorf("invalid passcode"), "Invalid passcode.")
 	}
 
 	// set user's tfa status
-	user.TwoFactorAuthenticationSet = true
-	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationSet))
-	if err != nil {
-		return terror.Error(err, errMsg)
+	if !user.TwoFactorAuthenticationIsSet {
+		user.TwoFactorAuthenticationIsSet = true
+		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationIsSet))
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+
+		// Get recovery code
+		userRecoveryCode, _ := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID)).One(passdb.StdConn)
+		if userRecoveryCode != nil {
+			return terror.Error(err, "User already has recovery codes")
+		}
+
+		// generate recovery code
+		recoveryCodes := []string{}
+		for i := 0; i < 16; i++ {
+			recoveryCodes = append(recoveryCodes,
+				faker.Password(),
+			)
+		}
+		_, err = userRecoveryCode.Update(passdb.StdConn, boil.Whitelist(boiler.UserRecoveryCodeColumns.RecoveryCode))
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+
+		// Record user activity
+		uc.API.RecordUserActivity(ctx,
+			user.ID,
+			"Set User TFA and recovery code",
+			types.ObjectTypeUser,
+			helpers.StringPointer(user.ID),
+			&user.Username,
+			helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
+			&types.UserActivityChangeData{
+				Name: db.TableNames.Users,
+				From: oldUser,
+				To:   user,
+			},
+		)
 	}
 
 	// send back user
 	reply(user)
 
-		ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
 
 	return nil
+}
 
+const HubKeyTFARecoveryGet = "USER:TFA:RECOVERY:GET"
+
+// Get recover code
+func (uc *UserController) TFARecoveryCodeGetHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	// Get recovery code
+	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID)).One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, "User has no recovery codes.")
+	}
+
+	// send back user
+	reply(userRecoveryCode)
+
+	return nil
+}
+
+// HubKeyTFARecovery is the key used to run the AuthLogin handler
+const HubKeyTFARecoveryVerify = "USER:TFA:RECOVERY:VERIFY"
+
+// TFARecoveryResquest is a request to recover users' own 2fa
+type TFARecoveryRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		RecoveryCode string `json:"recoveryCode"`
+	} `json:"payload"`
+}
+
+// Get recover code
+func (uc *UserController) TFARecoveryVerifyHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue verifying TFA, try again or contact support."
+	req := &TFARecoveryRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "")
+	}
+
+	oldUser := *user
+
+	tx, err := passdb.StdConn.Begin()
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	defer tx.Rollback()
+
+	// Get recovery code
+	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID)).One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, "User has no recovery codes.")
+	}
+
+	userRecoveryCode.UsedAt = null.TimeFrom(time.Now())
+	_, err = userRecoveryCode.Update(passdb.StdConn, boil.Whitelist(boiler.UserRecoveryCodeColumns.UsedAt))
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	// reset 2fa flag
+	user.TwoFactorAuthenticationIsSet = false
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationIsSet))
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	// clear 2fa secret
+	user.TwoFactorAuthenticationSecret = ""
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationIsSet))
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
 	// Record user activity
 	uc.API.RecordUserActivity(ctx,
 		user.ID,
-		"Generate TFA secret",
+		"Remove User 2FA",
 		types.ObjectTypeUser,
 		helpers.StringPointer(user.ID),
 		&user.Username,
@@ -1878,11 +1997,9 @@ func (uc *UserController) TFAVerificationHandler(ctx context.Context, user *type
 			To:   user,
 		},
 	)
+	reply(user)
 
-	reply(&GenerateTFAResponse{
-		Secret:    otpKey.Secret(),
-		QRCodeStr: otpKey.String(),
-	})
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
 
 	return nil
 }
