@@ -16,7 +16,6 @@ require (
 	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/golang-migrate/migrate/v4 v4.15.2
 	github.com/h2non/filetype v1.1.3
-	github.com/jackc/pgconn v1.10.1
 	github.com/jackc/pgx/v4 v4.14.1
 	github.com/jpillora/backoff v1.0.0
 	github.com/kevinms/leakybucket-go v0.0.0-20200115003610-082473db97ca
@@ -34,6 +33,7 @@ require (
 	github.com/ninja-syndicate/ws v0.14.1
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
+	github.com/pquerna/otp v1.3.0
 	github.com/prometheus/client_golang v1.11.0
 	github.com/rs/zerolog v1.26.1
 	github.com/shopspring/decimal v1.3.1
@@ -45,12 +45,12 @@ require (
 	github.com/volatiletech/sqlboiler/v4 v4.8.6
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.0.0-20220210151621-f4118a5b28e2
-	google.golang.org/api v0.63.0
 )
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
+	github.com/boombuler/barcode v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
 	github.com/containerd/continuity v0.2.2 // indirect
 	github.com/docker/cli v20.10.11+incompatible // indirect
@@ -63,6 +63,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
+	github.com/jackc/pgconn v1.10.1 // indirect
 	github.com/jackc/pgproto3/v2 v2.2.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
@@ -74,6 +75,7 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
+	google.golang.org/api v0.63.0 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
@@ -95,7 +97,7 @@ require (
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.0-20210816181553-5444fa50b93d // indirect
-	github.com/dghubble/oauth1 v0.7.1 // indirect
+	github.com/dghubble/oauth1 v0.7.1
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.1-0.20200219035652-afde56e7acac // indirect
 	github.com/ericlagergren/decimal v0.0.0-20181231230500-73749d4874d5 // indirect

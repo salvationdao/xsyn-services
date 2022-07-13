@@ -1243,6 +1243,7 @@ func (o *User) UserRecoveryCodes(mods ...qm.QueryMod) userRecoveryCodeQuery {
 
 	queryMods = append(queryMods,
 		qm.Where("\"user_recovery_codes\".\"user_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"user_recovery_codes\".\"deleted_at\""),
 	)
 
 	query := UserRecoveryCodes(queryMods...)
@@ -4205,6 +4206,7 @@ func (userL) LoadUserRecoveryCodes(e boil.Executor, singular bool, maybeUser int
 	query := NewQuery(
 		qm.From(`user_recovery_codes`),
 		qm.WhereIn(`user_recovery_codes.user_id in ?`, args...),
+		qmhelper.WhereIsNull(`user_recovery_codes.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

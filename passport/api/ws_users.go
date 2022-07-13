@@ -13,6 +13,7 @@ import (
 	"net/mail"
 	"net/url"
 	"strings"
+	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/crypto"
@@ -39,6 +40,8 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
 	"github.com/rs/zerolog"
+
+	"github.com/pquerna/otp/totp"
 )
 
 // UserController holds handlers for authentication
@@ -84,6 +87,13 @@ func NewUserController(log *zerolog.Logger, api *API, googleConfig *auth.GoogleC
 	api.SecureCommand(HubKeyUserSupsSubscribe, api.UserSupsUpdatedSubscribeHandler)
 	api.SecureCommand(HubKeyUserInit, userHub.InitHandler)
 	api.SecureCommand(HubKeyUserSendVerify, userHub.SendVerifyHandler)
+
+	// TFA
+
+	// 	api.SecureCommand(HubKeyGenerateTFASecret, authHub.GenerateTFAHandler)
+	// api.SecureCommand(HubKeyTFACancel, authHub.CancelTFAHandler)
+	// api.SecureCommand(HubKeyTFAVerification, authHub.TFAVerificationHandler)
+	// api.SecureCommand(HubKeyTFARecovery, authHub.TFARecoveryHandler)
 
 	return userHub
 }
@@ -149,7 +159,7 @@ func (uc *UserController) InitHandler(ctx context.Context, user *types.User, key
 	return nil
 }
 
-const HubKeyUserSendVerify = "USER:SEND_VERIFY"
+const HubKeyUserSendVerify = "USER:VERIFY:SEND"
 
 type SendVerifyRequest struct {
 	Payload struct {
@@ -180,12 +190,6 @@ func (uc *UserController) SendVerifyHandler(ctx context.Context, user *types.Use
 	}
 	reply(user)
 	return nil
-}
-
-const HubKeyAuthTwitter = "AUTH:TWITTER"
-
-type TwitterInitResponse struct {
-	Status string `json:"status"`
 }
 
 type UpdateUserUsernameRequest struct {
@@ -684,7 +688,7 @@ type AddFacebookRequest struct {
 }
 
 // HubKeyUserRemoveFacebook removes a linked Facebook account
-const HubKeyUserRemoveFacebook = "USER:REMOVE_FACEBOOK"
+const HubKeyUserRemoveFacebook = "USER:FACEBOOK:REMOVE"
 
 func (uc *UserController) RemoveFacebookHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	// Setup user activity tracking
@@ -726,7 +730,7 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, user *types
 }
 
 // HubKeyUserAddFacebook removes a linked Facebook account
-const HubKeyUserAddFacebook = "USER:ADD_FACEBOOK"
+const HubKeyUserAddFacebook = "USER:FACEBOOK:ADD"
 
 func (uc *UserController) AddFacebookHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 
@@ -774,7 +778,7 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, user *types.Us
 }
 
 // HubKeyUserRemoveGoogle removes a linked Google account
-const HubKeyUserRemoveGoogle = "USER:REMOVE_GOOGLE"
+const HubKeyUserRemoveGoogle = "USER:GOOGLE:REMOVE"
 
 func (uc *UserController) RemoveGoogleHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 
@@ -824,7 +828,7 @@ type AddGoogleRequest struct {
 }
 
 // HubKeyUserAddGoogle adds a linked Google account
-const HubKeyUserAddGoogle = "USER:ADD_GOOGLE"
+const HubKeyUserAddGoogle = "USER:GOOGLE:ADD"
 
 func (uc *UserController) AddGoogleHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &AddGoogleRequest{}
@@ -871,7 +875,7 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, user *types.User
 }
 
 // HubKeyUserRemoveTwitch removes a linked Twitch account
-const HubKeyUserRemoveTwitch = "USER:REMOVE_TWITCH"
+const HubKeyUserRemoveTwitch = "USER:TWITCH:REMOVE"
 
 func (uc *UserController) RemoveTwitchHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &RemoveServiceRequest{}
@@ -923,7 +927,7 @@ func (uc *UserController) RemoveTwitchHandler(ctx context.Context, user *types.U
 }
 
 // HubKeyUserRemoveTwitch adds a linked Twitch account
-const HubKeyUserAddTwitch = "USER:ADD_TWITCH"
+const HubKeyUserAddTwitch = "USER:TWITCH:ADD"
 
 type AddTwitchRequest struct {
 	Payload struct {
@@ -1021,7 +1025,7 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, user *types.User
 }
 
 // HubKeyUserRemoveTwitter removes a linked Twitter account
-const HubKeyUserRemoveTwitter = "USER:REMOVE_TWITTER"
+const HubKeyUserRemoveTwitter = "USER:TWITTER:REMOVE"
 
 func (uc *UserController) RemoveTwitterHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue removing user's twitter account, try again or contact support."
@@ -1071,7 +1075,7 @@ type AddTwitterRequest struct {
 }
 
 // HubKeyUserRemoveTwitter adds a linked Twitter account
-const HubKeyUserAddTwitter = "USER:ADD_TWITTER"
+const HubKeyUserAddTwitter = "USER:TWITTER:ADD"
 
 func (uc *UserController) AddTwitterHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue updating user's twitter account, try again or contact support."
@@ -1163,7 +1167,7 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, user *types.Use
 }
 
 // HubKeyUserRemoveDiscord removes a linked Discord account
-const HubKeyUserRemoveDiscord = "USER:REMOVE_DISCORD"
+const HubKeyUserRemoveDiscord = "USER:DISCORD:REMOVE"
 
 func (uc *UserController) RemoveDiscordHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue removing user's discord account, try again or contact support."
@@ -1215,7 +1219,7 @@ func (uc *UserController) RemoveDiscordHandler(ctx context.Context, user *types.
 }
 
 // HubKeyUserRemoveDiscord adds a linked Discord account
-const HubKeyUserAddDiscord = "USER:ADD_DISCORD"
+const HubKeyUserAddDiscord = "USER:DISCORD:ADD"
 
 type AddDiscordRequest struct {
 	Payload struct {
@@ -1328,7 +1332,7 @@ func (uc *UserController) AddDiscordHandler(ctx context.Context, user *types.Use
 }
 
 // HubKeyUserRemoveWallet removes a linked wallet address
-const HubKeyUserRemoveWallet = "USER:REMOVE_WALLET"
+const HubKeyUserRemoveWallet = "USER:WALLLET:REMOVE"
 
 // RemoveWalletRequest requests an update for an existing user
 type RemoveWalletRequest struct {
@@ -1389,7 +1393,7 @@ func (uc *UserController) RemoveWalletHandler(ctx context.Context, user *types.U
 }
 
 // HubKeyUserAddWallet links a wallet to an account
-const HubKeyUserAddWallet = "USER:ADD_WALLET"
+const HubKeyUserAddWallet = "USER:WALLET:ADD"
 
 type AddWalletRequest struct {
 	Payload struct {
@@ -1695,6 +1699,190 @@ func (uc *UserController) LockHandler(ctx context.Context, user *types.User, key
 	}
 
 	reply(true)
+
+	return nil
+}
+
+const HubKeyGenerateTFASecret = "USER:TFA:GENERATE"
+
+type GenerateTFAResponse struct {
+	Secret    string `json:"secret"`
+	QRCodeStr string `json:"qrCodeStr"`
+}
+
+// LockHandler return updates user table to lock account according to requested level
+func (uc *UserController) GenerateTFAHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+
+	if user.TwoFactorAuthenticationIsSet {
+		return terror.Error(fmt.Errorf("Two-Factor Authentication already set"))
+	}
+
+	otpKey, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      "XSYN",
+		AccountName: user.Username,
+	})
+
+	if err != nil {
+		return terror.Error(err, "Failed to generate two factor authentication secret")
+	}
+
+	user.TwoFactorAuthenticationSecret = otpKey.Secret()
+
+	oldUser := *user
+
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationSecret))
+	if err != nil {
+		return terror.Error(err, "Failed to update user 2fa secret")
+	}
+
+	// Record user activity
+	uc.API.RecordUserActivity(ctx,
+		user.ID,
+		"Generate TFA secret",
+		types.ObjectTypeUser,
+		helpers.StringPointer(user.ID),
+		&user.Username,
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
+		&types.UserActivityChangeData{
+			Name: db.TableNames.Users,
+			From: oldUser,
+			To:   user,
+		},
+	)
+
+	reply(&GenerateTFAResponse{
+		Secret:    otpKey.Secret(),
+		QRCodeStr: otpKey.String(),
+	})
+
+	return nil
+}
+
+const HubKeyTFACancel = "USER:TFA:CANCEL"
+
+// LockHandler return updates user table to lock account according to requested level
+func (uc *UserController) CancelTFAHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue updating user details, try again or contact support."
+	oldUser := *user
+
+	tx, err := passdb.StdConn.Begin()
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	defer tx.Rollback()
+
+	// reset 2fa flag
+	user.TwoFactorAuthenticationIsSet = false
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationIsSet))
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	// clear 2fa secret
+	user.TwoFactorAuthenticationSecret = ""
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationIsSet))
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}GenerateTFAHandler
+
+	// delete recovery code
+	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID)).One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+	userRecoveryCode.DeletedAt = null.TimeFrom(time.Now())
+
+	_, err = userRecoveryCode.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.DeletedAt))
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	// update 2fa flag
+	user.TwoFactorAuthenticationActivated = false
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationActivated))
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+	// Record user activity
+	uc.API.RecordUserActivity(ctx,
+		user.ID,
+		"Remove User 2FA",
+		types.ObjectTypeUser,
+		helpers.StringPointer(user.ID),
+		&user.Username,
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
+		&types.UserActivityChangeData{
+			Name: db.TableNames.Users,
+			From: oldUser,
+			To:   user,
+		},
+	)
+
+	reply(true)
+
+	return nil
+}
+
+const HubKeyTFAVerification = "USER:TFA:VERIFICATION"
+
+type TFAVerificationRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Passcode string `json:"passcode"`
+	} `json:"payload"`
+}
+
+// LockHandler return updates user table to lock account according to requested level
+func (uc *UserController) TFAVerificationHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &TFAVerificationRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "")
+	}
+
+	if !totp.Validate(req.Payload.Passcode, user.TwoFactorAuthenticationSecret) {
+		return terror.Error(fmt.Errorf("Invalid passcode"), "Invalid pass code")
+	}
+
+	// set user's tfa status
+	user.TwoFactorAuthenticationSet = true
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationSet))
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	// send back user
+	reply(user)
+
+		ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
+
+	return nil
+
+	// Record user activity
+	uc.API.RecordUserActivity(ctx,
+		user.ID,
+		"Generate TFA secret",
+		types.ObjectTypeUser,
+		helpers.StringPointer(user.ID),
+		&user.Username,
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
+		&types.UserActivityChangeData{
+			Name: db.TableNames.Users,
+			From: oldUser,
+			To:   user,
+		},
+	)
+
+	reply(&GenerateTFAResponse{
+		Secret:    otpKey.Secret(),
+		QRCodeStr: otpKey.String(),
+	})
 
 	return nil
 }
