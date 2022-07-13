@@ -27,6 +27,7 @@ type S struct {
 	UserCacheMap *api.Transactor
 	MessageBus   *messagebus.MessageBus
 	SMS          types.SMS
+	API          api.API
 	//Txs          *api.Transactions
 	Log                 *zerolog.Logger
 	DistLock            deadlock.Mutex
