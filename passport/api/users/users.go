@@ -248,10 +248,10 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 			return nil, err
 		}
 
-		return &types.User{User: user}, nil
+		return &types.User{User: *user}, nil
 	}
 
-	return &types.User{User: user}, nil
+	return &types.User{User: *user}, nil
 }
 
 func FingerprintUpsert(fingerprint Fingerprint, userID string) error {

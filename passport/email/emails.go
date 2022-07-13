@@ -69,12 +69,12 @@ func (m *Mailer) SendForgotPasswordEmail(ctx context.Context, user *types.User, 
 }
 
 // SendVerificationEmail sends an email with the confirm_email template
-func (m *Mailer) SendVerificationEmail(ctx context.Context, user *types.User, token string, newAccount bool) error {
+func (m *Mailer) SendVerificationEmail(ctx context.Context, user *types.User, token string, tokenID uuid.UUID, newAccount bool) error {
 	hostURL := m.PassportWebHostURL
 
 	err := m.SendEmail(ctx,
 		user.Email.String,
-		"Verify Email",
+		"Verify Email  - Passport XSYN",
 		"confirm_email",
 		struct {
 			MagicLink  string      `handlebars:"magic_link"`
@@ -82,7 +82,7 @@ func (m *Mailer) SendVerificationEmail(ctx context.Context, user *types.User, to
 			Email      null.String `handlebars:"email"`
 			NewAccount bool        `handlebars:"new_account"`
 		}{
-			MagicLink:  fmt.Sprintf("%s/verify?token=%s", hostURL, token),
+			MagicLink:  fmt.Sprintf("%s/verify?id=%s&token=%s", hostURL, tokenID, token),
 			Name:       user.Username,
 			Email:      user.Email,
 			NewAccount: newAccount,

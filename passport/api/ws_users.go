@@ -269,6 +269,7 @@ type UpdateUserRequest struct {
 		CurrentPassword                  *string     `json:"current_password"`
 		NewPassword                      *string     `json:"new_password"`
 		TwoFactorAuthenticationActivated bool        `json:"two_factor_authentication_activated"`
+		UserAgent                        string      `json:"user_agent"`
 	} `json:"payload"`
 }
 
@@ -282,12 +283,12 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 	}
 
 	// Setup user activity tracking
-	var oldUser types.User = *user
+	oldUser := *user
 
 	// Update Values
 	confirmPassword := false
 
-	if req.Payload.Email.Valid {
+	if req.Payload.Email.Valid && req.Payload.Email.String != "" {
 		_, err := mail.ParseAddress(req.Payload.Email.String)
 		if err != nil {
 			return terror.Error(err, "Invalid email address.")
@@ -297,9 +298,28 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 		email = strings.ToLower(email)
 
 		if user.Email.String != email {
-			user.Email = null.StringFrom(email)
 			// Will need to re-verify user email
 			user.Verified = false
+
+			// Send email to new email
+			_, tokenID, token, err := uc.API.IssueToken(&IssueTokenConfig{
+				Encrypted: true,
+				Key:       uc.API.TokenEncryptionKey,
+				Device:    req.Payload.UserAgent,
+				Action:    "verify",
+				User:      &user.User,
+			})
+
+			if err != nil {
+				return terror.Error(err, "Unable to issue a verify token.")
+			}
+
+			userNewEmail := *user
+			userNewEmail.Email = null.StringFrom(email)
+			err = uc.API.Mailer.SendVerificationEmail(context.Background(), &userNewEmail, token, tokenID, false)
+			if err != nil {
+				return terror.Error(err, "Unable to send verify email")
+			}
 		}
 	}
 	if req.Payload.NewUsername != nil && req.Payload.Username != *req.Payload.NewUsername {

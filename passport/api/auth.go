@@ -205,7 +205,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
-		_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, user.User, true)
+		_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, &user.User, true)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -316,7 +316,25 @@ func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int,
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, user.User, false)
+
+	user, tokenID, token, err := api.IssueToken(&IssueTokenConfig{
+		Encrypted: true,
+		Key:       api.TokenEncryptionKey,
+		Device:    r.UserAgent(),
+		Action:    "verify",
+		User:      &user.User,
+	})
+
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	err = api.Mailer.SendVerificationEmail(context.Background(), user, token, tokenID, true)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, &user.User, false)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -335,7 +353,7 @@ func (api *API) EmailLogin(w http.ResponseWriter, r *http.Request) (int, error) 
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, user.User, false)
+	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, &user.User, false)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -358,7 +376,7 @@ func (api *API) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) (i
 		Key:       api.TokenEncryptionKey,
 		Device:    r.UserAgent(),
 		Action:    "forgot",
-		User:      user.User,
+		User:      &user.User,
 	})
 	if err != nil {
 		return http.StatusBadRequest, err
@@ -520,7 +538,7 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 		return fmt.Errorf("public address fail: %w", err)
 	}
 
-	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, user.User, isRedirect)
+	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, &user.User, isRedirect)
 
 	err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
 	if err != nil {
@@ -567,7 +585,7 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 		if err != nil {
 			return err
 		}
-		user = u.User
+		user = &u.User
 	} else if err != nil {
 		return err
 	}
@@ -593,7 +611,7 @@ func (api *API) FacebookLoginHandler(w http.ResponseWriter, r *http.Request) (in
 		if err != nil {
 			return http.StatusBadRequest, err
 		}
-		user = u.User
+		user = &u.User
 	}
 
 	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, user, false)
@@ -614,7 +632,7 @@ func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, 
 		if err != nil {
 			return err
 		}
-		user = u.User
+		user = &u.User
 	} else if err != nil {
 		return err
 	}
@@ -690,7 +708,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 			if err != nil {
 				return http.StatusBadRequest, err
 			}
-			user = u.User
+			user = &u.User
 		}
 
 		token, err := fingerprintAndIssueToken(api, w, r, nil, user, true)
@@ -771,7 +789,7 @@ func (api *API) AddTwitterUser(w http.ResponseWriter, r *http.Request, redirect 
 			},
 		)
 
-		payload.User = user.User
+		payload.User = &user.User
 		ws.PublishMessage(URI, HubKeyUserAddTwitter, payload)
 		return http.StatusOK, nil
 	}
@@ -795,7 +813,7 @@ func fingerprintAndIssueToken(api *API, w http.ResponseWriter, r *http.Request, 
 		User:      user,
 	})
 
-	user = u.User
+	user = &u.User
 
 	if err != nil {
 		return nil, err
@@ -892,7 +910,7 @@ func issueToken(api *API, config *IssueTokenConfig, expireInDays int) (*types.Us
 	// save user detail as jwt
 	jwt, sign, err := tokens.GenerateJWT(
 		tokenID,
-		user.User,
+		&user.User,
 		config.Device,
 		config.Action,
 		expireInDays)
@@ -1035,7 +1053,7 @@ func (api *API) GetNonce(w http.ResponseWriter, r *http.Request) (int, error) {
 		}
 		passlog.L.Info().Err(err).Msg("doing nonce")
 
-		newNonce, err := api.NewNonce(user.User)
+		newNonce, err := api.NewNonce(&user.User)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("no nonce")
 			return http.StatusBadRequest, err
