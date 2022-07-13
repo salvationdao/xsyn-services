@@ -115,7 +115,11 @@ type UsernameUpdateReq struct {
 	ApiKey      string
 }
 
-func (s *S) UserUpdateUsername(req UsernameUpdateReq, resp *UserResp) error {
+type UsernameUpdateResp struct {
+	Username string
+}
+
+func (s *S) UserUpdateUsername(req UsernameUpdateReq, resp *UsernameUpdateResp) error {
 	_, err := IsServerClient(req.ApiKey)
 	if err != nil {
 		return err
@@ -131,32 +135,30 @@ func (s *S) UserUpdateUsername(req UsernameUpdateReq, resp *UserResp) error {
 	// for activity record
 	oldUser := user
 
-	if req.NewUsername != "" {
-		// Validate username
-		err = helpers.IsValidUsername(req.NewUsername)
-		if err != nil {
-			passlog.L.Error().Msg("username invalid")
-			return terror.Error(err, "username invalid")
-		}
-
-		bm := bluemonday.StrictPolicy()
-		sanitizedUsername := html.UnescapeString(bm.Sanitize(strings.TrimSpace(req.NewUsername)))
-
-		user.Username = sanitizedUsername
-		// update
-		user.UpdatedAt = time.Now()
-		_, err = user.Update(passdb.StdConn, boil.Infer())
-		if err != nil {
-			passlog.L.Error().Msg("unable to update username")
-			return terror.Error(err, "unable to update username, try again or contact support")
-		}
-
-		resp.ID = user.ID
-		resp.Username = sanitizedUsername
-		resp.FactionID = user.FactionID
-		resp.PublicAddress = user.PublicAddress
-
+	if req.NewUsername == "" {
+		passlog.L.Error().Msg("Username cannot be empty")
+		return terror.Error(err, "Username cannot be empty")
 	}
+	// Validate username
+	err = helpers.IsValidUsername(req.NewUsername)
+	if err != nil {
+		passlog.L.Error().Msg("username invalid")
+		return terror.Error(err, "username invalid")
+	}
+
+	bm := bluemonday.StrictPolicy()
+	sanitizedUsername := html.UnescapeString(bm.Sanitize(strings.TrimSpace(req.NewUsername)))
+
+	user.Username = sanitizedUsername
+	// update
+	user.UpdatedAt = time.Now()
+	_, err = user.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		passlog.L.Error().Msg("unable to update username")
+		return terror.Error(err, "unable to update username, try again or contact support")
+	}
+
+	resp.Username = sanitizedUsername
 
 	// add to user activity
 	s.API.RecordUserActivity(nil,
