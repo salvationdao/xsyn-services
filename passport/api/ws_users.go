@@ -83,6 +83,7 @@ func NewUserController(log *zerolog.Logger, api *API, googleConfig *auth.GoogleC
 	api.SecureCommand(HubKeyUser, userHub.UpdatedSubscribeHandler)
 	api.SecureCommand(HubKeyUserSupsSubscribe, api.UserSupsUpdatedSubscribeHandler)
 	api.SecureCommand(HubKeyUserInit, userHub.InitHandler)
+	api.SecureCommand(HubKeyUserSendVerify, userHub.SendVerifyHandler)
 
 	return userHub
 }
@@ -144,6 +145,39 @@ const HubKeyUserInit = "USER:INIT"
 
 // Tracks if user should log out from change password
 func (uc *UserController) InitHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	reply(user)
+	return nil
+}
+
+const HubKeyUserSendVerify = "USER:SEND_VERIFY"
+
+type SendVerifyRequest struct {
+	Payload struct {
+		UserAgent string `json:"user_agent"`
+	} `json:"payload"`
+}
+
+// Tracks if user should log out from change password
+func (uc *UserController) SendVerifyHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &SendVerifyRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// Send email to new email for verification
+	_, tokenID, token, err := uc.API.VerifyEmailToken(&TokenConfig{
+		Encrypted: true,
+		Key:       uc.API.TokenEncryptionKey,
+		Device:    req.Payload.UserAgent,
+		Action:    "verify",
+		User:      &user.User,
+	})
+
+	err = uc.API.Mailer.SendVerificationEmail(context.Background(), user, token, tokenID, true)
+	if err != nil {
+		return terror.Error(err, "Unable to send verification email.")
+	}
 	reply(user)
 	return nil
 }
@@ -298,24 +332,22 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 		email = strings.ToLower(email)
 
 		if user.Email.String != email {
-			// Will need to re-verify user email
-			user.Verified = false
+			userNewEmail := *user
+			userNewEmail.Email = null.StringFrom(email)
 
-			// Send email to new email
-			_, tokenID, token, err := uc.API.IssueToken(&IssueTokenConfig{
+			// Send email to new email for verification
+			_, tokenID, token, err := uc.API.VerifyEmailToken(&TokenConfig{
 				Encrypted: true,
 				Key:       uc.API.TokenEncryptionKey,
 				Device:    req.Payload.UserAgent,
 				Action:    "verify",
-				User:      &user.User,
+				User:      &userNewEmail.User,
 			})
 
 			if err != nil {
 				return terror.Error(err, "Unable to issue a verify token.")
 			}
 
-			userNewEmail := *user
-			userNewEmail.Email = null.StringFrom(email)
 			err = uc.API.Mailer.SendVerificationEmail(context.Background(), &userNewEmail, token, tokenID, false)
 			if err != nil {
 				return terror.Error(err, "Unable to send verify email")

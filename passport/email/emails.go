@@ -7,7 +7,6 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
 )
 
 type HostFrom = string
@@ -77,14 +76,14 @@ func (m *Mailer) SendVerificationEmail(ctx context.Context, user *types.User, to
 		"Verify Email  - Passport XSYN",
 		"confirm_email",
 		struct {
-			MagicLink  string      `handlebars:"magic_link"`
-			Name       string      `handlebars:"name"`
-			Email      null.String `handlebars:"email"`
-			NewAccount bool        `handlebars:"new_account"`
+			MagicLink  string `handlebars:"magic_link"`
+			Name       string `handlebars:"name"`
+			Email      string `handlebars:"email"`
+			NewAccount bool   `handlebars:"new_account"`
 		}{
 			MagicLink:  fmt.Sprintf("%s/verify?id=%s&token=%s", hostURL, tokenID, token),
 			Name:       user.Username,
-			Email:      user.Email,
+			Email:      user.Email.String,
 			NewAccount: newAccount,
 		},
 		"",

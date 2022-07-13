@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/mail"
 	"net/url"
 	"strings"
 	"time"
@@ -317,7 +318,8 @@ func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int,
 		return http.StatusBadRequest, err
 	}
 
-	user, tokenID, token, err := api.IssueToken(&IssueTokenConfig{
+	// Send email to new email for verification
+	_, verifyTokenID, verifyToken, err := api.VerifyEmailToken(&TokenConfig{
 		Encrypted: true,
 		Key:       api.TokenEncryptionKey,
 		Device:    r.UserAgent(),
@@ -329,7 +331,7 @@ func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int,
 		return http.StatusBadRequest, err
 	}
 
-	err = api.Mailer.SendVerificationEmail(context.Background(), user, token, tokenID, true)
+	err = api.Mailer.SendVerificationEmail(context.Background(), user, verifyToken, verifyTokenID, true)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -338,6 +340,64 @@ func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int,
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
+
+	return http.StatusOK, nil
+}
+
+func (api *API) EmailVerifyHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	// Requested by email verify page
+	tokenBase64 := r.URL.Query().Get("token")
+	tokenStr, err := base64.StdEncoding.DecodeString(tokenBase64)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Decode token user with new email
+	token, err := tokens.ReadJWT(tokenStr, true, api.TokenEncryptionKey)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	uID, _ := token.Get("user-id")
+	email, _ := token.Get(openid.EmailKey)
+
+	newEmail, ok := email.(string)
+	userID, ok := uID.(string)
+	fmt.Println("-------------------------")
+	fmt.Println(newEmail, userID)
+
+	if !ok {
+		return http.StatusBadRequest, fmt.Errorf("Invalid token provided")
+	}
+
+	user, err := users.ID(userID)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Check if user is new or just updating email
+	if user.User.Verified {
+		_, err = mail.ParseAddress(newEmail)
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+		user.Email = null.NewString(newEmail, true)
+		_, err := user.User.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Email))
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+
+	} else {
+		// New user
+		user.User.Verified = true
+		_, err := user.User.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Verified))
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+	}
+
+	b, _ := json.Marshal(user)
+	_, _ = w.Write(b)
 
 	return http.StatusOK, nil
 }
@@ -371,7 +431,7 @@ func (api *API) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) (i
 	if err != nil {
 		return http.StatusBadRequest, fmt.Errorf("no user found with email: %q", req.Email)
 	}
-	user, tokenID, token, err := api.ResetPasswordToken(&IssueTokenConfig{
+	user, tokenID, token, err := api.ResetPasswordToken(&TokenConfig{
 		Encrypted: true,
 		Key:       api.TokenEncryptionKey,
 		Device:    r.UserAgent(),
@@ -402,12 +462,30 @@ func (api *API) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) (in
 		return http.StatusBadRequest, err
 	}
 
-	// Decode token
-	user, err := api.TokenLogin(req.Token, "")
+	tokenStr, err := base64.StdEncoding.DecodeString(req.Token)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-	return passwordReset(api, w, r, req, user.User)
+	// Decode token user with new email
+	token, err := tokens.ReadJWT(tokenStr, true, api.TokenEncryptionKey)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	uID, _ := token.Get("user-id")
+	userID, ok := uID.(string)
+
+	if !ok {
+		return http.StatusBadRequest, fmt.Errorf("Invalid token provided")
+	}
+	user, err := users.ID(userID)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+	return passwordReset(api, w, r, req, &user.User)
 
 }
 
@@ -805,7 +883,7 @@ func fingerprintAndIssueToken(api *API, w http.ResponseWriter, r *http.Request, 
 		}
 	}
 
-	u, _, token, err := api.IssueToken(&IssueTokenConfig{
+	u, _, token, err := api.IssueToken(&TokenConfig{
 		Encrypted: true,
 		Key:       api.TokenEncryptionKey,
 		Device:    r.UserAgent(),
@@ -834,7 +912,7 @@ func fingerprintAndIssueToken(api *API, w http.ResponseWriter, r *http.Request, 
 	return &token, nil
 }
 
-type IssueTokenConfig struct {
+type TokenConfig struct {
 	Encrypted bool
 	Key       []byte
 	Device    string
@@ -884,8 +962,7 @@ func (api *API) OneTimeToken(userID string, userAgent string) *string {
 
 	return &token
 }
-
-func issueToken(api *API, config *IssueTokenConfig, expireInDays int) (*types.User, uuid.UUID, string, error) {
+func token(api *API, config *TokenConfig, isIssueToken bool, expireInDays int) (*types.User, uuid.UUID, string, error) {
 	var err error
 	errMsg := "There was a problem with your authentication, please check your details and try again."
 
@@ -913,15 +990,12 @@ func issueToken(api *API, config *IssueTokenConfig, expireInDays int) (*types.Us
 		&user.User,
 		config.Device,
 		config.Action,
-		expireInDays)
+		api.TokenExpirationDays)
 
 	if err != nil {
 		return nil, uuid.Nil, "", terror.Error(err, errMsg)
 	}
-	// Record token in issued token records
-	if config.Mutate != nil {
-		jwt = config.Mutate(jwt)
-	}
+
 	jwtSigned, err := sign(jwt, config.Encrypted, config.Key)
 	if err != nil {
 		return nil, uuid.Nil, "", terror.Error(err, "unable to sign jwt")
@@ -929,21 +1003,26 @@ func issueToken(api *API, config *IssueTokenConfig, expireInDays int) (*types.Us
 
 	token := base64.StdEncoding.EncodeToString(jwtSigned)
 
-	err = tokens.Save(token, api.TokenExpirationDays, api.TokenEncryptionKey)
-	if err != nil {
-		return nil, uuid.Nil, "", terror.Error(err, "unable to save jwt")
+	if isIssueToken {
+		err = tokens.Save(token, api.TokenExpirationDays, api.TokenEncryptionKey)
+		if err != nil {
+			return nil, uuid.Nil, "", terror.Error(err, "unable to save jwt")
+		}
 	}
 
 	return user, tokenID, token, nil
 }
 
-func (api *API) ResetPasswordToken(config *IssueTokenConfig) (*types.User, uuid.UUID, string, error) {
-	return issueToken(api, config, 1)
-
+func (api *API) ResetPasswordToken(config *TokenConfig) (*types.User, uuid.UUID, string, error) {
+	return token(api, config, false, 1)
 }
 
-func (api *API) IssueToken(config *IssueTokenConfig) (*types.User, uuid.UUID, string, error) {
-	return issueToken(api, config, api.TokenExpirationDays)
+func (api *API) VerifyEmailToken(config *TokenConfig) (*types.User, uuid.UUID, string, error) {
+	return token(api, config, false, 1)
+}
+
+func (api *API) IssueToken(config *TokenConfig) (*types.User, uuid.UUID, string, error) {
+	return token(api, config, true, api.TokenExpirationDays)
 }
 
 func (api *API) VerifySignature(signature string, nonce string, publicKey common.Address) error {
@@ -1406,7 +1485,7 @@ func (api *API) BotTokenLoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, _, token, err := api.IssueToken(&IssueTokenConfig{
+	_, _, token, err := api.IssueToken(&TokenConfig{
 		Encrypted: true,
 		Key:       api.TokenEncryptionKey,
 		Device:    "gamebot",

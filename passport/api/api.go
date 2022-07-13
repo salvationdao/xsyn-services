@@ -249,6 +249,7 @@ func NewAPI(
 				r.Post("/google", WithError(api.GoogleLoginHandler))
 				r.Post("/facebook", WithError(api.FacebookLoginHandler))
 				r.Get("/twitter", WithError(api.TwitterAuth))
+				r.Get("/verify", WithError(api.EmailVerifyHandler))
 
 				r.Post("/bot_list", api.BotListHandler)
 				r.Post("/bot_token", api.BotTokenLoginHandler)
