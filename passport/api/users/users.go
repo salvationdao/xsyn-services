@@ -7,6 +7,7 @@ import (
 	"net/mail"
 	"strings"
 	"sync"
+	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/crypto"
 	"xsyn-services/passport/email"
@@ -16,6 +17,7 @@ import (
 	"xsyn-services/passport/supremacy_rpcclient"
 	"xsyn-services/types"
 
+	"github.com/pquerna/otp/totp"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
@@ -404,4 +406,37 @@ func Username(uname string) (*boiler.User, string, error) {
 	}
 	return user, hash.PasswordHash, nil
 
+}
+
+func VerifyTFA (userTFASecret string, passcode string) error {
+		if !totp.Validate(passcode, userTFASecret) {
+		return fmt.Errorf("invalid passcode. Please try again")
+	}
+	return nil
+}
+
+func GetTFARecovery(userID string) ( boiler.UserRecoveryCodeSlice, error) {
+		userRecoveryCodes, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(userID)).All(passdb.StdConn)
+	if err != nil {
+		return nil, fmt.Errorf("user has not recovery codes")
+	}
+
+	return userRecoveryCodes, nil
+}
+
+
+
+func VerifyTFARecovery(recoveryCode string) (error) {
+	// Check if code matches
+	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.RecoveryCode.EQ(recoveryCode), boiler.UserRecoveryCodeWhere.UsedAt.IsNull()).One(passdb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	userRecoveryCode.UsedAt = null.TimeFrom(time.Now())
+	_, err = userRecoveryCode.Update(passdb.StdConn, boil.Whitelist(boiler.UserRecoveryCodeColumns.UsedAt))
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -93,6 +93,15 @@ type FacebookLoginRequest struct {
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
 }
 
+type TFAVerifyRequest struct {
+	UserID       string             `json:"user_id"`
+	Token        string             `json:"token"`
+	Passcode     string             `json:"passcode"`
+	RecoveryCode string             `json:"recovery_code"`
+	SessionID    hub.SessionID      `json:"session_id"`
+	Fingerprint  *users.Fingerprint `json:"fingerprint"`
+}
+
 // LoginResponse is a response for login
 type LoginResponse struct {
 	User  *types.User `json:"user"`
@@ -183,6 +192,8 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pass2FA := authType == "tfa"
+
 	switch authType {
 	case "wallet":
 		req := &WalletLoginRequest{
@@ -206,7 +217,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
-		_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, &user.User, true)
+		_, err = api.FingerprintAndIssueToken(pass2FA, w, r, req.Fingerprint, &user.User, true)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -249,6 +260,19 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	case "cookie":
 		_, token := externalLoginCheck(api, w, r)
 		err := api.WriteCookie(w, r, *token)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+	case "tfa":
+		req := &TFAVerifyRequest{
+			Token:        r.Form.Get("token"),
+			Passcode:     r.Form.Get("passcode"),
+			RecoveryCode: r.Form.Get("recovery_code"),
+		}
+
+		err := api.TFAVerify(req, w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -336,7 +360,7 @@ func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int,
 		return http.StatusBadRequest, err
 	}
 
-	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, &user.User, false)
+	_, err = api.FingerprintAndIssueToken(false, w, r, req.Fingerprint, &user.User, false)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -345,27 +369,9 @@ func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int,
 }
 
 func (api *API) EmailVerifyHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	// Requested by email verify page
-	tokenBase64 := r.URL.Query().Get("token")
-	tokenStr, err := base64.StdEncoding.DecodeString(tokenBase64)
+	userID, newEmail, err := api.UserFromToken(w, r, nil)
 	if err != nil {
 		return http.StatusBadRequest, err
-	}
-
-	// Decode token user with new email
-	token, err := tokens.ReadJWT(tokenStr, true, api.TokenEncryptionKey)
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	uID, _ := token.Get("user-id")
-	email, _ := token.Get(openid.EmailKey)
-
-	newEmail, ok := email.(string)
-	userID, ok := uID.(string)
-
-	if !ok {
-		return http.StatusBadRequest, fmt.Errorf("Invalid token provided")
 	}
 
 	user, err := users.ID(userID)
@@ -401,6 +407,37 @@ func (api *API) EmailVerifyHandler(w http.ResponseWriter, r *http.Request) (int,
 	return http.StatusOK, nil
 }
 
+func (api *API) UserFromToken(w http.ResponseWriter, r *http.Request, tknBase64 *string) (string, string, error) {
+
+	tokenBase64 := r.URL.Query().Get("token")
+
+	if tknBase64 != nil {
+		tokenBase64 = *tknBase64
+	}
+	tokenStr, err := base64.StdEncoding.DecodeString(tokenBase64)
+	if err != nil {
+		return "", "", err
+	}
+
+	// Decode token user with new email
+	token, err := tokens.ReadJWT(tokenStr, true, api.TokenEncryptionKey)
+	if err != nil {
+		return "", "", err
+	}
+
+	uID, _ := token.Get("user-id")
+	email, _ := token.Get(openid.EmailKey)
+
+	newEmail, _ := email.(string)
+	userID, ok := uID.(string)
+
+	if !ok {
+		return "", "", fmt.Errorf("invalid token provided")
+	}
+
+	return userID, newEmail, nil
+}
+
 func (api *API) EmailLogin(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &EmailLoginRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
@@ -412,7 +449,7 @@ func (api *API) EmailLogin(w http.ResponseWriter, r *http.Request) (int, error) 
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, &user.User, false)
+	_, err = api.FingerprintAndIssueToken(false, w, r, req.Fingerprint, &user.User, false)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -587,7 +624,7 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 		return http.StatusBadRequest, err
 	}
 
-	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, user, false)
+	_, err = api.FingerprintAndIssueToken(false, w, r, req.Fingerprint, user, false)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -622,7 +659,7 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 		return err
 	}
 
-	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, &user.User, isRedirect)
+	_, err = api.FingerprintAndIssueToken(false, w, r, req.Fingerprint, &user.User, isRedirect)
 	if err != nil {
 		return err
 	}
@@ -671,9 +708,74 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 	} else if err != nil {
 		return err
 	}
-	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, user, isRedirect)
+	_, err = api.FingerprintAndIssueToken(false, w, r, req.Fingerprint, user, isRedirect)
 
 	return err
+}
+
+func (api *API) TFAVerifyHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &TFAVerifyRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Get user from token
+	err = api.TFAVerify(req, w, r)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	return http.StatusOK, nil
+}
+
+func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.Request) error {
+	// Get user from token
+	// OR verify passcode from user id
+	userID, _, _ := api.UserFromToken(w, r, &req.Token)
+	user, err := users.ID(userID)
+
+	if req.UserID != "" {
+		user, err = users.ID(req.UserID)
+		if err != nil {
+			return err
+		}
+	} else {
+		if err != nil {
+			return err
+		}
+	}
+
+	// Check if there is a passcode and verify it
+	if req.Passcode != "" {
+		err := users.VerifyTFA(user.TwoFactorAuthenticationSecret, req.Passcode)
+		if err != nil {
+			return err
+		}
+	} else if req.RecoveryCode != "" {
+		// Check if there is a recovery code and verify it
+		err := users.VerifyTFARecovery(req.RecoveryCode)
+		if err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("code is missing")
+	}
+
+	// Issue login token to user
+	// Only if jwt token was provided
+	if req.Token != "" {
+		_, err = api.FingerprintAndIssueToken(true, w, r, req.Fingerprint, &user.User, false)
+		if err != nil {
+			return err
+		}
+	} else {
+		b, _ := json.Marshal(user)
+		_, _ = w.Write(b)
+
+	}
+
+	return nil
 }
 
 func (api *API) FacebookLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -696,7 +798,7 @@ func (api *API) FacebookLoginHandler(w http.ResponseWriter, r *http.Request) (in
 		user = &u.User
 	}
 
-	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, user, false)
+	_, err = api.FingerprintAndIssueToken(false, w, r, req.Fingerprint, user, false)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -718,7 +820,7 @@ func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, 
 	} else if err != nil {
 		return err
 	}
-	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, user, isRedirect)
+	_, err = api.FingerprintAndIssueToken(false, w, r, req.Fingerprint, user, isRedirect)
 
 	return err
 }
@@ -792,8 +894,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 			}
 			user = &u.User
 		}
-
-		token, err := fingerprintAndIssueToken(api, w, r, nil, user, true)
+		token, err := api.FingerprintAndIssueToken(false, w, r, nil, user, true)
 		if err != nil {
 			return http.StatusBadRequest, err
 		}
@@ -877,14 +978,10 @@ func (api *API) AddTwitterUser(w http.ResponseWriter, r *http.Request, redirect 
 	}
 }
 
-func fingerprintAndIssueToken(api *API, w http.ResponseWriter, r *http.Request, fingerprint *users.Fingerprint, user *boiler.User, isRedirect bool) (*string, error) {
-	u, err := types.UserFromBoil(user)
-	if err != nil {
-		return nil, err
-	}
+func (api *API) FingerprintAndIssueToken(pass2FA bool, w http.ResponseWriter, r *http.Request, fingerprint *users.Fingerprint, user *boiler.User, isRedirect bool) (*string, error) {
 
-	// Dont create token and tell front-end to start 2FA verification
-	if user.TwoFactorAuthenticationIsSet {
+	// Dont create issue token and tell front-end to start 2FA verification with JWT
+	if user.TwoFactorAuthenticationIsSet && !pass2FA {
 		// Generate jwt with user id
 		config := &TokenConfig{
 			Encrypted: true,

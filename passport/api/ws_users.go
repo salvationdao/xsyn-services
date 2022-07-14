@@ -1441,6 +1441,8 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, user *types.User
 	var oldUser = *user
 
 	publicAddr := common.HexToAddress(req.Payload.PublicAddress)
+	
+
 
 	// verify they signed it
 	err = uc.API.VerifySignature(req.Payload.Signature, user.Nonce.String, publicAddr)
@@ -1454,6 +1456,7 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, user *types.User
 	if err != nil {
 		return terror.Error(err, "Wallet is already connected to another user.")
 	}
+
 
 	reply(user)
 
@@ -1863,32 +1866,36 @@ func (uc *UserController) TFAVerificationHandler(ctx context.Context, user *type
 
 	oldUser := *user
 
-	if !totp.Validate(req.Payload.Passcode, user.TwoFactorAuthenticationSecret) {
-		return terror.Error(fmt.Errorf("invalid passcode"), "Invalid passcode, please try again.")
+	err = users.VerifyTFA(user.TwoFactorAuthenticationSecret, req.Payload.Passcode)
+	if err != nil {
+		return terror.Error(err)
 	}
 
 	// set user's tfa status
 	if !user.TwoFactorAuthenticationIsSet {
 		// Get recovery code
-		nRecoverCodes, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID)).Count(passdb.StdConn)
+		nRecoverCodes, _ := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID)).Count(passdb.StdConn)
 		if nRecoverCodes > 0 {
 			return terror.Error(err, "User already has recovery codes")
 		}
 
+		// Set TFA
 		user.TwoFactorAuthenticationIsSet = true
 		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationIsSet))
 		if err != nil {
 			return terror.Error(err, errMsg)
 		}
 
-		// generate recovery code
+		// generate recovery cod
 		for i := 0; i < 16; i++ {
-			babbler := babble.NewBabbler()
-			babbler.Count = 2
-			code := strings.Split(strings.ToLower(babbler.Babble()), " ")
+			b:= babble.NewBabbler()
+			b.Count = 2
+			b.Separator="-"
+			code := strings.ToLower(b.Babble())
+			code = strings.ReplaceAll(code, "'s", "")
 
 			recoveryCode := &boiler.UserRecoveryCode{
-				RecoveryCode: strings.Join(code, ""),
+				RecoveryCode: code,
 				UserID:       user.ID,
 			}
 			err = recoveryCode.Insert(passdb.StdConn, boil.Infer())
@@ -1926,7 +1933,7 @@ const HubKeyTFARecoveryGet = "USER:TFA:RECOVERY:GET"
 // Get recover code
 func (uc *UserController) TFARecoveryCodeGetHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	// Get recovery code
-	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID)).All(passdb.StdConn)
+	userRecoveryCode, err := users.GetTFARecovery(user.ID)
 	if err != nil {
 		return terror.Error(err, "User has no recovery codes.")
 	}
@@ -1967,16 +1974,11 @@ func (uc *UserController) TFARecoveryVerifyHandler(ctx context.Context, user *ty
 	defer tx.Rollback()
 
 	// Check if code matches
-	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.RecoveryCode.EQ(req.Payload.RecoveryCode), boiler.UserRecoveryCodeWhere.UsedAt.IsNull()).One(passdb.StdConn)
-	if err != nil {
-		return terror.Error(err, "Recovery code does not match or has already been used.")
-	}
-
-	userRecoveryCode.UsedAt = null.TimeFrom(time.Now())
-	_, err = userRecoveryCode.Update(passdb.StdConn, boil.Whitelist(boiler.UserRecoveryCodeColumns.UsedAt))
+	err = users.VerifyTFARecovery(req.Payload.RecoveryCode)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
+	
 
 	err = tx.Commit()
 	if err != nil {
