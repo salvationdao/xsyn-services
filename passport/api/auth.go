@@ -1218,6 +1218,7 @@ func (api *API) TokenAuth(req *TokenLoginRequest, r *http.Request) (*LoginRespon
 }
 
 func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+
 	cookie, err := r.Cookie("xsyn-token")
 	if err != nil {
 		// check whether token is attached

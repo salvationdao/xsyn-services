@@ -16,6 +16,7 @@ require (
 	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/golang-migrate/migrate/v4 v4.15.2
 	github.com/h2non/filetype v1.1.3
+	github.com/jackc/pgconn v1.10.1
 	github.com/jackc/pgx/v4 v4.14.1
 	github.com/jpillora/backoff v1.0.0
 	github.com/kevinms/leakybucket-go v0.0.0-20200115003610-082473db97ca
@@ -30,7 +31,7 @@ require (
 	github.com/ninja-software/terror/v2 v2.0.7
 	github.com/ninja-syndicate/hub v1.9.2
 	github.com/ninja-syndicate/supremacy-bridge v0.1.43
-	github.com/ninja-syndicate/ws v0.14.1
+	github.com/ninja-syndicate/ws v0.15.0
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/pquerna/otp v1.3.0
@@ -38,6 +39,7 @@ require (
 	github.com/rs/zerolog v1.26.1
 	github.com/shopspring/decimal v1.3.1
 	github.com/speps/go-hashids/v2 v2.0.1
+	github.com/tjarratt/babble v0.0.0-20210505082055-cbca2a4833c1
 	github.com/twilio/twilio-go v0.22.2
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/victorspringer/http-cache v0.0.0-20220131145941-ef3624e6666f
@@ -63,7 +65,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/jackc/pgconn v1.10.1 // indirect
 	github.com/jackc/pgproto3/v2 v2.2.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect

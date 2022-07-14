@@ -23,9 +23,9 @@ import (
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
-	"github.com/bxcodec/faker/v3"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
+	"github.com/tjarratt/babble"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	oidc "github.com/coreos/go-oidc"
@@ -1801,13 +1801,10 @@ func (uc *UserController) CancelTFAHandler(ctx context.Context, user *types.User
 	}
 
 	// delete recovery code
-	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID)).One(passdb.StdConn)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
+	_, err = boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID)).UpdateAll(passdb.StdConn, boiler.M{
+		boiler.IssueTokenColumns.DeletedAt: time.Now(),
+	})
 
-	userRecoveryCode.DeletedAt = null.TimeFrom(time.Now())
-	_, err = userRecoveryCode.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.DeletedAt))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1867,33 +1864,37 @@ func (uc *UserController) TFAVerificationHandler(ctx context.Context, user *type
 	oldUser := *user
 
 	if !totp.Validate(req.Payload.Passcode, user.TwoFactorAuthenticationSecret) {
-		return terror.Error(fmt.Errorf("invalid passcode"), "Invalid passcode.")
+		return terror.Error(fmt.Errorf("invalid passcode"), "Invalid passcode, please try again.")
 	}
 
 	// set user's tfa status
 	if !user.TwoFactorAuthenticationIsSet {
+		// Get recovery code
+		nRecoverCodes, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID)).Count(passdb.StdConn)
+		if nRecoverCodes > 0 {
+			return terror.Error(err, "User already has recovery codes")
+		}
+
 		user.TwoFactorAuthenticationIsSet = true
 		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationIsSet))
 		if err != nil {
 			return terror.Error(err, errMsg)
 		}
 
-		// Get recovery code
-		userRecoveryCode, _ := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID)).One(passdb.StdConn)
-		if userRecoveryCode != nil {
-			return terror.Error(err, "User already has recovery codes")
-		}
-
 		// generate recovery code
-		recoveryCodes := []string{}
 		for i := 0; i < 16; i++ {
-			recoveryCodes = append(recoveryCodes,
-				faker.Password(),
-			)
-		}
-		_, err = userRecoveryCode.Update(passdb.StdConn, boil.Whitelist(boiler.UserRecoveryCodeColumns.RecoveryCode))
-		if err != nil {
-			return terror.Error(err, errMsg)
+			babbler := babble.NewBabbler()
+			babbler.Count = 2
+			code := strings.Split(strings.ToLower(babbler.Babble()), " ")
+
+			recoveryCode := &boiler.UserRecoveryCode{
+				RecoveryCode: strings.Join(code, ""),
+				UserID:       user.ID,
+			}
+			err = recoveryCode.Insert(passdb.StdConn, boil.Infer())
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
 		}
 
 		// Record user activity
@@ -1925,7 +1926,7 @@ const HubKeyTFARecoveryGet = "USER:TFA:RECOVERY:GET"
 // Get recover code
 func (uc *UserController) TFARecoveryCodeGetHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	// Get recovery code
-	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID)).One(passdb.StdConn)
+	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID)).All(passdb.StdConn)
 	if err != nil {
 		return terror.Error(err, "User has no recovery codes.")
 	}
@@ -1966,7 +1967,7 @@ func (uc *UserController) TFARecoveryVerifyHandler(ctx context.Context, user *ty
 	defer tx.Rollback()
 
 	// Get recovery code
-	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID)).One(passdb.StdConn)
+	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID), boiler.UserRecoveryCodeWhere.UsedAt.IsNull()).One(passdb.StdConn)
 	if err != nil {
 		return terror.Error(err, "User has no recovery codes.")
 	}
