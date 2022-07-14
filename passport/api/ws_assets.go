@@ -276,19 +276,19 @@ func (ac *AssetController) AssetUpdatedGetHandler(ctx context.Context, key strin
 			LockedToServiceName: serviceName,
 		},
 		Collection: &Collection{
-			ID:            userAsset.R.Collection.ID,
-			Name:          userAsset.R.Collection.Name,
-			LogoBlobID:    userAsset.R.Collection.LogoBlobID,
-			Keywords:      userAsset.R.Collection.Keywords,
-			DeletedAt:     userAsset.R.Collection.DeletedAt,
-			UpdatedAt:     userAsset.R.Collection.UpdatedAt,
-			CreatedAt:     userAsset.R.Collection.CreatedAt,
-			Slug:          userAsset.R.Collection.Slug,
-			MintContract:  userAsset.R.Collection.MintContract,
-			StakeContract: userAsset.R.Collection.StakeContract,
+			ID:                 userAsset.R.Collection.ID,
+			Name:               userAsset.R.Collection.Name,
+			LogoBlobID:         userAsset.R.Collection.LogoBlobID,
+			Keywords:           userAsset.R.Collection.Keywords,
+			DeletedAt:          userAsset.R.Collection.DeletedAt,
+			UpdatedAt:          userAsset.R.Collection.UpdatedAt,
+			CreatedAt:          userAsset.R.Collection.CreatedAt,
+			Slug:               userAsset.R.Collection.Slug,
+			MintContract:       userAsset.R.Collection.MintContract,
+			StakeContract:      userAsset.R.Collection.StakeContract,
 			StakingContractOld: userAsset.R.Collection.StakingContractOld,
-			IsVisible:    userAsset.R.Collection.IsVisible,
-			ContractType: userAsset.R.Collection.ContractType,
+			IsVisible:          userAsset.R.Collection.IsVisible,
+			ContractType:       userAsset.R.Collection.ContractType,
 		},
 		Owner: &User{
 			ID:       userAsset.R.Owner.ID,
@@ -423,10 +423,9 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	if !db.GetBool(db.KeyEnableSyncNFTOwners) {
+	if !db.GetBoolWithDefault(db.KeyEnableSyncNFTOwners, false) {
 		return terror.Error(fmt.Errorf("asset syncing system down"))
 	}
-
 
 	userAsset, err := boiler.UserAssets(
 		boiler.UserAssetWhere.Hash.EQ(req.Payload.AssetHash),
@@ -442,6 +441,10 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 	).One(passdb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to get user asset from db")
+	}
+
+	if userAsset.UnlockedAt.After(time.Now()) {
+		return terror.Error(fmt.Errorf("trying to transfer locked asset to supremacy"), "Asset is currently locked.")
 	}
 
 	if userAsset.OnChainStatus == "STAKABLE" {
@@ -620,7 +623,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 		NotSafe:              true,
 	}
 
-	 txID, err := ac.API.userCacheMap.Transact(tx)
+	txID, err := ac.API.userCacheMap.Transact(tx)
 	if err != nil {
 		return err
 	}

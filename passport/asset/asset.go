@@ -1,7 +1,9 @@
 package asset
 
 import (
+	"database/sql"
 	"fmt"
+	"github.com/friendsofgo/errors"
 	"github.com/gofrs/uuid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -24,6 +26,9 @@ func TransferAsset(
 		boiler.UserAssetWhere.OwnerID.EQ(fromID),
 	).One(passdb.StdConn)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return userAsset, 0, fmt.Errorf("asset not exist")
+		}
 		passlog.L.Error().Err(err).
 			Str("assetHash", assetHash).
 			Str("fromID", fromID).
