@@ -387,22 +387,22 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 			return terror.Error(err, passwordErr)
 		}
 
-		hasPassword, err := db.UserHasPassword(user.ID)
+		hasPassword, err := boiler.PasswordHashExists(passdb.StdConn, user.ID)
 		if err != nil {
 			return terror.Error(err, errMsg)
 		}
-		confirmPassword = user.OldPasswordRequired && *hasPassword
+		confirmPassword = user.OldPasswordRequired && hasPassword
 	}
 
 	if confirmPassword {
 		if req.Payload.CurrentPassword == nil {
 			return terror.Error(terror.ErrInvalidInput, "Current password is required.")
 		}
-		hashB64, err := db.HashByUserID(user.ID)
+		userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
 		if err != nil {
 			return terror.Error(err, "Current password is incorrect.")
 		}
-		err = crypto.ComparePassword(hashB64, *req.Payload.CurrentPassword)
+		err = crypto.ComparePassword(userPassword.PasswordHash, *req.Payload.CurrentPassword)
 		if err != nil {
 			return terror.Error(err, "Current password is incorrect.")
 		}
@@ -443,7 +443,13 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 
 	// Update password?
 	if req.Payload.NewPassword != nil {
-		err = db.AuthSetPasswordHash(tx, user.ID, crypto.HashPassword(*req.Payload.NewPassword))
+
+		userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+		userPassword.PasswordHash = crypto.HashPassword(*req.Payload.NewPassword)
+		_, err = userPassword.Update(passdb.StdConn, boil.Whitelist(boiler.PasswordHashColumns.PasswordHash))
 		if err != nil {
 			return terror.Error(err, errMsg)
 		}
@@ -582,7 +588,13 @@ func (uc *UserController) CreateHandler(ctx context.Context, user *types.User, k
 	}
 
 	// Set password
-	err = db.AuthSetPasswordHash(tx, user.ID, crypto.HashPassword(*req.Payload.NewPassword))
+
+	userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+	userPassword.PasswordHash = crypto.HashPassword(*req.Payload.NewPassword)
+	_, err = userPassword.Update(passdb.StdConn, boil.Whitelist(boiler.PasswordHashColumns.PasswordHash))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1555,8 +1567,8 @@ type WarMachineQueuePositionRequest struct {
 func getUserServiceCount(user *types.User) int {
 	count := 0
 	if user.Email.Valid {
-		_, err := db.UserHasPassword(user.ID)
-		if err == nil {
+		hasPassword, _ := boiler.PasswordHashExists(passdb.StdConn, user.ID)
+		if hasPassword {
 			count++
 		}
 	}
@@ -1709,7 +1721,7 @@ const HubKeyGenerateTFASecret = "USER:TFA:GENERATE"
 
 type GenerateTFAResponse struct {
 	Secret    string `json:"secret"`
-	QRCodeStr string `json:"qrCodeStr"`
+	QRCodeStr string `json:"qr_code_str"`
 }
 
 // TFAVerificationHandler generate QR code and secret of user
@@ -1827,8 +1839,8 @@ func (uc *UserController) CancelTFAHandler(ctx context.Context, user *types.User
 	)
 
 	reply(user)
-	
-	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)s
+
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
 
 	return nil
 }

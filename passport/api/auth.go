@@ -495,13 +495,13 @@ func (api *API) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) (i
 		return http.StatusBadRequest, err
 	}
 
-	passwordHash, err := db.HashByUserID(req.UserID)
+	userPassword, err := boiler.FindPasswordHash(passdb.StdConn, req.UserID)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
 
 	// Check if current password is correct
-	err = pCrypto.ComparePassword(passwordHash, req.Password)
+	err = pCrypto.ComparePassword(userPassword.PasswordHash, req.Password)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -527,17 +527,17 @@ func (api *API) NewPasswordHandler(w http.ResponseWriter, r *http.Request) (int,
 	}
 
 	// Find user by id
-	user, err := boiler.Users(
-		boiler.UserWhere.ID.EQ(req.UserID),
-		qm.Load(qm.Rels(boiler.UserRels.Faction)),
-	).One(passdb.StdConn)
+	user, err := boiler.FindUser(passdb.StdConn, req.UserID)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
 
 	// Check if user has password already
-	_, err = db.HashByUserID(req.UserID)
-	if err == nil {
+	passwordExist, err := boiler.PasswordHashExists(passdb.StdConn, req.UserID)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+	if passwordExist {
 		return http.StatusBadRequest, fmt.Errorf("user already has a password")
 	}
 
@@ -559,10 +559,13 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 		return http.StatusBadRequest, err
 	}
 
-	defer tx.Rollback()
-
 	// Change password
-	err = db.AuthSetPasswordHash(tx, user.ID, newPasswordHash)
+	userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+	userPassword.PasswordHash = newPasswordHash
+	_, err = userPassword.Update(passdb.StdConn, boil.Whitelist(boiler.PasswordHashColumns.PasswordHash))
 	if err != nil {
 		return http.StatusBadRequest, err
 	}

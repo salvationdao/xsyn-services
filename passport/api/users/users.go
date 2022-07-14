@@ -9,7 +9,6 @@ import (
 	"sync"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/crypto"
-	"xsyn-services/passport/db"
 	"xsyn-services/passport/email"
 	"xsyn-services/passport/helpers"
 	"xsyn-services/passport/passdb"
@@ -371,13 +370,13 @@ func EmailPassword(email string, password string) (*types.User, error) {
 		return nil, fmt.Errorf(errMsg)
 	}
 
-	userPassword, err := db.HashByUserID(user.ID)
+	userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
 
 	if err != nil {
 		return nil, err
 	}
 
-	err = crypto.ComparePassword(userPassword, password)
+	err = crypto.ComparePassword(userPassword.PasswordHash, password)
 
 	if err != nil {
 		return nil, fmt.Errorf(errMsg)
