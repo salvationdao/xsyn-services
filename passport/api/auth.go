@@ -617,10 +617,12 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 	if err != nil {
 		return fmt.Errorf("public address fail: %w", err)
 	}
+	err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
+	if err != nil {
+		return err
+	}
 
 	_, err = fingerprintAndIssueToken(api, w, r, req.Fingerprint, &user.User, isRedirect)
-
-	err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
 	if err != nil {
 		return err
 	}
@@ -876,9 +878,34 @@ func (api *API) AddTwitterUser(w http.ResponseWriter, r *http.Request, redirect 
 }
 
 func fingerprintAndIssueToken(api *API, w http.ResponseWriter, r *http.Request, fingerprint *users.Fingerprint, user *boiler.User, isRedirect bool) (*string, error) {
+	u, err := types.UserFromBoil(user)
+	if err != nil {
+		return nil, err
+	}
+
+	// Dont create token and tell front-end to start 2FA verification
+	if user.TwoFactorAuthenticationIsSet {
+		// Generate jwt with user id
+		config := &TokenConfig{
+			Encrypted: true,
+			Key:       api.TokenEncryptionKey,
+			Device:    r.UserAgent(),
+			Action:    "verify 2fa",
+			User:      user,
+		}
+
+		_, _, token, err := token(api, config, false, 1)
+		if err != nil {
+			return nil, err
+		}
+
+		b, _ := json.Marshal(token)
+		_, _ = w.Write(b)
+		return nil, nil
+	}
+
 	// Fingerprint user
 	if fingerprint != nil {
-		// todo: include ip in upsert
 		err := api.DoFingerprintUpsert(*fingerprint, user.ID)
 		if err != nil {
 			return nil, err

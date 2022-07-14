@@ -1948,7 +1948,7 @@ type TFARecoveryRequest struct {
 	} `json:"payload"`
 }
 
-// Get recover code
+// TFARecoveryVerifyHandler will verify recovery code and give user access once and use up the recovery code
 func (uc *UserController) TFARecoveryVerifyHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue verifying TFA, try again or contact support."
 	req := &TFARecoveryRequest{}
@@ -1966,28 +1966,14 @@ func (uc *UserController) TFARecoveryVerifyHandler(ctx context.Context, user *ty
 
 	defer tx.Rollback()
 
-	// Get recovery code
-	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID), boiler.UserRecoveryCodeWhere.UsedAt.IsNull()).One(passdb.StdConn)
+	// Check if code matches
+	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.RecoveryCode.EQ(req.Payload.RecoveryCode), boiler.UserRecoveryCodeWhere.UsedAt.IsNull()).One(passdb.StdConn)
 	if err != nil {
-		return terror.Error(err, "User has no recovery codes.")
+		return terror.Error(err, "Recovery code does not match or has already been used.")
 	}
 
 	userRecoveryCode.UsedAt = null.TimeFrom(time.Now())
 	_, err = userRecoveryCode.Update(passdb.StdConn, boil.Whitelist(boiler.UserRecoveryCodeColumns.UsedAt))
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// reset 2fa flag
-	user.TwoFactorAuthenticationIsSet = false
-	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationIsSet))
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	// clear 2fa secret
-	user.TwoFactorAuthenticationSecret = ""
-	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationIsSet))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
