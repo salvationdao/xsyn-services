@@ -162,7 +162,6 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 
 	}
 
-	throughOauth := true
 	if facebookID == "" && googleID == "" && publicAddress == common.HexToAddress("") && twitchID == "" && twitterID == "" && discordID == "" {
 		if email == "" {
 			return nil, terror.Error(fmt.Errorf("email empty"), "Email cannot be empty")
@@ -172,8 +171,6 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		if err != nil {
 			return nil, err
 		}
-
-		throughOauth = false
 
 		err = helpers.IsValidPassword(password)
 		if err != nil {
@@ -226,7 +223,7 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		Email:         types.NewString(email),
 		PublicAddress: types.NewString(hexPublicAddress),
 		RoleID:        types.NewString(types.UserRoleMemberID.String()),
-		Verified:      throughOauth, // verify users directly if they go through Oauth
+		Verified:      false, // verify users directly if they go through Oauth
 	}
 
 	err = user.Insert(passdb.StdConn, boil.Infer())
@@ -408,15 +405,15 @@ func Username(uname string) (*boiler.User, string, error) {
 
 }
 
-func VerifyTFA (userTFASecret string, passcode string) error {
-		if !totp.Validate(passcode, userTFASecret) {
+func VerifyTFA(userTFASecret string, passcode string) error {
+	if !totp.Validate(passcode, userTFASecret) {
 		return fmt.Errorf("invalid passcode. Please try again")
 	}
 	return nil
 }
 
-func GetTFARecovery(userID string) ( boiler.UserRecoveryCodeSlice, error) {
-		userRecoveryCodes, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(userID)).All(passdb.StdConn)
+func GetTFARecovery(userID string) (boiler.UserRecoveryCodeSlice, error) {
+	userRecoveryCodes, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(userID)).All(passdb.StdConn)
 	if err != nil {
 		return nil, fmt.Errorf("user has not recovery codes")
 	}
@@ -424,9 +421,7 @@ func GetTFARecovery(userID string) ( boiler.UserRecoveryCodeSlice, error) {
 	return userRecoveryCodes, nil
 }
 
-
-
-func VerifyTFARecovery(recoveryCode string) (error) {
+func VerifyTFARecovery(recoveryCode string) error {
 	// Check if code matches
 	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.RecoveryCode.EQ(recoveryCode), boiler.UserRecoveryCodeWhere.UsedAt.IsNull()).One(passdb.StdConn)
 	if err != nil {
