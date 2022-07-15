@@ -626,7 +626,7 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 	}
 
 	// Send message to users
-	URI := fmt.Sprintf("/user/%s/init", user.ID)
+	URI := fmt.Sprintf("/user/%s", user.ID)
 	ws.PublishMessage(URI, HubKeyUserInit, nil)
 
 	// Generate new token and login
@@ -922,7 +922,7 @@ type AuthTwitterResponse struct {
 
 func (api *API) AddTwitterUser(w http.ResponseWriter, r *http.Request, redirect string, user *boiler.User, resp *AuthTwitterResponse, addTwitter string) (int, error) {
 	payload := &AddTwitterResponse{}
-	URI := fmt.Sprintf("/user/%s/twitter", addTwitter)
+	URI := fmt.Sprintf("/user/%s", addTwitter)
 	// Redirect to loading page
 	// Bypass
 	http.Redirect(w, r, redirect, http.StatusSeeOther)
