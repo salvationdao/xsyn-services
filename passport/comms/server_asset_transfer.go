@@ -59,8 +59,8 @@ func (s *S) GetAssetTransferEventsHandler(req GetAssetTransferEventsReq, resp *G
 	}
 
 	transferEvents, err := boiler.AssetTransferEvents(
-		boiler.AssetTransferEventWhere.ID.GTE(req.FromEventID),
-		qm.Load(boiler.AssetTransferEventRels.UserAsset, qm.Select(boiler.UserAssetColumns.LockedToService)),
+		boiler.AssetTransferEventWhere.ID.GT(req.FromEventID),
+		qm.Load(boiler.AssetTransferEventRels.UserAsset),
 	).All(passdb.StdConn)
 	if err != nil {
 		passlog.L.Error().Err(err).
@@ -79,6 +79,7 @@ func (s *S) GetAssetTransferEventsHandler(req GetAssetTransferEventsReq, resp *G
 			TransferredAt:   te.TransferredAt,
 			TransferTXID:    te.TransferTXID,
 		}
+
 		if te.R != nil && te.R.UserAsset != nil {
 			evt.OwnedService = te.R.UserAsset.LockedToService
 		}

@@ -138,7 +138,7 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 				"",
 				null.String{},
 				func(te *boiler.AssetTransferEvent) {
-					supremacy_rpcclient.SupremacyAssetTransferEvent(&types.TransferEvent{
+					otherAssets, _ := supremacy_rpcclient.SupremacyAssetTransferEvent(&types.TransferEvent{
 						TransferEventID: te.ID,
 						AssetHash:       te.UserAssetHash,
 						FromUserID:      te.FromUserID,
@@ -146,6 +146,22 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 						TransferredAt:   te.TransferredAt,
 						TransferTXID:    te.TransferTXID,
 					})
+					for _, othAsstHash := range otherAssets {
+						_, _, err = asset.TransferAsset(
+							othAsstHash,
+							offChainOwner.ID,
+							onChainOwner.ID,
+							"",
+							null.String{},
+							nil,
+						)
+						if err != nil {
+							passlog.L.Error().Err(err).
+								Str("othAsstHash", othAsstHash).
+								Str("offChainOwner.ID", offChainOwner.ID).
+								Str("onChainOwner.ID", onChainOwner.ID).Msg("failed to transfer attached assets")
+						}
+					}
 				},
 			)
 			if err != nil {

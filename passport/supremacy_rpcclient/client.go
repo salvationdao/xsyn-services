@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"net/rpc"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -79,7 +80,9 @@ func (c *SupremacyXrpcClient) Call(serviceMethod string, args interface{}, reply
 		}
 
 		if !errors.Is(err, rpc.ErrShutdown) {
-			passlog.L.Error().Err(err).Msg("RPC call has failed.")
+			if !strings.Contains(err.Error(), "asset is equipped to another object") {
+				passlog.L.Error().Err(err).Msg("RPC call has failed.")
+			}
 			return err
 		}
 

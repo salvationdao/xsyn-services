@@ -35,6 +35,7 @@ type UserAsset struct {
 	DataRefreshedAt  time.Time    `json:"data_refreshed_at"`
 	UpdatedAt        time.Time    `json:"updated_at"`
 	CreatedAt        time.Time    `json:"created_at"`
+	LockedToService  null.String  `json:"locked_to_service,omitempty"`
 }
 
 type User1155Asset struct {
@@ -126,6 +127,7 @@ func UserAssetFromBoiler(us *boiler.UserAsset) *UserAsset {
 		CardAnimationURL: us.CardAnimationURL,
 		AvatarURL:        us.AvatarURL,
 		LargeImageURL:    us.LargeImageURL,
+		LockedToService:  us.LockedToService,
 	}
 }
 
