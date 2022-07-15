@@ -595,21 +595,26 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 		return http.StatusBadRequest, err
 	}
 
-	newPasswordHash := pCrypto.HashPassword(req.NewPassword)
-
-	// Start transaction
-	tx, err := passdb.StdConn.Begin()
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	// Change password
+	// Find password
 	userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-	userPassword.PasswordHash = newPasswordHash
-	_, err = userPassword.Update(passdb.StdConn, boil.Whitelist(boiler.PasswordHashColumns.PasswordHash))
+
+	// Delete old Password
+	userPassword.DeletedAt = null.TimeFrom(time.Now())
+	_, err = userPassword.Update(passdb.StdConn, boil.Whitelist(boiler.PasswordHashColumns.DeletedAt))
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	// Add new password
+	newPasswordHash := pCrypto.HashPassword(req.NewPassword)
+	newPassword := &boiler.PasswordHash{
+		UserID:       user.ID,
+		PasswordHash: newPasswordHash,
+	}
+	err = newPassword.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -621,16 +626,12 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-	URI := fmt.Sprintf("/user/%s/init", user.ID)
 
+	// Send message to users
+	URI := fmt.Sprintf("/user/%s/init", user.ID)
 	ws.PublishMessage(URI, HubKeyUserInit, nil)
 
-	// Commit transaction
-	err = tx.Commit()
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
+	// Generate new token and login
 	err = api.FingerprintAndIssueToken(false, w, r, req.Fingerprint, user, req.RedirectURL)
 	if err != nil {
 		return http.StatusBadRequest, err

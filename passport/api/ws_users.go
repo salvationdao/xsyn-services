@@ -169,7 +169,7 @@ type SendVerifyRequest struct {
 	} `json:"payload"`
 }
 
-// Tracks if user should log out from change password
+// Sends another email to user to verify email
 func (uc *UserController) SendVerifyHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &SendVerifyRequest{}
 	err := json.Unmarshal(payload, req)
@@ -185,6 +185,9 @@ func (uc *UserController) SendVerifyHandler(ctx context.Context, user *types.Use
 		Action:    "verify",
 		User:      &user.User,
 	})
+	if err != nil {
+		return terror.Error(err, "Unable to send verification email.")
+	}
 
 	err = uc.API.Mailer.SendVerificationEmail(context.Background(), user, token, tokenID, true)
 	if err != nil {
@@ -1441,8 +1444,6 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, user *types.User
 	var oldUser = *user
 
 	publicAddr := common.HexToAddress(req.Payload.PublicAddress)
-	
-
 
 	// verify they signed it
 	err = uc.API.VerifySignature(req.Payload.Signature, user.Nonce.String, publicAddr)
@@ -1456,7 +1457,6 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, user *types.User
 	if err != nil {
 		return terror.Error(err, "Wallet is already connected to another user.")
 	}
-
 
 	reply(user)
 
@@ -1782,16 +1782,9 @@ func (uc *UserController) CancelTFAHandler(ctx context.Context, user *types.User
 	errMsg := "Issue updating user details, try again or contact support."
 	oldUser := *user
 
-	tx, err := passdb.StdConn.Begin()
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	defer tx.Rollback()
-
 	// reset 2fa flag
 	user.TwoFactorAuthenticationIsSet = false
-	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationIsSet))
+	_, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationIsSet))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -1819,10 +1812,6 @@ func (uc *UserController) CancelTFAHandler(ctx context.Context, user *types.User
 		return terror.Error(err, errMsg)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
 	// Record user activity
 	uc.API.RecordUserActivity(ctx,
 		user.ID,
@@ -1888,9 +1877,9 @@ func (uc *UserController) TFAVerificationHandler(ctx context.Context, user *type
 
 		// generate recovery cod
 		for i := 0; i < 16; i++ {
-			b:= babble.NewBabbler()
+			b := babble.NewBabbler()
 			b.Count = 2
-			b.Separator="-"
+			b.Separator = "-"
 			code := strings.ToLower(b.Babble())
 			code = strings.ReplaceAll(code, "'s", "")
 
@@ -1978,7 +1967,6 @@ func (uc *UserController) TFARecoveryVerifyHandler(ctx context.Context, user *ty
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	
 
 	err = tx.Commit()
 	if err != nil {

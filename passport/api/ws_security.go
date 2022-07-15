@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 	"xsyn-services/boiler"
-	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
@@ -89,7 +88,7 @@ func RetrieveUser(ctx context.Context) (*types.User, error) {
 	}
 
 	hasPassword := false
-	_, err = db.HashByUserID(user.ID)
+	_, err = boiler.FindPasswordHash(passdb.StdConn, user.ID)
 	if err == nil {
 		hasPassword = true
 	}

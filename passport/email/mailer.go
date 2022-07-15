@@ -29,7 +29,7 @@ type Mailer struct {
 	Templates map[string]*raymond.Template
 }
 
-// NewMailer returns a new Mailer controller479cdb8edd99f3b88ea95a0866ffeb41-30b9cd6d-ababd0cd
+// NewMailer returns a new Mailer controller
 func NewMailer(domain string, apiKey string, systemAddress string, config *types.Config, log *zerolog.Logger) (*Mailer, error) {
 	mailer := &Mailer{
 		MailGun:            mailgun.NewMailgun(domain, apiKey),
