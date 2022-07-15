@@ -594,29 +594,27 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
+	newPasswordHash := pCrypto.HashPassword(req.NewPassword)
 
 	// Find password
-	userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
+	userPassword, _ := boiler.FindPasswordHash(passdb.StdConn, user.ID)
 
-	// Delete old Password
-	userPassword.DeletedAt = null.TimeFrom(time.Now())
-	_, err = userPassword.Update(passdb.StdConn, boil.Whitelist(boiler.PasswordHashColumns.DeletedAt))
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	// Add new password
-	newPasswordHash := pCrypto.HashPassword(req.NewPassword)
-	newPassword := &boiler.PasswordHash{
-		UserID:       user.ID,
-		PasswordHash: newPasswordHash,
-	}
-	err = newPassword.Insert(passdb.StdConn, boil.Infer())
-	if err != nil {
-		return http.StatusBadRequest, err
+	if userPassword == nil {
+		newPassword := &boiler.PasswordHash{
+			UserID:       user.ID,
+			PasswordHash: newPasswordHash,
+		}
+		err = newPassword.Insert(passdb.StdConn, boil.Infer())
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+	} else {
+		// Update password
+		userPassword.PasswordHash = newPasswordHash
+		_, err = userPassword.Update(passdb.StdConn, boil.Whitelist(boiler.PasswordHashColumns.PasswordHash))
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
 	}
 
 	// Delete all issued token
@@ -636,7 +634,7 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-	return http.StatusOK, nil
+	return http.StatusCreated, nil
 }
 
 func (api *API) WalletLoginHandler(w http.ResponseWriter, r *http.Request) {
