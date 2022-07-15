@@ -210,19 +210,19 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case "email":
-		rURL := r.Form.Get("redirectURL")
 		req := &EmailLoginRequest{
-			RedirectURL: &rURL,
+			RedirectURL: &redir,
 			Email:       r.Form.Get("email"),
 			Password:    r.Form.Get("password"),
 		}
 		user, err := users.EmailPassword(req.Email, req.Password)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?redirectURL=%s&err=%s", r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
+			return
 		}
 		err = api.FingerprintAndIssueToken(pass2FA, w, r, req.Fingerprint, &user.User, req.RedirectURL)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?redirectURL=%s&err=%s", r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
 			return
 		}
 	case "facebook":
