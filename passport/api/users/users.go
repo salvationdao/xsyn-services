@@ -216,6 +216,7 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 	}
 
 	user := &boiler.User{
+		ID:            account.ID,
 		FirstName:     null.StringFrom(firstName),
 		LastName:      null.StringFrom(lastName),
 		Username:      trimmedUsername,

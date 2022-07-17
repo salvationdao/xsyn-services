@@ -123,10 +123,14 @@ type TransactionSubscribeRequest struct {
 
 type TransactionResponse struct {
 	*boiler.Transaction
-	CreditUser      *boiler.User      `json:"to"`
-	CreditSyndicate *boiler.Syndicate `json:"to_syndicate"`
-	DebitUser       *boiler.User      `json:"from"`
-	DebitSyndicate  *boiler.Syndicate `json:"from_syndicate"`
+	CreditOwner *AccountOwner `json:"to"`
+	DebitOwner  *AccountOwner `json:"from"`
+}
+
+type AccountOwner struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Username string `json:"username"`
 }
 
 func (tc *TransactionController) TransactionSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -145,43 +149,51 @@ func (tc *TransactionController) TransactionSubscribeHandler(ctx context.Context
 	if transaction.CreditAccountID != user.AccountID && transaction.DebitAccountID != user.AccountID {
 		return terror.Error(fmt.Errorf("unauthorized"), "You do not have permission to view this item.")
 	}
-	debitUser, debitSyndicate, err := GetAccountOwner(transaction.DebitAccountID)
+	debitOwner, err := tc.API.userCacheMap.GetAccountOwner(transaction.DebitAccountID)
 	if err != nil {
 		return terror.Error(err, "Failed to get debit account owner")
 	}
-	creditUser, creditSyndicate, err := GetAccountOwner(transaction.CreditAccountID)
+	creditOwner, err := tc.API.userCacheMap.GetAccountOwner(transaction.CreditAccountID)
 	if err != nil {
 		return terror.Error(err, "Failed to get credit account owner")
 	}
 
 	reply(&TransactionResponse{
-		Transaction:     transaction,
-		CreditUser:      creditUser,
-		CreditSyndicate: creditSyndicate,
-		DebitUser:       debitUser,
-		DebitSyndicate:  debitSyndicate,
+		Transaction: transaction,
+		CreditOwner: creditOwner,
+		DebitOwner:  debitOwner,
 	})
 	return err
 }
 
-func GetAccountOwner(accountID string) (*boiler.User, *boiler.Syndicate, error) {
-	user, err := boiler.Users(
-		boiler.UserWhere.AccountID.EQ(accountID),
-	).One(passdb.StdConn)
+func (ucm *Transactor) GetAccountOwner(accountID string) (*AccountOwner, error) {
+	acc, err := ucm.Get(accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	if acc.Type == boiler.AccountTypeUSER {
+		user, err := boiler.FindUser(passdb.StdConn, accountID)
+		if err != nil {
+			return nil, terror.Error(err, "Failed to get user.")
+		}
+
+		return &AccountOwner{
+			ID:       user.ID,
+			Type:     acc.Type,
+			Username: user.Username,
+		}, nil
+
+	}
+
+	syndicate, err := boiler.FindSyndicate(passdb.StdConn, accountID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, nil, err
+		return nil, terror.Error(err, "Failed to get syndicate.")
 	}
 
-	if user != nil {
-		return user, nil, nil
-	}
-
-	syndicate, err := boiler.Syndicates(
-		boiler.SyndicateWhere.AccountID.EQ(accountID),
-	).One(passdb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, nil, err
-	}
-
-	return nil, syndicate, nil
+	return &AccountOwner{
+		ID:       syndicate.ID,
+		Type:     acc.Type,
+		Username: syndicate.Name,
+	}, nil
 }

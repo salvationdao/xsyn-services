@@ -31,7 +31,6 @@ type PriceExchangeRates struct {
 }
 type UserCacheMap interface {
 	Transact(nt *types.NewTransaction) (string, error)
-	GetAccountLookup(accountID string) (string, bool, error)
 }
 
 const SUPDecimals = 18

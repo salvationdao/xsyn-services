@@ -10,10 +10,6 @@ import (
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
-	"github.com/friendsofgo/errors"
-
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-
 	"github.com/volatiletech/null/v8"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -38,40 +34,14 @@ func NewTX() (*Transactor, error) {
 		make(chan *types.NewTransaction, 100),
 		deadlock.Map{},
 	}
-	users, err := boiler.Users(
-		qm.Load(boiler.UserRels.Account),
-	).All(passdb.StdConn)
+	accounts, err := boiler.Accounts().All(passdb.StdConn)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to retrieve user account balances")
 		return nil, err
 	}
 
-	for _, u := range users {
-		if u.R.Account == nil {
-			passlog.L.Warn().Str("user id", u.ID).Msg("User missing account")
-			return nil, fmt.Errorf("user missing account")
-		}
-
-		ucm.Put(u.ID, u.R.Account)
-		ucm.PutAccountLookup(u.R.Account.ID, u.ID, true)
-	}
-
-	syndicates, err := boiler.Syndicates(
-		qm.Load(boiler.SyndicateRels.Account),
-	).All(passdb.StdConn)
-	if err != nil {
-		passlog.L.Error().Err(err).Msg("unable to retrieve syndicate account balances")
-		return nil, err
-	}
-
-	for _, s := range syndicates {
-		if s.R.Account == nil {
-			passlog.L.Warn().Str("syndicate id", s.ID).Msg("Syndicate missing account")
-			return nil, fmt.Errorf("syndicate missing account")
-		}
-
-		ucm.Put(s.ID, s.R.Account)
-		ucm.PutAccountLookup(s.R.Account.ID, s.ID, false)
+	for _, acc := range accounts {
+		ucm.Put(acc.ID, acc)
 	}
 
 	go ucm.RunBalanceUpdate()
@@ -84,22 +54,13 @@ var zero = decimal.New(0, 18)
 var ErrNotEnoughFunds = fmt.Errorf("account does not have enough funds")
 
 func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
-	creditAccount, err := ucm.Get(nt.Credit)
-	if err != nil {
-		return "", err
-	}
-	debitAccount, err := ucm.Get(nt.Debit)
-	if err != nil {
-		return "", err
-	}
-
 	transactionID := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
 	nt.ID = transactionID
 
 	tx := &boiler.Transaction{
 		ID:                   transactionID,
-		CreditAccountID:      creditAccount.ID,
-		DebitAccountID:       debitAccount.ID,
+		CreditAccountID:      nt.Credit,
+		DebitAccountID:       nt.Debit,
 		Amount:               nt.Amount,
 		TransactionReference: string(nt.TransactionReference),
 		Description:          nt.Description,
@@ -111,7 +72,7 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 	}
 	bm := benchmark.New()
 	bm.Start("Transact func CreateTransactionEntry")
-	err = CreateTransactionEntry(passdb.StdConn, tx)
+	err := CreateTransactionEntry(passdb.StdConn, tx)
 	if err != nil {
 		passlog.L.Error().Err(err).Str("from", nt.Debit).Str("to", nt.Credit).Str("id", nt.ID).Msg("transaction failed")
 		return TransactionFailed, err
@@ -154,49 +115,17 @@ func (ucm *Transactor) RunBalanceUpdate() {
 }
 
 func (ucm *Transactor) SetAndGet(ownerID string) (*boiler.Account, error) {
-	var account *boiler.Account
-	isUser := false
-
-	u, err := boiler.Users(
-		boiler.UserWhere.ID.EQ(ownerID),
-		qm.Load(boiler.UserRels.Account),
+	a, err := boiler.Accounts(
+		boiler.AccountWhere.ID.EQ(ownerID),
 	).One(passdb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
 		return nil, err
 	}
 
-	if u != nil {
-		// check account is exist
-		if u.R.Account == nil {
-			return nil, fmt.Errorf("user does not have an account")
-		}
-
-		account = u.R.Account
-		isUser = true
-
-	} else {
-		// try getting account from syndicate table
-		s, err := boiler.Syndicates(
-			boiler.SyndicateWhere.ID.EQ(ownerID),
-			qm.Load(boiler.SyndicateRels.Account),
-		).One(passdb.StdConn)
-		if err != nil {
-			return nil, err
-		}
-
-		// check account exist
-		if s.R.Account == nil {
-			return nil, fmt.Errorf("syndicate does not have an account")
-		}
-
-		account = s.R.Account
-	}
-
 	// store data to the map
-	ucm.Put(ownerID, account)
-	ucm.PutAccountLookup(account.ID, ownerID, isUser)
+	ucm.Put(ownerID, a)
 
-	return account, nil
+	return a, nil
 }
 
 func (ucm *Transactor) Get(ownerID string) (*boiler.Account, error) {
@@ -212,54 +141,6 @@ func (ucm *Transactor) Put(ownerID string, account *boiler.Account) {
 	ucm.Store(ownerID, account)
 }
 
-type AccountLookup struct {
-	OwnerID string
-	IsUser  bool
-}
-
-func (ucm *Transactor) PutAccountLookup(accountID string, ownerID string, isUser bool) {
-	ucm.accountLookup.Store(accountID, &AccountLookup{ownerID, isUser})
-}
-
-func (ucm *Transactor) PutAndGetAccountLookup(accountID string) (string, bool, error) {
-	id := ""
-	isUser := false
-	user, err := boiler.Users(
-		boiler.UserWhere.AccountID.EQ(accountID),
-	).One(passdb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return "", false, err
-	}
-
-	if user != nil {
-		id = user.ID
-		isUser = true
-	} else {
-		// check account id from syndicate
-		syndicate, err := boiler.Syndicates(
-			boiler.SyndicateWhere.AccountID.EQ(accountID),
-		).One(passdb.StdConn)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return "", false, err
-		}
-
-		id = syndicate.ID
-	}
-
-	ucm.PutAccountLookup(accountID, id, isUser)
-	return id, isUser, nil
-}
-
-func (ucm *Transactor) GetAccountLookup(accountID string) (string, bool, error) {
-	result, ok := ucm.accountLookup.Load(accountID)
-	if ok {
-		al := result.(*AccountLookup)
-		return al.OwnerID, al.IsUser, nil
-	}
-
-	return ucm.PutAndGetAccountLookup(accountID)
-}
-
 func (ucm *Transactor) IsNormalUser(ownerID string) bool {
 	acc, err := ucm.Get(ownerID)
 	if err != nil || acc.Type != boiler.AccountTypeUSER {
@@ -267,6 +148,15 @@ func (ucm *Transactor) IsNormalUser(ownerID string) bool {
 	}
 
 	return !types.IsSystemUser(ownerID)
+}
+
+func (ucm *Transactor) IsSyndicate(ownerID string) bool {
+	acc, err := ucm.Get(ownerID)
+	if err != nil || acc.Type != boiler.AccountTypeSYNDICATE {
+		return false
+	}
+
+	return true
 }
 
 type UserCacheFunc func(userCacheList Transactor)

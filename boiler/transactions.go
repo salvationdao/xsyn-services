@@ -34,7 +34,6 @@ type Transaction struct {
 	SubGroup             null.String     `boiler:"sub_group" boil:"sub_group" json:"sub_group,omitempty" toml:"sub_group" yaml:"sub_group,omitempty"`
 	RelatedTransactionID null.String     `boiler:"related_transaction_id" boil:"related_transaction_id" json:"related_transaction_id,omitempty" toml:"related_transaction_id" yaml:"related_transaction_id,omitempty"`
 	ServiceID            null.String     `boiler:"service_id" boil:"service_id" json:"service_id,omitempty" toml:"service_id" yaml:"service_id,omitempty"`
-	Direction            string          `boiler:"direction" boil:"direction" json:"direction" toml:"direction" yaml:"direction"`
 	DebitAccountID       string          `boiler:"debit_account_id" boil:"debit_account_id" json:"debit_account_id" toml:"debit_account_id" yaml:"debit_account_id"`
 	CreditAccountID      string          `boiler:"credit_account_id" boil:"credit_account_id" json:"credit_account_id" toml:"credit_account_id" yaml:"credit_account_id"`
 
@@ -53,7 +52,6 @@ var TransactionColumns = struct {
 	SubGroup             string
 	RelatedTransactionID string
 	ServiceID            string
-	Direction            string
 	DebitAccountID       string
 	CreditAccountID      string
 }{
@@ -67,7 +65,6 @@ var TransactionColumns = struct {
 	SubGroup:             "sub_group",
 	RelatedTransactionID: "related_transaction_id",
 	ServiceID:            "service_id",
-	Direction:            "direction",
 	DebitAccountID:       "debit_account_id",
 	CreditAccountID:      "credit_account_id",
 }
@@ -83,7 +80,6 @@ var TransactionTableColumns = struct {
 	SubGroup             string
 	RelatedTransactionID string
 	ServiceID            string
-	Direction            string
 	DebitAccountID       string
 	CreditAccountID      string
 }{
@@ -97,7 +93,6 @@ var TransactionTableColumns = struct {
 	SubGroup:             "transactions.sub_group",
 	RelatedTransactionID: "transactions.related_transaction_id",
 	ServiceID:            "transactions.service_id",
-	Direction:            "transactions.direction",
 	DebitAccountID:       "transactions.debit_account_id",
 	CreditAccountID:      "transactions.credit_account_id",
 }
@@ -115,7 +110,6 @@ var TransactionWhere = struct {
 	SubGroup             whereHelpernull_String
 	RelatedTransactionID whereHelpernull_String
 	ServiceID            whereHelpernull_String
-	Direction            whereHelperstring
 	DebitAccountID       whereHelperstring
 	CreditAccountID      whereHelperstring
 }{
@@ -129,7 +123,6 @@ var TransactionWhere = struct {
 	SubGroup:             whereHelpernull_String{field: "\"transactions\".\"sub_group\""},
 	RelatedTransactionID: whereHelpernull_String{field: "\"transactions\".\"related_transaction_id\""},
 	ServiceID:            whereHelpernull_String{field: "\"transactions\".\"service_id\""},
-	Direction:            whereHelperstring{field: "\"transactions\".\"direction\""},
 	DebitAccountID:       whereHelperstring{field: "\"transactions\".\"debit_account_id\""},
 	CreditAccountID:      whereHelperstring{field: "\"transactions\".\"credit_account_id\""},
 }
@@ -185,8 +178,8 @@ func (*transactionR) NewStruct() *transactionR {
 type transactionL struct{}
 
 var (
-	transactionAllColumns            = []string{"id", "description", "transaction_reference", "amount", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id", "direction", "debit_account_id", "credit_account_id"}
-	transactionColumnsWithoutDefault = []string{"id", "amount", "direction", "debit_account_id", "credit_account_id"}
+	transactionAllColumns            = []string{"id", "description", "transaction_reference", "amount", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id", "debit_account_id", "credit_account_id"}
+	transactionColumnsWithoutDefault = []string{"id", "amount", "debit_account_id", "credit_account_id"}
 	transactionColumnsWithDefault    = []string{"description", "transaction_reference", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
 	transactionPrimaryKeyColumns     = []string{"id"}
 	transactionGeneratedColumns      = []string{}
