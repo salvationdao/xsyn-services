@@ -45,7 +45,7 @@ import (
 )
 
 type WalletLoginRequest struct {
-	RedirectURL   *string            `json:"redirectURL"`
+	RedirectURL   *string            `json:"redirect_url"`
 	PublicAddress string             `json:"public_address"`
 	Signature     string             `json:"signature"`
 	SessionID     hub.SessionID      `json:"session_id"`
@@ -53,7 +53,7 @@ type WalletLoginRequest struct {
 }
 
 type EmailLoginRequest struct {
-	RedirectURL *string            `json:"redirectURL"`
+	RedirectURL *string            `json:"redirect_url"`
 	Username    string             `json:"username"`
 	Email       string             `json:"email"`
 	Password    string             `json:"password"`
@@ -67,7 +67,7 @@ type ForgotPasswordRequest struct {
 }
 
 type PasswordUpdateRequest struct {
-	RedirectURL *string            `json:"redirectURL"`
+	RedirectURL *string            `json:"redirect_url"`
 	UserID      string             `json:"user_id"`
 	Password    string             `json:"password"`
 	TokenID     string             `json:"id"`
@@ -78,7 +78,7 @@ type PasswordUpdateRequest struct {
 }
 
 type GoogleLoginRequest struct {
-	RedirectURL *string            `json:"redirectURL"`
+	RedirectURL *string            `json:"redirect_url"`
 	GoogleID    string             `json:"google_id"`
 	Username    string             `json:"username"`
 	SessionID   hub.SessionID      `json:"session_id"`
@@ -86,7 +86,7 @@ type GoogleLoginRequest struct {
 }
 
 type FacebookLoginRequest struct {
-	RedirectURL *string            `json:"redirectURL"`
+	RedirectURL *string            `json:"redirect_url"`
 	FacebookID  string             `json:"facebook_id"`
 	Name        string             `json:"name"`
 	SessionID   hub.SessionID      `json:"session_id"`
@@ -94,7 +94,7 @@ type FacebookLoginRequest struct {
 }
 
 type TFAVerifyRequest struct {
-	RedirectURL  *string            `json:"redirectURL"`
+	RedirectURL  *string            `json:"redirect_url"`
 	UserID       string             `json:"user_id"`
 	Token        string             `json:"token"`
 	Passcode     string             `json:"passcode"`
@@ -187,7 +187,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authType := r.Form.Get("authType")
-	redir := r.Form.Get("redirectURL")
+	redir := r.Form.Get("redirect_url")
 	if redir == "" {
 		http.Error(w, "No redirectURL provided", http.StatusBadRequest)
 		return
