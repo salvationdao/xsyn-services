@@ -191,6 +191,12 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		hexPublicAddress = publicAddress.Hex()
 	}
 
+	isVerified := false
+
+	if googleID != "" && email != "" {
+		isVerified = true
+	}
+
 	user := &boiler.User{
 		FirstName:     null.StringFrom(firstName),
 		LastName:      null.StringFrom(lastName),
@@ -203,7 +209,7 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		Email:         types.NewString(email),
 		PublicAddress: types.NewString(hexPublicAddress),
 		RoleID:        types.NewString(types.UserRoleMemberID.String()),
-		Verified:      false, // verify users directly if they go through Oauth
+		Verified:      isVerified, // verify users directly if they go through Oauth
 	}
 
 	err = user.Insert(passdb.StdConn, boil.Infer())

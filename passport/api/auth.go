@@ -80,6 +80,7 @@ type PasswordUpdateRequest struct {
 type GoogleLoginRequest struct {
 	RedirectURL *string            `json:"redirect_url"`
 	GoogleID    string             `json:"google_id"`
+	Email       string             `json:"email"`
 	Username    string             `json:"username"`
 	SessionID   hub.SessionID      `json:"session_id"`
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
@@ -736,7 +737,7 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 
 	if err != nil && errors.Is(sql.ErrNoRows, err) {
 		commonAddress := common.HexToAddress("")
-		u, err := users.UserCreator("", "", req.Username, "", "", req.GoogleID, "", "", "", "", commonAddress, "")
+		u, err := users.UserCreator("", "", req.Username, req.Email, "", req.GoogleID, "", "", "", "", commonAddress, "")
 		if err != nil {
 			return err
 		}
@@ -918,12 +919,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 		}
 
 		// Check if user exist
-		user, _ := users.TwitterID(resp.UserID)
-		// Add twitter user handler
-		if addTwitter != "" {
-			return api.AddTwitterUser(w, r, redirect, user, resp, addTwitter)
-		}
-
+		user, err := users.TwitterID(resp.UserID)
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
 			commonAddress := common.HexToAddress("")
 			u, err := users.UserCreator("", "", resp.ScreenName, "", "", "", "", resp.UserID, "", "", commonAddress, "")
@@ -932,6 +928,12 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 			}
 			user = &u.User
 		}
+
+		// Add twitter user handler
+		if addTwitter != "" {
+			return api.AddTwitterUser(w, r, redirect, user, resp, addTwitter)
+		}
+
 		err = api.FingerprintAndIssueToken(false, w, r, nil, user, &redirect)
 		if err != nil {
 			return http.StatusBadRequest, err
@@ -1091,7 +1093,7 @@ func (api *API) FingerprintAndIssueToken(pass2FA bool, w http.ResponseWriter, r 
 	}
 
 	if redirectURL == nil {
-		b, err := json.Marshal(token)
+		b, err := json.Marshal(user)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
 			return err
