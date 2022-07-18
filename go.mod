@@ -28,10 +28,10 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.17
 	github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6
 	github.com/ninja-software/sale v0.0.10
-	github.com/ninja-software/terror/v2 v2.0.7
+	github.com/ninja-software/terror/v2 v2.0.12
 	github.com/ninja-syndicate/hub v1.9.2
 	github.com/ninja-syndicate/supremacy-bridge v0.1.43
-	github.com/ninja-syndicate/ws v0.15.0
+	github.com/ninja-syndicate/ws v0.16.1
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/pquerna/otp v1.3.0
