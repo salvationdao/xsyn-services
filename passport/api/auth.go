@@ -599,6 +599,9 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 	// Find password
 	userPassword, _ := boiler.FindPasswordHash(passdb.StdConn, user.ID)
 
+	// Setup user activity tracking
+	oldUser := *user
+
 	if userPassword == nil {
 		newPassword := &boiler.PasswordHash{
 			UserID:       user.ID,
@@ -616,6 +619,19 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 			return http.StatusBadRequest, err
 		}
 	}
+	api.RecordUserActivity(context.Background(),
+		user.ID,
+		"Change password",
+		types.ObjectTypeUser,
+		helpers.StringPointer(user.ID),
+		&user.Username,
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
+		&types.UserActivityChangeData{
+			Name: db.TableNames.Users,
+			From: oldUser,
+			To:   user,
+		},
+	)
 
 	// Delete all issued token
 	_, err = user.IssueTokens().UpdateAll(passdb.StdConn, boiler.M{
@@ -824,8 +840,8 @@ type TwitterAuthResponse struct {
 }
 
 type AddTwitterResponse struct {
-	Error string       `json:"error"`
-	User  *boiler.User `json:"user"`
+	Error string      `json:"error"`
+	User  *types.User `json:"user"`
 }
 
 // The TwitterAuth endpoint kicks off the OAuth 1.0a flow
@@ -924,7 +940,6 @@ func (api *API) AddTwitterUser(w http.ResponseWriter, r *http.Request, redirect 
 	payload := &AddTwitterResponse{}
 	URI := fmt.Sprintf("/user/%s", addTwitter)
 	// Redirect to loading page
-	// Bypass
 	http.Redirect(w, r, redirect, http.StatusSeeOther)
 
 	if user != nil {
@@ -967,7 +982,7 @@ func (api *API) AddTwitterUser(w http.ResponseWriter, r *http.Request, redirect 
 			},
 		)
 
-		payload.User = &user.User
+		payload.User = user
 		ws.PublishMessage(URI, HubKeyUserAddTwitter, payload)
 		return http.StatusOK, nil
 	}
