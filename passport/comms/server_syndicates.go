@@ -2,9 +2,11 @@ package comms
 
 import (
 	"fmt"
+	"github.com/volatiletech/null/v8"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/api/users"
+	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
@@ -18,26 +20,33 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
-// SyndicateCreateHandler request an ownership transfer of an asset
-func (s *S) SyndicateCreateHandler(req SyndicateCreateReq, resp *SyndicateCreateResp) error {
+// SyndicateRegisterHandler request an ownership transfer of an asset
+func (s *S) SyndicateRegisterHandler(req SyndicateCreateReq, resp *SyndicateCreateResp) error {
 	serviceID, err := IsServerClient(req.ApiKey)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("failed to get service id - AssetTransferOwnershipHandler")
 		return err
 	}
-	user, err := users.UUID(uuid.FromStringOrNil(req.FoundedByID))
+
+	founder, err := users.UUID(uuid.FromStringOrNil(req.FoundedByID))
 	if err != nil {
 		return err
 	}
 
-	if !user.FactionID.Valid {
+	if !founder.FactionID.Valid {
 		return fmt.Errorf("user does not have faction")
 	}
 
-	isLocked := user.CheckUserIsLocked("account")
+	isLocked := founder.CheckUserIsLocked("account")
 	if isLocked {
-		return terror.Error(fmt.Errorf("user: %s attempting to purchase on Supremacy while locked", user.ID), "This account is locked, contact support to unlock.")
+		return terror.Error(fmt.Errorf("user: %s attempting to purchase on Supremacy while locked", founder.ID), "This account is locked, contact support to unlock.")
 	}
+
+	syndicateRegisterFee := db.GetDecimalWithDefault(db.KeySyndicateRegisterFee, decimal.New(5000, 18))
+	syndicateRegisterFeeCut := db.GetDecimalWithDefault(db.KeySyndicateRegisterFeeCut, decimal.NewFromFloat(0.5))
+
+	// calculate sups to new syndicate account
+	supsToSyndicateAcc := syndicateRegisterFee.Sub(syndicateRegisterFee.Mul(syndicateRegisterFeeCut))
 
 	tx, err := passdb.StdConn.Begin()
 	if err != nil {
@@ -49,6 +58,7 @@ func (s *S) SyndicateCreateHandler(req SyndicateCreateReq, resp *SyndicateCreate
 
 	// create an account for the syndicate
 	account := boiler.Account{
+		ID:   req.SyndicateID,
 		Type: boiler.AccountTypeSYNDICATE,
 		Sups: decimal.Zero,
 	}
@@ -61,9 +71,9 @@ func (s *S) SyndicateCreateHandler(req SyndicateCreateReq, resp *SyndicateCreate
 
 	// create syndicate
 	syndicate := boiler.Syndicate{
-		ID:          req.ID,
-		FoundedByID: req.FoundedByID,
-		FactionID:   user.FactionID.String,
+		ID:          req.SyndicateID,
+		FoundedByID: founder.ID,
+		FactionID:   founder.FactionID.String,
 		Name:        req.Name,
 		AccountID:   account.ID,
 	}
@@ -74,18 +84,34 @@ func (s *S) SyndicateCreateHandler(req SyndicateCreateReq, resp *SyndicateCreate
 		return terror.Error(err, "Failed to register syndicate in Xsyn")
 	}
 
-	nt := &types.NewTransaction{
+	syndicateCreateTx := &types.NewTransaction{
 		Debit:                req.FoundedByID,
-		Credit:               types.XsynTreasuryUserID.String(), // TODO: check where does the fund goes?
-		TransactionReference: types.TransactionReference(fmt.Sprintf("syndicate_create|SUPREMACY|%s|%d", req.ID, time.Now().UnixNano())),
+		Credit:               types.SupremacyGameUserID.String(),
+		TransactionReference: types.TransactionReference(fmt.Sprintf("syndicate_create|SUPREMACY|%s|%d", req.SyndicateID, time.Now().UnixNano())),
 		Description:          "Start a new syndicate",
-		Amount:               decimal.New(500, 18), // TODO: calculate how much is 500 usd worth of sups
-		Group:                "Syndicate",
+		Amount:               syndicateRegisterFee,
+		Group:                types.TransactionGroupSupremacy,
 		SubGroup:             "syndicate create",
 		ServiceID:            types.UserID(uuid.FromStringOrNil(serviceID)),
 	}
 
-	_, err = s.UserCacheMap.Transact(nt)
+	_, err = s.UserCacheMap.Transact(syndicateCreateTx)
+	if err != nil {
+		return terror.Error(err, err.Error())
+	}
+
+	syndicateStartFund := &types.NewTransaction{
+		Debit:                types.SupremacyGameUserID.String(),
+		Credit:               syndicate.ID,
+		TransactionReference: types.TransactionReference(fmt.Sprintf("syndicate_start_fund|SUPREMACY|%s|%d", req.SyndicateID, time.Now().UnixNano())),
+		Description:          "Fund for starting syndicate",
+		Amount:               supsToSyndicateAcc,
+		Group:                types.TransactionGroupSupremacy,
+		SubGroup:             "syndicate create",
+		ServiceID:            types.UserID(uuid.FromStringOrNil(serviceID)),
+	}
+
+	_, err = s.UserCacheMap.Transact(syndicateStartFund)
 	if err != nil {
 		return terror.Error(err, err.Error())
 	}
@@ -94,6 +120,52 @@ func (s *S) SyndicateCreateHandler(req SyndicateCreateReq, resp *SyndicateCreate
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("Failed to commit db transaction")
 		return terror.Error(err, "Failed to register syndicate in Xsyn")
+	}
+
+	return nil
+}
+
+func (s *S) SyndicateNameChangeHandler(req SyndicateNameCreateReq, resp *SyndicateNameChangeResp) error {
+	_, err := IsServerClient(req.ApiKey)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to get service id - AssetTransferOwnershipHandler")
+		return err
+	}
+
+	syndicate, err := boiler.FindSyndicate(passdb.StdConn, req.SyndicateID)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("Failed to get syndicate")
+		return terror.Error(err, "Syndicate does not exist or it is liquidated.")
+	}
+
+	syndicate.Name = req.Name
+	_, err = syndicate.Update(passdb.StdConn, boil.Whitelist(boiler.SyndicateColumns.Name))
+	if err != nil {
+		passlog.L.Error().Str("syndicate id", syndicate.ID).Str("name", req.Name).Err(err).Msg("Failed to update syndicate name")
+		return terror.Error(err, "Failed to change syndicate name")
+	}
+
+	return nil
+}
+
+func (s *S) SyndicateLiquidateHandler(req SyndicateLiquidateReq, resp *SyndicateLiquidateResp) error {
+	_, err := IsServerClient(req.ApiKey)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to get service id - AssetTransferOwnershipHandler")
+		return err
+	}
+
+	syndicate, err := boiler.FindSyndicate(passdb.StdConn, req.SyndicateID)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("Failed to get syndicate")
+		return terror.Error(err, "Syndicate does not exist or it is liquidated.")
+	}
+
+	syndicate.DeletedAt = null.TimeFrom(time.Now())
+	_, err = syndicate.Update(passdb.StdConn, boil.Whitelist(boiler.SyndicateColumns.DeletedAt))
+	if err != nil {
+		passlog.L.Error().Err(err).Str("syndicate id", syndicate.ID).Msg("Failed to archive syndicate")
+		return terror.Error(err, "Failed to liquidate syndicate")
 	}
 
 	return nil

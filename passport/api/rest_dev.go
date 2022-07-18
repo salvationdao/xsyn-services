@@ -97,6 +97,7 @@ func (d *Dev) devGiveMechs(w http.ResponseWriter, r *http.Request) (int, error) 
 		Description:          "Dev Seed Sups",
 		Group:                "SEED",
 		NotSafe:              false,
+		ServiceID:            types.XsynSaleUserID,
 	}
 
 	_, err = d.userCacheMap.Transact(tx)

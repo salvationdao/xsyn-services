@@ -1457,7 +1457,7 @@ func (api *API) UserSupsUpdatedSubscribeHandler(ctx context.Context, user *types
 		return terror.Error(err, "Issue subscribing to user SUPs updates, try again or contact support.")
 	}
 
-	reply(account.Sups.String())
+	reply(account.Sups.StringFixed(0))
 	return nil
 }
 

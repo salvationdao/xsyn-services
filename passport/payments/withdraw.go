@@ -161,16 +161,9 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 	}
 
 	for _, refund := range refundsToProcess {
-		ownerID, _, err := ucm.GetAccountLookup(refund.R.TransactionReferenceTransaction.DebitAccountID)
-		if err != nil {
-			skipped++
-			l.Warn().Err(err).Msg("failed to get user uuid from account id")
-			continue
-		}
-
 		txRef := types.TransactionReference(fmt.Sprintf("REFUND %s", refund.R.TransactionReferenceTransaction.TransactionReference))
 		newTx := &types.NewTransaction{
-			Credit:               ownerID,
+			Credit:               refund.R.TransactionReferenceTransaction.DebitAccountID,
 			Debit:                types.OnChainUserID.String(),
 			Amount:               refund.R.TransactionReferenceTransaction.Amount,
 			TransactionReference: txRef,

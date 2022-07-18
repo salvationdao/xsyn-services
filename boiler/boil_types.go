@@ -58,11 +58,3 @@ const (
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants
-
-// Enum values for TransactionDirection
-const (
-	TransactionDirectionP2P = "P2P"
-	TransactionDirectionP2S = "P2S"
-	TransactionDirectionS2P = "S2P"
-	TransactionDirectionS2S = "S2S"
-)

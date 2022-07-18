@@ -165,18 +165,9 @@ func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not get transaction")
 		}
-		debitAccountOwnerID, _, err := ucm.GetAccountLookup(tx.DebitAccountID)
-		if err != nil {
-			return http.StatusBadRequest, terror.Error(err, "Failed to find debit account owner")
-		}
-		creditAccountOwnerID, _, err := ucm.GetAccountLookup(tx.CreditAccountID)
-		if err != nil {
-			return http.StatusBadRequest, terror.Error(err, "Failed to find credit account owner")
-		}
-
 		refundTx := &types.NewTransaction{
-			Credit:               debitAccountOwnerID,
-			Debit:                creditAccountOwnerID,
+			Credit:               tx.DebitAccountID,
+			Debit:                tx.CreditAccountID,
 			Amount:               tx.Amount,
 			TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", tx.TransactionReference)),
 			Description:          "Reverse transaction",

@@ -30,7 +30,7 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.17
 	github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6
 	github.com/ninja-software/sale v0.0.10
-	github.com/ninja-software/terror/v2 v2.0.7
+	github.com/ninja-software/terror/v2 v2.0.12
 	github.com/ninja-syndicate/hub v1.9.2
 	github.com/ninja-syndicate/supremacy-bridge v0.1.43
 	github.com/ninja-syndicate/ws v0.11.3
@@ -197,7 +197,7 @@ require (
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/stretchr/testify v1.7.1-0.20210427113832-6241f9ab9942 // indirect
 	github.com/volatiletech/strmangle v0.0.1
-	go.uber.org/atomic v1.9.0 // indirect
+	go.uber.org/atomic v1.9.0
 	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/sys v0.0.0-20220405210540-1e041c57c461 // indirect
