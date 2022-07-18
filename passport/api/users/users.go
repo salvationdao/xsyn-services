@@ -192,8 +192,7 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 	}
 
 	isVerified := false
-
-	if googleID != "" && email != "" {
+	if googleID != "" {
 		isVerified = true
 	}
 

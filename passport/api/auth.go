@@ -733,20 +733,31 @@ func (api *API) GoogleLoginHandler(w http.ResponseWriter, r *http.Request) (int,
 
 func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *http.Request) error {
 	// Check if there are any existing users associated with the email address
-	user, err := users.GoogleID(req.GoogleID)
+	_, err := users.GoogleID(req.GoogleID)
 
 	if err != nil && errors.Is(sql.ErrNoRows, err) {
-		commonAddress := common.HexToAddress("")
-		u, err := users.UserCreator("", "", req.Username, req.Email, "", req.GoogleID, "", "", "", "", commonAddress, "")
-		if err != nil {
-			return err
-		}
-		user = &u.User
-	} else if err != nil {
-		return err
-	}
-	err = api.FingerprintAndIssueToken(false, w, r, req.Fingerprint, user, req.RedirectURL)
+		// Check if user gmail already exist
+		user, _ := boiler.Users(boiler.UserWhere.Email.EQ(null.StringFrom(req.Email))).One(passdb.StdConn)
 
+		if user != nil {
+			user.GoogleID = null.StringFrom(req.GoogleID)
+			user.Verified = true
+			_, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.GoogleID, boiler.UserColumns.Verified))
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("unable to add google id to user with existing gmail")
+				return err
+			}
+		} else {
+			commonAddress := common.HexToAddress("")
+			u, err := users.UserCreator("", "", req.Username, req.Email, "", req.GoogleID, "", "", "", "", commonAddress, "")
+			if err != nil {
+				return err
+			}
+			user = &u.User
+		}
+		return api.FingerprintAndIssueToken(false, w, r, req.Fingerprint, user, req.RedirectURL)
+
+	}
 	return err
 }
 
@@ -1021,6 +1032,12 @@ func (api *API) AddTwitterUser(w http.ResponseWriter, r *http.Request, redirect 
 }
 
 func (api *API) FingerprintAndIssueToken(pass2FA bool, w http.ResponseWriter, r *http.Request, fingerprint *users.Fingerprint, user *boiler.User, redirectURL *string) error {
+
+	if user == nil {
+		err := fmt.Errorf("user does not exist in issuing token")
+		passlog.L.Error().Err(err).Msg("unable to encode response to json")
+		return err
+	}
 
 	// Dont create issue token and tell front-end to start 2FA verification with JWT
 	if user.TwoFactorAuthenticationIsSet && !pass2FA {
