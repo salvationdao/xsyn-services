@@ -3,6 +3,7 @@ package email
 import (
 	"context"
 	"fmt"
+	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
 	"github.com/gofrs/uuid"
@@ -39,6 +40,7 @@ func (m *Mailer) SendBasicEmail(ctx context.Context, to string, subject string, 
 		attachments...,
 	)
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to send basic email")
 		return terror.Error(err, "Failed to send basic email")
 	}
 	return nil
@@ -62,6 +64,7 @@ func (m *Mailer) SendForgotPasswordEmail(ctx context.Context, user *types.User, 
 		"",
 	)
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to send forgot password email")
 		return terror.Error(err, " Failed to send forgot password email")
 	}
 	return nil
@@ -89,6 +92,7 @@ func (m *Mailer) SendVerificationEmail(ctx context.Context, user *types.User, to
 		"",
 	)
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to send verify email")
 		return terror.Error(err, "Failed to send verification email")
 	}
 	return nil

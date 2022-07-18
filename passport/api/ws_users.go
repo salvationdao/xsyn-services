@@ -722,6 +722,7 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, user *types
 	user.FacebookID = null.NewString("", false)
 	_, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.FacebookID))
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to remove user's facebook")
 		return terror.Error(err, errMsg)
 	}
 
@@ -770,6 +771,7 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, user *types.Us
 	user.FacebookID = null.StringFrom(req.Payload.FacebookID)
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.FacebookID))
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to add user's facebook")
 		return terror.Error(err, "Unable to update user details.")
 	}
 
@@ -813,6 +815,7 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, user *types.U
 	user.GoogleID = null.NewString("", false)
 	_, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.GoogleID))
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to remove user's google")
 		return terror.Error(err, errMsg)
 	}
 
@@ -866,6 +869,7 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, user *types.User
 	user.GoogleID = null.StringFrom(req.Payload.GoogleID)
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.GoogleID))
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to add user's google")
 		return terror.Error(err, "Unable to update user details.")
 	}
 
@@ -1059,6 +1063,7 @@ func (uc *UserController) RemoveTwitterHandler(ctx context.Context, user *types.
 	user.TwitterID = null.NewString("", false)
 	_, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwitterID))
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to remove user's twitter")
 		return terror.Error(err, errMsg)
 	}
 
@@ -1158,6 +1163,7 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, user *types.Use
 	user.TwitterID = null.StringFrom(twitterID)
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwitterID))
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to add user's twitter")
 		return terror.Error(err, errMsg)
 	}
 
@@ -1740,6 +1746,7 @@ func (uc *UserController) GenerateTFAHandler(ctx context.Context, user *types.Us
 	})
 
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to generate 2fa secret")
 		return terror.Error(err, "Failed to generate two factor authentication secret")
 	}
 
@@ -1749,6 +1756,7 @@ func (uc *UserController) GenerateTFAHandler(ctx context.Context, user *types.Us
 
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationSecret))
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to update 2fa secret")
 		return terror.Error(err, "Failed to update user 2fa secret")
 	}
 
@@ -1786,13 +1794,15 @@ func (uc *UserController) CancelTFAHandler(ctx context.Context, user *types.User
 	user.TwoFactorAuthenticationIsSet = false
 	_, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationIsSet))
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to unset 2fa for user")
 		return terror.Error(err, errMsg)
 	}
 
 	// clear 2fa secret
 	user.TwoFactorAuthenticationSecret = ""
-	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationIsSet))
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationSecret))
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to clear user 2fa secret")
 		return terror.Error(err, errMsg)
 	}
 
@@ -1802,6 +1812,7 @@ func (uc *UserController) CancelTFAHandler(ctx context.Context, user *types.User
 	})
 
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to delete user recovery codes")
 		return terror.Error(err, errMsg)
 	}
 
@@ -1809,6 +1820,7 @@ func (uc *UserController) CancelTFAHandler(ctx context.Context, user *types.User
 	user.TwoFactorAuthenticationActivated = false
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationActivated))
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to remove user 2fa activated")
 		return terror.Error(err, errMsg)
 	}
 
@@ -1850,6 +1862,7 @@ func (uc *UserController) TFAVerificationHandler(ctx context.Context, user *type
 	err := json.Unmarshal(payload, req)
 
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to parse 2fa verify request")
 		return terror.Error(err, errMsg)
 	}
 
@@ -1872,10 +1885,11 @@ func (uc *UserController) TFAVerificationHandler(ctx context.Context, user *type
 		user.TwoFactorAuthenticationIsSet = true
 		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationIsSet))
 		if err != nil {
+			passlog.L.Error().Err(err).Msg("failed to update user 2fa is set")
 			return terror.Error(err, errMsg)
 		}
 
-		// generate recovery cod
+		// generate recovery code
 		for i := 0; i < 16; i++ {
 			b := babble.NewBabbler()
 			b.Count = 2
@@ -1950,6 +1964,7 @@ func (uc *UserController) TFARecoveryVerifyHandler(ctx context.Context, user *ty
 	req := &TFARecoveryRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to parse 2fa recovery code verify request")
 		return terror.Error(err, "")
 	}
 

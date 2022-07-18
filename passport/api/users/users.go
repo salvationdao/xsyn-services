@@ -391,7 +391,7 @@ func VerifyTFA(userTFASecret string, passcode string) error {
 func GetTFARecovery(userID string) (boiler.UserRecoveryCodeSlice, error) {
 	userRecoveryCodes, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(userID)).All(passdb.StdConn)
 	if err != nil {
-		return nil, fmt.Errorf("user has not recovery codes")
+		return nil, fmt.Errorf("user has no recovery codes")
 	}
 
 	return userRecoveryCodes, nil
@@ -407,6 +407,7 @@ func VerifyTFARecovery(recoveryCode string) error {
 	userRecoveryCode.UsedAt = null.TimeFrom(time.Now())
 	_, err = userRecoveryCode.Update(passdb.StdConn, boil.Whitelist(boiler.UserRecoveryCodeColumns.UsedAt))
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to delete recovery code")
 		return err
 	}
 	return nil

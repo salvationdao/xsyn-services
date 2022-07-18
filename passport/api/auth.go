@@ -329,7 +329,6 @@ func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int,
 
 	// Check if there are any existing users associated with the email address
 	user, _ := users.Email(req.Email)
-
 	if user != nil {
 		userExistError := fmt.Errorf("User with that email already exists")
 		return http.StatusBadRequest, userExistError
@@ -395,6 +394,7 @@ func (api *API) EmailVerifyHandler(w http.ResponseWriter, r *http.Request) (int,
 		user.Email = null.NewString(newEmail, true)
 		_, err := user.User.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Email))
 		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to update user's email")
 			return http.StatusBadRequest, err
 		}
 
@@ -403,6 +403,7 @@ func (api *API) EmailVerifyHandler(w http.ResponseWriter, r *http.Request) (int,
 		user.User.Verified = true
 		_, err := user.User.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Verified))
 		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to set user as verified")
 			return http.StatusBadRequest, err
 		}
 		ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
@@ -432,15 +433,19 @@ func (api *API) UserFromToken(w http.ResponseWriter, r *http.Request, tknBase64 
 		return "", "", err
 	}
 
-	uID, _ := token.Get("user-id")
-	email, _ := token.Get(openid.EmailKey)
-
-	newEmail, _ := email.(string)
-	userID, ok := uID.(string)
-
+	uID, ok := token.Get("user-id")
 	if !ok {
+		passlog.L.Error().Err(err).Msg("unable to get user id from token")
+		return "", "", fmt.Errorf("invalid token found")
+	}
+	email, ok := token.Get(openid.EmailKey)
+	if !ok {
+		passlog.L.Error().Err(err).Msg("unable to get email from token")
 		return "", "", fmt.Errorf("invalid token provided")
 	}
+
+	newEmail := email.(string)
+	userID := uID.(string)
 
 	return userID, newEmail, nil
 }
@@ -492,9 +497,15 @@ func (api *API) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) (i
 	}
 	resp := &ForgotPasswordResponse{Message: "Success! An email has been sent to recover your account."}
 
-	b, _ := json.Marshal(resp.Message)
-	_, _ = w.Write(b)
-	return http.StatusCreated, nil
+	b, err := json.Marshal(resp.Message)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+	httpStatus, err := w.Write(b)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+	return httpStatus, nil
 
 }
 
@@ -594,14 +605,13 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
+	// Setup user activity tracking
+	oldUser := *user
+
 	newPasswordHash := pCrypto.HashPassword(req.NewPassword)
 
 	// Find password
 	userPassword, _ := boiler.FindPasswordHash(passdb.StdConn, user.ID)
-
-	// Setup user activity tracking
-	oldUser := *user
-
 	if userPassword == nil {
 		newPassword := &boiler.PasswordHash{
 			UserID:       user.ID,
@@ -609,6 +619,7 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 		}
 		err = newPassword.Insert(passdb.StdConn, boil.Infer())
 		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to set new password for user")
 			return http.StatusBadRequest, err
 		}
 	} else {
@@ -616,6 +627,7 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 		userPassword.PasswordHash = newPasswordHash
 		_, err = userPassword.Update(passdb.StdConn, boil.Whitelist(boiler.PasswordHashColumns.PasswordHash))
 		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to update user password")
 			return http.StatusBadRequest, err
 		}
 	}
@@ -638,6 +650,7 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 		boiler.IssueTokenColumns.DeletedAt: time.Now(),
 	})
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to delete all issued token for password reset")
 		return http.StatusBadRequest, err
 	}
 
@@ -657,6 +670,7 @@ func (api *API) WalletLoginHandler(w http.ResponseWriter, r *http.Request) {
 	req := &WalletLoginRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to decode wallet login request")
 		return
 	}
 	err = api.WalletLogin(req, w, r)
@@ -705,8 +719,8 @@ func (api *API) DoFingerprintUpsert(fingerprint users.Fingerprint, userID string
 func (api *API) GoogleLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &GoogleLoginRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
-
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to decode google login request")
 		return http.StatusBadRequest, err
 	}
 	err = api.GoogleLogin(req, w, r)
@@ -739,6 +753,7 @@ func (api *API) TFAVerifyHandler(w http.ResponseWriter, r *http.Request) (int, e
 	req := &TFAVerifyRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to decode 2fa verify request")
 		return http.StatusBadRequest, err
 	}
 
@@ -754,7 +769,10 @@ func (api *API) TFAVerifyHandler(w http.ResponseWriter, r *http.Request) (int, e
 func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.Request) error {
 	// Get user from token
 	// OR verify passcode from user id
-	userID, _, _ := api.UserFromToken(w, r, &req.Token)
+	userID, _, err := api.UserFromToken(w, r, &req.Token)
+	if err != nil {
+		return err
+	}
 	user, err := users.ID(userID)
 
 	if req.UserID != "" {
@@ -793,9 +811,15 @@ func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.
 			return err
 		}
 	} else {
-		b, _ := json.Marshal(user)
-		_, _ = w.Write(b)
-
+		b, err := json.Marshal(user)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to convert user to json 2fa response")
+			return err
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to write 2fa response to user")
+		}
 	}
 
 	return nil
@@ -805,6 +829,7 @@ func (api *API) FacebookLoginHandler(w http.ResponseWriter, r *http.Request) (in
 	req := &FacebookLoginRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to decode facebook login request")
 		return http.StatusBadRequest, err
 	}
 
@@ -828,6 +853,7 @@ func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, 
 		}
 		user = &u.User
 	} else if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to read facebook ID from user")
 		return err
 	}
 	err = api.FingerprintAndIssueToken(false, w, r, req.Fingerprint, user, req.RedirectURL)
@@ -862,14 +888,17 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 		params.Set("oauth_verifier", oauthVerifier)
 		req, err := http.NewRequest("GET", fmt.Sprintf("https://api.twitter.com/oauth/access_token?%s", params.Encode()), nil)
 		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to get twitter access token")
 			return http.StatusInternalServerError, terror.Error(err)
 		}
 		res, err := http.DefaultClient.Do(req)
 		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to request for twitter access token")
 			return http.StatusInternalServerError, terror.Error(err)
 		}
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to get body from twitter response")
 			return http.StatusInternalServerError, terror.Error(err)
 		}
 		resp := &AuthTwitterResponse{}
@@ -889,8 +918,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 		}
 
 		// Check if user exist
-		user, err := users.TwitterID(resp.UserID)
-
+		user, _ := users.TwitterID(resp.UserID)
 		// Add twitter user handler
 		if addTwitter != "" {
 			return api.AddTwitterUser(w, r, redirect, user, resp, addTwitter)
@@ -922,6 +950,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 
 	requestToken, _, err := oauthConfig.RequestToken()
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to get oauth token from")
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
@@ -964,6 +993,7 @@ func (api *API) AddTwitterUser(w http.ResponseWriter, r *http.Request, redirect 
 		if err != nil {
 			payload.Error = "Unable to update user"
 			ws.PublishMessage(URI, HubKeyUserAddTwitter, payload)
+			passlog.L.Error().Err(err).Msg("unable to add user's twitter id")
 			return http.StatusInternalServerError, terror.Error(err)
 		}
 
@@ -1018,8 +1048,16 @@ func (api *API) FingerprintAndIssueToken(pass2FA bool, w http.ResponseWriter, r 
 			return nil
 		}
 
-		b, _ := json.Marshal(token)
-		_, _ = w.Write(b)
+		b, err := json.Marshal(token)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to encode response to json")
+			return err
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to write response to user")
+			return err
+		}
 		return nil
 	}
 
@@ -1053,8 +1091,16 @@ func (api *API) FingerprintAndIssueToken(pass2FA bool, w http.ResponseWriter, r 
 	}
 
 	if redirectURL == nil {
-		b, _ := json.Marshal(u)
-		_, _ = w.Write(b)
+		b, err := json.Marshal(token)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to encode response to json")
+			return err
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to write response to user")
+			return err
+		}
 	}
 
 	return nil
@@ -1141,11 +1187,13 @@ func token(api *API, config *TokenConfig, isIssueToken bool, expireInDays int) (
 		api.TokenExpirationDays)
 
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to generate jwt token")
 		return nil, uuid.Nil, "", terror.Error(err, errMsg)
 	}
 
 	jwtSigned, err := sign(jwt, config.Encrypted, config.Key)
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to sign jwt")
 		return nil, uuid.Nil, "", terror.Error(err, "unable to sign jwt")
 	}
 
@@ -1154,6 +1202,7 @@ func token(api *API, config *TokenConfig, isIssueToken bool, expireInDays int) (
 	if isIssueToken {
 		err = tokens.Save(token, api.TokenExpirationDays, api.TokenEncryptionKey)
 		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to save issue token")
 			return nil, uuid.Nil, "", terror.Error(err, "unable to save jwt")
 		}
 	}
