@@ -75,10 +75,6 @@ func FacebookID(s string) (*boiler.User, error) {
 		return nil, err
 	}
 
-	if user.FactionID.Valid {
-		user.L.LoadFaction(passdb.StdConn, true, user, nil)
-	}
-
 	return user, nil
 }
 
@@ -86,10 +82,6 @@ func GoogleID(s string) (*boiler.User, error) {
 	user, err := boiler.Users(boiler.UserWhere.GoogleID.EQ(null.StringFrom(s))).One(passdb.StdConn)
 	if err != nil {
 		return nil, err
-	}
-
-	if user.FactionID.Valid {
-		user.L.LoadFaction(passdb.StdConn, true, user, nil)
 	}
 
 	return user, nil
@@ -101,10 +93,6 @@ func TwitchID(s string) (*boiler.User, error) {
 		return nil, err
 	}
 
-	if user.FactionID.Valid {
-		user.L.LoadFaction(passdb.StdConn, true, user, nil)
-	}
-
 	return user, nil
 }
 
@@ -114,10 +102,6 @@ func TwitterID(s string) (*boiler.User, error) {
 		return nil, err
 	}
 
-	if user.FactionID.Valid {
-		user.L.LoadFaction(passdb.StdConn, true, user, nil)
-	}
-
 	return user, nil
 }
 
@@ -125,10 +109,6 @@ func DiscordID(s string) (*boiler.User, error) {
 	user, err := boiler.Users(boiler.UserWhere.DiscordID.EQ(null.StringFrom(s))).One(passdb.StdConn)
 	if err != nil {
 		return nil, err
-	}
-
-	if user.FactionID.Valid {
-		user.L.LoadFaction(passdb.StdConn, true, user, nil)
 	}
 
 	return user, nil
@@ -397,10 +377,6 @@ func Username(uname string) (*boiler.User, string, error) {
 		}
 	}
 
-	if user.FactionID.Valid {
-		err = user.L.LoadFaction(passdb.StdConn, true, user, nil)
-		return nil, "", err
-	}
 	return user, hash.PasswordHash, nil
 
 }
