@@ -4,6 +4,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/benchmark"
@@ -14,8 +17,6 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/lestrrat-go/jwx/jwt/openid"
-
-	"github.com/ninja-software/terror/v2"
 )
 
 // IsServerClient checks the given api key is a server client
@@ -229,6 +230,68 @@ func (s *S) TokenLogin(req TokenReq, resp *UserResp) error {
 	resp.ID = user.ID
 	resp.PublicAddress = user.PublicAddress
 	resp.Username = user.Username
+
+	return nil
+}
+
+type GenOneTimeTokenReq struct {
+	ApiKey string
+	UserID string
+}
+
+type GenOneTimeTokenResp struct {
+	Token     string    `json:"token"`
+	ExpiredAt time.Time `json:"expired_at"`
+}
+
+// GenOneTimeToken generate one time token for device login
+func (s *S) GenOneTimeToken(req GenOneTimeTokenReq, resp *GenOneTimeTokenResp) error {
+	_, err := IsServerClient(req.ApiKey)
+	if err != nil {
+		return err
+	}
+
+	user, err := boiler.FindUser(passdb.StdConn, req.UserID)
+	if err != nil {
+		return terror.Error(err, "Failed to get user")
+	}
+
+	now := time.Now()
+	tokenID := uuid.Must(uuid.NewV4())
+
+	expires := time.Now().Add(time.Second * 60)
+
+	// save user detail as jwt
+	jwt, sign, err := tokens.GenerateOneTimeJWT(
+		tokenID,
+		user.ID, expires)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to generate one time token")
+		return err
+	}
+
+	jwtSigned, err := sign(jwt, true, s.TokenEncryptionKey)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to sign jwt")
+		return err
+	}
+
+	token := base64.StdEncoding.EncodeToString(jwtSigned)
+
+	it := boiler.IssueToken{
+		ID:        tokenID.String(),
+		UserID:    user.ID,
+		UserAgent: "qr-code-login",
+		ExpiresAt: null.TimeFrom(expires),
+	}
+	err = it.Insert(passdb.StdConn, boil.Infer())
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to insert one time token")
+		return err
+	}
+
+	resp.Token = token
+	resp.ExpiredAt = now.Add(60 * time.Second)
 
 	return nil
 }
