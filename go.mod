@@ -10,6 +10,7 @@ require (
 	github.com/caddyserver/xcaddy v0.2.0
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/cosmtrek/air v1.27.3
+	github.com/dustinkirkland/golang-petname v0.0.0-20191129215211-8e5a1ed0cff0
 	github.com/getsentry/sentry-go v0.11.0
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/cors v1.2.0
@@ -39,7 +40,6 @@ require (
 	github.com/rs/zerolog v1.26.1
 	github.com/shopspring/decimal v1.3.1
 	github.com/speps/go-hashids/v2 v2.0.1
-	github.com/tjarratt/babble v0.0.0-20210505082055-cbca2a4833c1
 	github.com/twilio/twilio-go v0.22.2
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/victorspringer/http-cache v0.0.0-20220131145941-ef3624e6666f

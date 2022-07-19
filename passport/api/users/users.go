@@ -330,6 +330,10 @@ func Email(email string) (*types.User, error) {
 		boiler.UserWhere.Email.EQ(null.StringFrom(strings.ToLower(email))),
 		qm.Load(qm.Rels(boiler.UserRels.Faction)),
 	).One(passdb.StdConn)
+	if errors.Is(sql.ErrNoRows, err) {
+		return nil, fmt.Errorf("no user found with email")
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +357,7 @@ func EmailPassword(email string, password string) (*types.User, error) {
 	userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf(errMsg)
 	}
 
 	err = crypto.ComparePassword(userPassword.PasswordHash, password)
@@ -374,7 +378,7 @@ func Username(uname string) (*boiler.User, string, error) {
 	hash, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
-			return nil, "", err
+			return nil, "", fmt.Errorf("no password found for user")
 		}
 	}
 
@@ -401,6 +405,9 @@ func GetTFARecovery(userID string) (boiler.UserRecoveryCodeSlice, error) {
 func VerifyTFARecovery(recoveryCode string) error {
 	// Check if code matches
 	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.RecoveryCode.EQ(recoveryCode), boiler.UserRecoveryCodeWhere.UsedAt.IsNull()).One(passdb.StdConn)
+	if errors.Is(sql.ErrNoRows, err) {
+		return fmt.Errorf("invalid recovery code")
+	}
 	if err != nil {
 		return err
 	}

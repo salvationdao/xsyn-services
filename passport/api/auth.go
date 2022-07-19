@@ -395,7 +395,8 @@ func (api *API) EmailSignUp(req *EmailLoginRequest, w http.ResponseWriter, r *ht
 }
 
 func (api *API) EmailVerifyHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	userID, newEmail, err := api.UserFromToken(w, r, nil)
+	tokenBase64 := r.URL.Query().Get("token")
+	userID, newEmail, err := api.UserFromToken(w, r, tokenBase64)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -435,13 +436,7 @@ func (api *API) EmailVerifyHandler(w http.ResponseWriter, r *http.Request) (int,
 	return http.StatusOK, nil
 }
 
-func (api *API) UserFromToken(w http.ResponseWriter, r *http.Request, tknBase64 *string) (string, string, error) {
-
-	tokenBase64 := r.URL.Query().Get("token")
-
-	if tknBase64 != nil {
-		tokenBase64 = *tknBase64
-	}
+func (api *API) UserFromToken(w http.ResponseWriter, r *http.Request, tokenBase64 string) (string, string, error) {
 	tokenStr, err := base64.StdEncoding.DecodeString(tokenBase64)
 	if err != nil {
 		return "", "", err
@@ -760,7 +755,7 @@ func (api *API) GoogleLoginHandler(w http.ResponseWriter, r *http.Request) (int,
 
 func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *http.Request) error {
 	// Check if there are any existing users associated with the email address
-	_, err := users.GoogleID(req.GoogleID)
+	user, err := users.GoogleID(req.GoogleID)
 
 	if err != nil && errors.Is(sql.ErrNoRows, err) {
 		// Check if user gmail already exist
@@ -785,7 +780,7 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 		return api.FingerprintAndIssueToken(false, w, r, req.Fingerprint, user, req.RedirectURL)
 
 	}
-	return err
+	return api.FingerprintAndIssueToken(false, w, r, req.Fingerprint, user, req.RedirectURL)
 }
 
 func (api *API) TFAVerifyHandler(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -808,23 +803,21 @@ func (api *API) TFAVerifyHandler(w http.ResponseWriter, r *http.Request) (int, e
 func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.Request) error {
 	// Get user from token
 	// OR verify passcode from user id
-	userID, _, err := api.UserFromToken(w, r, &req.Token)
+	// If user is logged in, user id is passed from request
+	// If user is not logged in, token is passed from request
+	userID := req.UserID
+	if userID == "" {
+		uid, _, err := api.UserFromToken(w, r, req.Token)
+		if err != nil {
+			return err
+		}
+		userID = uid
+	}
+
+	user, err := users.ID(userID)
 	if err != nil {
 		return err
 	}
-	user, err := users.ID(userID)
-
-	if req.UserID != "" {
-		user, err = users.ID(req.UserID)
-		if err != nil {
-			return err
-		}
-	} else {
-		if err != nil {
-			return err
-		}
-	}
-
 	// Check if there is a passcode and verify it
 	if req.Passcode != "" {
 		err := users.VerifyTFA(user.TwoFactorAuthenticationSecret, req.Passcode)
@@ -843,7 +836,6 @@ func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.
 
 	// Issue login token to user
 	// Only if jwt token was provided
-
 	if req.Token != "" {
 		err = api.FingerprintAndIssueToken(true, w, r, req.Fingerprint, &user.User, req.RedirectURL)
 		if err != nil {
