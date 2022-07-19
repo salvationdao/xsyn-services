@@ -336,11 +336,6 @@ func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int,
 }
 
 func (api *API) EmailSignUp(req *EmailLoginRequest, w http.ResponseWriter, r *http.Request) error {
-	defer func() {
-		if r := recover(); r != nil {
-			passlog.LogPanicRecovery("Panic! Panic! Panic! Panic on sign up!", r)
-		}
-	}()
 	if req.Password != "" {
 		err := helpers.IsValidPassword(req.Password)
 		if err != nil {
@@ -1076,14 +1071,12 @@ func (api *API) FingerprintAndIssueToken(pass2FA bool, w http.ResponseWriter, r 
 			return err
 		}
 
-		origin := r.Header.Get("origin")
-
-		// IF redirect from Twitter Auth
-		if origin == "" {
-			origin = strings.ReplaceAll(*redirectURL, "/twitter-redirect", "")
-		}
-
 		if redirectURL != nil {
+			origin := r.Header.Get("origin")
+			// IF redirect from Twitter Auth
+			if origin == "" {
+				origin = strings.ReplaceAll(*redirectURL, "/twitter-redirect", "")
+			}
 			http.Redirect(w, r, fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s", origin, token, *redirectURL), http.StatusSeeOther)
 			return nil
 		}
