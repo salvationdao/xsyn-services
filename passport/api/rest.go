@@ -99,7 +99,7 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) h
 			}
 
 			http.Error(w, string(jsonErr), code)
-			DatadogTracer.HttpFinishSpan(r.Context(), code, err)
+			//DatadogTracer.HttpFinishSpan(r.Context(), code, err)
 			return
 		}
 		DatadogTracer.HttpFinishSpan(r.Context(), code, nil)
