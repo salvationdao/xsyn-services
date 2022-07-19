@@ -14,7 +14,6 @@ import (
 	"xsyn-services/passport/helpers"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
-	"xsyn-services/passport/supremacy_rpcclient"
 	"xsyn-services/types"
 
 	"github.com/pquerna/otp/totp"
@@ -216,9 +215,6 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		passlog.L.Error().Err(err).Msg("insert new user failed")
 		return nil, terror.Error(err, "create new user failed")
 	}
-
-	_ = supremacy_rpcclient.PlayerRegister(
-		uuid.Must(uuid.FromString(user.ID)), user.Username, uuid.Nil, publicAddress)
 
 	if password != "" && email != "" {
 		pw := &boiler.PasswordHash{
