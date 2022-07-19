@@ -194,8 +194,6 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pass2FA := authType == "tfa"
-
 	switch authType {
 	case "wallet":
 		req := &WalletLoginRequest{
@@ -213,17 +211,18 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	case "email":
 		req := &EmailLoginRequest{
 			RedirectURL: &redir,
+			Username:    r.Form.Get("username"),
 			Email:       r.Form.Get("email"),
 			Password:    r.Form.Get("password"),
 		}
-		user, err := users.EmailPassword(req.Email, req.Password)
-		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?redirectURL=%s&err=%s", r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
-			return
+		user, _ := users.Email(req.Email)
+		if user != nil {
+			err = api.EmailLogin(req, w, r)
+		} else {
+			err = api.EmailSignUp(req, w, r)
 		}
-		err = api.FingerprintAndIssueToken(pass2FA, w, r, req.Fingerprint, &user.User, req.RedirectURL)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?redirectURL=%s&err=%s", r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 	case "facebook":
@@ -327,26 +326,28 @@ func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int,
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
+	err = api.EmailSignUp(req, w, r)
 
-	// Check if there are any existing users associated with the email address
-	user, _ := users.Email(req.Email)
-	if user != nil {
-		userExistError := fmt.Errorf("User with that email already exists")
-		return http.StatusBadRequest, userExistError
+	if err != nil {
+		return http.StatusBadRequest, err
 	}
 
+	return http.StatusCreated, nil
+}
+
+func (api *API) EmailSignUp(req *EmailLoginRequest, w http.ResponseWriter, r *http.Request) error {
 	if req.Password != "" {
 		err := helpers.IsValidPassword(req.Password)
 		if err != nil {
-			return http.StatusBadRequest, err
+			return err
 		}
 
 	}
 	commonAddress := common.HexToAddress("")
 
-	user, err = users.UserCreator("", "", req.Username, req.Email, "", "", "", "", "", "", commonAddress, req.Password)
+	user, err := users.UserCreator("", "", req.Username, req.Email, "", "", "", "", "", "", commonAddress, req.Password)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return err
 	}
 
 	// Send email to new email for verification
@@ -359,20 +360,19 @@ func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int,
 	})
 
 	if err != nil {
-		return http.StatusBadRequest, err
+		return err
 	}
 
 	err = api.Mailer.SendVerificationEmail(context.Background(), user, verifyToken, verifyTokenID, true)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return err
 	}
 
 	err = api.FingerprintAndIssueToken(false, w, r, req.Fingerprint, &user.User, req.RedirectURL)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return err
 	}
-
-	return http.StatusOK, nil
+	return nil
 }
 
 func (api *API) EmailVerifyHandler(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -451,22 +451,38 @@ func (api *API) UserFromToken(w http.ResponseWriter, r *http.Request, tknBase64 
 	return userID, newEmail, nil
 }
 
-func (api *API) EmailLogin(w http.ResponseWriter, r *http.Request) (int, error) {
+func (api *API) EmailLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &EmailLoginRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
 
+	// Check if there are any existing users associated with the email address
+	user, _ := users.Email(req.Email)
+	if user != nil {
+		err = api.EmailLogin(req, w, r)
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+	} else {
+		err = api.EmailSignUp(req, w, r)
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+	}
+	return http.StatusOK, nil
+}
+func (api *API) EmailLogin(req *EmailLoginRequest, w http.ResponseWriter, r *http.Request) error {
 	user, err := users.EmailPassword(req.Email, req.Password)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return err
 	}
 	err = api.FingerprintAndIssueToken(false, w, r, req.Fingerprint, &user.User, req.RedirectURL)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return err
 	}
-	return http.StatusOK, nil
+	return nil
 }
 
 func (api *API) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) (int, error) {
