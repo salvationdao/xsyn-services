@@ -208,7 +208,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-	case "email":
+	case "signup":
 		req := &EmailLoginRequest{
 			RedirectURL: &redir,
 			Username:    r.Form.Get("username"),
@@ -217,12 +217,25 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		user, _ := users.Email(req.Email)
 		if user != nil {
-			err = api.EmailLogin(req, w, r)
-		} else {
-			err = api.EmailSignUp(req, w, r)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?redirectURL=%s&err=%s", r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
+			return
 		}
+		err = api.EmailSignUp(req, w, r)
+
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?redirectURL=%s&err=%s", r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
+			return
+		}
+	case "email":
+		req := &EmailLoginRequest{
+			RedirectURL: &redir,
+			Email:       r.Form.Get("email"),
+			Password:    r.Form.Get("password"),
+		}
+		err = api.EmailLogin(req, w, r)
+
+		if err != nil {
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?redirectURL=%s&err=%s", r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
 			return
 		}
 	case "facebook":
@@ -336,6 +349,12 @@ func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int,
 }
 
 func (api *API) EmailSignUp(req *EmailLoginRequest, w http.ResponseWriter, r *http.Request) error {
+	// Check if there are any existing users associated with the email address
+	user, _ := users.Email(req.Email)
+
+	if user != nil {
+		return fmt.Errorf("email is already used by a different user")
+	}
 	if req.Password != "" {
 		err := helpers.IsValidPassword(req.Password)
 		if err != nil {
@@ -458,19 +477,11 @@ func (api *API) EmailLoginHandler(w http.ResponseWriter, r *http.Request) (int, 
 		return http.StatusBadRequest, err
 	}
 
-	// Check if there are any existing users associated with the email address
-	user, _ := users.Email(req.Email)
-	if user != nil {
-		err = api.EmailLogin(req, w, r)
-		if err != nil {
-			return http.StatusBadRequest, err
-		}
-	} else {
-		err = api.EmailSignUp(req, w, r)
-		if err != nil {
-			return http.StatusBadRequest, err
-		}
+	err = api.EmailLogin(req, w, r)
+	if err != nil {
+		return http.StatusBadRequest, err
 	}
+
 	return http.StatusOK, nil
 }
 func (api *API) EmailLogin(req *EmailLoginRequest, w http.ResponseWriter, r *http.Request) error {
