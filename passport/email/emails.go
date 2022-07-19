@@ -3,8 +3,10 @@ package email
 import (
 	"context"
 	"fmt"
+	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -38,45 +40,43 @@ func (m *Mailer) SendBasicEmail(ctx context.Context, to string, subject string, 
 		attachments...,
 	)
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to send basic email")
 		return terror.Error(err, "Failed to send basic email")
 	}
 	return nil
 }
 
 // SendForgotPasswordEmail sends an email with the forgot_password template
-func (m *Mailer) SendForgotPasswordEmail(ctx context.Context, user *User, token string) error {
+func (m *Mailer) SendForgotPasswordEmail(ctx context.Context, user *types.User, token string, tokenID uuid.UUID) error {
 	hostURL := m.PassportWebHostURL
-	if user.IsAdmin {
-		hostURL = m.PassportWebHostURL
-	}
+
 	err := m.SendEmail(ctx,
-		user.Email,
-		"Forgot Password",
+		user.Email.String,
+		"Forgot Password - Passport XSYN",
 		"forgot_password",
 		struct {
 			MagicLink string `handlebars:"magic_link"`
 			Name      string `handlebars:"name"`
 		}{
-			MagicLink: fmt.Sprintf("%s/verify?token=%s&forgot=true", hostURL, token),
-			Name:      user.FirstName + " " + user.LastName,
+			MagicLink: fmt.Sprintf("%s/reset-password?id=%s&token=%s", hostURL, tokenID, token),
+			Name:      user.Username,
 		},
 		"",
 	)
 	if err != nil {
-		return terror.Error(err, " Failed tosend forgot password email")
+		passlog.L.Error().Err(err).Msg("failed to send forgot password email")
+		return terror.Error(err, " Failed to send forgot password email")
 	}
 	return nil
 }
 
 // SendVerificationEmail sends an email with the confirm_email template
-func (m *Mailer) SendVerificationEmail(ctx context.Context, user *User, token string, newAccount bool) error {
+func (m *Mailer) SendVerificationEmail(ctx context.Context, user *types.User, token string, tokenID uuid.UUID, newAccount bool) error {
 	hostURL := m.PassportWebHostURL
-	if user.IsAdmin {
-		hostURL = m.PassportWebHostURL
-	}
+
 	err := m.SendEmail(ctx,
-		user.Email,
-		"Verify Email",
+		user.Email.String,
+		"Verify Email  - Passport XSYN",
 		"confirm_email",
 		struct {
 			MagicLink  string `handlebars:"magic_link"`
@@ -84,14 +84,15 @@ func (m *Mailer) SendVerificationEmail(ctx context.Context, user *User, token st
 			Email      string `handlebars:"email"`
 			NewAccount bool   `handlebars:"new_account"`
 		}{
-			MagicLink:  fmt.Sprintf("%s/verify?token=%s", hostURL, token),
-			Name:       user.FirstName + " " + user.LastName,
-			Email:      user.Email,
+			MagicLink:  fmt.Sprintf("%s/verify?id=%s&token=%s", hostURL, tokenID, token),
+			Name:       user.Username,
+			Email:      user.Email.String,
 			NewAccount: newAccount,
 		},
 		"",
 	)
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to send verify email")
 		return terror.Error(err, "Failed to send verification email")
 	}
 	return nil

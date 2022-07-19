@@ -2,15 +2,16 @@ package helpers
 
 import (
 	"encoding/json"
-	"github.com/microcosm-cc/bluemonday"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
 	"math/rand"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/microcosm-cc/bluemonday"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 )
 
 // EncodeJSON will encode json to response writer and return status ok.
@@ -139,4 +140,15 @@ func TrimUsername(username string) string {
 	output = strings.Join(strings.Fields(output), " ")
 
 	return output
+}
+
+
+func RemoveSymbols (text string)(string,error) {
+	re, err := regexp.Compile(`[^\w]`)
+	if err != nil {
+		return "", err
+	}
+	newText := re.ReplaceAllString(text, "")
+
+	return newText,nil
 }

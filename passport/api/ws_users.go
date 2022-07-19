@@ -10,9 +10,12 @@ import (
 	"html"
 	"io/ioutil"
 	"net/http"
+	"net/mail"
 	"net/url"
 	"strings"
+	"time"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/crypto"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/helpers"
@@ -22,6 +25,7 @@ import (
 
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
+	"github.com/tjarratt/babble"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	oidc "github.com/coreos/go-oidc"
@@ -32,12 +36,13 @@ import (
 
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"google.golang.org/api/idtoken"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
 	"github.com/rs/zerolog"
+
+	"github.com/pquerna/otp/totp"
 )
 
 // UserController holds handlers for authentication
@@ -81,6 +86,16 @@ func NewUserController(log *zerolog.Logger, api *API, googleConfig *auth.GoogleC
 	//api.SecureCommand(HubKeyUserLatestTransactionSubscribe, userHub.UserLatestTransactionsSubscribeHandler)
 	api.SecureCommand(HubKeyUser, userHub.UpdatedSubscribeHandler)
 	api.SecureCommand(HubKeyUserSupsSubscribe, api.UserSupsUpdatedSubscribeHandler)
+	api.SecureCommand(HubKeyUserInit, userHub.InitHandler)
+	api.SecureCommand(HubKeyUserSendVerify, userHub.SendVerifyHandler)
+
+	// TFA
+
+	api.SecureCommand(HubKeyGenerateTFASecret, userHub.GenerateTFAHandler)
+	api.SecureCommand(HubKeyTFACancel, userHub.CancelTFAHandler)
+	api.SecureCommand(HubKeyTFAVerification, userHub.TFAVerificationHandler)
+	api.SecureCommand(HubKeyTFARecoveryGet, userHub.TFARecoveryCodeGetHandler)
+	api.SecureCommand(HubKeyTFARecoveryVerify, userHub.TFARecoveryVerifyHandler)
 
 	return userHub
 }
@@ -136,6 +151,50 @@ func (uc *UserController) GetHandler(ctx context.Context, user *types.User, key 
 	}
 	return nil
 
+}
+
+const HubKeyUserInit = "USER:INIT"
+
+// Tracks if user should log out from change password
+func (uc *UserController) InitHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	reply(user)
+	return nil
+}
+
+const HubKeyUserSendVerify = "USER:VERIFY:SEND"
+
+type SendVerifyRequest struct {
+	Payload struct {
+		UserAgent string `json:"user_agent"`
+	} `json:"payload"`
+}
+
+// Sends another email to user to verify email
+func (uc *UserController) SendVerifyHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &SendVerifyRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// Send email to new email for verification
+	_, tokenID, token, err := uc.API.VerifyEmailToken(&TokenConfig{
+		Encrypted: true,
+		Key:       uc.API.TokenEncryptionKey,
+		Device:    req.Payload.UserAgent,
+		Action:    "verify",
+		User:      &user.User,
+	})
+	if err != nil {
+		return terror.Error(err, "Unable to send verification email.")
+	}
+
+	err = uc.API.Mailer.SendVerificationEmail(context.Background(), user, token, tokenID, true)
+	if err != nil {
+		return terror.Error(err, "Unable to send verification email.")
+	}
+	reply(user)
+	return nil
 }
 
 type UpdateUserUsernameRequest struct {
@@ -253,6 +312,7 @@ type UpdateUserRequest struct {
 		CurrentPassword                  *string     `json:"current_password"`
 		NewPassword                      *string     `json:"new_password"`
 		TwoFactorAuthenticationActivated bool        `json:"two_factor_authentication_activated"`
+		UserAgent                        string      `json:"user_agent"`
 	} `json:"payload"`
 }
 
@@ -266,16 +326,41 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 	}
 
 	// Setup user activity tracking
-	var oldUser types.User = *user
+	oldUser := *user
 
 	// Update Values
 	confirmPassword := false
-	if req.Payload.Email.Valid {
+
+	if req.Payload.Email.Valid && req.Payload.Email.String != "" {
+		_, err := mail.ParseAddress(req.Payload.Email.String)
+		if err != nil {
+			return terror.Error(err, "Invalid email address.")
+		}
+
 		email := strings.TrimSpace(req.Payload.Email.String)
 		email = strings.ToLower(email)
 
 		if user.Email.String != email {
-			user.Email = null.StringFrom(email)
+			userNewEmail := *user
+			userNewEmail.Email = null.StringFrom(email)
+
+			// Send email to new email for verification
+			_, tokenID, token, err := uc.API.VerifyEmailToken(&TokenConfig{
+				Encrypted: true,
+				Key:       uc.API.TokenEncryptionKey,
+				Device:    req.Payload.UserAgent,
+				Action:    "verify",
+				User:      &userNewEmail.User,
+			})
+
+			if err != nil {
+				return terror.Error(err, "Unable to issue a verify token.")
+			}
+
+			err = uc.API.Mailer.SendVerificationEmail(context.Background(), &userNewEmail, token, tokenID, false)
+			if err != nil {
+				return terror.Error(err, "Unable to send verify email")
+			}
 		}
 	}
 	if req.Payload.NewUsername != nil && req.Payload.Username != *req.Payload.NewUsername {
@@ -305,22 +390,22 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 			return terror.Error(err, passwordErr)
 		}
 
-		hasPassword, err := db.UserHasPassword(user.ID)
+		hasPassword, err := boiler.PasswordHashExists(passdb.StdConn, user.ID)
 		if err != nil {
 			return terror.Error(err, errMsg)
 		}
-		confirmPassword = user.OldPasswordRequired && *hasPassword
+		confirmPassword = user.OldPasswordRequired && hasPassword
 	}
 
 	if confirmPassword {
 		if req.Payload.CurrentPassword == nil {
 			return terror.Error(terror.ErrInvalidInput, "Current password is required.")
 		}
-		hashB64, err := db.HashByUserID(user.ID)
+		userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
 		if err != nil {
 			return terror.Error(err, "Current password is incorrect.")
 		}
-		err = crypto.ComparePassword(hashB64, *req.Payload.CurrentPassword)
+		err = crypto.ComparePassword(userPassword.PasswordHash, *req.Payload.CurrentPassword)
 		if err != nil {
 			return terror.Error(err, "Current password is incorrect.")
 		}
@@ -361,7 +446,13 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 
 	// Update password?
 	if req.Payload.NewPassword != nil {
-		err = db.AuthSetPasswordHash(tx, user.ID, crypto.HashPassword(*req.Payload.NewPassword))
+
+		userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+		userPassword.PasswordHash = crypto.HashPassword(*req.Payload.NewPassword)
+		_, err = userPassword.Update(passdb.StdConn, boil.Whitelist(boiler.PasswordHashColumns.PasswordHash))
 		if err != nil {
 			return terror.Error(err, errMsg)
 		}
@@ -500,7 +591,13 @@ func (uc *UserController) CreateHandler(ctx context.Context, user *types.User, k
 	}
 
 	// Set password
-	err = db.AuthSetPasswordHash(tx, user.ID, crypto.HashPassword(*req.Payload.NewPassword))
+
+	userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+	userPassword.PasswordHash = crypto.HashPassword(*req.Payload.NewPassword)
+	_, err = userPassword.Update(passdb.StdConn, boil.Whitelist(boiler.PasswordHashColumns.PasswordHash))
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -601,39 +698,31 @@ type RemoveServiceRequest struct {
 	} `json:"payload"`
 }
 
-type AddServiceRequest struct {
+type AddFacebookRequest struct {
 	Payload struct {
-		Token string `json:"token"`
+		FacebookID string `json:"facebook_id"`
 	} `json:"payload"`
 }
 
 // HubKeyUserRemoveFacebook removes a linked Facebook account
-const HubKeyUserRemoveFacebook = "USER:REMOVE_FACEBOOK"
+const HubKeyUserRemoveFacebook = "USER:FACEBOOK:REMOVE"
 
 func (uc *UserController) RemoveFacebookHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &RemoveServiceRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-	if req.Payload.ID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User ID is required")
-	}
-
 	// Setup user activity tracking
 	var oldUser types.User = *user
 
 	// Check if user can remove service
 	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
-		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+		return terror.Error(fmt.Errorf("You cannot unlink your only connection to this account"))
 	}
 
 	// Update user
 	errMsg := "Unable to update user, please try again."
 	user.FacebookID = null.NewString("", false)
-	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.FacebookID))
+	_, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.FacebookID))
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to remove user's facebook")
 		return terror.Error(err, errMsg)
 	}
 
@@ -659,43 +748,31 @@ func (uc *UserController) RemoveFacebookHandler(ctx context.Context, user *types
 }
 
 // HubKeyUserAddFacebook removes a linked Facebook account
-const HubKeyUserAddFacebook = "USER:ADD_FACEBOOK"
+const HubKeyUserAddFacebook = "USER:FACEBOOK:ADD"
 
 func (uc *UserController) AddFacebookHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &AddServiceRequest{}
+
+	req := &AddFacebookRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	if req.Payload.Token == "" {
-		return terror.Error(terror.ErrInvalidInput, "Facebook token is empty")
-	}
-
-	// Validate Facebook token
-	errMsg := "There was a problem finding a user associated with the provided Facebook account, please check your details and try again."
-	r, err := http.Get("https://graph.facebook.com/me?&access_token=" + url.QueryEscape(req.Payload.Token))
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-	defer r.Body.Close()
-	resp := &struct {
-		ID string `json:"id"`
-	}{}
-	err = json.NewDecoder(r.Body).Decode(resp)
-	if err != nil {
-		return terror.Error(err, errMsg)
+	// Check if Facebook ID is already taken
+	u, _ := users.FacebookID(req.Payload.FacebookID)
+	if u != nil {
+		return terror.Error(fmt.Errorf("This facebook account is already registered to a different user."))
 	}
 
 	// Setup user activity tracking
 	var oldUser types.User = *user
 
 	// Update user's Facebook ID
-
-	user.FacebookID = null.StringFrom(resp.ID)
+	user.FacebookID = null.StringFrom(req.Payload.FacebookID)
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.FacebookID))
 	if err != nil {
-		return terror.Error(err, errMsg)
+		passlog.L.Error().Err(err).Msg("failed to add user's facebook")
+		return terror.Error(err, "Unable to update user details.")
 	}
 
 	reply(user)
@@ -720,17 +797,9 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, user *types.Us
 }
 
 // HubKeyUserRemoveGoogle removes a linked Google account
-const HubKeyUserRemoveGoogle = "USER:REMOVE_GOOGLE"
+const HubKeyUserRemoveGoogle = "USER:GOOGLE:REMOVE"
 
 func (uc *UserController) RemoveGoogleHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &RemoveServiceRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-	if req.Payload.ID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User ID is required")
-	}
 
 	// Setup user activity tracking
 	var oldUser types.User = *user
@@ -738,14 +807,15 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, user *types.U
 	// Check if user can remove service
 	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
-		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+		return terror.Error(fmt.Errorf("You cannot unlink your only connection to this account"))
 	}
 
 	// Update user
 	errMsg := "Unable to update user, please try again."
 	user.GoogleID = null.NewString("", false)
-	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.GoogleID))
+	_, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.GoogleID))
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to remove user's google")
 		return terror.Error(err, errMsg)
 	}
 
@@ -771,40 +841,36 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, user *types.U
 	return nil
 }
 
+type AddGoogleRequest struct {
+	Payload struct {
+		GoogleID string `json:"google_id"`
+	} `json:"payload"`
+}
+
 // HubKeyUserAddGoogle adds a linked Google account
-const HubKeyUserAddGoogle = "USER:ADD_GOOGLE"
+const HubKeyUserAddGoogle = "USER:GOOGLE:ADD"
 
 func (uc *UserController) AddGoogleHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &AddServiceRequest{}
+	req := &AddGoogleRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	if req.Payload.Token == "" {
-		return terror.Error(terror.ErrInvalidInput, "Google token is empty")
+	// Check if Google ID is already taken
+	u, _ := users.GoogleID(req.Payload.GoogleID)
+	if u != nil {
+		return terror.Error(fmt.Errorf("This google account is already registered to a different user."))
 	}
-
-	// Validate Google token
-	errMsg := "There was a problem finding a user associated with the provided Google account, please check your details and try again."
-	resp, err := idtoken.Validate(ctx, req.Payload.Token, uc.Google.ClientID)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-
-	googleID, ok := resp.Claims["sub"].(string)
-	if !ok {
-		return terror.Error(err, errMsg)
-	}
-
 	// Setup user activity tracking
 	var oldUser types.User = *user
 
 	// Update user's Google ID
-	user.GoogleID = null.StringFrom(googleID)
+	user.GoogleID = null.StringFrom(req.Payload.GoogleID)
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.GoogleID))
 	if err != nil {
-		return terror.Error(err, errMsg)
+		passlog.L.Error().Err(err).Msg("failed to add user's google")
+		return terror.Error(err, "Unable to update user details.")
 	}
 
 	reply(user)
@@ -830,7 +896,7 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, user *types.User
 }
 
 // HubKeyUserRemoveTwitch removes a linked Twitch account
-const HubKeyUserRemoveTwitch = "USER:REMOVE_TWITCH"
+const HubKeyUserRemoveTwitch = "USER:TWITCH:REMOVE"
 
 func (uc *UserController) RemoveTwitchHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &RemoveServiceRequest{}
@@ -848,7 +914,7 @@ func (uc *UserController) RemoveTwitchHandler(ctx context.Context, user *types.U
 	// Check if user can remove service
 	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
-		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+		return terror.Error(fmt.Errorf("You cannot unlink your only connection to this account"))
 	}
 
 	// Update user
@@ -882,7 +948,7 @@ func (uc *UserController) RemoveTwitchHandler(ctx context.Context, user *types.U
 }
 
 // HubKeyUserRemoveTwitch adds a linked Twitch account
-const HubKeyUserAddTwitch = "USER:ADD_TWITCH"
+const HubKeyUserAddTwitch = "USER:TWITCH:ADD"
 
 type AddTwitchRequest struct {
 	Payload struct {
@@ -980,32 +1046,24 @@ func (uc *UserController) AddTwitchHandler(ctx context.Context, user *types.User
 }
 
 // HubKeyUserRemoveTwitter removes a linked Twitter account
-const HubKeyUserRemoveTwitter = "USER:REMOVE_TWITTER"
+const HubKeyUserRemoveTwitter = "USER:TWITTER:REMOVE"
 
 func (uc *UserController) RemoveTwitterHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue removing user's twitter account, try again or contact support."
-	req := &RemoveServiceRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-	if req.Payload.ID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput, "User ID is required")
-	}
-
 	// Setup user activity tracking
 	var oldUser types.User = *user
 
 	// Check if user can remove service
 	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
-		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+		return terror.Error(fmt.Errorf("You cannot unlink your only connection to this account"))
 	}
 
 	// Update user
 	user.TwitterID = null.NewString("", false)
-	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwitterID))
+	_, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwitterID))
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to remove user's twitter")
 		return terror.Error(err, errMsg)
 	}
 
@@ -1039,7 +1097,7 @@ type AddTwitterRequest struct {
 }
 
 // HubKeyUserRemoveTwitter adds a linked Twitter account
-const HubKeyUserAddTwitter = "USER:ADD_TWITTER"
+const HubKeyUserAddTwitter = "USER:TWITTER:ADD"
 
 func (uc *UserController) AddTwitterHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue updating user's twitter account, try again or contact support."
@@ -1105,6 +1163,7 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, user *types.Use
 	user.TwitterID = null.StringFrom(twitterID)
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwitterID))
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to add user's twitter")
 		return terror.Error(err, errMsg)
 	}
 
@@ -1131,7 +1190,7 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, user *types.Use
 }
 
 // HubKeyUserRemoveDiscord removes a linked Discord account
-const HubKeyUserRemoveDiscord = "USER:REMOVE_DISCORD"
+const HubKeyUserRemoveDiscord = "USER:DISCORD:REMOVE"
 
 func (uc *UserController) RemoveDiscordHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue removing user's discord account, try again or contact support."
@@ -1150,7 +1209,7 @@ func (uc *UserController) RemoveDiscordHandler(ctx context.Context, user *types.
 	// Check if user can remove service
 	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
-		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+		return terror.Error(fmt.Errorf("You cannot unlink your only connection to this account"))
 	}
 
 	// Update user
@@ -1183,7 +1242,7 @@ func (uc *UserController) RemoveDiscordHandler(ctx context.Context, user *types.
 }
 
 // HubKeyUserRemoveDiscord adds a linked Discord account
-const HubKeyUserAddDiscord = "USER:ADD_DISCORD"
+const HubKeyUserAddDiscord = "USER:DISCORD:ADD"
 
 type AddDiscordRequest struct {
 	Payload struct {
@@ -1296,7 +1355,7 @@ func (uc *UserController) AddDiscordHandler(ctx context.Context, user *types.Use
 }
 
 // HubKeyUserRemoveWallet removes a linked wallet address
-const HubKeyUserRemoveWallet = "USER:REMOVE_WALLET"
+const HubKeyUserRemoveWallet = "USER:WALLLET:REMOVE"
 
 // RemoveWalletRequest requests an update for an existing user
 type RemoveWalletRequest struct {
@@ -1324,7 +1383,7 @@ func (uc *UserController) RemoveWalletHandler(ctx context.Context, user *types.U
 	// Check if user can remove service
 	serviceCount := getUserServiceCount(user)
 	if serviceCount < 2 {
-		return terror.Error(terror.ErrForbidden, "You cannot unlink your only connection to this account.")
+		return terror.Error(fmt.Errorf("You cannot unlink your only connection to this account"))
 	}
 
 	// Update user
@@ -1357,7 +1416,7 @@ func (uc *UserController) RemoveWalletHandler(ctx context.Context, user *types.U
 }
 
 // HubKeyUserAddWallet links a wallet to an account
-const HubKeyUserAddWallet = "USER:ADD_WALLET"
+const HubKeyUserAddWallet = "USER:WALLET:ADD"
 
 type AddWalletRequest struct {
 	Payload struct {
@@ -1402,7 +1461,7 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, user *types.User
 	user.PublicAddress = null.StringFrom(req.Payload.PublicAddress)
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.PublicAddress))
 	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Wallet is already connected to another user.")
 	}
 
 	reply(user)
@@ -1410,7 +1469,7 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, user *types.User
 	// Record user activity
 	uc.API.RecordUserActivity(ctx,
 		user.ID,
-		"Updated User",
+		"Add User Wallet",
 		types.ObjectTypeUser,
 		helpers.StringPointer(user.ID),
 		&user.Username,
@@ -1517,7 +1576,10 @@ type WarMachineQueuePositionRequest struct {
 func getUserServiceCount(user *types.User) int {
 	count := 0
 	if user.Email.Valid {
-		count++
+		hasPassword, _ := boiler.PasswordHashExists(passdb.StdConn, user.ID)
+		if hasPassword {
+			count++
+		}
 	}
 	if user.FacebookID.Valid {
 		count++
@@ -1532,6 +1594,9 @@ func getUserServiceCount(user *types.User) int {
 		count++
 	}
 	if user.DiscordID.Valid {
+		count++
+	}
+	if user.PublicAddress.Valid {
 		count++
 	}
 
@@ -1657,6 +1722,288 @@ func (uc *UserController) LockHandler(ctx context.Context, user *types.User, key
 	}
 
 	reply(true)
+
+	return nil
+}
+
+const HubKeyGenerateTFASecret = "USER:TFA:GENERATE"
+
+type GenerateTFAResponse struct {
+	Secret    string `json:"secret"`
+	QRCodeStr string `json:"qr_code_str"`
+}
+
+// TFAVerificationHandler generate QR code and secret of user
+func (uc *UserController) GenerateTFAHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+
+	if user.TwoFactorAuthenticationIsSet {
+		return terror.Error(fmt.Errorf("Two-Factor Authentication already set"))
+	}
+
+	otpKey, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      "XSYN",
+		AccountName: user.Username,
+	})
+
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to generate 2fa secret")
+		return terror.Error(err, "Failed to generate two factor authentication secret")
+	}
+
+	user.TwoFactorAuthenticationSecret = otpKey.Secret()
+
+	oldUser := *user
+
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationSecret))
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to update 2fa secret")
+		return terror.Error(err, "Failed to update user 2fa secret")
+	}
+
+	// Record user activity
+	uc.API.RecordUserActivity(ctx,
+		user.ID,
+		"Generate TFA secret",
+		types.ObjectTypeUser,
+		helpers.StringPointer(user.ID),
+		&user.Username,
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
+		&types.UserActivityChangeData{
+			Name: db.TableNames.Users,
+			From: oldUser,
+			To:   user,
+		},
+	)
+
+	reply(&GenerateTFAResponse{
+		Secret:    otpKey.Secret(),
+		QRCodeStr: otpKey.String(),
+	})
+
+	return nil
+}
+
+const HubKeyTFACancel = "USER:TFA:CANCEL"
+
+// TFAVerificationHandler cancles TFA of user
+func (uc *UserController) CancelTFAHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue updating user details, try again or contact support."
+	oldUser := *user
+
+	// reset 2fa flag
+	user.TwoFactorAuthenticationIsSet = false
+	_, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationIsSet))
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to unset 2fa for user")
+		return terror.Error(err, errMsg)
+	}
+
+	// clear 2fa secret
+	user.TwoFactorAuthenticationSecret = ""
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationSecret))
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to clear user 2fa secret")
+		return terror.Error(err, errMsg)
+	}
+
+	// delete recovery code
+	_, err = boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID)).UpdateAll(passdb.StdConn, boiler.M{
+		boiler.IssueTokenColumns.DeletedAt: time.Now(),
+	})
+
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to delete user recovery codes")
+		return terror.Error(err, errMsg)
+	}
+
+	// update 2fa flag
+	user.TwoFactorAuthenticationActivated = false
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationActivated))
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to remove user 2fa activated")
+		return terror.Error(err, errMsg)
+	}
+
+	// Record user activity
+	uc.API.RecordUserActivity(ctx,
+		user.ID,
+		"Remove User 2FA",
+		types.ObjectTypeUser,
+		helpers.StringPointer(user.ID),
+		&user.Username,
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
+		&types.UserActivityChangeData{
+			Name: db.TableNames.Users,
+			From: oldUser,
+			To:   user,
+		},
+	)
+
+	reply(user)
+
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
+
+	return nil
+}
+
+const HubKeyTFAVerification = "USER:TFA:VERIFICATION"
+
+type TFAVerificationRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Passcode string `json:"passcode"`
+	} `json:"payload"`
+}
+
+// TFAVerificationHandler handles user tfa verification
+func (uc *UserController) TFAVerificationHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue updating user details, try again or contact support."
+	req := &TFAVerificationRequest{}
+	err := json.Unmarshal(payload, req)
+
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to parse 2fa verify request")
+		return terror.Error(err, errMsg)
+	}
+
+	oldUser := *user
+
+	err = users.VerifyTFA(user.TwoFactorAuthenticationSecret, req.Payload.Passcode)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// set user's tfa status
+	if !user.TwoFactorAuthenticationIsSet {
+		// Get recovery code
+		nRecoverCodes, _ := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(user.ID)).Count(passdb.StdConn)
+		if nRecoverCodes > 0 {
+			return terror.Error(err, "User already has recovery codes")
+		}
+
+		// Set TFA
+		user.TwoFactorAuthenticationIsSet = true
+		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwoFactorAuthenticationIsSet))
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("failed to update user 2fa is set")
+			return terror.Error(err, errMsg)
+		}
+
+		// generate recovery code
+		for i := 0; i < 16; i++ {
+			b := babble.NewBabbler()
+			b.Count = 2
+			b.Separator = "-"
+			code := strings.ToLower(b.Babble())
+			code = strings.ReplaceAll(code, "'s", "")
+
+			recoveryCode := &boiler.UserRecoveryCode{
+				RecoveryCode: code,
+				UserID:       user.ID,
+			}
+			err = recoveryCode.Insert(passdb.StdConn, boil.Infer())
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
+		}
+
+		// Record user activity
+		uc.API.RecordUserActivity(ctx,
+			user.ID,
+			"Set User TFA and recovery code",
+			types.ObjectTypeUser,
+			helpers.StringPointer(user.ID),
+			&user.Username,
+			helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
+			&types.UserActivityChangeData{
+				Name: db.TableNames.Users,
+				From: oldUser,
+				To:   user,
+			},
+		)
+	}
+
+	// send back user
+	reply(user)
+
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
+
+	return nil
+}
+
+const HubKeyTFARecoveryGet = "USER:TFA:RECOVERY:GET"
+
+// Get recover code
+func (uc *UserController) TFARecoveryCodeGetHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	// Get recovery code
+	userRecoveryCode, err := users.GetTFARecovery(user.ID)
+	if err != nil {
+		return terror.Error(err, "User has no recovery codes.")
+	}
+
+	// send back user
+	reply(userRecoveryCode)
+
+	return nil
+}
+
+// HubKeyTFARecovery is the key used to run the AuthLogin handler
+const HubKeyTFARecoveryVerify = "USER:TFA:RECOVERY:VERIFY"
+
+// TFARecoveryResquest is a request to recover users' own 2fa
+type TFARecoveryRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		RecoveryCode string `json:"recoveryCode"`
+	} `json:"payload"`
+}
+
+// TFARecoveryVerifyHandler will verify recovery code and give user access once and use up the recovery code
+func (uc *UserController) TFARecoveryVerifyHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue verifying TFA, try again or contact support."
+	req := &TFARecoveryRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to parse 2fa recovery code verify request")
+		return terror.Error(err, "")
+	}
+
+	oldUser := *user
+
+	tx, err := passdb.StdConn.Begin()
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	defer tx.Rollback()
+
+	// Check if code matches
+	err = users.VerifyTFARecovery(req.Payload.RecoveryCode)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+	// Record user activity
+	uc.API.RecordUserActivity(ctx,
+		user.ID,
+		"Remove User 2FA",
+		types.ObjectTypeUser,
+		helpers.StringPointer(user.ID),
+		&user.Username,
+		helpers.StringPointer(user.FirstName.String+" "+user.LastName.String),
+		&types.UserActivityChangeData{
+			Name: db.TableNames.Users,
+			From: oldUser,
+			To:   user,
+		},
+	)
+	reply(user)
+
+	ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
 
 	return nil
 }

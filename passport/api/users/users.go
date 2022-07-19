@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/shopspring/decimal"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"net/mail"
 	"strings"
 	"sync"
+	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/crypto"
 	"xsyn-services/passport/email"
@@ -16,6 +16,10 @@ import (
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/supremacy_rpcclient"
 	"xsyn-services/types"
+
+	"github.com/pquerna/otp/totp"
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
@@ -65,18 +69,10 @@ func Faction(id string) *boiler.Faction {
 	return factions[id]
 }
 
-func FacebookID(s string) (*types.User, error) {
-	fbid := null.StringFrom(s)
-
-	u, err := boiler.Users(boiler.UserWhere.FacebookID.EQ(fbid)).One(passdb.StdConn)
+func FacebookID(s string) (*boiler.User, error) {
+	user, err := boiler.Users(boiler.UserWhere.FacebookID.EQ(null.StringFrom(s))).One(passdb.StdConn)
 	if err != nil {
 		return nil, err
-	}
-
-	user := &types.User{User: u}
-
-	if user.FactionID.Valid {
-		user.Faction = Faction(user.FactionID.String)
 	}
 
 	return user, nil
@@ -88,10 +84,6 @@ func GoogleID(s string) (*boiler.User, error) {
 		return nil, err
 	}
 
-	if user.FactionID.Valid {
-		user.L.LoadFaction(passdb.StdConn, true, user, nil)
-	}
-
 	return user, nil
 }
 
@@ -99,10 +91,6 @@ func TwitchID(s string) (*boiler.User, error) {
 	user, err := boiler.Users(boiler.UserWhere.TwitchID.EQ(null.StringFrom(s))).One(passdb.StdConn)
 	if err != nil {
 		return nil, err
-	}
-
-	if user.FactionID.Valid {
-		user.L.LoadFaction(passdb.StdConn, true, user, nil)
 	}
 
 	return user, nil
@@ -114,10 +102,6 @@ func TwitterID(s string) (*boiler.User, error) {
 		return nil, err
 	}
 
-	if user.FactionID.Valid {
-		user.L.LoadFaction(passdb.StdConn, true, user, nil)
-	}
-
 	return user, nil
 }
 
@@ -125,10 +109,6 @@ func DiscordID(s string) (*boiler.User, error) {
 	user, err := boiler.Users(boiler.UserWhere.DiscordID.EQ(null.StringFrom(s))).One(passdb.StdConn)
 	if err != nil {
 		return nil, err
-	}
-
-	if user.FactionID.Valid {
-		user.L.LoadFaction(passdb.StdConn, true, user, nil)
 	}
 
 	return user, nil
@@ -154,15 +134,25 @@ func UserExists(email string) (bool, error) {
 }
 
 func UserCreator(firstName, lastName, username, email, facebookID, googleID, twitchID, twitterID, discordID, phNumber string, publicAddress common.Address, password string, other ...interface{}) (*types.User, error) {
-	throughOauth := true
-	if facebookID == "" && googleID == "" && publicAddress.Hex() == "" && twitchID == "" && twitterID == "" && discordID == "" {
+	if password != "" {
+		err := helpers.IsValidPassword(password)
+		if err != nil {
+			return nil, err
+		}
+
+	}
+
+	if facebookID == "" && googleID == "" && publicAddress == common.HexToAddress("") && twitchID == "" && twitterID == "" && discordID == "" {
 		if email == "" {
 			return nil, terror.Error(fmt.Errorf("email empty"), "Email cannot be empty")
 		}
 
-		throughOauth = false
+		_, err := mail.ParseAddress(email)
+		if err != nil {
+			return nil, err
+		}
 
-		err := helpers.IsValidPassword(password)
+		err = helpers.IsValidPassword(password)
 		if err != nil {
 			return nil, err
 		}
@@ -185,30 +175,40 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		return nil, err
 	}
 
-	usExists, err := boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(trimmedUsername))).One(passdb.StdConn)
+	usExists, _ := boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(sanitizedUsername))).One(passdb.StdConn)
+
 	n := 1
 	for usExists != nil {
-		trimmedUsername = helpers.RandStringBytes(n) + trimmedUsername
+		sanitizedUsername = helpers.RandStringBytes(n) + sanitizedUsername
 		n++
-		usExists, err = boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(trimmedUsername))).One(passdb.StdConn)
+		usExists, _ = boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(sanitizedUsername))).One(passdb.StdConn)
 		if n > 10 {
 			return nil, fmt.Errorf("unable to generate a unique username")
 		}
+	}
+	hexPublicAddress := ""
+	if publicAddress != common.HexToAddress("") {
+		hexPublicAddress = publicAddress.Hex()
+	}
+
+	isVerified := false
+	if googleID != "" {
+		isVerified = true
 	}
 
 	user := &boiler.User{
 		FirstName:     null.StringFrom(firstName),
 		LastName:      null.StringFrom(lastName),
-		Username:      trimmedUsername,
+		Username:      sanitizedUsername,
 		FacebookID:    types.NewString(facebookID),
 		GoogleID:      types.NewString(googleID),
 		TwitchID:      types.NewString(twitchID),
 		TwitterID:     types.NewString(twitterID),
 		DiscordID:     types.NewString(discordID),
 		Email:         types.NewString(email),
-		PublicAddress: types.NewString(publicAddress.Hex()),
+		PublicAddress: types.NewString(hexPublicAddress),
 		RoleID:        types.NewString(types.UserRoleMemberID.String()),
-		Verified:      throughOauth, // verify users directly if they go through Oauth
+		Verified:      isVerified, // verify users directly if they go through Oauth
 	}
 
 	err = user.Insert(passdb.StdConn, boil.Infer())
@@ -231,10 +231,10 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 			return nil, err
 		}
 
-		return &types.User{User: user}, nil
+		return &types.User{User: *user}, nil
 	}
 
-	return &types.User{User: user}, nil
+	return &types.User{User: *user}, nil
 }
 
 func FingerprintUpsert(fingerprint Fingerprint, userID string) error {
@@ -341,6 +341,34 @@ func Email(email string) (*types.User, error) {
 	return types.UserFromBoil(user)
 }
 
+func EmailPassword(email string, password string) (*types.User, error) {
+
+	errMsg := "invalid email or password, please try again."
+
+	user, err := boiler.Users(
+		boiler.UserWhere.Email.EQ(null.StringFrom(strings.ToLower(email))),
+		qm.Load(qm.Rels(boiler.UserRels.Faction)),
+	).One(passdb.StdConn)
+
+	if err != nil {
+		return nil, fmt.Errorf(errMsg)
+	}
+
+	userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = crypto.ComparePassword(userPassword.PasswordHash, password)
+
+	if err != nil {
+		return nil, fmt.Errorf(errMsg)
+	}
+
+	return types.UserFromBoil(user)
+}
+
 func Username(uname string) (*boiler.User, string, error) {
 	user, err := boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(uname))).One(passdb.StdConn)
 	if err != nil {
@@ -354,10 +382,38 @@ func Username(uname string) (*boiler.User, string, error) {
 		}
 	}
 
-	if user.FactionID.Valid {
-		err = user.L.LoadFaction(passdb.StdConn, true, user, nil)
-		return nil, "", err
-	}
 	return user, hash.PasswordHash, nil
 
+}
+
+func VerifyTFA(userTFASecret string, passcode string) error {
+	if !totp.Validate(passcode, userTFASecret) {
+		return fmt.Errorf("invalid passcode. Please try again")
+	}
+	return nil
+}
+
+func GetTFARecovery(userID string) (boiler.UserRecoveryCodeSlice, error) {
+	userRecoveryCodes, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(userID)).All(passdb.StdConn)
+	if err != nil {
+		return nil, fmt.Errorf("user has no recovery codes")
+	}
+
+	return userRecoveryCodes, nil
+}
+
+func VerifyTFARecovery(recoveryCode string) error {
+	// Check if code matches
+	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.RecoveryCode.EQ(recoveryCode), boiler.UserRecoveryCodeWhere.UsedAt.IsNull()).One(passdb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	userRecoveryCode.UsedAt = null.TimeFrom(time.Now())
+	_, err = userRecoveryCode.Update(passdb.StdConn, boil.Whitelist(boiler.UserRecoveryCodeColumns.UsedAt))
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to delete recovery code")
+		return err
+	}
+	return nil
 }

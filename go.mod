@@ -34,10 +34,12 @@ require (
 	github.com/ninja-syndicate/ws v0.16.1
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
+	github.com/pquerna/otp v1.3.0
 	github.com/prometheus/client_golang v1.11.0
 	github.com/rs/zerolog v1.26.1
 	github.com/shopspring/decimal v1.3.1
 	github.com/speps/go-hashids/v2 v2.0.1
+	github.com/tjarratt/babble v0.0.0-20210505082055-cbca2a4833c1
 	github.com/twilio/twilio-go v0.22.2
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/victorspringer/http-cache v0.0.0-20220131145941-ef3624e6666f
@@ -45,12 +47,12 @@ require (
 	github.com/volatiletech/sqlboiler/v4 v4.8.6
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.0.0-20220210151621-f4118a5b28e2
-	google.golang.org/api v0.63.0
 )
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
+	github.com/boombuler/barcode v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
 	github.com/containerd/continuity v0.2.2 // indirect
 	github.com/docker/cli v20.10.11+incompatible // indirect
@@ -74,6 +76,7 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
+	google.golang.org/api v0.63.0 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
@@ -95,7 +98,7 @@ require (
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.0-20210816181553-5444fa50b93d // indirect
-	github.com/dghubble/oauth1 v0.7.1 // indirect
+	github.com/dghubble/oauth1 v0.7.1
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.1-0.20200219035652-afde56e7acac // indirect
 	github.com/ericlagergren/decimal v0.0.0-20181231230500-73749d4874d5 // indirect
