@@ -23,9 +23,10 @@ import (
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
+	petname "github.com/dustinkirkland/golang-petname"
+
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
-	"github.com/tjarratt/babble"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	oidc "github.com/coreos/go-oidc"
@@ -1891,11 +1892,8 @@ func (uc *UserController) TFAVerificationHandler(ctx context.Context, user *type
 
 		// generate recovery code
 		for i := 0; i < 16; i++ {
-			b := babble.NewBabbler()
-			b.Count = 2
-			b.Separator = "-"
-			code := strings.ToLower(b.Babble())
-			code = strings.ReplaceAll(code, "'s", "")
+			petname.NonDeterministicMode()
+			code := petname.Generate(2, "-")
 
 			recoveryCode := &boiler.UserRecoveryCode{
 				RecoveryCode: code,
