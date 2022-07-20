@@ -64,8 +64,23 @@ func IsUserAsset1155Column(col string) bool {
 	}
 }
 
+func IsAssetType(assetType string) bool {
+	switch assetType {
+	case "mech",
+		"mech_skin",
+		"mystery_crate",
+		"power_core",
+		"weapon",
+		"weapon_skin":
+		return true
+	default:
+		return false
+	}
+}
+
 type AssetListOpts struct {
 	UserID          xsynTypes.UserID
+	AssetsOn        string
 	Sort            *ListSortRequest
 	Filter          *ListFilterRequest
 	AttributeFilter *AttributeFilterRequest
@@ -98,7 +113,7 @@ func AssetList721(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 	//	}
 	//}
 
-	if opts.AssetType != "" {
+	if opts.AssetType != "" && IsAssetType(opts.AssetType) {
 		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.UserAssets,
 			Column:   boiler.UserAssetColumns.AssetType,
@@ -123,14 +138,31 @@ func AssetList721(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 		}
 	}
 
+	if opts.AssetsOn == "SUPREMACY" {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.UserAssets,
+			Column:   boiler.UserAssetColumns.LockedToService,
+			Operator: OperatorValueTypeIsNotNull,
+		}, 0, ""))
+	}
+	if opts.AssetsOn == "XSYN" {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.UserAssets,
+			Column:   boiler.UserAssetColumns.LockedToService,
+			Operator: OperatorValueTypeIsNull,
+		}, 0, ""))
+	}
+
+	boil.DebugMode = true
 	total, err := boiler.UserAssets(
 		queryMods...,
 	).Count(passdb.StdConn)
 	if err != nil {
+		boil.DebugMode = false
 		passlog.L.Error().Err(err).Interface("queryMods", queryMods).Msg("failed to count user asset list")
 		return 0, nil, err
 	}
-
+	boil.DebugMode = false
 	// Sort
 	if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.UserAssets && IsUserAssetColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
 		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.UserAssets, opts.Sort.Column, opts.Sort.Direction)))

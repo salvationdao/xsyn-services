@@ -249,6 +249,16 @@ func GenerateListFilterQueryMod(filterItem ListFilterRequestItem, index int, lin
 		condition = fmt.Sprintf("%s ILIKE ?", checkColumn)
 	}
 
+	if checkValue == "" {
+		if index == 0 {
+			return qm.Where(condition)
+		}
+		if linkOperator == LinkOperatorTypeOr {
+			return qm.Or(condition)
+		}
+		return qm.And(condition)
+	}
+
 	if index == 0 {
 		return qm.Where(condition, checkValue)
 	}

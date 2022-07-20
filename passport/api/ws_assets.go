@@ -12,6 +12,7 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
+	"strings"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
@@ -67,6 +68,7 @@ type AssetListRequest struct {
 		Search          string                     `json:"search"`
 		PageSize        int                        `json:"page_size"`
 		Page            int                        `json:"page"`
+		AssetsOn        string                     `json:"assets_on"`
 	} `json:"payload"`
 }
 
@@ -90,10 +92,11 @@ func (ac *AssetController) AssetList721Handler(ctx context.Context, user *xsynTy
 		Sort:            req.Payload.Sort,
 		Filter:          req.Payload.Filter,
 		AttributeFilter: req.Payload.AttributeFilter,
-		//AssetType:       "mech", // for now this is hardcoded to hide all the other assets
-		Search:   req.Payload.Search,
-		PageSize: req.Payload.PageSize,
-		Page:     req.Payload.Page,
+		AssetsOn:        req.Payload.AssetsOn,
+		Search:          req.Payload.Search,
+		PageSize:        req.Payload.PageSize,
+		Page:            req.Payload.Page,
+		AssetType:       req.Payload.AssetType,
 	})
 	if err != nil {
 		return terror.Error(err, "Unable to retrieve assets at this time, please try again or contact support.")
@@ -424,7 +427,7 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 	}
 
 	if !db.GetBoolWithDefault(db.KeyEnableSyncNFTOwners, false) {
-		return terror.Error(fmt.Errorf("asset syncing system down"))
+		return terror.Error(fmt.Errorf("asset syncing system down"), "Unable to transfer asset, please try again or contact support.")
 	}
 
 	userAsset, err := boiler.UserAssets(
@@ -649,7 +652,11 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 			transferLog,
 			"Failed to transfer asset from supremacy",
 		)
-		return terror.Error(err, "Failed to transfer asset from supremacy")
+		friendlyMessage := "Failed to transfer asset from supremacy"
+		if strings.Contains(err.Error(), "asset is equipped to another object") {
+			friendlyMessage = "Asset is equipped to another object."
+		}
+		return terror.Error(err, friendlyMessage)
 	}
 
 	userAsset.LockedToService = null.NewString("", false)
