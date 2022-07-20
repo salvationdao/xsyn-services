@@ -153,16 +153,14 @@ func AssetList721(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 		}, 0, ""))
 	}
 
-	boil.DebugMode = true
 	total, err := boiler.UserAssets(
 		queryMods...,
 	).Count(passdb.StdConn)
 	if err != nil {
-		boil.DebugMode = false
 		passlog.L.Error().Err(err).Interface("queryMods", queryMods).Msg("failed to count user asset list")
 		return 0, nil, err
 	}
-	boil.DebugMode = false
+
 	// Sort
 	if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.UserAssets && IsUserAssetColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
 		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.UserAssets, opts.Sort.Column, opts.Sort.Direction)))
