@@ -64,8 +64,23 @@ func IsUserAsset1155Column(col string) bool {
 	}
 }
 
+func IsAssetType(assetType string) bool {
+	switch assetType {
+	case "mech",
+		"mech_skin",
+		"mystery_crate",
+		"power_core",
+		"weapon",
+		"weapon_skin":
+		return true
+	default:
+		return false
+	}
+}
+
 type AssetListOpts struct {
 	UserID          xsynTypes.UserID
+	AssetsOn        string
 	Sort            *ListSortRequest
 	Filter          *ListFilterRequest
 	AttributeFilter *AttributeFilterRequest
@@ -98,7 +113,7 @@ func AssetList721(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 	//	}
 	//}
 
-	if opts.AssetType != "" {
+	if opts.AssetType != "" && IsAssetType(opts.AssetType) {
 		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.UserAssets,
 			Column:   boiler.UserAssetColumns.AssetType,
@@ -121,6 +136,21 @@ func AssetList721(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 					xSearch,
 				))
 		}
+	}
+
+	if opts.AssetsOn == "SUPREMACY" {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.UserAssets,
+			Column:   boiler.UserAssetColumns.LockedToService,
+			Operator: OperatorValueTypeIsNotNull,
+		}, 0, ""))
+	}
+	if opts.AssetsOn == "XSYN" {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.UserAssets,
+			Column:   boiler.UserAssetColumns.LockedToService,
+			Operator: OperatorValueTypeIsNull,
+		}, 0, ""))
 	}
 
 	total, err := boiler.UserAssets(
