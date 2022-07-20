@@ -364,3 +364,42 @@ func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string) (*b
 
 	return boilerAsset, nil
 }
+
+func UpdateUserAsset(itm *supremacy_rpcclient.XsynAsset) (*boiler.UserAsset, error) {
+	asset, err := boiler.UserAssets(
+		boiler.UserAssetWhere.Hash.EQ(itm.Hash),
+	).One(passdb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	var jsonAtrribs types.JSON
+	err = jsonAtrribs.Marshal(itm.Attributes)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	asset.Tier = itm.Tier
+	asset.OwnerID = itm.OwnerID
+	asset.Data = itm.Data
+	asset.Attributes = jsonAtrribs
+	asset.Name = itm.Name
+	asset.AssetType = itm.AssetType
+	asset.ImageURL = itm.ImageURL
+	asset.ExternalURL = itm.ExternalURL
+	asset.CardAnimationURL = itm.CardAnimationURL
+	asset.AvatarURL = itm.AvatarURL
+	asset.LargeImageURL = itm.LargeImageURL
+	asset.Description = itm.Description
+	asset.BackgroundColor = itm.BackgroundColor
+	asset.AnimationURL = itm.AnimationURL
+	asset.YoutubeURL = itm.YoutubeURL
+	asset.DataRefreshedAt = time.Now()
+
+	_, err = asset.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return asset, nil
+}
