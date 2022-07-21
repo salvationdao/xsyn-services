@@ -53,6 +53,7 @@ func NewAssetController(log *zerolog.Logger, api *API) *AssetController {
 	api.SecureCommand(HubKeyDeposit1155Asset, assetHub.DepositAsset1155Handler)
 	api.SecureCommand(HubKeyDepositAsset1155List, assetHub.DepositAsset1155ListHandler)
 	api.Command(HubKeyAssetGet, assetHub.AssetUpdatedGetHandler)
+	api.Command(HubKeyAssetRefreshMetadata, assetHub.AssetRefreshMetadataHandler)
 	api.Command(HubKeyAsset1155Get, assetHub.Asset1155UpdatedGetHandler)
 
 	return assetHub
@@ -298,6 +299,35 @@ func (ac *AssetController) AssetUpdatedGetHandler(ctx context.Context, key strin
 			Username: userAsset.R.Owner.Username,
 		},
 	})
+	return nil
+}
+
+type AssetRefreshMetadataRequest struct {
+	Payload struct {
+		AssetHash string `json:"asset_hash"`
+	} `json:"payload"`
+}
+
+const HubKeyAssetRefreshMetadata = "ASSET:REFRESH:METADATA:721"
+
+func (ac *AssetController) AssetRefreshMetadataHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &AssetRefreshMetadataRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	asset, err := supremacy_rpcclient.AssetGet(req.Payload.AssetHash)
+	if err != nil {
+		return terror.Error(err, "Failed to update asset metadata.")
+	}
+
+	_, err = db.UpdateUserAsset(asset)
+	if err != nil {
+		return terror.Error(err, "Failed to update asset metadata.")
+	}
+
+	reply(true)
 	return nil
 }
 
