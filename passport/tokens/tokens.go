@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 	"xsyn-services/boiler"
-	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/types"
 
@@ -89,7 +88,12 @@ func Retrieve(id uuid.UUID) (auth.Token, *boiler.User, error) {
 }
 
 func Remove(uuid uuid.UUID) error {
-	err := db.AuthRemoveTokenWithID(types.IssueTokenID(uuid))
+	token, err := boiler.FindIssueToken(passdb.StdConn, uuid.String())
+	if err != nil {
+		return terror.Error(err, "Failed to find auth token")
+	}
+	token.DeletedAt = null.TimeFrom(time.Now())
+	_, err = token.Update(passdb.StdConn, boil.Whitelist(boiler.IssueTokenColumns.DeletedAt))
 	if err != nil {
 		return terror.Error(err, "Failed to remove token with ID")
 	}

@@ -136,6 +136,7 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 				offChainOwner.ID,
 				onChainOwner.ID,
 				"",
+				true,
 				null.String{},
 				func(te *boiler.AssetTransferEvent) {
 					otherAssets, _ := supremacy_rpcclient.SupremacyAssetTransferEvent(&types.TransferEvent{
@@ -151,7 +152,8 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 							othAsstHash,
 							offChainOwner.ID,
 							onChainOwner.ID,
-							"",
+							types.SupremacyGameUserID.String(),
+							false, // we don't want to change the service id
 							null.String{},
 							nil,
 						)

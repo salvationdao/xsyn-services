@@ -309,7 +309,7 @@ func UserTransactionGetList(userID string, limit int) ([]*boiler.Transaction, er
 				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.CreatedAt),
 			),
 		),
-		boiler.TransactionWhere.CreatedAt.GT(time.Now().AddDate(0,0,-1)),
+		boiler.TransactionWhere.CreatedAt.GT(time.Now().AddDate(0, 0, -1)),
 		qm.Limit(limit),
 	).All(passdb.StdConn)
 	if err != nil {
@@ -333,7 +333,9 @@ func UserMixedCaseUpdateAll() error {
 		return err
 	}
 	defer tx.Rollback()
-	users, err := boiler.Users().All(tx)
+	users, err := boiler.Users(
+		boiler.UserWhere.PublicAddress.IsNotNull(),
+	).All(tx)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("updating all users to mixed case failed")
 		return err
