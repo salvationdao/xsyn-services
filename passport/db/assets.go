@@ -267,10 +267,17 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTyp
 	if err != nil {
 		return nil, terror.Error(err, "communication to supremacy has failed")
 	}
+
+	tx, err := passdb.StdConn.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
 	var newItems []*xsynTypes.UserAsset
 	// for each asset, assign it on our database
 	for _, itm := range resp.Assets {
-		userAsset, err := RegisterUserAsset(itm, xsynTypes.SupremacyGameUserID.String())
+		userAsset, err := RegisterUserAsset(itm, xsynTypes.SupremacyGameUserID.String(), tx)
 		if err != nil {
 			return nil, terror.Error(err, "Failed to register new user asset.")
 		}
@@ -278,18 +285,15 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTyp
 		newItems = append(newItems, xsynTypes.UserAssetFromBoiler(userAsset))
 	}
 
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+
 	return newItems, nil
 }
 
-func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string, txes ...boil.Executor) (*boiler.UserAsset, error) {
-
-	var tx boil.Executor
-
-	tx = passdb.StdConn
-	if len(txes) > 0 {
-		tx = txes[0]
-	}
-
+func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string, tx boil.Executor) (*boiler.UserAsset, error) {
 	// get collection
 	collection, err := CollectionBySlug(itm.CollectionSlug)
 	if err != nil {

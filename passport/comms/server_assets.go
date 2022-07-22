@@ -94,12 +94,7 @@ func (s *S) AssetRegisterHandler(req RegisterAssetReq, resp *RegisterAssetResp) 
 	if err != nil {
 		return err
 	}
-
-	err = tx.Rollback()
-	if err != nil {
-		passlog.L.Error().Err(err).Msg("failed to rollback asset register")
-		return err
-	}
+	defer tx.Rollback()
 
 	for _, ass := range req.Asset {
 		_, err = db.RegisterUserAsset(ass, serviceID, tx)
@@ -135,13 +130,25 @@ func (s *S) AssetsRegisterHandler(req RegisterAssetsReq, resp *RegisterAssetsRes
 		return err
 	}
 
+	tx, err := passdb.StdConn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	for i, asset := range req.Assets {
-		_, err = db.RegisterUserAsset(asset, serviceID)
+		_, err = db.RegisterUserAsset(asset, serviceID, tx)
 		if err != nil {
 			passlog.L.Error().Err(err).Interface("asset", asset).Int("index of fail", i).Msg("failed to register new assets")
 			return err
 		}
 	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
 	resp.Success = true
 	return nil
 }
