@@ -4,18 +4,19 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/supremacy_rpcclient"
 	xsynTypes "xsyn-services/types"
+
+	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 func IsUserAssetColumn(col string) bool {
@@ -151,6 +152,9 @@ func AssetList721(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 			Column:   boiler.UserAssetColumns.LockedToService,
 			Operator: OperatorValueTypeIsNull,
 		}, 0, ""))
+	}
+	if opts.AssetsOn == "ON_CHAIN" {
+		queryMods = append(queryMods, boiler.UserAssetWhere.OnChainStatus.EQ("STAKABLE"))
 	}
 
 	total, err := boiler.UserAssets(
