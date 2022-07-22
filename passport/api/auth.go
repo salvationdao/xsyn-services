@@ -138,7 +138,7 @@ func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string
 	cookie := &http.Cookie{
 		Name:     "xsyn-token",
 		Value:    b64,
-		Expires:  time.Now().Add(time.Hour * 24 * 7),
+		Expires:  time.Now().AddDate(0, 0, api.TokenExpirationDays), // sync with token
 		Path:     "/",
 		Secure:   api.IsCookieSecure,
 		HttpOnly: true,
@@ -1144,7 +1144,7 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 			User:      req.User,
 		}
 
-		_, _, token, err := token(api, config, false, 1)
+		_, _, token, err := token(api, config, false, api.TokenExpirationDays)
 		if err != nil {
 			return err
 		}
@@ -1297,7 +1297,7 @@ func token(api *API, config *TokenConfig, isIssueToken bool, expireInDays int) (
 		&user.User,
 		config.Device,
 		config.Action,
-		api.TokenExpirationDays)
+		expireInDays)
 
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to generate jwt token")
@@ -1324,11 +1324,11 @@ func token(api *API, config *TokenConfig, isIssueToken bool, expireInDays int) (
 }
 
 func (api *API) ResetPasswordToken(config *TokenConfig) (*types.User, uuid.UUID, string, error) {
-	return token(api, config, false, 1)
+	return token(api, config, false, api.TokenExpirationDays)
 }
 
 func (api *API) VerifyEmailToken(config *TokenConfig) (*types.User, uuid.UUID, string, error) {
-	return token(api, config, false, 1)
+	return token(api, config, false, api.TokenExpirationDays)
 }
 
 func (api *API) IssueToken(config *TokenConfig) (*types.User, uuid.UUID, string, error) {

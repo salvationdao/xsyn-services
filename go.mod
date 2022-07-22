@@ -32,7 +32,7 @@ require (
 	github.com/ninja-software/terror/v2 v2.0.12
 	github.com/ninja-syndicate/hub v1.9.2
 	github.com/ninja-syndicate/supremacy-bridge v0.1.43
-	github.com/ninja-syndicate/ws v0.16.1
+	github.com/ninja-syndicate/ws v0.16.3
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/pquerna/otp v1.3.0
