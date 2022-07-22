@@ -95,9 +95,11 @@ func (s *S) AssetRegisterHandler(req RegisterAssetReq, resp *RegisterAssetResp) 
 		return err
 	}
 
-	defer func() {
-		_ = tx.Rollback()
-	}()
+	err = tx.Rollback()
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to rollback asset register")
+		return err
+	}
 
 	for _, ass := range req.Asset {
 		_, err = db.RegisterUserAsset(ass, serviceID, tx)
