@@ -2,11 +2,6 @@ package comms
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"strings"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
@@ -16,6 +11,12 @@ import (
 	"xsyn-services/passport/payments"
 	"xsyn-services/passport/supremacy_rpcclient"
 	xsynTypes "xsyn-services/types"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 func (s *S) AssetOnChainStatusHandler(req AssetOnChainStatusReq, resp *AssetOnChainStatusResp) error {
@@ -73,8 +74,8 @@ func (s *S) UpdateStoreItemIDsHandler(req UpdateStoreItemIDsReq, resp *UpdateSto
 }
 
 type RegisterAssetReq struct {
-	ApiKey string                         `json:"api_key"`
-	Asset  *supremacy_rpcclient.XsynAsset `json:"asset"`
+	ApiKey string                           `json:"api_key"`
+	Asset  []*supremacy_rpcclient.XsynAsset `json:"asset"`
 }
 
 type RegisterAssetResp struct {
@@ -89,9 +90,25 @@ func (s *S) AssetRegisterHandler(req RegisterAssetReq, resp *RegisterAssetResp) 
 		return err
 	}
 
-	_, err = db.RegisterUserAsset(req.Asset, serviceID)
+	tx, err := passdb.StdConn.Begin()
 	if err != nil {
-		passlog.L.Error().Err(err).Interface("req.Asset", req.Asset).Msg("failed to register new asset")
+		return err
+	}
+
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	for _, ass := range req.Asset {
+		_, err = db.RegisterUserAsset(ass, serviceID, tx)
+		if err != nil {
+			passlog.L.Error().Err(err).Interface("req.Asset", req.Asset).Msg("failed to register new asset")
+			return err
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
 		return err
 	}
 

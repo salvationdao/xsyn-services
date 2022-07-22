@@ -281,7 +281,15 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTyp
 	return newItems, nil
 }
 
-func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string) (*boiler.UserAsset, error) {
+func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string, txes ...boil.Executor) (*boiler.UserAsset, error) {
+
+	var tx boil.Executor
+
+	tx = passdb.StdConn
+	if len(txes) > 0 {
+		tx = txes[0]
+	}
+
 	// get collection
 	collection, err := CollectionBySlug(itm.CollectionSlug)
 	if err != nil {
@@ -323,7 +331,7 @@ func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string) (*b
 	oldAsset, err := boiler.PurchasedItemsOlds(
 		boiler.PurchasedItemsOldWhere.CollectionID.EQ(collection.ID),
 		boiler.PurchasedItemsOldWhere.ExternalTokenID.EQ(int(itm.TokenID)),
-	).One(passdb.StdConn)
+	).One(tx)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, terror.Error(err)
 	}
@@ -360,7 +368,7 @@ func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string) (*b
 		}
 	}
 
-	err = boilerAsset.Insert(passdb.StdConn, boil.Infer())
+	err = boilerAsset.Insert(tx, boil.Infer())
 	if err != nil {
 		passlog.L.Error().Interface("itm", itm).Err(err).Msg("failed to register new asset - can't insert asset")
 		return nil, err
