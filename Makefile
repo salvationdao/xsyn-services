@@ -232,4 +232,4 @@ dev-give-mech:
 
 .PHONE: dev-give-mechs
 dev-give-mechs:
-	make dev-give-mech public_address=0x04c2C035F908C73FBff4FAf3818824170C938640
+	make dev-give-mech public_address=0xC1cEf962d33F408289e6A930608Ce3BF6479303c
