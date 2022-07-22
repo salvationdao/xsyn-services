@@ -46,7 +46,7 @@ func NewMailer(domain string, apiKey string, systemAddress string, config *types
 
 	// Parse email templates
 	var templates []string
-	templatesFolder := "./email/templates"
+	templatesFolder := "./passport/email/templates"
 	err := filepath.Walk(templatesFolder, func(path string, info os.FileInfo, err error) error {
 		if strings.Contains(path, ".html") {
 			templates = append(templates, path)
@@ -119,7 +119,7 @@ func (m *Mailer) SendEmail(
 	// Setup Email
 	message := m.MailGun.NewMessage(m.SystemAddress, subject, "", strings.Split(to, ",")...)
 	message.SetHtml(body)
-	message.AddInline("./email/templates/logo.png")
+	message.AddInline("./passport/email/templates/logo.png")
 	if bcc != "" {
 		for _, b := range strings.Split(bcc, ",") {
 			message.AddBCC(b)

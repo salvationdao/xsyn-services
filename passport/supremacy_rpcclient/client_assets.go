@@ -64,17 +64,39 @@ type AssetTransferReq struct {
 }
 
 type AssetTransferResp struct {
+	OtherTransferredAssetHashes []string `json:"other_transferred_asset_hashes"`
 }
 
-func SupremacyAssetTransferEvent(TransferEvent *types.TransferEvent) error {
+func SupremacyAssetTransferEvent(TransferEvent *types.TransferEvent) ([]string, error) {
 	req := &AssetTransferReq{
 		TransferEvent: TransferEvent,
 	}
 	resp := &AssetTransferResp{}
 	err := SupremacyClient.Call("S.AssetTransferHandler", req, resp)
 	if err != nil {
-		return terror.Error(err, "communication to supremacy has failed")
+		return resp.OtherTransferredAssetHashes, terror.Error(err, "communication to supremacy has failed")
 	}
 
-	return  nil
+	return resp.OtherTransferredAssetHashes, nil
+}
+
+type AssetReq struct {
+	AssetHash string `json:"asset_hash"`
+}
+
+type AssetResp struct {
+	Asset *XsynAsset `json:"asset"`
+}
+
+func AssetGet(assetHash string) (*XsynAsset, error) {
+	req := &AssetReq{
+		assetHash,
+	}
+	resp := &AssetResp{}
+	err := SupremacyClient.Call("S.AssetHandler", req, resp)
+	if err != nil {
+		return nil, terror.Error(err, "communication to supremacy has failed")
+	}
+
+	return resp.Asset, nil
 }

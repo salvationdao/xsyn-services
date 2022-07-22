@@ -54,18 +54,19 @@ const ServerClientLevel = 5
 
 // User is a single user on the platform
 type User struct {
-	*boiler.User
-	Faction  *boiler.Faction `json:"faction"`
-	Online   bool            `json:"online"`
-	Pass2FA  bool            `json:"pass_2_fa"`
-	Metadata UserMetadata    `json:"metadata" db:"metadata"`
-	Sups     decimal.Decimal `json:"sups" db:"sups"`
+	boiler.User
+	Faction     *boiler.Faction `json:"faction"`
+	Online      bool            `json:"online"`
+	HasPassword bool            `json:"has_password"`
+	Pass2FA     bool            `json:"pass_2_fa"`
+	Metadata    UserMetadata    `json:"metadata" db:"metadata"`
+	Sups        decimal.Decimal `json:"sups" db:"sups"`
 	//NoNonce  *struct{}       `json:"nonce,omitempty"`
 	//NoSups   *struct{}       `json:"sups,omitempty"`
 }
 
 func UserFromBoil(u *boiler.User) (*User, error) {
-	user := &User{User: u}
+	user := &User{User: *u}
 	if u.FactionID.Valid {
 		if u.R.Faction != nil {
 			user.Faction = u.R.Faction

@@ -17,6 +17,7 @@ func TransferAsset(
 	fromID,
 	toID,
 	serviceID string,
+	updateServiceID bool,
 	relatedTransactionID null.String,
 	assetTransferNotify func(te *boiler.AssetTransferEvent),
 ) (*boiler.UserAsset, int64, error) {
@@ -38,7 +39,7 @@ func TransferAsset(
 		return userAsset, 0, err
 	}
 
-	if serviceID != "" && userAsset.LockedToService.Valid && userAsset.LockedToService.String != serviceID {
+	if updateServiceID && serviceID != "" && userAsset.LockedToService.Valid && userAsset.LockedToService.String != serviceID {
 		err := fmt.Errorf("cannot transfer asset the service doesn't control")
 		passlog.L.Error().Err(err).
 			Str("assetHash", assetHash).
@@ -61,9 +62,11 @@ func TransferAsset(
 	}
 
 	userAsset.OwnerID = toID
-	userAsset.LockedToService = null.String{}
-	if serviceID != "" {
-		userAsset.LockedToService = null.StringFrom(serviceID)
+	if updateServiceID {
+		userAsset.LockedToService = null.String{}
+		if serviceID != "" {
+			userAsset.LockedToService = null.StringFrom(serviceID)
+		}
 	}
 
 	_, err = userAsset.Update(tx, boil.Infer())

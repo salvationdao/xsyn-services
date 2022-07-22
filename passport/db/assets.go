@@ -4,18 +4,19 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/supremacy_rpcclient"
 	xsynTypes "xsyn-services/types"
+
+	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 func IsUserAssetColumn(col string) bool {
@@ -64,8 +65,23 @@ func IsUserAsset1155Column(col string) bool {
 	}
 }
 
+func IsAssetType(assetType string) bool {
+	switch assetType {
+	case "mech",
+		"mech_skin",
+		"mystery_crate",
+		"power_core",
+		"weapon",
+		"weapon_skin":
+		return true
+	default:
+		return false
+	}
+}
+
 type AssetListOpts struct {
 	UserID          xsynTypes.UserID
+	AssetsOn        string
 	Sort            *ListSortRequest
 	Filter          *ListFilterRequest
 	AttributeFilter *AttributeFilterRequest
@@ -98,7 +114,7 @@ func AssetList721(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 	//	}
 	//}
 
-	if opts.AssetType != "" {
+	if opts.AssetType != "" && IsAssetType(opts.AssetType) {
 		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.UserAssets,
 			Column:   boiler.UserAssetColumns.AssetType,
@@ -121,6 +137,24 @@ func AssetList721(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 					xSearch,
 				))
 		}
+	}
+
+	if opts.AssetsOn == "SUPREMACY" {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.UserAssets,
+			Column:   boiler.UserAssetColumns.LockedToService,
+			Operator: OperatorValueTypeIsNotNull,
+		}, 0, ""))
+	}
+	if opts.AssetsOn == "XSYN" {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.UserAssets,
+			Column:   boiler.UserAssetColumns.LockedToService,
+			Operator: OperatorValueTypeIsNull,
+		}, 0, ""))
+	}
+	if opts.AssetsOn == "ON_CHAIN" {
+		queryMods = append(queryMods, boiler.UserAssetWhere.OnChainStatus.EQ("STAKABLE"))
 	}
 
 	total, err := boiler.UserAssets(
@@ -247,7 +281,15 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTyp
 	return newItems, nil
 }
 
-func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string) (*boiler.UserAsset, error) {
+func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string, txes ...boil.Executor) (*boiler.UserAsset, error) {
+
+	var tx boil.Executor
+
+	tx = passdb.StdConn
+	if len(txes) > 0 {
+		tx = txes[0]
+	}
+
 	// get collection
 	collection, err := CollectionBySlug(itm.CollectionSlug)
 	if err != nil {
@@ -289,7 +331,7 @@ func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string) (*b
 	oldAsset, err := boiler.PurchasedItemsOlds(
 		boiler.PurchasedItemsOldWhere.CollectionID.EQ(collection.ID),
 		boiler.PurchasedItemsOldWhere.ExternalTokenID.EQ(int(itm.TokenID)),
-	).One(passdb.StdConn)
+	).One(tx)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, terror.Error(err)
 	}
@@ -326,11 +368,50 @@ func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string) (*b
 		}
 	}
 
-	err = boilerAsset.Insert(passdb.StdConn, boil.Infer())
+	err = boilerAsset.Insert(tx, boil.Infer())
 	if err != nil {
 		passlog.L.Error().Interface("itm", itm).Err(err).Msg("failed to register new asset - can't insert asset")
 		return nil, err
 	}
 
 	return boilerAsset, nil
+}
+
+func UpdateUserAsset(itm *supremacy_rpcclient.XsynAsset) (*boiler.UserAsset, error) {
+	asset, err := boiler.UserAssets(
+		boiler.UserAssetWhere.Hash.EQ(itm.Hash),
+	).One(passdb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	var jsonAtrribs types.JSON
+	err = jsonAtrribs.Marshal(itm.Attributes)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	asset.Tier = itm.Tier
+	asset.OwnerID = itm.OwnerID
+	asset.Data = itm.Data
+	asset.Attributes = jsonAtrribs
+	asset.Name = itm.Name
+	asset.AssetType = itm.AssetType
+	asset.ImageURL = itm.ImageURL
+	asset.ExternalURL = itm.ExternalURL
+	asset.CardAnimationURL = itm.CardAnimationURL
+	asset.AvatarURL = itm.AvatarURL
+	asset.LargeImageURL = itm.LargeImageURL
+	asset.Description = itm.Description
+	asset.BackgroundColor = itm.BackgroundColor
+	asset.AnimationURL = itm.AnimationURL
+	asset.YoutubeURL = itm.YoutubeURL
+	asset.DataRefreshedAt = time.Now()
+
+	_, err = asset.Update(passdb.StdConn, boil.Infer())
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return asset, nil
 }
