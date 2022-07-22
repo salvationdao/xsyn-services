@@ -33,16 +33,6 @@ func main() {
 
 	params := url.Values{}
 	params.Add("sslmode", "disable")
-
-	//connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
-	//	"passport",
-	//	"LDs!Eb3z6LDC9axTrtEZWynme",
-	//	"localhost",
-	//	"5454",
-	//	"passport-db",
-	//	params.Encode(),
-	//)
-
 	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
 		"passport",
 		"dev",

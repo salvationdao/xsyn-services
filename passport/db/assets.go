@@ -4,18 +4,19 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/supremacy_rpcclient"
 	xsynTypes "xsyn-services/types"
+
+	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 func IsUserAssetColumn(col string) bool {
@@ -152,6 +153,9 @@ func AssetList721(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 			Operator: OperatorValueTypeIsNull,
 		}, 0, ""))
 	}
+	if opts.AssetsOn == "ON_CHAIN" {
+		queryMods = append(queryMods, boiler.UserAssetWhere.OnChainStatus.EQ("STAKABLE"))
+	}
 
 	total, err := boiler.UserAssets(
 		queryMods...,
@@ -277,7 +281,15 @@ func PurchasedItemRegister(storeItemID uuid.UUID, ownerID uuid.UUID) ([]*xsynTyp
 	return newItems, nil
 }
 
-func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string) (*boiler.UserAsset, error) {
+func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string, txes ...boil.Executor) (*boiler.UserAsset, error) {
+
+	var tx boil.Executor
+
+	tx = passdb.StdConn
+	if len(txes) > 0 {
+		tx = txes[0]
+	}
+
 	// get collection
 	collection, err := CollectionBySlug(itm.CollectionSlug)
 	if err != nil {
@@ -319,7 +331,7 @@ func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string) (*b
 	oldAsset, err := boiler.PurchasedItemsOlds(
 		boiler.PurchasedItemsOldWhere.CollectionID.EQ(collection.ID),
 		boiler.PurchasedItemsOldWhere.ExternalTokenID.EQ(int(itm.TokenID)),
-	).One(passdb.StdConn)
+	).One(tx)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, terror.Error(err)
 	}
@@ -356,7 +368,7 @@ func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string) (*b
 		}
 	}
 
-	err = boilerAsset.Insert(passdb.StdConn, boil.Infer())
+	err = boilerAsset.Insert(tx, boil.Infer())
 	if err != nil {
 		passlog.L.Error().Interface("itm", itm).Err(err).Msg("failed to register new asset - can't insert asset")
 		return nil, err
