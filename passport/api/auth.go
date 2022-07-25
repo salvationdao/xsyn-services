@@ -1532,7 +1532,7 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 		// check whether token is attached
 		token := r.URL.Query().Get("token")
 		if token == "" {
-			passlog.L.Error().Msg("No token found")
+			passlog.L.Warn().Msg("No token found")
 			return http.StatusBadRequest, terror.Warn(fmt.Errorf("no cookie and token are provided"), "User are not signed in.")
 		}
 
