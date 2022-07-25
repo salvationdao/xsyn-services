@@ -195,7 +195,26 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		isVerified = true
 	}
 
+	tx, err := passdb.StdConn.Begin()
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("Failed to start db transaction")
+		return nil, terror.Error(err, "Failed to create new user.")
+	}
+
+	defer tx.Rollback()
+
+	// insert new account
+	account := boiler.Account{
+		Type: boiler.AccountTypeUSER,
+	}
+	err = account.Insert(tx, boil.Infer())
+	if err != nil {
+		passlog.L.Error().Err(err).Interface("account", account).Msg("Failed to insert new account")
+		return nil, terror.Error(err, "Failed to create new account.")
+	}
+
 	user := &boiler.User{
+		ID:            account.ID,
 		FirstName:     null.StringFrom(firstName),
 		LastName:      null.StringFrom(lastName),
 		Username:      sanitizedUsername,
@@ -208,12 +227,19 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		PublicAddress: types.NewString(hexPublicAddress),
 		RoleID:        types.NewString(types.UserRoleMemberID.String()),
 		Verified:      isVerified, // verify users directly if they go through Oauth
+		AccountID:     account.ID,
 	}
 
-	err = user.Insert(passdb.StdConn, boil.Infer())
+	err = user.Insert(tx, boil.Infer())
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("insert new user failed")
 		return nil, terror.Error(err, "create new user failed")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("Failed to commit db transaction")
+		return nil, terror.Error(err, "Failed to create new user")
 	}
 
 	if password != "" && email != "" {

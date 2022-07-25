@@ -47,6 +47,9 @@ const KeyEnablePassportExchangeRateAfterBSCBlock KVKey = "passport_exchange_rate
 const KeySUPSPurchaseContract KVKey = "contract_purchase_address"
 const KeySUPSWithdrawContract KVKey = "contract_withdraw_address"
 
+const KeySyndicateRegisterFee KVKey = "syndicate_create_fee"
+const KeySyndicateRegisterFeeCut KVKey = "syndicate_create_fee_cut"
+
 func get(key KVKey) string {
 	exists, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).Exists(passdb.StdConn)
 	if err != nil {

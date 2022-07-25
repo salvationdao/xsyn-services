@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/gofrs/uuid"
 	"net/url"
 	"os"
 	"xsyn-services/boiler"
@@ -29,16 +30,24 @@ func main() {
 	fillSups := flag.Bool("fill_bot_sups", false, "trigger db to filled 1M sup for bot users")
 	botGenNum := flag.Int("bot_gen_number", 0, "generate x amount of bot users on each faction")
 
+	// data detail
+	dbUser := flag.String("database_user", "passport", "database user")
+	dbPass := flag.String("database_pass", "dev", "database password")
+	dbHost := flag.String("database_host", "localhost", "database host")
+	dbPost := flag.String("database_port", "5432", "database port")
+	dbName := flag.String("database_name", "passport", "database name")
+
 	flag.Parse()
 
 	params := url.Values{}
 	params.Add("sslmode", "disable")
+
 	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
-		"passport",
-		"dev",
-		"localhost",
-		"5432",
-		"passport",
+		*dbUser,
+		*dbPass,
+		*dbHost,
+		*dbPost,
+		*dbName,
 		params.Encode(),
 	)
 	cfg, err := pgx.ParseConfig(connString)
@@ -53,8 +62,12 @@ func main() {
 	if fillSups != nil && *fillSups {
 		result, err := conn.Exec(
 			`
-			UPDATE users u set sups = 1000000000000000000000000
-			WHERE EXISTS (SELECT 1 FROM roles r WHERE r.id = u.role_id AND r.name = 'Bot');
+			UPDATE accounts a set sups = 1000000000000000000000000
+			WHERE EXISTS (
+			    SELECT 1 FROM users u 
+			    inner join roles r on u.role_id = r.id and r.name = 'Bot'
+			    WHERE u.account_id = a.id
+			);
 			`,
 		)
 		if err != nil {
@@ -96,12 +109,24 @@ func main() {
 			for i < *botGenNum {
 				i++
 
+				acc := boiler.Account{
+					ID:   uuid.Must(uuid.NewV4()).String(),
+					Type: boiler.AccountTypeUSER,
+					Sups: decimal.New(1000000, 18), // 1M sups
+				}
+
+				err = acc.Insert(tx, boil.Infer())
+				if err != nil {
+					log.Fatal(err)
+				}
+
 				user := boiler.User{
+					ID:        acc.ID,
 					Username:  faker.Name(),
 					FactionID: null.StringFrom(faction.ID),
 					RoleID:    null.StringFrom(botRole.ID),
 					Verified:  true,
-					Sups:      decimal.New(1000000, 18), // 1M sups
+					AccountID: acc.ID,
 				}
 
 				err = user.Insert(tx, boil.Infer())

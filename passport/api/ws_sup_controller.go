@@ -196,8 +196,8 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, user *types.Use
 	txRef := fmt.Sprintf("sup|withdraw|%s", txID)
 
 	trans := &types.NewTransaction{
-		To:                   types.OnChainUserID,
-		From:                 types.UserID(uuid.Must(uuid.FromString(user.ID))),
+		Credit:               types.OnChainUserID.String(),
+		Debit:                user.ID,
 		NotSafe:              true,
 		Amount:               withdrawAmount,
 		TransactionReference: types.TransactionReference(txRef),
@@ -210,13 +210,12 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, user *types.Use
 		return terror.Error(err, errMsg)
 	}
 
-
 	// refund callback
 	refund := func(reason string) {
 		trans := &types.NewTransaction{
-			To:                   types.UserID(uuid.Must(uuid.FromString(user.ID))),
+			Credit:               user.ID,
 			NotSafe:              true,
-			From:                 types.OnChainUserID,
+			Debit:                types.OnChainUserID.String(),
 			Amount:               withdrawAmount,
 			TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
 			Description:          "Refund of Withdraw of SUPS.",

@@ -48,8 +48,8 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 	}
 
 	tx := &types.NewTransaction{
-		From:                 types.UserID(uuid.FromStringOrNil(transaction.Credit)),
-		To:                   types.UserID(uuid.FromStringOrNil(transaction.Debit)),
+		Debit:                transaction.CreditAccountID,
+		Credit:               transaction.DebitAccountID,
 		TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", transaction.TransactionReference)),
 		Description:          fmt.Sprintf("Reverse transaction - %s", transaction.Description),
 		Amount:               transaction.Amount,
@@ -120,8 +120,8 @@ func (s *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 	}
 
 	tx := &types.NewTransaction{
-		From:                 types.UserID(req.FromUserID),
-		To:                   types.UserID(req.ToUserID),
+		Debit:                req.FromUserID.String(),
+		Credit:               req.ToUserID.String(),
 		TransactionReference: req.TransactionReference,
 		Description:          req.Description,
 		Amount:               amt,

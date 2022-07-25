@@ -35,16 +35,16 @@ var (
 	XsynSaleUserID                   = UserID(uuid.Must(uuid.FromString("1429a004-84a1-11ec-a8a3-0242ac120002")))
 )
 
-func (e UserID) IsSystemUser() bool {
-	switch e {
-	case XsynTreasuryUserID,
-		SupremacyGameUserID,
-		OnChainUserID,
-		SupremacyBattleUserID,
-		SupremacySupPoolUserID,
-		SupremacyZaibatsuUserID,
-		SupremacyRedMountainUserID,
-		SupremacyBostonCyberneticsUserID:
+func IsSystemUser(userID string) bool {
+	switch userID {
+	case XsynTreasuryUserID.String(),
+		SupremacyGameUserID.String(),
+		OnChainUserID.String(),
+		SupremacyBattleUserID.String(),
+		SupremacySupPoolUserID.String(),
+		SupremacyZaibatsuUserID.String(),
+		SupremacyRedMountainUserID.String(),
+		SupremacyBostonCyberneticsUserID.String():
 		return true
 	}
 	return false
@@ -60,6 +60,7 @@ type User struct {
 	HasPassword bool            `json:"has_password"`
 	Pass2FA     bool            `json:"pass_2_fa"`
 	Metadata    UserMetadata    `json:"metadata" db:"metadata"`
+	Sups        decimal.Decimal `json:"sups" db:"sups"`
 	//NoNonce  *struct{}       `json:"nonce,omitempty"`
 	//NoSups   *struct{}       `json:"sups,omitempty"`
 }
