@@ -192,7 +192,7 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 	}
 
 	// Check public address is hex address
-	if !common.IsHexAddress(hexPublicAddress) && hexPublicAddress != "" {
+	if hexPublicAddress != "" && !common.IsHexAddress(hexPublicAddress) {
 		passlog.L.Error().Err(err).Msg("Public address provided is not a hex address")
 		return nil, terror.Error(err, "failed to provide a valid wallet address")
 	}

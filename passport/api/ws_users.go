@@ -1463,7 +1463,7 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, user *types.User
 	user.PublicAddress = null.StringFrom(hexPublicAddress)
 
 	// Check public address is hex address
-	if !common.IsHexAddress(hexPublicAddress) && hexPublicAddress != "" {
+	if !common.IsHexAddress(hexPublicAddress) {
 		passlog.L.Error().Err(err).Msg("Public address provided is not a hex address")
 		return terror.Error(err, "failed to provide a valid wallet address")
 	}
