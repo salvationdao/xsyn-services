@@ -809,6 +809,7 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 		if user != nil {
 			user.GoogleID = null.StringFrom(req.GoogleID)
 			user.Verified = true
+			loginReq.User = user
 			_, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.GoogleID, boiler.UserColumns.Verified))
 			if err != nil {
 				passlog.L.Error().Err(err).Msg("unable to add google id to user with existing gmail")
