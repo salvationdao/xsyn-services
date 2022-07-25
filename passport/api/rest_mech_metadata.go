@@ -85,6 +85,9 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 		attribes := []*types.OpenSeaAttribute{}
 		if asset.Attributes != nil {
 			for _, attribute := range asset.Attributes {
+				if attribute.TraitType == "Name" || attribute.TraitType == "name" {
+					continue
+				}
 				newAttribute := &types.OpenSeaAttribute{
 					DisplayType: attribute.DisplayType,
 					TraitType:   attribute.TraitType,
@@ -118,13 +121,28 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 				return http.StatusInternalServerError, terror.Error(err, "Failed find asset")
 			}
 		}
+		newAttributes := []*types.OpenSeaAttribute{}
+		if len(attribes) > 0 {
+			for _, attribute := range attribes {
+				if attribute.TraitType == "Name" || attribute.TraitType == "name" {
+					continue
+				}
+				newAttribute := &types.OpenSeaAttribute{
+					DisplayType: attribute.DisplayType,
+					TraitType:   attribute.TraitType,
+					Value:       attribute.Value,
+				}
+
+				newAttributes = append(newAttributes, newAttribute)
+			}
+		}
 
 		openseaAsset = &openSeaMetaData{
 			Image:           asset.ImageURL.String,
 			ExternalURL:     asset.ExternalURL.String,
 			Description:     asset.Description.String,
 			Name:            asset.Name,
-			Attributes:      attribes,
+			Attributes:      newAttributes,
 			BackgroundColor: asset.BackgroundColor.String,
 			AnimationURL:    asset.AnimationURL.String,
 			YoutubeURL:      asset.YoutubeURL.String,
