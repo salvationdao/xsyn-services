@@ -1422,40 +1422,40 @@ func (api *API) GetNonce(w http.ResponseWriter, r *http.Request) (int, error) {
 	publicAddress := r.URL.Query().Get("public-address")
 	userID := r.URL.Query().Get("user-id")
 
+	L := passlog.L.With().Str("publicAddress", publicAddress).Str("userID", userID).Logger()
+
 	if publicAddress == "" && userID == "" {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing public address or user id"))
 	}
-	if publicAddress != "" {
+	if publicAddress != "" && common.IsHexAddress(publicAddress) {
 		// Take public address Hex to address(Make it a checksum mixed case address) convert back to Hex for string of checksum
 		commonAddr := common.HexToAddress(publicAddress)
 		user, err := users.PublicAddress(commonAddr)
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
-			passlog.L.Info().Err(err).Msg("new user being created")
+			L.Info().Err(err).Msg("new user being created")
 			username := commonAddr.Hex()[0:10]
 
 			// If user does not exist, create new user with their username set to their MetaMask public address
 			user, err = users.UserCreator("", "", helpers.TrimUsername(username), "", "", "", "", "", "", "", commonAddr, "")
 			if err != nil {
-				passlog.L.Error().Err(err).Msg("user creation failed")
+				L.Error().Err(err).Msg("user creation failed")
 				return http.StatusInternalServerError, err
 			}
 		}
-		passlog.L.Info().Err(err).Msg("doing nonce")
 
 		newNonce, err := api.NewNonce(&user.User)
 		if err != nil {
-			passlog.L.Error().Err(err).Msg("no nonce")
+			L.Error().Err(err).Msg("no nonce")
 			return http.StatusBadRequest, err
 		}
 
-		passlog.L.Info().Err(err).Msg("after doing nonce")
 		resp := &GetNonceResponse{
 			Nonce: newNonce,
 		}
 
 		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
-			passlog.L.Error().Err(err).Msg("json failed")
+			L.Error().Err(err).Msg("json failed")
 			return http.StatusInternalServerError, err
 		}
 		return http.StatusOK, nil
