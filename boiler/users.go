@@ -55,8 +55,8 @@ type User struct {
 	WithdrawLock                     bool        `boiler:"withdraw_lock" boil:"withdraw_lock" json:"withdraw_lock" toml:"withdraw_lock" yaml:"withdraw_lock"`
 	MintLock                         bool        `boiler:"mint_lock" boil:"mint_lock" json:"mint_lock" toml:"mint_lock" yaml:"mint_lock"`
 	TotalLock                        bool        `boiler:"total_lock" boil:"total_lock" json:"total_lock" toml:"total_lock" yaml:"total_lock"`
-	AccountID                        string      `boiler:"account_id" boil:"account_id" json:"account_id" toml:"account_id" yaml:"account_id"`
 	Permissions                      null.String `boiler:"permissions" boil:"permissions" json:"permissions,omitempty" toml:"permissions" yaml:"permissions,omitempty"`
+	AccountID                        string      `boiler:"account_id" boil:"account_id" json:"account_id" toml:"account_id" yaml:"account_id"`
 
 	R *userR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -95,8 +95,8 @@ var UserColumns = struct {
 	WithdrawLock                     string
 	MintLock                         string
 	TotalLock                        string
-	AccountID                        string
 	Permissions                      string
+	AccountID                        string
 }{
 	ID:                               "id",
 	Username:                         "username",
@@ -130,8 +130,8 @@ var UserColumns = struct {
 	WithdrawLock:                     "withdraw_lock",
 	MintLock:                         "mint_lock",
 	TotalLock:                        "total_lock",
-	AccountID:                        "account_id",
 	Permissions:                      "permissions",
+	AccountID:                        "account_id",
 }
 
 var UserTableColumns = struct {
@@ -167,8 +167,8 @@ var UserTableColumns = struct {
 	WithdrawLock                     string
 	MintLock                         string
 	TotalLock                        string
-	AccountID                        string
 	Permissions                      string
+	AccountID                        string
 }{
 	ID:                               "users.id",
 	Username:                         "users.username",
@@ -202,8 +202,8 @@ var UserTableColumns = struct {
 	WithdrawLock:                     "users.withdraw_lock",
 	MintLock:                         "users.mint_lock",
 	TotalLock:                        "users.total_lock",
-	AccountID:                        "users.account_id",
 	Permissions:                      "users.permissions",
+	AccountID:                        "users.account_id",
 }
 
 // Generated where
@@ -241,8 +241,8 @@ var UserWhere = struct {
 	WithdrawLock                     whereHelperbool
 	MintLock                         whereHelperbool
 	TotalLock                        whereHelperbool
-	AccountID                        whereHelperstring
 	Permissions                      whereHelpernull_String
+	AccountID                        whereHelperstring
 }{
 	ID:                               whereHelperstring{field: "\"users\".\"id\""},
 	Username:                         whereHelperstring{field: "\"users\".\"username\""},
@@ -276,8 +276,8 @@ var UserWhere = struct {
 	WithdrawLock:                     whereHelperbool{field: "\"users\".\"withdraw_lock\""},
 	MintLock:                         whereHelperbool{field: "\"users\".\"mint_lock\""},
 	TotalLock:                        whereHelperbool{field: "\"users\".\"total_lock\""},
-	AccountID:                        whereHelperstring{field: "\"users\".\"account_id\""},
 	Permissions:                      whereHelpernull_String{field: "\"users\".\"permissions\""},
+	AccountID:                        whereHelperstring{field: "\"users\".\"account_id\""},
 }
 
 // UserRels is where relationship names are stored.
@@ -391,7 +391,7 @@ func (*userR) NewStruct() *userR {
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"id", "username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata", "mobile_number", "chat_banned_until", "rename_banned", "withdraw_lock", "mint_lock", "total_lock", "account_id", "permissions"}
+	userAllColumns            = []string{"id", "username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata", "mobile_number", "chat_banned_until", "rename_banned", "withdraw_lock", "mint_lock", "total_lock", "permissions", "account_id"}
 	userColumnsWithoutDefault = []string{"username", "account_id"}
 	userColumnsWithDefault    = []string{"id", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata", "mobile_number", "chat_banned_until", "rename_banned", "withdraw_lock", "mint_lock", "total_lock", "permissions"}
 	userPrimaryKeyColumns     = []string{"id"}

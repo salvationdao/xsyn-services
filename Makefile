@@ -147,12 +147,12 @@ db-seed:
 	go run seed/main.go db
 
 # targeting file 20220705053059_player_syndicate_table.up
-.PHONY: db-migrate_53
-db-migrate_53:
-	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(CURDIR)/migrations up 53
+.PHONY: db-migrate-before-syndicate-table
+db-migrate-before-syndicate-table:
+	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(CURDIR)/migrations up 55
 
 .PHONY: db-reset
-db-reset: db-drop db-migrate_53 db-seed db-migrate db-boiler
+db-reset: db-drop db-migrate-before-syndicate-table db-seed db-migrate db-boiler
 
 .PHONY: go-mod-download
 go-mod-download:
