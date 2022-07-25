@@ -188,6 +188,13 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 	hexPublicAddress := ""
 	if publicAddress != common.HexToAddress("") {
 		hexPublicAddress = publicAddress.Hex()
+
+	}
+
+	// Check public address is hex address
+	if !common.IsHexAddress(hexPublicAddress) && hexPublicAddress != "" {
+		passlog.L.Error().Err(err).Msg("Public address provided is not a hex address")
+		return nil, terror.Error(err, "failed to provide a valid wallet address")
 	}
 
 	isVerified := false

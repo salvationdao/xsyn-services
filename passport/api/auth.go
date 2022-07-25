@@ -804,7 +804,7 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 
 	if err != nil && errors.Is(sql.ErrNoRows, err) {
 		// Check if user gmail already exist
-		user, _ := boiler.Users(boiler.UserWhere.Email.EQ(null.StringFrom(req.Email))).One(passdb.StdConn)
+		user, err = boiler.Users(boiler.UserWhere.Email.EQ(null.StringFrom(req.Email))).One(passdb.StdConn)
 
 		if user != nil {
 			user.GoogleID = null.StringFrom(req.GoogleID)
@@ -815,15 +815,21 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 				passlog.L.Error().Err(err).Msg("unable to add google id to user with existing gmail")
 				return err
 			}
-		} else {
+		} else if errors.Is(sql.ErrNoRows, err) {
 			commonAddress := common.HexToAddress("")
 			u, err := users.UserCreator("", "", req.Username, req.Email, "", req.GoogleID, "", "", "", "", commonAddress, "")
 			if err != nil {
 				return err
 			}
 			loginReq.User = &u.User
+		} else {
+			passlog.L.Error().Err(err).Msg("invalid google credentials provided")
+			return err
 		}
 
+	} else {
+		passlog.L.Error().Err(err).Msg("invalid google credentials provided")
+		return err
 	}
 	return api.FingerprintAndIssueToken(w, r, loginReq)
 }
