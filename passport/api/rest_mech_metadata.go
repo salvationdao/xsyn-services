@@ -142,7 +142,7 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 			ExternalURL:     asset.ExternalURL.String,
 			Description:     asset.Description.String,
 			Name:            asset.Name,
-			Attributes:      attribes,
+			Attributes:      newAttributes,
 			BackgroundColor: asset.BackgroundColor.String,
 			AnimationURL:    asset.AnimationURL.String,
 			YoutubeURL:      asset.YoutubeURL.String,
