@@ -63,6 +63,11 @@ type Attribute struct {
 	Value       interface{} `json:"value"` // string or number only
 }
 
+type OpenSeaAttribute struct {
+	DisplayType DisplayType `json:"display_type,omitempty"`
+	TraitType   string      `json:"trait_type"`
+	Value       interface{} `json:"value"` // string or number only
+}
 type DisplayType string
 
 const (

@@ -68,7 +68,7 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 
 	collection, err := boiler.Collections(
 		boiler.CollectionWhere.MintContract.EQ(null.StringFrom(common.HexToAddress(collectionAddress).Hex())),
-		).One(passdb.StdConn)
+	).One(passdb.StdConn)
 	if err != nil {
 		return http.StatusBadRequest, terror.Warn(err, "get collection from db")
 	}
@@ -82,12 +82,28 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 			return http.StatusBadRequest, terror.Warn(err, "failed to get item from gameserver")
 		}
 
+		attribes := []*types.OpenSeaAttribute{}
+		if asset.Attributes != nil {
+			for _, attribute := range asset.Attributes {
+				if attribute.TraitType == "Name" || attribute.TraitType == "name" {
+					continue
+				}
+				newAttribute := &types.OpenSeaAttribute{
+					DisplayType: attribute.DisplayType,
+					TraitType:   attribute.TraitType,
+					Value:       attribute.Value,
+				}
+
+				attribes = append(attribes, newAttribute)
+			}
+		}
+
 		openseaAsset = &openSeaMetaData{
 			Image:           asset.ImageURL.String,
 			ExternalURL:     asset.ExternalURL.String,
 			Description:     asset.Description.String,
 			Name:            asset.Name,
-			Attributes:      asset.Attributes,
+			Attributes:      attribes,
 			BackgroundColor: asset.BackgroundColor.String,
 			AnimationURL:    asset.AnimationURL.String,
 			YoutubeURL:      asset.YoutubeURL.String,
@@ -98,11 +114,26 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 			return http.StatusInternalServerError, terror.Error(err, "Failed find asset")
 		}
 
-		attribes := []*types.Attribute{}
+		attribes := []*types.OpenSeaAttribute{}
 		if asset.Attributes != nil {
 			err := asset.Attributes.Unmarshal(&attribes)
 			if err != nil {
 				return http.StatusInternalServerError, terror.Error(err, "Failed find asset")
+			}
+		}
+		newAttributes := []*types.OpenSeaAttribute{}
+		if len(attribes) > 0 {
+			for _, attribute := range attribes {
+				if attribute.TraitType == "Name" || attribute.TraitType == "name" {
+					continue
+				}
+				newAttribute := &types.OpenSeaAttribute{
+					DisplayType: attribute.DisplayType,
+					TraitType:   attribute.TraitType,
+					Value:       attribute.Value,
+				}
+
+				newAttributes = append(newAttributes, newAttribute)
 			}
 		}
 
@@ -111,7 +142,7 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 			ExternalURL:     asset.ExternalURL.String,
 			Description:     asset.Description.String,
 			Name:            asset.Name,
-			Attributes:      attribes,
+			Attributes:      newAttributes,
 			BackgroundColor: asset.BackgroundColor.String,
 			AnimationURL:    asset.AnimationURL.String,
 			YoutubeURL:      asset.YoutubeURL.String,
@@ -132,15 +163,15 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 
 // openSeaMetaData data structure, reference https://docs.opensea.io/docs/metadata-standards
 type openSeaMetaData struct {
-	Image           string             `json:"image,omitempty"`            // image url, to be cached by opensea
-	ImageData       string             `json:"image_data,omitempty"`       // raw image svg
-	ExternalURL     string             `json:"external_url,omitempty"`     // direct url link to image asset
-	Description     string             `json:"description,omitempty"`      // item description
-	Name            string             `json:"name,omitempty"`             // item name
-	Attributes      []*types.Attribute `json:"attributes,omitempty"`       // item attributes
-	BackgroundColor string             `json:"background_color,omitempty"` // openseas page background
-	AnimationURL    string             `json:"animation_url,omitempty"`    // direct url link to video asset
-	YoutubeURL      string             `json:"youtube_url,omitempty"`      // url to youtube video
+	Image           string                    `json:"image,omitempty"`            // image url, to be cached by opensea
+	ImageData       string                    `json:"image_data,omitempty"`       // raw image svg
+	ExternalURL     string                    `json:"external_url,omitempty"`     // direct url link to image asset
+	Description     string                    `json:"description,omitempty"`      // item description
+	Name            string                    `json:"name,omitempty"`             // item name
+	Attributes      []*types.OpenSeaAttribute `json:"attributes,omitempty"`       // item attributes
+	BackgroundColor string                    `json:"background_color,omitempty"` // openseas page background
+	AnimationURL    string                    `json:"animation_url,omitempty"`    // direct url link to video asset
+	YoutubeURL      string                    `json:"youtube_url,omitempty"`      // url to youtube video
 }
 
 // purchasedItemMetaData shape of the purchased_items.metadata in the database
