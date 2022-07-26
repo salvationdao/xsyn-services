@@ -213,7 +213,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		err = api.WalletLogin(req, w, r)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", req.Tenant, r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			return
 		}
 	case "signup":
@@ -226,13 +226,13 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		user, _ := users.Email(req.Email)
 		if user != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", req.Tenant, r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			return
 		}
 		err = api.EmailSignUp(req, w, r)
 
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", req.Tenant, r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			return
 		}
 	case "email":
@@ -244,8 +244,10 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		err = api.EmailLogin(req, w, r)
 
+		fmt.Println(r.Header.Get("origin"))
+
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", req.Tenant, r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			return
 		}
 	case "facebook":
@@ -257,7 +259,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		err := api.FacebookLogin(req, w, r)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", req.Tenant, r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			return
 		}
 	case "google":
@@ -270,7 +272,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 		err := api.GoogleLogin(req, w, r)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", req.Tenant, r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			return
 		}
 	case "token":
