@@ -810,24 +810,25 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 			user.GoogleID = null.StringFrom(req.GoogleID)
 			user.Verified = true
 			loginReq.User = user
+
 			_, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.GoogleID, boiler.UserColumns.Verified))
 			if err != nil {
 				passlog.L.Error().Err(err).Msg("unable to add google id to user with existing gmail")
 				return err
 			}
-		} else if errors.Is(sql.ErrNoRows, err) {
+		} else if err != nil && errors.Is(sql.ErrNoRows, err) {
 			commonAddress := common.HexToAddress("")
 			u, err := users.UserCreator("", "", req.Username, req.Email, "", req.GoogleID, "", "", "", "", commonAddress, "")
 			if err != nil {
 				return err
 			}
 			loginReq.User = &u.User
-		} else {
+		} else if err != nil {
 			passlog.L.Error().Err(err).Msg("invalid google credentials provided")
 			return err
 		}
 
-	} else {
+	} else if err != nil {
 		passlog.L.Error().Err(err).Msg("invalid google credentials provided")
 		return err
 	}
