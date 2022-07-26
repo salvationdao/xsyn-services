@@ -811,12 +811,7 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 			return noEmailErr
 		}
 
-		user, err = boiler.Users(boiler.UserWhere.Email.EQ(null.StringFrom(req.Email))).One(passdb.StdConn)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to add google id to user with existing gmail")
-			return err
-		}
-
+		user, _ = boiler.Users(boiler.UserWhere.Email.EQ(null.StringFrom(req.Email))).One(passdb.StdConn)
 		if user != nil {
 			user.GoogleID = null.StringFrom(req.GoogleID)
 			user.Verified = true
@@ -837,11 +832,14 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 			loginReq.User = &u.User
 		}
 
-	} else if err != nil {
-		passlog.L.Error().Err(err).Msg("invalid google credentials provided")
-		return err
 	}
-	return api.FingerprintAndIssueToken(w, r, loginReq)
+
+	if loginReq.User != nil {
+		return api.FingerprintAndIssueToken(w, r, loginReq)
+	}
+
+	passlog.L.Error().Err(err).Msg("invalid google credentials provided")
+	return err
 }
 
 func (api *API) TFAVerifyHandler(w http.ResponseWriter, r *http.Request) (int, error) {
