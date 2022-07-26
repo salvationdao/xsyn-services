@@ -204,12 +204,10 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	switch authType {
 	case "wallet":
 		req := &WalletLoginRequest{
+			RedirectURL:   redir,
 			Tenant:        r.Form.Get("tenant"),
 			PublicAddress: r.Form.Get("public_address"),
 			Signature:     r.Form.Get("signature"),
-		}
-		if redir != "" {
-			req.RedirectURL = redir
 		}
 		err = api.WalletLogin(req, w, r)
 		if err != nil {
@@ -268,6 +266,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			Tenant:      r.Form.Get("tenant"),
 			GoogleID:    r.Form.Get("google_id"),
 			Username:    r.Form.Get("username"),
+			Email:       r.Form.Get("email"),
 		}
 
 		err := api.GoogleLogin(req, w, r)
@@ -806,7 +805,17 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 
 	if err != nil && errors.Is(sql.ErrNoRows, err) {
 		// Check if user gmail already exist
+		if req.Email == "" {
+			noEmailErr := fmt.Errorf("no email provided for google auth")
+			passlog.L.Error().Err(noEmailErr).Msg("no email provided for google auth")
+			return noEmailErr
+		}
+
 		user, err = boiler.Users(boiler.UserWhere.Email.EQ(null.StringFrom(req.Email))).One(passdb.StdConn)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to add google id to user with existing gmail")
+			return err
+		}
 
 		if user != nil {
 			user.GoogleID = null.StringFrom(req.GoogleID)
@@ -818,16 +827,14 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 				passlog.L.Error().Err(err).Msg("unable to add google id to user with existing gmail")
 				return err
 			}
-		} else if err != nil && errors.Is(sql.ErrNoRows, err) {
+		} else {
 			commonAddress := common.HexToAddress("")
-			u, err := users.UserCreator("", "", req.Username, req.Email, "", req.GoogleID, "", "", "", "", commonAddress, "")
+			username := fmt.Sprintf(("%s%d"), req.Username, rand.Intn(1000))
+			u, err := users.UserCreator("", "", username, req.Email, "", req.GoogleID, "", "", "", "", commonAddress, "")
 			if err != nil {
 				return err
 			}
 			loginReq.User = &u.User
-		} else if err != nil {
-			passlog.L.Error().Err(err).Msg("invalid google credentials provided")
-			return err
 		}
 
 	} else if err != nil {
