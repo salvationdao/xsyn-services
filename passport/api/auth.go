@@ -242,8 +242,6 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		err = api.EmailLogin(req, w, r)
 
-		fmt.Println(r.Header.Get("origin"))
-
 		if err != nil {
 			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			return
