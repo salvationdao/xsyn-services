@@ -106,8 +106,8 @@ func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.Us
 
 	msg := fmt.Sprintf("purchased %s SUPS for %s [%s]", supsValue.Shift(-1*types.SUPSDecimals).StringFixed(4), tokenValue.Shift(-1*int32(record.ValueDecimals)).StringFixed(4), strings.ToUpper(record.Symbol))
 	trans := &types.NewTransaction{
-		To:                   toUserID,
-		From:                 fromUserID,
+		Credit:               toUserID.String(),
+		Debit:                fromUserID.String(),
 		Amount:               supsValue,
 		TransactionReference: types.TransactionReference(record.TxHash),
 		Description:          msg,

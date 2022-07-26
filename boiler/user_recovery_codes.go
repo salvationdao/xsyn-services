@@ -29,6 +29,7 @@ type UserRecoveryCode struct {
 	UsedAt       null.Time `boiler:"used_at" boil:"used_at" json:"used_at,omitempty" toml:"used_at" yaml:"used_at,omitempty"`
 	UpdatedAt    time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt    time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	DeletedAt    null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *userRecoveryCodeR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userRecoveryCodeL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -41,6 +42,7 @@ var UserRecoveryCodeColumns = struct {
 	UsedAt       string
 	UpdatedAt    string
 	CreatedAt    string
+	DeletedAt    string
 }{
 	ID:           "id",
 	UserID:       "user_id",
@@ -48,6 +50,7 @@ var UserRecoveryCodeColumns = struct {
 	UsedAt:       "used_at",
 	UpdatedAt:    "updated_at",
 	CreatedAt:    "created_at",
+	DeletedAt:    "deleted_at",
 }
 
 var UserRecoveryCodeTableColumns = struct {
@@ -57,6 +60,7 @@ var UserRecoveryCodeTableColumns = struct {
 	UsedAt       string
 	UpdatedAt    string
 	CreatedAt    string
+	DeletedAt    string
 }{
 	ID:           "user_recovery_codes.id",
 	UserID:       "user_recovery_codes.user_id",
@@ -64,6 +68,7 @@ var UserRecoveryCodeTableColumns = struct {
 	UsedAt:       "user_recovery_codes.used_at",
 	UpdatedAt:    "user_recovery_codes.updated_at",
 	CreatedAt:    "user_recovery_codes.created_at",
+	DeletedAt:    "user_recovery_codes.deleted_at",
 }
 
 // Generated where
@@ -75,6 +80,7 @@ var UserRecoveryCodeWhere = struct {
 	UsedAt       whereHelpernull_Time
 	UpdatedAt    whereHelpertime_Time
 	CreatedAt    whereHelpertime_Time
+	DeletedAt    whereHelpernull_Time
 }{
 	ID:           whereHelperstring{field: "\"user_recovery_codes\".\"id\""},
 	UserID:       whereHelperstring{field: "\"user_recovery_codes\".\"user_id\""},
@@ -82,6 +88,7 @@ var UserRecoveryCodeWhere = struct {
 	UsedAt:       whereHelpernull_Time{field: "\"user_recovery_codes\".\"used_at\""},
 	UpdatedAt:    whereHelpertime_Time{field: "\"user_recovery_codes\".\"updated_at\""},
 	CreatedAt:    whereHelpertime_Time{field: "\"user_recovery_codes\".\"created_at\""},
+	DeletedAt:    whereHelpernull_Time{field: "\"user_recovery_codes\".\"deleted_at\""},
 }
 
 // UserRecoveryCodeRels is where relationship names are stored.
@@ -105,9 +112,9 @@ func (*userRecoveryCodeR) NewStruct() *userRecoveryCodeR {
 type userRecoveryCodeL struct{}
 
 var (
-	userRecoveryCodeAllColumns            = []string{"id", "user_id", "recovery_code", "used_at", "updated_at", "created_at"}
+	userRecoveryCodeAllColumns            = []string{"id", "user_id", "recovery_code", "used_at", "updated_at", "created_at", "deleted_at"}
 	userRecoveryCodeColumnsWithoutDefault = []string{"user_id", "recovery_code"}
-	userRecoveryCodeColumnsWithDefault    = []string{"id", "used_at", "updated_at", "created_at"}
+	userRecoveryCodeColumnsWithDefault    = []string{"id", "used_at", "updated_at", "created_at", "deleted_at"}
 	userRecoveryCodePrimaryKeyColumns     = []string{"id"}
 	userRecoveryCodeGeneratedColumns      = []string{}
 )
@@ -522,7 +529,7 @@ func (o *UserRecoveryCode) SetUser(exec boil.Executor, insert bool, related *Use
 
 // UserRecoveryCodes retrieves all the records using an executor.
 func UserRecoveryCodes(mods ...qm.QueryMod) userRecoveryCodeQuery {
-	mods = append(mods, qm.From("\"user_recovery_codes\""))
+	mods = append(mods, qm.From("\"user_recovery_codes\""), qmhelper.WhereIsNull("\"user_recovery_codes\".\"deleted_at\""))
 	return userRecoveryCodeQuery{NewQuery(mods...)}
 }
 
@@ -536,7 +543,7 @@ func FindUserRecoveryCode(exec boil.Executor, iD string, selectCols ...string) (
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"user_recovery_codes\" where \"id\"=$1", sel,
+		"select %s from \"user_recovery_codes\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -895,7 +902,7 @@ func (o *UserRecoveryCode) Upsert(exec boil.Executor, updateOnConflict bool, con
 
 // Delete deletes a single UserRecoveryCode record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *UserRecoveryCode) Delete(exec boil.Executor) (int64, error) {
+func (o *UserRecoveryCode) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no UserRecoveryCode provided for delete")
 	}
@@ -904,8 +911,26 @@ func (o *UserRecoveryCode) Delete(exec boil.Executor) (int64, error) {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), userRecoveryCodePrimaryKeyMapping)
-	sql := "DELETE FROM \"user_recovery_codes\" WHERE \"id\"=$1"
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), userRecoveryCodePrimaryKeyMapping)
+		sql = "DELETE FROM \"user_recovery_codes\" WHERE \"id\"=$1"
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		o.DeletedAt = null.TimeFrom(currTime)
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"user_recovery_codes\" SET %s WHERE \"id\"=$2",
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		valueMapping, err := queries.BindMapping(userRecoveryCodeType, userRecoveryCodeMapping, append(wl, userRecoveryCodePrimaryKeyColumns...))
+		if err != nil {
+			return 0, err
+		}
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
+	}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -929,12 +954,17 @@ func (o *UserRecoveryCode) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q userRecoveryCodeQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q userRecoveryCodeQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no userRecoveryCodeQuery provided for delete all")
 	}
 
-	queries.SetDelete(q.Query)
+	if hardDelete {
+		queries.SetDelete(q.Query)
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
+	}
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -950,7 +980,7 @@ func (q userRecoveryCodeQuery) DeleteAll(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o UserRecoveryCodeSlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o UserRecoveryCodeSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -963,14 +993,31 @@ func (o UserRecoveryCodeSlice) DeleteAll(exec boil.Executor) (int64, error) {
 		}
 	}
 
-	var args []interface{}
-	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), userRecoveryCodePrimaryKeyMapping)
-		args = append(args, pkeyArgs...)
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), userRecoveryCodePrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+		}
+		sql = "DELETE FROM \"user_recovery_codes\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, userRecoveryCodePrimaryKeyColumns, len(o))
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), userRecoveryCodePrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+			obj.DeletedAt = null.TimeFrom(currTime)
+		}
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"user_recovery_codes\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, userRecoveryCodePrimaryKeyColumns, len(o)),
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		args = append([]interface{}{currTime}, args...)
 	}
-
-	sql := "DELETE FROM \"user_recovery_codes\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, userRecoveryCodePrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1024,7 +1071,8 @@ func (o *UserRecoveryCodeSlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"user_recovery_codes\".* FROM \"user_recovery_codes\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, userRecoveryCodePrimaryKeyColumns, len(*o))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, userRecoveryCodePrimaryKeyColumns, len(*o)) +
+		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
@@ -1041,7 +1089,7 @@ func (o *UserRecoveryCodeSlice) ReloadAll(exec boil.Executor) error {
 // UserRecoveryCodeExists checks if the UserRecoveryCode row exists.
 func UserRecoveryCodeExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"user_recovery_codes\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"user_recovery_codes\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)

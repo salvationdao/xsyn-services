@@ -129,6 +129,70 @@ func (id *UserID) Scan(src interface{}) error {
 	return err
 }
 
+// AccountID aliases uuid.UUID.
+// Doing this prevents situations where you use AccountID where it doesn't belong.
+type AccountID uuid.UUID
+
+func AccountIDFromString(id string) AccountID {
+	return AccountID(uuid.FromStringOrNil(id))
+}
+
+// IsNil returns true for a nil uuid.
+func (e AccountID) IsNil() bool {
+	return e == AccountID{}
+}
+
+// String aliases UUID.String which returns a canonical RFC-4122 string representation of the UUID.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.String.
+func (e AccountID) String() string {
+	return uuid.UUID(e).String()
+}
+
+// MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaler interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.MarshalText.
+func (e AccountID) MarshalText() ([]byte, error) {
+	return uuid.UUID(e).MarshalText()
+}
+
+// UnmarshalText aliases UUID.UnmarshalText which implements the encoding.TextUnmarshaler interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.UnmarshalText.
+func (e *AccountID) UnmarshalText(text []byte) error {
+	// Convert to uuid.UUID
+	uid := uuid.UUID(*e)
+	// Unmarshal as uuid.UUID
+	err := uid.UnmarshalText(text)
+	// Convert back to original type
+	*e = AccountID(uid)
+	// Retrun error
+	return err
+}
+
+// Value aliases UUID.Value which implements the driver.Valuer interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Value.
+func (e AccountID) Value() (driver.Value, error) {
+	if e.IsNil() {
+		return nil, nil
+	}
+	return uuid.UUID(e).Value()
+}
+
+// Scan implements the sql.Scanner interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Scan.
+func (e *AccountID) Scan(src interface{}) error {
+	if src == nil {
+		*e = AccountID(uuid.UUID{})
+		return nil
+	}
+	// Convert to uuid.UUID
+	uid := uuid.UUID(*e)
+	// Unmarshal as uuid.UUID
+	err := uid.Scan(src)
+	// Convert back to original type
+	*e = AccountID(uid)
+	// Retrun error
+	return err
+}
+
 // IssueTokenID aliases uuid.UUID.
 // Doing this prevents situations where you use IssueTokenID where it doesn't belong.
 type IssueTokenID uuid.UUID

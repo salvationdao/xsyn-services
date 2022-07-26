@@ -27,8 +27,8 @@ func InsertPendingRefund(ucm UserCacheMap, userID types.UserID, amount decimal.D
 	// remove sups
 
 	newTx := &types.NewTransaction{
-		To:                   types.OnChainUserID,
-		From:                 userID,
+		Credit:               types.OnChainUserID.String(),
+		Debit:                userID.String(),
 		Amount:               amount,
 		TransactionReference: txRef,
 		Description:          fmt.Sprintf("Withdraw of %s SUPS", amount.Shift(-18).StringFixed(4)),
@@ -161,17 +161,10 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 	}
 
 	for _, refund := range refundsToProcess {
-		userUUID, err := uuid.FromString(refund.R.TransactionReferenceTransaction.Debit)
-		if err != nil {
-			skipped++
-			l.Warn().Err(err).Msg("failed to convert to user uuid")
-			continue
-		}
-
 		txRef := types.TransactionReference(fmt.Sprintf("REFUND %s", refund.R.TransactionReferenceTransaction.TransactionReference))
 		newTx := &types.NewTransaction{
-			To:                   types.UserID(userUUID),
-			From:                 types.OnChainUserID,
+			Credit:               refund.R.TransactionReferenceTransaction.DebitAccountID,
+			Debit:                types.OnChainUserID.String(),
 			Amount:               refund.R.TransactionReferenceTransaction.Amount,
 			TransactionReference: txRef,
 			Description:          fmt.Sprintf("REFUND %s", refund.R.TransactionReferenceTransaction.Description),
@@ -191,8 +184,8 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 			Str("refund.tx_hash", refund.TXHash).
 			Str("refund.transaction_reference", refund.TransactionReference).
 			Bool("refund.is_refunded", refund.IsRefunded).
-			Str("reverse_tx.to", newTx.To.String()).
-			Str("reverse_tx.from", newTx.From.String()).
+			Str("reverse_tx.to", newTx.Credit).
+			Str("reverse_tx.from", newTx.Debit).
 			Str("reverse_tx.amount", newTx.Amount.String()).
 			Str("reverse_tx.transaction_reference", string(newTx.TransactionReference)).
 			Str("reverse_tx.description", newTx.Description).

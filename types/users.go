@@ -35,16 +35,16 @@ var (
 	XsynSaleUserID                   = UserID(uuid.Must(uuid.FromString("1429a004-84a1-11ec-a8a3-0242ac120002")))
 )
 
-func (e UserID) IsSystemUser() bool {
-	switch e {
-	case XsynTreasuryUserID,
-		SupremacyGameUserID,
-		OnChainUserID,
-		SupremacyBattleUserID,
-		SupremacySupPoolUserID,
-		SupremacyZaibatsuUserID,
-		SupremacyRedMountainUserID,
-		SupremacyBostonCyberneticsUserID:
+func IsSystemUser(userID string) bool {
+	switch userID {
+	case XsynTreasuryUserID.String(),
+		SupremacyGameUserID.String(),
+		OnChainUserID.String(),
+		SupremacyBattleUserID.String(),
+		SupremacySupPoolUserID.String(),
+		SupremacyZaibatsuUserID.String(),
+		SupremacyRedMountainUserID.String(),
+		SupremacyBostonCyberneticsUserID.String():
 		return true
 	}
 	return false
@@ -54,17 +54,19 @@ const ServerClientLevel = 5
 
 // User is a single user on the platform
 type User struct {
-	*boiler.User
-	Faction  *boiler.Faction `json:"faction"`
-	Online   bool            `json:"online"`
-	Pass2FA  bool            `json:"pass_2_fa"`
-	Metadata UserMetadata    `json:"metadata" db:"metadata"`
+	boiler.User
+	Faction     *boiler.Faction `json:"faction"`
+	Online      bool            `json:"online"`
+	HasPassword bool            `json:"has_password"`
+	Pass2FA     bool            `json:"pass_2_fa"`
+	Metadata    UserMetadata    `json:"metadata" db:"metadata"`
+	Sups        decimal.Decimal `json:"sups" db:"sups"`
 	//NoNonce  *struct{}       `json:"nonce,omitempty"`
 	//NoSups   *struct{}       `json:"sups,omitempty"`
 }
 
 func UserFromBoil(u *boiler.User) (*User, error) {
-	user := &User{User: u}
+	user := &User{User: *u}
 	if u.FactionID.Valid {
 		if u.R.Faction != nil {
 			user.Faction = u.R.Faction

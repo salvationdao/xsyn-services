@@ -146,8 +146,13 @@ db-boiler:
 db-seed:
 	go run seed/main.go db
 
+# targeting file 20220705053059_player_syndicate_table.up
+.PHONY: db-migrate-before-syndicate-table
+db-migrate-before-syndicate-table:
+	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(CURDIR)/migrations up 55
+
 .PHONY: db-reset
-db-reset: db-drop db-migrate db-boiler db-seed
+db-reset: db-drop db-migrate-before-syndicate-table db-seed db-migrate db-boiler
 
 .PHONY: go-mod-download
 go-mod-download:
@@ -232,4 +237,4 @@ dev-give-mech:
 
 .PHONE: dev-give-mechs
 dev-give-mechs:
-	make dev-give-mech public_address=0x04c2C035F908C73FBff4FAf3818824170C938640
+	make dev-give-mech public_address=0xC1cEf962d33F408289e6A930608Ce3BF6479303c

@@ -7,10 +7,10 @@ import (
 	"strings"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
-	"xsyn-services/types"
+
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ninja-software/terror/v2"
-	"github.com/shopspring/decimal"
 )
 
 type TransactionColumn string
@@ -297,43 +297,17 @@ func TransactionExists(txhash string) (bool, error) {
 	return tx != nil, nil
 }
 
-func UserBalances() ([]*types.UserBalance, error) {
-	q := `SELECT id, sups FROM users`
-
-	rows, err := passdb.StdConn.Query(q)
+func UserBalance(userID string) (*boiler.User, error) {
+	user, err := boiler.Users(
+		boiler.UserWhere.ID.EQ(userID),
+		qm.Load(boiler.UserRels.Account),
+	).One(passdb.StdConn)
 	if err != nil {
 		return nil, err
 	}
 
-	balances := []*types.UserBalance{}
-
-	for rows.Next() {
-		balance := &types.UserBalance{
-			ID:   types.UserID{},
-			Sups: decimal.New(0, 18),
-		}
-		err := rows.Scan(
-			&balance.ID,
-			&balance.Sups,
-		)
-		if err != nil {
-			return balances, err
-		}
-		balances = append(balances, balance)
+	if user.R.Account == nil {
+		return nil, fmt.Errorf("user does not have an account")
 	}
-
-	return balances, nil
-}
-
-func UserBalance(userID string) (decimal.Decimal, error) {
-	var sups decimal.Decimal
-	q := `SELECT sups FROM users WHERE id = $1`
-	row := passdb.StdConn.QueryRow(q, userID)
-
-	err := row.Scan(&sups)
-
-	if err != nil {
-		return decimal.New(0, 18), err
-	}
-	return sups, nil
+	return user, nil
 }

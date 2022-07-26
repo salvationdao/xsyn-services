@@ -31,7 +31,7 @@ func (s *S) AssetTransferOwnershipHandler(req AssetTransferOwnershipReq, resp *A
 		return err
 	}
 
-	_, transferID, err := asset.TransferAsset(req.Hash, req.FromOwnerID, req.ToOwnerID, serviceID, req.RelatedTransactionID, nil)
+	_, transferID, err := asset.TransferAsset(req.Hash, req.FromOwnerID, req.ToOwnerID, serviceID, true, req.RelatedTransactionID, nil)
 	if err != nil {
 		passlog.L.Error().Err(err).Interface("req", req).Msg("failed to transfer asset - AssetTransferOwnershipHandler")
 		return err

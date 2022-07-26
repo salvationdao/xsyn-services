@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/friendsofgo/errors"
-	"github.com/gofrs/uuid"
 	"github.com/kevinms/leakybucket-go"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
+	"strings"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
@@ -52,6 +52,7 @@ func NewAssetController(log *zerolog.Logger, api *API) *AssetController {
 	api.SecureCommand(HubKeyDeposit1155Asset, assetHub.DepositAsset1155Handler)
 	api.SecureCommand(HubKeyDepositAsset1155List, assetHub.DepositAsset1155ListHandler)
 	api.Command(HubKeyAssetGet, assetHub.AssetUpdatedGetHandler)
+	api.Command(HubKeyAssetRefreshMetadata, assetHub.AssetRefreshMetadataHandler)
 	api.Command(HubKeyAsset1155Get, assetHub.Asset1155UpdatedGetHandler)
 
 	return assetHub
@@ -67,6 +68,7 @@ type AssetListRequest struct {
 		Search          string                     `json:"search"`
 		PageSize        int                        `json:"page_size"`
 		Page            int                        `json:"page"`
+		AssetsOn        string                     `json:"assets_on"`
 	} `json:"payload"`
 }
 
@@ -90,10 +92,11 @@ func (ac *AssetController) AssetList721Handler(ctx context.Context, user *xsynTy
 		Sort:            req.Payload.Sort,
 		Filter:          req.Payload.Filter,
 		AttributeFilter: req.Payload.AttributeFilter,
-		//AssetType:       "mech", // for now this is hardcoded to hide all the other assets
-		Search:   req.Payload.Search,
-		PageSize: req.Payload.PageSize,
-		Page:     req.Payload.Page,
+		AssetsOn:        req.Payload.AssetsOn,
+		Search:          req.Payload.Search,
+		PageSize:        req.Payload.PageSize,
+		Page:            req.Payload.Page,
+		AssetType:       req.Payload.AssetType,
 	})
 	if err != nil {
 		return terror.Error(err, "Unable to retrieve assets at this time, please try again or contact support.")
@@ -298,6 +301,35 @@ func (ac *AssetController) AssetUpdatedGetHandler(ctx context.Context, key strin
 	return nil
 }
 
+type AssetRefreshMetadataRequest struct {
+	Payload struct {
+		AssetHash string `json:"asset_hash"`
+	} `json:"payload"`
+}
+
+const HubKeyAssetRefreshMetadata = "ASSET:REFRESH:METADATA:721"
+
+func (ac *AssetController) AssetRefreshMetadataHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &AssetRefreshMetadataRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	asset, err := supremacy_rpcclient.AssetGet(req.Payload.AssetHash)
+	if err != nil {
+		return terror.Error(err, "Failed to update asset metadata.")
+	}
+
+	_, err = db.UpdateUserAsset(asset)
+	if err != nil {
+		return terror.Error(err, "Failed to update asset metadata.")
+	}
+
+	reply(true)
+	return nil
+}
+
 // Asset1155UpdatedSubscribeRequest requests an update for an xsyn_metadata
 type Asset1155UpdatedSubscribeRequest struct {
 	Payload struct {
@@ -424,7 +456,7 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 	}
 
 	if !db.GetBoolWithDefault(db.KeyEnableSyncNFTOwners, false) {
-		return terror.Error(fmt.Errorf("asset syncing system down"))
+		return terror.Error(fmt.Errorf("asset syncing system down"), "Unable to transfer asset, please try again or contact support.")
 	}
 
 	userAsset, err := boiler.UserAssets(
@@ -455,12 +487,9 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 		return terror.Error(terror.ErrUnauthorised, "You don't own this asset.")
 	}
 
-	// pay 5 sups
-	userUUID := uuid.Must(uuid.FromString(user.ID))
-
 	tx := &xsynTypes.NewTransaction{
-		From:                 xsynTypes.UserID(userUUID),
-		To:                   xsynTypes.XsynTreasuryUserID,
+		Debit:                user.ID,
+		Credit:               xsynTypes.XsynTreasuryUserID.String(),
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "SUPREMACY", req.Payload.AssetHash, time.Now().UnixNano())),
 		Description:          fmt.Sprintf("Transfer of asset: %s to Supremacy", req.Payload.AssetHash),
 		Amount:               decimal.New(5, 18), // 5 sups
@@ -609,12 +638,9 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 		return terror.Error(terror.ErrUnauthorised, "You don't own this asset.")
 	}
 
-	// pay 5 sups
-	userUUID := uuid.Must(uuid.FromString(user.ID))
-
 	tx := &xsynTypes.NewTransaction{
-		From:                 xsynTypes.UserID(userUUID),
-		To:                   xsynTypes.XsynTreasuryUserID,
+		Debit:                user.ID,
+		Credit:               xsynTypes.XsynTreasuryUserID.String(),
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "XSYN", req.Payload.AssetHash, time.Now().UnixNano())),
 		Description:          fmt.Sprintf("Transfer of asset: %s to XSYN", req.Payload.AssetHash),
 		Amount:               decimal.New(5, 18), // 5 sups
@@ -649,7 +675,11 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 			transferLog,
 			"Failed to transfer asset from supremacy",
 		)
-		return terror.Error(err, "Failed to transfer asset from supremacy")
+		friendlyMessage := "Failed to transfer asset from supremacy"
+		if strings.Contains(err.Error(), "asset is equipped to another object") {
+			friendlyMessage = "Asset is equipped to another object."
+		}
+		return terror.Error(err, friendlyMessage)
 	}
 
 	userAsset.LockedToService = null.NewString("", false)
@@ -772,11 +802,9 @@ func (ac *AssetController) Asset1155TransferToSupremacyHandler(ctx context.Conte
 		return terror.Error(fmt.Errorf("asset count below 0 after transfer"), "Cannot process transfer. Amount after transfer is below 0")
 	}
 
-	userUUID := uuid.Must(uuid.FromString(user.ID))
-
 	tx := &xsynTypes.NewTransaction{
-		From:                 xsynTypes.UserID(userUUID),
-		To:                   xsynTypes.XsynTreasuryUserID,
+		Debit:                user.ID,
+		Credit:               xsynTypes.XsynTreasuryUserID.String(),
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "XSYN", req.Payload.TokenID, time.Now().UnixNano())),
 		Description:          fmt.Sprintf("Transfer of asset: %s to Supremacy", asset.Label),
 		Amount:               decimal.New(5, 18), // 5 sups
@@ -941,15 +969,13 @@ func (ac *AssetController) Asset1155TransferFromSupremacyHandler(ctx context.Con
 		return terror.Error(err, "Failed to get user 1155 asset")
 	}
 
-	userUUID := uuid.Must(uuid.FromString(user.ID))
-
 	if asset.Count-req.Payload.Amount < 0 {
 		return terror.Error(err, "Total asset amount after is less than zero")
 	}
 
 	tx := &xsynTypes.NewTransaction{
-		From:                 xsynTypes.UserID(userUUID),
-		To:                   xsynTypes.XsynTreasuryUserID,
+		Debit:                user.ID,
+		Credit:               xsynTypes.XsynTreasuryUserID.String(),
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "XSYN", req.Payload.TokenID, time.Now().UnixNano())),
 		Description:          fmt.Sprintf("Transfer of asset with token id of %d from collection %s to Xsyn", req.Payload.TokenID, req.Payload.CollectionSlug),
 		Amount:               decimal.New(5, 18), // 5 sups
@@ -1198,8 +1224,8 @@ func reverseAssetServiceTransaction(
 	reason string,
 ) (transaction *xsynTypes.NewTransaction, returnTransferLog *boiler.AssetServiceTransferEvent) {
 	transaction = &xsynTypes.NewTransaction{
-		From:                 transactionToReverse.To,
-		To:                   transactionToReverse.From,
+		Debit:                transactionToReverse.Credit,
+		Credit:               transactionToReverse.Debit,
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("REFUND - %s", transactionToReverse.TransactionReference)),
 		Description:          fmt.Sprintf("Reverse transaction - %s. Reason: %s", transactionToReverse.Description, reason),
 		Amount:               transactionToReverse.Amount,
@@ -1243,8 +1269,8 @@ func reverseAsset1155ServiceTransaction(
 	reason string,
 ) (transaction *xsynTypes.NewTransaction, returnTransferLog *boiler.Asset1155ServiceTransferEvent) {
 	transaction = &xsynTypes.NewTransaction{
-		From:                 transactionToReverse.To,
-		To:                   transactionToReverse.From,
+		Debit:                transactionToReverse.Credit,
+		Credit:               transactionToReverse.Debit,
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("REFUND - %s", transactionToReverse.TransactionReference)),
 		Description:          fmt.Sprintf("Reverse transaction - %s. Reason: %s", transactionToReverse.Description, reason),
 		Amount:               transactionToReverse.Amount,

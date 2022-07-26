@@ -87,9 +87,16 @@ func RetrieveUser(ctx context.Context) (*types.User, error) {
 		faction = Faction(user.FactionID.String)
 	}
 
+	hasPassword := false
+	_, err = boiler.FindPasswordHash(passdb.StdConn, user.ID)
+	if err == nil {
+		hasPassword = true
+	}
+
 	return &types.User{
-		User:    user,
-		Faction: faction,
+		User:        *user,
+		Faction:     faction,
+		HasPassword: hasPassword,
 	}, nil
 }
 
