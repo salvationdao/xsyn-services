@@ -1041,6 +1041,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 			User:        user,
 			RedirectURL: redirect,
 			Tenant:      tenant,
+			IsTwitter:   true,
 		}
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
@@ -1134,10 +1135,12 @@ type FingerprintTokenRequest struct {
 	RedirectURL string
 	Tenant      string
 	Fingerprint *users.Fingerprint
+	IsTwitter   bool
 }
 
 func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request, req *FingerprintTokenRequest) error {
-	if req.User.TwoFactorAuthenticationIsSet && req.RedirectURL != "" && !req.Pass2FA && req.Tenant == "" {
+	// Check if tenant is provided for external 2FA logins except for twitter since redirect is always provided
+	if req.User.TwoFactorAuthenticationIsSet && req.RedirectURL != "" && !req.Pass2FA && req.Tenant == "" && !req.IsTwitter {
 		err := fmt.Errorf("tenant missing for external 2fa login")
 		passlog.L.Error().Err(err).Msg(err.Error())
 		return err
