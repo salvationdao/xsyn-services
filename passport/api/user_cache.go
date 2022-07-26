@@ -23,16 +23,18 @@ import (
 )
 
 type Transactor struct {
-	deadlock.Map
+	m             map[string]decimal.Decimal
+	syndicates    map[string]byte
 	updateBalance chan *types.NewTransaction
-	accountLookup deadlock.Map
+	deadlock.RWMutex
 }
 
 func NewTX() (*Transactor, error) {
 	ucm := &Transactor{
-		deadlock.Map{},
+		make(map[string]decimal.Decimal),
+		make(map[string]byte),
 		make(chan *types.NewTransaction, 100),
-		deadlock.Map{},
+		deadlock.RWMutex{},
 	}
 	accounts, err := boiler.Accounts().All(passdb.StdConn)
 	if err != nil {
@@ -40,9 +42,14 @@ func NewTX() (*Transactor, error) {
 		return nil, err
 	}
 
+	ucm.Lock()
 	for _, acc := range accounts {
-		ucm.Put(acc.ID, acc)
+		ucm.m[acc.ID] = acc.Sups
+		if acc.Type == boiler.AccountTypeSYNDICATE {
+			ucm.syndicates[acc.ID] = 1
+		}
 	}
+	ucm.Unlock()
 
 	go ucm.RunBalanceUpdate()
 
@@ -90,60 +97,81 @@ func (ucm *Transactor) RunBalanceUpdate() {
 	for {
 		nt := <-ucm.updateBalance
 
-		fromAccount, err := ucm.Get(nt.Debit)
+		supsFromAccount, accType, err := ucm.Get(nt.Debit)
 		if err == nil {
-			fromAccount.Sups = fromAccount.Sups.Sub(nt.Amount)
-			ucm.Put(nt.Debit, fromAccount)
+			supsFromAccount = supsFromAccount.Sub(nt.Amount)
+			ucm.Put(nt.Debit, supsFromAccount)
 
-			if ucm.IsNormalUser(nt.Debit) {
+			if accType == boiler.AccountTypeUSER {
 				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", nt.Debit), HubKeyUserTransactionsSubscribe, []*types.NewTransaction{nt})
-				ws.PublishMessage(fmt.Sprintf("/user/%s/sups", nt.Debit), HubKeyUserSupsSubscribe, fromAccount.Sups.String())
+				ws.PublishMessage(fmt.Sprintf("/user/%s/sups", nt.Debit), HubKeyUserSupsSubscribe, supsFromAccount.String())
 			}
 		}
 
-		toAccount, err := ucm.Get(nt.Credit)
+		supsToAccount, accType, err := ucm.Get(nt.Credit)
 		if err == nil {
-			toAccount.Sups = toAccount.Sups.Add(nt.Amount)
-			ucm.Put(nt.Credit, toAccount)
+			supsToAccount = supsToAccount.Add(nt.Amount)
+			ucm.Put(nt.Credit, supsToAccount)
 
-			if ucm.IsNormalUser(nt.Credit) {
+			if accType == boiler.AccountTypeUSER {
 				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", nt.Credit), HubKeyUserTransactionsSubscribe, []*types.NewTransaction{nt})
-				ws.PublishMessage(fmt.Sprintf("/user/%s/sups", nt.Credit), HubKeyUserSupsSubscribe, toAccount.Sups.String())
+				ws.PublishMessage(fmt.Sprintf("/user/%s/sups", nt.Credit), HubKeyUserSupsSubscribe, supsToAccount.String())
 			}
 		}
 	}
 }
 
-func (ucm *Transactor) SetAndGet(ownerID string) (*boiler.Account, error) {
+func (ucm *Transactor) GetAndSet(ownerID string) (decimal.Decimal, string, error) {
 	a, err := boiler.Accounts(
 		boiler.AccountWhere.ID.EQ(ownerID),
 	).One(passdb.StdConn)
 	if err != nil {
-		return nil, err
+		return decimal.Zero, "", err
 	}
 
 	// store data to the map
-	ucm.Put(ownerID, a)
-
-	return a, nil
+	return ucm.PutFromAccount(ownerID, a)
 }
 
-func (ucm *Transactor) Get(ownerID string) (*boiler.Account, error) {
-	result, ok := ucm.Load(ownerID)
-	if !ok {
-		return result.(*boiler.Account), nil
+func (ucm *Transactor) Get(ownerID string) (decimal.Decimal, string, error) {
+	ucm.RLock()
+	defer ucm.RUnlock()
+
+	result, ok := ucm.m[ownerID]
+	if ok {
+		if _, isSyndicate := ucm.syndicates[ownerID]; !isSyndicate {
+			return result, boiler.AccountTypeUSER, nil
+		}
+		return result, boiler.AccountTypeSYNDICATE, nil
 	}
 
-	return ucm.SetAndGet(ownerID)
+	return ucm.GetAndSet(ownerID)
 }
 
-func (ucm *Transactor) Put(ownerID string, account *boiler.Account) {
-	ucm.Store(ownerID, account)
+func (ucm *Transactor) Put(ownerID string, sups decimal.Decimal) {
+	ucm.Lock()
+	ucm.m[ownerID] = sups
+	ucm.Unlock()
+}
+
+func (ucm *Transactor) PutFromAccount(ownerID string, acc *boiler.Account) (decimal.Decimal, string, error) {
+	ucm.Lock()
+	defer ucm.Unlock()
+
+	ucm.m[acc.ID] = acc.Sups
+	if acc.Type == boiler.AccountTypeSYNDICATE {
+		ucm.syndicates[ownerID] = 1
+		return acc.Sups, boiler.AccountTypeSYNDICATE, nil
+	}
+	return acc.Sups, boiler.AccountTypeUSER, nil
 }
 
 func (ucm *Transactor) IsNormalUser(ownerID string) bool {
-	acc, err := ucm.Get(ownerID)
-	if err != nil || acc.Type != boiler.AccountTypeUSER {
+	ucm.RLock()
+	defer ucm.RUnlock()
+
+	_, ok := ucm.syndicates[ownerID]
+	if ok {
 		return false
 	}
 
@@ -151,12 +179,10 @@ func (ucm *Transactor) IsNormalUser(ownerID string) bool {
 }
 
 func (ucm *Transactor) IsSyndicate(ownerID string) bool {
-	acc, err := ucm.Get(ownerID)
-	if err != nil || acc.Type != boiler.AccountTypeSYNDICATE {
-		return false
-	}
-
-	return true
+	ucm.RLock()
+	defer ucm.RUnlock()
+	_, ok := ucm.syndicates[ownerID]
+	return ok
 }
 
 type UserCacheFunc func(userCacheList Transactor)
