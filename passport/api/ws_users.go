@@ -1519,13 +1519,13 @@ func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, user *typ
 const HubKeyUserSupsSubscribe = "USER:SUPS:SUBSCRIBE"
 
 func (api *API) UserSupsUpdatedSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	account, err := api.userCacheMap.SetAndGet(user.ID)
+	sups, _, err := api.userCacheMap.Get(user.ID)
 	// get current on world sups
 	if err != nil {
 		return terror.Error(err, "Issue subscribing to user SUPs updates, try again or contact support.")
 	}
 
-	reply(account.Sups.StringFixed(0))
+	reply(sups.StringFixed(0))
 	return nil
 }
 
@@ -1616,11 +1616,11 @@ const HubKeySUPSRemainingSubscribe = "SUPS:TREASURY"
 
 func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 
-	account, err := uc.API.userCacheMap.Get(types.XsynSaleUserID.String())
+	sups, _, err := uc.API.userCacheMap.Get(types.XsynSaleUserID.String())
 	if err != nil {
 		return terror.Error(err, "Issue getting total SUPs remaining handler, try again or contact support.")
 	}
-	reply(account.Sups.StringFixed(0))
+	reply(sups.StringFixed(0))
 	return nil
 }
 
