@@ -155,9 +155,6 @@ func (ucm *Transactor) Put(ownerID string, sups decimal.Decimal) {
 }
 
 func (ucm *Transactor) PutFromAccount(ownerID string, acc *boiler.Account) (decimal.Decimal, string, error) {
-	ucm.Lock()
-	defer ucm.Unlock()
-
 	ucm.m[acc.ID] = acc.Sups
 	if acc.Type == boiler.AccountTypeSYNDICATE {
 		ucm.syndicates[ownerID] = 1
