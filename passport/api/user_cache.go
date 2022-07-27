@@ -129,8 +129,12 @@ func (ucm *Transactor) GetAndSet(ownerID string) (decimal.Decimal, string, error
 		return decimal.Zero, "", err
 	}
 
-	// store data to the map
-	return ucm.PutFromAccount(ownerID, a)
+	ucm.m[a.ID] = a.Sups
+	if a.Type == boiler.AccountTypeSYNDICATE {
+		ucm.syndicates[ownerID] = 1
+		return a.Sups, boiler.AccountTypeSYNDICATE, nil
+	}
+	return a.Sups, boiler.AccountTypeUSER, nil
 }
 
 func (ucm *Transactor) Get(ownerID string) (decimal.Decimal, string, error) {
@@ -152,15 +156,6 @@ func (ucm *Transactor) Put(ownerID string, sups decimal.Decimal) {
 	ucm.Lock()
 	ucm.m[ownerID] = sups
 	ucm.Unlock()
-}
-
-func (ucm *Transactor) PutFromAccount(ownerID string, acc *boiler.Account) (decimal.Decimal, string, error) {
-	ucm.m[acc.ID] = acc.Sups
-	if acc.Type == boiler.AccountTypeSYNDICATE {
-		ucm.syndicates[ownerID] = 1
-		return acc.Sups, boiler.AccountTypeSYNDICATE, nil
-	}
-	return acc.Sups, boiler.AccountTypeUSER, nil
 }
 
 func (ucm *Transactor) IsNormalUser(ownerID string) bool {
