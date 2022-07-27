@@ -204,16 +204,14 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	switch authType {
 	case "wallet":
 		req := &WalletLoginRequest{
+			RedirectURL:   redir,
 			Tenant:        r.Form.Get("tenant"),
 			PublicAddress: r.Form.Get("public_address"),
 			Signature:     r.Form.Get("signature"),
 		}
-		if redir != "" {
-			req.RedirectURL = redir
-		}
 		err = api.WalletLogin(req, w, r)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", req.Tenant, r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			return
 		}
 	case "signup":
@@ -226,13 +224,13 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		user, _ := users.Email(req.Email)
 		if user != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", req.Tenant, r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			return
 		}
 		err = api.EmailSignUp(req, w, r)
 
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", req.Tenant, r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			return
 		}
 	case "email":
@@ -245,7 +243,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		err = api.EmailLogin(req, w, r)
 
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", req.Tenant, r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			return
 		}
 	case "facebook":
@@ -257,7 +255,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		err := api.FacebookLogin(req, w, r)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", req.Tenant, r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			return
 		}
 	case "google":
@@ -266,11 +264,12 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			Tenant:      r.Form.Get("tenant"),
 			GoogleID:    r.Form.Get("google_id"),
 			Username:    r.Form.Get("username"),
+			Email:       r.Form.Get("email"),
 		}
 
 		err := api.GoogleLogin(req, w, r)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", req.Tenant, r.Header.Get("origin"), redir, err.Error()), http.StatusSeeOther)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			return
 		}
 	case "token":
@@ -804,8 +803,13 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 
 	if err != nil && errors.Is(sql.ErrNoRows, err) {
 		// Check if user gmail already exist
-		user, err = boiler.Users(boiler.UserWhere.Email.EQ(null.StringFrom(req.Email))).One(passdb.StdConn)
+		if req.Email == "" {
+			noEmailErr := fmt.Errorf("no email provided for google auth")
+			passlog.L.Error().Err(noEmailErr).Msg("no email provided for google auth")
+			return noEmailErr
+		}
 
+		user, _ = boiler.Users(boiler.UserWhere.Email.EQ(null.StringFrom(req.Email))).One(passdb.StdConn)
 		if user != nil {
 			user.GoogleID = null.StringFrom(req.GoogleID)
 			user.Verified = true
@@ -816,23 +820,24 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 				passlog.L.Error().Err(err).Msg("unable to add google id to user with existing gmail")
 				return err
 			}
-		} else if err != nil && errors.Is(sql.ErrNoRows, err) {
+		} else {
 			commonAddress := common.HexToAddress("")
-			u, err := users.UserCreator("", "", req.Username, req.Email, "", req.GoogleID, "", "", "", "", commonAddress, "")
+			username := fmt.Sprintf(("%s%d"), req.Username, rand.Intn(1000))
+			u, err := users.UserCreator("", "", username, req.Email, "", req.GoogleID, "", "", "", "", commonAddress, "")
 			if err != nil {
 				return err
 			}
 			loginReq.User = &u.User
-		} else if err != nil {
-			passlog.L.Error().Err(err).Msg("invalid google credentials provided")
-			return err
 		}
 
-	} else if err != nil {
-		passlog.L.Error().Err(err).Msg("invalid google credentials provided")
-		return err
 	}
-	return api.FingerprintAndIssueToken(w, r, loginReq)
+
+	if loginReq.User != nil {
+		return api.FingerprintAndIssueToken(w, r, loginReq)
+	}
+
+	passlog.L.Error().Err(err).Msg("invalid google credentials provided")
+	return err
 }
 
 func (api *API) TFAVerifyHandler(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -1034,6 +1039,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 			User:        user,
 			RedirectURL: redirect,
 			Tenant:      tenant,
+			IsTwitter:   true,
 		}
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
@@ -1127,10 +1133,12 @@ type FingerprintTokenRequest struct {
 	RedirectURL string
 	Tenant      string
 	Fingerprint *users.Fingerprint
+	IsTwitter   bool
 }
 
 func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request, req *FingerprintTokenRequest) error {
-	if req.User.TwoFactorAuthenticationIsSet && req.RedirectURL != "" && !req.Pass2FA && req.Tenant == "" {
+	// Check if tenant is provided for external 2FA logins except for twitter since redirect is always provided
+	if req.User.TwoFactorAuthenticationIsSet && req.RedirectURL != "" && !req.Pass2FA && req.Tenant == "" && !req.IsTwitter {
 		err := fmt.Errorf("tenant missing for external 2fa login")
 		passlog.L.Error().Err(err).Msg(err.Error())
 		return err
