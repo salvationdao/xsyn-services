@@ -50,6 +50,7 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 		// if tx exists, continue
 		txExists, err := boiler.ItemOnchainTransactions(
 			boiler.ItemOnchainTransactionWhere.TXID.EQ(nftStatus.TxHash),
+			boiler.ItemOnchainTransactionWhere.ExternalTokenID.EQ(tokenID),
 		).Exists(passdb.StdConn)
 		if err != nil {
 			return 0, 0, fmt.Errorf("get purchased item: %w", err)
