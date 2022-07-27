@@ -11,6 +11,7 @@ import (
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
+	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/supremacy_rpcclient"
 	"xsyn-services/types"
 
@@ -88,12 +89,14 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 	if asset.DataRefreshedAt.Before(time.Now().Add(-24 * time.Hour)) {
 		xsynAsset, err := supremacy_rpcclient.AssetGet(asset.Hash)
 		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err, "Failed to update asset metadata.")
-		}
-
-		asset, err = db.UpdateUserAsset(xsynAsset)
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err, "Failed to update asset metadata.")
+			passlog.L.Error().Err(err).Str("asset.Hash", asset.Hash).Msg("failed to refresh metadata")
+		} else {
+			userAssetNew, err := db.UpdateUserAsset(xsynAsset)
+			if err != nil {
+				passlog.L.Error().Err(err).Str("asset.Hash", asset.Hash).Msg("failed to update metadata")
+			} else {
+				asset = userAssetNew
+			}
 		}
 	}
 
