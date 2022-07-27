@@ -248,13 +248,13 @@ func (ac *AssetController) AssetUpdatedGetHandler(ctx context.Context, key strin
 		xsynAsset, err := supremacy_rpcclient.AssetGet(userAsset.Hash)
 		if err != nil {
 			passlog.L.Error().Err(err).Str("userAsset.Hash", userAsset.Hash).Msg("failed to refresh metadata")
-		}
-
-		userAssetNew, err := db.UpdateUserAsset(xsynAsset)
-		if err != nil {
-			passlog.L.Error().Err(err).Str("userAsset.Hash", userAsset.Hash).Msg("failed to update metadata")
 		} else {
-			userAsset = userAssetNew
+			userAssetNew, err := db.UpdateUserAsset(xsynAsset)
+			if err != nil {
+				passlog.L.Error().Err(err).Str("userAsset.Hash", userAsset.Hash).Msg("failed to update metadata")
+			} else {
+				userAsset = userAssetNew
+			}
 		}
 	}
 

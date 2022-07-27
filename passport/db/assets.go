@@ -384,6 +384,15 @@ func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string, tx 
 func UpdateUserAsset(itm *supremacy_rpcclient.XsynAsset) (*boiler.UserAsset, error) {
 	asset, err := boiler.UserAssets(
 		boiler.UserAssetWhere.Hash.EQ(itm.Hash),
+		qm.Load(boiler.UserAssetRels.Collection),
+		qm.Load(
+			boiler.UserAssetRels.Owner,
+			qm.Select(
+				boiler.UserColumns.ID,
+				boiler.UserColumns.Username,
+			),
+		),
+		qm.Load(boiler.UserAssetRels.LockedToServiceUser),
 	).One(passdb.StdConn)
 	if err != nil {
 		return nil, terror.Error(err)
