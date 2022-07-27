@@ -7,6 +7,7 @@ import (
 	"github.com/volatiletech/null/v8"
 	"net/http"
 	"strconv"
+	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
@@ -54,99 +55,81 @@ func (api *API) AssetGet(w http.ResponseWriter, r *http.Request) (int, error) {
 func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Request) (int, error) {
 	collectionAddress := chi.URLParam(r, "collection_address")
 	if collectionAddress == "" {
-		return http.StatusBadRequest, terror.Warn(fmt.Errorf("collection_address not provided in URL"), "metadata")
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("collection_address not provided in URL"), "Invalid collection_address.")
 	}
 	tokenIDStr := chi.URLParam(r, "token_id")
 	if tokenIDStr == "" {
-		return http.StatusBadRequest, terror.Warn(fmt.Errorf("token_id not provided in URL"), "metadata")
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("token_id not provided in URL"), "Invalid token_id")
 	}
 
 	tokenID, err := strconv.Atoi(tokenIDStr)
 	if err != nil {
-		return http.StatusBadRequest, terror.Warn(err, "get asset from db")
+		return http.StatusBadRequest, terror.Warn(err, "Invalid token_id")
 	}
 
 	collection, err := boiler.Collections(
 		boiler.CollectionWhere.MintContract.EQ(null.StringFrom(common.HexToAddress(collectionAddress).Hex())),
 	).One(passdb.StdConn)
 	if err != nil {
-		return http.StatusBadRequest, terror.Warn(err, "get collection from db")
+		return http.StatusBadRequest, terror.Warn(err, "Failed to get collection from db")
 	}
 
 	var openseaAsset *openSeaMetaData
 
-	// if collection is genesis or limited
-	if collection.Name == "Supremacy Genesis" || collection.Name == "Supremacy Limited Release" && collection.MintContract.Valid {
-		asset, err := supremacy_rpcclient.GenesisOrLimitedMech(collection.Slug, tokenID)
+	asset, err := boiler.UserAssets(
+		boiler.UserAssetWhere.CollectionID.EQ(collection.ID),
+		boiler.UserAssetWhere.TokenID.EQ(int64(tokenID)),
+	).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed find asset")
+	}
+
+	// if asset refreshed over 24 hours ago, pull it
+	if asset.DataRefreshedAt.Before(time.Now().Add(-24 * time.Hour)) {
+		xsynAsset, err := supremacy_rpcclient.AssetGet(asset.Hash)
 		if err != nil {
-			return http.StatusBadRequest, terror.Warn(err, "failed to get item from gameserver")
+			return http.StatusInternalServerError, terror.Error(err, "Failed to update asset metadata.")
 		}
 
-		attribes := []*types.OpenSeaAttribute{}
-		if asset.Attributes != nil {
-			for _, attribute := range asset.Attributes {
-				if attribute.TraitType == "Name" || attribute.TraitType == "name" {
-					continue
-				}
-				newAttribute := &types.OpenSeaAttribute{
-					DisplayType: attribute.DisplayType,
-					TraitType:   attribute.TraitType,
-					Value:       attribute.Value,
-				}
-
-				attribes = append(attribes, newAttribute)
-			}
+		asset, err = db.UpdateUserAsset(xsynAsset)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Failed to update asset metadata.")
 		}
+	}
 
-		openseaAsset = &openSeaMetaData{
-			Image:           asset.ImageURL.String,
-			ExternalURL:     asset.ExternalURL.String,
-			Description:     asset.Description.String,
-			Name:            asset.Name,
-			Attributes:      attribes,
-			BackgroundColor: asset.BackgroundColor.String,
-			AnimationURL:    asset.AnimationURL.String,
-			YoutubeURL:      asset.YoutubeURL.String,
-		}
-	} else {
-		asset, err := boiler.UserAssets(boiler.UserAssetWhere.CollectionID.EQ(collection.ID), boiler.UserAssetWhere.TokenID.EQ(int64(tokenID))).One(passdb.StdConn)
+	attribes := []*types.OpenSeaAttribute{}
+	if asset.Attributes != nil {
+		err := asset.Attributes.Unmarshal(&attribes)
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err, "Failed find asset")
 		}
+	}
 
-		attribes := []*types.OpenSeaAttribute{}
-		if asset.Attributes != nil {
-			err := asset.Attributes.Unmarshal(&attribes)
-			if err != nil {
-				return http.StatusInternalServerError, terror.Error(err, "Failed find asset")
+	newAttributes := []*types.OpenSeaAttribute{}
+	if len(attribes) > 0 {
+		for _, attribute := range attribes {
+			if attribute.TraitType == "Name" || attribute.TraitType == "name" {
+				continue
 			}
-		}
-		newAttributes := []*types.OpenSeaAttribute{}
-		if len(attribes) > 0 {
-			for _, attribute := range attribes {
-				if attribute.TraitType == "Name" || attribute.TraitType == "name" {
-					continue
-				}
-				newAttribute := &types.OpenSeaAttribute{
-					DisplayType: attribute.DisplayType,
-					TraitType:   attribute.TraitType,
-					Value:       attribute.Value,
-				}
-
-				newAttributes = append(newAttributes, newAttribute)
+			newAttribute := &types.OpenSeaAttribute{
+				DisplayType: attribute.DisplayType,
+				TraitType:   attribute.TraitType,
+				Value:       attribute.Value,
 			}
-		}
 
-		openseaAsset = &openSeaMetaData{
-			Image:           asset.ImageURL.String,
-			ExternalURL:     asset.ExternalURL.String,
-			Description:     asset.Description.String,
-			Name:            asset.Name,
-			Attributes:      newAttributes,
-			BackgroundColor: asset.BackgroundColor.String,
-			AnimationURL:    asset.AnimationURL.String,
-			YoutubeURL:      asset.YoutubeURL.String,
+			newAttributes = append(newAttributes, newAttribute)
 		}
+	}
+
+	openseaAsset = &openSeaMetaData{
+		Image:           asset.ImageURL.String,
+		ExternalURL:     asset.ExternalURL.String,
+		Description:     asset.Description.String,
+		Name:            asset.Name,
+		Attributes:      newAttributes,
+		BackgroundColor: asset.BackgroundColor.String,
+		AnimationURL:    asset.AnimationURL.String,
+		YoutubeURL:      asset.YoutubeURL.String,
 	}
 
 	jsonObject, err := json.Marshal(openseaAsset)
