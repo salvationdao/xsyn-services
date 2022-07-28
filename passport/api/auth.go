@@ -792,6 +792,8 @@ func (api *API) GoogleLoginHandler(w http.ResponseWriter, r *http.Request) (int,
 }
 
 func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *http.Request) error {
+	L := passlog.L.With().Str("func", "GoogleLogin").Logger()
+	L.Info().Msg("hit handler")
 	// Check if there are any existing users associated with the email address
 	user, err := users.GoogleID(req.GoogleID)
 
@@ -803,6 +805,7 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 	}
 
 	if err != nil && errors.Is(sql.ErrNoRows, err) {
+		L.Info().Msg("hit if err != nil && errors.Is(sql.ErrNoRows, err)")
 		// Check if user gmail already exist
 		if req.Email == "" {
 			noEmailErr := fmt.Errorf("no email provided for google auth")
@@ -834,10 +837,11 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 	}
 
 	if loginReq.User != nil {
+		L.Info().Msg("hit FingerprintAndIssueToken handler")
 		return api.FingerprintAndIssueToken(w, r, loginReq)
 	}
-
-	passlog.L.Error().Err(err).Msg("invalid google credentials provided")
+	L.Info().Msg("end handler")
+	L.Error().Err(err).Msg("invalid google credentials provided")
 	return err
 }
 
@@ -1139,17 +1143,19 @@ type FingerprintTokenRequest struct {
 
 func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request, req *FingerprintTokenRequest) error {
 	// Check if tenant is provided for external 2FA logins except for twitter since redirect is always provided
+	passlog.L.Info().Msg("here1")
 	if req.User.TwoFactorAuthenticationIsSet && req.RedirectURL != "" && !req.Pass2FA && req.Tenant == "" && !req.IsTwitter {
 		err := fmt.Errorf("tenant missing for external 2fa login")
 		passlog.L.Error().Err(err).Msg(err.Error())
 		return err
 	}
+	passlog.L.Info().Msg("here2")
 	if req.User == nil {
 		err := fmt.Errorf("user does not exist in issuing token")
 		passlog.L.Error().Err(err).Msg(err.Error())
 		return err
 	}
-
+	passlog.L.Info().Msg("here3")
 	// Dont create issue token and tell front-end to start 2FA verification with JWT
 	if req.User.TwoFactorAuthenticationIsSet && !req.Pass2FA {
 		// Generate jwt with user id
@@ -1200,7 +1206,7 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 			return err
 		}
 	}
-
+	passlog.L.Info().Msg("here4")
 	u, _, token, err := api.IssueToken(&TokenConfig{
 		Encrypted: true,
 		Key:       api.TokenEncryptionKey,
@@ -1211,7 +1217,7 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 	if err != nil {
 		return err
 	}
-
+	passlog.L.Info().Msg("here5")
 	if req.User.DeletedAt.Valid {
 		return err
 	}
@@ -1220,6 +1226,7 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		return err
 	}
 
+	passlog.L.Info().Msg("here6")
 	if req.RedirectURL == "" {
 		b, err := json.Marshal(u)
 		if err != nil {
@@ -1232,7 +1239,7 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 			return err
 		}
 	}
-
+	passlog.L.Info().Msg("here7")
 	return nil
 }
 
