@@ -2,6 +2,7 @@ package email
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -46,8 +47,11 @@ func NewMailer(domain string, apiKey string, systemAddress string, config *types
 
 	// Parse email templates
 	var templates []string
-	templatesFolder := "./passport/email/templates"
-	err := filepath.Walk(templatesFolder, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(config.EmailTemplatePath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			fmt.Println(path)
+			return err
+		}
 		if strings.Contains(path, ".html") {
 			templates = append(templates, path)
 		}
@@ -56,6 +60,11 @@ func NewMailer(domain string, apiKey string, systemAddress string, config *types
 	if err != nil {
 		return nil, terror.Error(err, "failed to step through templates folder")
 	}
+	if len(templates) == 0 {
+		return nil, terror.Error(fmt.Errorf("unable to find templates"), "zero templates found")
+
+	}
+
 	err = mailer.ParseTemplates(templates...)
 	if err != nil {
 		return nil, terror.Error(err, "failed to parse email templates")

@@ -20,6 +20,7 @@ type Config struct {
 	AuthParams              *AuthParams
 	WebhookParams           *WebhookParams
 	BotSecret               string
+	EmailTemplatePath       string
 }
 
 type BridgeParams struct {
