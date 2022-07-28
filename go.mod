@@ -32,7 +32,7 @@ require (
 	github.com/ninja-software/terror/v2 v2.0.12
 	github.com/ninja-syndicate/hub v1.9.2
 	github.com/ninja-syndicate/supremacy-bridge v0.1.43
-	github.com/ninja-syndicate/ws v0.16.5
+	github.com/ninja-syndicate/ws v0.16.6
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/pquerna/otp v1.3.0
@@ -55,7 +55,6 @@ require (
 	github.com/boombuler/barcode v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
 	github.com/containerd/continuity v0.2.2 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/cli v20.10.11+incompatible // indirect
 	github.com/docker/docker v20.10.13+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
