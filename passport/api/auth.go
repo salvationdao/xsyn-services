@@ -1215,6 +1215,7 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		User:      req.User,
 	})
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to issue token")
 		return err
 	}
 	passlog.L.Info().Msg("here5")
