@@ -180,7 +180,7 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 	for usExists != nil {
 		sanitizedUsername = helpers.RandStringBytes(n) + sanitizedUsername
 		n++
-		usExists, _ = boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(sanitizedUsername))).One(passdb.StdConn)
+		usExists, _ = boiler.Users(boiler.UserWhere.Username.EQ(sanitizedUsername)).One(passdb.StdConn)
 		if n > 10 {
 			return nil, fmt.Errorf("unable to generate a unique username")
 		}
@@ -428,7 +428,7 @@ func VerifyTFA(userTFASecret string, passcode string) error {
 
 func GetTFARecovery(userID string) (boiler.UserRecoveryCodeSlice, error) {
 	userRecoveryCodes, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(userID)).All(passdb.StdConn)
-	if err != nil {
+	if err != nil || len(userRecoveryCodes) == 0 {
 		return nil, fmt.Errorf("user has no recovery codes")
 	}
 
