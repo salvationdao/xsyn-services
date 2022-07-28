@@ -785,7 +785,8 @@ func (api *API) GoogleLoginHandler(w http.ResponseWriter, r *http.Request) (int,
 	}
 	err = api.GoogleLogin(req, w, r)
 	if err != nil {
-		return http.StatusBadRequest, err
+		passlog.L.Error().Err(err).Msg("unable to google login")
+		return http.StatusBadRequest, terror.Error(err, "unable to google auth")
 	}
 	return http.StatusCreated, nil
 }
