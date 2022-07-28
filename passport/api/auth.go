@@ -785,12 +785,15 @@ func (api *API) GoogleLoginHandler(w http.ResponseWriter, r *http.Request) (int,
 	}
 	err = api.GoogleLogin(req, w, r)
 	if err != nil {
-		return http.StatusBadRequest, err
+		passlog.L.Error().Err(err).Msg("unable to google login")
+		return http.StatusBadRequest, terror.Error(err, "unable to google auth")
 	}
 	return http.StatusCreated, nil
 }
 
 func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *http.Request) error {
+	L := passlog.L.With().Str("func", "GoogleLogin").Logger()
+	L.Info().Msg("hit handler")
 	// Check if there are any existing users associated with the email address
 	user, err := users.GoogleID(req.GoogleID)
 
@@ -802,6 +805,7 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 	}
 
 	if err != nil && errors.Is(sql.ErrNoRows, err) {
+		L.Info().Msg("hit if err != nil && errors.Is(sql.ErrNoRows, err)")
 		// Check if user gmail already exist
 		if req.Email == "" {
 			noEmailErr := fmt.Errorf("no email provided for google auth")
@@ -833,10 +837,11 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 	}
 
 	if loginReq.User != nil {
+		L.Info().Msg("hit FingerprintAndIssueToken handler")
 		return api.FingerprintAndIssueToken(w, r, loginReq)
 	}
-
-	passlog.L.Error().Err(err).Msg("invalid google credentials provided")
+	L.Info().Msg("end handler")
+	L.Error().Err(err).Msg("invalid google credentials provided")
 	return err
 }
 
@@ -1148,7 +1153,6 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		passlog.L.Error().Err(err).Msg(err.Error())
 		return err
 	}
-
 	// Dont create issue token and tell front-end to start 2FA verification with JWT
 	if req.User.TwoFactorAuthenticationIsSet && !req.Pass2FA {
 		// Generate jwt with user id
@@ -1199,7 +1203,6 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 			return err
 		}
 	}
-
 	u, _, token, err := api.IssueToken(&TokenConfig{
 		Encrypted: true,
 		Key:       api.TokenEncryptionKey,
@@ -1208,9 +1211,9 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		User:      req.User,
 	})
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to issue token")
 		return err
 	}
-
 	if req.User.DeletedAt.Valid {
 		return err
 	}
@@ -1231,7 +1234,6 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -1288,7 +1290,6 @@ func (api *API) OneTimeToken(userID string, userAgent string) *string {
 func token(api *API, config *TokenConfig, isIssueToken bool, expireInDays int) (*types.User, uuid.UUID, string, error) {
 	var err error
 	errMsg := "There was a problem with your authentication, please check your details and try again."
-
 	// Get user by email
 	if config.Email == "" && config.User == nil {
 		return nil, uuid.Nil, "", terror.Error(ErrNoUserInformation, errMsg)
@@ -1305,7 +1306,6 @@ func token(api *API, config *TokenConfig, isIssueToken bool, expireInDays int) (
 			return nil, uuid.Nil, "", terror.Error(err, errMsg)
 		}
 	}
-
 	tokenID := uuid.Must(uuid.NewV4())
 	// save user detail as jwt
 	jwt, sign, err := tokens.GenerateJWT(
@@ -1319,13 +1319,11 @@ func token(api *API, config *TokenConfig, isIssueToken bool, expireInDays int) (
 		passlog.L.Error().Err(err).Msg("unable to generate jwt token")
 		return nil, uuid.Nil, "", terror.Error(err, errMsg)
 	}
-
 	jwtSigned, err := sign(jwt, config.Encrypted, config.Key)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to sign jwt")
 		return nil, uuid.Nil, "", terror.Error(err, "unable to sign jwt")
 	}
-
 	token := base64.StdEncoding.EncodeToString(jwtSigned)
 
 	if isIssueToken {
@@ -1335,7 +1333,7 @@ func token(api *API, config *TokenConfig, isIssueToken bool, expireInDays int) (
 			return nil, uuid.Nil, "", terror.Error(err, "unable to save jwt")
 		}
 	}
-
+	passlog.L.Info().Interface("user", user).Str("tokenID", tokenID.String()).Interface("token", token).Msg("here4.7")
 	return user, tokenID, token, nil
 }
 
