@@ -68,7 +68,7 @@ type User struct {
 func UserFromBoil(u *boiler.User) (*User, error) {
 	user := &User{User: *u}
 	if u.FactionID.Valid {
-		if u.R.Faction != nil {
+		if u.R != nil && u.R.Faction != nil {
 			user.Faction = u.R.Faction
 		} else {
 			f, err := boiler.FindFaction(passdb.StdConn, u.FactionID.String)

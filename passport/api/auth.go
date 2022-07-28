@@ -1143,19 +1143,16 @@ type FingerprintTokenRequest struct {
 
 func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request, req *FingerprintTokenRequest) error {
 	// Check if tenant is provided for external 2FA logins except for twitter since redirect is always provided
-	passlog.L.Info().Msg("here1")
 	if req.User.TwoFactorAuthenticationIsSet && req.RedirectURL != "" && !req.Pass2FA && req.Tenant == "" && !req.IsTwitter {
 		err := fmt.Errorf("tenant missing for external 2fa login")
 		passlog.L.Error().Err(err).Msg(err.Error())
 		return err
 	}
-	passlog.L.Info().Msg("here2")
 	if req.User == nil {
 		err := fmt.Errorf("user does not exist in issuing token")
 		passlog.L.Error().Err(err).Msg(err.Error())
 		return err
 	}
-	passlog.L.Info().Msg("here3")
 	// Dont create issue token and tell front-end to start 2FA verification with JWT
 	if req.User.TwoFactorAuthenticationIsSet && !req.Pass2FA {
 		// Generate jwt with user id
@@ -1206,7 +1203,6 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 			return err
 		}
 	}
-	passlog.L.Info().Msg("here4")
 	u, _, token, err := api.IssueToken(&TokenConfig{
 		Encrypted: true,
 		Key:       api.TokenEncryptionKey,
@@ -1218,7 +1214,6 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		passlog.L.Error().Err(err).Msg("failed to issue token")
 		return err
 	}
-	passlog.L.Info().Msg("here5")
 	if req.User.DeletedAt.Valid {
 		return err
 	}
@@ -1227,7 +1222,6 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		return err
 	}
 
-	passlog.L.Info().Msg("here6")
 	if req.RedirectURL == "" {
 		b, err := json.Marshal(u)
 		if err != nil {
@@ -1240,7 +1234,6 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 			return err
 		}
 	}
-	passlog.L.Info().Msg("here7")
 	return nil
 }
 
@@ -1297,13 +1290,11 @@ func (api *API) OneTimeToken(userID string, userAgent string) *string {
 func token(api *API, config *TokenConfig, isIssueToken bool, expireInDays int) (*types.User, uuid.UUID, string, error) {
 	var err error
 	errMsg := "There was a problem with your authentication, please check your details and try again."
-	passlog.L.Info().Msg("here4.1")
 	// Get user by email
 	if config.Email == "" && config.User == nil {
 		return nil, uuid.Nil, "", terror.Error(ErrNoUserInformation, errMsg)
 	}
 	var user *types.User
-	passlog.L.Info().Msg("here4.2")
 	if config.User == nil {
 		user, err = users.Email(config.Email)
 		if err != nil {
@@ -1315,7 +1306,6 @@ func token(api *API, config *TokenConfig, isIssueToken bool, expireInDays int) (
 			return nil, uuid.Nil, "", terror.Error(err, errMsg)
 		}
 	}
-	passlog.L.Info().Msg("here4.3")
 	tokenID := uuid.Must(uuid.NewV4())
 	// save user detail as jwt
 	jwt, sign, err := tokens.GenerateJWT(
@@ -1329,17 +1319,14 @@ func token(api *API, config *TokenConfig, isIssueToken bool, expireInDays int) (
 		passlog.L.Error().Err(err).Msg("unable to generate jwt token")
 		return nil, uuid.Nil, "", terror.Error(err, errMsg)
 	}
-	passlog.L.Info().Msg("here4.4")
 	jwtSigned, err := sign(jwt, config.Encrypted, config.Key)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to sign jwt")
 		return nil, uuid.Nil, "", terror.Error(err, "unable to sign jwt")
 	}
-	passlog.L.Info().Msg("here4.5")
 	token := base64.StdEncoding.EncodeToString(jwtSigned)
 
 	if isIssueToken {
-		passlog.L.Info().Msg("here4.6")
 		err = tokens.Save(token, api.TokenExpirationDays, api.TokenEncryptionKey)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to save issue token")
