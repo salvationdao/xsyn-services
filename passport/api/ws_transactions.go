@@ -167,12 +167,12 @@ func (tc *TransactionController) TransactionSubscribeHandler(ctx context.Context
 }
 
 func (ucm *Transactor) GetAccountOwner(accountID string) (*AccountOwner, error) {
-	acc, err := ucm.Get(accountID)
+	_, accType, err := ucm.Get(accountID)
 	if err != nil {
 		return nil, err
 	}
 
-	if acc.Type == boiler.AccountTypeUSER {
+	if accType == boiler.AccountTypeUSER {
 		user, err := boiler.FindUser(passdb.StdConn, accountID)
 		if err != nil {
 			return nil, terror.Error(err, "Failed to get user.")
@@ -180,7 +180,7 @@ func (ucm *Transactor) GetAccountOwner(accountID string) (*AccountOwner, error) 
 
 		return &AccountOwner{
 			ID:       user.ID,
-			Type:     acc.Type,
+			Type:     accType,
 			Username: user.Username,
 		}, nil
 
@@ -193,7 +193,7 @@ func (ucm *Transactor) GetAccountOwner(accountID string) (*AccountOwner, error) 
 
 	return &AccountOwner{
 		ID:       syndicate.ID,
-		Type:     acc.Type,
+		Type:     accType,
 		Username: syndicate.Name,
 	}, nil
 }

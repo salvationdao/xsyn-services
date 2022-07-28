@@ -243,6 +243,21 @@ func (ac *AssetController) AssetUpdatedGetHandler(ctx context.Context, key strin
 		return terror.Error(err, "Failed to get user asset from db")
 	}
 
+	// if asset refreshed over 24 hours ago, pull it
+	if userAsset.DataRefreshedAt.Before(time.Now().Add(-24 * time.Hour)) {
+		xsynAsset, err := supremacy_rpcclient.AssetGet(userAsset.Hash)
+		if err != nil {
+			passlog.L.Error().Err(err).Str("userAsset.Hash", userAsset.Hash).Msg("failed to refresh metadata")
+		} else {
+			userAssetNew, err := db.UpdateUserAsset(xsynAsset)
+			if err != nil {
+				passlog.L.Error().Err(err).Str("userAsset.Hash", userAsset.Hash).Msg("failed to update metadata")
+			} else {
+				userAsset = userAssetNew
+			}
+		}
+	}
+
 	serviceName := null.NewString("", false)
 	if userAsset.R.LockedToServiceUser != nil {
 		serviceName = null.StringFrom(userAsset.R.LockedToServiceUser.Username)
