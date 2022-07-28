@@ -89,6 +89,7 @@ jobs:
           cp -r ./scripts deploy/.
           cp -r ./passport/configs deploy/.
           cp -r ./passport/asset deploy/.
+          cp -r ./passport/email/templates deploy/asset/.
           cp -r ./migrations deploy/.
 
       - name: Build API server

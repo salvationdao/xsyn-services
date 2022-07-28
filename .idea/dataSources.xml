@@ -15,5 +15,12 @@
       <jdbc-url>jdbc:postgresql://xsyn-passport-db.cvyr5drzcyu0.us-east-2.rds.amazonaws.com:5432/passport-db</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
+    <data-source source="LOCAL" name="passport-db@xsyn-passport-db-avant-read.cvyr5drzcyu0.us-east-2.rds.amazonaws.com" uuid="4cd40a47-0e67-4c4c-9ffa-ce23c6ee6187">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://xsyn-passport-db-avant-read.cvyr5drzcyu0.us-east-2.rds.amazonaws.com:5432/passport-db</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>
