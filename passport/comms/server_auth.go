@@ -256,10 +256,10 @@ func (s *S) GenOneTimeToken(req GenOneTimeTokenReq, resp *GenOneTimeTokenResp) e
 		return terror.Error(err, "Failed to get user")
 	}
 
-	now := time.Now()
 	tokenID := uuid.Must(uuid.NewV4())
 
-	expires := time.Now().Add(time.Second * 60)
+	// Token expires in 5 minutes from now
+	expires := time.Now().Add(time.Second * (60 * 5))
 
 	// save user detail as jwt
 	jwt, sign, err := tokens.GenerateOneTimeJWT(
@@ -291,7 +291,7 @@ func (s *S) GenOneTimeToken(req GenOneTimeTokenReq, resp *GenOneTimeTokenResp) e
 	}
 
 	resp.Token = token
-	resp.ExpiredAt = now.Add(60 * time.Second)
+	resp.ExpiredAt = it.ExpiresAt.Time
 
 	return nil
 }
