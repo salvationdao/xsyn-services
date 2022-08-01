@@ -20,8 +20,8 @@ const (
 	TransactionColumnDescription          TransactionColumn = "description"
 	TransactionColumnTransactionReference TransactionColumn = "transaction_reference"
 	TransactionColumnAmount               TransactionColumn = "amount"
-	TransactionColumnCredit               TransactionColumn = "credit"
-	TransactionColumnDebit                TransactionColumn = "debit"
+	TransactionColumnCreditAccountID      TransactionColumn = "credit_account_id"
+	TransactionColumnDebitAccountID       TransactionColumn = "debit_account_id"
 	TransactionColumnStatus               TransactionColumn = "status"
 	TransactionColumnReason               TransactionColumn = "reason"
 	TransactionColumnCreatedAt            TransactionColumn = "created_at"
@@ -35,8 +35,8 @@ func (ic TransactionColumn) IsValid() error {
 		TransactionColumnDescription,
 		TransactionColumnTransactionReference,
 		TransactionColumnAmount,
-		TransactionColumnCredit,
-		TransactionColumnDebit,
+		TransactionColumnCreditAccountID,
+		TransactionColumnDebitAccountID,
 		TransactionColumnStatus,
 		TransactionColumnReason,
 		TransactionColumnCreatedAt,
@@ -55,8 +55,8 @@ transactions.id,
 transactions.description,
 transactions.transaction_reference,
 transactions.amount,
-transactions.credit,
-transactions.debit,
+transactions.credit_account_id,
+transactions.debit_account_id,
 transactions.reason,
 transactions.service_id,
 transactions.related_transaction_id,
@@ -67,8 +67,8 @@ transactions.sub_group
 
 const TransactionGetQueryFrom = `
 FROM transactions 
-INNER JOIN users t ON transactions.credit = t.id
-INNER JOIN users f ON transactions.debit = f.id
+INNER JOIN users t ON transactions.credit_account_id = t.id
+INNER JOIN users f ON transactions.debit_account_id = f.id
 `
 
 // UsersTransactionGroups returns details about the user's transactions that have group IDs
@@ -80,7 +80,7 @@ func UsersTransactionGroups(
 		SELECT transactions.group, transactions.sub_group
 		from transactions
 		WHERE transactions.group is not null
-		AND (transactions.credit = $1 OR transactions.debit = $1)
+		AND (transactions.credit_account_id = $1 OR transactions.debit_account_id = $1)
 	`
 	var args []interface{}
 	args = append(args, userID)
@@ -176,7 +176,7 @@ func TransactionIDList(
 
 	if userID != nil {
 		args = append(args, userID)
-		filterConditionsString += fmt.Sprintf(" AND (credit = $%[1]d OR debit = $%[1]d) ", len(args))
+		filterConditionsString += fmt.Sprintf(" AND (credit_account_id = $%[1]d OR debit_account_id = $%[1]d) ", len(args))
 	}
 
 	searchCondition := ""

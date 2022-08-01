@@ -28,6 +28,9 @@ type Mailer struct {
 
 	// Handlebars Email Templates
 	Templates map[string]*raymond.Template
+
+	// Path to template
+	TemplatePath string
 }
 
 // NewMailer returns a new Mailer controller
@@ -38,6 +41,7 @@ func NewMailer(domain string, apiKey string, systemAddress string, config *types
 		SystemAddress:      systemAddress,
 		PassportWebHostURL: config.PassportWebHostURL,
 		Templates:          map[string]*raymond.Template{},
+		TemplatePath:       config.EmailTemplatePath,
 	}
 
 	// Handlebar template helpers
@@ -49,8 +53,7 @@ func NewMailer(domain string, apiKey string, systemAddress string, config *types
 	var templates []string
 	err := filepath.Walk(config.EmailTemplatePath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			fmt.Println(path)
-			return err
+			return terror.Error(err, "failed to walk through templates folder")
 		}
 		if strings.Contains(path, ".html") {
 			templates = append(templates, path)
@@ -128,7 +131,7 @@ func (m *Mailer) SendEmail(
 	// Setup Email
 	message := m.MailGun.NewMessage(m.SystemAddress, subject, "", strings.Split(to, ",")...)
 	message.SetHtml(body)
-	message.AddInline("./passport/email/templates/logo.png")
+	message.AddInline(fmt.Sprintf("%s/logo.png", m.TemplatePath))
 	if bcc != "" {
 		for _, b := range strings.Split(bcc, ",") {
 			message.AddBCC(b)
