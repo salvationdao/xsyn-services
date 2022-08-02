@@ -130,9 +130,6 @@ func (s *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 		ServiceID:            types.UserID(serviceAsUUID),
 	}
 
-	if req.NotSafe {
-		tx.NotSafe = true
-	}
 	bm.Start("update_insert_transaction")
 	txID, err := s.UserCacheMap.Transact(tx)
 	bm.End("update_insert_transaction")

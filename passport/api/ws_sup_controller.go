@@ -198,7 +198,6 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, user *types.Use
 	trans := &types.NewTransaction{
 		Credit:               types.OnChainUserID.String(),
 		Debit:                user.ID,
-		NotSafe:              true,
 		Amount:               withdrawAmount,
 		TransactionReference: types.TransactionReference(txRef),
 		Description:          "Withdraw of SUPS.",
@@ -214,7 +213,6 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, user *types.Use
 	refund := func(reason string) {
 		trans := &types.NewTransaction{
 			Credit:               user.ID,
-			NotSafe:              true,
 			Debit:                types.OnChainUserID.String(),
 			Amount:               withdrawAmount,
 			TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),

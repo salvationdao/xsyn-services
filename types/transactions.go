@@ -58,7 +58,6 @@ type NewTransaction struct {
 	Description          string               `json:"description" db:"description"`
 	Group                TransactionGroup     `json:"group" db:"group"`
 	SubGroup             string               `json:"sub_group" db:"sub_group"`
-	NotSafe              bool                 `json:"not_safe" db:"-"`
 	Processed            bool                 `json:"processed" db:"-"`
 	CreatedAt            time.Time            `json:"created_at" db:"created_at"`
 }

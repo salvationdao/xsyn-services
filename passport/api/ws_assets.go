@@ -510,7 +510,6 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 		Amount:               decimal.New(5, 18), // 5 sups
 		Group:                xsynTypes.TransactionGroupAssetManagement,
 		SubGroup:             "Transfer",
-		NotSafe:              true,
 	}
 
 	txID, err := ac.API.userCacheMap.Transact(tx)
@@ -661,7 +660,6 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 		Amount:               decimal.New(5, 18), // 5 sups
 		Group:                xsynTypes.TransactionGroupAssetManagement,
 		SubGroup:             "Transfer",
-		NotSafe:              true,
 	}
 
 	txID, err := ac.API.userCacheMap.Transact(tx)
@@ -825,7 +823,6 @@ func (ac *AssetController) Asset1155TransferToSupremacyHandler(ctx context.Conte
 		Amount:               decimal.New(5, 18), // 5 sups
 		Group:                xsynTypes.TransactionGroupAssetManagement,
 		SubGroup:             "Transfer",
-		NotSafe:              true,
 	}
 
 	txID, err := ac.API.userCacheMap.Transact(tx)
@@ -996,7 +993,6 @@ func (ac *AssetController) Asset1155TransferFromSupremacyHandler(ctx context.Con
 		Amount:               decimal.New(5, 18), // 5 sups
 		Group:                xsynTypes.TransactionGroupAssetManagement,
 		SubGroup:             "Transfer",
-		NotSafe:              true,
 	}
 
 	txID, err := ac.API.userCacheMap.Transact(tx)
