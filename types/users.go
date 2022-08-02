@@ -22,6 +22,7 @@ const (
 	OnChainUsername                    string = "OnChain"
 	XsynSaleUsername                   string = "XsynSale"
 	RepairCenter                       string = "RepairCenter"
+	SupremacyChallengeFund             string = "Supremacy-Challenge-Fund"
 )
 
 var (
@@ -35,6 +36,7 @@ var (
 	OnChainUserID                    = UserID(uuid.Must(uuid.FromString("2fa1a63e-a4fa-4618-921f-4b4d28132069")))
 	XsynSaleUserID                   = UserID(uuid.Must(uuid.FromString("1429a004-84a1-11ec-a8a3-0242ac120002")))
 	RepairCentreUserID               = UserID(uuid.Must(uuid.FromString("a988b1e3-5556-4cad-83bd-d61c2b149cb7")))
+	SupremacyChallengeFundUserID     = UserID(uuid.Must(uuid.FromString("5bca9b58-a71c-4134-85d4-50106a8966dc")))
 )
 
 func IsSystemUser(userID string) bool {
