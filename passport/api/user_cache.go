@@ -4,8 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/gofrs/uuid"
-	"github.com/ninja-syndicate/ws"
 	"sync"
 	"time"
 	"xsyn-services/passport/benchmark"
@@ -13,6 +11,9 @@ import (
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
+
+	"github.com/gofrs/uuid"
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/shopspring/decimal"
 
@@ -28,7 +29,7 @@ type Transactor struct {
 func NewTX() (*Transactor, error) {
 	ucm := &Transactor{
 		deadlock.Map{},
-		make(chan func() error),
+		make(chan func() error, 100),
 	}
 	balances, err := db.UserBalances()
 
@@ -70,11 +71,20 @@ func (ucm *Transactor) Runner() {
 func (ucm *Transactor) Close() {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	ucm.runner <- func() error {
+
+	fn := func() error {
 		wg.Done()
 		return ErrTimeToClose
 	}
+
+	select {
+	case ucm.runner <- fn: //queue close
+	default: //unless it's full!
+		passlog.L.Error().Msg("Transaction queue is blocked! Exiting.")
+		return
+	}
 	wg.Wait()
+
 }
 
 func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
@@ -113,7 +123,11 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 		wg.Done()
 		return nil
 	}
-	ucm.runner <- fn
+	select {
+	case ucm.runner <- fn: //put in channel
+	default: //unless it's full!
+		passlog.L.Error().Msg("Transaction queue is blocked! 100 transactions waiting to be processed.")
+	}
 	wg.Wait()
 
 	return transactionID, err
