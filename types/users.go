@@ -21,7 +21,7 @@ const (
 	SupremacyBostonCyberneticsUsername string = "BostonCybernetics"
 	OnChainUsername                    string = "OnChain"
 	XsynSaleUsername                   string = "XsynSale"
-	RepairCenter                       string = "RepairCenter"
+	RepairCenter                       string = "Repair-Center"
 	SupremacyChallengeFund             string = "Supremacy-Challenge-Fund"
 )
 
