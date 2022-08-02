@@ -102,6 +102,7 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 		err = CreateTransactionEntry(passdb.StdConn, nt)
 		if err != nil {
 			passlog.L.Error().Err(err).Str("from", nt.From.String()).Str("to", nt.To.String()).Str("id", nt.ID).Msg("transaction failed")
+			wg.Done()
 			return err
 		}
 		bm.End("Transact func CreateTransactionEntry")
