@@ -52,6 +52,7 @@ var zero = decimal.New(0, 18)
 var ErrNotEnoughFunds = fmt.Errorf("account does not have enough funds")
 
 var ErrTimeToClose = errors.New("closing")
+var ErrQueueFull = errors.New("transaction queue is full")
 
 func (ucm *Transactor) Runner() {
 	for {
@@ -127,6 +128,7 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 	case ucm.runner <- fn: //put in channel
 	default: //unless it's full!
 		passlog.L.Error().Msg("Transaction queue is blocked! 100 transactions waiting to be processed.")
+		return transactionID, ErrQueueFull
 	}
 	wg.Wait()
 
