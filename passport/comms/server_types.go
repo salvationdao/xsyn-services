@@ -26,8 +26,6 @@ type SpendSupsReq struct {
 	Group                types2.TransactionGroup     `json:"group,omitempty"`
 	SubGroup             string                      `json:"sub_group"`   //TODO: send battle id
 	Description          string                      `json:"description"` //TODO: send descritpion
-
-	NotSafe bool `json:"not_safe"`
 }
 
 type SpendSupsResp struct {

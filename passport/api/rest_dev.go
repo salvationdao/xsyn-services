@@ -96,7 +96,6 @@ func (d *Dev) devGiveMechs(w http.ResponseWriter, r *http.Request) (int, error) 
 		TransactionReference: types.TransactionReference(fmt.Sprintf("DEV SEED SUPS - %v", time.Now().UnixNano())),
 		Description:          "Dev Seed Sups",
 		Group:                "SEED",
-		NotSafe:              false,
 		ServiceID:            types.XsynSaleUserID,
 	}
 
