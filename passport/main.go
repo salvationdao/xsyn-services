@@ -957,6 +957,8 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		if err != nil {
 			api.Log.Warn().Err(err).Msg("")
 		}
+		api.Log.Info().Msg("Stopping transaction system")
+		ucm.Close() // waits for transaction queue to finish
 		os.Exit(1)
 	}()
 

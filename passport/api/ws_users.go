@@ -1626,25 +1626,6 @@ func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, key stri
 
 const HubKeyUserTransactionsSubscribe = "USER:SUPS:TRANSACTIONS:SUBSCRIBE"
 
-//const HubKeyUserLatestTransactionSubscribe = "USER:SUPS:LATEST_TRANSACTION:SUBSCRIBE"
-
-//func (uc *UserController) UserTransactionsSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-//	req := &UpdatedSubscribeRequest{}
-//	err := json.Unmarshal(payload, req)
-//	if err != nil {
-//		return terror.Error(err, "Invalid request received.")
-//	}
-//
-//	// get users transactions
-//	list, err := db.UserTransactionGetList(ctx, uc.Conn, user.ID, 5)
-//	if err != nil {
-//		return terror.Error(err, "Failed to get transactions, try again or contact support.")
-//	}
-//	//HubKeyUserTransactionsSubscribe
-//	reply(list)
-//	return nil
-//}
-
 func (api *API) UserTransactionsSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	// get users transactions
 	list, err := db.UserTransactionGetList(user.AccountID, 5)
@@ -1654,24 +1635,6 @@ func (api *API) UserTransactionsSubscribeHandler(ctx context.Context, user *type
 	reply(list)
 	return nil
 }
-
-//func (uc *UserController) UserLatestTransactionsSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-//	req := &UpdatedSubscribeRequest{}
-//	err := json.Unmarshal(payload, req)
-//	if err != nil {
-//		return terror.Error(err, "Invalid request received.")
-//	}
-//
-//	// get transaction
-//	list, err := db.UserTransactionGetList(ctx, uc.Conn, user.ID, 1)
-//	if err != nil {
-//		return terror.Error(err, "Failed to get transactions, try again or contact support.")
-//	}
-//	reply(list)
-//	//HubKeyUserLatestTransactionSubscribe
-//	return nil
-//
-//}
 
 type UserFingerprintRequest struct {
 	Payload struct {

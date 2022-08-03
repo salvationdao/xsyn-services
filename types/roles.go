@@ -12,6 +12,7 @@ var (
 	UserRoleGameAccount      = RoleID(uuid.Must(uuid.FromString("85837f44-988c-4d1d-a292-e376b87015cd")))
 	UserRoleOffChain         = RoleID(uuid.Must(uuid.FromString("da2cb7b6-a795-4ad5-bcda-ce75469904e6")))
 	UserRoleXsynSaleTreasury = RoleID(uuid.Must(uuid.FromString("169cc7b9-fe5f-499b-8627-57d919bfac33")))
+	UserRoleRepairCenter     = RoleID(uuid.Must(uuid.FromString("1db10a78-8d68-4606-b13e-f46bb84a134b")))
 )
 
 // Role is an object representing the database table.

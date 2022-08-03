@@ -1,8 +1,9 @@
 package api
 
 import (
-	"database/sql"
+	"errors"
 	"fmt"
+	"sync"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/benchmark"
@@ -22,10 +23,11 @@ import (
 	"github.com/sasha-s/go-deadlock"
 )
 
+// do not buffer runner, no waitgroups in functions
 type Transactor struct {
-	m             map[string]decimal.Decimal
-	syndicates    map[string]byte
-	updateBalance chan *types.NewTransaction
+	m          map[string]decimal.Decimal
+	syndicates map[string]byte
+	runner     chan func() error
 	deadlock.RWMutex
 }
 
@@ -33,7 +35,7 @@ func NewTX() (*Transactor, error) {
 	ucm := &Transactor{
 		make(map[string]decimal.Decimal),
 		make(map[string]byte),
-		make(chan *types.NewTransaction, 100),
+		make(chan func() error, 100),
 		deadlock.RWMutex{},
 	}
 	accounts, err := boiler.Accounts().All(passdb.StdConn)
@@ -51,72 +53,113 @@ func NewTX() (*Transactor, error) {
 	}
 	ucm.Unlock()
 
-	go ucm.RunBalanceUpdate()
+	go ucm.Runner()
 
 	return ucm, nil
 }
 
-var TransactionFailed = "TRANSACTION_FAILED"
-var zero = decimal.New(0, 18)
-var ErrNotEnoughFunds = fmt.Errorf("account does not have enough funds")
+var ErrTimeToClose = errors.New("closing")
+var ErrQueueFull = errors.New("transaction queue is full")
 
-func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
-	transactionID := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
-	nt.ID = transactionID
-
-	tx := &boiler.Transaction{
-		ID:                   transactionID,
-		CreditAccountID:      nt.Credit,
-		DebitAccountID:       nt.Debit,
-		Amount:               nt.Amount,
-		TransactionReference: string(nt.TransactionReference),
-		Description:          nt.Description,
-		CreatedAt:            nt.CreatedAt,
-		Group:                string(nt.Group),
-		SubGroup:             null.StringFrom(nt.SubGroup),
-		RelatedTransactionID: nt.RelatedTransactionID,
-		ServiceID:            null.StringFrom(nt.ServiceID.String()),
-	}
-	bm := benchmark.New()
-	bm.Start("Transact func CreateTransactionEntry")
-	err := CreateTransactionEntry(passdb.StdConn, tx)
-	if err != nil {
-		passlog.L.Error().Err(err).Str("from", nt.Debit).Str("to", nt.Credit).Str("id", nt.ID).Msg("transaction failed")
-		return TransactionFailed, err
-	}
-	bm.End("Transact func CreateTransactionEntry")
-	bm.Alert(75)
-	tx.CreatedAt = nt.CreatedAt
-
-	ucm.updateBalance <- nt
-
-	return transactionID, nil
-}
-
-func (ucm *Transactor) RunBalanceUpdate() {
+func (ucm *Transactor) Runner() {
 	for {
-		nt := <-ucm.updateBalance
-
-		supsFromAccount, accType, err := ucm.Get(nt.Debit)
-		if err == nil {
-			supsFromAccount = supsFromAccount.Sub(nt.Amount)
-			ucm.Put(nt.Debit, supsFromAccount)
-
-			if accType == boiler.AccountTypeUSER {
-				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", nt.Debit), HubKeyUserTransactionsSubscribe, []*types.NewTransaction{nt})
-				ws.PublishMessage(fmt.Sprintf("/user/%s/sups", nt.Debit), HubKeyUserSupsSubscribe, supsFromAccount.String())
+		select {
+		case fn := <-ucm.runner:
+			if fn == nil {
+				return
+			}
+			err := fn()
+			if errors.Is(err, ErrTimeToClose) {
+				return
 			}
 		}
+	}
+}
 
-		supsToAccount, accType, err := ucm.Get(nt.Credit)
-		if err == nil {
-			supsToAccount = supsToAccount.Add(nt.Amount)
-			ucm.Put(nt.Credit, supsToAccount)
+func (ucm *Transactor) Close() {
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 
-			if accType == boiler.AccountTypeUSER {
-				ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", nt.Credit), HubKeyUserTransactionsSubscribe, []*types.NewTransaction{nt})
-				ws.PublishMessage(fmt.Sprintf("/user/%s/sups", nt.Credit), HubKeyUserSupsSubscribe, supsToAccount.String())
-			}
+	fn := func() error {
+		wg.Done()
+		return ErrTimeToClose
+	}
+
+	select {
+	case ucm.runner <- fn: //queue close
+	default: //unless it's full!
+		passlog.L.Error().Msg("Transaction queue is blocked! Exiting.")
+		return
+	}
+	wg.Wait()
+
+}
+
+func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
+	var err error = nil
+	transactionID := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	fn := func() error {
+		tx := &boiler.Transaction{
+			ID:                   transactionID,
+			CreditAccountID:      nt.Credit,
+			DebitAccountID:       nt.Debit,
+			Amount:               nt.Amount,
+			TransactionReference: string(nt.TransactionReference),
+			Description:          nt.Description,
+			CreatedAt:            nt.CreatedAt,
+			Group:                string(nt.Group),
+			SubGroup:             null.StringFrom(nt.SubGroup),
+			RelatedTransactionID: nt.RelatedTransactionID,
+			ServiceID:            null.StringFrom(nt.ServiceID.String()),
+		}
+		bm := benchmark.New()
+		bm.Start("Transact func CreateTransactionEntry")
+		err = tx.Insert(passdb.StdConn, boil.Infer())
+		if err != nil {
+			passlog.L.Error().Err(err).Str("from", tx.DebitAccountID).Str("to", tx.CreditAccountID).Str("id", nt.ID).Msg("transaction failed")
+			wg.Done()
+			return err
+		}
+		bm.End("Transact func CreateTransactionEntry")
+		bm.Alert(75)
+
+		ucm.BalanceUpdate(tx)
+		wg.Done()
+		return nil
+	}
+	select {
+	case ucm.runner <- fn: //put in channel
+	default: //unless it's full!
+		passlog.L.Error().Msg("Transaction queue is blocked! 100 transactions waiting to be processed.")
+		return transactionID, ErrQueueFull
+	}
+	wg.Wait()
+
+	return transactionID, err
+}
+
+func (ucm *Transactor) BalanceUpdate(tx *boiler.Transaction) {
+	supsFromAccount, accType, err := ucm.Get(tx.DebitAccountID)
+	if err == nil {
+		supsFromAccount = supsFromAccount.Sub(tx.Amount)
+		ucm.Put(tx.DebitAccountID, supsFromAccount)
+
+		if accType == boiler.AccountTypeUSER {
+			ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", tx.DebitAccountID), HubKeyUserTransactionsSubscribe, []*boiler.Transaction{tx})
+			ws.PublishMessage(fmt.Sprintf("/user/%s/sups", tx.DebitAccountID), HubKeyUserSupsSubscribe, supsFromAccount.String())
+		}
+	}
+
+	supsToAccount, accType, err := ucm.Get(tx.CreditAccountID)
+	if err == nil {
+		supsToAccount = supsToAccount.Add(tx.Amount)
+		ucm.Put(tx.CreditAccountID, supsToAccount)
+
+		if accType == boiler.AccountTypeUSER {
+			ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", tx.CreditAccountID), HubKeyUserTransactionsSubscribe, []*boiler.Transaction{tx})
+			ws.PublishMessage(fmt.Sprintf("/user/%s/sups", tx.CreditAccountID), HubKeyUserSupsSubscribe, supsToAccount.String())
 		}
 	}
 }
@@ -178,14 +221,3 @@ func (ucm *Transactor) IsSyndicate(ownerID string) bool {
 }
 
 type UserCacheFunc func(userCacheList Transactor)
-
-// CreateTransactionEntry adds an entry to the transaction entry table
-func CreateTransactionEntry(conn *sql.DB, nt *boiler.Transaction) error {
-	now := time.Now()
-	nt.CreatedAt = now
-	err := nt.Insert(conn, boil.Infer())
-	if err != nil {
-		return err
-	}
-	return nil
-}

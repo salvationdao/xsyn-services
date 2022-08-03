@@ -51,8 +51,8 @@ type NewTransaction struct {
 	ID                   string               `json:"id" db:"id"`
 	RelatedTransactionID null.String          `json:"related_transaction_id" db:"related_transaction_id"`
 	ServiceID            UserID               `json:"service_id" db:"service_id"`
-	Credit               string               `json:"credit" db:"credit"`
-	Debit                string               `json:"debit" db:"debit"`
+	Credit               string               `json:"credit_account_id" db:"credit_account_id"`
+	Debit                string               `json:"debit_account_id" db:"debit_account_id"`
 	Amount               decimal.Decimal      `json:"amount" db:"amount"`
 	TransactionReference TransactionReference `json:"transaction_reference" db:"transaction_reference"`
 	Description          string               `json:"description" db:"description"`
