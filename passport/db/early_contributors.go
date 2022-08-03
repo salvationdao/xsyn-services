@@ -23,7 +23,7 @@ type EarlyContributor struct {
 	SignedAt          time.Time   `json:"signed_at" db:"signed_at"`
 	CreatedAt         time.Time   `json:"created_at" db:"created_at"`
 	UpdatedAt         time.Time   `json:"updated_at" db:"updated_at"`
-	DeletedAt         *time.Time  `json:"deleted_at" db:"deleted_at"`
+	DeletedAt         null.Time   `json:"deleted_at" db:"deleted_at"`
 }
 
 func IsUserEarlyContributor(address string) (bool, EarlyContributor, error) {
