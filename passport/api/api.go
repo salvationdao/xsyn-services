@@ -239,6 +239,7 @@ func NewAPI(
 				r.Get("/logout", WithError(api.AuthLogoutHandler))
 				r.Post("/user_exist", WithError(api.AuthCheckHandler))
 				r.Post("/external", api.ExternalLoginHandler)
+				r.Post("/cookie", WithError(api.ExternalLoginCheckHandler))
 				r.Post("/token", api.TokenLoginHandler)
 				r.Post("/wallet", api.WalletLoginHandler)
 				r.Post("/email", WithError(api.EmailLoginHandler))

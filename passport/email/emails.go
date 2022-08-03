@@ -96,27 +96,23 @@ func (m *Mailer) SendVerificationEmail(ctx context.Context, user *types.User, co
 }
 
 // SendSignupEmail sends an email with the signup template
-func (m *Mailer) SendSignupEmail(ctx context.Context, user *types.User, token string, tokenID uuid.UUID) error {
-	hostURL := m.PassportWebHostURL
-
+func (m *Mailer) SendSignupEmail(ctx context.Context, email string, code string) error {
 	err := m.SendEmail(ctx,
-		user.Email.String,
-		"New user please veify email  - Passport XSYN",
-		"confirm_email",
+		email,
+		"New user please verify email  - Passport XSYN",
+		"signup",
 		struct {
-			MagicLink string `handlebars:"magic_link"`
-			Name      string `handlebars:"name"`
-			Email     string `handlebars:"email"`
+			Code  string `handlebars:"code"`
+			Email string `handlebars:"email"`
 		}{
-			MagicLink: fmt.Sprintf("%s/signup?id=%s&token=%s", hostURL, tokenID, token),
-			Name:      user.Username,
-			Email:     user.Email.String,
+			Code:  code,
+			Email: email,
 		},
 		"",
 	)
 	if err != nil {
-		passlog.L.Error().Err(err).Msg("failed to send verify email")
-		return terror.Error(err, "Failed to send verification email")
+		passlog.L.Error().Err(err).Msg("failed to send signup email")
+		return terror.Error(err, "Failed to send signup email")
 	}
 	return nil
 }
