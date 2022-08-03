@@ -44,6 +44,15 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
+type SignupRequest struct {
+	RedirectURL string             `json:"redirect_url"`
+	Tenant      string             `json:"tenant"`
+	AuthType    string             `json:"auth_type"`
+	Username    string             `json:"username"`
+	SessionID   hub.SessionID      `json:"session_id"`
+	Fingerprint *users.Fingerprint `json:"fingerprint"`
+}
+
 type WalletLoginRequest struct {
 	RedirectURL   string             `json:"redirect_url"`
 	Tenant        string             `json:"tenant"`
@@ -62,7 +71,6 @@ type EmailSignupVerifyRequest struct {
 type EmailLoginRequest struct {
 	RedirectURL string             `json:"redirect_url"`
 	Tenant      string             `json:"tenant"`
-	Username    string             `json:"username"`
 	Email       string             `json:"email"`
 	Password    string             `json:"password"`
 	SessionID   hub.SessionID      `json:"session_id"`
@@ -92,7 +100,6 @@ type GoogleLoginRequest struct {
 	Tenant      string             `json:"tenant"`
 	GoogleID    string             `json:"google_id"`
 	Email       string             `json:"email"`
-	Username    string             `json:"username"`
 	SessionID   hub.SessionID      `json:"session_id"`
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
 }
@@ -101,7 +108,6 @@ type FacebookLoginRequest struct {
 	RedirectURL string             `json:"redirect_url"`
 	Tenant      string             `json:"tenant"`
 	FacebookID  string             `json:"facebook_id"`
-	Name        string             `json:"name"`
 	SessionID   hub.SessionID      `json:"session_id"`
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
 }
@@ -255,7 +261,6 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			RedirectURL: redir,
 			Tenant:      r.Form.Get("tenant"),
 			FacebookID:  r.Form.Get("facebook_id"),
-			Name:        r.Form.Get("name"),
 		}
 		err := api.FacebookLogin(req, w, r)
 		if err != nil {
@@ -267,7 +272,6 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			RedirectURL: redir,
 			Tenant:      r.Form.Get("tenant"),
 			GoogleID:    r.Form.Get("google_id"),
-			Username:    r.Form.Get("username"),
 			Email:       r.Form.Get("email"),
 		}
 
@@ -364,6 +368,112 @@ func (api *API) EmailSignupVerifyHandler(w http.ResponseWriter, r *http.Request)
 	return http.StatusCreated, nil
 }
 
+func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &SignupRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+	username := req.Username
+	authType := req.AuthType
+	u := &types.User{}
+	switch authType {
+	case "wallet":
+		req := &WalletLoginRequest{}
+		err := json.NewDecoder(r.Body).Decode(req)
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+		// Take public address Hex to address(Make it a checksum mixed case address) convert back to Hex for string of checksum
+		commonAddr := common.HexToAddress(req.PublicAddress)
+		user, err := users.PublicAddress(commonAddr)
+		if err != nil && errors.Is(sql.ErrNoRows, err) {
+			// If user does not exist, create new user with their username set to their MetaMask public address
+			u, err = users.UserCreator("", "", username, "", "", "", "", "", "", "", commonAddr, "")
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("unable to create user with wallet")
+				return http.StatusInternalServerError, err
+			}
+		} else if user != nil {
+			err := fmt.Errorf("User already exist")
+			return http.StatusInternalServerError, err
+		}
+	case "email":
+		req := &EmailLoginRequest{}
+		err := json.NewDecoder(r.Body).Decode(req)
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+		// Check no user with email exist
+		user, err := users.EmailPassword(req.Email, req.Password)
+		if err != nil && errors.Is(sql.ErrNoRows, err) {
+			commonAddress := common.HexToAddress("")
+			u, err = users.UserCreator("", "", username, req.Email, "", "", "", "", "", "", commonAddress, req.Password)
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("unable to create user with email and password")
+				return http.StatusInternalServerError, err
+			}
+		} else if user != nil {
+			err := fmt.Errorf("User already exist")
+			return http.StatusInternalServerError, err
+		}
+	case "facebook":
+		req := &FacebookLoginRequest{}
+		err := json.NewDecoder(r.Body).Decode(req)
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+		// Check no user with email exist
+		user, err := users.FacebookID(req.FacebookID)
+		if err != nil && errors.Is(sql.ErrNoRows, err) {
+			commonAddress := common.HexToAddress("")
+			u, err = users.UserCreator("", "", username, "", req.FacebookID, "", "", "", "", "", commonAddress, "")
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("unable to create user with email and password")
+				return http.StatusInternalServerError, err
+			}
+
+		} else if user != nil {
+			err := fmt.Errorf("User already exist")
+			return http.StatusInternalServerError, err
+		}
+	case "google":
+		req := &GoogleLoginRequest{}
+		err := json.NewDecoder(r.Body).Decode(req)
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+		// Check no user with email exist
+		user, err := users.GoogleID(req.GoogleID)
+		if err != nil && errors.Is(sql.ErrNoRows, err) {
+			commonAddress := common.HexToAddress("")
+			u, err = users.UserCreator("", "", username, req.Email, "", req.GoogleID, "", "", "", "", commonAddress, "")
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("unable to create user with email and password")
+				return http.StatusInternalServerError, err
+			}
+		} else if user != nil {
+			err := fmt.Errorf("User already exist")
+			return http.StatusInternalServerError, err
+		}
+	}
+
+	// Login
+	loginReq := &FingerprintTokenRequest{
+		User:        &u.User,
+		RedirectURL: req.RedirectURL,
+		Tenant:      req.Tenant,
+		Fingerprint: req.Fingerprint,
+	}
+
+	err = api.FingerprintAndIssueToken(w, r, loginReq)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+	return http.StatusCreated, nil
+
+}
+
 func (api *API) EmailSignupVerify(req *EmailSignupVerifyRequest, w http.ResponseWriter, r *http.Request) error {
 	// Check if there are any existing users associated with the email address
 	user, _ := users.Email(req.Email)
@@ -386,55 +496,6 @@ func (api *API) EmailSignupVerify(req *EmailSignupVerifyRequest, w http.Response
 	}
 
 	err = api.Mailer.SendSignupEmail(context.Background(), user, verifyToken, verifyTokenID)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &EmailLoginRequest{}
-	err := json.NewDecoder(r.Body).Decode(req)
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-	err = api.EmailSignUp(req, w, r)
-
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	return http.StatusCreated, nil
-}
-
-func (api *API) EmailSignUp(req *EmailLoginRequest, w http.ResponseWriter, r *http.Request) error {
-	// Check if there are any existing users associated with the email address
-	user, _ := users.Email(req.Email)
-
-	if user != nil {
-		return fmt.Errorf("email is already used by a different user")
-	}
-	if req.Password != "" {
-		err := helpers.IsValidPassword(req.Password)
-		if err != nil {
-			return err
-		}
-
-	}
-	commonAddress := common.HexToAddress("")
-
-	user, err := users.UserCreator("", "", req.Username, req.Email, "", "", "", "", "", "", commonAddress, req.Password)
-	if err != nil {
-		return err
-	}
-
-	loginReq := &FingerprintTokenRequest{
-		User:        &user.User,
-		RedirectURL: req.RedirectURL,
-		Tenant:      req.Tenant,
-		Fingerprint: req.Fingerprint,
-	}
-	err = api.FingerprintAndIssueToken(w, r, loginReq)
 	if err != nil {
 		return err
 	}
@@ -854,13 +915,10 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 				return err
 			}
 		} else {
-			commonAddress := common.HexToAddress("")
-			username := fmt.Sprintf(("%s%d"), req.Username, rand.Intn(1000))
-			u, err := users.UserCreator("", "", username, req.Email, "", req.GoogleID, "", "", "", "", commonAddress, "")
 			if err != nil {
+				passlog.L.Error().Err(err).Msg("No user found to login with google id")
 				return err
 			}
-			loginReq.User = &u.User
 		}
 
 	}
@@ -973,16 +1031,8 @@ func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, 
 	// Check if there are any existing users associated with the email address
 	user, err := users.FacebookID(req.FacebookID)
 
-	if err != nil && errors.Is(sql.ErrNoRows, err) {
-		commonAddress := common.HexToAddress("")
-		username := fmt.Sprintf(("%s%d"), req.Name, rand.Intn(1000))
-		u, err := users.UserCreator("", "", username, "", req.FacebookID, "", "", "", "", "", commonAddress, "")
-		if err != nil {
-			return err
-		}
-		user = &u.User
-	} else if err != nil {
-		passlog.L.Error().Err(err).Msg("unable to read facebook ID from user")
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("No user found with given facebook id")
 		return err
 	}
 	loginReq := &FingerprintTokenRequest{
@@ -1056,12 +1106,24 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 		// Check if user exist
 		user, err := users.TwitterID(resp.UserID)
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
-			commonAddress := common.HexToAddress("")
-			u, err := users.UserCreator("", "", resp.ScreenName, "", "", "", "", resp.UserID, "", "", commonAddress, "")
-			if err != nil {
-				return http.StatusBadRequest, err
+			twitterSignupResponse := struct {
+				TwitterID string `json:"twitter_id"`
+			}{
+				TwitterID: resp.UserID,
 			}
-			user = &u.User
+
+			b, err := json.Marshal(twitterSignupResponse)
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("unable to encode response to json")
+				return http.StatusInternalServerError, terror.Error(err)
+			}
+			_, err = w.Write(b)
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("unable to write response to user")
+			}
+
+			http.Redirect(w, r, redirect, http.StatusSeeOther)
+			return http.StatusOK, nil
 		}
 
 		// Add twitter user handler
@@ -1449,13 +1511,15 @@ func (api *API) NewNonce(user *boiler.User) (string, error) {
 	newNonce := helpers.RandStringBytes(16)
 
 	user.Nonce = null.StringFrom(newNonce)
-	i, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Nonce))
-	if err != nil {
-		return "", err
-	}
+	if user != nil {
+		i, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Nonce))
+		if err != nil {
+			return "", err
+		}
 
-	if i == 0 {
-		return "", terror.Error(fmt.Errorf("nonce could not be updated"))
+		if i == 0 {
+			return "", terror.Error(fmt.Errorf("nonce could not be updated"))
+		}
 	}
 
 	return newNonce, nil
@@ -1474,18 +1538,13 @@ func (api *API) GetNonce(w http.ResponseWriter, r *http.Request) (int, error) {
 		// Take public address Hex to address(Make it a checksum mixed case address) convert back to Hex for string of checksum
 		commonAddr := common.HexToAddress(publicAddress)
 		user, err := users.PublicAddress(commonAddr)
-		if err != nil && errors.Is(sql.ErrNoRows, err) {
-			L.Info().Err(err).Msg("new user being created")
-			username := commonAddr.Hex()[0:10]
 
-			// If user does not exist, create new user with their username set to their MetaMask public address
-			user, err = users.UserCreator("", "", helpers.TrimUsername(username), "", "", "", "", "", "", "", commonAddr, "")
-			if err != nil {
-				L.Error().Err(err).Msg("user creation failed")
-				return http.StatusInternalServerError, err
-			}
+		if err != nil && !errors.Is(sql.ErrNoRows, err) {
+			L.Error().Err(err).Msg("Error searching for user with public address when getting nonce")
+			return http.StatusInternalServerError, err
 		}
 
+		// user can be nil
 		newNonce, err := api.NewNonce(&user.User)
 		if err != nil {
 			L.Error().Err(err).Msg("no nonce")
