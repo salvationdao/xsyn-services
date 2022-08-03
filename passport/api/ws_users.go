@@ -166,6 +166,7 @@ const HubKeyUserSendVerify = "USER:VERIFY:SEND"
 
 type SendVerifyRequest struct {
 	Payload struct {
+		Code      string `json:"code"`
 		UserAgent string `json:"user_agent"`
 	} `json:"payload"`
 }
@@ -178,19 +179,7 @@ func (uc *UserController) SendVerifyHandler(ctx context.Context, user *types.Use
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	// Send email to new email for verification
-	_, tokenID, token, err := uc.API.VerifyEmailToken(&TokenConfig{
-		Encrypted: true,
-		Key:       uc.API.TokenEncryptionKey,
-		Device:    req.Payload.UserAgent,
-		Action:    "verify",
-		User:      &user.User,
-	})
-	if err != nil {
-		return terror.Error(err, "Unable to send verification email.")
-	}
-
-	err = uc.API.Mailer.SendVerificationEmail(context.Background(), user, token, tokenID, true)
+	err = uc.API.Mailer.SendVerificationEmail(context.Background(), user, req.Payload.Code)
 	if err != nil {
 		return terror.Error(err, "Unable to send verification email.")
 	}
@@ -313,6 +302,7 @@ type UpdateUserRequest struct {
 		CurrentPassword                  *string     `json:"current_password"`
 		NewPassword                      *string     `json:"new_password"`
 		TwoFactorAuthenticationActivated bool        `json:"two_factor_authentication_activated"`
+		Code                             string      `json:"code"`
 		UserAgent                        string      `json:"user_agent"`
 	} `json:"payload"`
 }
@@ -345,20 +335,7 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 			userNewEmail := *user
 			userNewEmail.Email = null.StringFrom(email)
 
-			// Send email to new email for verification
-			_, tokenID, token, err := uc.API.VerifyEmailToken(&TokenConfig{
-				Encrypted: true,
-				Key:       uc.API.TokenEncryptionKey,
-				Device:    req.Payload.UserAgent,
-				Action:    "verify",
-				User:      &userNewEmail.User,
-			})
-
-			if err != nil {
-				return terror.Error(err, "Unable to issue a verify token.")
-			}
-
-			err = uc.API.Mailer.SendVerificationEmail(context.Background(), &userNewEmail, token, tokenID, false)
+			err = uc.API.Mailer.SendVerificationEmail(context.Background(), &userNewEmail, req.Payload.Code)
 			if err != nil {
 				return terror.Error(err, "Unable to send verify email")
 			}

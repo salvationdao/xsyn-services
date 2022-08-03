@@ -53,6 +53,12 @@ type WalletLoginRequest struct {
 	Fingerprint   *users.Fingerprint `json:"fingerprint"`
 }
 
+type EmailSignupVerifyRequest struct {
+	RedirectURL string `json:"redirect_url"`
+	Tenant      string `json:"tenant"`
+	Email       string `json:"email"`
+}
+
 type EmailLoginRequest struct {
 	RedirectURL string             `json:"redirect_url"`
 	Tenant      string             `json:"tenant"`
@@ -215,19 +221,17 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case "signup":
-		req := &EmailLoginRequest{
+		req := &EmailSignupVerifyRequest{
 			RedirectURL: redir,
 			Tenant:      r.Form.Get("tenant"),
-			Username:    r.Form.Get("username"),
 			Email:       r.Form.Get("email"),
-			Password:    r.Form.Get("password"),
 		}
 		user, _ := users.Email(req.Email)
 		if user != nil {
 			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			return
 		}
-		err = api.EmailSignUp(req, w, r)
+		err = api.EmailSignupVerify(req, w, r)
 
 		if err != nil {
 			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
@@ -345,6 +349,49 @@ func externalLoginCheck(api *API, w http.ResponseWriter, r *http.Request) (*Toke
 
 }
 
+func (api *API) EmailSignupVerifyHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &EmailSignupVerifyRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+	err = api.EmailSignupVerify(req, w, r)
+
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	return http.StatusCreated, nil
+}
+
+func (api *API) EmailSignupVerify(req *EmailSignupVerifyRequest, w http.ResponseWriter, r *http.Request) error {
+	// Check if there are any existing users associated with the email address
+	user, _ := users.Email(req.Email)
+
+	if user != nil {
+		return fmt.Errorf("email is already used by a different user")
+	}
+
+	// Send email to new email for verification
+	_, verifyTokenID, verifyToken, err := api.VerifyEmailToken(&TokenConfig{
+		Encrypted: true,
+		Key:       api.TokenEncryptionKey,
+		Device:    r.UserAgent(),
+		Action:    "verify",
+		User:      &user.User,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	err = api.Mailer.SendSignupEmail(context.Background(), user, verifyToken, verifyTokenID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &EmailLoginRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
@@ -377,24 +424,6 @@ func (api *API) EmailSignUp(req *EmailLoginRequest, w http.ResponseWriter, r *ht
 	commonAddress := common.HexToAddress("")
 
 	user, err := users.UserCreator("", "", req.Username, req.Email, "", "", "", "", "", "", commonAddress, req.Password)
-	if err != nil {
-		return err
-	}
-
-	// Send email to new email for verification
-	_, verifyTokenID, verifyToken, err := api.VerifyEmailToken(&TokenConfig{
-		Encrypted: true,
-		Key:       api.TokenEncryptionKey,
-		Device:    r.UserAgent(),
-		Action:    "verify",
-		User:      &user.User,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	err = api.Mailer.SendVerificationEmail(context.Background(), user, verifyToken, verifyTokenID, true)
 	if err != nil {
 		return err
 	}

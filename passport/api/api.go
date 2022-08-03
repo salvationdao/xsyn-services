@@ -241,6 +241,7 @@ func NewAPI(
 				r.Post("/token", api.TokenLoginHandler)
 				r.Post("/wallet", api.WalletLoginHandler)
 				r.Post("/email", WithError(api.EmailLoginHandler))
+				r.Post("/signup_verify", WithError(api.EmailSignupVerifyHandler))
 				r.Post("/signup", WithError(api.EmailSignupHandler))
 				r.Post("/forgot", WithError(api.ForgotPasswordHandler))
 				r.Post("/reset", WithError(api.ResetPasswordHandler))
