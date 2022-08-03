@@ -101,6 +101,10 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	fn := func() error {
+		serviceID := null.StringFrom(nt.ServiceID.String())
+		if nt.ServiceID.IsNil() || nt.ServiceID.String() == "" {
+			serviceID.Valid = false
+		}
 		tx := &boiler.Transaction{
 			ID:                   transactionID,
 			CreditAccountID:      nt.Credit,
@@ -112,7 +116,7 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 			Group:                string(nt.Group),
 			SubGroup:             null.StringFrom(nt.SubGroup),
 			RelatedTransactionID: nt.RelatedTransactionID,
-			ServiceID:            null.StringFrom(nt.ServiceID.String()),
+			ServiceID:            serviceID,
 		}
 		bm := benchmark.New()
 		bm.Start("Transact func CreateTransactionEntry")
