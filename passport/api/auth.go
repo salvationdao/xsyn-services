@@ -831,6 +831,10 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 
 	// Check if there are any existing users associated with the public address
 	user, err := users.PublicAddress(commonAddr)
+
+	// if err != nil && errors.Is(sql.ErrNoRows, err) {
+	// 	return http.StatusResetContent, nil
+	// }
 	if err != nil {
 		return fmt.Errorf("public address fail: %w", err)
 	}
