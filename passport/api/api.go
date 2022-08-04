@@ -237,7 +237,8 @@ func NewAPI(
 			r.Route("/auth", func(r chi.Router) {
 				r.Get("/check", WithError(api.AuthCheckHandler))
 				r.Get("/logout", WithError(api.AuthLogoutHandler))
-				r.Post("/user_exist", WithError(api.AuthCheckHandler))
+				r.Post("/token", api.TokenLoginHandler)
+				r.Post("/user_exist", api.CheckUserExistHandler)
 				r.Post("/cookie", WithError(api.ExternalLoginCheckHandler))
 				r.Post("/external", api.ExternalLoginHandler)
 				r.Post("/token", api.TokenLoginHandler)

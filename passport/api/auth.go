@@ -229,7 +229,6 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	authType := r.Form.Get("authType")
 	redir := r.Form.Get("redirect_url")
 	username := r.Form.Get("username")
-	tenant := r.Form.Get("tenant")
 
 	if redir == "" {
 		http.Error(w, "No redirectURL provided", http.StatusBadRequest)
@@ -448,8 +447,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	// Take to signup page
-	http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s", r.Header.Get("origin"), tenant, redir), http.StatusSeeOther)
+	http.Redirect(w, r, redir, http.StatusSeeOther)
 
 }
 func externalLoginCheck(api *API, w http.ResponseWriter, r *http.Request) (*TokenLoginResponse, *string) {
@@ -1258,6 +1256,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 	oauthCallback := r.URL.Query().Get("oauth_callback")
 	oauthToken := r.URL.Query().Get("oauth_token")
 	redirect := r.URL.Query().Get("redirect")
+	redirectURL := r.URL.Query().Get("redirectURL")
 	addTwitter := r.URL.Query().Get("add")
 	tenant := r.URL.Query().Get("tenant")
 
@@ -1307,7 +1306,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 		}
 
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
-			http.Redirect(w, r, fmt.Sprintf("%s?id=%s", redirect, resp.UserID), http.StatusSeeOther)
+			http.Redirect(w, r, fmt.Sprintf("%s?id=%s&redirectURL=%s", redirect, resp.UserID,redirectURL), http.StatusSeeOther)
 			return http.StatusOK, nil
 		}
 		loginReq := &FingerprintTokenRequest{
@@ -1841,6 +1840,87 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 	}
 
 	return helpers.EncodeJSON(w, resp.User)
+}
+
+type CheckUserExistRequest struct {
+	PublicAddress string `json:"public_address"`
+	Email         string `json:"email"`
+	GoogleID      string `json:"google_id"`
+	FacebookID    string `json:"facebook_id"`
+	TwitterID     string `json:"twitter_id"`
+}
+
+type CheckUserExistResponse struct {
+	Ok bool `json:"ok"`
+}
+
+func (api *API) CheckUserExistHandler(w http.ResponseWriter, r *http.Request) {
+	req := &CheckUserExistRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	resp := &CheckUserExistResponse{}
+
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to decode Check user request")
+
+	}
+
+	if req.PublicAddress != "" {
+		fmt.Println(req.PublicAddress)
+		user, err := users.PublicAddress(common.HexToAddress(req.PublicAddress))
+		if err != nil || user == nil {
+			passlog.L.Error().Err(err).Msg("No user found for checking public address")
+
+		} else {
+			resp.Ok = true
+		}
+	}
+	if req.Email != "" {
+		user, err := users.Email((req.Email))
+		if err != nil || user == nil {
+			passlog.L.Error().Err(err).Msg("No user found for checking public address")
+
+		} else {
+			resp.Ok = true
+		}
+	}
+	if req.GoogleID != "" {
+		user, err := users.GoogleID(req.GoogleID)
+		if err != nil || user == nil {
+			passlog.L.Error().Err(err).Msg("No user found for checking public address")
+
+		} else {
+			resp.Ok = true
+		}
+	}
+	if req.FacebookID != "" {
+		user, err := users.FacebookID(req.FacebookID)
+		if err != nil || user == nil {
+			passlog.L.Error().Err(err).Msg("No user found for checking public address")
+
+		} else {
+			resp.Ok = true
+		}
+	}
+	if req.TwitterID != "" {
+		user, err := users.TwitterID(req.TwitterID)
+		if err != nil || user == nil {
+			passlog.L.Error().Err(err).Msg("No user found for checking public address")
+
+		} else {
+			resp.Ok = true
+		}
+	}
+
+	b, err := json.Marshal(&resp)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to encode response to json")
+
+	}
+	_, err = w.Write(b)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to write response to user")
+
+	}
 }
 
 func (api *API) AuthLogoutHandler(w http.ResponseWriter, r *http.Request) (int, error) {
