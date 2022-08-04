@@ -226,7 +226,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authType := r.Form.Get("authType")
+	authType := r.Form.Get("auth_type")
 	redir := r.Form.Get("redirect_url")
 	username := r.Form.Get("username")
 
@@ -430,10 +430,49 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+	case "twitter":
+		req := &TwitterSignupRequest{
+			RedirectURL: redir,
+			Tenant:      r.Form.Get("tenant"),
+			TwitterID:   r.Form.Get("twitter_id"),
+		}
+		if username != "" {
+			// do signup
+			// Check no user with email exist
+			user, err := users.TwitterID(req.TwitterID)
+			if err != nil && errors.Is(sql.ErrNoRows, err) {
+				commonAddress := common.HexToAddress("")
+				u, err := users.UserCreator("", "", username, "", "", "", "", req.TwitterID, "", "", commonAddress, "")
+				if err != nil {
+					passlog.L.Error().Err(err).Msg("unable to create user with wallet")
+					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+				}
+				// Login user after register
+				loginReq := &FingerprintTokenRequest{
+					User:        &u.User,
+					Fingerprint: req.Fingerprint,
+					RedirectURL: redir,
+					Tenant:      req.Tenant,
+				}
+
+				err = api.FingerprintAndIssueToken(w, r, loginReq)
+				if err != nil {
+					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+				}
+
+				http.Redirect(w, r, redir, http.StatusSeeOther)
+			} else if user != nil {
+				err := fmt.Errorf("User already exist")
+				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			}
+
+		}
+
 	case "tfa":
 		req := &TFAVerifyRequest{
 			RedirectURL:  redir,
 			Tenant:       r.Form.Get("tenant"),
+			UserID:       r.Form.Get("user_id"),
 			Token:        r.Form.Get("token"),
 			Passcode:     r.Form.Get("passcode"),
 			RecoveryCode: r.Form.Get("recovery_code"),
@@ -1137,6 +1176,7 @@ func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.
 	// OR verify passcode from user id
 	// If user is logged in, user id is passed from request
 	// If user is not logged in, token is passed from request
+
 	userID := req.UserID
 	if userID == "" {
 		uid, _, err := api.UserFromToken(w, r, req.Token)
@@ -1165,7 +1205,6 @@ func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.
 	} else {
 		return fmt.Errorf("code is missing")
 	}
-
 	// Issue login token to user
 	// Only if jwt token was provided
 	if req.Token != "" {
@@ -1306,7 +1345,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 		}
 
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
-			http.Redirect(w, r, fmt.Sprintf("%s?id=%s&redirectURL=%s", redirect, resp.UserID,redirectURL), http.StatusSeeOther)
+			http.Redirect(w, r, fmt.Sprintf("%s?id=%s&redirectURL=%s", redirect, resp.UserID, redirectURL), http.StatusSeeOther)
 			return http.StatusOK, nil
 		}
 		loginReq := &FingerprintTokenRequest{
@@ -1422,6 +1461,7 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		passlog.L.Error().Err(err).Msg(err.Error())
 		return err
 	}
+
 	// Dont create issue token and tell front-end to start 2FA verification with JWT
 	if req.User.TwoFactorAuthenticationIsSet && !req.Pass2FA {
 		// Generate jwt with user id
@@ -1447,7 +1487,11 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 
 		// Redirect to 2fa
 		if req.RedirectURL != "" {
-			http.Redirect(w, r, fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s&tenant=%s", origin, token, req.RedirectURL, req.Tenant), http.StatusSeeOther)
+			rURL := fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s&tenant=%s", origin, token, req.RedirectURL, req.Tenant)
+			if req.User.TwitterID.String != "" {
+				rURL = fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s?id=%s&tenant=%s", origin, token, req.RedirectURL, req.User.TwitterID.String, req.Tenant)
+			}
+			http.Redirect(w, r, rURL, http.StatusSeeOther)
 			return nil
 		}
 
@@ -1493,7 +1537,7 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		return err
 	}
 
-	if !req.IsTwitter {
+	if req.RedirectURL == "" {
 
 		b, err := json.Marshal(u)
 		if err != nil {
