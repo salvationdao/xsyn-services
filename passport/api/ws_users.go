@@ -166,6 +166,7 @@ const HubKeyUserSendVerify = "USER:VERIFY:SEND"
 
 type SendVerifyRequest struct {
 	Payload struct {
+		Email     string `json:"email"`
 		Code      string `json:"code"`
 		UserAgent string `json:"user_agent"`
 	} `json:"payload"`
@@ -179,6 +180,25 @@ func (uc *UserController) SendVerifyHandler(ctx context.Context, user *types.Use
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	if req.Payload.Email != "" && req.Payload.Email != user.Email.String {
+		// Check if email is valid
+		_, err := mail.ParseAddress(req.Payload.Email)
+		if err != nil {
+			return terror.Error(err, "Invalid email provided.")
+		}
+		// Check if email address is already taken
+		if null.StringFrom(req.Payload.Email) != user.Email {
+			u, _ := users.Email(req.Payload.Email)
+			if u != nil {
+				err = fmt.Errorf("email address is already taken by another user")
+				return terror.Error(err, "Email address is already taken by another user")
+			}
+			user.Email = null.StringFrom(req.Payload.Email)
+			user.Verified = true
+		}
+	}
+
+	user.User.Email = null.StringFrom(req.Payload.Email)
 	err = uc.API.Mailer.SendVerificationEmail(context.Background(), user, req.Payload.Code)
 	if err != nil {
 		return terror.Error(err, "Unable to send verification email.")
@@ -319,27 +339,22 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 	// Setup user activity tracking
 	oldUser := *user
 
-	// Update Values
-	confirmPassword := false
-
 	if req.Payload.Email.Valid && req.Payload.Email.String != "" {
 		_, err := mail.ParseAddress(req.Payload.Email.String)
 		if err != nil {
 			return terror.Error(err, "Invalid email address.")
 		}
 
-		email := strings.TrimSpace(req.Payload.Email.String)
-		email = strings.ToLower(email)
-
-		if user.Email.String != email {
-			userNewEmail := *user
-			userNewEmail.Email = null.StringFrom(email)
-
-			err = uc.API.Mailer.SendVerificationEmail(context.Background(), &userNewEmail, req.Payload.Code)
-			if err != nil {
-				return terror.Error(err, "Unable to send verify email")
+		// Check if email address is already taken
+		if req.Payload.Email != user.Email {
+			u, _ := users.Email(req.Payload.Email.String)
+			if u != nil {
+				err = fmt.Errorf("email address is already taken by another user")
+				return terror.Error(err, "Email address is already taken by another user")
 			}
+			user.Email = req.Payload.Email
 		}
+		user.Verified = true
 	}
 	if req.Payload.NewUsername != nil && req.Payload.Username != *req.Payload.NewUsername {
 		// Validate username
@@ -352,41 +367,6 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 		sanitizedUsername := html.UnescapeString(bm.Sanitize(strings.TrimSpace(*req.Payload.NewUsername)))
 
 		user.Username = sanitizedUsername
-	}
-	if req.Payload.NewPassword != nil && *req.Payload.NewPassword != "" {
-		if user.Email.String == "" && req.Payload.Email.String == "" {
-			return terror.Error(terror.ErrInvalidInput, "Email is required when assigning a new password, input a valid email and try again.")
-		}
-
-		err = helpers.IsValidPassword(*req.Payload.NewPassword)
-		if err != nil {
-			passwordErr := err.Error()
-			var bErr *terror.TError
-			if errors.As(err, &bErr) {
-				passwordErr = bErr.Message
-			}
-			return terror.Error(err, passwordErr)
-		}
-
-		hasPassword, err := boiler.PasswordHashExists(passdb.StdConn, user.ID)
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
-		confirmPassword = user.OldPasswordRequired && hasPassword
-	}
-
-	if confirmPassword {
-		if req.Payload.CurrentPassword == nil {
-			return terror.Error(terror.ErrInvalidInput, "Current password is required.")
-		}
-		userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
-		if err != nil {
-			return terror.Error(err, "Current password is incorrect.")
-		}
-		err = crypto.ComparePassword(userPassword.PasswordHash, *req.Payload.CurrentPassword)
-		if err != nil {
-			return terror.Error(err, "Current password is incorrect.")
-		}
 	}
 
 	user.FirstName = null.StringFrom(req.Payload.FirstName)
@@ -420,20 +400,6 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 	_, err = user.Update(tx, boil.Infer())
 	if err != nil {
 		return terror.Error(err, errMsg)
-	}
-
-	// Update password?
-	if req.Payload.NewPassword != nil {
-
-		userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
-		userPassword.PasswordHash = crypto.HashPassword(*req.Payload.NewPassword)
-		_, err = userPassword.Update(passdb.StdConn, boil.Whitelist(boiler.PasswordHashColumns.PasswordHash))
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
 	}
 
 	// Commit transaction

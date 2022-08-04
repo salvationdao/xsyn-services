@@ -214,121 +214,6 @@ func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
-	if err != nil {
-		passlog.L.Warn().Err(err).Msg("suspicious behaviour on external login form")
-		return
-	}
-
-	authType := r.Form.Get("authType")
-	redir := r.Form.Get("redirect_url")
-	if redir == "" {
-		http.Error(w, "No redirectURL provided", http.StatusBadRequest)
-		return
-	}
-
-	switch authType {
-	case "wallet":
-		req := &WalletLoginRequest{
-			RedirectURL:   redir,
-			Tenant:        r.Form.Get("tenant"),
-			PublicAddress: r.Form.Get("public_address"),
-			Signature:     r.Form.Get("signature"),
-		}
-		err = api.WalletLogin(req, w, r)
-		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			return
-		}
-	case "signup":
-		req := &EmailSignupVerifyRequest{
-			RedirectURL: redir,
-			Tenant:      r.Form.Get("tenant"),
-			Email:       r.Form.Get("email"),
-		}
-		user, _ := users.Email(req.Email)
-		if user != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			return
-		}
-		err = api.EmailSignupVerify(req, w, r)
-
-		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			return
-		}
-	case "email":
-		req := &EmailLoginRequest{
-			RedirectURL: redir,
-			Tenant:      r.Form.Get("tenant"),
-			Email:       r.Form.Get("email"),
-			Password:    r.Form.Get("password"),
-		}
-		err = api.EmailLogin(req, w, r)
-
-		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			return
-		}
-	case "facebook":
-		req := &FacebookLoginRequest{
-			RedirectURL: redir,
-			Tenant:      r.Form.Get("tenant"),
-			FacebookID:  r.Form.Get("facebook_id"),
-		}
-		err := api.FacebookLogin(req, w, r)
-		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			return
-		}
-	case "google":
-		req := &GoogleLoginRequest{
-			RedirectURL: redir,
-			Tenant:      r.Form.Get("tenant"),
-			GoogleID:    r.Form.Get("google_id"),
-			Email:       r.Form.Get("email"),
-		}
-
-		err := api.GoogleLogin(req, w, r)
-		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			return
-		}
-	case "token":
-		req := &TokenLoginRequest{
-			Token: r.Form.Get("token"),
-		}
-		resp, err := api.TokenAuth(req, r)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		err = api.WriteCookie(w, r, resp.Token)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-	case "tfa":
-		req := &TFAVerifyRequest{
-			RedirectURL:  redir,
-			Tenant:       r.Form.Get("tenant"),
-			Token:        r.Form.Get("token"),
-			Passcode:     r.Form.Get("passcode"),
-			RecoveryCode: r.Form.Get("recovery_code"),
-		}
-
-		err := api.TFAVerify(req, w, r)
-		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s&tenant=%s&err=%s", r.Header.Get("origin"), req.Token, redir, req.Tenant, err.Error()), http.StatusSeeOther)
-			return
-		}
-
-	}
-	http.Redirect(w, r, redir, http.StatusSeeOther)
-
-}
-
 func (api *API) ExternalLoginCheckHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	err := r.ParseForm()
 	if err != nil {
@@ -808,7 +693,7 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 		// Send message to users
 	URI := fmt.Sprintf("/user/%s", user.ID)
 	ws.PublishMessage(URI, HubKeyUserInit, nil)
-	
+
 	return http.StatusCreated, nil
 }
 
