@@ -63,6 +63,7 @@ type WalletLoginRequest struct {
 	SessionID     hub.SessionID      `json:"session_id"`
 	Fingerprint   *users.Fingerprint `json:"fingerprint"`
 	AuthType      string             `json:"auth_type"`
+	Username      string             `json:"username"`
 }
 
 type EmailSignupVerifyRequest struct {
@@ -79,6 +80,7 @@ type EmailLoginRequest struct {
 	Password    string             `json:"password"`
 	SessionID   hub.SessionID      `json:"session_id"`
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
+	Username    string             `json:"username"`
 }
 type ForgotPasswordRequest struct {
 	Tenant      string             `json:"tenant"`
@@ -107,6 +109,7 @@ type GoogleLoginRequest struct {
 	SessionID   hub.SessionID      `json:"session_id"`
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
 	AuthType    string             `json:"auth_type"`
+	Username    string             `json:"username"`
 }
 
 type FacebookLoginRequest struct {
@@ -116,6 +119,7 @@ type FacebookLoginRequest struct {
 	SessionID   hub.SessionID      `json:"session_id"`
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
 	AuthType    string             `json:"auth_type"`
+	Username    string             `json:"username"`
 }
 
 type TwitterSignupRequest struct {
@@ -124,6 +128,7 @@ type TwitterSignupRequest struct {
 	TwitterID   string             `json:"twitter_id"`
 	SessionID   hub.SessionID      `json:"session_id"`
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
+	Username    string             `json:"username"`
 }
 
 type TFAVerifyRequest struct {
@@ -222,44 +227,177 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authType := r.Form.Get("authType")
-	redir := r.Form.Get("redirectURL")
-	isHangar := r.URL.Query().Get("isHangar") != ""
-	isWebsite := r.URL.Query().Get("website") != ""
+	redir := r.Form.Get("redirect_url")
+	username := r.Form.Get("username")
+
+	if redir == "" {
+		http.Error(w, "No redirectURL provided", http.StatusBadRequest)
+		return
+	}
 
 	switch authType {
 	case "wallet":
 		req := &WalletLoginRequest{
+			RedirectURL:   redir,
+			Tenant:        r.Form.Get("tenant"),
 			PublicAddress: r.Form.Get("public_address"),
 			Signature:     r.Form.Get("signature"),
 		}
-		if redir != "" {
-			req.RedirectURL = &redir
+		if username != "" {
+			// do signup
+			// Take public address Hex to address(Make it a checksum mixed case address) convert back to Hex for string of checksum
+			commonAddr := common.HexToAddress(req.PublicAddress)
+			user, err := users.PublicAddress(commonAddr)
+			if err != nil && errors.Is(sql.ErrNoRows, err) {
+				// If user does not exist, create new user with their username set to their MetaMask public address
+				u, err := users.UserCreator("", "", username, "", "", "", "", "", "", "", commonAddr, "")
+				if err != nil {
+					passlog.L.Error().Err(err).Msg("unable to create user with wallet")
+					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+				}
+				// Login user after register
+				loginReq := &FingerprintTokenRequest{
+					User:        &u.User,
+					Fingerprint: req.Fingerprint,
+					RedirectURL: redir,
+					Tenant:      req.Tenant,
+				}
+
+				err = api.FingerprintAndIssueToken(w, r, loginReq)
+				if err != nil {
+					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+				}
+			} else if user != nil {
+				err := fmt.Errorf("User already exist")
+				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			}
+
 		}
-		resp, err := api.WalletLogin(req, r)
+		err = api.WalletLogin(req, w, r)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			return
+		}
+	case "email":
+		req := &EmailLoginRequest{
+			RedirectURL: redir,
+			Tenant:      r.Form.Get("tenant"),
+			Email:       r.Form.Get("email"),
+			Password:    r.Form.Get("password"),
+		}
+		if username != "" {
+			// do signup
+			user, err := users.Email(req.Email)
+			if err != nil && errors.Is(sql.ErrNoRows, err) {
+				commonAddress := common.HexToAddress("")
+				u, err := users.UserCreator("", "", username, req.Email, "", "", "", "", "", "", commonAddress, req.Password)
+				if err != nil {
+					passlog.L.Error().Err(err).Msg("unable to create user with wallet")
+					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+				}
+				// Login user after register
+				loginReq := &FingerprintTokenRequest{
+					User:        &u.User,
+					Fingerprint: req.Fingerprint,
+					RedirectURL: redir,
+					Tenant:      req.Tenant,
+				}
+
+				err = api.FingerprintAndIssueToken(w, r, loginReq)
+				if err != nil {
+					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+				}
+			} else if user != nil {
+				err := fmt.Errorf("User already exist")
+				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			}
+
+		}
+		err = api.EmailLogin(req, w, r)
+
+		if err != nil {
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			return
+		}
+	case "facebook":
+		req := &FacebookLoginRequest{
+			RedirectURL: redir,
+			Tenant:      r.Form.Get("tenant"),
+			FacebookID:  r.Form.Get("facebook_id"),
+		}
+		if username != "" {
+			// do signup
+			user, err := users.FacebookID(req.FacebookID)
+			if err != nil && errors.Is(sql.ErrNoRows, err) {
+				commonAddress := common.HexToAddress("")
+				u, err := users.UserCreator("", "", username, "", req.FacebookID, "", "", "", "", "", commonAddress, "")
+				if err != nil {
+					passlog.L.Error().Err(err).Msg("unable to create user with wallet")
+					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+				}
+				// Login user after register
+				loginReq := &FingerprintTokenRequest{
+					User:        &u.User,
+					Fingerprint: req.Fingerprint,
+					RedirectURL: redir,
+					Tenant:      req.Tenant,
+				}
+
+				err = api.FingerprintAndIssueToken(w, r, loginReq)
+				if err != nil {
+					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+				}
+			} else if user != nil {
+				err := fmt.Errorf("User already exist")
+				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			}
+
+		}
+		err := api.FacebookLogin(req, w, r)
+		if err != nil {
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			return
+		}
+	case "google":
+		req := &GoogleLoginRequest{
+			RedirectURL: redir,
+			Tenant:      r.Form.Get("tenant"),
+			GoogleID:    r.Form.Get("google_id"),
+			Username:    r.Form.Get("username"),
+			Email:       r.Form.Get("email"),
 		}
 
-		err = api.WriteCookie(w, r, resp.Token)
+		if username != "" {
+			// do signup
+			user, err := users.GoogleID(req.GoogleID)
+			if err != nil && errors.Is(sql.ErrNoRows, err) {
+				commonAddress := common.HexToAddress("")
+				u, err := users.UserCreator("", "", username, req.Email, "", req.GoogleID, "", "", "", "", commonAddress, "")
+				if err != nil {
+					passlog.L.Error().Err(err).Msg("unable to create user with wallet")
+					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+				}
+				// Login user after register
+				loginReq := &FingerprintTokenRequest{
+					User:        &u.User,
+					Fingerprint: req.Fingerprint,
+					RedirectURL: redir,
+					Tenant:      req.Tenant,
+				}
+
+				err = api.FingerprintAndIssueToken(w, r, loginReq)
+				if err != nil {
+					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+				}
+			} else if user != nil {
+				err := fmt.Errorf("User already exist")
+				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			}
+
+		}
+		err := api.GoogleLogin(req, w, r)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		if isWebsite {
-			if redir != "" {
-				redir += "?token=true"
-				http.Redirect(w, r, redir, http.StatusSeeOther)
-			}
-			return
-		}
-		if resp.RedirectToken != nil && redir != "" {
-			escapedUrl := url.QueryEscape(*resp.RedirectToken)
-			hangerArg := ""
-			if isHangar {
-				hangerArg = "&isHangar=true"
-			}
-			http.Redirect(w, r, redir+"?token="+escapedUrl+hangerArg, http.StatusSeeOther)
+			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			return
 		}
 	case "token":
@@ -271,83 +409,66 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-
-		err = api.WriteCookie(w, r, req.Token)
+		err = api.WriteCookie(w, r, resp.Token)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	case "cookie":
+		_, token := externalLoginCheck(api, w, r)
+		err := api.WriteCookie(w, r, *token)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		if resp.RedirectToken != nil && redir != "" {
-			escapedUrl := url.QueryEscape(*resp.RedirectToken)
-			http.Redirect(w, r, redir+"?token="+escapedUrl, http.StatusSeeOther)
-			return
+	case "tfa":
+		req := &TFAVerifyRequest{
+			RedirectURL:  redir,
+			Tenant:       r.Form.Get("tenant"),
+			Token:        r.Form.Get("token"),
+			Passcode:     r.Form.Get("passcode"),
+			RecoveryCode: r.Form.Get("recovery_code"),
 		}
-	case "cookie":
-		resp := externalLoginCheck(api, w, r)
-		redirectToken := api.OneTimeToken(resp.User.ID, r.UserAgent())
-		if redirectToken != nil && redir != "" {
-			escapedUrl := url.QueryEscape(*redirectToken)
-			http.Redirect(w, r, redir+"?token="+escapedUrl, http.StatusSeeOther)
-			return
-		}
-	case "hangar":
-		resp := externalLoginCheck(api, w, r)
 
-		redirectToken := api.OneTimeToken(resp.User.ID, r.UserAgent())
-
-		if redirectToken != nil && redir != "" {
-			escapedUrl := url.QueryEscape(*redirectToken)
-			http.Redirect(w, r, redir+"?token="+escapedUrl+"&isHangar=true", http.StatusSeeOther)
+		err := api.TFAVerify(req, w, r)
+		if err != nil {
+			http.Redirect(w, r, fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s&tenant=%s&err=%s", r.Header.Get("origin"), req.Token, redir, req.Tenant, err.Error()), http.StatusSeeOther)
 			return
 		}
 
-	case "website":
-		externalLoginCheck(api, w, r)
-		if redir != "" {
-			redir += "?token=true"
-			http.Redirect(w, r, redir, http.StatusSeeOther)
-			return
-		}
-	case "admin":
-		externalLoginCheck(api, w, r)
-		if redir != "" {
-			redir += "?token=true"
-			http.Redirect(w, r, redir, http.StatusSeeOther)
-			return
-		}
 	}
+	http.Redirect(w, r, redir, http.StatusSeeOther)
 
 }
-
-func externalLoginCheck(api *API, w http.ResponseWriter, r *http.Request) *TokenLoginResponse {
+func externalLoginCheck(api *API, w http.ResponseWriter, r *http.Request) (*TokenLoginResponse, *string) {
 	cookie, err := r.Cookie("xsyn-token")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		return nil
+		return nil, nil
 	}
 
 	var token string
 	if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		return nil
+		return nil, nil
 	}
 
 	// check user from token
 	resp, err := api.TokenLogin(token, "")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		return nil
+		return nil, nil
 	}
 
 	// write cookie on domain
 	err = api.WriteCookie(w, r, token)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		return nil
+		return nil, nil
 	}
 
-	return resp
+	return resp, &token
 
 }
 
@@ -446,7 +567,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusInternalServerError, err
 		}
 	case "facebook":
-		// Check no user with email exist
+		// Check no user with facebook exist
 		user, err := users.FacebookID(req.FacebookRequest.FacebookID)
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
 			commonAddress := common.HexToAddress("")
@@ -494,6 +615,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		passlog.L.Error().Err(err).Msg("unable to create user, no user passed through")
 		return http.StatusInternalServerError, err
 	}
+
 	// Login
 	loginReq := &FingerprintTokenRequest{
 		User:        &u.User,
