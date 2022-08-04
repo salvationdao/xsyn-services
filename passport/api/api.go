@@ -246,10 +246,10 @@ func NewAPI(
 				r.Post("/reset", WithError(api.ResetPasswordHandler))
 				r.Post("/change_password", WithError(api.ChangePasswordHandler))
 				r.Post("/new_password", WithError(api.NewPasswordHandler))
-				r.Post("/google", WithError(api.GoogleLoginHandler))
-				r.Post("/facebook", WithError(api.FacebookLoginHandler))
+				//r.Post("/google", WithError(api.GoogleLoginHandler))
+				//r.Post("/facebook", WithError(api.FacebookLoginHandler))
 				r.Post("/tfa", WithError(api.TFAVerifyHandler))
-				r.Get("/twitter", WithError(api.TwitterAuth))
+				//r.Get("/twitter", WithError(api.TwitterAuth))
 				r.Get("/verify", WithError(api.EmailVerifyHandler))
 
 				r.Post("/bot_list", api.BotListHandler)
