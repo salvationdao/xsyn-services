@@ -1422,8 +1422,8 @@ type GetNonceResponse struct {
 func (api *API) NewNonce(user *boiler.User) (string, error) {
 	newNonce := helpers.RandStringBytes(16)
 
-	user.Nonce = null.StringFrom(newNonce)
 	if user != nil {
+		user.Nonce = null.StringFrom(newNonce)
 		i, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Nonce))
 		if err != nil {
 			return "", err
@@ -1449,12 +1449,7 @@ func (api *API) GetNonce(w http.ResponseWriter, r *http.Request) (int, error) {
 	if publicAddress != "" && common.IsHexAddress(publicAddress) {
 		// Take public address Hex to address(Make it a checksum mixed case address) convert back to Hex for string of checksum
 		commonAddr := common.HexToAddress(publicAddress)
-		user, err := users.PublicAddress(commonAddr)
-
-		if err != nil && !errors.Is(sql.ErrNoRows, err) {
-			L.Error().Err(err).Msg("Error searching for user with public address when getting nonce")
-			return http.StatusInternalServerError, err
-		}
+		user, _ := users.PublicAddress(commonAddr)
 
 		// user can be nil
 		newNonce, err := api.NewNonce(&user.User)
@@ -1540,7 +1535,6 @@ func (api *API) TokenAuth(req *TokenLoginRequest, r *http.Request) (*LoginRespon
 }
 
 func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-
 	cookie, err := r.Cookie("xsyn-token")
 	if err != nil {
 		// check whether token is attached
