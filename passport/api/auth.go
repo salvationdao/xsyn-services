@@ -155,6 +155,7 @@ func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string
 	}
 
 	// get domain
+
 	d := domain(r.Host)
 	if d == "" {
 		passlog.L.Warn().Msg("Cookie's domain not found")
@@ -329,6 +330,13 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *API) ExternalLoginCheckHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	err := r.ParseForm()
+	if err != nil {
+		passlog.L.Warn().Err(err).Msg("suspicious behaviour on external cookie check")
+		return http.StatusBadRequest, err
+	}
+
+	redirectURL := r.Form.Get("redirect_url")
 	cookie, err := r.Cookie("xsyn-token")
 	if err != nil {
 		return http.StatusBadRequest, err
@@ -350,6 +358,8 @@ func (api *API) ExternalLoginCheckHandler(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
+
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 	return http.StatusOK, nil
 
 }
@@ -841,6 +851,7 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 
 	err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to verify signature")
 		return err
 	}
 
@@ -1136,24 +1147,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 		// Check if user exist
 		user, err := users.TwitterID(resp.UserID)
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
-			twitterSignupResponse := struct {
-				TwitterID string `json:"twitter_id"`
-				NewUser   bool   `json:"new_user"`
-			}{
-				TwitterID: resp.UserID,
-				NewUser:   true,
-			}
-
 			http.Redirect(w, r, fmt.Sprintf("%s?id=%s", redirect, resp.UserID), http.StatusSeeOther)
-			b, err := json.Marshal(twitterSignupResponse)
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to encode response to json")
-				return http.StatusInternalServerError, terror.Error(err)
-			}
-			_, err = w.Write(b)
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to write response to user")
-			}
 			return http.StatusOK, nil
 		}
 
@@ -1172,7 +1166,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 		if err != nil {
 			return http.StatusBadRequest, err
 		}
-		http.Redirect(w, r, redirect, http.StatusSeeOther)
+		http.Redirect(w, r, fmt.Sprintf("%s?login=ok", redirect), http.StatusSeeOther)
 
 		return http.StatusOK, nil
 	}
@@ -1265,7 +1259,7 @@ type FingerprintTokenRequest struct {
 
 func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request, req *FingerprintTokenRequest) error {
 	// Check if tenant is provided for external 2FA logins except for twitter since redirect is always provided
-	if req.User.TwoFactorAuthenticationIsSet && req.RedirectURL != "" && !req.Pass2FA && req.Tenant == "" && !req.IsTwitter {
+	if req.User.TwoFactorAuthenticationIsSet && req.RedirectURL != "" && !req.Pass2FA {
 		err := fmt.Errorf("tenant missing for external 2fa login")
 		passlog.L.Error().Err(err).Msg(err.Error())
 		return err
@@ -1305,6 +1299,7 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		}
 
 		// Send response to user and pass token to redirect to 2fa
+
 		b, err := json.Marshal(token)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
@@ -1315,6 +1310,7 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 			passlog.L.Error().Err(err).Msg("unable to write response to user")
 			return err
 		}
+
 		return nil
 	}
 
@@ -1344,7 +1340,8 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		return err
 	}
 
-	if req.RedirectURL == "" {
+	if !req.IsTwitter {
+
 		b, err := json.Marshal(u)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
@@ -1356,6 +1353,7 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -1455,7 +1453,6 @@ func token(api *API, config *TokenConfig, isIssueToken bool, expireInDays int) (
 			return nil, uuid.Nil, "", terror.Error(err, "unable to save jwt")
 		}
 	}
-	passlog.L.Info().Interface("user", user).Str("tokenID", tokenID.String()).Interface("token", token).Msg("here4.7")
 	return user, tokenID, token, nil
 }
 
@@ -1783,24 +1780,6 @@ func (api *API) TokenLogin(tokenBase64 string, twitchExtensionJWT string) (*Toke
 
 	if !retrievedToken.Whitelisted() {
 		return nil, terror.Error(tokens.ErrTokenNotWhitelisted)
-	}
-
-	// check twitch extension jwt
-	if twitchExtensionJWT != "" {
-		claims, err := api.GetClaimsFromTwitchExtensionToken(twitchExtensionJWT)
-		if err != nil {
-			return nil, terror.Error(err, "failed to parse twitch extension token")
-		}
-
-		twitchUser, err := users.TwitchID(claims.TwitchAccountID)
-		if err != nil {
-			return nil, terror.Error(err, "failed to get twitch user")
-		}
-
-		// check twitch user match the token user
-		if twitchUser.ID != user.ID {
-			return nil, terror.Error(tokens.ErrUserNotMatch, "twitch id does not match")
-		}
 	}
 
 	return &TokenLoginResponse{user}, nil
