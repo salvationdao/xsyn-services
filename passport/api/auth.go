@@ -1399,7 +1399,6 @@ type FingerprintTokenRequest struct {
 	Fingerprint *users.Fingerprint
 	IsTwitter   bool
 }
-
 func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request, req *FingerprintTokenRequest) error {
 	// Check if tenant is provided for external 2FA logins except for twitter since redirect is always provided
 	if req.User.TwoFactorAuthenticationIsSet && req.RedirectURL != "" && !req.Pass2FA && req.Tenant == "" && !req.IsTwitter {
@@ -1442,7 +1441,6 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		}
 
 		// Send response to user and pass token to redirect to 2fa
-
 		b, err := json.Marshal(token)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
@@ -1453,7 +1451,6 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 			passlog.L.Error().Err(err).Msg("unable to write response to user")
 			return err
 		}
-
 		return nil
 	}
 
@@ -1483,8 +1480,7 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		return err
 	}
 
-	if !req.IsTwitter {
-
+	if req.RedirectURL == "" {
 		b, err := json.Marshal(u)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
@@ -1496,7 +1492,6 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 			return err
 		}
 	}
-
 	return nil
 }
 
