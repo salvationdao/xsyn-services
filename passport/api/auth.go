@@ -229,6 +229,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	authType := r.Form.Get("authType")
 	redir := r.Form.Get("redirect_url")
 	username := r.Form.Get("username")
+	tenant := r.Form.Get("tenant")
 
 	if redir == "" {
 		http.Error(w, "No redirectURL provided", http.StatusBadRequest)
@@ -268,8 +269,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 				}
 
-				// Take to signup page
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s", r.Header.Get("origin"), req.Tenant, redir), http.StatusSeeOther)
+				http.Redirect(w, r, redir, http.StatusSeeOther)
 			} else if user != nil {
 				err := fmt.Errorf("User already exist")
 				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
@@ -311,8 +311,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 				}
 
-				// Take to signup page
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s", r.Header.Get("origin"), req.Tenant, redir), http.StatusSeeOther)
+				http.Redirect(w, r, redir, http.StatusSeeOther)
 			} else if user != nil {
 				err := fmt.Errorf("User already exist")
 				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
@@ -354,8 +353,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 				}
 
-				// Take to signup page
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s", r.Header.Get("origin"), req.Tenant, redir), http.StatusSeeOther)
+				http.Redirect(w, r, redir, http.StatusSeeOther)
 			} else if user != nil {
 				err := fmt.Errorf("User already exist")
 				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
@@ -399,8 +397,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 				}
 
-				// Take to signup page
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s", r.Header.Get("origin"), req.Tenant, redir), http.StatusSeeOther)
+				http.Redirect(w, r, redir, http.StatusSeeOther)
 			} else if user != nil {
 				err := fmt.Errorf("User already exist")
 				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
@@ -450,7 +447,9 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	}
-	http.Redirect(w, r, redir, http.StatusSeeOther)
+
+	// Take to signup page
+	http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s", r.Header.Get("origin"), tenant, redir), http.StatusSeeOther)
 
 }
 func externalLoginCheck(api *API, w http.ResponseWriter, r *http.Request) (*TokenLoginResponse, *string) {
