@@ -141,8 +141,8 @@ func CreateTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Requ
 
 		ref := fmt.Sprintf("TRANSFER - %d", time.Now().UnixNano())
 		newTx := &types.NewTransaction{
-			To:                   types.UserID(req.Credit),
-			From:                 types.UserID(req.Debit),
+			Credit:               req.Credit.String(),
+			Debit:                req.Debit.String(),
 			Amount:               req.Amount,
 			TransactionReference: types.TransactionReference(ref),
 			Description:          ref,
@@ -166,8 +166,8 @@ func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http
 			return http.StatusBadRequest, terror.Error(err, "Could not get transaction")
 		}
 		refundTx := &types.NewTransaction{
-			To:                   types.UserID(uuid.Must(uuid.FromString(tx.Debit))),
-			From:                 types.UserID(uuid.Must(uuid.FromString(tx.Credit))),
+			Credit:               tx.DebitAccountID,
+			Debit:                tx.CreditAccountID,
 			Amount:               tx.Amount,
 			TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", tx.TransactionReference)),
 			Description:          "Reverse transaction",

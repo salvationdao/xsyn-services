@@ -180,7 +180,7 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 	for usExists != nil {
 		sanitizedUsername = helpers.RandStringBytes(n) + sanitizedUsername
 		n++
-		usExists, _ = boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(sanitizedUsername))).One(passdb.StdConn)
+		usExists, _ = boiler.Users(boiler.UserWhere.Username.EQ(sanitizedUsername)).One(passdb.StdConn)
 		if n > 10 {
 			return nil, fmt.Errorf("unable to generate a unique username")
 		}
@@ -188,6 +188,13 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 	hexPublicAddress := ""
 	if publicAddress != common.HexToAddress("") {
 		hexPublicAddress = publicAddress.Hex()
+
+	}
+
+	// Check public address is hex address
+	if hexPublicAddress != "" && !common.IsHexAddress(hexPublicAddress) {
+		passlog.L.Error().Err(err).Msg("Public address provided is not a hex address")
+		return nil, terror.Error(err, "failed to provide a valid wallet address")
 	}
 
 	isVerified := false
@@ -195,7 +202,26 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		isVerified = true
 	}
 
+	tx, err := passdb.StdConn.Begin()
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("Failed to start db transaction")
+		return nil, terror.Error(err, "Failed to create new user.")
+	}
+
+	defer tx.Rollback()
+
+	// insert new account
+	account := boiler.Account{
+		Type: boiler.AccountTypeUSER,
+	}
+	err = account.Insert(tx, boil.Infer())
+	if err != nil {
+		passlog.L.Error().Err(err).Interface("account", account).Msg("Failed to insert new account")
+		return nil, terror.Error(err, "Failed to create new account.")
+	}
+
 	user := &boiler.User{
+		ID:            account.ID,
 		FirstName:     null.StringFrom(firstName),
 		LastName:      null.StringFrom(lastName),
 		Username:      sanitizedUsername,
@@ -208,12 +234,19 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		PublicAddress: types.NewString(hexPublicAddress),
 		RoleID:        types.NewString(types.UserRoleMemberID.String()),
 		Verified:      isVerified, // verify users directly if they go through Oauth
+		AccountID:     account.ID,
 	}
 
-	err = user.Insert(passdb.StdConn, boil.Infer())
+	err = user.Insert(tx, boil.Infer())
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("insert new user failed")
 		return nil, terror.Error(err, "create new user failed")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("Failed to commit db transaction")
+		return nil, terror.Error(err, "Failed to create new user")
 	}
 
 	if password != "" && email != "" {
@@ -395,7 +428,7 @@ func VerifyTFA(userTFASecret string, passcode string) error {
 
 func GetTFARecovery(userID string) (boiler.UserRecoveryCodeSlice, error) {
 	userRecoveryCodes, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.UserID.EQ(userID)).All(passdb.StdConn)
-	if err != nil {
+	if err != nil || len(userRecoveryCodes) == 0 {
 		return nil, fmt.Errorf("user has no recovery codes")
 	}
 

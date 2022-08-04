@@ -34,26 +34,6 @@ func (c *User) Scan(value interface{}) error {
 	return json.Unmarshal(b, c)
 }
 
-type Transaction struct {
-	ID                   string            `json:"id" db:"id"`
-	RelatedTransactionID null.String       `json:"related_transaction_id" db:"related_transaction_id"`
-	ServiceID            UserID            `json:"service_id" db:"service_id"`
-	Credit               UserID            `json:"credit" db:"credit"`
-	Debit                UserID            `json:"debit" db:"debit"`
-	Amount               decimal.Decimal   `json:"amount" db:"amount"`
-	Status               TransactionStatus `json:"status" db:"status"`
-	TransactionReference string            `json:"transaction_reference" db:"transaction_reference"`
-	Description          string            `json:"description" db:"description"`
-	Reason               *string           `json:"reason" db:"reason"`
-	CreatedAt            time.Time         `json:"created_at" db:"created_at"`
-	Group                TransactionGroup  `json:"group" db:"group"`
-	SubGroup             string            `json:"sub_group" db:"sub_group"`
-
-	// Inner joined fields4b4
-	To   User `json:"to"`
-	From User `json:"from"`
-}
-
 type ChainConfirmations struct {
 	Tx                 string     `json:"tx" db:"tx"`
 	TxID               string     `json:"tx_id" db:"tx_id"`
@@ -71,21 +51,15 @@ type NewTransaction struct {
 	ID                   string               `json:"id" db:"id"`
 	RelatedTransactionID null.String          `json:"related_transaction_id" db:"related_transaction_id"`
 	ServiceID            UserID               `json:"service_id" db:"service_id"`
-	To                   UserID               `json:"credit" db:"credit"`
-	From                 UserID               `json:"debit" db:"debit"`
+	Credit               string               `json:"credit_account_id" db:"credit_account_id"`
+	Debit                string               `json:"debit_account_id" db:"debit_account_id"`
 	Amount               decimal.Decimal      `json:"amount" db:"amount"`
 	TransactionReference TransactionReference `json:"transaction_reference" db:"transaction_reference"`
 	Description          string               `json:"description" db:"description"`
 	Group                TransactionGroup     `json:"group" db:"group"`
 	SubGroup             string               `json:"sub_group" db:"sub_group"`
-	NotSafe              bool                 `json:"not_safe" db:"-"`
 	Processed            bool                 `json:"processed" db:"-"`
 	CreatedAt            time.Time            `json:"created_at" db:"created_at"`
-}
-
-type TransactionResult struct {
-	Transaction *Transaction
-	Error       error
 }
 
 type TransactionGroup string

@@ -21,6 +21,8 @@ const (
 	SupremacyBostonCyberneticsUsername string = "BostonCybernetics"
 	OnChainUsername                    string = "OnChain"
 	XsynSaleUsername                   string = "XsynSale"
+	RepairCenter                       string = "Repair-Center"
+	SupremacyChallengeFund             string = "Supremacy-Challenge-Fund"
 )
 
 var (
@@ -33,18 +35,20 @@ var (
 	SupremacyBostonCyberneticsUserID = UserID(uuid.Must(uuid.FromString("15f29ee9-e834-4f76-aff8-31e39faabe2d")))
 	OnChainUserID                    = UserID(uuid.Must(uuid.FromString("2fa1a63e-a4fa-4618-921f-4b4d28132069")))
 	XsynSaleUserID                   = UserID(uuid.Must(uuid.FromString("1429a004-84a1-11ec-a8a3-0242ac120002")))
+	RepairCentreUserID               = UserID(uuid.Must(uuid.FromString("a988b1e3-5556-4cad-83bd-d61c2b149cb7")))
+	SupremacyChallengeFundUserID     = UserID(uuid.Must(uuid.FromString("5bca9b58-a71c-4134-85d4-50106a8966dc")))
 )
 
-func (e UserID) IsSystemUser() bool {
-	switch e {
-	case XsynTreasuryUserID,
-		SupremacyGameUserID,
-		OnChainUserID,
-		SupremacyBattleUserID,
-		SupremacySupPoolUserID,
-		SupremacyZaibatsuUserID,
-		SupremacyRedMountainUserID,
-		SupremacyBostonCyberneticsUserID:
+func IsSystemUser(userID string) bool {
+	switch userID {
+	case XsynTreasuryUserID.String(),
+		SupremacyGameUserID.String(),
+		OnChainUserID.String(),
+		SupremacyBattleUserID.String(),
+		SupremacySupPoolUserID.String(),
+		SupremacyZaibatsuUserID.String(),
+		SupremacyRedMountainUserID.String(),
+		SupremacyBostonCyberneticsUserID.String():
 		return true
 	}
 	return false
@@ -60,6 +64,7 @@ type User struct {
 	HasPassword bool            `json:"has_password"`
 	Pass2FA     bool            `json:"pass_2_fa"`
 	Metadata    UserMetadata    `json:"metadata" db:"metadata"`
+	Sups        decimal.Decimal `json:"sups" db:"sups"`
 	//NoNonce  *struct{}       `json:"nonce,omitempty"`
 	//NoSups   *struct{}       `json:"sups,omitempty"`
 }
@@ -67,7 +72,7 @@ type User struct {
 func UserFromBoil(u *boiler.User) (*User, error) {
 	user := &User{User: *u}
 	if u.FactionID.Valid {
-		if u.R.Faction != nil {
+		if u.R != nil && u.R.Faction != nil {
 			user.Faction = u.R.Faction
 		} else {
 			f, err := boiler.FindFaction(passdb.StdConn, u.FactionID.String)

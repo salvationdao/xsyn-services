@@ -195,6 +195,7 @@ func main() {
 					&cli.StringFlag{Name: "moralis_key", Value: "91Xp2ke5eOVMavAsqdOoiXN4lg0n0AieW5kTJoupdyQBhL2k9XvMQtFPSA4opX2s", EnvVars: []string{envPrefix + "_MORALIS_KEY"}, Usage: "Key to connect to moralis API"},
 					&cli.StringFlag{Name: "bot_secret_key", Value: `HsZ8DGnNshjkvbvdmJvjLY0CEaoAyn0SnzHjLaCESL91YwsRELsaGyvJsteUf6kI`, EnvVars: []string{envPrefix + "_BOT_SECRET_KEY"}, Usage: "Key for verifying requests from our own bots"},
 					&cli.StringFlag{Name: "ignore_rate_limit_ips", Value: "127.0.0.1", EnvVars: []string{envPrefix + "_IGNORE_RATE_LIMIT_IP"}, Usage: "Ignore rate limiting on these IPs"},
+					&cli.StringFlag{Name: "email_template_path", Value: "./passport/email/templates", EnvVars: []string{envPrefix + "_EMAIL_TEMPLATE_PATH"}, Usage: "path to email templates"},
 				},
 
 				Usage: "run server",
@@ -822,6 +823,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	}
 
 	config := &types.Config{
+		EmailTemplatePath:   ctxCLI.String("email_template_path"),
 		CookieSecure:        ctxCLI.Bool("cookie_secure"),
 		CookieKey:           ctxCLI.String("cookie_key"),
 		PassportWebHostURL:  ctxCLI.String("passport_web_host_url"),

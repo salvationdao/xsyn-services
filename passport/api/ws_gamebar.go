@@ -88,10 +88,9 @@ func (gc *GamebarController) GetFreeSups(ctx context.Context, user *types.User, 
 	oneSups := big.NewInt(1000000000000000000)
 	oneSups.Mul(oneSups, big.NewInt(100))
 	tx := &types.NewTransaction{
-		To:                   types.UserID(uuid.Must(uuid.FromString(user.ID))),
-		From:                 types.XsynSaleUserID,
+		Credit:               user.ID,
+		Debit:                types.XsynSaleUserID.String(),
 		Amount:               decimal.NewFromBigInt(oneSups, 0),
-		NotSafe:              true,
 		TransactionReference: types.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())),
 		Description:          "100 SUPS giveaway for testing",
 		Group:                types.TransactionGroupTesting,
@@ -100,8 +99,8 @@ func (gc *GamebarController) GetFreeSups(ctx context.Context, user *types.User, 
 	if err != nil {
 		passlog.L.
 			Err(err).
-			Str("to", tx.To.String()).
-			Str("from", tx.From.String()).
+			Str("to", tx.Credit).
+			Str("from", tx.Debit).
 			Str("amount", tx.Amount.String()).
 			Str("description", tx.Description).
 			Str("transaction_reference", string(tx.TransactionReference)).

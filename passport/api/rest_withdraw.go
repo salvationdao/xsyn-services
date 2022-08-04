@@ -218,13 +218,13 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("user: %s, attempting to withdraw while account is locked.", user.ID), "Withdrawals is locked, contact support to unlock.")
 	}
 
-	userSups, err := db.UserBalance(user.ID)
+	userAccount, err := db.UserBalance(user.ID)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not find SUPS balance")
 	}
 
-	if userSups.LessThan(decimal.NewFromBigInt(amountBigInt, 0)) {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("user has insufficient funds: %s, %s", userSups.String(), amountBigInt), "Insufficient funds.")
+	if userAccount.R.Account.Sups.LessThan(decimal.NewFromBigInt(amountBigInt, 0)) {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("user has insufficient funds: %s, %s", userAccount.R.Account.Sups.String(), amountBigInt), "Insufficient funds.")
 	}
 
 	//  sign it

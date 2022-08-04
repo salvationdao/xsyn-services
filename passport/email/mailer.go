@@ -2,6 +2,7 @@ package email
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -27,6 +28,9 @@ type Mailer struct {
 
 	// Handlebars Email Templates
 	Templates map[string]*raymond.Template
+
+	// Path to template
+	TemplatePath string
 }
 
 // NewMailer returns a new Mailer controller
@@ -37,6 +41,7 @@ func NewMailer(domain string, apiKey string, systemAddress string, config *types
 		SystemAddress:      systemAddress,
 		PassportWebHostURL: config.PassportWebHostURL,
 		Templates:          map[string]*raymond.Template{},
+		TemplatePath:       config.EmailTemplatePath,
 	}
 
 	// Handlebar template helpers
@@ -46,8 +51,10 @@ func NewMailer(domain string, apiKey string, systemAddress string, config *types
 
 	// Parse email templates
 	var templates []string
-	templatesFolder := "./passport/email/templates"
-	err := filepath.Walk(templatesFolder, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(config.EmailTemplatePath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return terror.Error(err, "failed to walk through templates folder")
+		}
 		if strings.Contains(path, ".html") {
 			templates = append(templates, path)
 		}
@@ -56,6 +63,11 @@ func NewMailer(domain string, apiKey string, systemAddress string, config *types
 	if err != nil {
 		return nil, terror.Error(err, "failed to step through templates folder")
 	}
+	if len(templates) == 0 {
+		return nil, terror.Error(fmt.Errorf("unable to find templates"), "zero templates found")
+
+	}
+
 	err = mailer.ParseTemplates(templates...)
 	if err != nil {
 		return nil, terror.Error(err, "failed to parse email templates")
@@ -119,7 +131,7 @@ func (m *Mailer) SendEmail(
 	// Setup Email
 	message := m.MailGun.NewMessage(m.SystemAddress, subject, "", strings.Split(to, ",")...)
 	message.SetHtml(body)
-	message.AddInline("./passport/email/templates/logo.png")
+	message.AddInline(fmt.Sprintf("%s/logo.png", m.TemplatePath))
 	if bcc != "" {
 		for _, b := range strings.Split(bcc, ",") {
 			message.AddBCC(b)

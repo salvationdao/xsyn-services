@@ -1459,7 +1459,15 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, user *types.User
 	}
 
 	// Update user
-	user.PublicAddress = null.StringFrom(req.Payload.PublicAddress)
+	hexPublicAddress := publicAddr.Hex()
+	user.PublicAddress = null.StringFrom(hexPublicAddress)
+
+	// Check public address is hex address
+	if !common.IsHexAddress(hexPublicAddress) {
+		passlog.L.Error().Err(err).Msg("Public address provided is not a hex address")
+		return terror.Error(err, "failed to provide a valid wallet address")
+	}
+
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.PublicAddress))
 	if err != nil {
 		return terror.Error(err, "Wallet is already connected to another user.")
@@ -1511,13 +1519,13 @@ func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, user *typ
 const HubKeyUserSupsSubscribe = "USER:SUPS:SUBSCRIBE"
 
 func (api *API) UserSupsUpdatedSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	sups, err := api.userCacheMap.SetAndGet(user.ID)
+	sups, _, err := api.userCacheMap.Get(user.ID)
 	// get current on world sups
 	if err != nil {
 		return terror.Error(err, "Issue subscribing to user SUPs updates, try again or contact support.")
 	}
 
-	reply(sups.String())
+	reply(sups.StringFixed(0))
 	return nil
 }
 
@@ -1608,7 +1616,7 @@ const HubKeySUPSRemainingSubscribe = "SUPS:TREASURY"
 
 func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 
-	sups, err := uc.API.userCacheMap.Get(types.XsynSaleUserID.String())
+	sups, _, err := uc.API.userCacheMap.Get(types.XsynSaleUserID.String())
 	if err != nil {
 		return terror.Error(err, "Issue getting total SUPs remaining handler, try again or contact support.")
 	}
@@ -1618,52 +1626,15 @@ func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, key stri
 
 const HubKeyUserTransactionsSubscribe = "USER:SUPS:TRANSACTIONS:SUBSCRIBE"
 
-//const HubKeyUserLatestTransactionSubscribe = "USER:SUPS:LATEST_TRANSACTION:SUBSCRIBE"
-
-//func (uc *UserController) UserTransactionsSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-//	req := &UpdatedSubscribeRequest{}
-//	err := json.Unmarshal(payload, req)
-//	if err != nil {
-//		return terror.Error(err, "Invalid request received.")
-//	}
-//
-//	// get users transactions
-//	list, err := db.UserTransactionGetList(ctx, uc.Conn, user.ID, 5)
-//	if err != nil {
-//		return terror.Error(err, "Failed to get transactions, try again or contact support.")
-//	}
-//	//HubKeyUserTransactionsSubscribe
-//	reply(list)
-//	return nil
-//}
-
 func (api *API) UserTransactionsSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	// get users transactions
-	list, err := db.UserTransactionGetList(user.ID, 5)
+	list, err := db.UserTransactionGetList(user.AccountID, 5)
 	if err != nil {
 		return terror.Error(err, "Failed to get transactions, try again or contact support.")
 	}
 	reply(list)
 	return nil
 }
-
-//func (uc *UserController) UserLatestTransactionsSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-//	req := &UpdatedSubscribeRequest{}
-//	err := json.Unmarshal(payload, req)
-//	if err != nil {
-//		return terror.Error(err, "Invalid request received.")
-//	}
-//
-//	// get transaction
-//	list, err := db.UserTransactionGetList(ctx, uc.Conn, user.ID, 1)
-//	if err != nil {
-//		return terror.Error(err, "Failed to get transactions, try again or contact support.")
-//	}
-//	reply(list)
-//	//HubKeyUserLatestTransactionSubscribe
-//	return nil
-//
-//}
 
 type UserFingerprintRequest struct {
 	Payload struct {
