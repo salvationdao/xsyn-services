@@ -214,6 +214,143 @@ func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		passlog.L.Warn().Err(err).Msg("suspicious behaviour on external login form")
+		return
+	}
+
+	authType := r.Form.Get("authType")
+	redir := r.Form.Get("redirectURL")
+	isHangar := r.URL.Query().Get("isHangar") != ""
+	isWebsite := r.URL.Query().Get("website") != ""
+
+	switch authType {
+	case "wallet":
+		req := &WalletLoginRequest{
+			PublicAddress: r.Form.Get("public_address"),
+			Signature:     r.Form.Get("signature"),
+		}
+		if redir != "" {
+			req.RedirectURL = &redir
+		}
+		resp, err := api.WalletLogin(req, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		err = api.WriteCookie(w, r, resp.Token)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if isWebsite {
+			if redir != "" {
+				redir += "?token=true"
+				http.Redirect(w, r, redir, http.StatusSeeOther)
+			}
+			return
+		}
+		if resp.RedirectToken != nil && redir != "" {
+			escapedUrl := url.QueryEscape(*resp.RedirectToken)
+			hangerArg := ""
+			if isHangar {
+				hangerArg = "&isHangar=true"
+			}
+			http.Redirect(w, r, redir+"?token="+escapedUrl+hangerArg, http.StatusSeeOther)
+			return
+		}
+	case "token":
+		req := &TokenLoginRequest{
+			Token: r.Form.Get("token"),
+		}
+		resp, err := api.TokenAuth(req, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		err = api.WriteCookie(w, r, req.Token)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if resp.RedirectToken != nil && redir != "" {
+			escapedUrl := url.QueryEscape(*resp.RedirectToken)
+			http.Redirect(w, r, redir+"?token="+escapedUrl, http.StatusSeeOther)
+			return
+		}
+	case "cookie":
+		resp := externalLoginCheck(api, w, r)
+		redirectToken := api.OneTimeToken(resp.User.ID, r.UserAgent())
+		if redirectToken != nil && redir != "" {
+			escapedUrl := url.QueryEscape(*redirectToken)
+			http.Redirect(w, r, redir+"?token="+escapedUrl, http.StatusSeeOther)
+			return
+		}
+	case "hangar":
+		resp := externalLoginCheck(api, w, r)
+
+		redirectToken := api.OneTimeToken(resp.User.ID, r.UserAgent())
+
+		if redirectToken != nil && redir != "" {
+			escapedUrl := url.QueryEscape(*redirectToken)
+			http.Redirect(w, r, redir+"?token="+escapedUrl+"&isHangar=true", http.StatusSeeOther)
+			return
+		}
+
+	case "website":
+		externalLoginCheck(api, w, r)
+		if redir != "" {
+			redir += "?token=true"
+			http.Redirect(w, r, redir, http.StatusSeeOther)
+			return
+		}
+	case "admin":
+		externalLoginCheck(api, w, r)
+		if redir != "" {
+			redir += "?token=true"
+			http.Redirect(w, r, redir, http.StatusSeeOther)
+			return
+		}
+	}
+
+}
+
+func externalLoginCheck(api *API, w http.ResponseWriter, r *http.Request) *TokenLoginResponse {
+	cookie, err := r.Cookie("xsyn-token")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil
+	}
+
+	var token string
+	if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil
+	}
+
+	// check user from token
+	resp, err := api.TokenLogin(token, "")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil
+	}
+
+	// write cookie on domain
+	err = api.WriteCookie(w, r, token)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil
+	}
+
+	return resp
+
+}
+
 func (api *API) ExternalLoginCheckHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	err := r.ParseForm()
 	if err != nil {
