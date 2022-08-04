@@ -140,7 +140,7 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		}
 
 	}
-
+	isVerified := false
 	if facebookID == "" && googleID == "" && publicAddress == common.HexToAddress("") && twitchID == "" && twitterID == "" && discordID == "" {
 		if email == "" {
 			return nil, terror.Error(fmt.Errorf("email empty"), "Email cannot be empty")
@@ -165,9 +165,12 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		}
 	}
 
-	trimmedUsername := "noob-" + username
+	if email != "" {
+		isVerified = true
+	}
+
 	bm := bluemonday.StrictPolicy()
-	sanitizedUsername := bm.Sanitize(trimmedUsername)
+	sanitizedUsername := bm.Sanitize(username)
 
 	err := helpers.IsValidUsername(sanitizedUsername)
 	if err != nil {
@@ -195,11 +198,6 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 	if hexPublicAddress != "" && !common.IsHexAddress(hexPublicAddress) {
 		passlog.L.Error().Err(err).Msg("Public address provided is not a hex address")
 		return nil, terror.Error(err, "failed to provide a valid wallet address")
-	}
-
-	isVerified := false
-	if googleID != "" {
-		isVerified = true
 	}
 
 	tx, err := passdb.StdConn.Begin()
@@ -364,7 +362,8 @@ func Email(email string) (*types.User, error) {
 		qm.Load(qm.Rels(boiler.UserRels.Faction)),
 	).One(passdb.StdConn)
 	if errors.Is(sql.ErrNoRows, err) {
-		return nil, fmt.Errorf("no user found with email")
+		passlog.L.Error().Err(err).Msg("No user found with email")
+		return nil, err
 	}
 
 	if err != nil {
