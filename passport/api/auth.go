@@ -677,7 +677,6 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 		return http.StatusBadRequest, err
 	}
 
-
 	// Generate new token and login
 	loginReq := &FingerprintTokenRequest{
 		User:        user,
@@ -690,7 +689,7 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 		return http.StatusBadRequest, err
 	}
 
-		// Send message to users
+	// Send message to users
 	URI := fmt.Sprintf("/user/%s", user.ID)
 	ws.PublishMessage(URI, HubKeyUserInit, nil)
 
@@ -1037,7 +1036,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 			return api.AddTwitterUser(w, r, redirect, user, resp, addTwitter)
 		}
 
-			if err != nil && errors.Is(sql.ErrNoRows, err) {
+		if err != nil && errors.Is(sql.ErrNoRows, err) {
 			http.Redirect(w, r, fmt.Sprintf("%s?id=%s", redirect, resp.UserID), http.StatusSeeOther)
 			return http.StatusOK, nil
 		}
@@ -1144,7 +1143,7 @@ type FingerprintTokenRequest struct {
 
 func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request, req *FingerprintTokenRequest) error {
 	// Check if tenant is provided for external 2FA logins except for twitter since redirect is always provided
-	if req.User.TwoFactorAuthenticationIsSet && req.RedirectURL != "" && !req.Pass2FA {
+	if req.User.TwoFactorAuthenticationIsSet && req.RedirectURL != "" && !req.Pass2FA && req.Tenant == "" && !req.IsTwitter {
 		err := fmt.Errorf("tenant missing for external 2fa login")
 		passlog.L.Error().Err(err).Msg(err.Error())
 		return err
