@@ -267,6 +267,9 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 				}
+
+				// Take to signup page
+				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s", r.Header.Get("origin"), req.Tenant, redir), http.StatusSeeOther)
 			} else if user != nil {
 				err := fmt.Errorf("User already exist")
 				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
@@ -307,6 +310,9 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 				}
+
+				// Take to signup page
+				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s", r.Header.Get("origin"), req.Tenant, redir), http.StatusSeeOther)
 			} else if user != nil {
 				err := fmt.Errorf("User already exist")
 				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
@@ -347,6 +353,9 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 				}
+
+				// Take to signup page
+				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s", r.Header.Get("origin"), req.Tenant, redir), http.StatusSeeOther)
 			} else if user != nil {
 				err := fmt.Errorf("User already exist")
 				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
@@ -389,6 +398,9 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 				}
+
+				// Take to signup page
+				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s", r.Header.Get("origin"), req.Tenant, redir), http.StatusSeeOther)
 			} else if user != nil {
 				err := fmt.Errorf("User already exist")
 				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
@@ -1399,6 +1411,7 @@ type FingerprintTokenRequest struct {
 	Fingerprint *users.Fingerprint
 	IsTwitter   bool
 }
+
 func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request, req *FingerprintTokenRequest) error {
 	// Check if tenant is provided for external 2FA logins except for twitter since redirect is always provided
 	if req.User.TwoFactorAuthenticationIsSet && req.RedirectURL != "" && !req.Pass2FA && req.Tenant == "" && !req.IsTwitter {
@@ -1441,6 +1454,7 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		}
 
 		// Send response to user and pass token to redirect to 2fa
+
 		b, err := json.Marshal(token)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
@@ -1451,6 +1465,7 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 			passlog.L.Error().Err(err).Msg("unable to write response to user")
 			return err
 		}
+
 		return nil
 	}
 
@@ -1480,7 +1495,8 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		return err
 	}
 
-	if req.RedirectURL == "" {
+	if !req.IsTwitter {
+
 		b, err := json.Marshal(u)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
@@ -1492,6 +1508,7 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 			return err
 		}
 	}
+
 	return nil
 }
 
