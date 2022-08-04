@@ -792,9 +792,6 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 		return http.StatusBadRequest, err
 	}
 
-	// Send message to users
-	URI := fmt.Sprintf("/user/%s", user.ID)
-	ws.PublishMessage(URI, HubKeyUserInit, nil)
 
 	// Generate new token and login
 	loginReq := &FingerprintTokenRequest{
@@ -807,6 +804,11 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
+
+		// Send message to users
+	URI := fmt.Sprintf("/user/%s", user.ID)
+	ws.PublishMessage(URI, HubKeyUserInit, nil)
+	
 	return http.StatusCreated, nil
 }
 
@@ -1106,7 +1108,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 	tenant := r.URL.Query().Get("tenant")
 
 	if redirect == "" && oauthVerifier != "" {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("No redirect provided"))
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("no redirect provided"))
 	}
 
 	if oauthVerifier != "" {
@@ -1139,23 +1141,21 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 				resp.OauthTokenSecret = pair[1]
 			case "user_id":
 				resp.UserID = pair[1]
-			case "screen_name":
-				resp.ScreenName = pair[1]
 			}
 		}
 
 		// Check if user exist
 		user, err := users.TwitterID(resp.UserID)
-		if err != nil && errors.Is(sql.ErrNoRows, err) {
-			http.Redirect(w, r, fmt.Sprintf("%s?id=%s", redirect, resp.UserID), http.StatusSeeOther)
-			return http.StatusOK, nil
-		}
 
 		// Add twitter user handler
 		if addTwitter != "" {
 			return api.AddTwitterUser(w, r, redirect, user, resp, addTwitter)
 		}
 
+			if err != nil && errors.Is(sql.ErrNoRows, err) {
+			http.Redirect(w, r, fmt.Sprintf("%s?id=%s", redirect, resp.UserID), http.StatusSeeOther)
+			return http.StatusOK, nil
+		}
 		loginReq := &FingerprintTokenRequest{
 			User:        user,
 			RedirectURL: redirect,
@@ -1192,12 +1192,12 @@ type AuthTwitterResponse struct {
 	OauthToken       string
 	OauthTokenSecret string
 	UserID           string
-	ScreenName       string
 }
 
 func (api *API) AddTwitterUser(w http.ResponseWriter, r *http.Request, redirect string, user *boiler.User, resp *AuthTwitterResponse, addTwitter string) (int, error) {
 	payload := &AddTwitterResponse{}
 	URI := fmt.Sprintf("/user/%s", addTwitter)
+
 	// Redirect to loading page
 	http.Redirect(w, r, redirect, http.StatusSeeOther)
 
