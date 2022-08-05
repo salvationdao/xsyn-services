@@ -715,6 +715,7 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 	}
 	// Send message to users to logout
 	URI := fmt.Sprintf("/user/%s", user.ID)
+	passlog.L.Info().Str("Password update", "Logging out all issue token from user")
 	ws.PublishMessage(URI, HubKeyUserInit, nil)
 
 	return http.StatusCreated, nil
