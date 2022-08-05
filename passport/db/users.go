@@ -298,8 +298,8 @@ func UserTransactionGetList(accountID string, limit int) ([]*boiler.Transaction,
 		qm.Where(
 			fmt.Sprintf(
 				"%s = ? OR %s = ?",
-				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.CreditAccountID),
-				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.DebitAccountID),
+				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.Credit),
+				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.Debit),
 			),
 			accountID,
 			accountID,

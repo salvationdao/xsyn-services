@@ -48,8 +48,8 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 	}
 
 	tx := &types.NewTransaction{
-		Debit:                transaction.CreditAccountID,
-		Credit:               transaction.DebitAccountID,
+		Debit:                transaction.Credit,
+		Credit:               transaction.Debit,
 		TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", transaction.TransactionReference)),
 		Description:          fmt.Sprintf("Reverse transaction - %s", transaction.Description),
 		Amount:               transaction.Amount,
