@@ -251,6 +251,12 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			}
 			// Update username
+			usernameTaken, err := users.UsernameExist(username)
+			if err != nil || usernameTaken {
+				err := fmt.Errorf("Username is already taken. Please try another username.")
+				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+
+			}
 			user.Username = username
 			_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 			if err != nil {
@@ -342,6 +348,12 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Update username
+			usernameTaken, err := users.UsernameExist(username)
+			if err != nil || usernameTaken {
+				err := fmt.Errorf("Username is already taken. Please try another username.")
+				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+
+			}
 			user.Username = username
 			_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 			if err != nil {
@@ -392,6 +404,12 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			}
 			// Update username
+			usernameTaken, err := users.UsernameExist(username)
+			if err != nil || usernameTaken {
+				err := fmt.Errorf("Username is already taken. Please try another username.")
+				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+
+			}
 			user.Username = username
 			_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 			if err != nil {
@@ -463,6 +481,12 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Update username
+			usernameTaken, err := users.UsernameExist(username)
+			if err != nil || usernameTaken {
+				err := fmt.Errorf("Username is already taken. Please try another username.")
+				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+
+			}
 			user.Username = username
 			_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 			if err != nil {
@@ -597,6 +621,13 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		return http.StatusBadRequest, err
 	}
 	username := req.Username
+	usernameTaken, err := users.UsernameExist(username)
+	fmt.Println(usernameTaken, err, req.AuthType)
+	if err != nil || usernameTaken {
+		err := fmt.Errorf("Username is already taken. Please try another username.")
+		return http.StatusInternalServerError, err
+	}
+
 	authType := req.AuthType
 	if authType == "" {
 		passlog.L.Error().Err(err).Msg("auth type is missing in user signup")
@@ -614,6 +645,8 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusInternalServerError, err
 		}
 		// Update username
+		// Check if username is taken already
+
 		user.Username = username
 		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 		if err != nil {
@@ -650,6 +683,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusInternalServerError, err
 		}
 		// Update username
+
 		user.Username = username
 		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 		if err != nil {
@@ -676,6 +710,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusInternalServerError, err
 		}
 		// Update username
+
 		user.Username = username
 		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 		if err != nil {
@@ -703,6 +738,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusInternalServerError, err
 		}
 		// Update username
+
 		user.Username = username
 		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 		if err != nil {

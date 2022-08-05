@@ -414,6 +414,17 @@ func Username(uname string) (*boiler.User, string, error) {
 
 }
 
+func UsernameExist(uname string) (bool, error) {
+	nUsers, err := boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(uname))).Count(passdb.StdConn)
+	if !errors.Is(err, sql.ErrNoRows) && err != nil || nUsers != 0 {
+		passlog.L.Error().Err(err).Msg("failed to get unique username")
+		return true, fmt.Errorf("Unable to search for user by username")
+	}
+
+	return false, nil
+
+}
+
 func VerifyTFA(userTFASecret string, passcode string) error {
 	if !totp.Validate(passcode, userTFASecret) {
 		return fmt.Errorf("invalid passcode. Please try again")
