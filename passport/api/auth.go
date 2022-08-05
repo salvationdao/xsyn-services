@@ -1489,7 +1489,7 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		if req.RedirectURL != "" {
 			rURL := fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s&tenant=%s", origin, token, req.RedirectURL, req.Tenant)
 			if req.User.TwitterID.String != "" {
-				rURL = fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s?id=%s&tenant=%s", origin, token, req.RedirectURL, req.User.TwitterID.String, req.Tenant)
+				rURL = fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s?tfa=ok&tenant=%s", origin, token, req.RedirectURL, req.Tenant)
 			}
 			http.Redirect(w, r, rURL, http.StatusSeeOther)
 			return nil
