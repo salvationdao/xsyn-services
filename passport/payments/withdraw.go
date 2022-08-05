@@ -163,7 +163,7 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 	for _, refund := range refundsToProcess {
 		txRef := types.TransactionReference(fmt.Sprintf("REFUND %s", refund.R.TransactionReferenceTransaction.TransactionReference))
 		newTx := &types.NewTransaction{
-			Credit:               refund.R.TransactionReferenceTransaction.DebitAccountID,
+			Credit:               refund.R.TransactionReferenceTransaction.Debit,
 			Debit:                types.OnChainUserID.String(),
 			Amount:               refund.R.TransactionReferenceTransaction.Amount,
 			TransactionReference: txRef,

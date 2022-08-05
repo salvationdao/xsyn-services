@@ -8,8 +8,6 @@ import (
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
 
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -300,14 +298,10 @@ func TransactionExists(txhash string) (bool, error) {
 func UserBalance(userID string) (*boiler.User, error) {
 	user, err := boiler.Users(
 		boiler.UserWhere.ID.EQ(userID),
-		qm.Load(boiler.UserRels.Account),
 	).One(passdb.StdConn)
 	if err != nil {
 		return nil, err
 	}
 
-	if user.R.Account == nil {
-		return nil, fmt.Errorf("user does not have an account")
-	}
 	return user, nil
 }

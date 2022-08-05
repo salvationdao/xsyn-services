@@ -64,7 +64,7 @@ func (s *S) UserBalanceGetHandler(req UserBalanceGetReq, resp *UserBalanceGetRes
 		return err
 	}
 
-	sups, _, err := s.UserCacheMap.Get(req.UserID.String())
+	sups, err := s.UserCacheMap.Get(req.UserID.String())
 	if err != nil {
 		passlog.L.Error().Str("user_id", req.UserID.String()).Err(err).Msg("Failed to get user balance")
 		return err
