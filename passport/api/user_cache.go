@@ -146,16 +146,21 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 
 func (ucm *Transactor) BalanceUpdate(tx *boiler.Transaction) {
 	supsFromAccount, err := ucm.Get(tx.Debit)
+	if err != nil {
+		passlog.L.Error().Err(err).Interface("tx", tx).Msg("error updating balance")
+	}
 	if err == nil {
 		supsFromAccount = supsFromAccount.Sub(tx.Amount)
 		ucm.Put(tx.Debit, supsFromAccount)
 
 		ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", tx.Debit), HubKeyUserTransactionsSubscribe, []*boiler.Transaction{tx})
 		ws.PublishMessage(fmt.Sprintf("/user/%s/sups", tx.Debit), HubKeyUserSupsSubscribe, supsFromAccount.String())
-
 	}
 
 	supsToAccount, err := ucm.Get(tx.Credit)
+	if err != nil {
+		passlog.L.Error().Err(err).Interface("tx", tx).Msg("error updating balance")
+	}
 	if err == nil {
 		supsToAccount = supsToAccount.Add(tx.Amount)
 		ucm.Put(tx.Credit, supsToAccount)

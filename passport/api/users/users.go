@@ -243,24 +243,30 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		return nil, terror.Error(err, "create new user failed")
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		passlog.L.Error().Err(err).Msg("Failed to commit db transaction")
-		return nil, terror.Error(err, "Failed to create new user")
-	}
-
 	if password != "" && email != "" {
 		pw := &boiler.PasswordHash{
 			UserID:       user.ID,
 			PasswordHash: crypto.HashPassword(password),
 		}
 
-		err := pw.Insert(passdb.StdConn, boil.Infer())
+		err := pw.Insert(tx, boil.Infer())
 		if err != nil {
 			return nil, err
 		}
 
+		err = tx.Commit()
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("Failed to commit db transaction")
+			return nil, terror.Error(err, "Failed to create new user")
+		}
+
 		return &types.User{User: *user}, nil
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("Failed to commit db transaction")
+		return nil, terror.Error(err, "Failed to create new user")
 	}
 
 	return &types.User{User: *user}, nil
