@@ -9,7 +9,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"math/rand"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/db"
 	"xsyn-services/passport/crypto"
 	"xsyn-services/passport/email"
 	"xsyn-services/passport/helpers"
@@ -267,7 +269,7 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 	if os.Getenv("PASSPORT_ENVIRONMENT") == "staging" || os.Getenv("PASSPORT_ENVIRONMENT") == "development" {
 		storeItems, err := boiler.StoreItems().All(passdb.StdConn)
 		if err != nil {
-			return http.StatusInternalServerError, err
+			passlog.L.Error().Err(err).Msg("failed to get store items")
 		}
 
 		for i := range storeItems {
@@ -279,7 +281,7 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 			if i < 3 {
 				_, err = db.PurchasedItemRegister(uuid.Must(uuid.FromString(si.ID)), uuid.Must(uuid.FromString(user.ID)))
 				if err != nil {
-					return http.StatusInternalServerError, err
+					passlog.L.Error().Err(err).Msg("failed to PurchasedItemRegister")
 				}
 			} else {
 				break
