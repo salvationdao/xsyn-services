@@ -7,6 +7,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math/big"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 	"xsyn-services/boiler"
