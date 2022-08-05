@@ -28,6 +28,7 @@ import (
 	"github.com/dghubble/oauth1"
 	"github.com/dghubble/oauth1/twitter"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"google.golang.org/api/idtoken"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -104,8 +105,7 @@ type PasswordUpdateRequest struct {
 type GoogleLoginRequest struct {
 	RedirectURL string             `json:"redirect_url"`
 	Tenant      string             `json:"tenant"`
-	GoogleID    string             `json:"google_id"`
-	Email       string             `json:"email"`
+	GoogleToken string             `json:"google_token"`
 	SessionID   hub.SessionID      `json:"session_id"`
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
 	AuthType    string             `json:"auth_type"`
@@ -368,19 +368,23 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		req := &GoogleLoginRequest{
 			RedirectURL: redir,
 			Tenant:      r.Form.Get("tenant"),
-			GoogleID:    r.Form.Get("google_id"),
+			GoogleToken: r.Form.Get("google_token"),
 			Username:    r.Form.Get("username"),
-			Email:       r.Form.Get("email"),
 		}
 
 		if username != "" {
 			// do signup
-			user, err := users.GoogleID(req.GoogleID)
+			googleDetails, err := api.GoogleToken(req.GoogleToken)
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("user provided invalid google token")
+				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			}
+			user, err := users.GoogleID(googleDetails.GoogleID)
 			if err != nil && errors.Is(sql.ErrNoRows, err) {
 				commonAddress := common.HexToAddress("")
-				u, err := users.UserCreator("", "", username, req.Email, "", req.GoogleID, "", "", "", "", commonAddress, "")
+				u, err := users.UserCreator("", "", username, googleDetails.Email, "", req.GoogleToken, "", "", "", "", commonAddress, "")
 				if err != nil {
-					passlog.L.Error().Err(err).Msg("unable to create user with wallet")
+					passlog.L.Error().Err(err).Msg("unable to create user with google")
 					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 				}
 				// Login user after register
@@ -630,11 +634,16 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusInternalServerError, err
 		}
 	case "google":
+		googleDetails, err := api.GoogleToken(req.GoogleRequest.GoogleToken)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("user provided invalid google token")
+			return http.StatusInternalServerError, err
+		}
 		// Check no user with email exist
-		user, err := users.GoogleID(req.GoogleRequest.GoogleID)
+		user, err := users.GoogleID(googleDetails.GoogleID)
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
 			commonAddress := common.HexToAddress("")
-			u, err = users.UserCreator("", "", username, req.GoogleRequest.Email, "", req.GoogleRequest.GoogleID, "", "", "", "", commonAddress, "")
+			u, err = users.UserCreator("", "", username, googleDetails.Email, "", googleDetails.GoogleID, "", "", "", "", commonAddress, "")
 			if err != nil {
 				passlog.L.Error().Err(err).Msg("unable to create user with email and password")
 				return http.StatusInternalServerError, err
@@ -1091,10 +1100,13 @@ func (api *API) GoogleLoginHandler(w http.ResponseWriter, r *http.Request) (int,
 }
 
 func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *http.Request) error {
-	L := passlog.L.With().Str("func", "GoogleLogin").Logger()
-	L.Info().Msg("hit handler")
 	// Check if there are any existing users associated with the email address
-	user, err := users.GoogleID(req.GoogleID)
+	googleDetails, err := api.GoogleToken(req.GoogleToken)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("user provided invalid google token")
+		return err
+	}
+	user, err := users.GoogleID(googleDetails.GoogleID)
 
 	loginReq := &FingerprintTokenRequest{
 		User:        user,
@@ -1105,15 +1117,15 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 
 	if err != nil && errors.Is(sql.ErrNoRows, err) {
 		// Check if user gmail already exist
-		if req.Email == "" {
+		if googleDetails.Email == "" {
 			noEmailErr := fmt.Errorf("no email provided for google auth")
 			passlog.L.Error().Err(noEmailErr).Msg("no email provided for google auth")
 			return noEmailErr
 		}
 
-		user, _ = boiler.Users(boiler.UserWhere.Email.EQ(null.StringFrom(req.Email))).One(passdb.StdConn)
+		user, _ = boiler.Users(boiler.UserWhere.Email.EQ(null.StringFrom(googleDetails.Email))).One(passdb.StdConn)
 		if user != nil {
-			user.GoogleID = null.StringFrom(req.GoogleID)
+			user.GoogleID = null.StringFrom(googleDetails.GoogleID)
 			user.Verified = true
 			loginReq.User = user
 
@@ -1150,7 +1162,7 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 	if loginReq.User != nil {
 		return api.FingerprintAndIssueToken(w, r, loginReq)
 	}
-	L.Error().Err(err).Msg("invalid google credentials provided")
+	passlog.L.Error().Err(err).Msg("invalid google credentials provided")
 	return err
 }
 
@@ -1889,7 +1901,7 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 type CheckUserExistRequest struct {
 	PublicAddress string `json:"public_address"`
 	Email         string `json:"email"`
-	GoogleID      string `json:"google_id"`
+	GoogleToken   string `json:"google_token"`
 	FacebookID    string `json:"facebook_id"`
 	TwitterID     string `json:"twitter_id"`
 }
@@ -1927,8 +1939,13 @@ func (api *API) CheckUserExistHandler(w http.ResponseWriter, r *http.Request) {
 			resp.Ok = true
 		}
 	}
-	if req.GoogleID != "" {
-		user, err := users.GoogleID(req.GoogleID)
+	if req.GoogleToken != "" {
+		googleDetails, err := api.GoogleToken(req.GoogleToken)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("user provided invalid google token")
+			return
+		}
+		user, err := users.GoogleID(googleDetails.GoogleID)
 		if err != nil || user == nil {
 			passlog.L.Error().Err(err).Msg("No user found for checking public address")
 
@@ -2260,4 +2277,32 @@ func (api *API) UserFingerprintHandler(w http.ResponseWriter, r *http.Request) e
 	}
 
 	return nil
+}
+
+type GoogleValidateResponse struct {
+	GoogleID string
+	Email    string
+}
+
+func (api *API) GoogleToken(token string) (*GoogleValidateResponse, error) {
+	errMsg := "There was a problem finding a user associated with the provided Google account, please check your details and try again."
+	payload, err := idtoken.Validate(context.Background(), token, api.Google.ClientID)
+	fmt.Println(payload)
+	if err != nil {
+		return nil, terror.Error(err, errMsg)
+	}
+	email, ok := payload.Claims["email"].(string)
+	if !ok {
+		return nil, terror.Error(err, errMsg)
+	}
+	googleID, ok := payload.Claims["sub"].(string)
+	if !ok {
+		return nil, terror.Error(err, errMsg)
+	}
+
+	resp := &GoogleValidateResponse{
+		Email:    email,
+		GoogleID: googleID,
+	}
+	return resp, nil
 }
