@@ -23,10 +23,12 @@ import (
 
 func (api *API) NFTRoutes() chi.Router {
 	r := chi.NewRouter()
-	r.Get("/check", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
-	r.Get("/owner_address/{owner_address}/nonce/{nonce}/collection_slug/{collection_slug}/token_id/{external_token_id}", WithError(api.MintAsset))
-	r.Post("/owner_address/{owner_address}/collection_slug/{collection_slug}/token_id/{external_token_id}", WithError(api.LockNFT))
-	r.Get("/unstake/owner_address/{owner_address}/nonce/{nonce}/collection_slug/{collection_slug}/token_id/{external_token_id}", WithError(api.UnstakeNFT))
+	if os.Getenv("PASSPORT_ENVIRONMENT") != "staging" {
+		r.Get("/check", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
+		r.Get("/owner_address/{owner_address}/nonce/{nonce}/collection_slug/{collection_slug}/token_id/{external_token_id}", WithError(api.MintAsset))
+		r.Post("/owner_address/{owner_address}/collection_slug/{collection_slug}/token_id/{external_token_id}", WithError(api.LockNFT))
+		r.Get("/unstake/owner_address/{owner_address}/nonce/{nonce}/collection_slug/{collection_slug}/token_id/{external_token_id}", WithError(api.UnstakeNFT))
+	}
 	return r
 }
 

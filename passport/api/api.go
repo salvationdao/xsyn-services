@@ -215,12 +215,14 @@ func NewAPI(
 			//r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", WithError(api.GetNonce))
 			//r.Get("/auth/twitter", WithError(api.Auth.TwitterAuth))
-			r.Get("/withdraw/holding/{user_address}", WithError(api.HoldingSups))
-			r.Get("/withdraw/check/{address}", WithError(api.GetMaxWithdrawAmount))
-			r.Get("/withdraw/check", WithError(api.CheckCanWithdraw))
-			r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSups))
+			if os.Getenv("PASSPORT_ENVIRONMENT") != "staging" {
+				r.Get("/withdraw/holding/{user_address}", WithError(api.HoldingSups))
+				r.Get("/withdraw/check/{address}", WithError(api.GetMaxWithdrawAmount))
+				r.Get("/withdraw/check", WithError(api.CheckCanWithdraw))
+				r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSups))
 
-			r.Get("/1155/{address}/{token_id}/{nonce}/{amount}", WithError(api.Withdraw1155))
+				r.Get("/1155/{address}/{token_id}/{nonce}/{amount}", WithError(api.Withdraw1155))
+			}
 			r.Get("/1155/contracts", WithError(api.Get1155Contracts))
 
 			r.Get("/asset/{hash}", WithError(api.AssetGet))
