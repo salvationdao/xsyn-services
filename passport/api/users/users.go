@@ -227,6 +227,10 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		//AccountID:     account.ID,
 	}
 
+	if os.Getenv("PASSPORT_ENVIRONMENT") == "staging" || os.Getenv("PASSPORT_ENVIRONMENT") == "development" {
+		user.Sups = decimal.New(10000, 18)
+	}
+
 	err = user.Insert(tx, boil.Infer())
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("insert new user failed")
