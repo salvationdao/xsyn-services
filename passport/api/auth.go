@@ -388,6 +388,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			user, err := users.GoogleID(googleDetails.GoogleID)
 			if err != nil {
+				passlog.L.Error().Err(err).Msg("unable to find google user by id")
 				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			}
 			// Update username
@@ -450,14 +451,14 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		if username != "" {
 			// do signup
-			twitterDetails, err := api.TwitterToken(req.TwitterToken)
+			userID, err := api.ReadJWT(req.TwitterToken)
 			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to create user with twitter")
+				passlog.L.Error().Err(err).Msg("unable to  read jwt")
 				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			}
-			// Check no user with email exist
-			user, err := users.TwitterID(twitterDetails.TwitterID)
+			user, err := users.ID(userID)
 			if err != nil {
+				passlog.L.Error().Err(err).Msg("unable to find user id")
 				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 			}
 
@@ -468,11 +469,10 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 				passlog.L.Error().Err(err).Msg("unable to update username")
 				err := fmt.Errorf("User does not exist")
 				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-
 			}
 			// Login user after register
 			loginReq := &FingerprintTokenRequest{
-				User:        user,
+				User:        &user.User,
 				Fingerprint: req.Fingerprint,
 				RedirectURL: redir,
 				Tenant:      req.Tenant,
@@ -1174,7 +1174,7 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 		} else {
 			// Signup user with standard username
 			commonAddress := common.HexToAddress("")
-			_, err := users.UserCreator("", "", googleDetails.Username, googleDetails.Email, "", req.GoogleToken, "", "", "", "", commonAddress, "")
+			_, err := users.UserCreator("", "", googleDetails.Username, googleDetails.Email, "", googleDetails.GoogleID, "", "", "", "", commonAddress, "")
 			if err != nil {
 				passlog.L.Error().Err(err).Msg("unable to create google user")
 				return err
@@ -1391,8 +1391,6 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 
 			// Send user ID to user using JWT and signup handler will verify
 			jwtToken := api.OneTimeToken(u.ID)
-			fmt.Println("=================")
-			fmt.Println(*jwtToken)
 			http.Redirect(w, r, fmt.Sprintf("%s?token=%s&redirectURL=%s", redirect, *jwtToken, redirectURL), http.StatusSeeOther)
 
 		}

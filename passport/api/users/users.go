@@ -169,9 +169,8 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		isVerified = true
 	}
 
-	trimmedUsername := "noob-" + username
 	bm := bluemonday.StrictPolicy()
-	sanitizedUsername := bm.Sanitize(trimmedUsername)
+	sanitizedUsername := bm.Sanitize(username)
 
 	err := helpers.IsValidUsername(sanitizedUsername)
 	if err != nil {
