@@ -210,16 +210,6 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 
 	defer tx.Rollback()
 
-	//// insert new account
-	//account := boiler.Account{
-	//	Type: boiler.AccountTypeUSER,
-	//}
-	//err = account.Insert(tx, boil.Infer())
-	//if err != nil {
-	//	passlog.L.Error().Err(err).Interface("account", account).Msg("Failed to insert new account")
-	//	return nil, terror.Error(err, "Failed to create new account.")
-	//}
-
 	user := &boiler.User{
 		//ID:            account.ID,
 		FirstName:     null.StringFrom(firstName),
