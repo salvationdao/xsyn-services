@@ -113,13 +113,13 @@ type GoogleLoginRequest struct {
 }
 
 type FacebookLoginRequest struct {
-	RedirectURL string             `json:"redirect_url"`
-	Tenant      string             `json:"tenant"`
-	FacebookID  string             `json:"facebook_id"`
-	SessionID   hub.SessionID      `json:"session_id"`
-	Fingerprint *users.Fingerprint `json:"fingerprint"`
-	AuthType    string             `json:"auth_type"`
-	Username    string             `json:"username"`
+	RedirectURL   string             `json:"redirect_url"`
+	Tenant        string             `json:"tenant"`
+	FacebookToken string             `json:"facebook_token"`
+	SessionID     hub.SessionID      `json:"session_id"`
+	Fingerprint   *users.Fingerprint `json:"fingerprint"`
+	AuthType      string             `json:"auth_type"`
+	Username      string             `json:"username"`
 }
 
 type TwitterSignupRequest struct {
@@ -325,16 +325,21 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	case "facebook":
 		req := &FacebookLoginRequest{
-			RedirectURL: redir,
-			Tenant:      r.Form.Get("tenant"),
-			FacebookID:  r.Form.Get("facebook_id"),
+			RedirectURL:   redir,
+			Tenant:        r.Form.Get("tenant"),
+			FacebookToken: r.Form.Get("facebook_token"),
 		}
 		if username != "" {
-			// do signup
-			user, err := users.FacebookID(req.FacebookID)
+			// do signup// do signup
+			facebookDetails, err := api.FacebookToken(req.FacebookToken)
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("user provided invalid google token")
+				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			}
+			user, err := users.FacebookID(facebookDetails.FacebookID)
 			if err != nil && errors.Is(sql.ErrNoRows, err) {
 				commonAddress := common.HexToAddress("")
-				u, err := users.UserCreator("", "", username, "", req.FacebookID, "", "", "", "", "", commonAddress, "")
+				u, err := users.UserCreator("", "", username, "", facebookDetails.FacebookID, "", "", "", "", "", commonAddress, "")
 				if err != nil {
 					passlog.L.Error().Err(err).Msg("unable to create user with wallet")
 					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
@@ -620,10 +625,15 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		}
 	case "facebook":
 		// Check no user with facebook exist
-		user, err := users.FacebookID(req.FacebookRequest.FacebookID)
+		facebookDetails, err := api.FacebookToken(req.FacebookRequest.FacebookToken)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("user provided invalid facebook token")
+			return http.StatusInternalServerError, err
+		}
+		user, err := users.FacebookID(facebookDetails.FacebookID)
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
 			commonAddress := common.HexToAddress("")
-			u, err = users.UserCreator("", "", username, "", req.FacebookRequest.FacebookID, "", "", "", "", "", commonAddress, "")
+			u, err = users.UserCreator("", "", username, "", facebookDetails.FacebookID, "", "", "", "", "", commonAddress, "")
 			if err != nil {
 				passlog.L.Error().Err(err).Msg("unable to create user with email and password")
 				return http.StatusInternalServerError, err
@@ -1157,8 +1167,10 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 
 		}
 
+	} else if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to find google user")
+		return err
 	}
-
 	if loginReq.User != nil {
 		return api.FingerprintAndIssueToken(w, r, loginReq)
 	}
@@ -1262,8 +1274,12 @@ func (api *API) FacebookLoginHandler(w http.ResponseWriter, r *http.Request) (in
 }
 
 func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, r *http.Request) error {
+	facebookDetails, err := api.FacebookToken(req.FacebookToken)
+	if err != nil {
+		return err
+	}
 	// Check if there are any existing users associated with the email address
-	user, err := users.FacebookID(req.FacebookID)
+	user, err := users.FacebookID(facebookDetails.FacebookID)
 	if err != nil && errors.Is(sql.ErrNoRows, err) {
 		// Return request back to user for signup
 		b, err := json.Marshal(req)
@@ -2287,10 +2303,10 @@ type GoogleValidateResponse struct {
 func (api *API) GoogleToken(token string) (*GoogleValidateResponse, error) {
 	errMsg := "There was a problem finding a user associated with the provided Google account, please check your details and try again."
 	payload, err := idtoken.Validate(context.Background(), token, api.Google.ClientID)
-	fmt.Println(payload)
 	if err != nil {
 		return nil, terror.Error(err, errMsg)
 	}
+
 	email, ok := payload.Claims["email"].(string)
 	if !ok {
 		return nil, terror.Error(err, errMsg)
@@ -2304,5 +2320,25 @@ func (api *API) GoogleToken(token string) (*GoogleValidateResponse, error) {
 		Email:    email,
 		GoogleID: googleID,
 	}
+	return resp, nil
+}
+
+type FacebookValidateResponse struct {
+	FacebookID string `json:"id"`
+}
+
+func (api *API) FacebookToken(token string) (*FacebookValidateResponse, error) {
+	errMsg := "There was a problem finding a user associated with the provided Google account, please check your details and try again."
+	r, err := http.Get("https://graph.facebook.com/me?access_token=" + url.QueryEscape(token))
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	defer r.Body.Close()
+	resp := &FacebookValidateResponse{}
+	err = json.NewDecoder(r.Body).Decode(resp)
+	if err != nil {
+		return nil, terror.Error(err, errMsg)
+	}
+
 	return resp, nil
 }

@@ -644,7 +644,7 @@ type RemoveServiceRequest struct {
 
 type AddFacebookRequest struct {
 	Payload struct {
-		FacebookID string `json:"facebook_id"`
+		FacebookToken string `json:"facebook_token"`
 	} `json:"payload"`
 }
 
@@ -703,7 +703,12 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, user *types.Us
 	}
 
 	// Check if Facebook ID is already taken
-	u, _ := users.FacebookID(req.Payload.FacebookID)
+	facebookDetails, err := uc.API.FacebookToken(req.Payload.FacebookToken)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("user provided invalid facebook token")
+		return terror.Error(err, "Invalid google token received")
+	}
+	u, _ := users.FacebookID(facebookDetails.FacebookID)
 	if u != nil {
 		return terror.Error(fmt.Errorf("This facebook account is already registered to a different user."))
 	}
@@ -712,7 +717,7 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, user *types.Us
 	var oldUser types.User = *user
 
 	// Update user's Facebook ID
-	user.FacebookID = null.StringFrom(req.Payload.FacebookID)
+	user.FacebookID = null.StringFrom(facebookDetails.FacebookID)
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.FacebookID))
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("failed to add user's facebook")
@@ -787,7 +792,7 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, user *types.U
 
 type AddGoogleRequest struct {
 	Payload struct {
-		GoogleID string `json:"google_id"`
+		GoogleToken string `json:"google_token"`
 	} `json:"payload"`
 }
 
@@ -802,7 +807,12 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, user *types.User
 	}
 
 	// Check if Google ID is already taken
-	u, _ := users.GoogleID(req.Payload.GoogleID)
+	googleDetails, err := uc.API.GoogleToken(req.Payload.GoogleToken)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("user provided invalid facebook token")
+		return terror.Error(err, "Invalid google token received")
+	}
+	u, _ := users.GoogleID(googleDetails.GoogleID)
 	if u != nil {
 		return terror.Error(fmt.Errorf("This google account is already registered to a different user."))
 	}
@@ -810,7 +820,7 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, user *types.User
 	var oldUser types.User = *user
 
 	// Update user's Google ID
-	user.GoogleID = null.StringFrom(req.Payload.GoogleID)
+	user.GoogleID = null.StringFrom(googleDetails.GoogleID)
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.GoogleID))
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("failed to add user's google")
