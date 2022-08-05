@@ -126,13 +126,11 @@ func GenerateOneTimeJWT(tokenID uuid.UUID, id string, expires time.Time) (jwt.To
 		if !encryptToken {
 			return jwt.Sign(t, jwa.HS256, jwtKey)
 		}
-
 		// sign
 		signedJWT, err := jwt.Sign(t, jwa.HS256, jwtKey)
 		if err != nil {
 			return nil, err
 		}
-
 		// then encrypt
 		encryptedAndSignedToken, err := encrypt(encryptKey, signedJWT)
 		if err != nil {

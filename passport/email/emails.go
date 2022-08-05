@@ -6,7 +6,6 @@ import (
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
-	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -47,7 +46,7 @@ func (m *Mailer) SendBasicEmail(ctx context.Context, to string, subject string, 
 }
 
 // SendForgotPasswordEmail sends an email with the forgot_password template
-func (m *Mailer) SendForgotPasswordEmail(ctx context.Context, user *types.User, token string, tokenID uuid.UUID) error {
+func (m *Mailer) SendForgotPasswordEmail(ctx context.Context, user *types.User, token string) error {
 	hostURL := m.PassportWebHostURL
 
 	err := m.SendEmail(ctx,
@@ -58,7 +57,7 @@ func (m *Mailer) SendForgotPasswordEmail(ctx context.Context, user *types.User, 
 			MagicLink string `handlebars:"magic_link"`
 			Name      string `handlebars:"name"`
 		}{
-			MagicLink: fmt.Sprintf("%s/reset-password?id=%s&token=%s", hostURL, tokenID, token),
+			MagicLink: fmt.Sprintf("%s/reset-password?&token=%s", hostURL, token),
 			Name:      user.Username,
 		},
 		"",
