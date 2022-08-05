@@ -702,10 +702,6 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 		return http.StatusBadRequest, err
 	}
 
-	// Send message to users
-	URI := fmt.Sprintf("/user/%s", user.ID)
-	ws.PublishMessage(URI, HubKeyUserInit, nil)
-
 	// Generate new token and login
 	loginReq := &FingerprintTokenRequest{
 		User:        user,
@@ -717,6 +713,10 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
+	// Send message to users to logout
+	URI := fmt.Sprintf("/user/%s", user.ID)
+	ws.PublishMessage(URI, HubKeyUserInit, nil)
+
 	return http.StatusCreated, nil
 }
 
