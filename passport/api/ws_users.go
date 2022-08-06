@@ -167,7 +167,6 @@ const HubKeyUserSendVerify = "USER:VERIFY:SEND"
 type SendVerifyRequest struct {
 	Payload struct {
 		Email     string `json:"email"`
-		Code      string `json:"code"`
 		UserAgent string `json:"user_agent"`
 	} `json:"payload"`
 }
@@ -198,11 +197,24 @@ func (uc *UserController) SendVerifyHandler(ctx context.Context, user *types.Use
 		}
 	}
 
+		token := uc.API.OneTimeVerification()
+	if token == nil {
+		err := fmt.Errorf("fail to generate verification code")
+		passlog.L.Error().Err(err).Msg(err.Error())
+		return terror.Error(err)
+	}
+	code, err := uc.API.ReadCodeJWT(*token)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to get verify code from token")
+		return terror.Error(err)
+	}
+
 	user.User.Email = null.StringFrom(req.Payload.Email)
-	err = uc.API.Mailer.SendVerificationEmail(context.Background(), user, req.Payload.Code)
+	err = uc.API.Mailer.SendVerificationEmail(context.Background(), user,code)
 	if err != nil {
 		return terror.Error(err, "Unable to send verification email.")
 	}
+	user.VerifyToken = *token
 	reply(user)
 	return nil
 }
@@ -1900,7 +1912,7 @@ func (uc *UserController) TFARecoveryVerifyHandler(ctx context.Context, user *ty
 	defer tx.Rollback()
 
 	// Check if code matches
-	err = users.VerifyTFARecovery(req.Payload.RecoveryCode)
+	err = users.VerifyTFARecovery(user.ID, req.Payload.RecoveryCode)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}

@@ -71,7 +71,6 @@ type EmailSignupVerifyRequest struct {
 	RedirectURL string `json:"redirect_url"`
 	Tenant      string `json:"tenant"`
 	Email       string `json:"email"`
-	Code        string `json:"code"`
 }
 
 type EmailLoginRequest struct {
@@ -228,7 +227,6 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	authType := r.Form.Get("auth_type")
 	redir := r.Form.Get("redirect_url")
-	username := r.Form.Get("username")
 
 	if redir == "" {
 		http.Error(w, "No redirectURL provided", http.StatusBadRequest)
@@ -243,49 +241,32 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			PublicAddress: r.Form.Get("public_address"),
 			Signature:     r.Form.Get("signature"),
 		}
-		if username != "" {
-			commonAddr := common.HexToAddress(req.PublicAddress)
-			user, err := users.PublicAddress(commonAddr)
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("user does not exist")
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			}
-			// Update username
-			usernameTaken, err := users.UsernameExist(username)
-			if err != nil || usernameTaken {
-				err := fmt.Errorf("Username is already taken. Please try another username.")
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-
-			}
-			user.Username = username
-			_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to update username")
-				err := fmt.Errorf("User does not exist")
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-
-			}
-			// Login user after register
-			loginReq := &FingerprintTokenRequest{
-				User:        &user.User,
-				Fingerprint: req.Fingerprint,
-				RedirectURL: redir,
-				Tenant:      req.Tenant,
-			}
-
-			err = api.FingerprintAndIssueToken(w, r, loginReq)
-			if err != nil {
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			}
-
-			http.Redirect(w, r, redir, http.StatusSeeOther)
-
-		}
-		err = api.WalletLogin(req, w, r)
+		commonAddr := common.HexToAddress(req.PublicAddress)
+		user, err := users.PublicAddress(commonAddr)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			return
+			passlog.L.Error().Err(err).Msg("user does not exist")
+			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 		}
+
+		err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("user does not exist")
+			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+		}
+
+		// Login user
+		loginReq := &FingerprintTokenRequest{
+			User:        &user.User,
+			Fingerprint: req.Fingerprint,
+			RedirectURL: redir,
+			Tenant:      req.Tenant,
+		}
+
+		err = api.FingerprintAndIssueToken(w, r, loginReq)
+		if err != nil {
+			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+		}
+
 	case "email":
 		req := &EmailLoginRequest{
 			RedirectURL: redir,
@@ -293,41 +274,24 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			Email:       r.Form.Get("email"),
 			Password:    r.Form.Get("password"),
 		}
-		if username != "" {
-			// do signup
-			user, err := users.Email(req.Email)
-			if err != nil && errors.Is(sql.ErrNoRows, err) {
-				commonAddress := common.HexToAddress("")
-				u, err := users.UserCreator("", "", username, req.Email, "", "", "", "", "", "", commonAddress, req.Password)
-				if err != nil {
-					passlog.L.Error().Err(err).Msg("unable to create user with wallet")
-					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-				}
-				// Login user after register
-				loginReq := &FingerprintTokenRequest{
-					User:        &u.User,
-					Fingerprint: req.Fingerprint,
-					RedirectURL: redir,
-					Tenant:      req.Tenant,
-				}
-
-				err = api.FingerprintAndIssueToken(w, r, loginReq)
-				if err != nil {
-					http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-				}
-
-				http.Redirect(w, r, redir, http.StatusSeeOther)
-			} else if user != nil {
-				err := fmt.Errorf("User already exist")
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			}
-
-		}
-		err = api.EmailLogin(req, w, r)
-
+		//Check if email exist with password
+		user, err := users.EmailPassword(req.Email, req.Password)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			return
+			err := fmt.Errorf("failed to create user")
+			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+		}
+
+		// Login user after register
+		loginReq := &FingerprintTokenRequest{
+			User:        &user.User,
+			Fingerprint: req.Fingerprint,
+			RedirectURL: redir,
+			Tenant:      req.Tenant,
+		}
+
+		err = api.FingerprintAndIssueToken(w, r, loginReq)
+		if err != nil {
+			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 		}
 	case "facebook":
 		req := &FacebookLoginRequest{
@@ -335,54 +299,32 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			Tenant:        r.Form.Get("tenant"),
 			FacebookToken: r.Form.Get("facebook_token"),
 		}
-		if username != "" {
-			// do signup// do signup
-			facebookDetails, err := api.FacebookToken(req.FacebookToken)
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("user provided invalid facebook token")
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			}
-			user, err := users.FacebookID(facebookDetails.FacebookID)
-			if err != nil {
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			}
-
-			// Update username
-			usernameTaken, err := users.UsernameExist(username)
-			if err != nil || usernameTaken {
-				err := fmt.Errorf("Username is already taken. Please try another username.")
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-
-			}
-			user.Username = username
-			_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to update username")
-				err := fmt.Errorf("User does not exist")
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-
-			}
-			// Login user after register
-			loginReq := &FingerprintTokenRequest{
-				User:        user,
-				Fingerprint: req.Fingerprint,
-				RedirectURL: redir,
-				Tenant:      req.Tenant,
-			}
-
-			err = api.FingerprintAndIssueToken(w, r, loginReq)
-			if err != nil {
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			}
-
-			http.Redirect(w, r, redir, http.StatusSeeOther)
-
-		}
-		err := api.FacebookLogin(req, w, r)
+		// do signup// do signup
+		facebookDetails, err := api.FacebookToken(req.FacebookToken)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			return
+			passlog.L.Error().Err(err).Msg("user provided invalid facebook token")
+			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 		}
+		user, err := users.FacebookID(facebookDetails.FacebookID)
+		if err != nil {
+			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+		}
+
+		// Login user after register
+		loginReq := &FingerprintTokenRequest{
+			User:        user,
+			Fingerprint: req.Fingerprint,
+			RedirectURL: redir,
+			Tenant:      req.Tenant,
+		}
+
+		err = api.FingerprintAndIssueToken(w, r, loginReq)
+		if err != nil {
+			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+		}
+
+		http.Redirect(w, r, redir, http.StatusSeeOther)
+
 	case "google":
 		req := &GoogleLoginRequest{
 			RedirectURL: redir,
@@ -391,54 +333,33 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			Username:    r.Form.Get("username"),
 		}
 
-		if username != "" {
-			// do signup
-			googleDetails, err := api.GoogleToken(req.GoogleToken)
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("user provided invalid google token")
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			}
-			user, err := users.GoogleID(googleDetails.GoogleID)
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to find google user by id")
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			}
-			// Update username
-			usernameTaken, err := users.UsernameExist(username)
-			if err != nil || usernameTaken {
-				err := fmt.Errorf("Username is already taken. Please try another username.")
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-
-			}
-			user.Username = username
-			_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to update username")
-				err := fmt.Errorf("User does not exist")
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-
-			}
-			// Login user after register
-			loginReq := &FingerprintTokenRequest{
-				User:        user,
-				Fingerprint: req.Fingerprint,
-				RedirectURL: redir,
-				Tenant:      req.Tenant,
-			}
-
-			err = api.FingerprintAndIssueToken(w, r, loginReq)
-			if err != nil {
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			}
-
-			http.Redirect(w, r, redir, http.StatusSeeOther)
-
-		}
-		err := api.GoogleLogin(req, w, r)
+		// do signup
+		googleDetails, err := api.GoogleToken(req.GoogleToken)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			return
+			passlog.L.Error().Err(err).Msg("user provided invalid google token")
+			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 		}
+		user, err := users.GoogleID(googleDetails.GoogleID)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to find google user by id")
+			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+		}
+
+		// Login user after register
+		loginReq := &FingerprintTokenRequest{
+			User:        user,
+			Fingerprint: req.Fingerprint,
+			RedirectURL: redir,
+			Tenant:      req.Tenant,
+		}
+
+		err = api.FingerprintAndIssueToken(w, r, loginReq)
+		if err != nil {
+			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+		}
+
+		http.Redirect(w, r, redir, http.StatusSeeOther)
+
 	case "token":
 		req := &TokenLoginRequest{
 			Token: r.Form.Get("token"),
@@ -467,49 +388,30 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			Tenant:       r.Form.Get("tenant"),
 			TwitterToken: r.Form.Get("twitter_token"),
 		}
-		if username != "" {
-			// do signup
-			userID, err := api.ReadJWT(req.TwitterToken)
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to  read jwt")
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			}
-			user, err := users.ID(userID)
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to find user id")
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			}
-
-			// Update username
-			usernameTaken, err := users.UsernameExist(username)
-			if err != nil || usernameTaken {
-				err := fmt.Errorf("Username is already taken. Please try another username.")
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-
-			}
-			user.Username = username
-			_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to update username")
-				err := fmt.Errorf("User does not exist")
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			}
-			// Login user after register
-			loginReq := &FingerprintTokenRequest{
-				User:        &user.User,
-				Fingerprint: req.Fingerprint,
-				RedirectURL: redir,
-				Tenant:      req.Tenant,
-			}
-
-			err = api.FingerprintAndIssueToken(w, r, loginReq)
-			if err != nil {
-				http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			}
-
-			http.Redirect(w, r, redir, http.StatusSeeOther)
-
+		userID, err := api.ReadUserIDJWT(req.TwitterToken)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to  read jwt")
+			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 		}
+		user, err := users.ID(userID)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to find user id")
+			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+		}
+		// Login user after register
+		loginReq := &FingerprintTokenRequest{
+			User:        &user.User,
+			Fingerprint: req.Fingerprint,
+			RedirectURL: redir,
+			Tenant:      req.Tenant,
+		}
+
+		err = api.FingerprintAndIssueToken(w, r, loginReq)
+		if err != nil {
+			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+		}
+
+		http.Redirect(w, r, redir, http.StatusSeeOther)
 
 	case "tfa":
 		req := &TFAVerifyRequest{
@@ -613,6 +515,50 @@ func (api *API) EmailSignupVerifyHandler(w http.ResponseWriter, r *http.Request)
 	return http.StatusCreated, nil
 }
 
+func (api *API) EmailSignupVerify(req *EmailSignupVerifyRequest, w http.ResponseWriter, r *http.Request) error {
+	// Check if there are any existing users associated with the email address
+	user, _ := users.Email(req.Email)
+
+	if user != nil {
+		return fmt.Errorf("email is already used by a different user")
+	}
+
+	token := api.OneTimeVerification()
+	if token == nil {
+		err := fmt.Errorf("fail to generate verification code")
+		passlog.L.Error().Err(err).Msg(err.Error())
+		return err
+	}
+	code, err := api.ReadCodeJWT(*token)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to get verify code from token")
+		return err
+	}
+
+	err = api.Mailer.SendSignupEmail(context.Background(), req.Email, code)
+	if err != nil {
+		return err
+	}
+
+	resp := &struct {
+		Token string `json:"token"`
+	}{
+		Token: *token,
+	}
+
+	b, err := json.Marshal(resp)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to encode response to json")
+		return err
+	}
+	_, err = w.Write(b)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to write response to user")
+		return err
+	}
+	return nil
+}
+
 // Update username of user except for emails which create account after password is set
 func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &SignupRequest{}
@@ -622,9 +568,9 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 	}
 	username := req.Username
 	usernameTaken, err := users.UsernameExist(username)
-	fmt.Println(usernameTaken, err, req.AuthType)
+	redirectURL := ""
 	if err != nil || usernameTaken {
-		err := fmt.Errorf("Username is already taken. Please try another username.")
+		err := fmt.Errorf("username is already taken")
 		return http.StatusInternalServerError, err
 	}
 
@@ -656,6 +602,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		}
 		// Redeclare u variable
 		u = user
+		redirectURL = req.WalletRequest.RedirectURL
 	case "email":
 		// Check no user with email exist
 		user, err := users.Email(req.EmailRequest.Email)
@@ -670,6 +617,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			err := fmt.Errorf("User already exist")
 			return http.StatusInternalServerError, err
 		}
+		redirectURL = req.EmailRequest.RedirectURL
 	case "facebook":
 		// Check user facebook exist
 		facebookDetails, err := api.FacebookToken(req.FacebookRequest.FacebookToken)
@@ -697,6 +645,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			err := fmt.Errorf("unabe to get user from boil")
 			return http.StatusInternalServerError, err
 		}
+		redirectURL = req.FacebookRequest.RedirectURL
 	case "google":
 		googleDetails, err := api.GoogleToken(req.GoogleRequest.GoogleToken)
 		if err != nil {
@@ -724,9 +673,10 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			err := fmt.Errorf("unabe to get user from boil")
 			return http.StatusInternalServerError, err
 		}
+		redirectURL = req.GoogleRequest.RedirectURL
 	case "twitter":
 		// Twitter Token will BE JWT
-		userID, err := api.ReadJWT(req.TwitterRequest.TwitterToken)
+		userID, err := api.ReadUserIDJWT(req.TwitterRequest.TwitterToken)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to read user jwt")
 			return http.StatusBadRequest, err
@@ -748,6 +698,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		}
 		// Redeclare u variable
 		u = user
+		redirectURL = req.TwitterRequest.RedirectURL
 	}
 
 	if u == nil {
@@ -756,14 +707,29 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 	}
 
 	// Login
-	loginReq := &FingerprintTokenRequest{
-		User:        &u.User,
-		Fingerprint: req.Fingerprint,
-	}
+	if redirectURL == "" {
+		loginReq := &FingerprintTokenRequest{
+			User:        &u.User,
+			Fingerprint: req.Fingerprint,
+			RedirectURL: redirectURL,
+		}
 
-	err = api.FingerprintAndIssueToken(w, r, loginReq)
-	if err != nil {
-		return http.StatusInternalServerError, err
+		err = api.FingerprintAndIssueToken(w, r, loginReq)
+		if err != nil {
+			return http.StatusInternalServerError, err
+		}
+	} else {
+
+		b, err := json.Marshal(u)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to encode response to json")
+			return http.StatusInternalServerError, err
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to write response to user")
+			return http.StatusInternalServerError, err
+		}
 	}
 	return http.StatusCreated, nil
 
@@ -809,21 +775,6 @@ func (api *API) EmailVerifyHandler(w http.ResponseWriter, r *http.Request) (int,
 	_, _ = w.Write(b)
 
 	return http.StatusOK, nil
-}
-
-func (api *API) EmailSignupVerify(req *EmailSignupVerifyRequest, w http.ResponseWriter, r *http.Request) error {
-	// Check if there are any existing users associated with the email address
-	user, _ := users.Email(req.Email)
-
-	if user != nil {
-		return fmt.Errorf("email is already used by a different user")
-	}
-
-	err := api.Mailer.SendSignupEmail(context.Background(), req.Email, req.Code)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (api *API) UserFromToken(w http.ResponseWriter, r *http.Request, tokenBase64 string) (string, string, error) {
@@ -872,10 +823,25 @@ func (api *API) EmailLoginHandler(w http.ResponseWriter, r *http.Request) (int, 
 }
 func (api *API) EmailLogin(req *EmailLoginRequest, w http.ResponseWriter, r *http.Request) error {
 	user, err := users.EmailPassword(req.Email, req.Password)
-
 	if err != nil {
 		return err
 	}
+
+	// If external or new user signup
+	if req.RedirectURL != "" {
+		b, err := json.Marshal(req)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to encode response to json")
+			return err
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to write response to user")
+			return err
+		}
+		return nil
+	}
+
 	loginReq := &FingerprintTokenRequest{
 		User:        &user.User,
 		RedirectURL: req.RedirectURL,
@@ -887,6 +853,49 @@ func (api *API) EmailLogin(req *EmailLoginRequest, w http.ResponseWriter, r *htt
 		return err
 	}
 	return nil
+}
+
+type VerifyCodeRequest struct {
+	Token string `json:"token"`
+	Code  string `json:"code"`
+}
+
+// Send code back to user
+func (api *API) VerifyCodeHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &VerifyCodeRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+	code, err := api.ReadCodeJWT(req.Token)
+	if err != nil {
+		err := fmt.Errorf("fail to read verification code")
+		passlog.L.Error().Err(err).Msg(err.Error())
+		return http.StatusBadRequest, err
+	}
+	success := false
+	if code == req.Code {
+		success = true
+	} else {
+		err := fmt.Errorf("verify code does not match")
+		passlog.L.Error().Err(err).Msg(err.Error())
+		return http.StatusBadRequest, err
+	}
+	resp := &struct {
+		Success bool `json:"success"`
+	}{
+		Success: success,
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+	httpStatus, err := w.Write(b)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+	return httpStatus, nil
+
 }
 
 func (api *API) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -931,7 +940,7 @@ func (api *API) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) (in
 		return http.StatusBadRequest, err
 	}
 
-	userID, err := api.ReadJWT(req.Token)
+	userID, err := api.ReadUserIDJWT(req.Token)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to read user jwt")
 		return http.StatusBadRequest, err
@@ -1093,6 +1102,8 @@ func (api *API) WalletLoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *http.Request) error {
+	newUser := false
+
 	// Take public address Hex to address(Make it a checksum mixed case address) convert back to Hex for string of checksum
 	commonAddr := common.HexToAddress(req.PublicAddress)
 
@@ -1100,6 +1111,7 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 	user, err := users.PublicAddress(commonAddr)
 
 	if err != nil && errors.Is(sql.ErrNoRows, err) {
+		newUser = true
 		// Signup user but dont log them before username is provided
 		username := commonAddr.Hex()[0:10]
 		// If user does not exist, create new user with their username set to their MetaMask public address
@@ -1108,8 +1120,27 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 			passlog.L.Error().Err(err).Msg("user creation failed")
 			return err
 		}
+	} else if err != nil {
+		return fmt.Errorf("public address fail: %w", err)
+	} else if user != nil {
+		err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to verify signature")
+			return err
+		}
+	}
 
-		b, err := json.Marshal(req)
+	// If external or new user signup
+	if req.RedirectURL != "" || newUser {
+		resp := struct {
+			WalletLoginRequest
+			NewUser bool `json:"new_user"`
+		}{
+			WalletLoginRequest: *req,
+			NewUser:            newUser,
+		}
+
+		b, err := json.Marshal(resp)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
 			return err
@@ -1120,14 +1151,6 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 			return err
 		}
 		return nil
-	} else if err != nil {
-		return fmt.Errorf("public address fail: %w", err)
-	}
-
-	err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
-	if err != nil {
-		passlog.L.Error().Err(err).Msg("unable to verify signature")
-		return err
 	}
 
 	loginReq := &FingerprintTokenRequest{
@@ -1173,6 +1196,7 @@ func (api *API) GoogleLoginHandler(w http.ResponseWriter, r *http.Request) (int,
 }
 
 func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *http.Request) error {
+	newUser := false
 	// Check if there are any existing users associated with the email address
 	googleDetails, err := api.GoogleToken(req.GoogleToken)
 	if err != nil {
@@ -1208,6 +1232,7 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 				return err
 			}
 		} else {
+			newUser = true
 			// Signup user with standard username
 			commonAddress := common.HexToAddress("")
 			_, err := users.UserCreator("", "", googleDetails.Username, googleDetails.Email, "", googleDetails.GoogleID, "", "", "", "", commonAddress, "")
@@ -1216,24 +1241,36 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 				return err
 			}
 
-			b, err := json.Marshal(req)
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to encode response to json")
-				return err
-			}
-			_, err = w.Write(b)
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to write response to user")
-				return err
-			}
-			return nil
-
 		}
 
 	} else if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to find google user")
 		return err
 	}
+
+	// If external or new user signup
+	if req.RedirectURL != "" || newUser {
+		resp := struct {
+			GoogleLoginRequest
+			NewUser bool `json:"new_user"`
+		}{
+			GoogleLoginRequest: *req,
+			NewUser:            newUser,
+		}
+
+		b, err := json.Marshal(resp)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to encode response to json")
+			return err
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to write response to user")
+			return err
+		}
+		return nil
+	}
+
 	if loginReq.User != nil {
 		return api.FingerprintAndIssueToken(w, r, loginReq)
 	}
@@ -1265,12 +1302,18 @@ func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.
 	// If user is not logged in, token is passed from request
 
 	userID := req.UserID
-	if userID == "" {
+	if req.UserID == "" {
 		uid, _, err := api.UserFromToken(w, r, req.Token)
 		if err != nil {
 			return err
 		}
 		userID = uid
+	}
+
+	if userID == "" {
+		err := fmt.Errorf("no user provided to verify tfa")
+		passlog.L.Error().Err(err).Msg("unable to write response to user")
+		return err
 	}
 
 	user, err := users.ID(userID)
@@ -1285,15 +1328,32 @@ func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.
 		}
 	} else if req.RecoveryCode != "" {
 		// Check if there is a recovery code and verify it
-		err := users.VerifyTFARecovery(req.RecoveryCode)
+		err := users.VerifyTFARecovery(userID, req.RecoveryCode)
 		if err != nil {
 			return err
 		}
 	} else {
 		return fmt.Errorf("code is missing")
 	}
+
+	// If external
+	if req.RedirectURL != "" {
+		b, err := json.Marshal(req)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to encode response to json")
+			return err
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to write response to user")
+			return err
+		}
+		return nil
+	}
+
 	// Issue login token to user
 	// Only if jwt token was provided
+	// If user already logged in then no need for token
 	if req.Token != "" {
 		loginReq := &FingerprintTokenRequest{
 			User:        &user.User,
@@ -1337,6 +1397,7 @@ func (api *API) FacebookLoginHandler(w http.ResponseWriter, r *http.Request) (in
 }
 
 func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, r *http.Request) error {
+	newUser := false
 	facebookDetails, err := api.FacebookToken(req.FacebookToken)
 	if err != nil {
 		return err
@@ -1344,6 +1405,7 @@ func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, 
 	// Check if there are any existing users associated with the email address
 	user, err := users.FacebookID(facebookDetails.FacebookID)
 	if err != nil && errors.Is(sql.ErrNoRows, err) {
+		newUser = true
 		// Create user with default username
 		commonAddress := common.HexToAddress("")
 		_, err = users.UserCreator("", "", facebookDetails.Name, "", facebookDetails.FacebookID, "", "", "", "", "", commonAddress, "")
@@ -1351,8 +1413,22 @@ func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, 
 			passlog.L.Error().Err(err).Msg("unable to create user with email and password")
 			return err
 		}
-		// Return request back to user for signup username change
-		b, err := json.Marshal(req)
+
+	} else if err != nil {
+		passlog.L.Error().Err(err).Msg("No user found with given facebook id")
+		return err
+	}
+	// If external or new user signup
+	if req.RedirectURL != "" || newUser {
+		resp := struct {
+			FacebookLoginRequest
+			NewUser bool `json:"new_user"`
+		}{
+			FacebookLoginRequest: *req,
+			NewUser:              newUser,
+		}
+
+		b, err := json.Marshal(resp)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
 			return err
@@ -1363,10 +1439,8 @@ func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, 
 			return err
 		}
 		return nil
-	} else if err != nil {
-		passlog.L.Error().Err(err).Msg("No user found with given facebook id")
-		return err
 	}
+
 	loginReq := &FingerprintTokenRequest{
 		User:        user,
 		RedirectURL: req.RedirectURL,
@@ -1618,7 +1692,6 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 	}
 
 	if req.RedirectURL == "" {
-
 		b, err := json.Marshal(u)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
@@ -1647,6 +1720,7 @@ type TokenConfig struct {
 
 var ErrNoUserInformation = errors.New("no user information provided to IssueToken()")
 
+// For forget password or twitter signup flow
 func (api *API) OneTimeToken(userID string) *string {
 	var err error
 	tokenID := uuid.Must(uuid.NewV4())
@@ -1671,6 +1745,32 @@ func (api *API) OneTimeToken(userID string) *string {
 	token := base64.StdEncoding.EncodeToString(jwtSigned)
 	return &token
 }
+
+// For user verification
+func (api *API) OneTimeVerification() *string {
+	var err error
+	tokenID := uuid.Must(uuid.NewV4())
+
+	expires := time.Now().Add(time.Minute * 10)
+
+	// save user detail as jwt
+	jwt, sign, err := tokens.GenerateVerifyCodeJWT(
+		tokenID, expires)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to generate one time token")
+		return nil
+	}
+
+	jwtSigned, err := sign(jwt, true, api.TokenEncryptionKey)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to sign jwt")
+		return nil
+	}
+
+	token := base64.StdEncoding.EncodeToString(jwtSigned)
+	return &token
+}
+
 func token(api *API, config *TokenConfig, isIssueToken bool, expireInDays int) (*types.User, uuid.UUID, string, error) {
 	var err error
 	errMsg := "There was a problem with your authentication, please check your details and try again."
@@ -2326,8 +2426,7 @@ func (api *API) UserFingerprintHandler(w http.ResponseWriter, r *http.Request) e
 	return nil
 }
 
-func (api *API) ReadJWT(tokenBase64 string) (string, error) {
-	fmt.Println(tokenBase64)
+func (api *API) ReadUserIDJWT(tokenBase64 string) (string, error) {
 	tokenStr, err := base64.StdEncoding.DecodeString(tokenBase64)
 	if err != nil {
 		return "", err
@@ -2342,9 +2441,29 @@ func (api *API) ReadJWT(tokenBase64 string) (string, error) {
 	userID, ok := uID.(string)
 
 	if !ok {
-		return "", fmt.Errorf("Invalid token provided")
+		return "", fmt.Errorf("invalid token provided")
 	}
 	return userID, nil
+}
+
+func (api *API) ReadCodeJWT(tokenBase64 string) (string, error) {
+	tokenStr, err := base64.StdEncoding.DecodeString(tokenBase64)
+	if err != nil {
+		return "", err
+	}
+	// Decode token user with new email
+	token, err := tokens.ReadJWT(tokenStr, true, api.TokenEncryptionKey)
+	if err != nil {
+		return "", err
+	}
+
+	c, _ := token.Get("code")
+	code, ok := c.(string)
+
+	if !ok {
+		return "", fmt.Errorf("invalid token provided")
+	}
+	return code, nil
 }
 
 type GoogleValidateResponse struct {

@@ -3,6 +3,7 @@ package email
 import (
 	"context"
 	"fmt"
+	"strings"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
@@ -81,7 +82,7 @@ func (m *Mailer) SendVerificationEmail(ctx context.Context, user *types.User, co
 			Name  string `handlebars:"name"`
 			Email string `handlebars:"email"`
 		}{
-			Code:  code,
+			Code:  strings.ToUpper(code),
 			Name:  user.Username,
 			Email: user.Email.String,
 		},
@@ -104,7 +105,7 @@ func (m *Mailer) SendSignupEmail(ctx context.Context, email string, code string)
 			Code  string `handlebars:"code"`
 			Email string `handlebars:"email"`
 		}{
-			Code:  code,
+			Code:  strings.ToUpper(code),
 			Email: email,
 		},
 		"",
