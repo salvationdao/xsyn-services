@@ -61,6 +61,7 @@ type WalletLoginRequest struct {
 	Tenant        string             `json:"tenant"`
 	PublicAddress string             `json:"public_address"`
 	Signature     string             `json:"signature"`
+	Nonce         string             `json:"nonce"`
 	SessionID     hub.SessionID      `json:"session_id"`
 	Fingerprint   *users.Fingerprint `json:"fingerprint"`
 	AuthType      string             `json:"auth_type"`
@@ -277,11 +278,10 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		//Check if email exist with password
 		user, err := users.EmailPassword(req.Email, req.Password)
 		if err != nil {
-			err := fmt.Errorf("failed to create user")
+			err := fmt.Errorf("failed to login user with email")
 			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 		}
 
-		// Login user after register
 		loginReq := &FingerprintTokenRequest{
 			User:        &user.User,
 			Fingerprint: req.Fingerprint,
@@ -299,7 +299,6 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			Tenant:        r.Form.Get("tenant"),
 			FacebookToken: r.Form.Get("facebook_token"),
 		}
-		// do signup// do signup
 		facebookDetails, err := api.FacebookToken(req.FacebookToken)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("user provided invalid facebook token")
@@ -333,7 +332,6 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			Username:    r.Form.Get("username"),
 		}
 
-		// do signup
 		googleDetails, err := api.GoogleToken(req.GoogleToken)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("user provided invalid google token")
@@ -345,7 +343,6 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 		}
 
-		// Login user after register
 		loginReq := &FingerprintTokenRequest{
 			User:        user,
 			Fingerprint: req.Fingerprint,
@@ -398,7 +395,6 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			passlog.L.Error().Err(err).Msg("unable to find user id")
 			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
 		}
-		// Login user after register
 		loginReq := &FingerprintTokenRequest{
 			User:        &user.User,
 			Fingerprint: req.Fingerprint,
@@ -423,7 +419,22 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			RecoveryCode: r.Form.Get("recovery_code"),
 		}
 
-		err := api.TFAVerify(req, w, r)
+		user, err := api.TFAVerify(req, w, r)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("tfa verification failed")
+			http.Redirect(w, r, fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s&tenant=%s&err=%s", r.Header.Get("origin"), req.Token, redir, req.Tenant, err.Error()), http.StatusSeeOther)
+			return
+		}
+
+		loginReq := &FingerprintTokenRequest{
+			User:        &user.User,
+			Fingerprint: req.Fingerprint,
+			RedirectURL: redir,
+			Tenant:      req.Tenant,
+			Pass2FA:     true,
+		}
+
+		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
 			http.Redirect(w, r, fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s&tenant=%s&err=%s", r.Header.Get("origin"), req.Token, redir, req.Tenant, err.Error()), http.StatusSeeOther)
 			return
@@ -539,7 +550,6 @@ func (api *API) EmailSignupVerify(req *EmailSignupVerifyRequest, w http.Response
 	if err != nil {
 		return err
 	}
-
 	resp := &struct {
 		Token string `json:"token"`
 	}{
@@ -590,6 +600,13 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			err := fmt.Errorf("User does not exist")
 			return http.StatusInternalServerError, err
 		}
+
+		err = api.VerifySignature(req.WalletRequest.Signature, user.Nonce.String, commonAddr)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to verify signature")
+			return http.StatusInternalServerError, err
+		}
+
 		// Update username
 		// Check if username is taken already
 
@@ -1115,19 +1132,26 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 		// Signup user but dont log them before username is provided
 		username := commonAddr.Hex()[0:10]
 		// If user does not exist, create new user with their username set to their MetaMask public address
-		_, err = users.UserCreator("", "", helpers.TrimUsername(username), "", "", "", "", "", "", "", commonAddr, "")
+		user, err = users.UserCreator("", "", helpers.TrimUsername(username), "", "", "", "", "", "", "", commonAddr, "")
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("user creation failed")
 			return err
 		}
-	} else if err != nil {
-		return fmt.Errorf("public address fail: %w", err)
-	} else if user != nil {
-		err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
+		// update nonce value
+		user.Nonce = null.StringFrom(req.Nonce)
+		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Nonce))
 		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to verify signature")
+			passlog.L.Error().Err(err).Msg("nonce update failed")
 			return err
 		}
+	} else if err != nil {
+		return fmt.Errorf("public address fail: %w", err)
+	}
+
+	err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to verify signature")
+		return err
 	}
 
 	// If external or new user signup
@@ -1287,53 +1311,9 @@ func (api *API) TFAVerifyHandler(w http.ResponseWriter, r *http.Request) (int, e
 	}
 
 	// Get user from token
-	err = api.TFAVerify(req, w, r)
+	user, err := api.TFAVerify(req, w, r)
 	if err != nil {
 		return http.StatusBadRequest, err
-	}
-
-	return http.StatusOK, nil
-}
-
-func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.Request) error {
-	// Get user from token
-	// OR verify passcode from user id
-	// If user is logged in, user id is passed from request
-	// If user is not logged in, token is passed from request
-
-	userID := req.UserID
-	if req.UserID == "" {
-		uid, _, err := api.UserFromToken(w, r, req.Token)
-		if err != nil {
-			return err
-		}
-		userID = uid
-	}
-
-	if userID == "" {
-		err := fmt.Errorf("no user provided to verify tfa")
-		passlog.L.Error().Err(err).Msg("unable to write response to user")
-		return err
-	}
-
-	user, err := users.ID(userID)
-	if err != nil {
-		return err
-	}
-	// Check if there is a passcode and verify it
-	if req.Passcode != "" {
-		err := users.VerifyTFA(user.TwoFactorAuthenticationSecret, req.Passcode)
-		if err != nil {
-			return err
-		}
-	} else if req.RecoveryCode != "" {
-		// Check if there is a recovery code and verify it
-		err := users.VerifyTFARecovery(userID, req.RecoveryCode)
-		if err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("code is missing")
 	}
 
 	// If external
@@ -1341,14 +1321,13 @@ func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.
 		b, err := json.Marshal(req)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
-			return err
+			return http.StatusBadRequest, err
 		}
 		_, err = w.Write(b)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to write response to user")
-			return err
+			return http.StatusBadRequest, err
 		}
-		return nil
 	}
 
 	// Issue login token to user
@@ -1364,21 +1343,67 @@ func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.
 		}
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
-			return err
+			return http.StatusBadRequest, err
 		}
 	} else {
 		b, err := json.Marshal(user)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to convert user to json 2fa response")
-			return err
+			return http.StatusBadRequest, err
 		}
 		_, err = w.Write(b)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to write 2fa response to user")
 		}
 	}
+	return http.StatusOK, nil
+}
 
-	return nil
+func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.Request) (*types.User, error) {
+	// Get user from token
+	// OR verify passcode from user id
+	// If user is logged in, user id is passed from request
+	// If user is not logged in, token is passed from request
+
+	userID := req.UserID
+	if req.UserID == "" {
+		uid, _, err := api.UserFromToken(w, r, req.Token)
+		if err != nil {
+			return nil, err
+		}
+		userID = uid
+	}
+
+	if userID == "" {
+		err := fmt.Errorf("no user provided to verify tfa")
+		passlog.L.Error().Err(err).Msg("unable to write response to user")
+		return nil, err
+	}
+
+	user, err := users.ID(userID)
+	if err != nil {
+		return nil, err
+	}
+	// Check if there is a passcode and verify it
+	if req.Passcode != "" {
+		err := users.VerifyTFA(user.TwoFactorAuthenticationSecret, req.Passcode)
+		if err != nil {
+			return nil, err
+		}
+	} else if req.RecoveryCode != "" {
+		// Check if there is a recovery code and verify it
+		err := users.VerifyTFARecovery(userID, req.RecoveryCode)
+		if err != nil {
+			errMsg := "Invalid recovery code provided."
+			passlog.L.Error().Err(err).Msg(errMsg)
+			return nil, terror.Error(err, errMsg)
+		}
+	} else {
+		return nil, fmt.Errorf("code is missing")
+	}
+
+	return user, nil
+
 }
 
 func (api *API) FacebookLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -1923,8 +1948,13 @@ func (api *API) GetNonce(w http.ResponseWriter, r *http.Request) (int, error) {
 		commonAddr := common.HexToAddress(publicAddress)
 		user, _ := users.PublicAddress(commonAddr)
 
-		// user can be nil
-		newNonce, err := api.NewNonce(&user.User)
+		u := &boiler.User{}
+		if user == nil {
+			u = nil
+		} else {
+			u = &user.User
+		}
+		newNonce, err := api.NewNonce(u)
 		if err != nil {
 			L.Error().Err(err).Msg("no nonce")
 			return http.StatusBadRequest, err

@@ -418,7 +418,7 @@ func UsernameExist(uname string) (bool, error) {
 	nUsers, err := boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(uname))).Count(passdb.StdConn)
 	if !errors.Is(err, sql.ErrNoRows) && err != nil || nUsers != 0 {
 		passlog.L.Error().Err(err).Msg("failed to get unique username")
-		return true, fmt.Errorf("Unable to search for user by username")
+		return true, fmt.Errorf("unable to search for user by username")
 	}
 
 	return false, nil
@@ -443,7 +443,7 @@ func GetTFARecovery(userID string) (boiler.UserRecoveryCodeSlice, error) {
 
 func VerifyTFARecovery(userID string, recoveryCode string) error {
 	// Check if code matches
-	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.RecoveryCode.EQ(recoveryCode), boiler.UserActivityWhere.UserID.EQ(userID), boiler.UserRecoveryCodeWhere.UsedAt.IsNull()).One(passdb.StdConn)
+	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.RecoveryCode.EQ(recoveryCode), boiler.UserRecoveryCodeWhere.UserID.EQ(userID), boiler.UserRecoveryCodeWhere.UsedAt.IsNull()).One(passdb.StdConn)
 	if errors.Is(sql.ErrNoRows, err) {
 		return fmt.Errorf("invalid recovery code")
 	}
