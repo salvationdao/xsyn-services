@@ -243,7 +243,6 @@ func NewAPI(
 				r.Get("/logout", WithError(api.AuthLogoutHandler))
 				r.Post("/token", api.TokenLoginHandler)
 				r.Post("/user_exist", api.CheckUserExistHandler)
-				r.Post("/cookie", WithError(api.ExternalLoginCheckHandler))
 				r.Post("/external", api.ExternalLoginHandler)
 				r.Post("/token", api.TokenLoginHandler)
 				r.Post("/wallet", api.WalletLoginHandler)
@@ -259,7 +258,7 @@ func NewAPI(
 				r.Post("/tfa", WithError(api.TFAVerifyHandler))
 				r.Get("/twitter", WithError(api.TwitterAuth))
 				r.Get("/verify", WithError(api.EmailVerifyHandler))
-				
+
 				r.Post("/verify_code", WithError(api.VerifyCodeHandler))
 
 				r.Post("/bot_list", api.BotListHandler)

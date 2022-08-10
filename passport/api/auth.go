@@ -39,6 +39,7 @@ import (
 	"github.com/lestrrat-go/jwx/jwt/openid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
+	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -153,18 +154,19 @@ type ForgotPasswordResponse struct {
 	Message string `json:"message"`
 }
 
+// WriteCookie writes cookie on host domain
 func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string) error {
 	b64, err := api.Cookie.EncryptToBase64(token)
 	if err != nil {
-		return err
+		passlog.L.Error().Msg("invalid token when writing cookie, unable to encrypt to base64")
+		return terror.Error(err, "Invalid token, unable to encrypt to base64.")
 	}
 
 	// get domain
-
 	d := domain(r.Host)
 	if d == "" {
 		passlog.L.Warn().Msg("Cookie's domain not found")
-		return fmt.Errorf("failed to write cookie")
+		return terror.Error(err, "failed to write cookie")
 	}
 
 	cookie := &http.Cookie{
@@ -181,6 +183,7 @@ func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string
 	return nil
 }
 
+// Gets domain from subdomain if host is a subdomain
 func domain(host string) string {
 	parts := strings.Split(host, ".")
 
@@ -191,8 +194,8 @@ func domain(host string) string {
 	return parts[len(parts)-2] + "." + parts[len(parts)-1]
 }
 
+// remove cookie on domain
 func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
-	// remove cookie on domain
 	cookie := &http.Cookie{
 		Name:     "xsyn-token",
 		Value:    "",
@@ -203,6 +206,7 @@ func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
 		SameSite: http.SameSiteNoneMode,
 		Domain:   domain(r.Host),
 	}
+	passlog.L.Info().Msg("deleting cookie from given domain")
 	http.SetCookie(w, cookie)
 
 	// remove cookie on the site, just in case there is one
@@ -215,14 +219,23 @@ func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
 		HttpOnly: true,
 		SameSite: http.SameSiteNoneMode,
 	}
+	passlog.L.Info().Msg("deleting cookie from current site")
 	http.SetCookie(w, cookie)
 	return nil
 }
 
+// Handles login from non-passport sites, use HTML form.submit() to send request.
+//
+// Writes the external cookie by being on the same host.
 func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		passlog.L.Warn().Err(err).Msg("suspicious behaviour on external login form")
+		errDataDog := DatadogTracer.HttpFinishSpan(r.Context(), http.StatusBadRequest, terror.Error(err, "suspicious behaviour on external login form"))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		if errDataDog != nil {
+			passlog.L.Error().Err(errDataDog).Msg("data dog failed")
+		}
 		return
 	}
 
@@ -230,7 +243,12 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	redir := r.Form.Get("redirect_url")
 
 	if redir == "" {
-		http.Error(w, "No redirectURL provided", http.StatusBadRequest)
+		passlog.L.Warn().Msg("no redirect url provided in external login")
+		errDataDog := DatadogTracer.HttpFinishSpan(r.Context(), http.StatusBadRequest, fmt.Errorf("Missing redirect url on external login"))
+		http.Error(w, "Missing redirect url on external login", http.StatusBadRequest)
+		if errDataDog != nil {
+			passlog.L.Error().Err(errDataDog).Msg("data dog failed")
+		}
 		return
 	}
 
@@ -245,14 +263,12 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		commonAddr := common.HexToAddress(req.PublicAddress)
 		user, err := users.PublicAddress(commonAddr)
 		if err != nil {
-			passlog.L.Error().Err(err).Msg("user does not exist")
-			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "User does not exist")
 		}
 
 		err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
 		if err != nil {
-			passlog.L.Error().Err(err).Msg("user does not exist")
-			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid signature provided from wallet")
 		}
 
 		// Login user
@@ -265,7 +281,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to issue token")
 		}
 
 	case "email":
@@ -278,8 +294,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		//Check if email exist with password
 		user, err := users.EmailPassword(req.Email, req.Password)
 		if err != nil {
-			err := fmt.Errorf("failed to login user with email")
-			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid email or password")
 		}
 
 		loginReq := &FingerprintTokenRequest{
@@ -291,7 +306,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to issue token")
 		}
 	case "facebook":
 		req := &FacebookLoginRequest{
@@ -301,12 +316,11 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		facebookDetails, err := api.FacebookToken(req.FacebookToken)
 		if err != nil {
-			passlog.L.Error().Err(err).Msg("user provided invalid facebook token")
-			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid facebook token")
 		}
 		user, err := users.FacebookID(facebookDetails.FacebookID)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to find facebook user")
 		}
 
 		// Login user after register
@@ -319,7 +333,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to issue token")
 		}
 
 		http.Redirect(w, r, redir, http.StatusSeeOther)
@@ -334,13 +348,11 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 		googleDetails, err := api.GoogleToken(req.GoogleToken)
 		if err != nil {
-			passlog.L.Error().Err(err).Msg("user provided invalid google token")
-			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid google token provided")
 		}
 		user, err := users.GoogleID(googleDetails.GoogleID)
 		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to find google user by id")
-			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to find google user")
 		}
 
 		loginReq := &FingerprintTokenRequest{
@@ -352,30 +364,22 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to issue token")
 		}
 
 		http.Redirect(w, r, redir, http.StatusSeeOther)
-
-	case "token":
-		req := &TokenLoginRequest{
-			Token: r.Form.Get("token"),
-		}
-		resp, err := api.TokenAuth(req, r)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		err = api.WriteCookie(w, r, resp.Token)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
 	case "cookie":
+		req := &struct {
+			Tenant string
+		}{
+			Tenant: r.Form.Get("tenant"),
+		}
+
 		_, token := externalLoginCheck(api, w, r)
 		err := api.WriteCookie(w, r, *token)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to issue token")
 			return
 		}
 
@@ -387,13 +391,11 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		userID, err := api.ReadUserIDJWT(req.TwitterToken)
 		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to  read jwt")
-			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to read user from token")
 		}
 		user, err := users.ID(userID)
 		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to find user id")
-			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to locate user.")
 		}
 		loginReq := &FingerprintTokenRequest{
 			User:        &user.User,
@@ -404,7 +406,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/signup?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to issue token")
 		}
 
 		http.Redirect(w, r, redir, http.StatusSeeOther)
@@ -421,8 +423,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 		user, err := api.TFAVerify(req, w, r)
 		if err != nil {
-			passlog.L.Error().Err(err).Msg("tfa verification failed")
-			http.Redirect(w, r, fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s&tenant=%s&err=%s", r.Header.Get("origin"), req.Token, redir, req.Tenant, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/tfa/check", req.Tenant, redir, "Two factor authentication failed.")
 			return
 		}
 
@@ -436,8 +437,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s&tenant=%s&err=%s", r.Header.Get("origin"), req.Token, redir, req.Tenant, err.Error()), http.StatusSeeOther)
-			return
+			externalErrorHandler(w, r, err, "/tfa/check", req.Tenant, redir, "Unable to issue token")
 		}
 
 	}
@@ -445,6 +445,16 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, redir, http.StatusSeeOther)
 
 }
+
+func externalErrorHandler(w http.ResponseWriter, r *http.Request, err error, page string, tenant string, redir string, msg string) {
+	passlog.L.Error().Err(err).Str("From", "External Login").Msg(msg)
+	http.Redirect(w, r, fmt.Sprintf("%s%s?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), page, tenant, redir, terror.Error(err, msg)), http.StatusSeeOther)
+	errDataDog := DatadogTracer.HttpFinishSpan(r.Context(), http.StatusBadRequest, err)
+	if errDataDog != nil {
+		passlog.L.Error().Err(errDataDog).Msg("data dog failed")
+	}
+}
+
 func externalLoginCheck(api *API, w http.ResponseWriter, r *http.Request) (*TokenLoginResponse, *string) {
 	cookie, err := r.Cookie("xsyn-token")
 	if err != nil {
@@ -473,41 +483,6 @@ func externalLoginCheck(api *API, w http.ResponseWriter, r *http.Request) (*Toke
 	}
 
 	return resp, &token
-
-}
-
-func (api *API) ExternalLoginCheckHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	err := r.ParseForm()
-	if err != nil {
-		passlog.L.Warn().Err(err).Msg("suspicious behaviour on external cookie check")
-		return http.StatusBadRequest, err
-	}
-
-	redirectURL := r.Form.Get("redirect_url")
-	cookie, err := r.Cookie("xsyn-token")
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	var token string
-	if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	// check user from token
-	_, err = api.TokenLogin(token, "")
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	// write cookie on domain
-	err = api.WriteCookie(w, r, token)
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
-	return http.StatusOK, nil
 
 }
 
