@@ -229,10 +229,10 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		passlog.L.Warn().Err(err).Msg("suspicious behaviour on external login form")
 		errDataDog := DatadogTracer.HttpFinishSpan(r.Context(), http.StatusBadRequest, terror.Error(err, "suspicious behaviour on external login form"))
-		http.Error(w, err.Error(), http.StatusBadRequest)
 		if errDataDog != nil {
 			passlog.L.Error().Err(errDataDog).Msg("data dog failed")
 		}
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -242,10 +242,10 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	if redir == "" {
 		passlog.L.Warn().Msg("no redirect url provided in external login")
 		errDataDog := DatadogTracer.HttpFinishSpan(r.Context(), http.StatusBadRequest, fmt.Errorf("Missing redirect url on external login"))
-		http.Error(w, "Missing redirect url on external login", http.StatusBadRequest)
 		if errDataDog != nil {
 			passlog.L.Error().Err(errDataDog).Msg("data dog failed")
 		}
+		http.Error(w, "Missing redirect url on external login", http.StatusBadRequest)
 		return
 	}
 
@@ -261,11 +261,13 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		user, err := users.PublicAddress(commonAddr)
 		if err != nil {
 			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "User does not exist")
+			return
 		}
 
 		err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
 		if err != nil {
 			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid signature provided from wallet")
+			return
 		}
 
 		// Login user
@@ -279,6 +281,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
 			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to issue token")
+			return
 		}
 
 	case "email":
@@ -292,6 +295,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		user, err := users.EmailPassword(req.Email, req.Password)
 		if err != nil {
 			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid email or password")
+			return
 		}
 
 		loginReq := &FingerprintTokenRequest{
@@ -304,6 +308,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
 			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to issue token")
+			return
 		}
 	case "facebook":
 		req := &FacebookLoginRequest{
@@ -314,10 +319,12 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		facebookDetails, err := api.FacebookToken(req.FacebookToken)
 		if err != nil {
 			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid facebook token")
+			return
 		}
 		user, err := users.FacebookID(facebookDetails.FacebookID)
 		if err != nil {
 			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to find facebook user")
+			return
 		}
 
 		// Login user after register
@@ -331,6 +338,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
 			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to issue token")
+			return
 		}
 
 		http.Redirect(w, r, redir, http.StatusSeeOther)
@@ -346,10 +354,12 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		googleDetails, err := api.GoogleToken(req.GoogleToken)
 		if err != nil {
 			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid google token provided")
+			return
 		}
 		user, err := users.GoogleID(googleDetails.GoogleID)
 		if err != nil {
 			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to find google user")
+			return
 		}
 
 		loginReq := &FingerprintTokenRequest{
@@ -362,6 +372,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
 			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to issue token")
+			return
 		}
 
 		http.Redirect(w, r, redir, http.StatusSeeOther)
@@ -387,10 +398,12 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		userID, err := api.ReadUserIDJWT(req.TwitterToken)
 		if err != nil {
 			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to read user from token")
+			return
 		}
 		user, err := users.ID(userID)
 		if err != nil {
 			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to locate user.")
+			return
 		}
 		loginReq := &FingerprintTokenRequest{
 			User:        &user.User,
@@ -402,6 +415,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
 			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to issue token")
+			return
 		}
 
 		http.Redirect(w, r, redir, http.StatusSeeOther)
@@ -432,6 +446,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
 			externalErrorHandler(w, r, err, "/tfa/check", req.Tenant, redir, "Unable to issue token")
+			return
 		}
 
 	}
@@ -442,11 +457,11 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 func externalErrorHandler(w http.ResponseWriter, r *http.Request, err error, page string, tenant string, redir string, msg string) {
 	passlog.L.Error().Err(err).Str("From", "External Login").Msg(msg)
-	http.Redirect(w, r, fmt.Sprintf("%s%s?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), page, tenant, redir, terror.Error(err, msg)), http.StatusSeeOther)
-	errDataDog := DatadogTracer.HttpFinishSpan(r.Context(), http.StatusBadRequest, err)
+	errDataDog := DatadogTracer.HttpFinishSpan(r.Context(), http.StatusInternalServerError, err)
 	if errDataDog != nil {
 		passlog.L.Error().Err(errDataDog).Msg("data dog failed")
 	}
+	http.Redirect(w, r, fmt.Sprintf("%s%s?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), page, tenant, redir, terror.Error(err, msg)), http.StatusSeeOther)
 }
 
 func externalLoginCheck(api *API, w http.ResponseWriter, r *http.Request) error {
@@ -490,7 +505,7 @@ func (api *API) EmailSignupVerifyHandler(w http.ResponseWriter, r *http.Request)
 	err = api.EmailSignupVerify(req, w, r)
 
 	if err != nil {
-		return http.StatusBadRequest, terror.Error(err)
+		return http.StatusBadRequest, terror.Error(err, "Failed to send a verification code.")
 	}
 
 	return http.StatusCreated, nil
@@ -548,6 +563,12 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		return http.StatusBadRequest, terror.Error(err, "Unable to decode request")
 	}
 	username := req.Username
+	// Check if username is valid
+	err = helpers.IsValidUsername(username)
+	if err != nil {
+		return http.StatusInternalServerError, err // returns terror error already
+	}
+
 	usernameTaken, err := users.UsernameExist(username)
 	redirectURL := ""
 	if err != nil || usernameTaken {
@@ -569,21 +590,16 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		user, err := users.PublicAddress(commonAddr)
 		if err != nil {
 			err := fmt.Errorf("User does not exist")
-			return http.StatusInternalServerError, terror.Error(err, "User with wallet address does not exist.")
+			return http.StatusBadRequest, terror.Error(err, "User with wallet address does not exist.")
 		}
 
 		err = api.VerifySignature(req.WalletRequest.Signature, user.Nonce.String, commonAddr)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to verify signature")
-			return http.StatusInternalServerError, terror.Error(err, "Invalid user signature provided.")
+			return http.StatusBadRequest, terror.Error(err, "Invalid user signature provided.")
 		}
 
 		// Update username
-		// Check if username is valid
-		err = helpers.IsValidUsername(username)
-		if err != nil {
-			return http.StatusInternalServerError, err // returns terror error already
-		}
 		user.Username = username
 		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 		if err != nil {
@@ -606,7 +622,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			}
 		} else if user != nil {
 			err := fmt.Errorf("user already exist")
-			return http.StatusInternalServerError, terror.Error(err, "Failed to signup with email. User already exists.")
+			return http.StatusBadRequest, terror.Error(err, "Failed to signup with email. User already exists.")
 		}
 		redirectURL = req.EmailRequest.RedirectURL
 	case "facebook":
@@ -614,17 +630,13 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		facebookDetails, err := api.FacebookToken(req.FacebookRequest.FacebookToken)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("user provided invalid facebook token")
-			return http.StatusInternalServerError, terror.Error(err, "Invalid facebook token provided.")
+			return http.StatusBadRequest, terror.Error(err, "Invalid facebook token provided.")
 		}
 		user, err := users.FacebookID(facebookDetails.FacebookID)
 		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err, "Failed to get user with facebook account during signup.")
+			return http.StatusBadRequest, terror.Error(err, "Failed to get user with facebook account during signup.")
 		}
 		// Update username
-		err = helpers.IsValidUsername(username)
-		if err != nil {
-			return http.StatusInternalServerError, err // returns terror error already
-		}
 		user.Username = username
 		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 		if err != nil {
@@ -643,18 +655,14 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		googleDetails, err := api.GoogleToken(req.GoogleRequest.GoogleToken)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("user provided invalid google token")
-			return http.StatusInternalServerError, terror.Error(err, "Invalid google token provided.")
+			return http.StatusBadRequest, terror.Error(err, "Invalid google token provided.")
 		}
 		// Check google id exist
 		user, err := users.GoogleID(googleDetails.GoogleID)
 		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err, "Failed to get user with google account during signup.")
+			return http.StatusBadRequest, terror.Error(err, "Failed to get user with google account during signup.")
 		}
 		// Update username
-		err = helpers.IsValidUsername(username)
-		if err != nil {
-			return http.StatusInternalServerError, err // returns terror error already
-		}
 		user.Username = username
 		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 		if err != nil {
@@ -681,10 +689,6 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusBadRequest, terror.Error(err, "Unable to get user during signup with twitter.")
 		}
 		// Update username
-		err = helpers.IsValidUsername(username)
-		if err != nil {
-			return http.StatusInternalServerError, err // returns terror error already
-		}
 		user.Username = username
 		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 		if err != nil {
@@ -799,7 +803,7 @@ func (api *API) EmailLoginHandler(w http.ResponseWriter, r *http.Request) (int, 
 
 	err = api.EmailLogin(req, w, r)
 	if err != nil {
-		return http.StatusBadRequest, terror.Error(err)
+		return http.StatusBadRequest, terror.Error(err, "Invalid user email or password. Please try again.")
 	}
 
 	return http.StatusOK, nil
@@ -937,7 +941,6 @@ func (api *API) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) (in
 		return http.StatusBadRequest, terror.Error(err, "Unable to find user.")
 	}
 	return passwordReset(api, w, r, req, &user.User)
-
 }
 
 // Handles changes password with current password
@@ -960,7 +963,6 @@ func (api *API) ChangePasswordHandler(w http.ResponseWriter, r *http.Request, us
 	}
 
 	return passwordReset(api, w, r, req, user)
-
 }
 
 // Setup new password for user thats logged in
@@ -984,9 +986,8 @@ func (api *API) NewPasswordHandler(w http.ResponseWriter, r *http.Request, user 
 	return passwordReset(api, w, r, req, user)
 }
 
-// Handles password update
+// Handles password reset/update
 func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *PasswordUpdateRequest, user *boiler.User) (int, error) {
-
 	if user == nil {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("no user provided"), "Unable to process user request.")
 	}
@@ -1179,7 +1180,7 @@ func (api *API) GoogleLoginHandler(w http.ResponseWriter, r *http.Request) (int,
 	err = api.GoogleLogin(req, w, r)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to google login")
-		return http.StatusBadRequest, terror.Error(err)
+		return http.StatusBadRequest, terror.Error(err, "Failed to authenticate login with Google.")
 	}
 	return http.StatusCreated, nil
 }
