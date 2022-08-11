@@ -58,7 +58,7 @@ func (m *Mailer) SendForgotPasswordEmail(ctx context.Context, user *types.User, 
 			MagicLink string `handlebars:"magic_link"`
 			Name      string `handlebars:"name"`
 		}{
-			MagicLink: fmt.Sprintf("%s/reset-password?&token=%s", hostURL, token),
+			MagicLink: fmt.Sprintf("%s/reset-password?token=%s", hostURL, token),
 			Name:      user.Username,
 		},
 		"",
