@@ -163,7 +163,7 @@ func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string
 	d := domain(r.Host)
 	if d == "" {
 		passlog.L.Warn().Msg("Cookie's domain not found")
-		return terror.Error(err, "failed to write cookie")
+		return terror.Error(fmt.Errorf("domain not found"), "failed to write cookie")
 	}
 
 	cookie := &http.Cookie{
@@ -579,7 +579,11 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		}
 
 		// Update username
-		// Check if username is taken already
+		// Check if username is valid
+		err = helpers.IsValidUsername(username)
+		if err != nil {
+			return http.StatusInternalServerError, err // returns terror error already
+		}
 		user.Username = username
 		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 		if err != nil {
@@ -617,6 +621,10 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusInternalServerError, terror.Error(err, "Failed to get user with facebook account during signup.")
 		}
 		// Update username
+		err = helpers.IsValidUsername(username)
+		if err != nil {
+			return http.StatusInternalServerError, err // returns terror error already
+		}
 		user.Username = username
 		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 		if err != nil {
@@ -643,6 +651,10 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusInternalServerError, terror.Error(err, "Failed to get user with google account during signup.")
 		}
 		// Update username
+		err = helpers.IsValidUsername(username)
+		if err != nil {
+			return http.StatusInternalServerError, err // returns terror error already
+		}
 		user.Username = username
 		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 		if err != nil {
@@ -669,6 +681,10 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusBadRequest, terror.Error(err, "Unable to get user during signup with twitter.")
 		}
 		// Update username
+		err = helpers.IsValidUsername(username)
+		if err != nil {
+			return http.StatusInternalServerError, err // returns terror error already
+		}
 		user.Username = username
 		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 		if err != nil {
