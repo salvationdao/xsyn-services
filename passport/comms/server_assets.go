@@ -2,6 +2,7 @@ package comms
 
 import (
 	"fmt"
+	"github.com/gofrs/uuid"
 	"strings"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
@@ -321,6 +322,30 @@ func (s *S) DeleteAssetHandler(req DeleteAssetHandlerReq, resp *DeleteAssetHandl
 	if err != nil {
 		passlog.L.Error().Err(err).Str("req.AssetID", req.AssetID).Msg("failed to delete asset - DeleteAssetHandler")
 		return err
+	}
+
+	return nil
+}
+
+type AssignTemplateReq struct {
+	ApiKey     string `json:"api_key"`
+	TemplateID string `json:"template_id"`
+	UserID     string `json:"user_id"`
+}
+
+type AssignTemplateResp struct {
+}
+
+func (s *S) AssignTemplateHandler(req AssignTemplateReq, resp *AssignTemplateResp) error {
+	_, err := IsServerClient(req.ApiKey)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to get service id - DeleteAssetHandler")
+		return err
+	}
+
+	_, err = db.PurchasedItemRegister(uuid.Must(uuid.FromString(req.TemplateID)), uuid.Must(uuid.FromString(req.UserID)))
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to PurchasedItemRegister")
 	}
 
 	return nil

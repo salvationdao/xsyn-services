@@ -9,9 +9,7 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"math/rand"
 	"xsyn-services/boiler"
-	"xsyn-services/passport/db"
 	"xsyn-services/passport/crypto"
 	"xsyn-services/passport/email"
 	"xsyn-services/passport/helpers"
@@ -256,31 +254,6 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 			passlog.L.Error().Err(err).Msg("Failed to commit db transaction")
 			return nil, terror.Error(err, "Failed to create new user")
 		}
-
-		if os.Getenv("PASSPORT_ENVIRONMENT") == "staging" || os.Getenv("PASSPORT_ENVIRONMENT") == "development" {
-			storeItems, err := boiler.StoreItems().All(passdb.StdConn)
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("failed to get store items")
-			}
-
-			for i := range storeItems {
-				j := rand.Intn(i + 1)
-				storeItems[i], storeItems[j] = storeItems[j], storeItems[i]
-			}
-
-			for i, si := range storeItems {
-				if i < 3 {
-					_, err = db.PurchasedItemRegister(uuid.Must(uuid.FromString(si.ID)), uuid.Must(uuid.FromString(user.ID)))
-					if err != nil {
-						passlog.L.Error().Err(err).Msg("failed to PurchasedItemRegister")
-					}
-				} else {
-					break
-				}
-			}
-
-		}
-
 		return &types.User{User: *user}, nil
 	}
 
@@ -288,30 +261,6 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("Failed to commit db transaction")
 		return nil, terror.Error(err, "Failed to create new user")
-	}
-
-	if os.Getenv("PASSPORT_ENVIRONMENT") == "staging" || os.Getenv("PASSPORT_ENVIRONMENT") == "development" {
-		storeItems, err := boiler.StoreItems().All(passdb.StdConn)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("failed to get store items")
-		}
-
-		for i := range storeItems {
-			j := rand.Intn(i + 1)
-			storeItems[i], storeItems[j] = storeItems[j], storeItems[i]
-		}
-
-		for i, si := range storeItems {
-			if i < 3 {
-				_, err = db.PurchasedItemRegister(uuid.Must(uuid.FromString(si.ID)), uuid.Must(uuid.FromString(user.ID)))
-				if err != nil {
-					passlog.L.Error().Err(err).Msg("failed to PurchasedItemRegister")
-				}
-			} else {
-				break
-			}
-		}
-
 	}
 
 	return &types.User{User: *user}, nil
