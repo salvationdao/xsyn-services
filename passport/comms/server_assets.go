@@ -328,9 +328,9 @@ func (s *S) DeleteAssetHandler(req DeleteAssetHandlerReq, resp *DeleteAssetHandl
 }
 
 type AssignTemplateReq struct {
-	ApiKey     string `json:"api_key"`
-	TemplateID string `json:"template_id"`
-	UserID     string `json:"user_id"`
+	ApiKey      string   `json:"api_key"`
+	UserID      string   `json:"user_id"`
+	TemplateIDs []string `json:"template_ids"`
 }
 
 type AssignTemplateResp struct {
@@ -343,9 +343,11 @@ func (s *S) AssignTemplateHandler(req AssignTemplateReq, resp *AssignTemplateRes
 		return err
 	}
 
-	_, err = db.PurchasedItemRegister(uuid.Must(uuid.FromString(req.TemplateID)), uuid.Must(uuid.FromString(req.UserID)))
-	if err != nil {
-		passlog.L.Error().Err(err).Msg("failed to PurchasedItemRegister")
+	for _, tempID := range req.TemplateIDs {
+		_, err = db.PurchasedItemRegister(uuid.Must(uuid.FromString(tempID)), uuid.Must(uuid.FromString(req.UserID)))
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("failed to PurchasedItemRegister")
+		}
 	}
 
 	return nil
