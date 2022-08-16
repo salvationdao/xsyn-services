@@ -109,11 +109,19 @@ func FloatPointer(value float32) *float32 {
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const letterNumberBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 func RandStringBytes(n int) string {
 	b := make([]byte, n)
 	for i := range b {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
+}
+func RandCodeBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterNumberBytes[rand.Intn(len(letterNumberBytes))]
 	}
 	return string(b)
 }

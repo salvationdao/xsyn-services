@@ -11,7 +11,6 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"net/mail"
 	"net/url"
 	"strings"
 	"time"
@@ -28,6 +27,7 @@ import (
 	"github.com/dghubble/oauth1"
 	"github.com/dghubble/oauth1/twitter"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"google.golang.org/api/idtoken"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -38,29 +38,50 @@ import (
 	"github.com/lestrrat-go/jwx/jwt/openid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
+	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
+type SignupRequest struct {
+	Username        string               `json:"username"`
+	Fingerprint     *users.Fingerprint   `json:"fingerprint"`
+	AuthType        string               `json:"auth_type"`
+	WalletRequest   WalletLoginRequest   `json:"wallet_request"`
+	GoogleRequest   GoogleLoginRequest   `json:"google_request"`
+	FacebookRequest FacebookLoginRequest `json:"facebook_request"`
+	EmailRequest    EmailLoginRequest    `json:"email_request"`
+	TwitterRequest  TwitterSignupRequest `json:"twitter_request"`
+}
+
 type WalletLoginRequest struct {
 	RedirectURL   string             `json:"redirect_url"`
 	Tenant        string             `json:"tenant"`
 	PublicAddress string             `json:"public_address"`
 	Signature     string             `json:"signature"`
+	Nonce         string             `json:"nonce"`
 	SessionID     hub.SessionID      `json:"session_id"`
 	Fingerprint   *users.Fingerprint `json:"fingerprint"`
+	AuthType      string             `json:"auth_type"`
+	Username      string             `json:"username"`
+}
+
+type EmailSignupVerifyRequest struct {
+	RedirectURL string `json:"redirect_url"`
+	Tenant      string `json:"tenant"`
+	Email       string `json:"email"`
 }
 
 type EmailLoginRequest struct {
 	RedirectURL string             `json:"redirect_url"`
 	Tenant      string             `json:"tenant"`
-	Username    string             `json:"username"`
 	Email       string             `json:"email"`
 	Password    string             `json:"password"`
 	SessionID   hub.SessionID      `json:"session_id"`
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
+	Username    string             `json:"username"`
 }
 type ForgotPasswordRequest struct {
 	Tenant      string             `json:"tenant"`
@@ -72,7 +93,6 @@ type ForgotPasswordRequest struct {
 type PasswordUpdateRequest struct {
 	RedirectURL string             `json:"redirect_url"`
 	Tenant      string             `json:"tenant"`
-	UserID      string             `json:"user_id"`
 	Password    string             `json:"password"`
 	TokenID     string             `json:"id"`
 	Token       string             `json:"token"`
@@ -84,26 +104,35 @@ type PasswordUpdateRequest struct {
 type GoogleLoginRequest struct {
 	RedirectURL string             `json:"redirect_url"`
 	Tenant      string             `json:"tenant"`
-	GoogleID    string             `json:"google_id"`
-	Email       string             `json:"email"`
-	Username    string             `json:"username"`
+	GoogleToken string             `json:"google_token"`
 	SessionID   hub.SessionID      `json:"session_id"`
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
+	AuthType    string             `json:"auth_type"`
+	Username    string             `json:"username"`
 }
 
 type FacebookLoginRequest struct {
-	RedirectURL string             `json:"redirect_url"`
-	Tenant      string             `json:"tenant"`
-	FacebookID  string             `json:"facebook_id"`
-	Name        string             `json:"name"`
-	SessionID   hub.SessionID      `json:"session_id"`
-	Fingerprint *users.Fingerprint `json:"fingerprint"`
+	RedirectURL   string             `json:"redirect_url"`
+	Tenant        string             `json:"tenant"`
+	FacebookToken string             `json:"facebook_token"`
+	SessionID     hub.SessionID      `json:"session_id"`
+	Fingerprint   *users.Fingerprint `json:"fingerprint"`
+	AuthType      string             `json:"auth_type"`
+	Username      string             `json:"username"`
+}
+
+type TwitterSignupRequest struct {
+	RedirectURL  string             `json:"redirect_url"`
+	Tenant       string             `json:"tenant"`
+	TwitterToken string             `json:"twitter_token"`
+	SessionID    hub.SessionID      `json:"session_id"`
+	Fingerprint  *users.Fingerprint `json:"fingerprint"`
+	Username     string             `json:"username"`
 }
 
 type TFAVerifyRequest struct {
 	RedirectURL  string             `json:"redirect_url"`
 	Tenant       string             `json:"tenant"`
-	UserID       string             `json:"user_id"`
 	Token        string             `json:"token"`
 	Passcode     string             `json:"passcode"`
 	RecoveryCode string             `json:"recovery_code"`
@@ -122,17 +151,19 @@ type ForgotPasswordResponse struct {
 	Message string `json:"message"`
 }
 
+// WriteCookie writes cookie on host domain
 func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string) error {
 	b64, err := api.Cookie.EncryptToBase64(token)
 	if err != nil {
-		return err
+		passlog.L.Error().Msg("invalid token when writing cookie, unable to encrypt to base64")
+		return terror.Error(err, "Invalid token, unable to encrypt to base64.")
 	}
 
 	// get domain
 	d := domain(r.Host)
 	if d == "" {
 		passlog.L.Warn().Msg("Cookie's domain not found")
-		return fmt.Errorf("failed to write cookie")
+		return terror.Error(fmt.Errorf("domain not found"), "failed to write cookie")
 	}
 
 	cookie := &http.Cookie{
@@ -149,6 +180,7 @@ func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string
 	return nil
 }
 
+// Gets domain from subdomain if host is a subdomain
 func domain(host string) string {
 	parts := strings.Split(host, ".")
 
@@ -159,8 +191,8 @@ func domain(host string) string {
 	return parts[len(parts)-2] + "." + parts[len(parts)-1]
 }
 
+// remove cookie on domain
 func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
-	// remove cookie on domain
 	cookie := &http.Cookie{
 		Name:     "xsyn-token",
 		Value:    "",
@@ -171,6 +203,7 @@ func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
 		SameSite: http.SameSiteNoneMode,
 		Domain:   domain(r.Host),
 	}
+	passlog.L.Info().Msg("deleting cookie from given domain")
 	http.SetCookie(w, cookie)
 
 	// remove cookie on the site, just in case there is one
@@ -183,21 +216,36 @@ func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
 		HttpOnly: true,
 		SameSite: http.SameSiteNoneMode,
 	}
+	passlog.L.Info().Msg("deleting cookie from current site")
 	http.SetCookie(w, cookie)
 	return nil
 }
 
+// Handles login from non-passport sites, use HTML form.submit() to send request.
+//
+// Writes the external cookie by being on the same host.
 func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		passlog.L.Warn().Err(err).Msg("suspicious behaviour on external login form")
+		errDataDog := DatadogTracer.HttpFinishSpan(r.Context(), http.StatusBadRequest, terror.Error(err, "suspicious behaviour on external login form"))
+		if errDataDog != nil {
+			passlog.L.Error().Err(errDataDog).Msg("data dog failed")
+		}
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	authType := r.Form.Get("authType")
+	authType := r.Form.Get("auth_type")
 	redir := r.Form.Get("redirect_url")
+
 	if redir == "" {
-		http.Error(w, "No redirectURL provided", http.StatusBadRequest)
+		passlog.L.Warn().Msg("no redirect url provided in external login")
+		errDataDog := DatadogTracer.HttpFinishSpan(r.Context(), http.StatusBadRequest, fmt.Errorf("Missing redirect url on external login"))
+		if errDataDog != nil {
+			passlog.L.Error().Err(errDataDog).Msg("data dog failed")
+		}
+		http.Error(w, "Missing redirect url on external login", http.StatusBadRequest)
 		return
 	}
 
@@ -209,30 +257,33 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			PublicAddress: r.Form.Get("public_address"),
 			Signature:     r.Form.Get("signature"),
 		}
-		err = api.WalletLogin(req, w, r)
+		commonAddr := common.HexToAddress(req.PublicAddress)
+		user, err := users.PublicAddress(commonAddr)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "User does not exist")
 			return
 		}
-	case "signup":
-		req := &EmailLoginRequest{
-			RedirectURL: redir,
-			Tenant:      r.Form.Get("tenant"),
-			Username:    r.Form.Get("username"),
-			Email:       r.Form.Get("email"),
-			Password:    r.Form.Get("password"),
-		}
-		user, _ := users.Email(req.Email)
-		if user != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
-			return
-		}
-		err = api.EmailSignUp(req, w, r)
 
+		err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid signature provided from wallet")
 			return
 		}
+
+		// Login user
+		loginReq := &FingerprintTokenRequest{
+			User:        &user.User,
+			Fingerprint: req.Fingerprint,
+			RedirectURL: redir,
+			Tenant:      req.Tenant,
+		}
+
+		err = api.FingerprintAndIssueToken(w, r, loginReq)
+		if err != nil {
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to issue token")
+			return
+		}
+
 	case "email":
 		req := &EmailLoginRequest{
 			RedirectURL: redir,
@@ -240,59 +291,134 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			Email:       r.Form.Get("email"),
 			Password:    r.Form.Get("password"),
 		}
-		err = api.EmailLogin(req, w, r)
-
+		//Check if email exist with password
+		user, err := users.EmailPassword(req.Email, req.Password)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid email or password")
+			return
+		}
+
+		loginReq := &FingerprintTokenRequest{
+			User:        &user.User,
+			Fingerprint: req.Fingerprint,
+			RedirectURL: redir,
+			Tenant:      req.Tenant,
+		}
+
+		err = api.FingerprintAndIssueToken(w, r, loginReq)
+		if err != nil {
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to issue token")
 			return
 		}
 	case "facebook":
 		req := &FacebookLoginRequest{
-			RedirectURL: redir,
-			Tenant:      r.Form.Get("tenant"),
-			FacebookID:  r.Form.Get("facebook_id"),
-			Name:        r.Form.Get("name"),
+			RedirectURL:   redir,
+			Tenant:        r.Form.Get("tenant"),
+			FacebookToken: r.Form.Get("facebook_token"),
 		}
-		err := api.FacebookLogin(req, w, r)
+		facebookDetails, err := api.FacebookToken(req.FacebookToken)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid facebook token")
 			return
 		}
+		user, err := users.FacebookID(facebookDetails.FacebookID)
+		if err != nil {
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to find facebook user")
+			return
+		}
+
+		// Login user after register
+		loginReq := &FingerprintTokenRequest{
+			User:        user,
+			Fingerprint: req.Fingerprint,
+			RedirectURL: redir,
+			Tenant:      req.Tenant,
+		}
+
+		err = api.FingerprintAndIssueToken(w, r, loginReq)
+		if err != nil {
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to issue token")
+			return
+		}
+
+		http.Redirect(w, r, redir, http.StatusSeeOther)
+
 	case "google":
 		req := &GoogleLoginRequest{
 			RedirectURL: redir,
 			Tenant:      r.Form.Get("tenant"),
-			GoogleID:    r.Form.Get("google_id"),
+			GoogleToken: r.Form.Get("google_token"),
 			Username:    r.Form.Get("username"),
-			Email:       r.Form.Get("email"),
 		}
 
-		err := api.GoogleLogin(req, w, r)
+		googleDetails, err := api.GoogleToken(req.GoogleToken)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/external/login?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), req.Tenant, redir, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid google token provided")
 			return
 		}
-	case "token":
-		req := &TokenLoginRequest{
-			Token: r.Form.Get("token"),
-		}
-		resp, err := api.TokenAuth(req, r)
+		user, err := users.GoogleID(googleDetails.GoogleID)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to find google user")
 			return
 		}
-		err = api.WriteCookie(w, r, resp.Token)
+
+		loginReq := &FingerprintTokenRequest{
+			User:        user,
+			Fingerprint: req.Fingerprint,
+			RedirectURL: redir,
+			Tenant:      req.Tenant,
+		}
+
+		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to issue token")
 			return
 		}
+
+		http.Redirect(w, r, redir, http.StatusSeeOther)
 	case "cookie":
-		_, token := externalLoginCheck(api, w, r)
-		err := api.WriteCookie(w, r, *token)
+		req := &struct {
+			Tenant string
+		}{
+			Tenant: r.Form.Get("tenant"),
+		}
+
+		err := externalLoginCheck(api, w, r)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to login user from cookie")
 			return
 		}
+
+	case "twitter":
+		req := &TwitterSignupRequest{
+			RedirectURL:  redir,
+			Tenant:       r.Form.Get("tenant"),
+			TwitterToken: r.Form.Get("twitter_token"),
+		}
+		userID, err := api.ReadUserIDJWT(req.TwitterToken)
+		if err != nil {
+			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to read user from token")
+			return
+		}
+		user, err := users.ID(userID)
+		if err != nil {
+			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to locate user.")
+			return
+		}
+		loginReq := &FingerprintTokenRequest{
+			User:        &user.User,
+			Fingerprint: req.Fingerprint,
+			RedirectURL: redir,
+			Tenant:      req.Tenant,
+		}
+
+		err = api.FingerprintAndIssueToken(w, r, loginReq)
+		if err != nil {
+			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to issue token")
+			return
+		}
+
+		http.Redirect(w, r, redir, http.StatusSeeOther)
 
 	case "tfa":
 		req := &TFAVerifyRequest{
@@ -303,179 +429,333 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			RecoveryCode: r.Form.Get("recovery_code"),
 		}
 
-		err := api.TFAVerify(req, w, r)
+		user, err := api.TFAVerify(req, w, r)
 		if err != nil {
-			http.Redirect(w, r, fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s&tenant=%s&err=%s", r.Header.Get("origin"), req.Token, redir, req.Tenant, err.Error()), http.StatusSeeOther)
+			externalErrorHandler(w, r, err, "/tfa/check", req.Tenant, redir, "Two factor authentication failed.")
+			return
+		}
+
+		loginReq := &FingerprintTokenRequest{
+			User:        &user.User,
+			Fingerprint: req.Fingerprint,
+			RedirectURL: redir,
+			Tenant:      req.Tenant,
+			Pass2FA:     true,
+		}
+
+		err = api.FingerprintAndIssueToken(w, r, loginReq)
+		if err != nil {
+			externalErrorHandler(w, r, err, "/tfa/check", req.Tenant, redir, "Unable to issue token")
 			return
 		}
 
 	}
+
 	http.Redirect(w, r, redir, http.StatusSeeOther)
 
 }
 
-func externalLoginCheck(api *API, w http.ResponseWriter, r *http.Request) (*TokenLoginResponse, *string) {
+func externalErrorHandler(w http.ResponseWriter, r *http.Request, err error, page string, tenant string, redir string, msg string) {
+	passlog.L.Error().Err(err).Str("From", "External Login").Msg(msg)
+	errDataDog := DatadogTracer.HttpFinishSpan(r.Context(), http.StatusInternalServerError, err)
+	if errDataDog != nil {
+		passlog.L.Error().Err(errDataDog).Msg("data dog failed")
+	}
+	http.Redirect(w, r, fmt.Sprintf("%s%s?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), page, tenant, redir, terror.Error(err, msg)), http.StatusSeeOther)
+}
+
+func externalLoginCheck(api *API, w http.ResponseWriter, r *http.Request) error {
 	cookie, err := r.Cookie("xsyn-token")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return nil, nil
+		passlog.L.Error().Err(err).Str("From", "External Login").Msg("Unable to read cookie")
+		return err
 	}
 
 	var token string
 	if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return nil, nil
+		passlog.L.Error().Err(err).Str("From", "External Login").Msg("Unable to decrypt token from cookie")
+		return err
 	}
 
 	// check user from token
-	resp, err := api.TokenLogin(token, "")
+	_, err = api.TokenLogin(token, "")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return nil, nil
+		passlog.L.Error().Err(err).Str("From", "External Login").Msg("Unable to login from token")
+		return err
 	}
 
 	// write cookie on domain
 	err = api.WriteCookie(w, r, token)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return nil, nil
+		passlog.L.Error().Err(err).Str("From", "External Login").Msg("Unable to wite cookie on domain")
+		return err
 	}
 
-	return resp, &token
+	return nil
 
 }
 
-func (api *API) EmailSignupHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &EmailLoginRequest{}
+// Sends a code to user email to be verified.
+func (api *API) EmailSignupVerifyHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &EmailSignupVerifyRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Unable to decode request.")
 	}
-	err = api.EmailSignUp(req, w, r)
+	err = api.EmailSignupVerify(req, w, r)
 
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Failed to send a verification code.")
 	}
 
 	return http.StatusCreated, nil
 }
 
-func (api *API) EmailSignUp(req *EmailLoginRequest, w http.ResponseWriter, r *http.Request) error {
+// Generate one time code and send to user's email
+func (api *API) EmailSignupVerify(req *EmailSignupVerifyRequest, w http.ResponseWriter, r *http.Request) error {
 	// Check if there are any existing users associated with the email address
 	user, _ := users.Email(req.Email)
 
 	if user != nil {
-		return fmt.Errorf("email is already used by a different user")
+		return terror.Error(errors.New("email already used"), "Email is already used by a different user.")
 	}
-	if req.Password != "" {
-		err := helpers.IsValidPassword(req.Password)
-		if err != nil {
-			return err
-		}
 
+	token, err := api.OneTimeVerification()
+	if err != nil || token == "" {
+		err := fmt.Errorf("unable to generate verification code")
+		passlog.L.Error().Err(err).Msg(err.Error())
+		return terror.Error(err, "Failed to generate verification code.")
 	}
-	commonAddress := common.HexToAddress("")
-
-	user, err := users.UserCreator("", "", req.Username, req.Email, "", "", "", "", "", "", commonAddress, req.Password)
+	code, err := api.ReadCodeJWT(token)
 	if err != nil {
-		return err
+		passlog.L.Error().Err(err).Msg("unable to get verify code from token")
+		return terror.Error(err, "Unable to get verify code from token")
 	}
 
-	// Send email to new email for verification
-	_, verifyTokenID, verifyToken, err := api.VerifyEmailToken(&TokenConfig{
-		Encrypted: true,
-		Key:       api.TokenEncryptionKey,
-		Device:    r.UserAgent(),
-		Action:    "verify",
-		User:      &user.User,
-	})
-
+	err = api.Mailer.SendSignupEmail(context.Background(), req.Email, code)
 	if err != nil {
-		return err
+		return terror.Error(err, "Unable to send signup email")
+	}
+	resp := &struct {
+		Token string `json:"token"`
+	}{
+		Token: token,
 	}
 
-	err = api.Mailer.SendVerificationEmail(context.Background(), user, verifyToken, verifyTokenID, true)
+	b, err := json.Marshal(resp)
 	if err != nil {
-		return err
+		passlog.L.Error().Err(err).Msg("unable to encode response to json")
+		return terror.Error(err, "Unable to generate response token")
 	}
-
-	loginReq := &FingerprintTokenRequest{
-		User:        &user.User,
-		RedirectURL: req.RedirectURL,
-		Tenant:      req.Tenant,
-		Fingerprint: req.Fingerprint,
-	}
-	err = api.FingerprintAndIssueToken(w, r, loginReq)
+	_, err = w.Write(b)
 	if err != nil {
-		return err
+		passlog.L.Error().Err(err).Msg("unable to write response to user")
+		return terror.Error(err, "Unable to write response token")
 	}
 	return nil
 }
 
-func (api *API) EmailVerifyHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	tokenBase64 := r.URL.Query().Get("token")
-	userID, newEmail, err := api.UserFromToken(w, r, tokenBase64)
+// Update username of user except for emails which create account after password is set.
+func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &SignupRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Unable to decode request")
+	}
+	username := req.Username
+	// Check if username is valid
+	err = helpers.IsValidUsername(username)
+	if err != nil {
+		return http.StatusInternalServerError, err // returns terror error already
 	}
 
-	user, err := users.ID(userID)
-	if err != nil {
-		return http.StatusBadRequest, err
+	usernameTaken, err := users.UsernameExist(username)
+	redirectURL := ""
+	if err != nil || usernameTaken {
+		err := fmt.Errorf("Username is already taken")
+		return http.StatusInternalServerError, terror.Error(err, "Username is already taken, please try a different username.")
 	}
 
-	// Check if user is new or just updating email
-	if user.User.Verified {
-		_, err = mail.ParseAddress(newEmail)
+	authType := req.AuthType
+	if authType == "" {
+		passlog.L.Error().Err(err).Msg("auth type is missing in user signup")
+		return http.StatusInternalServerError, terror.Error(err, "Invalid signup request provided.")
+	}
+	u := &types.User{}
+
+	switch authType {
+	case "wallet":
+		// Check user exist
+		commonAddr := common.HexToAddress(req.WalletRequest.PublicAddress)
+		user, err := users.PublicAddress(commonAddr)
 		if err != nil {
-			return http.StatusBadRequest, err
-		}
-		user.Email = null.NewString(newEmail, true)
-		_, err := user.User.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Email))
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to update user's email")
-			return http.StatusBadRequest, err
+			err := fmt.Errorf("User does not exist")
+			return http.StatusBadRequest, terror.Error(err, "User with wallet address does not exist.")
 		}
 
+		err = api.VerifySignature(req.WalletRequest.Signature, user.Nonce.String, commonAddr)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to verify signature")
+			return http.StatusBadRequest, terror.Error(err, "Invalid user signature provided.")
+		}
+
+		// Update username
+		user.Username = username
+		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to update username")
+			err := fmt.Errorf("User does not exist")
+			return http.StatusInternalServerError, terror.Error(err, "Failed to update username")
+		}
+		// Redeclare u variable
+		u = user
+		redirectURL = req.WalletRequest.RedirectURL
+	case "email":
+		// Check no user with email exist
+		user, err := users.Email(req.EmailRequest.Email)
+		if err != nil && errors.Is(sql.ErrNoRows, err) {
+			commonAddress := common.HexToAddress("")
+			u, err = users.UserCreator("", "", username, req.EmailRequest.Email, "", "", "", "", "", "", commonAddress, req.EmailRequest.Password)
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("unable to create user with email and password")
+				return http.StatusInternalServerError, terror.Error(err, "Failed to create user with email and password.")
+			}
+		} else if user != nil {
+			err := fmt.Errorf("user already exist")
+			return http.StatusBadRequest, terror.Error(err, "Failed to signup with email. User already exists.")
+		}
+		redirectURL = req.EmailRequest.RedirectURL
+	case "facebook":
+		// Check user facebook exist
+		facebookDetails, err := api.FacebookToken(req.FacebookRequest.FacebookToken)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("user provided invalid facebook token")
+			return http.StatusBadRequest, terror.Error(err, "Invalid facebook token provided.")
+		}
+		user, err := users.FacebookID(facebookDetails.FacebookID)
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err, "Failed to get user with facebook account during signup.")
+		}
+		// Update username
+		user.Username = username
+		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to update username")
+			err := fmt.Errorf("User does not exist")
+			return http.StatusInternalServerError, terror.Error(err, "Unable to update username")
+		}
+		// Redeclare u variable
+		u, err = types.UserFromBoil(user)
+		if err != nil {
+			err := fmt.Errorf("unable to get user from boil")
+			return http.StatusInternalServerError, terror.Error(err, "Unable to convert user response")
+		}
+		redirectURL = req.FacebookRequest.RedirectURL
+	case "google":
+		googleDetails, err := api.GoogleToken(req.GoogleRequest.GoogleToken)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("user provided invalid google token")
+			return http.StatusBadRequest, terror.Error(err, "Invalid google token provided.")
+		}
+		// Check google id exist
+		user, err := users.GoogleID(googleDetails.GoogleID)
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err, "Failed to get user with google account during signup.")
+		}
+		// Update username
+		user.Username = username
+		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to update username")
+			err := fmt.Errorf("User does not exist")
+			return http.StatusInternalServerError, terror.Error(err, "Failed to update username during signup.")
+		}
+		// Redeclare u variable
+		u, err = types.UserFromBoil(user)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Failed to convert user response type.")
+		}
+		redirectURL = req.GoogleRequest.RedirectURL
+	case "twitter":
+		// Twitter Token will BE JWT
+		userID, err := api.ReadUserIDJWT(req.TwitterRequest.TwitterToken)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to read user jwt")
+			return http.StatusBadRequest, terror.Error(err, "Invalid twitter token provided.")
+		}
+
+		user, err := users.ID(userID)
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err, "Unable to get user during signup with twitter.")
+		}
+		// Update username
+		user.Username = username
+		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to update username")
+			return http.StatusInternalServerError, terror.Error(err, "Unable to update username during signup.")
+		}
+		// Redeclare u variable
+		u = user
+		redirectURL = req.TwitterRequest.RedirectURL
+	}
+
+	if u == nil {
+		passlog.L.Error().Err(err).Msg("unable to create user, no user passed through")
+		return http.StatusInternalServerError, terror.Error(err, "Unable to update username during signup.")
+	}
+
+	// Login
+	if redirectURL == "" {
+		loginReq := &FingerprintTokenRequest{
+			User:        &u.User,
+			Fingerprint: req.Fingerprint,
+			RedirectURL: redirectURL,
+		}
+
+		err = api.FingerprintAndIssueToken(w, r, loginReq)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Unable to issue a token for login.")
+		}
 	} else {
-		// New user
-		user.User.Verified = true
-		_, err := user.User.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Verified))
+		b, err := json.Marshal(u)
 		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to set user as verified")
-			return http.StatusBadRequest, err
+			passlog.L.Error().Err(err).Msg("unable to encode response to json")
+			return http.StatusInternalServerError, terror.Error(err, "Unable to decode response to user.")
 		}
-		ws.PublishMessage("/user/"+user.ID, HubKeyUser, user)
+		_, err = w.Write(b)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to write response to user")
+			return http.StatusInternalServerError, terror.Error(err, "Unable to write response to user.")
+		}
 	}
+	return http.StatusCreated, nil
 
-	b, _ := json.Marshal(user)
-	_, _ = w.Write(b)
-
-	return http.StatusOK, nil
 }
 
-func (api *API) UserFromToken(w http.ResponseWriter, r *http.Request, tokenBase64 string) (string, string, error) {
-	fmt.Println(tokenBase64)
+// Get user from jwt token
+func (api *API) UserEmailFromToken(w http.ResponseWriter, r *http.Request, tokenBase64 string) (string, string, error) {
+	errMsg := "Unable to create token for user request."
 	tokenStr, err := base64.StdEncoding.DecodeString(tokenBase64)
 	if err != nil {
-		return "", "", err
+		return "", "", terror.Error(err, errMsg)
 	}
 
 	// Decode token user with new email
 	token, err := tokens.ReadJWT(tokenStr, true, api.TokenEncryptionKey)
 	if err != nil {
-		return "", "", err
+		return "", "", terror.Error(err, errMsg)
 	}
 
 	uID, ok := token.Get("user-id")
 	if !ok {
 		passlog.L.Error().Err(err).Msg("unable to get user id from token")
-		return "", "", fmt.Errorf("invalid token found")
+		return "", "", terror.Error(fmt.Errorf("Invalid token found"), errMsg)
 	}
 	email, ok := token.Get(openid.EmailKey)
 	if !ok {
 		passlog.L.Error().Err(err).Msg("unable to get email from token")
-		return "", "", fmt.Errorf("invalid token provided")
+		return "", "", terror.Error(fmt.Errorf("Invalid token provided"), errMsg)
 	}
 
 	newEmail := email.(string)
@@ -484,25 +764,73 @@ func (api *API) UserFromToken(w http.ResponseWriter, r *http.Request, tokenBase6
 	return userID, newEmail, nil
 }
 
+// Get user from jwt token
+func (api *API) UserFromToken(tokenBase64 string) (*types.User, error) {
+	errMsg := "Unable to process token."
+	tokenStr, err := base64.StdEncoding.DecodeString(tokenBase64)
+	if err != nil {
+		return nil, terror.Error(err, errMsg)
+	}
+
+	// Decode token user with new email
+	token, err := tokens.ReadJWT(tokenStr, true, api.TokenEncryptionKey)
+	if err != nil {
+		return nil, terror.Error(err, errMsg)
+	}
+
+	uID, ok := token.Get("user-id")
+	if !ok {
+		passlog.L.Error().Err(err).Msg("unable to get user id from token")
+		return nil, terror.Error(fmt.Errorf("Invalid token found"), errMsg)
+	}
+
+	userID := uID.(string)
+	user, err := users.ID(userID)
+	if err != nil {
+		return nil, terror.Error(err, errMsg)
+	}
+
+	return user, nil
+}
+
+// Handler for EmailLogin
 func (api *API) EmailLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &EmailLoginRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Unable to decode user request.")
 	}
 
 	err = api.EmailLogin(req, w, r)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Invalid user email or password. Please try again.")
 	}
 
 	return http.StatusOK, nil
 }
+
+// Handles email login with password
 func (api *API) EmailLogin(req *EmailLoginRequest, w http.ResponseWriter, r *http.Request) error {
 	user, err := users.EmailPassword(req.Email, req.Password)
 	if err != nil {
-		return err
+		return terror.Error(err, "Invalid user email or password.")
 	}
+
+	// If external or new user signup
+	if req.RedirectURL != "" {
+		b, err := json.Marshal(req)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to encode response to json")
+			return terror.Error(err, "Unable to encode response.")
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to write response to user")
+			return terror.Error(err, "Unable to write response back to user.")
+		}
+		return nil
+	}
+
 	loginReq := &FingerprintTokenRequest{
 		User:        &user.User,
 		RedirectURL: req.RedirectURL,
@@ -511,147 +839,162 @@ func (api *API) EmailLogin(req *EmailLoginRequest, w http.ResponseWriter, r *htt
 	}
 	err = api.FingerprintAndIssueToken(w, r, loginReq)
 	if err != nil {
-		return err
+		return terror.Error(err, "Unable to issue a login token to user.")
 	}
 	return nil
 }
 
+type VerifyCodeRequest struct {
+	Token string `json:"token"`
+	Code  string `json:"code"`
+}
+
+// Handles code to be verified from jwt token
+func (api *API) VerifyCodeHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &VerifyCodeRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Unable to decode request.")
+	}
+	code, err := api.ReadCodeJWT(req.Token)
+	if err != nil {
+		err := fmt.Errorf("fail to read verification code")
+		passlog.L.Error().Err(err).Msg(err.Error())
+		return http.StatusBadRequest, terror.Error(err, "Invalid token provided.")
+	}
+	success := false
+	if code == req.Code {
+		success = true
+	} else {
+		err := fmt.Errorf("verify code does not match")
+		passlog.L.Error().Err(err).Msg(err.Error())
+		return http.StatusBadRequest, terror.Error(err, "Code does not match.")
+	}
+	resp := &struct {
+		Success bool `json:"success"`
+	}{
+		Success: success,
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Unable to decode response.")
+	}
+	httpStatus, err := w.Write(b)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Unable to write response back to user.")
+	}
+	return httpStatus, nil
+
+}
+
+// Handles forgot password and verify email provided exist
 func (api *API) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &ForgotPasswordRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Unable to decode request.")
 	}
 
 	user, err := users.Email(req.Email)
 	if err != nil {
-		return http.StatusBadRequest, fmt.Errorf("no user found with email: %q", req.Email)
+		return http.StatusBadRequest, terror.Error(err, "User with email does not exist.")
 	}
-	user, tokenID, token, err := api.ResetPasswordToken(&TokenConfig{
-		Encrypted: true,
-		Key:       api.TokenEncryptionKey,
-		Device:    r.UserAgent(),
-		Action:    "forgot",
-		User:      &user.User,
-	})
+	token, err := api.OneTimeToken(user.ID)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Unable to generate a forgot password link.")
 	}
 
-	err = api.Mailer.SendForgotPasswordEmail(context.Background(), user, token, tokenID)
+	err = api.Mailer.SendForgotPasswordEmail(context.Background(), user, token)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Unable to send email to user.")
 
 	}
 	resp := &ForgotPasswordResponse{Message: "Success! An email has been sent to recover your account."}
 
 	b, err := json.Marshal(resp.Message)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Unable to decode response back to user.")
 	}
 	httpStatus, err := w.Write(b)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Unable to write response back to user.")
 	}
 	return httpStatus, nil
 
 }
 
+// Handles resetting password from jwt token
 func (api *API) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &PasswordUpdateRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Unable to decode user request.")
 	}
 
-	tokenStr, err := base64.StdEncoding.DecodeString(req.Token)
+	userID, err := api.ReadUserIDJWT(req.Token)
 	if err != nil {
-		return http.StatusBadRequest, err
-	}
-	// Decode token user with new email
-	token, err := tokens.ReadJWT(tokenStr, true, api.TokenEncryptionKey)
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	uID, _ := token.Get("user-id")
-	userID, ok := uID.(string)
-
-	if !ok {
-		return http.StatusBadRequest, fmt.Errorf("Invalid token provided")
+		passlog.L.Error().Err(err).Msg("unable to read user jwt")
+		return http.StatusBadRequest, terror.Error(err, "Unable to get user from token.")
 	}
 	user, err := users.ID(userID)
 	if err != nil {
-		return http.StatusBadRequest, err
-	}
-	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Unable to find user.")
 	}
 	return passwordReset(api, w, r, req, &user.User)
-
 }
 
-func (api *API) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+// Handles changes password with current password
+func (api *API) ChangePasswordHandler(w http.ResponseWriter, r *http.Request, user *boiler.User) (int, error) {
 	req := &PasswordUpdateRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Unable to decode user request.")
 	}
 
-	userPassword, err := boiler.FindPasswordHash(passdb.StdConn, req.UserID)
+	userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "User does not have any existing passwords.")
 	}
 
 	// Check if current password is correct
 	err = pCrypto.ComparePassword(userPassword.PasswordHash, req.Password)
 	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	// Get user
-	user, err := boiler.Users(
-		boiler.UserWhere.ID.EQ(req.UserID),
-		qm.Load(qm.Rels(boiler.UserRels.Faction)),
-	).One(passdb.StdConn)
-	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Password does not match current password.")
 	}
 
 	return passwordReset(api, w, r, req, user)
-
 }
 
-func (api *API) NewPasswordHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+// Setup new password for user thats logged in
+func (api *API) NewPasswordHandler(w http.ResponseWriter, r *http.Request, user *boiler.User) (int, error) {
 	req := &PasswordUpdateRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	// Find user by id
-	user, err := boiler.FindUser(passdb.StdConn, req.UserID)
-	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Unable to decode request from user.")
 	}
 
 	// Check if user has password already
-	passwordExist, err := boiler.PasswordHashExists(passdb.StdConn, req.UserID)
+	passwordExist, err := boiler.PasswordHashExists(passdb.StdConn, user.ID)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusInternalServerError, terror.Error(err, "Failed create new password.")
 	}
+
 	if passwordExist {
-		return http.StatusBadRequest, fmt.Errorf("user already has a password")
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("User already has a password"), "Failed create new password. User already has a password.")
 	}
 
 	return passwordReset(api, w, r, req, user)
 }
 
+// Handles password reset/update
 func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *PasswordUpdateRequest, user *boiler.User) (int, error) {
+	if user == nil {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("no user provided"), "Unable to process user request.")
+	}
 	// Check if new password is valid
 	err := helpers.IsValidPassword(req.NewPassword)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Invalid password provided. Please try again.")
 	}
 	// Setup user activity tracking
 	oldUser := *user
@@ -668,7 +1011,7 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 		err = newPassword.Insert(passdb.StdConn, boil.Infer())
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to set new password for user")
-			return http.StatusBadRequest, err
+			return http.StatusInternalServerError, terror.Error(err, "Unable to register a password to user.")
 		}
 	} else {
 		// Update password
@@ -676,7 +1019,7 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 		_, err = userPassword.Update(passdb.StdConn, boil.Whitelist(boiler.PasswordHashColumns.PasswordHash))
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to update user password")
-			return http.StatusBadRequest, err
+			return http.StatusInternalServerError, terror.Error(err, "Unable to user password.")
 		}
 	}
 	api.RecordUserActivity(context.Background(),
@@ -699,7 +1042,7 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 	})
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to delete all issued token for password reset")
-		return http.StatusBadRequest, err
+		return http.StatusInternalServerError, terror.Error(err, "Unable to delete all current sessions")
 	}
 
 	// Generate new token and login
@@ -711,7 +1054,7 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 	}
 	err = api.FingerprintAndIssueToken(w, r, loginReq)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusInternalServerError, terror.Error(err, "Unable to issue a new login token.")
 	}
 	// Send message to users to logout
 	URI := fmt.Sprintf("/user/%s", user.ID)
@@ -721,33 +1064,82 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 	return http.StatusCreated, nil
 }
 
-func (api *API) WalletLoginHandler(w http.ResponseWriter, r *http.Request) {
+// Handles wallet login
+func (api *API) WalletLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	errMsg := "Failed to authenticate user with wallet."
 	req := &WalletLoginRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to decode wallet login request")
-		return
+		return http.StatusBadRequest, terror.Error(err, errMsg)
 	}
 	err = api.WalletLogin(req, w, r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return http.StatusBadRequest, terror.Error(err, errMsg)
 	}
+
+	return http.StatusCreated, nil
 
 }
 
+// Check if new user, then get nonce from request otherwise get from user nonce in db.
 func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *http.Request) error {
+	newUser := false
 	// Take public address Hex to address(Make it a checksum mixed case address) convert back to Hex for string of checksum
 	commonAddr := common.HexToAddress(req.PublicAddress)
 
 	// Check if there are any existing users associated with the public address
 	user, err := users.PublicAddress(commonAddr)
-	if err != nil {
-		return fmt.Errorf("public address fail: %w", err)
+
+	if err != nil && errors.Is(sql.ErrNoRows, err) {
+		newUser = true
+		// Signup user but dont log them before username is provided
+		username := commonAddr.Hex()[0:10]
+		// If user does not exist, create new user with their username set to their MetaMask public address
+		user, err = users.UserCreator("", "", helpers.TrimUsername(username), "", "", "", "", "", "", "", commonAddr, "")
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("user creation failed")
+			return terror.Error(err, "Unable to create user with wallet.")
+		}
+
+		// update nonce value
+		user.Nonce = null.StringFrom(req.Nonce)
+		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Nonce))
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("nonce update failed")
+			return terror.Error(err, "Unable to update user nonce.")
+		}
+	} else if err != nil {
+		return terror.Error(err, "Failed to check if user with wallet address exists.")
 	}
+
 	err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
 	if err != nil {
-		return err
+		passlog.L.Error().Err(err).Msg("unable to verify signature")
+		return terror.Error(err, "Invalid signature provided.")
+	}
+
+	// If external or new user signup
+	if req.RedirectURL != "" || newUser {
+		resp := struct {
+			WalletLoginRequest
+			NewUser bool `json:"new_user"`
+		}{
+			WalletLoginRequest: *req,
+			NewUser:            newUser,
+		}
+
+		b, err := json.Marshal(resp)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to encode response to json")
+			return terror.Error(err, "Unable to decode response to user.")
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to write response to user")
+			return terror.Error(err, "Unable to write response to user.")
+		}
+		return nil
 	}
 
 	loginReq := &FingerprintTokenRequest{
@@ -758,11 +1150,11 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 	}
 	err = api.FingerprintAndIssueToken(w, r, loginReq)
 	if err != nil {
-		return err
+		return terror.Error(err, "Unable to issue a login token to user")
 	}
 
 	if user.DeletedAt.Valid {
-		return fmt.Errorf("user does not exist")
+		return fmt.Errorf("User does not exist")
 	}
 
 	return nil
@@ -777,26 +1169,32 @@ func (api *API) DoFingerprintUpsert(fingerprint users.Fingerprint, userID string
 	return nil
 }
 
+// Handler for GoogleLogin
 func (api *API) GoogleLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &GoogleLoginRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to decode google login request")
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Unable to decode user request.")
 	}
 	err = api.GoogleLogin(req, w, r)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to google login")
-		return http.StatusBadRequest, terror.Error(err, "unable to google auth")
+		return http.StatusBadRequest, terror.Error(err, "Failed to authenticate login with Google.")
 	}
 	return http.StatusCreated, nil
 }
 
+// Handles google login and signup
 func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *http.Request) error {
-	L := passlog.L.With().Str("func", "GoogleLogin").Logger()
-	L.Info().Msg("hit handler")
+	newUser := false
 	// Check if there are any existing users associated with the email address
-	user, err := users.GoogleID(req.GoogleID)
+	googleDetails, err := api.GoogleToken(req.GoogleToken)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("user provided invalid google token")
+		return terror.Error(err, "Invalid google token provided.")
+	}
+	user, err := users.GoogleID(googleDetails.GoogleID)
 
 	loginReq := &FingerprintTokenRequest{
 		User:        user,
@@ -806,99 +1204,102 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 	}
 
 	if err != nil && errors.Is(sql.ErrNoRows, err) {
-		L.Info().Msg("hit if err != nil && errors.Is(sql.ErrNoRows, err)")
 		// Check if user gmail already exist
-		if req.Email == "" {
-			noEmailErr := fmt.Errorf("no email provided for google auth")
+		if googleDetails.Email == "" {
+			noEmailErr := fmt.Errorf("Missing google email.")
 			passlog.L.Error().Err(noEmailErr).Msg("no email provided for google auth")
-			return noEmailErr
+			return terror.Error(noEmailErr)
 		}
 
-		user, _ = boiler.Users(boiler.UserWhere.Email.EQ(null.StringFrom(req.Email))).One(passdb.StdConn)
+		user, _ = boiler.Users(boiler.UserWhere.Email.EQ(null.StringFrom(googleDetails.Email))).One(passdb.StdConn)
 		if user != nil {
-			user.GoogleID = null.StringFrom(req.GoogleID)
+			user.GoogleID = null.StringFrom(googleDetails.GoogleID)
 			user.Verified = true
 			loginReq.User = user
 
 			_, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.GoogleID, boiler.UserColumns.Verified))
 			if err != nil {
 				passlog.L.Error().Err(err).Msg("unable to add google id to user with existing gmail")
-				return err
+				return terror.Error(err, "Failed to merge google account with existing user with same gmail.")
 			}
 		} else {
+			newUser = true
+			// Signup user with standard username
 			commonAddress := common.HexToAddress("")
-			username := fmt.Sprintf(("%s%d"), req.Username, rand.Intn(1000))
-			u, err := users.UserCreator("", "", username, req.Email, "", req.GoogleID, "", "", "", "", commonAddress, "")
+			_, err := users.UserCreator("", "", googleDetails.Username, googleDetails.Email, "", googleDetails.GoogleID, "", "", "", "", commonAddress, "")
 			if err != nil {
-				return err
+				passlog.L.Error().Err(err).Msg("unable to create google user")
+				return terror.Error(err, "Failed to create new user with google account")
 			}
-			loginReq.User = &u.User
+
 		}
 
+	} else if err != nil {
+		return terror.Error(err, "Unable to update or create user with google account")
+	}
+
+	// If external or new user signup
+	if req.RedirectURL != "" || newUser {
+		resp := struct {
+			GoogleLoginRequest
+			NewUser bool `json:"new_user"`
+		}{
+			GoogleLoginRequest: *req,
+			NewUser:            newUser,
+		}
+
+		b, err := json.Marshal(resp)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to encode response to json")
+			return terror.Error(err, "Unable to decode response to user.")
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to write response to user")
+			return terror.Error(err, "Unable to write response to user")
+		}
+		return nil
 	}
 
 	if loginReq.User != nil {
-		L.Info().Msg("hit FingerprintAndIssueToken handler")
 		return api.FingerprintAndIssueToken(w, r, loginReq)
 	}
-	L.Info().Msg("end handler")
-	L.Error().Err(err).Msg("invalid google credentials provided")
-	return err
+	passlog.L.Warn().Err(err).Msg("invalid google credentials provided")
+	return terror.Error(err, "Unable to authenticate user with google.")
 }
 
+// Handles two factor authentication
 func (api *API) TFAVerifyHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &TFAVerifyRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to decode 2fa verify request")
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Unable to decode user request.")
 	}
 
 	// Get user from token
-	err = api.TFAVerify(req, w, r)
+	user, err := api.TFAVerify(req, w, r)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err)
 	}
 
-	return http.StatusOK, nil
-}
-
-func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.Request) error {
-	// Get user from token
-	// OR verify passcode from user id
-	// If user is logged in, user id is passed from request
-	// If user is not logged in, token is passed from request
-	userID := req.UserID
-	if userID == "" {
-		uid, _, err := api.UserFromToken(w, r, req.Token)
+	// If external forward request to external handler
+	if req.RedirectURL != "" {
+		b, err := json.Marshal(req)
 		if err != nil {
-			return err
+			passlog.L.Error().Err(err).Msg("unable to encode response to json")
+			return http.StatusBadRequest, terror.Error(err, "Unable to decode response to user.")
 		}
-		userID = uid
-	}
-
-	user, err := users.ID(userID)
-	if err != nil {
-		return err
-	}
-	// Check if there is a passcode and verify it
-	if req.Passcode != "" {
-		err := users.VerifyTFA(user.TwoFactorAuthenticationSecret, req.Passcode)
+		_, err = w.Write(b)
 		if err != nil {
-			return err
+			passlog.L.Error().Err(err).Msg("unable to write response to user")
+			return http.StatusBadRequest, terror.Error(err, "Unable to write response to user.")
 		}
-	} else if req.RecoveryCode != "" {
-		// Check if there is a recovery code and verify it
-		err := users.VerifyTFARecovery(req.RecoveryCode)
-		if err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("code is missing")
 	}
 
 	// Issue login token to user
 	// Only if jwt token was provided
+	// If user already logged in then no need for token
 	if req.Token != "" {
 		loginReq := &FingerprintTokenRequest{
 			User:        &user.User,
@@ -909,54 +1310,131 @@ func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.
 		}
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
-			return err
+			return http.StatusBadRequest, terror.Error(err, "Unable to issue login token to user.")
 		}
 	} else {
 		b, err := json.Marshal(user)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to convert user to json 2fa response")
-			return err
+			return http.StatusBadRequest, terror.Error(err, "Unable to decode response to user.")
 		}
 		_, err = w.Write(b)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to write 2fa response to user")
+			return http.StatusBadRequest, terror.Error(err, "Unable to write response to user.")
 		}
 	}
-
-	return nil
+	return http.StatusOK, nil
 }
 
+// Check two factor authentication pass code or recovery code
+func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.Request) (*types.User, error) {
+	// Get user from token
+	// If user is logged in, user is from cookie or query
+	// If user is not logged in, token is passed from request
+
+	user, _, _ := GetUserFromToken(api, r)
+
+	if user == nil && req.Token != "" {
+		u, err := api.UserFromToken(req.Token)
+		if err != nil || u == nil {
+			return nil, terror.Error(err, "Invalid token unable to get user.")
+		}
+		user = &u.User
+	}
+
+	if user == nil {
+		err := fmt.Errorf("no token or cookie provided to verify tfa")
+		passlog.L.Error().Err(err).Msg("unable to write response to user")
+		return nil, terror.Error(err, "User is missing from request.")
+	}
+
+	// Check if there is a passcode and verify it
+	if req.Passcode != "" {
+		err := users.VerifyTFA(user.TwoFactorAuthenticationSecret, req.Passcode)
+		if err != nil {
+			return nil, terror.Error(err, "Incorrect passcode provided. Please try again.")
+		}
+	} else if req.RecoveryCode != "" {
+		// Check if there is a recovery code and verify it
+		err := users.VerifyTFARecovery(user.ID, req.RecoveryCode)
+		if err != nil {
+			errMsg := "Invalid recovery code provided."
+			passlog.L.Error().Err(err).Msg(errMsg)
+			return nil, terror.Error(err, errMsg)
+		}
+	} else {
+		return nil, fmt.Errorf("Passcode or verify code are missing.")
+	}
+
+	u, err := types.UserFromBoil(user)
+	if err != nil {
+		return nil, terror.Error(err, "Unable to get user type as response.")
+	}
+	return u, nil
+
+}
+
+// Handles facebook login and signup using facebooklogin
 func (api *API) FacebookLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &FacebookLoginRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to decode facebook login request")
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, "Unable to decode request.")
 	}
 
 	err = api.FacebookLogin(req, w, r)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err)
 	}
 	return http.StatusOK, nil
 }
 
+// Login user using facebook access token
 func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, r *http.Request) error {
-	// Check if there are any existing users associated with the email address
-	user, err := users.FacebookID(req.FacebookID)
-
-	if err != nil && errors.Is(sql.ErrNoRows, err) {
-		commonAddress := common.HexToAddress("")
-		username := fmt.Sprintf(("%s%d"), req.Name, rand.Intn(1000))
-		u, err := users.UserCreator("", "", username, "", req.FacebookID, "", "", "", "", "", commonAddress, "")
-		if err != nil {
-			return err
-		}
-		user = &u.User
-	} else if err != nil {
-		passlog.L.Error().Err(err).Msg("unable to read facebook ID from user")
-		return err
+	newUser := false
+	facebookDetails, err := api.FacebookToken(req.FacebookToken)
+	if err != nil {
+		return terror.Error(err, "Invalid facebook token provided.")
 	}
+	// Check if there are any existing users associated with the email address
+	user, err := users.FacebookID(facebookDetails.FacebookID)
+	if err != nil && errors.Is(sql.ErrNoRows, err) {
+		newUser = true
+		// Create user with default username
+		commonAddress := common.HexToAddress("")
+		_, err = users.UserCreator("", "", facebookDetails.Name, "", facebookDetails.FacebookID, "", "", "", "", "", commonAddress, "")
+		if err != nil {
+			return terror.Error(err, "Failed to create new user with facebook.")
+		}
+
+	} else if err != nil {
+		return terror.Error(err, "Unable to authenticate user with Facebook.")
+	}
+	// If external or new user signup
+	if req.RedirectURL != "" || newUser {
+		resp := struct {
+			FacebookLoginRequest
+			NewUser bool `json:"new_user"`
+		}{
+			FacebookLoginRequest: *req,
+			NewUser:              newUser,
+		}
+
+		b, err := json.Marshal(resp)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to encode response to json")
+			return terror.Error(err, "Unable to decode response to user.")
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to write response to user")
+			return terror.Error(err, "Unable to write response to user.")
+		}
+		return nil
+	}
+
 	loginReq := &FingerprintTokenRequest{
 		User:        user,
 		RedirectURL: req.RedirectURL,
@@ -965,7 +1443,7 @@ func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, 
 	}
 	err = api.FingerprintAndIssueToken(w, r, loginReq)
 
-	return err
+	return terror.Error(err, "Unable to issue login token.")
 }
 
 type TwitterAuthResponse struct {
@@ -977,70 +1455,52 @@ type AddTwitterResponse struct {
 	User  *types.User `json:"user"`
 }
 
-// The TwitterAuth endpoint kicks off the OAuth 1.0a flow
+// The TwitterAuth endpoint kicks off the OAuth 1.0a flow with signup/login/add connection
 func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error) {
+	errMsg := "Failed to authenticate user with twitter."
 	oauthVerifier := r.URL.Query().Get("oauth_verifier")
 	oauthCallback := r.URL.Query().Get("oauth_callback")
 	oauthToken := r.URL.Query().Get("oauth_token")
 	redirect := r.URL.Query().Get("redirect")
+	redirectURL := r.URL.Query().Get("redirectURL")
 	addTwitter := r.URL.Query().Get("add")
 	tenant := r.URL.Query().Get("tenant")
 
 	if redirect == "" && oauthVerifier != "" {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("No redirect provided"))
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("Missing redirect and verifier."), errMsg)
 	}
 
 	if oauthVerifier != "" {
 		params := url.Values{}
 		params.Set("oauth_token", oauthToken)
 		params.Set("oauth_verifier", oauthVerifier)
-		req, err := http.NewRequest("GET", fmt.Sprintf("https://api.twitter.com/oauth/access_token?%s", params.Encode()), nil)
+		twitterDetails, err := api.TwitterToken(params.Encode())
 		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to get twitter access token")
-			return http.StatusInternalServerError, terror.Error(err)
+			return http.StatusBadRequest, terror.Error(err, errMsg)
 		}
-		res, err := http.DefaultClient.Do(req)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to request for twitter access token")
-			return http.StatusInternalServerError, terror.Error(err)
-		}
-		body, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to get body from twitter response")
-			return http.StatusInternalServerError, terror.Error(err)
-		}
-		resp := &AuthTwitterResponse{}
-		values := strings.Split(string(body), "&")
-		for _, v := range values {
-			pair := strings.Split(v, "=")
-			switch pair[0] {
-			case "oauth_token":
-				resp.OauthToken = pair[1]
-			case "oauth_token_secret":
-				resp.OauthTokenSecret = pair[1]
-			case "user_id":
-				resp.UserID = pair[1]
-			case "screen_name":
-				resp.ScreenName = pair[1]
-			}
-		}
-
 		// Check if user exist
-		user, err := users.TwitterID(resp.UserID)
-		if err != nil && errors.Is(sql.ErrNoRows, err) {
-			commonAddress := common.HexToAddress("")
-			u, err := users.UserCreator("", "", resp.ScreenName, "", "", "", "", resp.UserID, "", "", commonAddress, "")
-			if err != nil {
-				return http.StatusBadRequest, err
-			}
-			user = &u.User
-		}
-
+		user, err := users.TwitterID(twitterDetails.TwitterID)
 		// Add twitter user handler
 		if addTwitter != "" {
-			return api.AddTwitterUser(w, r, redirect, user, resp, addTwitter)
+			return api.AddTwitterUser(w, r, redirect, user, twitterDetails.TwitterID, addTwitter)
 		}
 
+		if err != nil && errors.Is(sql.ErrNoRows, err) {
+			// Create user with standard name
+			commonAddress := common.HexToAddress("")
+			u, err := users.UserCreator("", "", twitterDetails.ScreenName, "", "", "", "", twitterDetails.TwitterID, "", "", commonAddress, "")
+			if err != nil {
+				return http.StatusInternalServerError, terror.Error(err, "Failed to create user with twitter.")
+			}
+
+			// Send user ID to user using JWT and signup handler will verify
+			jwtToken, err := api.OneTimeToken(u.ID)
+			if err != nil {
+				return http.StatusInternalServerError, terror.Error(err, errMsg)
+			}
+			http.Redirect(w, r, fmt.Sprintf("%s?token=%s&redirectURL=%s", redirect, jwtToken, redirectURL), http.StatusSeeOther)
+
+		}
 		loginReq := &FingerprintTokenRequest{
 			User:        user,
 			RedirectURL: redirect,
@@ -1049,9 +1509,9 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 		}
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
-			return http.StatusBadRequest, err
+			return http.StatusBadRequest, terror.Error(err, errMsg)
 		}
-		http.Redirect(w, r, redirect, http.StatusSeeOther)
+		http.Redirect(w, r, fmt.Sprintf("%s?login=ok", redirect), http.StatusSeeOther)
 
 		return http.StatusOK, nil
 	}
@@ -1066,7 +1526,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 	requestToken, _, err := oauthConfig.RequestToken()
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to get oauth token from")
-		return http.StatusInternalServerError, terror.Error(err)
+		return http.StatusInternalServerError, terror.Error(err, errMsg)
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("https://api.twitter.com/oauth/authorize?oauth_token=%s", requestToken), http.StatusSeeOther)
@@ -1074,26 +1534,24 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 }
 
 type AuthTwitterResponse struct {
-	OauthToken       string
-	OauthTokenSecret string
-	UserID           string
-	ScreenName       string
+	Error *string
 }
 
-func (api *API) AddTwitterUser(w http.ResponseWriter, r *http.Request, redirect string, user *boiler.User, resp *AuthTwitterResponse, addTwitter string) (int, error) {
+func (api *API) AddTwitterUser(w http.ResponseWriter, r *http.Request, redirect string, userWithTwitterID *boiler.User, twitterID string, userID string) (int, error) {
 	payload := &AddTwitterResponse{}
-	URI := fmt.Sprintf("/user/%s", addTwitter)
+	URI := fmt.Sprintf("/user/%s", userID)
+
 	// Redirect to loading page
 	http.Redirect(w, r, redirect, http.StatusSeeOther)
 
-	if user != nil {
+	if userWithTwitterID != nil {
 		payload.Error = "Twitter account already registered with a different user"
 		ws.PublishMessage(URI, HubKeyUserAddTwitter, payload)
 		return http.StatusOK, nil
 
 	} else {
 		// Check if user exist
-		user, err := users.ID(addTwitter)
+		user, err := users.ID(userID)
 		if err != nil {
 			payload.Error = "User ID does not exist"
 			ws.PublishMessage(URI, HubKeyUserAddTwitter, payload)
@@ -1103,7 +1561,7 @@ func (api *API) AddTwitterUser(w http.ResponseWriter, r *http.Request, redirect 
 		var oldUser types.User = *user
 
 		// Update user's Twitter ID
-		user.TwitterID = null.StringFrom(resp.UserID)
+		user.TwitterID = null.StringFrom(twitterID)
 		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.TwitterID))
 		if err != nil {
 			payload.Error = "Unable to update user"
@@ -1145,15 +1603,16 @@ type FingerprintTokenRequest struct {
 func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request, req *FingerprintTokenRequest) error {
 	// Check if tenant is provided for external 2FA logins except for twitter since redirect is always provided
 	if req.User.TwoFactorAuthenticationIsSet && req.RedirectURL != "" && !req.Pass2FA && req.Tenant == "" && !req.IsTwitter {
-		err := fmt.Errorf("tenant missing for external 2fa login")
+		err := fmt.Errorf("Tenant missing for external 2fa login")
 		passlog.L.Error().Err(err).Msg(err.Error())
-		return err
+		return terror.Error(err, "Missing external host from request.")
 	}
 	if req.User == nil {
 		err := fmt.Errorf("user does not exist in issuing token")
 		passlog.L.Error().Err(err).Msg(err.Error())
-		return err
+		return terror.Error(err, "Invalid request, unable to get user details.")
 	}
+
 	// Dont create issue token and tell front-end to start 2FA verification with JWT
 	if req.User.TwoFactorAuthenticationIsSet && !req.Pass2FA {
 		// Generate jwt with user id
@@ -1167,19 +1626,24 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 
 		_, _, token, err := token(api, config, false, api.TokenExpirationDays)
 		if err != nil {
-			return err
+			return terror.Error(err, "Unable to generate a two-factor authentication token.")
 		}
 
 		origin := r.Header.Get("origin")
 
-		// IF redirect from Twitter Auth
+		// IF redirect is from Twitter Auth origin will be passport.xsyn.io/twitter-redirect
 		if origin == "" {
 			origin = strings.ReplaceAll(req.RedirectURL, "/twitter-redirect", "")
 		}
 
 		// Redirect to 2fa
 		if req.RedirectURL != "" {
-			http.Redirect(w, r, fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s&tenant=%s", origin, token, req.RedirectURL, req.Tenant), http.StatusSeeOther)
+			rURL := fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s&tenant=%s", origin, token, req.RedirectURL, req.Tenant)
+			if req.User.TwitterID.String != "" {
+				// add query tfa=ok for twitter message
+				rURL = fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s?tfa=ok&tenant=%s", origin, token, req.RedirectURL, req.Tenant)
+			}
+			http.Redirect(w, r, rURL, http.StatusSeeOther)
 			return nil
 		}
 
@@ -1187,13 +1651,14 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		b, err := json.Marshal(token)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
-			return err
+			return terror.Error(err, "Failed to decode token to user.")
 		}
 		_, err = w.Write(b)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to write response to user")
-			return err
+			return terror.Error(err, "Failed to write token to user.")
 		}
+
 		return nil
 	}
 
@@ -1201,7 +1666,7 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 	if req.Fingerprint != nil {
 		err := api.DoFingerprintUpsert(*req.Fingerprint, req.User.ID)
 		if err != nil {
-			return err
+			return terror.Error(err, "Failed to process user login.")
 		}
 	}
 	u, _, token, err := api.IssueToken(&TokenConfig{
@@ -1213,28 +1678,30 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 	})
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("failed to issue token")
-		return err
+		return terror.Error(err, "Failed to process user login.")
 	}
 	if req.User.DeletedAt.Valid {
-		return err
+		return terror.Error(fmt.Errorf("User was deleted but try to login."), "Failed to process user login.")
 	}
 	err = api.WriteCookie(w, r, token)
 	if err != nil {
-		return err
+		passlog.L.Error().Err(err).Msg("failed to write a cookie")
+		return terror.Error(err, "Failed to process user login.")
 	}
 
 	if req.RedirectURL == "" {
 		b, err := json.Marshal(u)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
-			return err
+			return terror.Error(err, "Failed to process user login.")
 		}
 		_, err = w.Write(b)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to write response to user")
-			return err
+			return terror.Error(err, "Failed to process user login.")
 		}
 	}
+
 	return nil
 }
 
@@ -1251,11 +1718,12 @@ type TokenConfig struct {
 
 var ErrNoUserInformation = errors.New("no user information provided to IssueToken()")
 
-func (api *API) OneTimeToken(userID string, userAgent string) *string {
+// For forget password or twitter signup flow
+func (api *API) OneTimeToken(userID string) (string, error) {
 	var err error
 	tokenID := uuid.Must(uuid.NewV4())
 
-	expires := time.Now().Add(time.Second * 60)
+	expires := time.Now().Add(time.Minute * 10)
 
 	// save user detail as jwt
 	jwt, sign, err := tokens.GenerateOneTimeJWT(
@@ -1263,31 +1731,44 @@ func (api *API) OneTimeToken(userID string, userAgent string) *string {
 		userID, expires)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to generate one time token")
-		return nil
+		return "", terror.Error(err, "Failed to create token.")
 	}
 
 	jwtSigned, err := sign(jwt, true, api.TokenEncryptionKey)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to sign jwt")
-		return nil
+		return "", terror.Error(err, "Failed to process token.")
 	}
 
 	token := base64.StdEncoding.EncodeToString(jwtSigned)
-
-	it := boiler.IssueToken{
-		ID:        tokenID.String(),
-		UserID:    userID,
-		UserAgent: userAgent,
-		ExpiresAt: null.TimeFrom(expires),
-	}
-	err = it.Insert(passdb.StdConn, boil.Infer())
-	if err != nil {
-		passlog.L.Error().Err(err).Msg("unable to insert one time token")
-		return nil
-	}
-
-	return &token
+	return token, nil
 }
+
+// For user verification
+func (api *API) OneTimeVerification() (string, error) {
+	var err error
+	tokenID := uuid.Must(uuid.NewV4())
+
+	expires := time.Now().Add(time.Minute * 10)
+
+	// save user detail as jwt
+	jwt, sign, err := tokens.GenerateVerifyCodeJWT(
+		tokenID, expires)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to generate one time token")
+		return "", terror.Error(err, "Failed to create token.")
+	}
+
+	jwtSigned, err := sign(jwt, true, api.TokenEncryptionKey)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to sign jwt")
+		return "", terror.Error(err, "Failed to process token.")
+	}
+
+	token := base64.StdEncoding.EncodeToString(jwtSigned)
+	return token, nil
+}
+
 func token(api *API, config *TokenConfig, isIssueToken bool, expireInDays int) (*types.User, uuid.UUID, string, error) {
 	var err error
 	errMsg := "There was a problem with your authentication, please check your details and try again."
@@ -1334,16 +1815,7 @@ func token(api *API, config *TokenConfig, isIssueToken bool, expireInDays int) (
 			return nil, uuid.Nil, "", terror.Error(err, "unable to save jwt")
 		}
 	}
-	passlog.L.Info().Interface("user", user).Str("tokenID", tokenID.String()).Interface("token", token).Msg("here4.7")
 	return user, tokenID, token, nil
-}
-
-func (api *API) ResetPasswordToken(config *TokenConfig) (*types.User, uuid.UUID, string, error) {
-	return token(api, config, false, api.TokenExpirationDays)
-}
-
-func (api *API) VerifyEmailToken(config *TokenConfig) (*types.User, uuid.UUID, string, error) {
-	return token(api, config, false, api.TokenExpirationDays)
 }
 
 func (api *API) IssueToken(config *TokenConfig) (*types.User, uuid.UUID, string, error) {
@@ -1351,16 +1823,17 @@ func (api *API) IssueToken(config *TokenConfig) (*types.User, uuid.UUID, string,
 }
 
 func (api *API) VerifySignature(signature string, nonce string, publicKey common.Address) error {
+	errMsg := "Unable to verify signature."
 	decodedSig, err := hexutil.Decode(signature)
 	if err != nil {
-		return err
+		return terror.Error(err, errMsg)
 	}
 
 	if decodedSig[64] == 0 || decodedSig[64] == 1 {
 		//https://ethereum.stackexchange.com/questions/102190/signature-signed-by-go-code-but-it-cant-verify-on-solidity
 		decodedSig[64] += 27
 	} else if decodedSig[64] != 27 && decodedSig[64] != 28 {
-		return terror.Error(fmt.Errorf("decode sig invalid %v", decodedSig[64]))
+		return terror.Error(fmt.Errorf("decode sig invalid %v", decodedSig[64]), errMsg)
 	}
 	decodedSig[64] -= 27
 
@@ -1370,12 +1843,12 @@ func (api *API) VerifySignature(signature string, nonce string, publicKey common
 	hash := crypto.Keccak256Hash([]byte(prefixedNonce))
 	recoveredPublicKey, err := crypto.Ecrecover(hash.Bytes(), decodedSig)
 	if err != nil {
-		return err
+		return terror.Error(err, errMsg)
 	}
 
 	secp256k1RecoveredPublicKey, err := crypto.UnmarshalPubkey(recoveredPublicKey)
 	if err != nil {
-		return err
+		return terror.Error(err, errMsg)
 	}
 
 	recoveredAddress := crypto.PubkeyToAddress(*secp256k1RecoveredPublicKey).Hex()
@@ -1420,20 +1893,23 @@ type GetNonceResponse struct {
 func (api *API) NewNonce(user *boiler.User) (string, error) {
 	newNonce := helpers.RandStringBytes(16)
 
-	user.Nonce = null.StringFrom(newNonce)
-	i, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Nonce))
-	if err != nil {
-		return "", err
-	}
+	if user != nil {
+		user.Nonce = null.StringFrom(newNonce)
+		i, err := user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Nonce))
+		if err != nil {
+			return "", terror.Error(fmt.Errorf("nonce could not be updated"), "Unable to process wallet login.")
+		}
 
-	if i == 0 {
-		return "", terror.Error(fmt.Errorf("nonce could not be updated"))
+		if i == 0 {
+			return "", terror.Error(fmt.Errorf("nonce could not be updated"), "Unable to process wallet login.")
+		}
 	}
 
 	return newNonce, nil
 }
 
 func (api *API) GetNonce(w http.ResponseWriter, r *http.Request) (int, error) {
+	errMsg := "Unable to process wallet connection."
 	publicAddress := r.URL.Query().Get("public-address")
 	userID := r.URL.Query().Get("user-id")
 
@@ -1445,23 +1921,18 @@ func (api *API) GetNonce(w http.ResponseWriter, r *http.Request) (int, error) {
 	if publicAddress != "" && common.IsHexAddress(publicAddress) {
 		// Take public address Hex to address(Make it a checksum mixed case address) convert back to Hex for string of checksum
 		commonAddr := common.HexToAddress(publicAddress)
-		user, err := users.PublicAddress(commonAddr)
-		if err != nil && errors.Is(sql.ErrNoRows, err) {
-			L.Info().Err(err).Msg("new user being created")
-			username := commonAddr.Hex()[0:10]
+		user, _ := users.PublicAddress(commonAddr)
 
-			// If user does not exist, create new user with their username set to their MetaMask public address
-			user, err = users.UserCreator("", "", helpers.TrimUsername(username), "", "", "", "", "", "", "", commonAddr, "")
-			if err != nil {
-				L.Error().Err(err).Msg("user creation failed")
-				return http.StatusInternalServerError, err
-			}
+		u := &boiler.User{}
+		if user == nil {
+			u = nil
+		} else {
+			u = &user.User
 		}
-
-		newNonce, err := api.NewNonce(&user.User)
+		newNonce, err := api.NewNonce(u)
 		if err != nil {
 			L.Error().Err(err).Msg("no nonce")
-			return http.StatusBadRequest, err
+			return http.StatusBadRequest, terror.Error(err, errMsg)
 		}
 
 		resp := &GetNonceResponse{
@@ -1471,19 +1942,19 @@ func (api *API) GetNonce(w http.ResponseWriter, r *http.Request) (int, error) {
 		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
 			L.Error().Err(err).Msg("json failed")
-			return http.StatusInternalServerError, err
+			return http.StatusInternalServerError, terror.Error(err, errMsg)
 		}
 		return http.StatusOK, nil
 	}
 
 	user, err := boiler.FindUser(passdb.StdConn, userID)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, errMsg)
 	}
 
 	newNonce, err := api.NewNonce(user)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, terror.Error(err, errMsg)
 	}
 
 	resp := &GetNonceResponse{
@@ -1492,7 +1963,7 @@ func (api *API) GetNonce(w http.ResponseWriter, r *http.Request) (int, error) {
 
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
-		return http.StatusInternalServerError, err
+		return http.StatusInternalServerError, terror.Error(err, errMsg)
 	}
 	return http.StatusOK, nil
 }
@@ -1512,10 +1983,11 @@ type TokenLoginResponse struct {
 }
 
 func (api *API) TokenAuth(req *TokenLoginRequest, r *http.Request) (*LoginResponse, error) {
+	errMsg := "Failed to authenticate with token."
 
 	resp, err := api.TokenLogin(req.Token, req.TwitchExtensionJWT)
 	if err != nil {
-		return nil, fmt.Errorf("failed to login with token: %w", err)
+		return nil, terror.Error(err, "Failed to authenticate with token.")
 	}
 
 	// Fingerprint user
@@ -1524,24 +1996,23 @@ func (api *API) TokenAuth(req *TokenLoginRequest, r *http.Request) (*LoginRespon
 		// todo: include ip in upsert
 		err = api.DoFingerprintUpsert(*req.Fingerprint, userID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to identify browser: %w", err)
+			return nil, terror.Error(fmt.Errorf("failed to identify browser: %w", err), errMsg)
 		}
 	}
 
 	if resp.User.DeletedAt.Valid {
-		return nil, fmt.Errorf("user does not exist")
+		return nil, terror.Error(fmt.Errorf("user does not exist"), errMsg)
 	}
 
 	user, err := types.UserFromBoil(resp.User)
 	if err != nil {
-		return nil, fmt.Errorf("failed to identify user: %w", err)
+		return nil, terror.Error(fmt.Errorf("failed to identify user: %w", err), errMsg)
 	}
 
 	return &LoginResponse{user, req.Token, false}, nil
 }
 
 func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-
 	cookie, err := r.Cookie("xsyn-token")
 	if err != nil {
 		// check whether token is attached
@@ -1568,13 +2039,13 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 
 	var token string
 	if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Failed to decrypt token")
+		return http.StatusBadRequest, terror.Error(err, "Failed to process token")
 	}
 
 	// check user from token
 	resp, err := api.TokenLogin(token, "")
 	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
+		return http.StatusBadRequest, terror.Error(err, "Failed to authenticate user.")
 	}
 
 	return helpers.EncodeJSON(w, resp.User)
@@ -1597,37 +2068,38 @@ func (api *API) AuthLogoutHandler(w http.ResponseWriter, r *http.Request) (int, 
 }
 
 // TokenLoginHandler lets you log in with just a jwt
-func (api *API) TokenLoginHandler(w http.ResponseWriter, r *http.Request) {
+func (api *API) TokenLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	errMsg := "Failed to login user."
 	req := &TokenLoginRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-		http.Error(w, "auth fail", http.StatusBadRequest)
-		return
+		return http.StatusInternalServerError, terror.Error(err, errMsg)
 	}
 
 	resp, err := api.TokenAuth(req, r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return http.StatusInternalServerError, terror.Error(err, errMsg)
 	}
 
 	err = api.WriteCookie(w, r, req.Token)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return http.StatusInternalServerError, terror.Error(err, errMsg)
 	}
 
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
-		http.Error(w, "failed state", http.StatusBadRequest)
+		return http.StatusInternalServerError, terror.Error(err, errMsg)
 	}
+
+	return http.StatusOK, nil
 }
 
 // TokenLogin gets a user from the token
 func (api *API) TokenLogin(tokenBase64 string, twitchExtensionJWT string) (*TokenLoginResponse, error) {
+	errMsg := "Failed to login user with token."
 	tokenStr, err := base64.StdEncoding.DecodeString(tokenBase64)
 	if err != nil {
-		return nil, terror.Error(err, "")
+		return nil, terror.Error(err, errMsg)
 	}
 
 	token, err := tokens.ReadJWT(tokenStr, true, api.TokenEncryptionKey)
@@ -1650,39 +2122,21 @@ func (api *API) TokenLogin(tokenBase64 string, twitchExtensionJWT string) (*Toke
 	jwtIDI, ok := token.Get(openid.JwtIDKey)
 
 	if !ok {
-		return nil, terror.Error(errors.New("unable to get ID from token"), "unable to read token")
+		return nil, terror.Error(errors.New("unable to get ID from token"), errMsg)
 	}
 
 	jwtID, err := uuid.FromString(jwtIDI.(string))
 	if err != nil {
-		return nil, terror.Error(err, "unable to form UUID from token")
+		return nil, terror.Error(err, errMsg)
 	}
 
 	retrievedToken, user, err := tokens.Retrieve(jwtID)
 	if err != nil {
-		return nil, err
+		return nil, terror.Error(err, errMsg)
 	}
 
 	if !retrievedToken.Whitelisted() {
 		return nil, terror.Error(tokens.ErrTokenNotWhitelisted)
-	}
-
-	// check twitch extension jwt
-	if twitchExtensionJWT != "" {
-		claims, err := api.GetClaimsFromTwitchExtensionToken(twitchExtensionJWT)
-		if err != nil {
-			return nil, terror.Error(err, "failed to parse twitch extension token")
-		}
-
-		twitchUser, err := users.TwitchID(claims.TwitchAccountID)
-		if err != nil {
-			return nil, terror.Error(err, "failed to get twitch user")
-		}
-
-		// check twitch user match the token user
-		if twitchUser.ID != user.ID {
-			return nil, terror.Error(tokens.ErrUserNotMatch, "twitch id does not match")
-		}
 	}
 
 	return &TokenLoginResponse{user}, nil
@@ -1891,4 +2345,147 @@ func (api *API) UserFingerprintHandler(w http.ResponseWriter, r *http.Request) e
 	}
 
 	return nil
+}
+
+func (api *API) ReadUserIDJWT(tokenBase64 string) (string, error) {
+	errMsg := "Failed to read token."
+	tokenStr, err := base64.StdEncoding.DecodeString(tokenBase64)
+	if err != nil {
+		passlog.L.Err(err).Msg("Failed to decode token.")
+		return "", terror.Error(err, errMsg)
+	}
+	// Decode token user with new email
+	token, err := tokens.ReadJWT(tokenStr, true, api.TokenEncryptionKey)
+	if err != nil {
+		return "", terror.Error(err, errMsg)
+	}
+
+	uID, _ := token.Get("user-id")
+	userID, ok := uID.(string)
+
+	if !ok {
+		return "", terror.Error(errors.New("failed to read user from token"), errMsg)
+	}
+	return userID, nil
+}
+
+func (api *API) ReadCodeJWT(tokenBase64 string) (string, error) {
+	errMsg := "Failed to read token."
+	tokenStr, err := base64.StdEncoding.DecodeString(tokenBase64)
+	if err != nil {
+		return "", terror.Error(err, errMsg)
+	}
+	// Decode token user with new email
+	token, err := tokens.ReadJWT(tokenStr, true, api.TokenEncryptionKey)
+	if err != nil {
+		return "", terror.Error(err, errMsg)
+	}
+
+	c, _ := token.Get("code")
+	code, ok := c.(string)
+
+	if !ok {
+		return "", terror.Error(errors.New("failed to read code from token"), errMsg)
+	}
+	return code, nil
+}
+
+type GoogleValidateResponse struct {
+	GoogleID string
+	Email    string
+	Username string
+}
+
+func (api *API) GoogleToken(token string) (*GoogleValidateResponse, error) {
+	errMsg := "There was a problem finding a user associated with the provided Google account, please check your details and try again."
+	payload, err := idtoken.Validate(context.Background(), token, api.Google.ClientID)
+	if err != nil {
+		return nil, terror.Error(err, errMsg)
+	}
+
+	email, ok := payload.Claims["email"].(string)
+	if !ok {
+		return nil, terror.Error(err, errMsg)
+	}
+	googleID, ok := payload.Claims["sub"].(string)
+	if !ok {
+		return nil, terror.Error(err, errMsg)
+	}
+	username, ok := payload.Claims["given_name"].(string)
+	if !ok {
+		return nil, terror.Error(err, errMsg)
+	}
+
+	resp := &GoogleValidateResponse{
+		Email:    email,
+		GoogleID: googleID,
+		Username: username,
+	}
+	return resp, nil
+}
+
+type FacebookValidateResponse struct {
+	FacebookID string `json:"id"`
+	Name       string `json:"name"`
+}
+
+func (api *API) FacebookToken(token string) (*FacebookValidateResponse, error) {
+	errMsg := "There was a problem finding a user associated with the provided Facebook account, please check your details and try again."
+	r, err := http.Get("https://graph.facebook.com/me?field=name&access_token=" + url.QueryEscape(token))
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	defer r.Body.Close()
+	resp := &FacebookValidateResponse{}
+	err = json.NewDecoder(r.Body).Decode(resp)
+	if err != nil {
+		return nil, terror.Error(err, errMsg)
+	}
+
+	return resp, nil
+}
+
+type TwitterValidateResponse struct {
+	OauthToken       string
+	OauthTokenSecret string
+	TwitterID        string
+	ScreenName       string
+}
+
+func (api *API) TwitterToken(token string) (*TwitterValidateResponse, error) {
+	errMsg := "There was a problem finding a user associated with the provided Twitter account, please check your details and try again."
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.twitter.com/oauth/access_token?%s", token), nil)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to get twitter access token")
+		return nil, terror.Error(err, errMsg)
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to request for twitter access token")
+		return nil, terror.Error(err, errMsg)
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to get body from twitter response")
+		return nil, terror.Error(err, errMsg)
+	}
+	resp := &TwitterValidateResponse{}
+	values := strings.Split(string(body), "&")
+	for _, v := range values {
+		pair := strings.Split(v, "=")
+		switch pair[0] {
+		case "oauth_token":
+			resp.OauthToken = pair[1]
+		case "oauth_token_secret":
+			resp.OauthTokenSecret = pair[1]
+		case "user_id":
+			resp.TwitterID = pair[1]
+		case "screen_name":
+			resp.ScreenName = pair[1]
+		}
+	}
+
+	return resp, nil
 }

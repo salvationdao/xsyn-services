@@ -14,8 +14,10 @@ import (
 	"os"
 	"os/user"
 	"path"
+	"strings"
 	"time"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/helpers"
 
 	"github.com/gofrs/uuid"
 	"github.com/lestrrat-go/jwx/jwa"
@@ -126,13 +128,38 @@ func GenerateOneTimeJWT(tokenID uuid.UUID, id string, expires time.Time) (jwt.To
 		if !encryptToken {
 			return jwt.Sign(t, jwa.HS256, jwtKey)
 		}
-
 		// sign
 		signedJWT, err := jwt.Sign(t, jwa.HS256, jwtKey)
 		if err != nil {
 			return nil, err
 		}
+		// then encrypt
+		encryptedAndSignedToken, err := encrypt(encryptKey, signedJWT)
+		if err != nil {
+			return nil, err
+		}
 
+		return encryptedAndSignedToken, nil
+	}
+	return token, sign, nil
+}
+
+// GenerateVerifyCodeJWT returns the token for user verification
+func GenerateVerifyCodeJWT(tokenID uuid.UUID, expires time.Time) (jwt.Token, func(jwt.Token, bool, []byte) ([]byte, error), error) {
+	token := openid.New()
+	code := strings.ToLower(helpers.RandCodeBytes(5))
+	token.Set("code", code)
+	token.Set(openid.JwtIDKey, tokenID.String())
+	token.Set(openid.ExpirationKey, expires)
+	sign := func(t jwt.Token, encryptToken bool, encryptKey []byte) ([]byte, error) {
+		if !encryptToken {
+			return jwt.Sign(t, jwa.HS256, jwtKey)
+		}
+		// sign
+		signedJWT, err := jwt.Sign(t, jwa.HS256, jwtKey)
+		if err != nil {
+			return nil, err
+		}
 		// then encrypt
 		encryptedAndSignedToken, err := encrypt(encryptKey, signedJWT)
 		if err != nil {

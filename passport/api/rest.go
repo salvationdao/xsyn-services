@@ -128,37 +128,47 @@ func WithUser(api *API, next func(w http.ResponseWriter, r *http.Request, user *
 }
 
 func GetUserFromToken(api *API, r *http.Request) (*boiler.User, int, error) {
-	tokenB64 := r.URL.Query().Get("token")
-
-	tokenStr, err := base64.StdEncoding.DecodeString(tokenB64)
+	cookie, err := r.Cookie("xsyn-token")
 	if err != nil {
-		return nil, http.StatusUnauthorized, err
+		tokenB64 := r.URL.Query().Get("token")
+
+		tokenStr, err := base64.StdEncoding.DecodeString(tokenB64)
+		if err != nil {
+			return nil, http.StatusUnauthorized, err
+		}
+
+		jwt, err := auth.ReadJWT(tokenStr, true, api.TokenEncryptionKey)
+		if err != nil {
+			return nil, http.StatusUnauthorized, terror.Warn(err)
+		}
+
+		jwtIDI, ok := jwt.Get(openid.JwtIDKey)
+
+		if !ok {
+			return nil, http.StatusUnauthorized, err
+		}
+
+		jwtID, err := uuid.FromString(jwtIDI.(string))
+		if err != nil {
+			return nil, http.StatusUnauthorized, err
+		}
+
+		token, err := boiler.FindIssueToken(passdb.StdConn, jwtID.String())
+		if err != nil {
+			return nil, http.StatusUnauthorized, terror.Error(err, "Failed to secure user")
+		}
+
+		user, err := boiler.FindUser(passdb.StdConn, token.UserID)
+		if err != nil {
+			return nil, http.StatusUnauthorized, err
+		}
+		return user, http.StatusOK, nil
 	}
 
-	jwt, err := auth.ReadJWT(tokenStr, true, api.TokenEncryptionKey)
-	if err != nil {
-		return nil, http.StatusUnauthorized, terror.Warn(err)
+	var token string
+	if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
+		return nil, http.StatusUnauthorized, terror.Error(err, "Failed to decrypt token")
 	}
-
-	jwtIDI, ok := jwt.Get(openid.JwtIDKey)
-
-	if !ok {
-		return nil, http.StatusUnauthorized, err
-	}
-
-	jwtID, err := uuid.FromString(jwtIDI.(string))
-	if err != nil {
-		return nil, http.StatusUnauthorized, err
-	}
-
-	token, err := boiler.FindIssueToken(passdb.StdConn, jwtID.String())
-	if err != nil {
-		return nil, http.StatusUnauthorized, terror.Error(err, "Failed to secure user")
-	}
-
-	user, err := boiler.FindUser(passdb.StdConn, token.UserID)
-	if err != nil {
-		return nil, http.StatusUnauthorized, err
-	}
-	return user, http.StatusOK, nil
+	user, err := api.UserFromToken(token)
+	return &user.User, http.StatusOK, nil
 }

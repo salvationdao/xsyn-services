@@ -141,7 +141,7 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		}
 
 	}
-
+	isVerified := false
 	if facebookID == "" && googleID == "" && publicAddress == common.HexToAddress("") && twitchID == "" && twitterID == "" && discordID == "" {
 		if email == "" {
 			return nil, terror.Error(fmt.Errorf("email empty"), "Email cannot be empty")
@@ -166,9 +166,12 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		}
 	}
 
-	trimmedUsername := "noob-" + username
+	if email != "" {
+		isVerified = true
+	}
+
 	bm := bluemonday.StrictPolicy()
-	sanitizedUsername := bm.Sanitize(trimmedUsername)
+	sanitizedUsername := bm.Sanitize(username)
 
 	err := helpers.IsValidUsername(sanitizedUsername)
 	if err != nil {
@@ -196,11 +199,6 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 	if hexPublicAddress != "" && !common.IsHexAddress(hexPublicAddress) {
 		passlog.L.Error().Err(err).Msg("Public address provided is not a hex address")
 		return nil, terror.Error(err, "failed to provide a valid wallet address")
-	}
-
-	isVerified := false
-	if googleID != "" {
-		isVerified = true
 	}
 
 	tx, err := passdb.StdConn.Begin()
@@ -364,7 +362,8 @@ func Email(email string) (*types.User, error) {
 		qm.Load(qm.Rels(boiler.UserRels.Faction)),
 	).One(passdb.StdConn)
 	if errors.Is(sql.ErrNoRows, err) {
-		return nil, fmt.Errorf("no user found with email")
+		passlog.L.Info().Err(err).Msg("No user found with email")
+		return nil, err
 	}
 
 	if err != nil {
@@ -419,6 +418,22 @@ func Username(uname string) (*boiler.User, string, error) {
 
 }
 
+func UsernameExist(uname string) (bool, error) {
+	nUsers, err := boiler.Users(qm.Where(fmt.Sprintf("lower(%s) = lower(?)", boiler.UserColumns.Username), uname)).Count(passdb.StdConn)
+	if !errors.Is(err, sql.ErrNoRows) && err != nil || nUsers != 0 {
+		if err == nil {
+			err = fmt.Errorf("username is already taken.")
+		}
+		if nUsers == 0 {
+			passlog.L.Warn().Err(err).Msg("failed to get unique username")
+		}
+		return true, err
+	}
+
+	return false, nil
+
+}
+
 func VerifyTFA(userTFASecret string, passcode string) error {
 	if !totp.Validate(passcode, userTFASecret) {
 		return fmt.Errorf("invalid passcode. Please try again")
@@ -435,9 +450,9 @@ func GetTFARecovery(userID string) (boiler.UserRecoveryCodeSlice, error) {
 	return userRecoveryCodes, nil
 }
 
-func VerifyTFARecovery(recoveryCode string) error {
+func VerifyTFARecovery(userID string, recoveryCode string) error {
 	// Check if code matches
-	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.RecoveryCode.EQ(recoveryCode), boiler.UserRecoveryCodeWhere.UsedAt.IsNull()).One(passdb.StdConn)
+	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.RecoveryCode.EQ(recoveryCode), boiler.UserRecoveryCodeWhere.UserID.EQ(userID), boiler.UserRecoveryCodeWhere.UsedAt.IsNull()).One(passdb.StdConn)
 	if errors.Is(sql.ErrNoRows, err) {
 		return fmt.Errorf("invalid recovery code")
 	}
