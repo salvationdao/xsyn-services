@@ -420,7 +420,9 @@ func UsernameExist(uname string) (bool, error) {
 		if err == nil {
 			err = fmt.Errorf("username is already taken.")
 		}
-		passlog.L.Warn().Err(err).Msg("failed to get unique username")
+		if nUsers == 0 {
+			passlog.L.Warn().Err(err).Msg("failed to get unique username")
+		}
 		return true, err
 	}
 
