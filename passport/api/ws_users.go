@@ -90,7 +90,6 @@ func NewUserController(log *zerolog.Logger, api *API, googleConfig *auth.GoogleC
 	api.SecureCommand(HubKeyUserSendVerify, userHub.SendVerifyHandler)
 
 	// TFA
-
 	api.SecureCommand(HubKeyGenerateTFASecret, userHub.GenerateTFAHandler)
 	api.SecureCommand(HubKeyTFACancel, userHub.CancelTFAHandler)
 	api.SecureCommand(HubKeyTFAVerification, userHub.TFAVerificationHandler)
@@ -171,6 +170,8 @@ type SendVerifyRequest struct {
 }
 
 // Sends another email to user to verify email
+//
+// OR sends email to new email address for user to verify
 func (uc *UserController) SendVerifyHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Failed to send a verification email. Please try again or contact support"
 	req := &SendVerifyRequest{}
@@ -179,12 +180,14 @@ func (uc *UserController) SendVerifyHandler(ctx context.Context, user *types.Use
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	if req.Payload.Email != "" && req.Payload.Email != user.Email.String {
-		// Check if email is valid
-		_, err := mail.ParseAddress(req.Payload.Email)
-		if err != nil {
-			return terror.Error(err, "Invalid email provided.")
-		}
+	// Check if email is valid
+	_, err = mail.ParseAddress(req.Payload.Email)
+	if err != nil {
+		return terror.Error(err, "Invalid email provided.")
+	}
+
+	// If a new email address
+	if req.Payload.Email != user.Email.String {
 		// Check if email address is already taken
 		if null.StringFrom(req.Payload.Email) != user.Email {
 			u, _ := users.Email(req.Payload.Email)
@@ -192,8 +195,6 @@ func (uc *UserController) SendVerifyHandler(ctx context.Context, user *types.Use
 				err = fmt.Errorf("email address is already taken by another user")
 				return terror.Error(err, "Email address is already used. Please use a different email.")
 			}
-			user.Email = null.StringFrom(req.Payload.Email)
-			user.Verified = true
 		}
 	}
 
@@ -209,8 +210,7 @@ func (uc *UserController) SendVerifyHandler(ctx context.Context, user *types.Use
 		return terror.Error(err, errMsg)
 	}
 
-	user.User.Email = null.StringFrom(req.Payload.Email)
-	err = uc.API.Mailer.SendVerificationEmail(context.Background(), user, code)
+	err = uc.API.Mailer.SendVerificationEmail(context.Background(), user, code, req.Payload.Email)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -253,7 +253,7 @@ func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, user *t
 		return terror.Error(fmt.Errorf("username must be different"))
 	}
 
-	isAvailable, err := db.UsernameAvailable(username, user.ID)
+	isAvailable, err := users.UsernameExist(username)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -264,7 +264,7 @@ func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, user *t
 	oldUserName := user.Username
 
 	// Update username
-	user.Username = strings.ToLower(username)
+	user.Username = username
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 	if err != nil {
 		return terror.Error(err, errMsg)
@@ -379,6 +379,13 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 		bm := bluemonday.StrictPolicy()
 		sanitizedUsername := html.UnescapeString(bm.Sanitize(strings.TrimSpace(*req.Payload.NewUsername)))
 
+		isAvailable, err := users.UsernameExist(sanitizedUsername)
+		if err != nil {
+			return terror.Error(err, "A user with that username already exists.")
+		}
+		if !isAvailable {
+			return terror.Error(fmt.Errorf("Username already taken."), "A user with that username already exists.")
+		}
 		user.Username = sanitizedUsername
 	}
 

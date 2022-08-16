@@ -71,10 +71,14 @@ func (m *Mailer) SendForgotPasswordEmail(ctx context.Context, user *types.User, 
 }
 
 // SendVerificationEmail sends an email with the confirm_email template
-func (m *Mailer) SendVerificationEmail(ctx context.Context, user *types.User, code string) error {
+func (m *Mailer) SendVerificationEmail(ctx context.Context, user *types.User, code string, newEmail string) error {
+	email := user.Email.String
+	if newEmail != "" {
+		email = newEmail
+	}
 
 	err := m.SendEmail(ctx,
-		user.Email.String,
+		email,
 		"Verify Email  - Passport XSYN",
 		"confirm_email",
 		struct {
@@ -84,7 +88,7 @@ func (m *Mailer) SendVerificationEmail(ctx context.Context, user *types.User, co
 		}{
 			Code:  strings.ToUpper(code),
 			Name:  user.Username,
-			Email: user.Email.String,
+			Email: email,
 		},
 		"",
 	)

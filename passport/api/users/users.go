@@ -415,10 +415,13 @@ func Username(uname string) (*boiler.User, string, error) {
 }
 
 func UsernameExist(uname string) (bool, error) {
-	nUsers, err := boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(uname))).Count(passdb.StdConn)
+	nUsers, err := boiler.Users(qm.Where(fmt.Sprintf("lower(%s) = lower(?)", boiler.UserColumns.Username), uname)).Count(passdb.StdConn)
 	if !errors.Is(err, sql.ErrNoRows) && err != nil || nUsers != 0 {
-		passlog.L.Error().Err(err).Msg("failed to get unique username")
-		return true, fmt.Errorf("unable to search for user by username")
+		if err == nil {
+			err = fmt.Errorf("username is already taken.")
+		}
+		passlog.L.Warn().Err(err).Msg("failed to get unique username")
+		return true, err
 	}
 
 	return false, nil
