@@ -505,7 +505,7 @@ func (api *API) EmailSignupVerifyHandler(w http.ResponseWriter, r *http.Request)
 	err = api.EmailSignupVerify(req, w, r)
 
 	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Failed to send a verification code.")
+		return http.StatusBadRequest, terror.Error(err)
 	}
 
 	return http.StatusCreated, nil
@@ -513,8 +513,10 @@ func (api *API) EmailSignupVerifyHandler(w http.ResponseWriter, r *http.Request)
 
 // Generate one time code and send to user's email
 func (api *API) EmailSignupVerify(req *EmailSignupVerifyRequest, w http.ResponseWriter, r *http.Request) error {
+	lowerEmail := strings.ToLower(req.Email)
+
 	// Check if there are any existing users associated with the email address
-	user, _ := users.Email(req.Email)
+	user, _ := users.Email(lowerEmail)
 
 	if user != nil {
 		return terror.Error(errors.New("email already used"), "Email is already used by a different user.")
@@ -532,7 +534,7 @@ func (api *API) EmailSignupVerify(req *EmailSignupVerifyRequest, w http.Response
 		return terror.Error(err, "Unable to get verify code from token")
 	}
 
-	err = api.Mailer.SendSignupEmail(context.Background(), req.Email, code)
+	err = api.Mailer.SendSignupEmail(context.Background(), lowerEmail, code)
 	if err != nil {
 		return terror.Error(err, "Unable to send signup email")
 	}
