@@ -180,21 +180,21 @@ func (uc *UserController) SendVerifyHandler(ctx context.Context, user *types.Use
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	lowerEmail := strings.ToLower(req.Payload.Email)
+
 	// Check if email is valid
-	_, err = mail.ParseAddress(req.Payload.Email)
+	_, err = mail.ParseAddress(lowerEmail)
 	if err != nil {
 		return terror.Error(err, "Invalid email provided.")
 	}
 
 	// If a new email address
-	if req.Payload.Email != user.Email.String {
-		// Check if email address is already taken
-		if null.StringFrom(req.Payload.Email) != user.Email {
-			u, _ := users.Email(req.Payload.Email)
-			if u != nil {
-				err = fmt.Errorf("email address is already taken by another user")
-				return terror.Error(err, "Email address is already used. Please use a different email.")
-			}
+	// Check if email address is already taken
+	if lowerEmail != user.Email.String {
+		u, _ := users.Email(lowerEmail)
+		if u != nil {
+			err = fmt.Errorf("email address is already taken by another user")
+			return terror.Error(err, "Email address is already used. Please use a different email.")
 		}
 	}
 
@@ -210,7 +210,7 @@ func (uc *UserController) SendVerifyHandler(ctx context.Context, user *types.Use
 		return terror.Error(err, errMsg)
 	}
 
-	err = uc.API.Mailer.SendVerificationEmail(context.Background(), user, code, req.Payload.Email)
+	err = uc.API.Mailer.SendVerificationEmail(context.Background(), user, code, lowerEmail)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
