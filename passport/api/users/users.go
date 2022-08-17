@@ -134,30 +134,32 @@ func UserExists(email string) (bool, error) {
 }
 
 func UserCreator(firstName, lastName, username, email, facebookID, googleID, twitchID, twitterID, discordID, phNumber string, publicAddress common.Address, password string, other ...interface{}) (*types.User, error) {
+	lowerEmail := strings.ToLower(email)
+
 	if password != "" {
 		err := helpers.IsValidPassword(password)
 		if err != nil {
-			return nil, err
+			return nil, terror.Error(errors.New("Invalid password when creating user."), err.Error()) // Error has friendly message already
 		}
 
 	}
 	isVerified := false
 	if facebookID == "" && googleID == "" && publicAddress == common.HexToAddress("") && twitchID == "" && twitterID == "" && discordID == "" {
-		if email == "" {
-			return nil, terror.Error(fmt.Errorf("email empty"), "Email cannot be empty")
+		if lowerEmail == "" {
+			return nil, terror.Error(errors.New("email empty"), "Email cannot be empty")
 		}
 
-		_, err := mail.ParseAddress(email)
+		_, err := mail.ParseAddress(lowerEmail)
 		if err != nil {
-			return nil, err
+			return nil, terror.Error(err, "Invalid email address.")
 		}
 
-		err = helpers.IsValidPassword(password)
-		if err != nil {
-			return nil, err
+		// User with email must have password when signing up without Oauth like google
+		if password == "" {
+			return nil, terror.Error(errors.New("Password Required when creating user."), "Password is required when signing up with email.")
 		}
 
-		emailNotAvailable, err := UserExists(email)
+		emailNotAvailable, err := UserExists(lowerEmail)
 		if err != nil {
 			return nil, terror.Error(err, "Something went wrong. Please try again.")
 		}
@@ -377,45 +379,25 @@ func EmailPassword(email string, password string) (*types.User, error) {
 
 	errMsg := "invalid email or password, please try again."
 
-	user, err := boiler.Users(
-		boiler.UserWhere.Email.EQ(null.StringFrom(strings.ToLower(email))),
-		qm.Load(qm.Rels(boiler.UserRels.Faction)),
-	).One(passdb.StdConn)
+	user, err := Email(email)
 
 	if err != nil {
-		return nil, fmt.Errorf(errMsg)
+		return nil, terror.Error(err, errMsg)
 	}
 
 	userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
 
 	if err != nil {
-		return nil, fmt.Errorf(errMsg)
+		return nil, terror.Error(err, errMsg)
 	}
 
 	err = crypto.ComparePassword(userPassword.PasswordHash, password)
 
 	if err != nil {
-		return nil, fmt.Errorf(errMsg)
+		return nil, terror.Error(err, errMsg)
 	}
 
-	return types.UserFromBoil(user)
-}
-
-func Username(uname string) (*boiler.User, string, error) {
-	user, err := boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(uname))).One(passdb.StdConn)
-	if err != nil {
-		return nil, "", err
-	}
-
-	hash, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			return nil, "", fmt.Errorf("no password found for user")
-		}
-	}
-
-	return user, hash.PasswordHash, nil
-
+	return user, nil
 }
 
 func UsernameExist(uname string) (bool, error) {
