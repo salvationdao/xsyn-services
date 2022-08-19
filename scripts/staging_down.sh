@@ -16,16 +16,17 @@ case "$yn" in
             ;;
 esac
 
-
+echo "Stopping nginx service"
 systemctl stop nginx
-read -t 3 -p "Stopping Nginx server"
+sleep 3
+echo "Stopping passport service"
 systemctl stop passport
-read -t 1 -p "Stopping passport server"
+sleep 1
 read -p "What version would you like to rollback to? (example: v3.16.10)" -r VERSION
 
-if [ ! -d "/usr/share/ninja_syndicate/passport-api_${VERSION}" ] 
+if [ ! -d "/usr/share/ninja_syndicate/passport-api_${VERSION}" ]
 then
-    echo "Directory /usr/share/ninja_syndicate/passport-api_${VERSION} DOES NOT exists." 
+    echo "Directory /usr/share/ninja_syndicate/passport-api_${VERSION} DOES NOT exists."
     exit 1
 fi
 
@@ -38,11 +39,11 @@ ln -Tfsv /usr/share/ninja_syndicate/passport-api_$VERSION /usr/share/ninja_syndi
 date=$(date +'%Y-%m-%d-%H%M%S')
 mv $CURVERSION ${CURVERSION}_BAD_${date}
 
-LatestMigration = $(grep LatestMigration /usr/share/ninja_syndicate/passport-online/BuildInfo.txt | sed 's/LatestMigration=//g')
+LatestMigration=$(grep LatestMigration /usr/share/ninja_syndicate/passport-online/BuildInfo.txt | sed 's/LatestMigration=//g')
 
 echo "Running down migrations"
 source /usr/share/ninja_syndicate/passport-online/init/passport-staging.env
-sudo -u postgres ./passport-online/migrate -database "postgres:///$PASSPORT_DATABASE_NAME?host=/var/run/postgresql/" -path ./migrations goto $LatestMigration
+sudo -u postgres ./passport-online/migrate -database "postgres:///$PASSPORT_DATABASE_NAME?host=/var/run/postgresql/" -path ${CURVERSION}_BAD_${date}/migrations goto $LatestMigration
 
 # Left commented out for now because both side will probably need to be rolledback
 # systemctl start passport
