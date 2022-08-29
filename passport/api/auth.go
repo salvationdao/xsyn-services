@@ -69,9 +69,10 @@ type WalletLoginRequest struct {
 }
 
 type EmailSignupVerifyRequest struct {
-	RedirectURL string `json:"redirect_url"`
-	Tenant      string `json:"tenant"`
-	Email       string `json:"email"`
+	RedirectURL  string  `json:"redirect_url"`
+	Tenant       string  `json:"tenant"`
+	Email        string  `json:"email"`
+	CaptchaToken *string `json:"captcha_token"`
 }
 
 type EmailLoginRequest struct {
@@ -514,6 +515,15 @@ func (api *API) EmailSignupVerifyHandler(w http.ResponseWriter, r *http.Request)
 // Generate one time code and send to user's email
 func (api *API) EmailSignupVerify(req *EmailSignupVerifyRequest, w http.ResponseWriter, r *http.Request) error {
 	lowerEmail := strings.ToLower(req.Email)
+
+	// Verify user passed captcha test
+	if req.CaptchaToken == nil || *req.CaptchaToken == "" {
+		return terror.Error(errors.New("captcha token missing"), "Failed to complete captcha verification.")
+	}
+	err := api.captcha.verify(*req.CaptchaToken)
+	if err != nil {
+		return terror.Error(err, "Failed to complete captcha verification.")
+	}
 
 	// Check if there are any existing users associated with the email address
 	user, _ := users.Email(lowerEmail)
@@ -1125,7 +1135,7 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 	if req.RedirectURL != "" || newUser {
 		resp := struct {
 			WalletLoginRequest
-			NewUser            bool `json:"new_user"`
+			NewUser bool `json:"new_user"`
 		}{
 			WalletLoginRequest: *req,
 			NewUser:            newUser,
