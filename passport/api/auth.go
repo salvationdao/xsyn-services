@@ -1124,7 +1124,7 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 	// If external or new user signup
 	if req.RedirectURL != "" || newUser {
 		resp := struct {
-			WalletLoginRequest `json:"wallet_request"`
+			WalletLoginRequest
 			NewUser            bool `json:"new_user"`
 		}{
 			WalletLoginRequest: *req,
