@@ -21,6 +21,9 @@ type Config struct {
 	WebhookParams           *WebhookParams
 	BotSecret               string
 	EmailTemplatePath       string
+
+	CaptchaSiteKey string
+	CaptchaSecret  string
 }
 
 type BridgeParams struct {

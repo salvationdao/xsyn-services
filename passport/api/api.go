@@ -81,6 +81,9 @@ type API struct {
 	// supremacy client map
 	ClientMap *sync.Map
 
+	// captcha
+	captcha *captcha
+
 	JWTKey []byte
 }
 
@@ -142,6 +145,12 @@ func NewAPI(
 		ClientMap:    &sync.Map{},
 		JWTKey:       jwtKey,
 		botSecretKey: config.BotSecret,
+
+		captcha: &captcha{
+			secret:    config.CaptchaSecret,
+			siteKey:   config.CaptchaSiteKey,
+			verifyUrl: "https://hcaptcha.com/siteverify",
+		},
 	}
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
