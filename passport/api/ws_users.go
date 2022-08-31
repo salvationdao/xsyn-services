@@ -380,11 +380,11 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 		bm := bluemonday.StrictPolicy()
 		sanitizedUsername := html.UnescapeString(bm.Sanitize(strings.TrimSpace(*req.Payload.NewUsername)))
 
-		isAvailable, err := users.UsernameExist(sanitizedUsername)
+		isTaken, err := users.UsernameExist(sanitizedUsername)
 		if err != nil {
 			return terror.Error(err, "A user with that username already exists.")
 		}
-		if !isAvailable {
+		if isTaken {
 			return terror.Error(fmt.Errorf("Username already taken."), "A user with that username already exists.")
 		}
 		user.Username = sanitizedUsername
