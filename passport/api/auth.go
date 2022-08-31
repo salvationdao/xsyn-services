@@ -1105,30 +1105,30 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 	user, err := users.PublicAddress(commonAddr)
 
 	if err != nil && errors.Is(sql.ErrNoRows, err) {
-		// TODO: Captcha is required for new users
-		// if req.CaptchaToken == nil || *req.CaptchaToken == "" {
-		// 	resp := struct {
-		// 		WalletLoginRequest
-		// 		NewUser         bool `json:"new_user"`
-		// 		CaptchaRequired bool `json:"captcha_required"`
-		// 	}{
-		// 		WalletLoginRequest: *req,
-		// 		NewUser:            true,
-		// 		CaptchaRequired:    true,
-		// 	}
+		// Captcha is required for new users
+		if req.CaptchaToken == nil || *req.CaptchaToken == "" {
+			resp := struct {
+				WalletLoginRequest
+				NewUser         bool `json:"new_user"`
+				CaptchaRequired bool `json:"captcha_required"`
+			}{
+				WalletLoginRequest: *req,
+				NewUser:            true,
+				CaptchaRequired:    true,
+			}
 
-		// 	b, err := json.Marshal(resp)
-		// 	if err != nil {
-		// 		passlog.L.Error().Err(err).Msg("unable to encode response to json")
-		// 		return terror.Error(err, "Unable to decode response to user.")
-		// 	}
-		// 	_, err = w.Write(b)
-		// 	if err != nil {
-		// 		passlog.L.Error().Err(err).Msg("unable to write response to user")
-		// 		return terror.Error(err, "Unable to write response to user.")
-		// 	}
-		// 	return nil
-		// }
+			b, err := json.Marshal(resp)
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("unable to encode response to json")
+				return terror.Error(err, "Unable to decode response to user.")
+			}
+			_, err = w.Write(b)
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("unable to write response to user")
+				return terror.Error(err, "Unable to write response to user.")
+			}
+			return nil
+		}
 
 		newUser = true
 		// Signup user but dont log them before username is provided
