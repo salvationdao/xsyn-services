@@ -123,6 +123,7 @@ type FacebookLoginRequest struct {
 	Fingerprint   *users.Fingerprint `json:"fingerprint"`
 	AuthType      string             `json:"auth_type"`
 	Username      string             `json:"username"`
+	CaptchaToken  *string            `json:"captcha_token"`
 }
 
 type TwitterSignupRequest struct {
@@ -671,8 +672,30 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			passlog.L.Error().Err(err).Msg("user provided invalid facebook token")
 			return http.StatusBadRequest, terror.Error(err, "Invalid facebook token provided.")
 		}
+
 		user, err := users.FacebookID(facebookDetails.FacebookID)
-		if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			if req.CaptchaToken == nil && *req.CaptchaToken == "" {
+				err := fmt.Errorf("captcha token missing")
+				return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
+			}
+			err := api.captcha.verify(*req.CaptchaToken)
+			if err != nil {
+				return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
+			}
+
+			// Create user with default username
+			commonAddress := common.HexToAddress("")
+			_, err = users.UserCreator("", "", facebookDetails.Name, "", facebookDetails.FacebookID, "", "", "", "", "", commonAddress, "")
+			if err != nil {
+				return http.StatusInternalServerError, terror.Error(err, "Failed to create new user with facebook.")
+			}
+
+			user, err = users.FacebookID(facebookDetails.FacebookID)
+			if err != nil {
+				return http.StatusBadRequest, terror.Error(err, "Failed to get user with facebook account during signup.")
+			}
+		} else if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Failed to get user with facebook account during signup.")
 		}
 		// Update username
@@ -1483,7 +1506,7 @@ func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.
 			return nil, terror.Error(err, errMsg)
 		}
 	} else {
-		return nil, fmt.Errorf("Passcode or verify code are missing.")
+		return nil, terror.Error(fmt.Errorf("passcode or verify code are missing"), "Passcode or verify code are missing.")
 	}
 
 	u, err := types.UserFromBoil(user)
@@ -1520,6 +1543,36 @@ func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, 
 	// Check if there are any existing users associated with the email address
 	user, err := users.FacebookID(facebookDetails.FacebookID)
 	if err != nil && errors.Is(sql.ErrNoRows, err) {
+		// Captcha is required for new users
+		if req.CaptchaToken == nil || *req.CaptchaToken == "" {
+			resp := struct {
+				FacebookLoginRequest
+				NewUser         bool `json:"new_user"`
+				CaptchaRequired bool `json:"captcha_required"`
+			}{
+				FacebookLoginRequest: *req,
+				NewUser:              true,
+				CaptchaRequired:      true,
+			}
+
+			b, err := json.Marshal(resp)
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("unable to encode response to json")
+				return terror.Error(err, "Unable to decode response to user.")
+			}
+			_, err = w.Write(b)
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("unable to write response to user")
+				return terror.Error(err, "Unable to write response to user.")
+			}
+			return nil
+		}
+		err := api.captcha.verify(*req.CaptchaToken)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("Failed to verify captcha.")
+			return terror.Error(err, "Failed to complete captcha verification.")
+		}
+
 		newUser = true
 		// Create user with default username
 		commonAddress := common.HexToAddress("")
