@@ -54,6 +54,7 @@ type SignupRequest struct {
 	FacebookRequest FacebookLoginRequest `json:"facebook_request"`
 	EmailRequest    EmailLoginRequest    `json:"email_request"`
 	TwitterRequest  TwitterSignupRequest `json:"twitter_request"`
+	CaptchaToken    *string              `json:"captcha_token"`
 }
 
 type WalletLoginRequest struct {
@@ -601,7 +602,31 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		// Check user exist
 		commonAddr := common.HexToAddress(req.WalletRequest.PublicAddress)
 		user, err := users.PublicAddress(commonAddr)
-		if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			if req.CaptchaToken == nil && *req.CaptchaToken == "" {
+				err := fmt.Errorf("captcha token missing")
+				return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
+			}
+			err := api.captcha.verify(*req.CaptchaToken)
+			if err != nil {
+				return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
+			}
+
+			// Signup user but dont log them before username is provided
+			username := commonAddr.Hex()[0:10]
+			// If user does not exist, create new user with their username set to their MetaMask public address
+			user, err = users.UserCreator("", "", helpers.TrimUsername(username), "", "", "", "", "", "", "", commonAddr, "")
+			if err != nil {
+				return http.StatusInternalServerError, terror.Error(err, "Unable to create user with wallet.")
+			}
+
+			// update nonce value
+			user.Nonce = null.StringFrom(req.WalletRequest.Nonce)
+			_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Nonce))
+			if err != nil {
+				return http.StatusInternalServerError, terror.Error(err, "Unable to update user nonce.")
+			}
+		} else if err != nil {
 			err := fmt.Errorf("User does not exist")
 			return http.StatusBadRequest, terror.Error(err, "User with wallet address does not exist.")
 		}
@@ -1104,7 +1129,7 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 	// Check if there are any existing users associated with the public address
 	user, err := users.PublicAddress(commonAddr)
 
-	if err != nil && errors.Is(sql.ErrNoRows, err) {
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		// Captcha is required for new users
 		if req.CaptchaToken == nil || *req.CaptchaToken == "" {
 			resp := struct {
