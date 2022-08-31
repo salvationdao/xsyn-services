@@ -105,13 +105,14 @@ type PasswordUpdateRequest struct {
 }
 
 type GoogleLoginRequest struct {
-	RedirectURL string             `json:"redirect_url"`
-	Tenant      string             `json:"tenant"`
-	GoogleToken string             `json:"google_token"`
-	SessionID   hub.SessionID      `json:"session_id"`
-	Fingerprint *users.Fingerprint `json:"fingerprint"`
-	AuthType    string             `json:"auth_type"`
-	Username    string             `json:"username"`
+	RedirectURL  string             `json:"redirect_url"`
+	Tenant       string             `json:"tenant"`
+	GoogleToken  string             `json:"google_token"`
+	SessionID    hub.SessionID      `json:"session_id"`
+	Fingerprint  *users.Fingerprint `json:"fingerprint"`
+	AuthType     string             `json:"auth_type"`
+	Username     string             `json:"username"`
+	CaptchaToken *string            `json:"captcha_token"`
 }
 
 type FacebookLoginRequest struct {
@@ -697,9 +698,30 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		}
 		// Check google id exist
 		user, err := users.GoogleID(googleDetails.GoogleID)
-		if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			if req.CaptchaToken == nil && *req.CaptchaToken == "" {
+				err := fmt.Errorf("captcha token missing")
+				return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
+			}
+			err := api.captcha.verify(*req.CaptchaToken)
+			if err != nil {
+				return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
+			}
+
+			// Signup user with standard username
+			commonAddress := common.HexToAddress("")
+			_, err = users.UserCreator("", "", googleDetails.Username, googleDetails.Email, "", googleDetails.GoogleID, "", "", "", "", commonAddress, "")
+			if err != nil {
+				return http.StatusInternalServerError, terror.Error(err, "Failed to create new user with google account")
+			}
+			user, err = users.GoogleID(googleDetails.GoogleID)
+			if err != nil {
+				return http.StatusBadRequest, terror.Error(err, "Failed to get user with google account during signup.")
+			}
+		} else if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Failed to get user with google account during signup.")
 		}
+
 		// Update username
 		user.Username = username
 		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
@@ -1117,7 +1139,6 @@ func (api *API) WalletLoginHandler(w http.ResponseWriter, r *http.Request) (int,
 	}
 
 	return http.StatusCreated, nil
-
 }
 
 // Check if new user, then get nonce from request otherwise get from user nonce in db.
@@ -1153,6 +1174,11 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 				return terror.Error(err, "Unable to write response to user.")
 			}
 			return nil
+		}
+		err := api.captcha.verify(*req.CaptchaToken)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("Failed to verify captcha.")
+			return terror.Error(err, "Failed to complete captcha verification.")
 		}
 
 		newUser = true
@@ -1286,10 +1312,40 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 				return terror.Error(err, "Failed to merge google account with existing user with same gmail.")
 			}
 		} else {
+			// Captcha is required for new users
+			if req.CaptchaToken == nil || *req.CaptchaToken == "" {
+				resp := struct {
+					GoogleLoginRequest
+					NewUser         bool `json:"new_user"`
+					CaptchaRequired bool `json:"captcha_required"`
+				}{
+					GoogleLoginRequest: *req,
+					NewUser:            true,
+					CaptchaRequired:    true,
+				}
+
+				b, err := json.Marshal(resp)
+				if err != nil {
+					passlog.L.Error().Err(err).Msg("unable to encode response to json")
+					return terror.Error(err, "Unable to decode response to user.")
+				}
+				_, err = w.Write(b)
+				if err != nil {
+					passlog.L.Error().Err(err).Msg("unable to write response to user")
+					return terror.Error(err, "Unable to write response to user.")
+				}
+				return nil
+			}
+			err := api.captcha.verify(*req.CaptchaToken)
+			if err != nil {
+				passlog.L.Error().Err(err).Msg("Failed to verify captcha.")
+				return terror.Error(err, "Failed to complete captcha verification.")
+			}
+
 			newUser = true
 			// Signup user with standard username
 			commonAddress := common.HexToAddress("")
-			_, err := users.UserCreator("", "", googleDetails.Username, googleDetails.Email, "", googleDetails.GoogleID, "", "", "", "", commonAddress, "")
+			_, err = users.UserCreator("", "", googleDetails.Username, googleDetails.Email, "", googleDetails.GoogleID, "", "", "", "", commonAddress, "")
 			if err != nil {
 				passlog.L.Error().Err(err).Msg("unable to create google user")
 				return terror.Error(err, "Failed to create new user with google account")
