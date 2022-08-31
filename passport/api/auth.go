@@ -133,6 +133,7 @@ type TwitterSignupRequest struct {
 	SessionID    hub.SessionID      `json:"session_id"`
 	Fingerprint  *users.Fingerprint `json:"fingerprint"`
 	Username     string             `json:"username"`
+	CaptchaToken *string            `json:"captcha_token"`
 }
 
 type TFAVerifyRequest struct {
@@ -400,10 +401,15 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			Tenant:       r.Form.Get("tenant"),
 			TwitterToken: r.Form.Get("twitter_token"),
 		}
-		userID, err := api.ReadUserIDJWT(req.TwitterToken)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to read user from token")
-			return
+
+		userID := r.Form.Get("user_id") // twitter signup flow will provide user id instead of having it in the token
+		if userID == "" {
+			id, err := api.ReadUserIDJWT(req.TwitterToken)
+			if err != nil {
+				externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to read user from token")
+				return
+			}
+			userID = id
 		}
 		user, err := users.ID(userID)
 		if err != nil {
@@ -760,14 +766,35 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		}
 		redirectURL = req.GoogleRequest.RedirectURL
 	case "twitter":
+		if req.CaptchaToken == nil && *req.CaptchaToken == "" {
+			err := fmt.Errorf("captcha token missing")
+			return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
+		}
+		err := api.captcha.verify(*req.CaptchaToken)
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
+		}
+
 		// Twitter Token will BE JWT
-		userID, err := api.ReadUserIDJWT(req.TwitterRequest.TwitterToken)
+		twitterID, err := api.ReadUserIDJWT(req.TwitterRequest.TwitterToken)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to read user jwt")
+			return http.StatusBadRequest, terror.Error(err, "Invalid twitter token provided.")
+		}
+		twitterScreenName, err := api.ReadKeyJWT(req.TwitterRequest.TwitterToken, "twitter-screenname")
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to read user jwt")
 			return http.StatusBadRequest, terror.Error(err, "Invalid twitter token provided.")
 		}
 
-		user, err := users.ID(userID)
+		// Create user with standard name
+		commonAddress := common.HexToAddress("")
+		_, err = users.UserCreator("", "", twitterScreenName, "", "", "", "", twitterID, "", "", commonAddress, "")
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Failed to create user with twitter.")
+		}
+
+		user, err := users.TwitterID(twitterID)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Unable to get user during signup with twitter.")
 		}
@@ -778,8 +805,13 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			passlog.L.Error().Err(err).Msg("unable to update username")
 			return http.StatusInternalServerError, terror.Error(err, "Unable to update username during signup.")
 		}
+
 		// Redeclare u variable
-		u = user
+		u, err = types.UserFromBoil(user)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Failed to convert user response type.")
+		}
+
 		redirectURL = req.TwitterRequest.RedirectURL
 	}
 
@@ -801,6 +833,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusInternalServerError, terror.Error(err, "Unable to issue a token for login.")
 		}
 	} else {
+		fmt.Println("Test Cakes Redirect?", u.ID)
 		b, err := json.Marshal(u)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
@@ -1658,20 +1691,12 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 		}
 
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
-			// Create user with standard name
-			commonAddress := common.HexToAddress("")
-			u, err := users.UserCreator("", "", twitterDetails.ScreenName, "", "", "", "", twitterDetails.TwitterID, "", "", commonAddress, "")
-			if err != nil {
-				return http.StatusInternalServerError, terror.Error(err, "Failed to create user with twitter.")
-			}
-
-			// Send user ID to user using JWT and signup handler will verify
-			jwtToken, err := api.OneTimeToken(u.ID)
+			jwtToken, err := api.OneTimeTwitterSignupToken(twitterDetails.TwitterID, twitterDetails.ScreenName)
 			if err != nil {
 				return http.StatusInternalServerError, terror.Error(err, errMsg)
 			}
 			http.Redirect(w, r, fmt.Sprintf("%s?token=%s&redirectURL=%s", redirect, jwtToken, redirectURL), http.StatusSeeOther)
-
+			return http.StatusSeeOther, nil
 		}
 		loginReq := &FingerprintTokenRequest{
 			User:        user,
@@ -1890,7 +1915,7 @@ type TokenConfig struct {
 
 var ErrNoUserInformation = errors.New("no user information provided to IssueToken()")
 
-// For forget password or twitter signup flow
+// For forget password
 func (api *API) OneTimeToken(userID string) (string, error) {
 	var err error
 	tokenID := uuid.Must(uuid.NewV4())
@@ -1900,7 +1925,8 @@ func (api *API) OneTimeToken(userID string) (string, error) {
 	// save user detail as jwt
 	jwt, sign, err := tokens.GenerateOneTimeJWT(
 		tokenID,
-		userID, expires)
+		expires,
+		userID)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to generate one time token")
 		return "", terror.Error(err, "Failed to create token.")
@@ -1909,6 +1935,35 @@ func (api *API) OneTimeToken(userID string) (string, error) {
 	jwtSigned, err := sign(jwt, true, api.TokenEncryptionKey)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to sign jwt")
+		return "", terror.Error(err, "Failed to process token.")
+	}
+
+	token := base64.StdEncoding.EncodeToString(jwtSigned)
+	return token, nil
+}
+
+// For twitter signup flow
+func (api *API) OneTimeTwitterSignupToken(twitterID string, screenName string) (string, error) {
+	var err error
+	tokenID := uuid.Must(uuid.NewV4())
+
+	expires := time.Now().Add(time.Minute * 10)
+
+	// save user detail as jwt
+	jwt, sign, err := tokens.GenerateOneTimeJWT(
+		tokenID,
+		expires,
+		twitterID,
+		"twitter-screenname", screenName,
+	)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to generate one time signup token")
+		return "", terror.Error(err, "Failed to create token.")
+	}
+
+	jwtSigned, err := sign(jwt, true, api.TokenEncryptionKey)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to sign jwt for signup")
 		return "", terror.Error(err, "Failed to process token.")
 	}
 
@@ -2520,6 +2575,14 @@ func (api *API) UserFingerprintHandler(w http.ResponseWriter, r *http.Request) e
 }
 
 func (api *API) ReadUserIDJWT(tokenBase64 string) (string, error) {
+	userID, err := api.ReadKeyJWT(tokenBase64, "user-id")
+	if err != nil {
+		return "", terror.Error(err)
+	}
+	return userID, nil
+}
+
+func (api *API) ReadKeyJWT(tokenBase64 string, key string) (string, error) {
 	errMsg := "Failed to read token."
 	tokenStr, err := base64.StdEncoding.DecodeString(tokenBase64)
 	if err != nil {
@@ -2532,13 +2595,13 @@ func (api *API) ReadUserIDJWT(tokenBase64 string) (string, error) {
 		return "", terror.Error(err, errMsg)
 	}
 
-	uID, _ := token.Get("user-id")
-	userID, ok := uID.(string)
+	val, _ := token.Get(key)
+	valStr, ok := val.(string)
 
 	if !ok {
-		return "", terror.Error(errors.New("failed to read user from token"), errMsg)
+		return "", terror.Error(errors.New("failed to read data from token"), errMsg)
 	}
-	return userID, nil
+	return valStr, nil
 }
 
 func (api *API) ReadCodeJWT(tokenBase64 string) (string, error) {
