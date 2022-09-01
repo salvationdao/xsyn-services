@@ -611,7 +611,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		commonAddr := common.HexToAddress(req.WalletRequest.PublicAddress)
 		user, err := users.PublicAddress(commonAddr)
 		if errors.Is(err, sql.ErrNoRows) {
-			if req.CaptchaToken == nil && *req.CaptchaToken == "" {
+			if req.CaptchaToken == nil || *req.CaptchaToken == "" {
 				err := fmt.Errorf("captcha token missing")
 				return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
 			}
@@ -681,7 +681,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 
 		user, err := users.FacebookID(facebookDetails.FacebookID)
 		if errors.Is(err, sql.ErrNoRows) {
-			if req.CaptchaToken == nil && *req.CaptchaToken == "" {
+			if req.CaptchaToken == nil || *req.CaptchaToken == "" {
 				err := fmt.Errorf("captcha token missing")
 				return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
 			}
@@ -728,8 +728,8 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		// Check google id exist
 		user, err := users.GoogleID(googleDetails.GoogleID)
 		if errors.Is(err, sql.ErrNoRows) {
-			if req.CaptchaToken == nil && *req.CaptchaToken == "" {
-				err := fmt.Errorf("captcha token missing")
+			if req.CaptchaToken == nil || *req.CaptchaToken == "" {
+				fmt.Println("Hello Yeah fail?", err)
 				return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
 			}
 			err := api.captcha.verify(*req.CaptchaToken)
@@ -766,7 +766,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		}
 		redirectURL = req.GoogleRequest.RedirectURL
 	case "twitter":
-		if req.CaptchaToken == nil && *req.CaptchaToken == "" {
+		if req.CaptchaToken == nil || *req.CaptchaToken == "" {
 			err := fmt.Errorf("captcha token missing")
 			return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
 		}
@@ -833,7 +833,6 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusInternalServerError, terror.Error(err, "Unable to issue a token for login.")
 		}
 	} else {
-		fmt.Println("Test Cakes Redirect?", u.ID)
 		b, err := json.Marshal(u)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
