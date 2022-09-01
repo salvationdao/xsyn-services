@@ -411,7 +411,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 		isSignup := true
 		signupCheckVal, err := api.ReadKeyJWT(req.TwitterToken, "twitter-signup")
-		if err != nil && errors.Is(err, ErrJWTKeyNotFound) {
+		if err != nil && !errors.Is(err, ErrJWTKeyNotFound) {
 			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to read user from token")
 			return
 		}
