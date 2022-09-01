@@ -402,14 +402,27 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			TwitterToken: r.Form.Get("twitter_token"),
 		}
 
-		userID := r.Form.Get("user_id") // twitter signup flow will provide user id instead of having it in the token
-		if userID == "" {
-			id, err := api.ReadUserIDJWT(req.TwitterToken)
+		id, err := api.ReadUserIDJWT(req.TwitterToken)
+		if err != nil {
+			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to read user from token")
+			return
+		}
+		userID := id
+
+		isSignup := true
+		signupCheckVal, err := api.ReadKeyJWT(req.TwitterToken, "twitter-signup")
+		if err != nil && errors.Is(err, ErrJWTKeyNotFound) {
+			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to read user from token")
+			return
+		}
+		isSignup = signupCheckVal == "true"
+		if isSignup {
+			twitterUser, err := users.TwitterID(id)
 			if err != nil {
-				externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to read user from token")
+				externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to locate user.")
 				return
 			}
-			userID = id
+			userID = twitterUser.ID
 		}
 		user, err := users.ID(userID)
 		if err != nil {
@@ -1954,6 +1967,7 @@ func (api *API) OneTimeTwitterSignupToken(twitterID string, screenName string) (
 		expires,
 		twitterID,
 		"twitter-screenname", screenName,
+		"twitter-signup", "true",
 	)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to generate one time signup token")
@@ -2573,6 +2587,8 @@ func (api *API) UserFingerprintHandler(w http.ResponseWriter, r *http.Request) e
 	return nil
 }
 
+var ErrJWTKeyNotFound = fmt.Errorf("failed to read data from token")
+
 func (api *API) ReadUserIDJWT(tokenBase64 string) (string, error) {
 	userID, err := api.ReadKeyJWT(tokenBase64, "user-id")
 	if err != nil {
@@ -2594,11 +2610,14 @@ func (api *API) ReadKeyJWT(tokenBase64 string, key string) (string, error) {
 		return "", terror.Error(err, errMsg)
 	}
 
-	val, _ := token.Get(key)
-	valStr, ok := val.(string)
-
+	val, ok := token.Get(key)
 	if !ok {
-		return "", terror.Error(errors.New("failed to read data from token"), errMsg)
+		return "", terror.Error(ErrJWTKeyNotFound, errMsg)
+	}
+
+	valStr, ok := val.(string)
+	if !ok {
+		return "", terror.Error(ErrJWTKeyNotFound, errMsg)
 	}
 	return valStr, nil
 }
