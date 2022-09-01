@@ -119,11 +119,21 @@ func ReadJWT(tokenB []byte, decryptToken bool, decryptKey []byte) (jwt.Token, er
 }
 
 // GenerateJWT returns the token for client side persistence
-func GenerateOneTimeJWT(tokenID uuid.UUID, id string, expires time.Time) (jwt.Token, func(jwt.Token, bool, []byte) ([]byte, error), error) {
+func GenerateOneTimeJWT(tokenID uuid.UUID, expires time.Time, id string, additionalData ...string) (jwt.Token, func(jwt.Token, bool, []byte) ([]byte, error), error) {
 	token := openid.New()
 	token.Set("user-id", id)
 	token.Set(openid.JwtIDKey, tokenID.String())
 	token.Set(openid.ExpirationKey, expires)
+
+	if len(additionalData)%2 == 0 {
+		for i := 0; i < len(additionalData); i += 2 {
+			if i >= len(additionalData) {
+				break
+			}
+			token.Set(additionalData[i], additionalData[i+1])
+		}
+	}
+
 	sign := func(t jwt.Token, encryptToken bool, encryptKey []byte) ([]byte, error) {
 		if !encryptToken {
 			return jwt.Sign(t, jwa.HS256, jwtKey)
