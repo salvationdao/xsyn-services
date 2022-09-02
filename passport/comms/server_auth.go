@@ -4,9 +4,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/benchmark"
@@ -14,6 +11,10 @@ import (
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/tokens"
 	"xsyn-services/types"
+
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/gofrs/uuid"
 	"github.com/lestrrat-go/jwx/jwt/openid"
@@ -264,7 +265,8 @@ func (s *S) GenOneTimeToken(req GenOneTimeTokenReq, resp *GenOneTimeTokenResp) e
 	// save user detail as jwt
 	jwt, sign, err := tokens.GenerateOneTimeJWT(
 		tokenID,
-		user.ID, expires)
+		expires,
+		user.ID)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to generate one time token")
 		return err
