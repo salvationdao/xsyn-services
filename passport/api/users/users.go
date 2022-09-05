@@ -139,7 +139,7 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 	if password != "" {
 		err := helpers.IsValidPassword(password)
 		if err != nil {
-			return nil, terror.Error(errors.New("Invalid password when creating user."), err.Error()) // Error has friendly message already
+			return nil, terror.Error(err) // Error has friendly message already
 		}
 
 	}
@@ -156,7 +156,7 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 
 		// User with email must have password when signing up without Oauth like google
 		if password == "" {
-			return nil, terror.Error(errors.New("Password Required when creating user."), "Password is required when signing up with email.")
+			return nil, terror.Error(errors.New("password Required when creating user"), "Password is required when signing up with email.")
 		}
 
 		emailNotAvailable, err := UserExists(lowerEmail)

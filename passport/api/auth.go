@@ -676,8 +676,10 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			commonAddress := common.HexToAddress("")
 			u, err = users.UserCreator("", "", username, req.EmailRequest.Email, "", "", "", "", "", "", commonAddress, req.EmailRequest.Password)
 			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to create user with email and password")
-				return http.StatusInternalServerError, terror.Error(err, "Failed to create user with email and password.")
+				if err.Error() != "password does not meet requirements" {
+					passlog.L.Error().Err(err).Msg("unable to create user with email and password")
+				}
+				return http.StatusInternalServerError, terror.Error(err)
 			}
 		} else if user != nil {
 			err := fmt.Errorf("user already exist")
