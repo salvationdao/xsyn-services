@@ -3,12 +3,11 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ninja-software/terror/v2"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"xsyn-services/passport/passlog"
-
-	"github.com/ninja-software/terror/v2"
 )
 
 type captcha struct {
@@ -38,8 +37,8 @@ func (c *captcha) verify(token string) error {
 	}
 
 	type captchaResp struct {
-		Success   bool   `json:"success"`
-		ErrorCode string `json:"error-codes"`
+		Success   bool     `json:"success"`
+		ErrorCode []string `json:"error-codes"`
 	}
 
 	cr := &captchaResp{}
@@ -48,8 +47,8 @@ func (c *captcha) verify(token string) error {
 		return terror.Error(err, "Failed to read captcha response")
 	}
 
-	if cr.ErrorCode != "" {
-		passlog.L.Debug().Msg(cr.ErrorCode)
+	if len(cr.ErrorCode) > 0 {
+		passlog.L.Debug().Msg(cr.ErrorCode[0])
 	}
 
 	if !cr.Success {
