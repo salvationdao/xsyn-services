@@ -57,6 +57,7 @@ type API struct {
 	Eip712Message       string
 	Twitch              *TwitchConfig
 	Twitter             *auth.TwitterConfig
+	Google              *auth.GoogleConfig
 	ClientToken         string
 	WebhookToken        string
 	GameserverHostUrl   string
@@ -79,6 +80,9 @@ type API struct {
 
 	// supremacy client map
 	ClientMap *sync.Map
+
+	// captcha
+	captcha *captcha
 
 	JWTKey []byte
 }
@@ -112,6 +116,9 @@ func NewAPI(
 
 		TokenExpirationDays: config.TokenExpirationDays,
 		TokenEncryptionKey:  []byte(config.EncryptTokensKey),
+		Google: &auth.GoogleConfig{
+			ClientID: config.AuthParams.GoogleClientID,
+		},
 		Twitch: &TwitchConfig{
 			ClientID:     config.AuthParams.TwitchClientID,
 			ClientSecret: config.AuthParams.TwitchClientSecret,
@@ -138,6 +145,12 @@ func NewAPI(
 		ClientMap:    &sync.Map{},
 		JWTKey:       jwtKey,
 		botSecretKey: config.BotSecret,
+
+		captcha: &captcha{
+			secret:    config.CaptchaSecret,
+			siteKey:   config.CaptchaSiteKey,
+			verifyUrl: "https://hcaptcha.com/siteverify",
+		},
 	}
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
@@ -215,12 +228,14 @@ func NewAPI(
 			//r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", WithError(api.GetNonce))
 			//r.Get("/auth/twitter", WithError(api.Auth.TwitterAuth))
-			r.Get("/withdraw/holding/{user_address}", WithError(api.HoldingSups))
-			r.Get("/withdraw/check/{address}", WithError(api.GetMaxWithdrawAmount))
-			r.Get("/withdraw/check", WithError(api.CheckCanWithdraw))
-			r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSups))
+			if os.Getenv("PASSPORT_ENVIRONMENT") != "staging" {
+				r.Get("/withdraw/holding/{user_address}", WithError(api.HoldingSups))
+				r.Get("/withdraw/check/{address}", WithError(api.GetMaxWithdrawAmount))
+				r.Get("/withdraw/check", WithError(api.CheckCanWithdraw))
+				r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSups))
 
-			r.Get("/1155/{address}/{token_id}/{nonce}/{amount}", WithError(api.Withdraw1155))
+				r.Get("/1155/{address}/{token_id}/{nonce}/{amount}", WithError(api.Withdraw1155))
+			}
 			r.Get("/1155/contracts", WithError(api.Get1155Contracts))
 
 			r.Get("/asset/{hash}", WithError(api.AssetGet))
@@ -237,20 +252,22 @@ func NewAPI(
 			r.Route("/auth", func(r chi.Router) {
 				r.Get("/check", WithError(api.AuthCheckHandler))
 				r.Get("/logout", WithError(api.AuthLogoutHandler))
+				r.Post("/token", WithError(api.TokenLoginHandler))
 				r.Post("/external", api.ExternalLoginHandler)
-				r.Post("/token", api.TokenLoginHandler)
-				r.Post("/wallet", api.WalletLoginHandler)
+				r.Post("/wallet", WithError(api.WalletLoginHandler))
 				r.Post("/email", WithError(api.EmailLoginHandler))
-				r.Post("/signup", WithError(api.EmailSignupHandler))
+				r.Post("/email_signup", WithError(api.EmailSignupVerifyHandler))
+				r.Post("/signup", WithError(api.SignupHandler))
 				r.Post("/forgot", WithError(api.ForgotPasswordHandler))
 				r.Post("/reset", WithError(api.ResetPasswordHandler))
-				r.Post("/change_password", WithError(api.ChangePasswordHandler))
-				r.Post("/new_password", WithError(api.NewPasswordHandler))
-				//r.Post("/google", WithError(api.GoogleLoginHandler))
-				//r.Post("/facebook", WithError(api.FacebookLoginHandler))
+				r.Post("/change_password", WithError(WithUser(api, api.ChangePasswordHandler)))
+				r.Post("/new_password", WithError(WithUser(api, api.NewPasswordHandler)))
+				r.Post("/google", WithError(api.GoogleLoginHandler))
+				r.Post("/facebook", WithError(api.FacebookLoginHandler))
 				r.Post("/tfa", WithError(api.TFAVerifyHandler))
-				//r.Get("/twitter", WithError(api.TwitterAuth))
-				r.Get("/verify", WithError(api.EmailVerifyHandler))
+				r.Get("/twitter", WithError(api.TwitterAuth))
+
+				r.Post("/verify_code", WithError(api.VerifyCodeHandler))
 
 				r.Post("/bot_list", api.BotListHandler)
 				r.Post("/bot_token", api.BotTokenLoginHandler)

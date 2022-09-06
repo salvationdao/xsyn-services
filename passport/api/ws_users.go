@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"html"
-	"io/ioutil"
 	"net/http"
 	"net/mail"
 	"net/url"
@@ -91,7 +90,6 @@ func NewUserController(log *zerolog.Logger, api *API, googleConfig *auth.GoogleC
 	api.SecureCommand(HubKeyUserSendVerify, userHub.SendVerifyHandler)
 
 	// TFA
-
 	api.SecureCommand(HubKeyGenerateTFASecret, userHub.GenerateTFAHandler)
 	api.SecureCommand(HubKeyTFACancel, userHub.CancelTFAHandler)
 	api.SecureCommand(HubKeyTFAVerification, userHub.TFAVerificationHandler)
@@ -166,34 +164,57 @@ const HubKeyUserSendVerify = "USER:VERIFY:SEND"
 
 type SendVerifyRequest struct {
 	Payload struct {
+		Email     string `json:"email"`
 		UserAgent string `json:"user_agent"`
 	} `json:"payload"`
 }
 
 // Sends another email to user to verify email
+//
+// OR sends email to new email address for user to verify
 func (uc *UserController) SendVerifyHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Failed to send a verification email. Please try again or contact support"
 	req := &SendVerifyRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	// Send email to new email for verification
-	_, tokenID, token, err := uc.API.VerifyEmailToken(&TokenConfig{
-		Encrypted: true,
-		Key:       uc.API.TokenEncryptionKey,
-		Device:    req.Payload.UserAgent,
-		Action:    "verify",
-		User:      &user.User,
-	})
+	lowerEmail := strings.ToLower(req.Payload.Email)
+
+	// Check if email is valid
+	_, err = mail.ParseAddress(lowerEmail)
 	if err != nil {
-		return terror.Error(err, "Unable to send verification email.")
+		return terror.Error(err, "Invalid email provided.")
 	}
 
-	err = uc.API.Mailer.SendVerificationEmail(context.Background(), user, token, tokenID, true)
-	if err != nil {
-		return terror.Error(err, "Unable to send verification email.")
+	// If a new email address
+	// Check if email address is already taken
+	if lowerEmail != user.Email.String {
+		u, _ := users.Email(lowerEmail)
+		if u != nil {
+			err = fmt.Errorf("email address is already taken by another user")
+			return terror.Error(err, "Email address is already used. Please use a different email.")
+		}
 	}
+
+	token, err := uc.API.OneTimeVerification()
+	if err != nil || token == "" {
+		err := fmt.Errorf("fail to generate verification code")
+		passlog.L.Error().Err(err).Msg(err.Error())
+		return terror.Error(err, errMsg)
+	}
+	code, err := uc.API.ReadCodeJWT(token)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to get verify code from token")
+		return terror.Error(err, errMsg)
+	}
+
+	err = uc.API.Mailer.SendVerificationEmail(context.Background(), user, code, lowerEmail)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+	user.VerifyToken = token
 	reply(user)
 	return nil
 }
@@ -229,10 +250,10 @@ func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, user *t
 
 	// Check availability of username
 	if user.Username == username {
-		return fmt.Errorf("username must be different")
+		return terror.Error(fmt.Errorf("username must be different"))
 	}
 
-	isAvailable, err := db.UsernameAvailable(username, user.ID)
+	isAvailable, err := users.UsernameExist(username)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -243,7 +264,7 @@ func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, user *t
 	oldUserName := user.Username
 
 	// Update username
-	user.Username = strings.ToLower(username)
+	user.Username = username
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
 	if err != nil {
 		return terror.Error(err, errMsg)
@@ -259,6 +280,7 @@ func (uc *UserController) UpdateUserUsernameHandler(ctx context.Context, user *t
 		err := uh.Insert(passdb.StdConn, boil.Infer())
 		if err != nil {
 			passlog.L.Warn().Err(err).Str("old username", oldUserName).Str("new username", user.Username).Msg("Failed to log username change in db")
+			return terror.Error(err, errMsg)
 		}
 	}
 
@@ -313,6 +335,7 @@ type UpdateUserRequest struct {
 		CurrentPassword                  *string     `json:"current_password"`
 		NewPassword                      *string     `json:"new_password"`
 		TwoFactorAuthenticationActivated bool        `json:"two_factor_authentication_activated"`
+		Code                             string      `json:"code"`
 		UserAgent                        string      `json:"user_agent"`
 	} `json:"payload"`
 }
@@ -329,40 +352,23 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 	// Setup user activity tracking
 	oldUser := *user
 
-	// Update Values
-	confirmPassword := false
-
 	if req.Payload.Email.Valid && req.Payload.Email.String != "" {
-		_, err := mail.ParseAddress(req.Payload.Email.String)
+		lowerEmail := strings.ToLower(req.Payload.Email.String)
+		_, err := mail.ParseAddress(lowerEmail)
 		if err != nil {
 			return terror.Error(err, "Invalid email address.")
 		}
 
-		email := strings.TrimSpace(req.Payload.Email.String)
-		email = strings.ToLower(email)
-
-		if user.Email.String != email {
-			userNewEmail := *user
-			userNewEmail.Email = null.StringFrom(email)
-
-			// Send email to new email for verification
-			_, tokenID, token, err := uc.API.VerifyEmailToken(&TokenConfig{
-				Encrypted: true,
-				Key:       uc.API.TokenEncryptionKey,
-				Device:    req.Payload.UserAgent,
-				Action:    "verify",
-				User:      &userNewEmail.User,
-			})
-
-			if err != nil {
-				return terror.Error(err, "Unable to issue a verify token.")
+		// Check if email address is already taken
+		if null.StringFrom(lowerEmail) != user.Email {
+			u, _ := users.Email(lowerEmail)
+			if u != nil {
+				err = fmt.Errorf("email address is already taken by another user.")
+				return terror.Error(err, "Email address is already taken by another user.")
 			}
-
-			err = uc.API.Mailer.SendVerificationEmail(context.Background(), &userNewEmail, token, tokenID, false)
-			if err != nil {
-				return terror.Error(err, "Unable to send verify email")
-			}
+			user.Email = null.StringFrom(lowerEmail)
 		}
+		user.Verified = true
 	}
 	if req.Payload.NewUsername != nil && req.Payload.Username != *req.Payload.NewUsername {
 		// Validate username
@@ -374,42 +380,14 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 		bm := bluemonday.StrictPolicy()
 		sanitizedUsername := html.UnescapeString(bm.Sanitize(strings.TrimSpace(*req.Payload.NewUsername)))
 
+		isTaken, err := users.UsernameExist(sanitizedUsername)
+		if err != nil {
+			return terror.Error(err, "A user with that username already exists.")
+		}
+		if isTaken {
+			return terror.Error(fmt.Errorf("Username already taken."), "A user with that username already exists.")
+		}
 		user.Username = sanitizedUsername
-	}
-	if req.Payload.NewPassword != nil && *req.Payload.NewPassword != "" {
-		if user.Email.String == "" && req.Payload.Email.String == "" {
-			return terror.Error(terror.ErrInvalidInput, "Email is required when assigning a new password, input a valid email and try again.")
-		}
-
-		err = helpers.IsValidPassword(*req.Payload.NewPassword)
-		if err != nil {
-			passwordErr := err.Error()
-			var bErr *terror.TError
-			if errors.As(err, &bErr) {
-				passwordErr = bErr.Message
-			}
-			return terror.Error(err, passwordErr)
-		}
-
-		hasPassword, err := boiler.PasswordHashExists(passdb.StdConn, user.ID)
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
-		confirmPassword = user.OldPasswordRequired && hasPassword
-	}
-
-	if confirmPassword {
-		if req.Payload.CurrentPassword == nil {
-			return terror.Error(terror.ErrInvalidInput, "Current password is required.")
-		}
-		userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
-		if err != nil {
-			return terror.Error(err, "Current password is incorrect.")
-		}
-		err = crypto.ComparePassword(userPassword.PasswordHash, *req.Payload.CurrentPassword)
-		if err != nil {
-			return terror.Error(err, "Current password is incorrect.")
-		}
 	}
 
 	user.FirstName = null.StringFrom(req.Payload.FirstName)
@@ -445,20 +423,6 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 		return terror.Error(err, errMsg)
 	}
 
-	// Update password?
-	if req.Payload.NewPassword != nil {
-
-		userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
-		userPassword.PasswordHash = crypto.HashPassword(*req.Payload.NewPassword)
-		_, err = userPassword.Update(passdb.StdConn, boil.Whitelist(boiler.PasswordHashColumns.PasswordHash))
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
-	}
-
 	// Commit transaction
 	err = tx.Commit()
 	if err != nil {
@@ -475,6 +439,7 @@ func (uc *UserController) UpdateHandler(ctx context.Context, user *types.User, k
 		err := uh.Insert(passdb.StdConn, boil.Infer())
 		if err != nil {
 			passlog.L.Warn().Err(err).Str("old username", oldUser.Username).Str("new username", user.Username).Msg("Failed to log username change in db")
+			return terror.Error(err, errMsg)
 		}
 	}
 
@@ -701,7 +666,7 @@ type RemoveServiceRequest struct {
 
 type AddFacebookRequest struct {
 	Payload struct {
-		FacebookID string `json:"facebook_id"`
+		FacebookToken string `json:"facebook_token"`
 	} `json:"payload"`
 }
 
@@ -760,7 +725,12 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, user *types.Us
 	}
 
 	// Check if Facebook ID is already taken
-	u, _ := users.FacebookID(req.Payload.FacebookID)
+	facebookDetails, err := uc.API.FacebookToken(req.Payload.FacebookToken)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("user provided invalid facebook token")
+		return terror.Error(err, "Invalid google token received")
+	}
+	u, _ := users.FacebookID(facebookDetails.FacebookID)
 	if u != nil {
 		return terror.Error(fmt.Errorf("This facebook account is already registered to a different user."))
 	}
@@ -769,7 +739,7 @@ func (uc *UserController) AddFacebookHandler(ctx context.Context, user *types.Us
 	var oldUser types.User = *user
 
 	// Update user's Facebook ID
-	user.FacebookID = null.StringFrom(req.Payload.FacebookID)
+	user.FacebookID = null.StringFrom(facebookDetails.FacebookID)
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.FacebookID))
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("failed to add user's facebook")
@@ -844,7 +814,7 @@ func (uc *UserController) RemoveGoogleHandler(ctx context.Context, user *types.U
 
 type AddGoogleRequest struct {
 	Payload struct {
-		GoogleID string `json:"google_id"`
+		GoogleToken string `json:"google_token"`
 	} `json:"payload"`
 }
 
@@ -859,7 +829,12 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, user *types.User
 	}
 
 	// Check if Google ID is already taken
-	u, _ := users.GoogleID(req.Payload.GoogleID)
+	googleDetails, err := uc.API.GoogleToken(req.Payload.GoogleToken)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("user provided invalid facebook token")
+		return terror.Error(err, "Invalid google token received")
+	}
+	u, _ := users.GoogleID(googleDetails.GoogleID)
 	if u != nil {
 		return terror.Error(fmt.Errorf("This google account is already registered to a different user."))
 	}
@@ -867,7 +842,7 @@ func (uc *UserController) AddGoogleHandler(ctx context.Context, user *types.User
 	var oldUser types.User = *user
 
 	// Update user's Google ID
-	user.GoogleID = null.StringFrom(req.Payload.GoogleID)
+	user.GoogleID = null.StringFrom(googleDetails.GoogleID)
 	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.GoogleID))
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("failed to add user's google")
@@ -1118,41 +1093,12 @@ func (uc *UserController) AddTwitterHandler(ctx context.Context, user *types.Use
 	params := url.Values{}
 	params.Set("oauth_token", req.Payload.OAuthToken)
 	params.Set("oauth_verifier", req.Payload.OAuthVerifier)
-	client := &http.Client{}
-	r, err := http.NewRequest("GET", fmt.Sprintf("https://api.twitter.com/oauth/access_token?%s", params.Encode()), nil)
+	twitterDetails, err := uc.API.TwitterToken(params.Encode())
 	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-	res, err := client.Do(r)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-	defer res.Body.Close()
-
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return terror.Error(err, errMsg)
+		return terror.Error(err, "Invalid twitter token provided.")
 	}
 
-	resp := &struct {
-		OauthToken       string
-		OauthTokenSecret string
-		UserID           string
-	}{}
-	values := strings.Split(string(body), "&")
-	for _, v := range values {
-		pair := strings.Split(v, "=")
-		switch pair[0] {
-		case "oauth_token":
-			resp.OauthToken = pair[1]
-		case "oauth_token_secret":
-			resp.OauthTokenSecret = pair[1]
-		case "user_id":
-			resp.UserID = pair[1]
-		}
-	}
-
-	twitterID := resp.UserID
+	twitterID := twitterDetails.TwitterID
 	if twitterID == "" {
 		return terror.Error(terror.ErrInvalidInput, "No Twitter account ID is provided.")
 	}
@@ -1519,7 +1465,7 @@ func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, user *typ
 const HubKeyUserSupsSubscribe = "USER:SUPS:SUBSCRIBE"
 
 func (api *API) UserSupsUpdatedSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	sups, _, err := api.userCacheMap.Get(user.ID)
+	sups, err := api.userCacheMap.Get(user.ID)
 	// get current on world sups
 	if err != nil {
 		return terror.Error(err, "Issue subscribing to user SUPs updates, try again or contact support.")
@@ -1616,7 +1562,7 @@ const HubKeySUPSRemainingSubscribe = "SUPS:TREASURY"
 
 func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 
-	sups, _, err := uc.API.userCacheMap.Get(types.XsynSaleUserID.String())
+	sups, err := uc.API.userCacheMap.Get(types.XsynSaleUserID.String())
 	if err != nil {
 		return terror.Error(err, "Issue getting total SUPs remaining handler, try again or contact support.")
 	}
@@ -1628,7 +1574,7 @@ const HubKeyUserTransactionsSubscribe = "USER:SUPS:TRANSACTIONS:SUBSCRIBE"
 
 func (api *API) UserTransactionsSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	// get users transactions
-	list, err := db.UserTransactionGetList(user.AccountID, 5)
+	list, err := db.UserTransactionGetList(user.ID, 5)
 	if err != nil {
 		return terror.Error(err, "Failed to get transactions, try again or contact support.")
 	}
@@ -1660,7 +1606,7 @@ func (uc *UserController) LockHandler(ctx context.Context, user *types.User, key
 	}
 
 	if req.Payload.Type == "account" {
-		if user.TotalLock == true {
+		if user.TotalLock {
 			return terror.Error(fmt.Errorf("user: %s: has already locked account", user.ID), "Account is already locked.")
 		}
 
@@ -1670,7 +1616,7 @@ func (uc *UserController) LockHandler(ctx context.Context, user *types.User, key
 	}
 
 	if req.Payload.Type == "minting" {
-		if user.MintLock == true {
+		if user.MintLock {
 			return terror.Error(fmt.Errorf("user: %s: has already locked minting", user.ID), "Minting is already locked.")
 		}
 
@@ -1678,7 +1624,7 @@ func (uc *UserController) LockHandler(ctx context.Context, user *types.User, key
 	}
 
 	if req.Payload.Type == "withdrawals" {
-		if user.WithdrawLock == true {
+		if user.WithdrawLock {
 			return terror.Error(fmt.Errorf("user: %s: has already locked withdrawals", user.ID), "Withdrawals is already locked.")
 		}
 
@@ -1829,7 +1775,7 @@ type TFAVerificationRequest struct {
 
 // TFAVerificationHandler handles user tfa verification
 func (uc *UserController) TFAVerificationHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	errMsg := "Issue updating user details, try again or contact support."
+	errMsg := "Unable to verify two-factor authentication, try again or contact support."
 	req := &TFAVerificationRequest{}
 	err := json.Unmarshal(payload, req)
 
@@ -1842,7 +1788,7 @@ func (uc *UserController) TFAVerificationHandler(ctx context.Context, user *type
 
 	err = users.VerifyTFA(user.TwoFactorAuthenticationSecret, req.Payload.Passcode)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	// set user's tfa status
@@ -1934,7 +1880,7 @@ func (uc *UserController) TFARecoveryVerifyHandler(ctx context.Context, user *ty
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("failed to parse 2fa recovery code verify request")
-		return terror.Error(err, "")
+		return terror.Error(err, errMsg)
 	}
 
 	oldUser := *user
@@ -1947,7 +1893,7 @@ func (uc *UserController) TFARecoveryVerifyHandler(ctx context.Context, user *ty
 	defer tx.Rollback()
 
 	// Check if code matches
-	err = users.VerifyTFARecovery(req.Payload.RecoveryCode)
+	err = users.VerifyTFARecovery(user.ID, req.Payload.RecoveryCode)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}

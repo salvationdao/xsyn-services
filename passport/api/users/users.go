@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -133,30 +134,32 @@ func UserExists(email string) (bool, error) {
 }
 
 func UserCreator(firstName, lastName, username, email, facebookID, googleID, twitchID, twitterID, discordID, phNumber string, publicAddress common.Address, password string, other ...interface{}) (*types.User, error) {
+	lowerEmail := strings.ToLower(email)
+
 	if password != "" {
 		err := helpers.IsValidPassword(password)
 		if err != nil {
-			return nil, err
+			return nil, terror.Error(err) // Error has friendly message already
 		}
 
 	}
-
+	isVerified := false
 	if facebookID == "" && googleID == "" && publicAddress == common.HexToAddress("") && twitchID == "" && twitterID == "" && discordID == "" {
-		if email == "" {
-			return nil, terror.Error(fmt.Errorf("email empty"), "Email cannot be empty")
+		if lowerEmail == "" {
+			return nil, terror.Error(errors.New("email empty"), "Email cannot be empty")
 		}
 
-		_, err := mail.ParseAddress(email)
+		_, err := mail.ParseAddress(lowerEmail)
 		if err != nil {
-			return nil, err
+			return nil, terror.Error(err, "Invalid email address.")
 		}
 
-		err = helpers.IsValidPassword(password)
-		if err != nil {
-			return nil, err
+		// User with email must have password when signing up without Oauth like google
+		if password == "" {
+			return nil, terror.Error(errors.New("password Required when creating user"), "Password is required when signing up with email.")
 		}
 
-		emailNotAvailable, err := UserExists(email)
+		emailNotAvailable, err := UserExists(lowerEmail)
 		if err != nil {
 			return nil, terror.Error(err, "Something went wrong. Please try again.")
 		}
@@ -165,9 +168,12 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		}
 	}
 
-	trimmedUsername := "noob-" + username
+	if email != "" {
+		isVerified = true
+	}
+
 	bm := bluemonday.StrictPolicy()
-	sanitizedUsername := bm.Sanitize(trimmedUsername)
+	sanitizedUsername := bm.Sanitize(username)
 
 	err := helpers.IsValidUsername(sanitizedUsername)
 	if err != nil {
@@ -197,11 +203,6 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		return nil, terror.Error(err, "failed to provide a valid wallet address")
 	}
 
-	isVerified := false
-	if googleID != "" {
-		isVerified = true
-	}
-
 	tx, err := passdb.StdConn.Begin()
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("Failed to start db transaction")
@@ -210,18 +211,8 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 
 	defer tx.Rollback()
 
-	// insert new account
-	account := boiler.Account{
-		Type: boiler.AccountTypeUSER,
-	}
-	err = account.Insert(tx, boil.Infer())
-	if err != nil {
-		passlog.L.Error().Err(err).Interface("account", account).Msg("Failed to insert new account")
-		return nil, terror.Error(err, "Failed to create new account.")
-	}
-
 	user := &boiler.User{
-		ID:            account.ID,
+		//ID:            account.ID,
 		FirstName:     null.StringFrom(firstName),
 		LastName:      null.StringFrom(lastName),
 		Username:      sanitizedUsername,
@@ -234,7 +225,11 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		PublicAddress: types.NewString(hexPublicAddress),
 		RoleID:        types.NewString(types.UserRoleMemberID.String()),
 		Verified:      isVerified, // verify users directly if they go through Oauth
-		AccountID:     account.ID,
+		//AccountID:     account.ID,
+	}
+
+	if os.Getenv("PASSPORT_ENVIRONMENT") == "staging" || os.Getenv("PASSPORT_ENVIRONMENT") == "development" {
+		user.Sups = decimal.New(10000, 18)
 	}
 
 	err = user.Insert(tx, boil.Infer())
@@ -243,24 +238,29 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		return nil, terror.Error(err, "create new user failed")
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		passlog.L.Error().Err(err).Msg("Failed to commit db transaction")
-		return nil, terror.Error(err, "Failed to create new user")
-	}
-
 	if password != "" && email != "" {
 		pw := &boiler.PasswordHash{
 			UserID:       user.ID,
 			PasswordHash: crypto.HashPassword(password),
 		}
 
-		err := pw.Insert(passdb.StdConn, boil.Infer())
+		err := pw.Insert(tx, boil.Infer())
 		if err != nil {
 			return nil, err
 		}
 
+		err = tx.Commit()
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("Failed to commit db transaction")
+			return nil, terror.Error(err, "Failed to create new user")
+		}
 		return &types.User{User: *user}, nil
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("Failed to commit db transaction")
+		return nil, terror.Error(err, "Failed to create new user")
 	}
 
 	return &types.User{User: *user}, nil
@@ -364,7 +364,8 @@ func Email(email string) (*types.User, error) {
 		qm.Load(qm.Rels(boiler.UserRels.Faction)),
 	).One(passdb.StdConn)
 	if errors.Is(sql.ErrNoRows, err) {
-		return nil, fmt.Errorf("no user found with email")
+		passlog.L.Info().Err(err).Msg("No user found with email")
+		return nil, err
 	}
 
 	if err != nil {
@@ -378,44 +379,40 @@ func EmailPassword(email string, password string) (*types.User, error) {
 
 	errMsg := "invalid email or password, please try again."
 
-	user, err := boiler.Users(
-		boiler.UserWhere.Email.EQ(null.StringFrom(strings.ToLower(email))),
-		qm.Load(qm.Rels(boiler.UserRels.Faction)),
-	).One(passdb.StdConn)
+	user, err := Email(email)
 
 	if err != nil {
-		return nil, fmt.Errorf(errMsg)
+		return nil, terror.Error(err, errMsg)
 	}
 
 	userPassword, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
 
 	if err != nil {
-		return nil, fmt.Errorf(errMsg)
+		return nil, terror.Error(err, errMsg)
 	}
 
 	err = crypto.ComparePassword(userPassword.PasswordHash, password)
 
 	if err != nil {
-		return nil, fmt.Errorf(errMsg)
+		return nil, terror.Error(err, errMsg)
 	}
 
-	return types.UserFromBoil(user)
+	return user, nil
 }
 
-func Username(uname string) (*boiler.User, string, error) {
-	user, err := boiler.Users(boiler.UserWhere.Username.EQ(strings.ToLower(uname))).One(passdb.StdConn)
-	if err != nil {
-		return nil, "", err
-	}
-
-	hash, err := boiler.FindPasswordHash(passdb.StdConn, user.ID)
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			return nil, "", fmt.Errorf("no password found for user")
+func UsernameExist(uname string) (bool, error) {
+	nUsers, err := boiler.Users(qm.Where(fmt.Sprintf("lower(%s) = lower(?)", boiler.UserColumns.Username), uname)).Count(passdb.StdConn)
+	if !errors.Is(err, sql.ErrNoRows) && err != nil || nUsers != 0 {
+		if err == nil {
+			err = fmt.Errorf("username is already taken.")
 		}
+		if nUsers == 0 {
+			passlog.L.Warn().Err(err).Msg("failed to get unique username")
+		}
+		return true, err
 	}
 
-	return user, hash.PasswordHash, nil
+	return false, nil
 
 }
 
@@ -435,9 +432,9 @@ func GetTFARecovery(userID string) (boiler.UserRecoveryCodeSlice, error) {
 	return userRecoveryCodes, nil
 }
 
-func VerifyTFARecovery(recoveryCode string) error {
+func VerifyTFARecovery(userID string, recoveryCode string) error {
 	// Check if code matches
-	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.RecoveryCode.EQ(recoveryCode), boiler.UserRecoveryCodeWhere.UsedAt.IsNull()).One(passdb.StdConn)
+	userRecoveryCode, err := boiler.UserRecoveryCodes(boiler.UserRecoveryCodeWhere.RecoveryCode.EQ(recoveryCode), boiler.UserRecoveryCodeWhere.UserID.EQ(userID), boiler.UserRecoveryCodeWhere.UsedAt.IsNull()).One(passdb.StdConn)
 	if errors.Is(sql.ErrNoRows, err) {
 		return fmt.Errorf("invalid recovery code")
 	}

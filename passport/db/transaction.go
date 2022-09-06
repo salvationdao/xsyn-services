@@ -8,8 +8,6 @@ import (
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
 
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -20,8 +18,8 @@ const (
 	TransactionColumnDescription          TransactionColumn = "description"
 	TransactionColumnTransactionReference TransactionColumn = "transaction_reference"
 	TransactionColumnAmount               TransactionColumn = "amount"
-	TransactionColumnCreditAccountID      TransactionColumn = "credit_account_id"
-	TransactionColumnDebitAccountID       TransactionColumn = "debit_account_id"
+	TransactionColumnCredit               TransactionColumn = "credit"
+	TransactionColumnDebit                TransactionColumn = "debit"
 	TransactionColumnStatus               TransactionColumn = "status"
 	TransactionColumnReason               TransactionColumn = "reason"
 	TransactionColumnCreatedAt            TransactionColumn = "created_at"
@@ -35,8 +33,8 @@ func (ic TransactionColumn) IsValid() error {
 		TransactionColumnDescription,
 		TransactionColumnTransactionReference,
 		TransactionColumnAmount,
-		TransactionColumnCreditAccountID,
-		TransactionColumnDebitAccountID,
+		TransactionColumnCredit,
+		TransactionColumnDebit,
 		TransactionColumnStatus,
 		TransactionColumnReason,
 		TransactionColumnCreatedAt,
@@ -55,8 +53,8 @@ transactions.id,
 transactions.description,
 transactions.transaction_reference,
 transactions.amount,
-transactions.credit_account_id,
-transactions.debit_account_id,
+transactions.credit,
+transactions.debit,
 transactions.reason,
 transactions.service_id,
 transactions.related_transaction_id,
@@ -67,8 +65,8 @@ transactions.sub_group
 
 const TransactionGetQueryFrom = `
 FROM transactions 
-INNER JOIN users t ON transactions.credit_account_id = t.id
-INNER JOIN users f ON transactions.debit_account_id = f.id
+INNER JOIN users t ON transactions.credit = t.id
+INNER JOIN users f ON transactions.debit = f.id
 `
 
 // UsersTransactionGroups returns details about the user's transactions that have group IDs
@@ -80,7 +78,7 @@ func UsersTransactionGroups(
 		SELECT transactions.group, transactions.sub_group
 		from transactions
 		WHERE transactions.group is not null
-		AND (transactions.credit_account_id = $1 OR transactions.debit_account_id = $1)
+		AND (transactions.credit = $1 OR transactions.debit = $1)
 	`
 	var args []interface{}
 	args = append(args, userID)
@@ -176,7 +174,7 @@ func TransactionIDList(
 
 	if userID != nil {
 		args = append(args, userID)
-		filterConditionsString += fmt.Sprintf(" AND (credit_account_id = $%[1]d OR debit_account_id = $%[1]d) ", len(args))
+		filterConditionsString += fmt.Sprintf(" AND (credit = $%[1]d OR debit = $%[1]d) ", len(args))
 	}
 
 	searchCondition := ""
@@ -300,14 +298,10 @@ func TransactionExists(txhash string) (bool, error) {
 func UserBalance(userID string) (*boiler.User, error) {
 	user, err := boiler.Users(
 		boiler.UserWhere.ID.EQ(userID),
-		qm.Load(boiler.UserRels.Account),
 	).One(passdb.StdConn)
 	if err != nil {
 		return nil, err
 	}
 
-	if user.R.Account == nil {
-		return nil, fmt.Errorf("user does not have an account")
-	}
 	return user, nil
 }

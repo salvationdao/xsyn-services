@@ -14,8 +14,10 @@ import (
 	"os"
 	"os/user"
 	"path"
+	"strings"
 	"time"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/helpers"
 
 	"github.com/gofrs/uuid"
 	"github.com/lestrrat-go/jwx/jwa"
@@ -117,22 +119,57 @@ func ReadJWT(tokenB []byte, decryptToken bool, decryptKey []byte) (jwt.Token, er
 }
 
 // GenerateJWT returns the token for client side persistence
-func GenerateOneTimeJWT(tokenID uuid.UUID, id string, expires time.Time) (jwt.Token, func(jwt.Token, bool, []byte) ([]byte, error), error) {
+func GenerateOneTimeJWT(tokenID uuid.UUID, expires time.Time, id string, additionalData ...string) (jwt.Token, func(jwt.Token, bool, []byte) ([]byte, error), error) {
 	token := openid.New()
 	token.Set("user-id", id)
+	token.Set(openid.JwtIDKey, tokenID.String())
+	token.Set(openid.ExpirationKey, expires)
+
+	if len(additionalData)%2 == 0 {
+		for i := 0; i < len(additionalData); i += 2 {
+			if i >= len(additionalData) {
+				break
+			}
+			token.Set(additionalData[i], additionalData[i+1])
+		}
+	}
+
+	sign := func(t jwt.Token, encryptToken bool, encryptKey []byte) ([]byte, error) {
+		if !encryptToken {
+			return jwt.Sign(t, jwa.HS256, jwtKey)
+		}
+		// sign
+		signedJWT, err := jwt.Sign(t, jwa.HS256, jwtKey)
+		if err != nil {
+			return nil, err
+		}
+		// then encrypt
+		encryptedAndSignedToken, err := encrypt(encryptKey, signedJWT)
+		if err != nil {
+			return nil, err
+		}
+
+		return encryptedAndSignedToken, nil
+	}
+	return token, sign, nil
+}
+
+// GenerateVerifyCodeJWT returns the token for user verification
+func GenerateVerifyCodeJWT(tokenID uuid.UUID, expires time.Time) (jwt.Token, func(jwt.Token, bool, []byte) ([]byte, error), error) {
+	token := openid.New()
+	code := strings.ToLower(helpers.RandCodeBytes(5))
+	token.Set("code", code)
 	token.Set(openid.JwtIDKey, tokenID.String())
 	token.Set(openid.ExpirationKey, expires)
 	sign := func(t jwt.Token, encryptToken bool, encryptKey []byte) ([]byte, error) {
 		if !encryptToken {
 			return jwt.Sign(t, jwa.HS256, jwtKey)
 		}
-
 		// sign
 		signedJWT, err := jwt.Sign(t, jwa.HS256, jwtKey)
 		if err != nil {
 			return nil, err
 		}
-
 		// then encrypt
 		encryptedAndSignedToken, err := encrypt(encryptKey, signedJWT)
 		if err != nil {

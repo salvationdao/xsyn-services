@@ -3,25 +3,23 @@
 This repo holds the various xsyn services
 
 ### Setup to use private repo
+
 ```bash
 git config --global --add url."git@github.com:".insteadOf "https://github.com/"
 export GOPRIVATE="github.com/ninja-software/*,github.com/ninja-syndicate/*"
 ```
 
 ## marketplace
+
 ```
 TODO
 ```
-
-
 
 ## passport-server
 
 [![Staging Deployment](https://github.com/ninja-syndicate/passport-server/actions/workflows/deploy-staging.yml/badge.svg)](https://github.com/ninja-syndicate/passport-server/actions/workflows/deploy-staging.yml)
 
 [CD Docs](.github/workflows/README.md)
-
-
 
 ### passport-server spinup
 
@@ -105,6 +103,9 @@ PASSPORT_GOOGLE_CLIENT_ID
 PASSPORT_METAMASK_SIGN_MESSAGE
 PASSPORT_TWITCH_CLIENT_ID
 PASSPORT_TWITCH_CLIENT_SECRET
+
+PASSPORT_CAPTCHA_SITE_KEY
+PASSPORT_CAPTCHA_SECRET
 ```
 
 #### db-boiler

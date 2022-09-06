@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -139,15 +140,25 @@ func ChangeStoreItemsTemplateID(oldID, newID string) error {
 		WITH old AS (
 			UPDATE store_items SET id = $1
 			WHERE id =  $2
-			RETURNING $1::uuid as new, $2::uuid as old
+			RETURNING $1::uuid AS new, $2::uuid AS old
 		) UPDATE purchased_items_old
 		SET store_item_id = old.new
 		FROM old
 		WHERE store_item_id = old.old;
 		`
-
 	_, err := passdb.StdConn.Exec(query, newID, oldID)
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to update store item id")
+		return terror.Error(err)
+	}
+
+	count, err := boiler.StoreItems(boiler.StoreItemWhere.ID.EQ(newID)).Count(passdb.StdConn)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to update store item id")
+		return terror.Error(err)
+	}
+	if count != 1 {
+		err = fmt.Errorf("new id didn't update correctly")
 		passlog.L.Error().Err(err).Msg("failed to update store item id")
 		return terror.Error(err)
 	}
