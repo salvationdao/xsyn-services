@@ -2352,7 +2352,7 @@ func (api *API) AuthLogoutHandler(w http.ResponseWriter, r *http.Request) (int, 
 	// check user from token
 	resp, err := api.UserFromToken(token)
 	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Failed to authenticate user.")
+		return http.StatusBadRequest, terror.Error(err, "Failed to find user.")
 	}
 
 	// Delete all issued token
@@ -2360,7 +2360,7 @@ func (api *API) AuthLogoutHandler(w http.ResponseWriter, r *http.Request) (int, 
 		boiler.IssueTokenColumns.DeletedAt: time.Now(),
 	})
 	if err != nil {
-		passlog.L.Error().Err(err).Msg("unable to delete all issued token for password reset")
+		passlog.L.Error().Err(err).Msg("unable to delete all issued token to logout")
 		return http.StatusInternalServerError, terror.Error(err, "Unable to delete all current sessions")
 	}
 
