@@ -634,9 +634,8 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			}
 
 			// Signup user but dont log them before username is provided
-			username := commonAddr.Hex()[0:10]
 			// If user does not exist, create new user with their username set to their MetaMask public address
-			user, err = users.UserCreator("", "", helpers.TrimUsername(username), "", "", "", "", "", "", "", commonAddr, "")
+			user, err = users.UserCreator("", "", username, "", "", "", "", "", "", "", commonAddr, "")
 			if err != nil {
 				return http.StatusInternalServerError, terror.Error(err, "Unable to create user with wallet.")
 			}
@@ -658,16 +657,9 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusBadRequest, terror.Error(err, "Invalid user signature provided.")
 		}
 
-		// Update username
-		user.Username = username
-		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to update username")
-			err := fmt.Errorf("User does not exist")
-			return http.StatusInternalServerError, terror.Error(err, "Failed to update username")
-		}
 		// Redeclare u variable
 		u = user
+
 		redirectURL = req.WalletRequest.RedirectURL
 	case "email":
 		// Check no user with email exist
@@ -707,7 +699,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 
 			// Create user with default username
 			commonAddress := common.HexToAddress("")
-			_, err = users.UserCreator("", "", facebookDetails.Name, "", facebookDetails.FacebookID, "", "", "", "", "", commonAddress, "")
+			_, err = users.UserCreator("", "", username, "", facebookDetails.FacebookID, "", "", "", "", "", commonAddress, "")
 			if err != nil {
 				return http.StatusInternalServerError, terror.Error(err, "Failed to create new user with facebook.")
 			}
@@ -718,14 +710,6 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			}
 		} else if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Failed to get user with facebook account during signup.")
-		}
-		// Update username
-		user.Username = username
-		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to update username")
-			err := fmt.Errorf("User does not exist")
-			return http.StatusInternalServerError, terror.Error(err, "Unable to update username")
 		}
 		// Redeclare u variable
 		u, err = types.UserFromBoil(user)
@@ -765,20 +749,12 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		} else if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Failed to get user with google account during signup.")
 		}
-
-		// Update username
-		user.Username = username
-		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to update username")
-			err := fmt.Errorf("User does not exist")
-			return http.StatusInternalServerError, terror.Error(err, "Failed to update username during signup.")
-		}
 		// Redeclare u variable
 		u, err = types.UserFromBoil(user)
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err, "Failed to convert user response type.")
 		}
+
 		redirectURL = req.GoogleRequest.RedirectURL
 	case "twitter":
 		if req.CaptchaToken == nil || *req.CaptchaToken == "" {
@@ -796,15 +772,10 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			passlog.L.Error().Err(err).Msg("unable to read user jwt")
 			return http.StatusBadRequest, terror.Error(err, "Invalid twitter token provided.")
 		}
-		twitterScreenName, err := api.ReadKeyJWT(req.TwitterRequest.TwitterToken, "twitter-screenname")
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to read user jwt")
-			return http.StatusBadRequest, terror.Error(err, "Invalid twitter token provided.")
-		}
 
-		// Create user with standard name
+		// Create user
 		commonAddress := common.HexToAddress("")
-		_, err = users.UserCreator("", "", twitterScreenName, "", "", "", "", twitterID, "", "", commonAddress, "")
+		_, err = users.UserCreator("", "", username, "", "", "", "", twitterID, "", "", commonAddress, "")
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err, "Failed to create user with twitter.")
 		}
@@ -813,14 +784,6 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Unable to get user during signup with twitter.")
 		}
-		// Update username
-		user.Username = username
-		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Username))
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to update username")
-			return http.StatusInternalServerError, terror.Error(err, "Unable to update username during signup.")
-		}
-
 		// Redeclare u variable
 		u, err = types.UserFromBoil(user)
 		if err != nil {
