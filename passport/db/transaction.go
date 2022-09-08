@@ -139,9 +139,9 @@ func TransactionIDList(
 
 	// Prepare Filters
 	filterConditionsString := ""
+	filterConditions := []string{}
 	argIndex := 1
 	if filter != nil {
-		filterConditions := []string{}
 		for _, f := range filter.Items {
 			valid := IsValidColumn(f.Column, boiler.TransactionColumns)
 			if !valid {
@@ -161,13 +161,16 @@ func TransactionIDList(
 			}
 		}
 		if len(filterConditions) > 0 {
-			filterConditionsString = " AND (" + strings.Join(filterConditions, " "+string(filter.LinkOperator)+" ") + ")"
+			filterConditionsString = strings.Join(filterConditions, " "+string(filter.LinkOperator)+" ") + ")"
 		}
 	}
 
 	if userID != nil {
 		args = append(args, *userID)
-		filterConditionsString += fmt.Sprintf(" AND (%[2]s = $%[1]d OR %[3]s = $%[1]d) ", len(args), boiler.TransactionColumns.Credit, boiler.TransactionColumns.Debit)
+		if len(filterConditions) > 0 {
+			filterConditionsString += " AND "
+		}
+		filterConditionsString += fmt.Sprintf("(%[2]s = $%[1]d OR %[3]s = $%[1]d) ", len(args), boiler.TransactionColumns.Credit, boiler.TransactionColumns.Debit)
 	}
 
 	searchCondition := ""
@@ -175,7 +178,10 @@ func TransactionIDList(
 		xsearch := ParseQueryText(search, true)
 		if len(xsearch) > 0 {
 			args = append(args, xsearch)
-			searchCondition = fmt.Sprintf(" AND ((to_tsvector('english', %[2]s) @@ to_tsquery($%[1]d)) OR (to_tsvector('english', %[3]s) @@ to_tsquery($%[1]d)))",
+			if len(filterConditions) > 0 {
+				filterConditionsString += " AND "
+			}
+			searchCondition = fmt.Sprintf("((to_tsvector('english', %[2]s) @@ to_tsquery($%[1]d)) OR (to_tsvector('english', %[3]s) @@ to_tsquery($%[1]d)))",
 				len(args),
 				boiler.TransactionTableColumns.Description,
 				boiler.TransactionTableColumns.TransactionReference)
@@ -184,15 +190,13 @@ func TransactionIDList(
 
 	// Get Total Found
 	countQ := fmt.Sprintf(`--sql
-		SELECT COUNT(DISTINCT %s)
+		SELECT COUNT(%s)
 		%s
-		WHERE %s IS NOT NULL
-		%s
+		WHERE %s
 		%s
 		`,
 		boiler.TransactionTableColumns.ID,
 		TransactionGetQueryFrom,
-		boiler.TransactionTableColumns.ID,
 		filterConditionsString,
 		searchCondition,
 	)
@@ -223,13 +227,11 @@ func TransactionIDList(
 	// Get Paginated Result
 	q := fmt.Sprintf(`--sql
 		%s
-		WHERE %s IS NOT NULL
-		%s
+		WHERE %s
 		%s
 		%s
 		%s`,
 		TransactionGetQuery,
-		boiler.TransactionTableColumns.ID,
 		filterConditionsString,
 		searchCondition,
 		orderBy,
