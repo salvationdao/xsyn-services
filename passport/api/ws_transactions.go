@@ -59,7 +59,7 @@ func (tc *TransactionController) TransactionGroupsHandler(ctx context.Context, u
 type TransactionListRequest struct {
 	Payload struct {
 		SortDir  db.SortByDir          `json:"sort_dir"`
-		SortBy   db.TransactionColumn  `json:"sort_by"`
+		SortBy   string                `json:"sort_by"`
 		Filter   *db.ListFilterRequest `json:"filter,omitempty"`
 		Search   string                `json:"search"`
 		PageSize int                   `json:"page_size"`

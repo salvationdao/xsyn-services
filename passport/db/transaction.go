@@ -12,22 +12,6 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
-type TransactionColumn string
-
-const (
-	TransactionColumnID                   TransactionColumn = "id"
-	TransactionColumnDescription          TransactionColumn = "description"
-	TransactionColumnTransactionReference TransactionColumn = "transaction_reference"
-	TransactionColumnAmount               TransactionColumn = "amount"
-	TransactionColumnCredit               TransactionColumn = "credit"
-	TransactionColumnDebit                TransactionColumn = "debit"
-	TransactionColumnStatus               TransactionColumn = "status"
-	TransactionColumnReason               TransactionColumn = "reason"
-	TransactionColumnCreatedAt            TransactionColumn = "created_at"
-	TransactionColumnGroup                TransactionColumn = "group"
-	TransactionColumnSubGroup             TransactionColumn = "sub_group"
-)
-
 func IsValidColumn(column string, columnStruct interface{}) bool {
 	v := reflect.ValueOf(columnStruct)
 	for i := 0; i < v.NumField(); i++ {
@@ -39,29 +23,38 @@ func IsValidColumn(column string, columnStruct interface{}) bool {
 	return false
 }
 
-const TransactionGetQuery string = `
+func ColumnsToString(columnStruct interface{}) string {
+	v := reflect.ValueOf(columnStruct)
+	result := ""
+	for i := 0; i < v.NumField(); i++ {
+		result += v.Field(i).String()
+		if i == v.NumField()-1 {
+			break
+		}
+		result += ",\n"
+	}
+	return result
+}
+
+var TransactionGetQuery = fmt.Sprintf(`
 SELECT 
 row_to_json(t) as to,
 row_to_json(f) as from,
-transactions.id,
-transactions.description,
-transactions.transaction_reference,
-transactions.amount,
-transactions.credit,
-transactions.debit,
-transactions.reason,
-transactions.service_id,
-transactions.related_transaction_id,
-transactions.created_at,
-transactions.group,
-transactions.sub_group
-` + TransactionGetQueryFrom
+%s
+`,
+	ColumnsToString(boiler.TransactionTableColumns),
+) + TransactionGetQueryFrom
 
-const TransactionGetQueryFrom = `
+var TransactionGetQueryFrom = fmt.Sprintf(`
 FROM transactions 
-INNER JOIN users t ON transactions.credit = t.id
-INNER JOIN users f ON transactions.debit = f.id
-`
+INNER JOIN users t ON %s = t.%s
+INNER JOIN users f ON %s = f.%s
+`,
+	boiler.TransactionTableColumns.Credit,
+	boiler.TransactionColumns.ID,
+	boiler.TransactionTableColumns.Debit,
+	boiler.TransactionColumns.ID,
+)
 
 // UsersTransactionGroups returns details about the user's transactions that have group IDs
 func UsersTransactionGroups(
