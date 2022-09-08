@@ -84,7 +84,9 @@ type EmailLoginRequest struct {
 	Password    string             `json:"password"`
 	SessionID   hub.SessionID      `json:"session_id"`
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
+	AuthType    string             `json:"auth_type"`
 	Username    string             `json:"username"`
+	Token       string             `json:"token"`
 }
 type ForgotPasswordRequest struct {
 	Tenant      string             `json:"tenant"`
@@ -296,6 +298,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			Tenant:      r.Form.Get("tenant"),
 			Email:       r.Form.Get("email"),
 			Password:    r.Form.Get("password"),
+			Token:       r.Form.Get("token"),
 		}
 		//Check if email exist with password
 		user, err := users.EmailPassword(req.Email, req.Password)
@@ -304,11 +307,25 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Check if logging in from password reset
+		// If so, pass 2fa
+		var pass2fa bool
+		if req.Token != "" {
+			userID, err := api.ReadUserIDJWT(req.Token)
+			if err != nil || userID != user.ID {
+				passlog.L.Error().Err(err).Msg("Invalid token to login from external.")
+				externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid email or password")
+				return
+			}
+			pass2fa = true
+		}
+
 		loginReq := &FingerprintTokenRequest{
 			User:        &user.User,
 			Fingerprint: req.Fingerprint,
 			RedirectURL: redir,
 			Tenant:      req.Tenant,
+			Pass2FA:     pass2fa,
 		}
 
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
@@ -409,7 +426,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		userID := id
 
-		isSignup := true
+		var isSignup bool
 		signupCheckVal, err := api.ReadKeyJWT(req.TwitterToken, "twitter-signup")
 		if err != nil && !errors.Is(err, ErrJWTKeyNotFound) {
 			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to read user from token")
@@ -651,12 +668,6 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusBadRequest, terror.Error(err, "User with wallet address does not exist.")
 		}
 
-		err = api.VerifySignature(req.WalletRequest.Signature, user.Nonce.String, commonAddr)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to verify signature")
-			return http.StatusBadRequest, terror.Error(err, "Invalid user signature provided.")
-		}
-
 		// Redeclare u variable
 		u = user
 
@@ -810,18 +821,8 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Unable to issue a token for login.")
 	}
-	if redirectURL == "" {
-		loginReq := &FingerprintTokenRequest{
-			User:        &u.User,
-			Fingerprint: req.Fingerprint,
-			RedirectURL: redirectURL,
-		}
 
-		err = api.FingerprintAndIssueToken(w, r, loginReq)
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err, "Unable to issue a token for login.")
-		}
-	} else {
+	if redirectURL != "" {
 		b, err := json.Marshal(u)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
@@ -833,6 +834,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusInternalServerError, terror.Error(err, "Unable to write response to user.")
 		}
 	}
+
 	return http.StatusCreated, nil
 
 }
@@ -920,8 +922,16 @@ func (api *API) EmailLogin(req *EmailLoginRequest, w http.ResponseWriter, r *htt
 		return terror.Error(err, "Invalid user email or password.")
 	}
 
+	loginReq := &FingerprintTokenRequest{
+		User:        &user.User,
+		RedirectURL: req.RedirectURL,
+		Tenant:      req.Tenant,
+		Fingerprint: req.Fingerprint,
+	}
+	err = api.FingerprintAndIssueToken(w, r, loginReq)
+
 	// If external or new user signup
-	if req.RedirectURL != "" {
+	if req.RedirectURL != "" && !user.TwoFactorAuthenticationIsSet {
 		b, err := json.Marshal(req)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
@@ -935,13 +945,6 @@ func (api *API) EmailLogin(req *EmailLoginRequest, w http.ResponseWriter, r *htt
 		return nil
 	}
 
-	loginReq := &FingerprintTokenRequest{
-		User:        &user.User,
-		RedirectURL: req.RedirectURL,
-		Tenant:      req.Tenant,
-		Fingerprint: req.Fingerprint,
-	}
-	err = api.FingerprintAndIssueToken(w, r, loginReq)
 	if err != nil {
 		return terror.Error(err, "Unable to issue a login token to user.")
 	}
@@ -1038,13 +1041,39 @@ func (api *API) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) (in
 	userID, err := api.ReadUserIDJWT(req.Token)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to read user jwt")
-		return http.StatusBadRequest, terror.Error(err, "Unable to get user from token.")
+		return http.StatusBadRequest, terror.Error(err, "Link has expired.")
 	}
 	user, err := users.ID(userID)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Unable to find user.")
 	}
-	return passwordReset(api, w, r, req, &user.User)
+
+	statusCode, err := passwordReset(api, w, r, req, &user.User)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err)
+	}
+	// Send back login request to login external also
+	resp := struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+		AuthType string `json:"auth_type"`
+	}{
+		Email:    user.Email.String,
+		Password: req.NewPassword,
+		AuthType: "email",
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to encode response to json")
+		return http.StatusInternalServerError, terror.Error(err, "Unable to decode response to user.")
+	}
+	_, err = w.Write(b)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to write response to user")
+		return http.StatusInternalServerError, terror.Error(err, "Unable to write response to user.")
+	}
+
+	return statusCode, nil
 }
 
 // Handles changes password with current password
@@ -1155,11 +1184,13 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 		RedirectURL: req.RedirectURL,
 		Tenant:      req.Tenant,
 		Fingerprint: req.Fingerprint,
+		Pass2FA:     true,
 	}
 	err = api.FingerprintAndIssueToken(w, r, loginReq)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Unable to issue a new login token.")
 	}
+
 	// Send message to users to logout
 	URI := fmt.Sprintf("/user/%s", user.ID)
 	passlog.L.Info().Str("Password update", "Logging out all issue token from user")
@@ -1195,6 +1226,12 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 	user, err := users.PublicAddress(commonAddr)
 
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		// Verify new user signature
+		err = api.VerifySignature(req.Signature, req.Nonce, commonAddr)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to verify signature")
+			return terror.Error(err, "Invalid signature provided.")
+		}
 		// Captcha is required for new users
 		if req.CaptchaToken == nil || *req.CaptchaToken == "" {
 			resp := struct {
@@ -1226,22 +1263,7 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 		}
 
 		newUser = true
-		// Signup user but dont log them before username is provided
-		username := commonAddr.Hex()[0:10]
-		// If user does not exist, create new user with their username set to their MetaMask public address
-		user, err = users.UserCreator("", "", helpers.TrimUsername(username), "", "", "", "", "", "", "", commonAddr, "")
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("user creation failed")
-			return terror.Error(err, "Unable to create user with wallet.")
-		}
 
-		// update nonce value
-		user.Nonce = null.StringFrom(req.Nonce)
-		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Nonce))
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("nonce update failed")
-			return terror.Error(err, "Unable to update user nonce.")
-		}
 	} else if err != nil {
 		return terror.Error(err, "Failed to check if user with wallet address exists.")
 	}
@@ -1272,7 +1294,7 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 	}
 
 	// If external or new user signup
-	if req.RedirectURL != "" || newUser {
+	if req.RedirectURL != "" && !user.TwoFactorAuthenticationIsSet || newUser {
 		resp := struct {
 			WalletLoginRequest
 			NewUser bool `json:"new_user"`
@@ -1418,7 +1440,7 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 	}
 
 	// If external or new user signup
-	if req.RedirectURL != "" || newUser {
+	if req.RedirectURL != "" && !user.TwoFactorAuthenticationIsSet || newUser {
 		resp := struct {
 			GoogleLoginRequest
 			NewUser bool `json:"new_user"`
@@ -1461,6 +1483,33 @@ func (api *API) TFAVerifyHandler(w http.ResponseWriter, r *http.Request) (int, e
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err)
 	}
+	// Issue login token to user
+	// Only if jwt token was provided
+	if req.Token != "" {
+		loginReq := &FingerprintTokenRequest{
+			User:        &user.User,
+			RedirectURL: req.RedirectURL,
+			Tenant:      req.Tenant,
+			Fingerprint: req.Fingerprint,
+			Pass2FA:     true,
+		}
+		err = api.FingerprintAndIssueToken(w, r, loginReq)
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err, "Unable to issue login token to user.")
+		}
+	} else {
+		// If user already logged in then no need for token
+		b, err := json.Marshal(user)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to convert user to json 2fa response")
+			return http.StatusBadRequest, terror.Error(err, "Unable to decode response to user.")
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to write 2fa response to user")
+			return http.StatusBadRequest, terror.Error(err, "Unable to write response to user.")
+		}
+	}
 
 	// If external forward request to external handler
 	if req.RedirectURL != "" {
@@ -1476,33 +1525,6 @@ func (api *API) TFAVerifyHandler(w http.ResponseWriter, r *http.Request) (int, e
 		}
 	}
 
-	// Issue login token to user
-	// Only if jwt token was provided
-	// If user already logged in then no need for token
-	if req.Token != "" {
-		loginReq := &FingerprintTokenRequest{
-			User:        &user.User,
-			RedirectURL: req.RedirectURL,
-			Tenant:      req.Tenant,
-			Fingerprint: req.Fingerprint,
-			Pass2FA:     true,
-		}
-		err = api.FingerprintAndIssueToken(w, r, loginReq)
-		if err != nil {
-			return http.StatusBadRequest, terror.Error(err, "Unable to issue login token to user.")
-		}
-	} else {
-		b, err := json.Marshal(user)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to convert user to json 2fa response")
-			return http.StatusBadRequest, terror.Error(err, "Unable to decode response to user.")
-		}
-		_, err = w.Write(b)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to write 2fa response to user")
-			return http.StatusBadRequest, terror.Error(err, "Unable to write response to user.")
-		}
-	}
 	return http.StatusOK, nil
 }
 
@@ -1641,7 +1663,7 @@ func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, 
 
 	}
 	// If external or new user signup
-	if req.RedirectURL != "" || newUser {
+	if req.RedirectURL != "" && !user.TwoFactorAuthenticationIsSet || newUser {
 		resp := struct {
 			FacebookLoginRequest
 			NewUser bool `json:"new_user"`
@@ -1818,12 +1840,6 @@ type FingerprintTokenRequest struct {
 }
 
 func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request, req *FingerprintTokenRequest) error {
-	// Check if tenant is provided for external 2FA logins except for twitter since redirect is always provided
-	if req.User.TwoFactorAuthenticationIsSet && req.RedirectURL != "" && !req.Pass2FA && req.Tenant == "" && !req.IsTwitter {
-		err := fmt.Errorf("Tenant missing for external 2fa login")
-		passlog.L.Error().Err(err).Msg(err.Error())
-		return terror.Error(err, "Missing external host from request.")
-	}
 	if req.User == nil {
 		err := fmt.Errorf("user does not exist in issuing token")
 		passlog.L.Error().Err(err).Msg(err.Error())
@@ -1854,12 +1870,9 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		}
 
 		// Redirect to 2fa
-		if req.RedirectURL != "" {
-			rURL := fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s&tenant=%s", origin, token, req.RedirectURL, req.Tenant)
-			if req.User.TwitterID.String != "" {
-				// add query tfa=ok for twitter message
-				rURL = fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s?tfa=ok&tenant=%s", origin, token, req.RedirectURL, req.Tenant)
-			}
+		if req.User.TwitterID.String != "" {
+			// add query tfa=ok for twitter message
+			rURL := fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s?tfa=ok&tenant=%s", origin, token, req.RedirectURL, req.Tenant)
 			http.Redirect(w, r, rURL, http.StatusSeeOther)
 			return nil
 		}
