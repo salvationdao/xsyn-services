@@ -69,8 +69,8 @@ type TransactionListRequest struct {
 
 // TransactionListResponse is the response from get Transaction list
 type TransactionListResponse struct {
-	Total          int      `json:"total"`
-	TransactionIDs []string `json:"transaction_ids"`
+	Total        int                       `json:"total"`
+	Transactions []*db.TransactionDetailed `json:"transactions"`
 }
 
 const HubKeyTransactionList = "TRANSACTION:LIST"
@@ -88,7 +88,7 @@ func (tc *TransactionController) TransactionListHandler(ctx context.Context, use
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	total, txIDs, err := db.TransactionIDList(
+	total, transactions, err := db.TransactionIDList(
 		&user.ID,
 		req.Payload.Search,
 		req.Payload.Filter,
@@ -103,7 +103,7 @@ func (tc *TransactionController) TransactionListHandler(ctx context.Context, use
 
 	resp := &TransactionListResponse{
 		total,
-		txIDs,
+		transactions,
 	}
 
 	reply(resp)

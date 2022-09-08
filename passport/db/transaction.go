@@ -10,7 +10,14 @@ import (
 	"xsyn-services/passport/passdb"
 
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
+
+type TransactionDetailed struct {
+	boiler.Transaction `boil:",bind"`
+	To                 boiler.User `json:"to" boil:"to,bind"`
+	From               boiler.User `json:"from" boil:"from,bind"`
+}
 
 func IsValidColumn(column string, columnStruct interface{}) bool {
 	v := reflect.ValueOf(columnStruct)
@@ -38,9 +45,9 @@ func ColumnsToString(columnStruct interface{}) string {
 
 var TransactionGetQuery = fmt.Sprintf(`
 SELECT 
+%s,
 row_to_json(t) as to,
-row_to_json(f) as from,
-%s
+row_to_json(f) as from
 `,
 	ColumnsToString(boiler.TransactionTableColumns),
 ) + TransactionGetQueryFrom
@@ -134,7 +141,7 @@ func TransactionIDList(
 	pageSize int,
 	sortBy string,
 	sortDir SortByDir,
-) (int, []string, error) {
+) (int, []*TransactionDetailed, error) {
 	var args []interface{}
 
 	// Prepare Filters
@@ -166,7 +173,7 @@ func TransactionIDList(
 	}
 
 	if userID != nil {
-		args = append(args, userID)
+		args = append(args, *userID)
 		filterConditionsString += fmt.Sprintf(" AND (%[2]s = $%[1]d OR %[3]s = $%[1]d) ", len(args), boiler.TransactionColumns.Credit, boiler.TransactionColumns.Debit)
 	}
 
@@ -203,7 +210,7 @@ func TransactionIDList(
 		return 0, nil, err
 	}
 	if totalRows == 0 {
-		return 0, []string{}, nil
+		return 0, []*TransactionDetailed{}, nil
 	}
 
 	// Order and Limit
@@ -222,39 +229,23 @@ func TransactionIDList(
 
 	// Get Paginated Result
 	q := fmt.Sprintf(`--sql
-		SELECT 
-		%s
 		%s
 		WHERE %s IS NOT NULL
 		%s
 		%s
 		%s
 		%s`,
-		boiler.TransactionTableColumns.ID,
-		TransactionGetQueryFrom,
+		TransactionGetQuery,
 		boiler.TransactionTableColumns.ID,
 		filterConditionsString,
 		searchCondition,
 		orderBy,
 		limit,
 	)
-
-	result := make([]string, 0)
-	r, err := passdb.StdConn.Query(q, args...)
+	result := []*TransactionDetailed{}
+	err = boiler.NewQuery(qm.SQL(q, args...)).Bind(nil, passdb.StdConn, &result)
 	if err != nil {
 		return 0, nil, err
-	}
-	for r.Next() {
-		txid := ""
-
-		err = r.Scan(
-			&txid,
-		)
-		if err != nil {
-			return 0, nil, err
-		}
-
-		result = append(result, txid)
 	}
 
 	return totalRows, result, nil
