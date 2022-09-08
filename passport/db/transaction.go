@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
@@ -27,22 +28,15 @@ const (
 	TransactionColumnSubGroup             TransactionColumn = "sub_group"
 )
 
-func (ic TransactionColumn) IsValid() error {
-	switch ic {
-	case TransactionColumnID,
-		TransactionColumnDescription,
-		TransactionColumnTransactionReference,
-		TransactionColumnAmount,
-		TransactionColumnCredit,
-		TransactionColumnDebit,
-		TransactionColumnStatus,
-		TransactionColumnReason,
-		TransactionColumnCreatedAt,
-		TransactionColumnGroup,
-		TransactionColumnSubGroup:
-		return nil
+func IsValidColumn(column string, columnStruct interface{}) bool {
+	v := reflect.ValueOf(columnStruct)
+	for i := 0; i < v.NumField(); i++ {
+		if v.Field(i).String() == column {
+			return true
+		}
 	}
-	return terror.Error(fmt.Errorf("invalid transaction column type"))
+
+	return false
 }
 
 const TransactionGetQuery string = `
@@ -74,12 +68,19 @@ func UsersTransactionGroups(
 	userID string,
 ) (map[string][]string, error) {
 	// Get all transactions with group IDs
-	q := `--sql
-		SELECT transactions.group, transactions.sub_group
-		from transactions
-		WHERE transactions.group is not null
-		AND (transactions.credit = $1 OR transactions.debit = $1)
-	`
+	q := fmt.Sprintf(`--sql
+		SELECT %s, %s
+		from %s
+		WHERE %s is not null
+		AND (%s = $1 OR %s = $1)
+	`,
+		boiler.TransactionTableColumns.Group,
+		boiler.TransactionTableColumns.SubGroup,
+		boiler.TableNames.Transactions,
+		boiler.TransactionTableColumns.Group,
+		boiler.TransactionTableColumns.Credit,
+		boiler.TransactionTableColumns.Debit,
+	)
 	var args []interface{}
 	args = append(args, userID)
 
@@ -138,7 +139,7 @@ func TransactionIDList(
 	filter *ListFilterRequest,
 	offset int,
 	pageSize int,
-	sortBy TransactionColumn,
+	sortBy string,
 	sortDir SortByDir,
 ) (int, []string, error) {
 	var args []interface{}
@@ -149,10 +150,9 @@ func TransactionIDList(
 	if filter != nil {
 		filterConditions := []string{}
 		for _, f := range filter.Items {
-			column := TransactionColumn(f.Column)
-			err := column.IsValid()
-			if err != nil {
-				return 0, nil, err
+			valid := IsValidColumn(f.Column, boiler.TransactionColumns)
+			if !valid {
+				return 0, nil, fmt.Errorf("invalid transaction column")
 			}
 
 			condition, value := GenerateListFilterSQL(f.Column, f.Value, f.Operator, argIndex)
@@ -174,7 +174,7 @@ func TransactionIDList(
 
 	if userID != nil {
 		args = append(args, userID)
-		filterConditionsString += fmt.Sprintf(" AND (credit = $%[1]d OR debit = $%[1]d) ", len(args))
+		filterConditionsString += fmt.Sprintf(" AND (%[2]s = $%[1]d OR %[3]s = $%[1]d) ", len(args), boiler.TransactionColumns.Credit, boiler.TransactionColumns.Debit)
 	}
 
 	searchCondition := ""
@@ -182,19 +182,24 @@ func TransactionIDList(
 		xsearch := ParseQueryText(search, true)
 		if len(xsearch) > 0 {
 			args = append(args, xsearch)
-			searchCondition = fmt.Sprintf(" AND ((to_tsvector('english', transactions.description) @@ to_tsquery($%[1]d)) OR (to_tsvector('english', transactions.transaction_reference) @@ to_tsquery($%[1]d)))", len(args))
+			searchCondition = fmt.Sprintf(" AND ((to_tsvector('english', %[2]s) @@ to_tsquery($%[1]d)) OR (to_tsvector('english', %[3]s) @@ to_tsquery($%[1]d)))",
+				len(args),
+				boiler.TransactionTableColumns.Description,
+				boiler.TransactionTableColumns.TransactionReference)
 		}
 	}
 
 	// Get Total Found
 	countQ := fmt.Sprintf(`--sql
-		SELECT COUNT(DISTINCT transactions.id)
+		SELECT COUNT(DISTINCT %s)
 		%s
-		WHERE transactions.id IS NOT NULL
+		WHERE %s IS NOT NULL
 		%s
 		%s
 		`,
+		boiler.TransactionTableColumns.ID,
 		TransactionGetQueryFrom,
+		boiler.TransactionTableColumns.ID,
 		filterConditionsString,
 		searchCondition,
 	)
@@ -209,11 +214,11 @@ func TransactionIDList(
 	}
 
 	// Order and Limit
-	orderBy := " ORDER BY transactions.created_at desc"
+	orderBy := fmt.Sprintf(" ORDER BY %s desc", boiler.TransactionTableColumns.CreatedAt)
 	if sortBy != "" {
-		err := sortBy.IsValid()
-		if err != nil {
-			return 0, nil, err
+		valid := IsValidColumn(sortBy, boiler.TransactionColumns)
+		if !valid {
+			return 0, nil, fmt.Errorf("invalid transaction column")
 		}
 		orderBy = fmt.Sprintf(" ORDER BY transactions.%s %s", sortBy, sortDir)
 	}
@@ -225,14 +230,16 @@ func TransactionIDList(
 	// Get Paginated Result
 	q := fmt.Sprintf(`--sql
 		SELECT 
-		transactions.id
 		%s
-		WHERE transactions.id IS NOT NULL
+		%s
+		WHERE %s IS NOT NULL
 		%s
 		%s
 		%s
 		%s`,
+		boiler.TransactionTableColumns.ID,
 		TransactionGetQueryFrom,
+		boiler.TransactionTableColumns.ID,
 		filterConditionsString,
 		searchCondition,
 		orderBy,
@@ -276,7 +283,7 @@ func TransactionGet(transactionID string) (*boiler.Transaction, error) {
 func TransactionAddRelatedTransaction(transactionID string, refundTransactionID string) error {
 	_, err := boiler.Transactions(
 		boiler.TransactionWhere.ID.EQ(transactionID),
-	).UpdateAll(passdb.StdConn, boiler.M{"related_transaction_id": refundTransactionID})
+	).UpdateAll(passdb.StdConn, boiler.M{boiler.TransactionColumns.RelatedTransactionID: refundTransactionID})
 	if err != nil {
 		return err
 	}
