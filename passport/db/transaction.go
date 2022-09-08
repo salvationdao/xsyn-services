@@ -15,8 +15,8 @@ import (
 
 type TransactionDetailed struct {
 	boiler.Transaction `boil:",bind"`
-	To                 boiler.User `json:"to" boil:"to,bind"`
-	From               boiler.User `json:"from" boil:"from,bind"`
+	To                 boiler.User `json:"to"`
+	From               boiler.User `json:"from"`
 }
 
 func IsValidColumn(column string, columnStruct interface{}) bool {
@@ -45,22 +45,15 @@ func ColumnsToString(columnStruct interface{}) string {
 
 var TransactionGetQuery = fmt.Sprintf(`
 SELECT 
-%s,
-row_to_json(t) as to,
-row_to_json(f) as from
+%s
 `,
 	ColumnsToString(boiler.TransactionTableColumns),
 ) + TransactionGetQueryFrom
 
 var TransactionGetQueryFrom = fmt.Sprintf(`
-FROM transactions 
-INNER JOIN users t ON %s = t.%s
-INNER JOIN users f ON %s = f.%s
+FROM %s 
 `,
-	boiler.TransactionTableColumns.Credit,
-	boiler.TransactionColumns.ID,
-	boiler.TransactionTableColumns.Debit,
-	boiler.TransactionColumns.ID,
+	boiler.TableNames.Transactions,
 )
 
 // UsersTransactionGroups returns details about the user's transactions that have group IDs
@@ -242,10 +235,23 @@ func TransactionIDList(
 		orderBy,
 		limit,
 	)
-	result := []*TransactionDetailed{}
-	err = boiler.NewQuery(qm.SQL(q, args...)).Bind(nil, passdb.StdConn, &result)
+	scanned := []*boiler.Transaction{}
+	err = boiler.NewQuery(
+		qm.SQL(q, args...),
+		qm.Load(boiler.TransactionRels.CreditUser),
+		qm.Load(boiler.TransactionRels.DebitUser),
+	).Bind(nil, passdb.StdConn, &scanned)
 	if err != nil {
 		return 0, nil, err
+	}
+
+	result := []*TransactionDetailed{}
+	for _, s := range scanned {
+		result = append(result, &TransactionDetailed{
+			Transaction: *s,
+			To:          *s.R.CreditUser,
+			From:        *s.R.DebitUser,
+		})
 	}
 
 	return totalRows, result, nil
