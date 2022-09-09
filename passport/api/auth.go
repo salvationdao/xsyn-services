@@ -54,7 +54,7 @@ type SignupRequest struct {
 	FacebookRequest FacebookLoginRequest `json:"facebook_request"`
 	EmailRequest    EmailLoginRequest    `json:"email_request"`
 	TwitterRequest  TwitterSignupRequest `json:"twitter_request"`
-	CaptchaToken    *string              `json:"captcha_token"`
+	CaptchaToken    string               `json:"captcha_token"`
 }
 
 type WalletLoginRequest struct {
@@ -67,14 +67,14 @@ type WalletLoginRequest struct {
 	Fingerprint   *users.Fingerprint `json:"fingerprint"`
 	AuthType      string             `json:"auth_type"`
 	Username      string             `json:"username"`
-	CaptchaToken  *string            `json:"captcha_token"`
+	CaptchaToken  string             `json:"captcha_token"`
 }
 
 type EmailSignupVerifyRequest struct {
-	RedirectURL  string  `json:"redirect_url"`
-	Tenant       string  `json:"tenant"`
-	Email        string  `json:"email"`
-	CaptchaToken *string `json:"captcha_token"`
+	RedirectURL  string `json:"redirect_url"`
+	Tenant       string `json:"tenant"`
+	Email        string `json:"email"`
+	CaptchaToken string `json:"captcha_token"`
 }
 
 type EmailLoginRequest struct {
@@ -84,7 +84,9 @@ type EmailLoginRequest struct {
 	Password    string             `json:"password"`
 	SessionID   hub.SessionID      `json:"session_id"`
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
+	AuthType    string             `json:"auth_type"`
 	Username    string             `json:"username"`
+	Token       string             `json:"token"`
 }
 type ForgotPasswordRequest struct {
 	Tenant      string             `json:"tenant"`
@@ -112,7 +114,7 @@ type GoogleLoginRequest struct {
 	Fingerprint  *users.Fingerprint `json:"fingerprint"`
 	AuthType     string             `json:"auth_type"`
 	Username     string             `json:"username"`
-	CaptchaToken *string            `json:"captcha_token"`
+	CaptchaToken string             `json:"captcha_token"`
 }
 
 type FacebookLoginRequest struct {
@@ -123,7 +125,7 @@ type FacebookLoginRequest struct {
 	Fingerprint   *users.Fingerprint `json:"fingerprint"`
 	AuthType      string             `json:"auth_type"`
 	Username      string             `json:"username"`
-	CaptchaToken  *string            `json:"captcha_token"`
+	CaptchaToken  string             `json:"captcha_token"`
 }
 
 type TwitterSignupRequest struct {
@@ -133,7 +135,7 @@ type TwitterSignupRequest struct {
 	SessionID    hub.SessionID      `json:"session_id"`
 	Fingerprint  *users.Fingerprint `json:"fingerprint"`
 	Username     string             `json:"username"`
-	CaptchaToken *string            `json:"captcha_token"`
+	CaptchaToken string             `json:"captcha_token"`
 }
 
 type TFAVerifyRequest struct {
@@ -296,6 +298,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			Tenant:      r.Form.Get("tenant"),
 			Email:       r.Form.Get("email"),
 			Password:    r.Form.Get("password"),
+			Token:       r.Form.Get("token"),
 		}
 		//Check if email exist with password
 		user, err := users.EmailPassword(req.Email, req.Password)
@@ -304,11 +307,25 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Check if logging in from password reset
+		// If so, pass 2fa
+		var pass2fa bool
+		if req.Token != "" {
+			userID, err := api.ReadUserIDJWT(req.Token)
+			if err != nil || userID != user.ID {
+				passlog.L.Error().Err(err).Msg("Invalid token to login from external.")
+				externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid email or password")
+				return
+			}
+			pass2fa = true
+		}
+
 		loginReq := &FingerprintTokenRequest{
 			User:        &user.User,
 			Fingerprint: req.Fingerprint,
 			RedirectURL: redir,
 			Tenant:      req.Tenant,
+			Pass2FA:     pass2fa,
 		}
 
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
@@ -409,7 +426,7 @@ func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		userID := id
 
-		isSignup := true
+		var isSignup bool
 		signupCheckVal, err := api.ReadKeyJWT(req.TwitterToken, "twitter-signup")
 		if err != nil && !errors.Is(err, ErrJWTKeyNotFound) {
 			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to read user from token")
@@ -540,10 +557,10 @@ func (api *API) EmailSignupVerify(req *EmailSignupVerifyRequest, w http.Response
 	lowerEmail := strings.ToLower(req.Email)
 
 	// Verify user passed captcha test
-	if req.CaptchaToken == nil || *req.CaptchaToken == "" {
+	if req.CaptchaToken == "" {
 		return terror.Error(errors.New("captcha token missing"), "Failed to complete captcha verification.")
 	}
-	err := api.captcha.verify(*req.CaptchaToken)
+	err := api.captcha.verify(req.CaptchaToken)
 	if err != nil {
 		return terror.Error(err, "Failed to complete captcha verification.")
 	}
@@ -623,12 +640,16 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		// Check user exist
 		commonAddr := common.HexToAddress(req.WalletRequest.PublicAddress)
 		user, err := users.PublicAddress(commonAddr)
+		if user != nil {
+			passlog.L.Error().Err(err).Msg("user already exist on signup")
+			return http.StatusBadRequest, terror.Error(err, "User exist already.")
+		}
 		if errors.Is(err, sql.ErrNoRows) {
-			if req.CaptchaToken == nil || *req.CaptchaToken == "" {
+			if req.CaptchaToken == "" {
 				err := fmt.Errorf("captcha token missing")
 				return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
 			}
-			err := api.captcha.verify(*req.CaptchaToken)
+			err := api.captcha.verify(req.CaptchaToken)
 			if err != nil {
 				return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
 			}
@@ -647,14 +668,8 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 				return http.StatusInternalServerError, terror.Error(err, "Unable to update user nonce.")
 			}
 		} else if err != nil {
-			err := fmt.Errorf("User does not exist")
+			err := fmt.Errorf("Failed to signup user.")
 			return http.StatusBadRequest, terror.Error(err, "User with wallet address does not exist.")
-		}
-
-		err = api.VerifySignature(req.WalletRequest.Signature, user.Nonce.String, commonAddr)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to verify signature")
-			return http.StatusBadRequest, terror.Error(err, "Invalid user signature provided.")
 		}
 
 		// Redeclare u variable
@@ -664,6 +679,10 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 	case "email":
 		// Check no user with email exist
 		user, err := users.Email(req.EmailRequest.Email)
+		if user != nil {
+			passlog.L.Error().Err(err).Msg("user already exist on signup")
+			return http.StatusBadRequest, terror.Error(err, "User exist already.")
+		}
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
 			commonAddress := common.HexToAddress("")
 			u, err = users.UserCreator("", "", username, req.EmailRequest.Email, "", "", "", "", "", "", commonAddress, req.EmailRequest.Password)
@@ -673,9 +692,8 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 				}
 				return http.StatusInternalServerError, terror.Error(err)
 			}
-		} else if user != nil {
-			err := fmt.Errorf("user already exist")
-			return http.StatusBadRequest, terror.Error(err, "Failed to signup with email. User already exists.")
+		} else if err != nil {
+			return http.StatusBadRequest, terror.Error(err, "Failed to signup with email.")
 		}
 		redirectURL = req.EmailRequest.RedirectURL
 	case "facebook":
@@ -687,36 +705,30 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		}
 
 		user, err := users.FacebookID(facebookDetails.FacebookID)
+		if user != nil {
+			passlog.L.Error().Err(err).Msg("user already exist on signup")
+			return http.StatusBadRequest, terror.Error(err, "User exist already.")
+		}
 		if errors.Is(err, sql.ErrNoRows) {
-			if req.CaptchaToken == nil || *req.CaptchaToken == "" {
+			if req.CaptchaToken == "" {
 				err := fmt.Errorf("captcha token missing")
 				return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
 			}
-			err := api.captcha.verify(*req.CaptchaToken)
+			err := api.captcha.verify(req.CaptchaToken)
 			if err != nil {
 				return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
 			}
 
 			// Create user with default username
 			commonAddress := common.HexToAddress("")
-			_, err = users.UserCreator("", "", username, "", facebookDetails.FacebookID, "", "", "", "", "", commonAddress, "")
+			u, err = users.UserCreator("", "", username, "", facebookDetails.FacebookID, "", "", "", "", "", commonAddress, "")
 			if err != nil {
 				return http.StatusInternalServerError, terror.Error(err, "Failed to create new user with facebook.")
-			}
-
-			user, err = users.FacebookID(facebookDetails.FacebookID)
-			if err != nil {
-				return http.StatusBadRequest, terror.Error(err, "Failed to get user with facebook account during signup.")
 			}
 		} else if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Failed to get user with facebook account during signup.")
 		}
-		// Redeclare u variable
-		u, err = types.UserFromBoil(user)
-		if err != nil {
-			err := fmt.Errorf("unable to get user from boil")
-			return http.StatusInternalServerError, terror.Error(err, "Unable to convert user response")
-		}
+
 		redirectURL = req.FacebookRequest.RedirectURL
 	case "google":
 		googleDetails, err := api.GoogleToken(req.GoogleRequest.GoogleToken)
@@ -726,42 +738,36 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		}
 		// Check google id exist
 		user, err := users.GoogleID(googleDetails.GoogleID)
+		if user != nil {
+			passlog.L.Error().Err(err).Msg("user already exist on signup")
+			return http.StatusBadRequest, terror.Error(err, "User exist already.")
+		}
 		if errors.Is(err, sql.ErrNoRows) {
-			if req.CaptchaToken == nil || *req.CaptchaToken == "" {
-				fmt.Println("Hello Yeah fail?", err)
+			if req.CaptchaToken == "" {
+				passlog.L.Error().Err(err).Msg("Captcha token not provided")
 				return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
 			}
-			err := api.captcha.verify(*req.CaptchaToken)
+			err := api.captcha.verify(req.CaptchaToken)
 			if err != nil {
 				return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
 			}
-
 			// Signup user with standard username
 			commonAddress := common.HexToAddress("")
-			_, err = users.UserCreator("", "", googleDetails.Username, googleDetails.Email, "", googleDetails.GoogleID, "", "", "", "", commonAddress, "")
+			u, err = users.UserCreator("", "", googleDetails.Username, googleDetails.Email, "", googleDetails.GoogleID, "", "", "", "", commonAddress, "")
 			if err != nil {
 				return http.StatusInternalServerError, terror.Error(err, "Failed to create new user with google account")
-			}
-			user, err = users.GoogleID(googleDetails.GoogleID)
-			if err != nil {
-				return http.StatusBadRequest, terror.Error(err, "Failed to get user with google account during signup.")
 			}
 		} else if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Failed to get user with google account during signup.")
 		}
-		// Redeclare u variable
-		u, err = types.UserFromBoil(user)
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err, "Failed to convert user response type.")
-		}
 
 		redirectURL = req.GoogleRequest.RedirectURL
 	case "twitter":
-		if req.CaptchaToken == nil || *req.CaptchaToken == "" {
+		if req.CaptchaToken == "" {
 			err := fmt.Errorf("captcha token missing")
 			return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
 		}
-		err := api.captcha.verify(*req.CaptchaToken)
+		err := api.captcha.verify(req.CaptchaToken)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
 		}
@@ -773,21 +779,22 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusBadRequest, terror.Error(err, "Invalid twitter token provided.")
 		}
 
-		// Create user
-		commonAddress := common.HexToAddress("")
-		_, err = users.UserCreator("", "", username, "", "", "", "", twitterID, "", "", commonAddress, "")
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err, "Failed to create user with twitter.")
+		// Check if user exist already
+		user, err := users.TwitterID(twitterID)
+		if user != nil {
+			passlog.L.Error().Err(err).Msg("user already exist on signup")
+			return http.StatusBadRequest, terror.Error(err, "User exist already.")
 		}
 
-		user, err := users.TwitterID(twitterID)
-		if err != nil {
-			return http.StatusBadRequest, terror.Error(err, "Unable to get user during signup with twitter.")
-		}
-		// Redeclare u variable
-		u, err = types.UserFromBoil(user)
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err, "Failed to convert user response type.")
+		// Create user
+		if errors.Is(err, sql.ErrNoRows) {
+			commonAddress := common.HexToAddress("")
+			u, err = users.UserCreator("", "", username, "", "", "", "", twitterID, "", "", commonAddress, "")
+			if err != nil {
+				return http.StatusInternalServerError, terror.Error(err, "Failed to create user with twitter.")
+			}
+		} else if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Failed to create user with twitter.")
 		}
 
 		redirectURL = req.TwitterRequest.RedirectURL
@@ -810,18 +817,8 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Unable to issue a token for login.")
 	}
-	if redirectURL == "" {
-		loginReq := &FingerprintTokenRequest{
-			User:        &u.User,
-			Fingerprint: req.Fingerprint,
-			RedirectURL: redirectURL,
-		}
 
-		err = api.FingerprintAndIssueToken(w, r, loginReq)
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err, "Unable to issue a token for login.")
-		}
-	} else {
+	if redirectURL != "" {
 		b, err := json.Marshal(u)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
@@ -833,6 +830,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusInternalServerError, terror.Error(err, "Unable to write response to user.")
 		}
 	}
+
 	return http.StatusCreated, nil
 
 }
@@ -920,8 +918,16 @@ func (api *API) EmailLogin(req *EmailLoginRequest, w http.ResponseWriter, r *htt
 		return terror.Error(err, "Invalid user email or password.")
 	}
 
+	loginReq := &FingerprintTokenRequest{
+		User:        &user.User,
+		RedirectURL: req.RedirectURL,
+		Tenant:      req.Tenant,
+		Fingerprint: req.Fingerprint,
+	}
+	err = api.FingerprintAndIssueToken(w, r, loginReq)
+
 	// If external or new user signup
-	if req.RedirectURL != "" {
+	if req.RedirectURL != "" && !user.TwoFactorAuthenticationIsSet {
 		b, err := json.Marshal(req)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
@@ -935,13 +941,6 @@ func (api *API) EmailLogin(req *EmailLoginRequest, w http.ResponseWriter, r *htt
 		return nil
 	}
 
-	loginReq := &FingerprintTokenRequest{
-		User:        &user.User,
-		RedirectURL: req.RedirectURL,
-		Tenant:      req.Tenant,
-		Fingerprint: req.Fingerprint,
-	}
-	err = api.FingerprintAndIssueToken(w, r, loginReq)
 	if err != nil {
 		return terror.Error(err, "Unable to issue a login token to user.")
 	}
@@ -1038,13 +1037,39 @@ func (api *API) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) (in
 	userID, err := api.ReadUserIDJWT(req.Token)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to read user jwt")
-		return http.StatusBadRequest, terror.Error(err, "Unable to get user from token.")
+		return http.StatusBadRequest, terror.Error(err, "Link has expired.")
 	}
 	user, err := users.ID(userID)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Unable to find user.")
 	}
-	return passwordReset(api, w, r, req, &user.User)
+
+	statusCode, err := passwordReset(api, w, r, req, &user.User)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err)
+	}
+	// Send back login request to login external also
+	resp := struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+		AuthType string `json:"auth_type"`
+	}{
+		Email:    user.Email.String,
+		Password: req.NewPassword,
+		AuthType: "email",
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to encode response to json")
+		return http.StatusInternalServerError, terror.Error(err, "Unable to decode response to user.")
+	}
+	_, err = w.Write(b)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to write response to user")
+		return http.StatusInternalServerError, terror.Error(err, "Unable to write response to user.")
+	}
+
+	return statusCode, nil
 }
 
 // Handles changes password with current password
@@ -1155,11 +1180,13 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 		RedirectURL: req.RedirectURL,
 		Tenant:      req.Tenant,
 		Fingerprint: req.Fingerprint,
+		Pass2FA:     true,
 	}
 	err = api.FingerprintAndIssueToken(w, r, loginReq)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Unable to issue a new login token.")
 	}
+
 	// Send message to users to logout
 	URI := fmt.Sprintf("/user/%s", user.ID)
 	passlog.L.Info().Str("Password update", "Logging out all issue token from user")
@@ -1187,79 +1214,40 @@ func (api *API) WalletLoginHandler(w http.ResponseWriter, r *http.Request) (int,
 
 // Check if new user, then get nonce from request otherwise get from user nonce in db.
 func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *http.Request) error {
-	newUser := false
 	// Take public address Hex to address(Make it a checksum mixed case address) convert back to Hex for string of checksum
 	commonAddr := common.HexToAddress(req.PublicAddress)
 
 	// Check if there are any existing users associated with the public address
 	user, err := users.PublicAddress(commonAddr)
 
+	// Check if its a new user signup
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		// Captcha is required for new users
-		if req.CaptchaToken == nil || *req.CaptchaToken == "" {
-			resp := struct {
-				WalletLoginRequest
-				NewUser         bool `json:"new_user"`
-				CaptchaRequired bool `json:"captcha_required"`
-			}{
-				WalletLoginRequest: *req,
-				NewUser:            true,
-				CaptchaRequired:    true,
-			}
-
-			b, err := json.Marshal(resp)
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to encode response to json")
-				return terror.Error(err, "Unable to decode response to user.")
-			}
-			_, err = w.Write(b)
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to write response to user")
-				return terror.Error(err, "Unable to write response to user.")
-			}
-			return nil
-		}
-		err := api.captcha.verify(*req.CaptchaToken)
+		// Verify new user signature nonce from request
+		err = api.VerifySignature(req.Signature, req.Nonce, commonAddr)
 		if err != nil {
-			passlog.L.Error().Err(err).Msg("Failed to verify captcha.")
-			return terror.Error(err, "Failed to complete captcha verification.")
-		}
-
-		newUser = true
-		// Signup user but dont log them before username is provided
-		username := commonAddr.Hex()[0:10]
-		// If user does not exist, create new user with their username set to their MetaMask public address
-		user, err = users.UserCreator("", "", helpers.TrimUsername(username), "", "", "", "", "", "", "", commonAddr, "")
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("user creation failed")
-			return terror.Error(err, "Unable to create user with wallet.")
-		}
-
-		// update nonce value
-		user.Nonce = null.StringFrom(req.Nonce)
-		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Nonce))
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("nonce update failed")
-			return terror.Error(err, "Unable to update user nonce.")
+			passlog.L.Error().Err(err).Msg("unable to verify signature")
+			return terror.Error(err, "Invalid signature provided.")
 		}
 	} else if err != nil {
 		return terror.Error(err, "Failed to check if user with wallet address exists.")
 	}
 
-	err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
-	if err != nil {
-		passlog.L.Error().Err(err).Msg("unable to verify signature")
-		return terror.Error(err, "Invalid signature provided.")
-	}
+	if user != nil {
+		// Verify wallet signature of current user using nonce from db
+		err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to verify signature")
+			return terror.Error(err, "Invalid signature provided.")
+		}
 
-	// Write cookie for passport if user already exist
-	if !newUser {
+		// Write cookie and login user for passport if user already exist
 		loginReq := &FingerprintTokenRequest{
 			User:        &user.User,
 			RedirectURL: req.RedirectURL,
 			Tenant:      req.Tenant,
 			Fingerprint: req.Fingerprint,
 		}
+
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
 			return terror.Error(err, "Unable to issue a login token to user")
@@ -1268,29 +1256,27 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 		if user.DeletedAt.Valid {
 			return fmt.Errorf("User does not exist")
 		}
-
 	}
 
-	// If external or new user signup
-	if req.RedirectURL != "" || newUser {
-		resp := struct {
-			WalletLoginRequest
-			NewUser bool `json:"new_user"`
-		}{
-			WalletLoginRequest: *req,
-			NewUser:            newUser,
-		}
-		b, err := json.Marshal(resp)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to encode response to json")
-			return terror.Error(err, "Unable to decode response to user.")
-		}
-		_, err = w.Write(b)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to write response to user")
-			return terror.Error(err, "Unable to write response to user.")
-		}
-
+	// Send response back to client
+	resp := struct {
+		WalletLoginRequest
+		NewUser         bool `json:"new_user"`
+		CaptchaRequired bool `json:"captcha_required"`
+	}{
+		WalletLoginRequest: *req,
+		NewUser:            user == nil,
+		CaptchaRequired:    user == nil, // ALL user signup through wallet requires captcha
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to encode response to json")
+		return terror.Error(err, "Unable to decode response to user.")
+	}
+	_, err = w.Write(b)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to write response to user")
+		return terror.Error(err, "Unable to write response to user.")
 	}
 
 	return nil
@@ -1301,7 +1287,6 @@ func (api *API) DoFingerprintUpsert(fingerprint users.Fingerprint, userID string
 	if err != nil {
 		return terror.Warn(err, fmt.Sprintf("Could not upsert fingerprint for user %s", userID))
 	}
-
 	return nil
 }
 
@@ -1323,7 +1308,6 @@ func (api *API) GoogleLoginHandler(w http.ResponseWriter, r *http.Request) (int,
 
 // Handles google login and signup
 func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *http.Request) error {
-	newUser := false
 	// Check if there are any existing users associated with the email address
 	googleDetails, err := api.GoogleToken(req.GoogleToken)
 	if err != nil {
@@ -1339,6 +1323,7 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 		Fingerprint: req.Fingerprint,
 	}
 
+	// If new user signup
 	if err != nil && errors.Is(sql.ErrNoRows, err) {
 		// Check if user gmail already exist
 		if googleDetails.Email == "" {
@@ -1348,6 +1333,7 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 		}
 
 		user, _ = boiler.Users(boiler.UserWhere.Email.EQ(null.StringFrom(googleDetails.Email))).One(passdb.StdConn)
+		// If user exist already
 		if user != nil {
 			user.GoogleID = null.StringFrom(googleDetails.GoogleID)
 			user.Verified = true
@@ -1358,45 +1344,6 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 				passlog.L.Error().Err(err).Msg("unable to add google id to user with existing gmail")
 				return terror.Error(err, "Failed to merge google account with existing user with same gmail.")
 			}
-		} else {
-			// Captcha is required for new users
-			if req.CaptchaToken == nil || *req.CaptchaToken == "" {
-				resp := struct {
-					GoogleLoginRequest
-					NewUser         bool `json:"new_user"`
-					CaptchaRequired bool `json:"captcha_required"`
-				}{
-					GoogleLoginRequest: *req,
-					NewUser:            true,
-					CaptchaRequired:    true,
-				}
-
-				b, err := json.Marshal(resp)
-				if err != nil {
-					passlog.L.Error().Err(err).Msg("unable to encode response to json")
-					return terror.Error(err, "Unable to decode response to user.")
-				}
-				_, err = w.Write(b)
-				if err != nil {
-					passlog.L.Error().Err(err).Msg("unable to write response to user")
-					return terror.Error(err, "Unable to write response to user.")
-				}
-				return nil
-			}
-			err := api.captcha.verify(*req.CaptchaToken)
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("Failed to verify captcha.")
-				return terror.Error(err, "Failed to complete captcha verification.")
-			}
-
-			newUser = true
-			// Signup user with standard username
-			commonAddress := common.HexToAddress("")
-			_, err = users.UserCreator("", "", googleDetails.Username, googleDetails.Email, "", googleDetails.GoogleID, "", "", "", "", commonAddress, "")
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to create google user")
-				return terror.Error(err, "Failed to create new user with google account")
-			}
 
 		}
 
@@ -1405,45 +1352,38 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 	}
 
 	// Write cookie for passport if user already exist
-	if !newUser && loginReq.User != nil {
+	if user != nil {
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
 			return terror.Error(err, "Unable to issue a login token to user")
 		}
-
 		if user.DeletedAt.Valid {
 			return fmt.Errorf("User does not exist")
 		}
-
 	}
 
-	// If external or new user signup
-	if req.RedirectURL != "" || newUser {
-		resp := struct {
-			GoogleLoginRequest
-			NewUser bool `json:"new_user"`
-		}{
-			GoogleLoginRequest: *req,
-			NewUser:            newUser,
-		}
-
-		b, err := json.Marshal(resp)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to encode response to json")
-			return terror.Error(err, "Unable to decode response to user.")
-		}
-		_, err = w.Write(b)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to write response to user")
-			return terror.Error(err, "Unable to write response to user")
-		}
-		return nil
+	// Write response back client
+	resp := struct {
+		GoogleLoginRequest
+		NewUser         bool `json:"new_user"`
+		CaptchaRequired bool `json:"captcha_required"`
+	}{
+		GoogleLoginRequest: *req,
+		NewUser:            user == nil,
+		CaptchaRequired:    user == nil, // ALL user signup through google requires captcha
 	}
+
+	b, err := json.Marshal(resp)
 	if err != nil {
-
-		passlog.L.Warn().Err(err).Msg("invalid google credentials provided")
-		return terror.Error(err, "Unable to authenticate user with google.")
+		passlog.L.Error().Err(err).Msg("unable to encode response to json")
+		return terror.Error(err, "Unable to decode response to user.")
 	}
+	_, err = w.Write(b)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to write response to user")
+		return terror.Error(err, "Unable to write response to user.")
+	}
+
 	return nil
 }
 
@@ -1461,6 +1401,33 @@ func (api *API) TFAVerifyHandler(w http.ResponseWriter, r *http.Request) (int, e
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err)
 	}
+	// Issue login token to user
+	// Only if jwt token was provided
+	if req.Token != "" {
+		loginReq := &FingerprintTokenRequest{
+			User:        &user.User,
+			RedirectURL: req.RedirectURL,
+			Tenant:      req.Tenant,
+			Fingerprint: req.Fingerprint,
+			Pass2FA:     true,
+		}
+		err = api.FingerprintAndIssueToken(w, r, loginReq)
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err, "Unable to issue login token to user.")
+		}
+	} else {
+		// If user already logged in then no need for token
+		b, err := json.Marshal(user)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to convert user to json 2fa response")
+			return http.StatusBadRequest, terror.Error(err, "Unable to decode response to user.")
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to write 2fa response to user")
+			return http.StatusBadRequest, terror.Error(err, "Unable to write response to user.")
+		}
+	}
 
 	// If external forward request to external handler
 	if req.RedirectURL != "" {
@@ -1476,33 +1443,6 @@ func (api *API) TFAVerifyHandler(w http.ResponseWriter, r *http.Request) (int, e
 		}
 	}
 
-	// Issue login token to user
-	// Only if jwt token was provided
-	// If user already logged in then no need for token
-	if req.Token != "" {
-		loginReq := &FingerprintTokenRequest{
-			User:        &user.User,
-			RedirectURL: req.RedirectURL,
-			Tenant:      req.Tenant,
-			Fingerprint: req.Fingerprint,
-			Pass2FA:     true,
-		}
-		err = api.FingerprintAndIssueToken(w, r, loginReq)
-		if err != nil {
-			return http.StatusBadRequest, terror.Error(err, "Unable to issue login token to user.")
-		}
-	} else {
-		b, err := json.Marshal(user)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to convert user to json 2fa response")
-			return http.StatusBadRequest, terror.Error(err, "Unable to decode response to user.")
-		}
-		_, err = w.Write(b)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to write 2fa response to user")
-			return http.StatusBadRequest, terror.Error(err, "Unable to write response to user.")
-		}
-	}
 	return http.StatusOK, nil
 }
 
@@ -1572,58 +1512,18 @@ func (api *API) FacebookLoginHandler(w http.ResponseWriter, r *http.Request) (in
 
 // Login user using facebook access token
 func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, r *http.Request) error {
-	newUser := false
 	facebookDetails, err := api.FacebookToken(req.FacebookToken)
 	if err != nil {
 		return terror.Error(err, "Invalid facebook token provided.")
 	}
-	// Check if there are any existing users associated with the email address
+	// Check if there are any existing users with facebookid
 	user, err := users.FacebookID(facebookDetails.FacebookID)
-	if err != nil && errors.Is(sql.ErrNoRows, err) {
-		// Captcha is required for new users
-		if req.CaptchaToken == nil || *req.CaptchaToken == "" {
-			resp := struct {
-				FacebookLoginRequest
-				NewUser         bool `json:"new_user"`
-				CaptchaRequired bool `json:"captcha_required"`
-			}{
-				FacebookLoginRequest: *req,
-				NewUser:              true,
-				CaptchaRequired:      true,
-			}
-
-			b, err := json.Marshal(resp)
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to encode response to json")
-				return terror.Error(err, "Unable to decode response to user.")
-			}
-			_, err = w.Write(b)
-			if err != nil {
-				passlog.L.Error().Err(err).Msg("unable to write response to user")
-				return terror.Error(err, "Unable to write response to user.")
-			}
-			return nil
-		}
-		err := api.captcha.verify(*req.CaptchaToken)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("Failed to verify captcha.")
-			return terror.Error(err, "Failed to complete captcha verification.")
-		}
-
-		newUser = true
-		// Create user with default username
-		commonAddress := common.HexToAddress("")
-		_, err = users.UserCreator("", "", facebookDetails.Name, "", facebookDetails.FacebookID, "", "", "", "", "", commonAddress, "")
-		if err != nil {
-			return terror.Error(err, "Failed to create new user with facebook.")
-		}
-
-	} else if err != nil {
+	if err != nil && !errors.Is(sql.ErrNoRows, err) {
 		return terror.Error(err, "Unable to authenticate user with Facebook.")
 	}
 
 	// Write cookie for passport if user already exist
-	if !newUser {
+	if user != nil {
 		loginReq := &FingerprintTokenRequest{
 			User:        user,
 			RedirectURL: req.RedirectURL,
@@ -1638,32 +1538,35 @@ func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, 
 		if user.DeletedAt.Valid {
 			return fmt.Errorf("User does not exist")
 		}
-
-	}
-	// If external or new user signup
-	if req.RedirectURL != "" || newUser {
-		resp := struct {
-			FacebookLoginRequest
-			NewUser bool `json:"new_user"`
-		}{
-			FacebookLoginRequest: *req,
-			NewUser:              newUser,
-		}
-
-		b, err := json.Marshal(resp)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to encode response to json")
-			return terror.Error(err, "Unable to decode response to user.")
-		}
-		_, err = w.Write(b)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to write response to user")
-			return terror.Error(err, "Unable to write response to user.")
-		}
-		return nil
 	}
 
-	return terror.Error(err, "Unable to issue login token.")
+	// Write response back client
+	resp := struct {
+		FacebookLoginRequest
+		NewUser         bool `json:"new_user"`
+		CaptchaRequired bool `json:"captcha_required"`
+	}{
+		FacebookLoginRequest: *req,
+		NewUser:              user == nil,
+		CaptchaRequired:      user == nil, // ALL user signup through facebook requires captcha
+	}
+
+	b, err := json.Marshal(resp)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to encode response to json")
+		return terror.Error(err, "Unable to decode response to user.")
+	}
+	_, err = w.Write(b)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to write response to user")
+		return terror.Error(err, "Unable to write response to user.")
+	}
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("Failed to verify captcha.")
+		return terror.Error(err, "Failed to complete captcha verification.")
+	}
+
+	return nil
 }
 
 type TwitterAuthResponse struct {
@@ -1714,6 +1617,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 		}
 
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
+			// Redirect to signup page using jwt token with twitter id
 			http.Redirect(w, r, fmt.Sprintf("%s?token=%s&redirectURL=%s", redirect, jwtToken, redirectURL), http.StatusSeeOther)
 			return http.StatusSeeOther, nil
 		}
@@ -1818,12 +1722,6 @@ type FingerprintTokenRequest struct {
 }
 
 func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request, req *FingerprintTokenRequest) error {
-	// Check if tenant is provided for external 2FA logins except for twitter since redirect is always provided
-	if req.User.TwoFactorAuthenticationIsSet && req.RedirectURL != "" && !req.Pass2FA && req.Tenant == "" && !req.IsTwitter {
-		err := fmt.Errorf("Tenant missing for external 2fa login")
-		passlog.L.Error().Err(err).Msg(err.Error())
-		return terror.Error(err, "Missing external host from request.")
-	}
 	if req.User == nil {
 		err := fmt.Errorf("user does not exist in issuing token")
 		passlog.L.Error().Err(err).Msg(err.Error())
@@ -1854,12 +1752,9 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		}
 
 		// Redirect to 2fa
-		if req.RedirectURL != "" {
-			rURL := fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s&tenant=%s", origin, token, req.RedirectURL, req.Tenant)
-			if req.User.TwitterID.String != "" {
-				// add query tfa=ok for twitter message
-				rURL = fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s?tfa=ok&tenant=%s", origin, token, req.RedirectURL, req.Tenant)
-			}
+		if req.User.TwitterID.String != "" {
+			// add query tfa=ok for twitter message
+			rURL := fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s?tfa=ok&tenant=%s", origin, token, req.RedirectURL, req.Tenant)
 			http.Redirect(w, r, rURL, http.StatusSeeOther)
 			return nil
 		}
