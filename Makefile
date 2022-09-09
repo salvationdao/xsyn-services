@@ -154,6 +154,9 @@ db-migrate-before-syndicate-table:
 .PHONY: db-reset
 db-reset: db-drop db-migrate-before-syndicate-table db-seed db-migrate db-boiler
 
+.PHONY: db-reset-windows
+db-reset-windows: db-drop db-migrate-before-syndicate-table db-seed db-migrate
+
 .PHONY: go-mod-download
 go-mod-download:
 	go mod download
