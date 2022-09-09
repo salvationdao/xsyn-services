@@ -1257,11 +1257,10 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 			return fmt.Errorf("User does not exist")
 		}
 
-	}
-
-	// Dont send back request as response if 2FA
-	if user.TwoFactorAuthenticationIsSet {
-		return nil
+		// Dont send back request as response if 2FA
+		if user.TwoFactorAuthenticationIsSet {
+			return nil
+		}
 	}
 
 	// Send response back to client
@@ -1368,12 +1367,12 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 		if user.DeletedAt.Valid {
 			return fmt.Errorf("User does not exist")
 		}
+		// Dont send back request as response if 2FA
+		if user.TwoFactorAuthenticationIsSet {
+			return nil
+		}
 	}
 
-	// Dont send back request as response if 2FA
-	if user.TwoFactorAuthenticationIsSet {
-		return nil
-	}
 	// Write response back client
 	resp := struct {
 		GoogleLoginRequest
@@ -1550,12 +1549,11 @@ func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, 
 		if user.DeletedAt.Valid {
 			return fmt.Errorf("User does not exist")
 		}
+		// Dont send back request as response if 2FA
+		if user.TwoFactorAuthenticationIsSet {
+			return nil
+		}
 
-	}
-
-	// Dont send back request as response if 2FA
-	if user.TwoFactorAuthenticationIsSet {
-		return nil
 	}
 
 	// Write response back client
