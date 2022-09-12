@@ -59,7 +59,7 @@ func (tc *TransactionController) TransactionGroupsHandler(ctx context.Context, u
 type TransactionListRequest struct {
 	Payload struct {
 		SortDir  db.SortByDir          `json:"sort_dir"`
-		SortBy   db.TransactionColumn  `json:"sort_by"`
+		SortBy   string                `json:"sort_by"`
 		Filter   *db.ListFilterRequest `json:"filter,omitempty"`
 		Search   string                `json:"search"`
 		PageSize int                   `json:"page_size"`
@@ -69,8 +69,8 @@ type TransactionListRequest struct {
 
 // TransactionListResponse is the response from get Transaction list
 type TransactionListResponse struct {
-	Total          int      `json:"total"`
-	TransactionIDs []string `json:"transaction_ids"`
+	Total        int                       `json:"total"`
+	Transactions []*db.TransactionDetailed `json:"transactions"`
 }
 
 const HubKeyTransactionList = "TRANSACTION:LIST"
@@ -88,7 +88,7 @@ func (tc *TransactionController) TransactionListHandler(ctx context.Context, use
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	total, txIDs, err := db.TransactionIDList(
+	total, transactions, err := db.TransactionIDList(
 		&user.ID,
 		req.Payload.Search,
 		req.Payload.Filter,
@@ -103,7 +103,7 @@ func (tc *TransactionController) TransactionListHandler(ctx context.Context, use
 
 	resp := &TransactionListResponse{
 		total,
-		txIDs,
+		transactions,
 	}
 
 	reply(resp)
