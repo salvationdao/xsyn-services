@@ -152,7 +152,6 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 		boiler.PendingRefundWhere.IsRefunded.EQ(false),
 		boiler.PendingRefundWhere.DeletedAt.IsNull(),
 		boiler.PendingRefundWhere.TXHash.EQ(""),
-		qm.Load(boiler.PendingRefundRels.TransactionReferenceTransaction),
 	}
 
 	refundsToProcess, err := boiler.PendingRefunds(filter...).All(passdb.StdConn)
@@ -161,15 +160,26 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 	}
 
 	for _, refund := range refundsToProcess {
-		txRef := types.TransactionReference(fmt.Sprintf("REFUND %s", refund.R.TransactionReferenceTransaction.TransactionReference))
+		tx, err := boiler.Transactions().One(passdb.StdConn)
+		if err != nil {
+			skipped++
+			l.Warn().Err(err).Msg("failed to process refund")
+			continue
+		}
+		if tx == nil {
+			skipped++
+			l.Warn().Err(fmt.Errorf("no tx found")).Msg("failed to process refund")
+			continue
+		}
+
+		txRef := types.TransactionReference(fmt.Sprintf("REFUND %s", tx.TransactionReference.String))
 		newTx := &types.NewTransaction{
-			Credit:               refund.R.TransactionReferenceTransaction.Debit,
+			Credit:               tx.Debit.String,
 			Debit:                types.OnChainUserID.String(),
-			Amount:               refund.R.TransactionReferenceTransaction.Amount,
+			Amount:               tx.Amount.Decimal,
 			TransactionReference: txRef,
-			Description:          fmt.Sprintf("REFUND %s", refund.R.TransactionReferenceTransaction.Description),
-			Group:                types.TransactionGroup(refund.R.TransactionReferenceTransaction.Group),
-			RelatedTransactionID: refund.R.TransactionReferenceTransaction.RelatedTransactionID,
+			Description:          fmt.Sprintf("REFUND %s", tx.Description.String),
+			Group:                types.TransactionGroup(tx.Group.String),
 		}
 
 		refund.RefundCanceledAt = null.TimeFrom(time.Now())

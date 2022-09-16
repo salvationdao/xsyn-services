@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/volatiletech/null/v8"
 	"reflect"
 	"strings"
 	"xsyn-services/boiler"
@@ -59,7 +60,7 @@ FROM %s
 INNER JOIN %s t ON %s = t.%s
 INNER JOIN %s f ON %s = f.%s
 `,
-	boiler.TableNames.Transactions,
+	boiler.ViewNames.Transactions,
 	boiler.TableNames.Users,
 	boiler.TransactionTableColumns.Credit,
 	boiler.UserColumns.ID,
@@ -81,7 +82,7 @@ func UsersTransactionGroups(
 	`,
 		boiler.TransactionTableColumns.Group,
 		boiler.TransactionTableColumns.SubGroup,
-		boiler.TableNames.Transactions,
+		boiler.ViewNames.Transactions,
 		boiler.TransactionTableColumns.Group,
 		boiler.TransactionTableColumns.Credit,
 		boiler.TransactionTableColumns.Debit,
@@ -263,7 +264,7 @@ func TransactionIDList(
 // TransactionGet get store item by id
 func TransactionGet(transactionID string) (*boiler.Transaction, error) {
 	transaction, err := boiler.Transactions(
-		boiler.TransactionWhere.ID.EQ(transactionID),
+		boiler.TransactionWhere.ID.EQ(null.StringFrom(transactionID)),
 	).One(passdb.StdConn)
 	if err != nil {
 		return nil, err
@@ -272,21 +273,9 @@ func TransactionGet(transactionID string) (*boiler.Transaction, error) {
 	return transaction, nil
 }
 
-// TransactionAddRelatedTransaction adds a refund transaction ID to a transaction
-func TransactionAddRelatedTransaction(transactionID string, refundTransactionID string) error {
-	_, err := boiler.Transactions(
-		boiler.TransactionWhere.ID.EQ(transactionID),
-	).UpdateAll(passdb.StdConn, boiler.M{boiler.TransactionColumns.RelatedTransactionID: refundTransactionID})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func TransactionExists(txhash string) (bool, error) {
 	tx, err := boiler.Transactions(
-		boiler.TransactionWhere.TransactionReference.EQ(txhash),
+		boiler.TransactionWhere.TransactionReference.EQ(null.StringFrom(txhash)),
 	).One(passdb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return false, terror.Error(err)

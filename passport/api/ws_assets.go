@@ -1242,7 +1242,6 @@ func reverseAssetServiceTransaction(
 		Amount:               transactionToReverse.Amount,
 		Group:                xsynTypes.TransactionGroupAssetManagement,
 		SubGroup:             "Transfer",
-		RelatedTransactionID: null.StringFrom(transactionToReverse.ID),
 	}
 
 	reverseID, err := ucm.Transact(transaction)
@@ -1287,7 +1286,6 @@ func reverseAsset1155ServiceTransaction(
 		Amount:               transactionToReverse.Amount,
 		Group:                xsynTypes.TransactionGroupAssetManagement,
 		SubGroup:             "Transfer",
-		RelatedTransactionID: null.StringFrom(transactionToReverse.ID),
 	}
 
 	reverseID, err := ucm.Transact(transaction)

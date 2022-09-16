@@ -106,26 +106,51 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 			serviceID.Valid = false
 		}
 		tx := &boiler.Transaction{
-			ID:                   transactionID,
-			Credit:               nt.Credit,
-			Debit:                nt.Debit,
-			Amount:               nt.Amount,
-			TransactionReference: string(nt.TransactionReference),
-			Description:          nt.Description,
-			CreatedAt:            nt.CreatedAt,
-			Group:                string(nt.Group),
+			ID:                   null.StringFrom(transactionID),
+			Credit:               null.StringFrom(nt.Credit),
+			Debit:                null.StringFrom(nt.Debit),
+			Amount:               decimal.NewNullDecimal(nt.Amount),
+			TransactionReference: null.StringFrom(string(nt.TransactionReference)),
+			Description:          null.StringFrom(nt.Description),
+			CreatedAt:            null.TimeFrom(time.Now()),
+			Group:                null.StringFrom(string(nt.Group)),
 			SubGroup:             null.StringFrom(nt.SubGroup),
-			RelatedTransactionID: nt.RelatedTransactionID,
-			ServiceID:            serviceID,
+			//RelatedTransactionID: nt.RelatedTransactionID,
+			ServiceID: serviceID,
 		}
+
 		bm := benchmark.New()
 		bm.Start("Transact func CreateTransactionEntry")
-		err = tx.Insert(passdb.StdConn, boil.Infer())
+		boil.DebugMode = true
+		_, err = passdb.StdConn.Exec(`
+					INSERT INTO transactions (id, description, transaction_reference, amount, credit, debit, created_at, "group", sub_group, service_id)
+					VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+			tx.ID,
+			tx.Description,
+			tx.TransactionReference,
+			tx.Amount,
+			tx.Credit,
+			tx.Debit,
+			tx.CreatedAt,
+			tx.Group,
+			tx.SubGroup,
+			tx.ServiceID,
+		)
 		if err != nil {
-			passlog.L.Error().Err(err).Str("from", tx.Debit).Str("to", tx.Credit).Str("id", nt.ID).Msg("transaction failed")
+			boil.DebugMode = false
+			passlog.L.Error().Err(err).Str("from", tx.Debit.String).Str("to", tx.Credit.String).Str("id", nt.ID).Msg("transaction failed")
 			wg.Done()
 			return err
 		}
+
+		//err = tx.Insert(passdb.StdConn, boil.Infer()).
+		//if err != nil {
+		//	boil.DebugMode = false
+		//	passlog.L.Error().Err(err).Str("from", tx.Debit.String).Str("to", tx.Credit.String).Str("id", nt.ID).Msg("transaction failed")
+		//	wg.Done()
+		//	return err
+		//}
+		boil.DebugMode = false
 		bm.End("Transact func CreateTransactionEntry")
 		bm.Alert(75)
 
@@ -145,25 +170,25 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 }
 
 func (ucm *Transactor) BalanceUpdate(tx *boiler.Transaction) {
-	supsFromAccount, err := ucm.Get(tx.Debit)
+	supsFromAccount, err := ucm.Get(tx.Debit.String)
 	if err != nil {
 		passlog.L.Error().Err(err).Interface("tx", tx).Msg("error updating balance")
 	}
 	if err == nil {
-		supsFromAccount = supsFromAccount.Sub(tx.Amount)
-		ucm.Put(tx.Debit, supsFromAccount)
+		supsFromAccount = supsFromAccount.Sub(tx.Amount.Decimal)
+		ucm.Put(tx.Debit.String, supsFromAccount)
 
 		ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", tx.Debit), HubKeyUserTransactionsSubscribe, []*boiler.Transaction{tx})
 		ws.PublishMessage(fmt.Sprintf("/user/%s/sups", tx.Debit), HubKeyUserSupsSubscribe, supsFromAccount.String())
 	}
 
-	supsToAccount, err := ucm.Get(tx.Credit)
+	supsToAccount, err := ucm.Get(tx.Credit.String)
 	if err != nil {
 		passlog.L.Error().Err(err).Interface("tx", tx).Msg("error updating balance")
 	}
 	if err == nil {
-		supsToAccount = supsToAccount.Add(tx.Amount)
-		ucm.Put(tx.Credit, supsToAccount)
+		supsToAccount = supsToAccount.Add(tx.Amount.Decimal)
+		ucm.Put(tx.Credit.String, supsToAccount)
 
 		ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", tx.Credit), HubKeyUserTransactionsSubscribe, []*boiler.Transaction{tx})
 		ws.PublishMessage(fmt.Sprintf("/user/%s/sups", tx.Credit), HubKeyUserSupsSubscribe, supsToAccount.String())

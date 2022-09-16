@@ -5,6 +5,8 @@ package boiler
 
 var ViewNames = struct {
 	AccountLedgers string
+	Transactions   string
 }{
 	AccountLedgers: "account_ledgers",
+	Transactions:   "transactions",
 }

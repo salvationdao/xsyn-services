@@ -30,7 +30,8 @@ var TableNames = struct {
 	SchemaMigrations               string
 	State                          string
 	StoreItems                     string
-	Transactions                   string
+	TransactionsMaster             string
+	TransactionsOld                string
 	UserActivities                 string
 	UserAssets                     string
 	UserAssets1155                 string
@@ -66,7 +67,8 @@ var TableNames = struct {
 	SchemaMigrations:               "schema_migrations",
 	State:                          "state",
 	StoreItems:                     "store_items",
-	Transactions:                   "transactions",
+	TransactionsMaster:             "transactions_master",
+	TransactionsOld:                "transactions_old",
 	UserActivities:                 "user_activities",
 	UserAssets:                     "user_assets",
 	UserAssets1155:                 "user_assets_1155",

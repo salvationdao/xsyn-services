@@ -10,8 +10,6 @@ import (
 
 	"github.com/gofrs/uuid"
 
-	"github.com/volatiletech/null/v8"
-
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
 )
@@ -48,15 +46,14 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 	}
 
 	tx := &types.NewTransaction{
-		Debit:                transaction.Credit,
-		Credit:               transaction.Debit,
+		Debit:                transaction.Credit.String,
+		Credit:               transaction.Debit.String,
 		TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", transaction.TransactionReference)),
 		Description:          fmt.Sprintf("Reverse transaction - %s", transaction.Description),
-		Amount:               transaction.Amount,
-		Group:                types.TransactionGroup(transaction.Group),
+		Amount:               transaction.Amount.Decimal,
+		Group:                types.TransactionGroup(transaction.Group.String),
 		SubGroup:             transaction.SubGroup.String,
 		ServiceID:            types.UserID(uuid.FromStringOrNil(transaction.ServiceID.String)),
-		RelatedTransactionID: null.StringFrom(transaction.ID),
 	}
 
 	txID, err := s.UserCacheMap.Transact(tx)
@@ -70,15 +67,15 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 	}
 
 	// mark the original transaction as refunded
-	err = db.TransactionAddRelatedTransaction(transaction.ID, txID)
-	if err != nil {
-		passlog.L.Error().
-			Err(err).
-			Str("func", "RefundTransaction").
-			Str("original_transaction_id", transaction.ID).
-			Str("new_related_trasaction_id", txID).
-			Msg("failed to add related transaction id.")
-	}
+	//err = db.TransactionAddRelatedTransaction(transaction.ID, txID)
+	//if err != nil {
+	//	passlog.L.Error().
+	//		Err(err).
+	//		Str("func", "RefundTransaction").
+	//		Str("original_transaction_id", transaction.ID).
+	//		Str("new_related_trasaction_id", txID).
+	//		Msg("failed to add related transaction id.")
+	//}
 
 	resp.TransactionID = txID
 	return nil

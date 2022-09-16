@@ -304,9 +304,9 @@ var UserRels = struct {
 	Pending1155Rollbacks                      string
 	PendingRefunds                            string
 	OwnerPurchasedItemsOlds                   string
-	CreditTransactions                        string
-	DebitTransactions                         string
-	ServiceTransactions                       string
+	CreditTransactionsOlds                    string
+	DebitTransactionsOlds                     string
+	ServiceTransactionsOlds                   string
 	UserActivities                            string
 	LockedToServiceUserAssets                 string
 	OwnerUserAssets                           string
@@ -336,9 +336,9 @@ var UserRels = struct {
 	Pending1155Rollbacks:                      "Pending1155Rollbacks",
 	PendingRefunds:                            "PendingRefunds",
 	OwnerPurchasedItemsOlds:                   "OwnerPurchasedItemsOlds",
-	CreditTransactions:                        "CreditTransactions",
-	DebitTransactions:                         "DebitTransactions",
-	ServiceTransactions:                       "ServiceTransactions",
+	CreditTransactionsOlds:                    "CreditTransactionsOlds",
+	DebitTransactionsOlds:                     "DebitTransactionsOlds",
+	ServiceTransactionsOlds:                   "ServiceTransactionsOlds",
 	UserActivities:                            "UserActivities",
 	LockedToServiceUserAssets:                 "LockedToServiceUserAssets",
 	OwnerUserAssets:                           "OwnerUserAssets",
@@ -371,9 +371,9 @@ type userR struct {
 	Pending1155Rollbacks                      Pending1155RollbackSlice           `boiler:"Pending1155Rollbacks" boil:"Pending1155Rollbacks" json:"Pending1155Rollbacks" toml:"Pending1155Rollbacks" yaml:"Pending1155Rollbacks"`
 	PendingRefunds                            PendingRefundSlice                 `boiler:"PendingRefunds" boil:"PendingRefunds" json:"PendingRefunds" toml:"PendingRefunds" yaml:"PendingRefunds"`
 	OwnerPurchasedItemsOlds                   PurchasedItemsOldSlice             `boiler:"OwnerPurchasedItemsOlds" boil:"OwnerPurchasedItemsOlds" json:"OwnerPurchasedItemsOlds" toml:"OwnerPurchasedItemsOlds" yaml:"OwnerPurchasedItemsOlds"`
-	CreditTransactions                        TransactionSlice                   `boiler:"CreditTransactions" boil:"CreditTransactions" json:"CreditTransactions" toml:"CreditTransactions" yaml:"CreditTransactions"`
-	DebitTransactions                         TransactionSlice                   `boiler:"DebitTransactions" boil:"DebitTransactions" json:"DebitTransactions" toml:"DebitTransactions" yaml:"DebitTransactions"`
-	ServiceTransactions                       TransactionSlice                   `boiler:"ServiceTransactions" boil:"ServiceTransactions" json:"ServiceTransactions" toml:"ServiceTransactions" yaml:"ServiceTransactions"`
+	CreditTransactionsOlds                    TransactionsOldSlice               `boiler:"CreditTransactionsOlds" boil:"CreditTransactionsOlds" json:"CreditTransactionsOlds" toml:"CreditTransactionsOlds" yaml:"CreditTransactionsOlds"`
+	DebitTransactionsOlds                     TransactionsOldSlice               `boiler:"DebitTransactionsOlds" boil:"DebitTransactionsOlds" json:"DebitTransactionsOlds" toml:"DebitTransactionsOlds" yaml:"DebitTransactionsOlds"`
+	ServiceTransactionsOlds                   TransactionsOldSlice               `boiler:"ServiceTransactionsOlds" boil:"ServiceTransactionsOlds" json:"ServiceTransactionsOlds" toml:"ServiceTransactionsOlds" yaml:"ServiceTransactionsOlds"`
 	UserActivities                            UserActivitySlice                  `boiler:"UserActivities" boil:"UserActivities" json:"UserActivities" toml:"UserActivities" yaml:"UserActivities"`
 	LockedToServiceUserAssets                 UserAssetSlice                     `boiler:"LockedToServiceUserAssets" boil:"LockedToServiceUserAssets" json:"LockedToServiceUserAssets" toml:"LockedToServiceUserAssets" yaml:"LockedToServiceUserAssets"`
 	OwnerUserAssets                           UserAssetSlice                     `boiler:"OwnerUserAssets" boil:"OwnerUserAssets" json:"OwnerUserAssets" toml:"OwnerUserAssets" yaml:"OwnerUserAssets"`
@@ -1063,64 +1063,64 @@ func (o *User) OwnerPurchasedItemsOlds(mods ...qm.QueryMod) purchasedItemsOldQue
 	return query
 }
 
-// CreditTransactions retrieves all the transaction's Transactions with an executor via credit column.
-func (o *User) CreditTransactions(mods ...qm.QueryMod) transactionQuery {
+// CreditTransactionsOlds retrieves all the transactions_old's TransactionsOlds with an executor via credit column.
+func (o *User) CreditTransactionsOlds(mods ...qm.QueryMod) transactionsOldQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"transactions\".\"credit\"=?", o.ID),
+		qm.Where("\"transactions_old\".\"credit\"=?", o.ID),
 	)
 
-	query := Transactions(queryMods...)
-	queries.SetFrom(query.Query, "\"transactions\"")
+	query := TransactionsOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"transactions_old\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"transactions\".*"})
+		queries.SetSelect(query.Query, []string{"\"transactions_old\".*"})
 	}
 
 	return query
 }
 
-// DebitTransactions retrieves all the transaction's Transactions with an executor via debit column.
-func (o *User) DebitTransactions(mods ...qm.QueryMod) transactionQuery {
+// DebitTransactionsOlds retrieves all the transactions_old's TransactionsOlds with an executor via debit column.
+func (o *User) DebitTransactionsOlds(mods ...qm.QueryMod) transactionsOldQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"transactions\".\"debit\"=?", o.ID),
+		qm.Where("\"transactions_old\".\"debit\"=?", o.ID),
 	)
 
-	query := Transactions(queryMods...)
-	queries.SetFrom(query.Query, "\"transactions\"")
+	query := TransactionsOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"transactions_old\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"transactions\".*"})
+		queries.SetSelect(query.Query, []string{"\"transactions_old\".*"})
 	}
 
 	return query
 }
 
-// ServiceTransactions retrieves all the transaction's Transactions with an executor via service_id column.
-func (o *User) ServiceTransactions(mods ...qm.QueryMod) transactionQuery {
+// ServiceTransactionsOlds retrieves all the transactions_old's TransactionsOlds with an executor via service_id column.
+func (o *User) ServiceTransactionsOlds(mods ...qm.QueryMod) transactionsOldQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"transactions\".\"service_id\"=?", o.ID),
+		qm.Where("\"transactions_old\".\"service_id\"=?", o.ID),
 	)
 
-	query := Transactions(queryMods...)
-	queries.SetFrom(query.Query, "\"transactions\"")
+	query := TransactionsOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"transactions_old\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"transactions\".*"})
+		queries.SetSelect(query.Query, []string{"\"transactions_old\".*"})
 	}
 
 	return query
@@ -3377,9 +3377,9 @@ func (userL) LoadOwnerPurchasedItemsOlds(e boil.Executor, singular bool, maybeUs
 	return nil
 }
 
-// LoadCreditTransactions allows an eager lookup of values, cached into the
+// LoadCreditTransactionsOlds allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadCreditTransactions(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+func (userL) LoadCreditTransactionsOlds(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
 	var slice []*User
 	var object *User
 
@@ -3417,8 +3417,8 @@ func (userL) LoadCreditTransactions(e boil.Executor, singular bool, maybeUser in
 	}
 
 	query := NewQuery(
-		qm.From(`transactions`),
-		qm.WhereIn(`transactions.credit in ?`, args...),
+		qm.From(`transactions_old`),
+		qm.WhereIn(`transactions_old.credit in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -3426,22 +3426,22 @@ func (userL) LoadCreditTransactions(e boil.Executor, singular bool, maybeUser in
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load transactions")
+		return errors.Wrap(err, "failed to eager load transactions_old")
 	}
 
-	var resultSlice []*Transaction
+	var resultSlice []*TransactionsOld
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice transactions")
+		return errors.Wrap(err, "failed to bind eager loaded slice transactions_old")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on transactions")
+		return errors.Wrap(err, "failed to close results in eager load on transactions_old")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions_old")
 	}
 
-	if len(transactionAfterSelectHooks) != 0 {
+	if len(transactionsOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -3449,10 +3449,10 @@ func (userL) LoadCreditTransactions(e boil.Executor, singular bool, maybeUser in
 		}
 	}
 	if singular {
-		object.R.CreditTransactions = resultSlice
+		object.R.CreditTransactionsOlds = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &transactionR{}
+				foreign.R = &transactionsOldR{}
 			}
 			foreign.R.CreditUser = object
 		}
@@ -3462,9 +3462,9 @@ func (userL) LoadCreditTransactions(e boil.Executor, singular bool, maybeUser in
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.Credit {
-				local.R.CreditTransactions = append(local.R.CreditTransactions, foreign)
+				local.R.CreditTransactionsOlds = append(local.R.CreditTransactionsOlds, foreign)
 				if foreign.R == nil {
-					foreign.R = &transactionR{}
+					foreign.R = &transactionsOldR{}
 				}
 				foreign.R.CreditUser = local
 				break
@@ -3475,9 +3475,9 @@ func (userL) LoadCreditTransactions(e boil.Executor, singular bool, maybeUser in
 	return nil
 }
 
-// LoadDebitTransactions allows an eager lookup of values, cached into the
+// LoadDebitTransactionsOlds allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadDebitTransactions(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+func (userL) LoadDebitTransactionsOlds(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
 	var slice []*User
 	var object *User
 
@@ -3515,8 +3515,8 @@ func (userL) LoadDebitTransactions(e boil.Executor, singular bool, maybeUser int
 	}
 
 	query := NewQuery(
-		qm.From(`transactions`),
-		qm.WhereIn(`transactions.debit in ?`, args...),
+		qm.From(`transactions_old`),
+		qm.WhereIn(`transactions_old.debit in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -3524,22 +3524,22 @@ func (userL) LoadDebitTransactions(e boil.Executor, singular bool, maybeUser int
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load transactions")
+		return errors.Wrap(err, "failed to eager load transactions_old")
 	}
 
-	var resultSlice []*Transaction
+	var resultSlice []*TransactionsOld
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice transactions")
+		return errors.Wrap(err, "failed to bind eager loaded slice transactions_old")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on transactions")
+		return errors.Wrap(err, "failed to close results in eager load on transactions_old")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions_old")
 	}
 
-	if len(transactionAfterSelectHooks) != 0 {
+	if len(transactionsOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -3547,10 +3547,10 @@ func (userL) LoadDebitTransactions(e boil.Executor, singular bool, maybeUser int
 		}
 	}
 	if singular {
-		object.R.DebitTransactions = resultSlice
+		object.R.DebitTransactionsOlds = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &transactionR{}
+				foreign.R = &transactionsOldR{}
 			}
 			foreign.R.DebitUser = object
 		}
@@ -3560,9 +3560,9 @@ func (userL) LoadDebitTransactions(e boil.Executor, singular bool, maybeUser int
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.Debit {
-				local.R.DebitTransactions = append(local.R.DebitTransactions, foreign)
+				local.R.DebitTransactionsOlds = append(local.R.DebitTransactionsOlds, foreign)
 				if foreign.R == nil {
-					foreign.R = &transactionR{}
+					foreign.R = &transactionsOldR{}
 				}
 				foreign.R.DebitUser = local
 				break
@@ -3573,9 +3573,9 @@ func (userL) LoadDebitTransactions(e boil.Executor, singular bool, maybeUser int
 	return nil
 }
 
-// LoadServiceTransactions allows an eager lookup of values, cached into the
+// LoadServiceTransactionsOlds allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadServiceTransactions(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+func (userL) LoadServiceTransactionsOlds(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
 	var slice []*User
 	var object *User
 
@@ -3613,8 +3613,8 @@ func (userL) LoadServiceTransactions(e boil.Executor, singular bool, maybeUser i
 	}
 
 	query := NewQuery(
-		qm.From(`transactions`),
-		qm.WhereIn(`transactions.service_id in ?`, args...),
+		qm.From(`transactions_old`),
+		qm.WhereIn(`transactions_old.service_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -3622,22 +3622,22 @@ func (userL) LoadServiceTransactions(e boil.Executor, singular bool, maybeUser i
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load transactions")
+		return errors.Wrap(err, "failed to eager load transactions_old")
 	}
 
-	var resultSlice []*Transaction
+	var resultSlice []*TransactionsOld
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice transactions")
+		return errors.Wrap(err, "failed to bind eager loaded slice transactions_old")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on transactions")
+		return errors.Wrap(err, "failed to close results in eager load on transactions_old")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions_old")
 	}
 
-	if len(transactionAfterSelectHooks) != 0 {
+	if len(transactionsOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -3645,10 +3645,10 @@ func (userL) LoadServiceTransactions(e boil.Executor, singular bool, maybeUser i
 		}
 	}
 	if singular {
-		object.R.ServiceTransactions = resultSlice
+		object.R.ServiceTransactionsOlds = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &transactionR{}
+				foreign.R = &transactionsOldR{}
 			}
 			foreign.R.Service = object
 		}
@@ -3658,9 +3658,9 @@ func (userL) LoadServiceTransactions(e boil.Executor, singular bool, maybeUser i
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if queries.Equal(local.ID, foreign.ServiceID) {
-				local.R.ServiceTransactions = append(local.R.ServiceTransactions, foreign)
+				local.R.ServiceTransactionsOlds = append(local.R.ServiceTransactionsOlds, foreign)
 				if foreign.R == nil {
-					foreign.R = &transactionR{}
+					foreign.R = &transactionsOldR{}
 				}
 				foreign.R.Service = local
 				break
@@ -5824,11 +5824,11 @@ func (o *User) AddOwnerPurchasedItemsOlds(exec boil.Executor, insert bool, relat
 	return nil
 }
 
-// AddCreditTransactions adds the given related objects to the existing relationships
+// AddCreditTransactionsOlds adds the given related objects to the existing relationships
 // of the user, optionally inserting them as new records.
-// Appends related to o.R.CreditTransactions.
+// Appends related to o.R.CreditTransactionsOlds.
 // Sets related.R.CreditUser appropriately.
-func (o *User) AddCreditTransactions(exec boil.Executor, insert bool, related ...*Transaction) error {
+func (o *User) AddCreditTransactionsOlds(exec boil.Executor, insert bool, related ...*TransactionsOld) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -5838,9 +5838,9 @@ func (o *User) AddCreditTransactions(exec boil.Executor, insert bool, related ..
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"transactions\" SET %s WHERE %s",
+				"UPDATE \"transactions_old\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"credit"}),
-				strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, transactionsOldPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -5858,15 +5858,15 @@ func (o *User) AddCreditTransactions(exec boil.Executor, insert bool, related ..
 
 	if o.R == nil {
 		o.R = &userR{
-			CreditTransactions: related,
+			CreditTransactionsOlds: related,
 		}
 	} else {
-		o.R.CreditTransactions = append(o.R.CreditTransactions, related...)
+		o.R.CreditTransactionsOlds = append(o.R.CreditTransactionsOlds, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &transactionR{
+			rel.R = &transactionsOldR{
 				CreditUser: o,
 			}
 		} else {
@@ -5876,11 +5876,11 @@ func (o *User) AddCreditTransactions(exec boil.Executor, insert bool, related ..
 	return nil
 }
 
-// AddDebitTransactions adds the given related objects to the existing relationships
+// AddDebitTransactionsOlds adds the given related objects to the existing relationships
 // of the user, optionally inserting them as new records.
-// Appends related to o.R.DebitTransactions.
+// Appends related to o.R.DebitTransactionsOlds.
 // Sets related.R.DebitUser appropriately.
-func (o *User) AddDebitTransactions(exec boil.Executor, insert bool, related ...*Transaction) error {
+func (o *User) AddDebitTransactionsOlds(exec boil.Executor, insert bool, related ...*TransactionsOld) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -5890,9 +5890,9 @@ func (o *User) AddDebitTransactions(exec boil.Executor, insert bool, related ...
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"transactions\" SET %s WHERE %s",
+				"UPDATE \"transactions_old\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"debit"}),
-				strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, transactionsOldPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -5910,15 +5910,15 @@ func (o *User) AddDebitTransactions(exec boil.Executor, insert bool, related ...
 
 	if o.R == nil {
 		o.R = &userR{
-			DebitTransactions: related,
+			DebitTransactionsOlds: related,
 		}
 	} else {
-		o.R.DebitTransactions = append(o.R.DebitTransactions, related...)
+		o.R.DebitTransactionsOlds = append(o.R.DebitTransactionsOlds, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &transactionR{
+			rel.R = &transactionsOldR{
 				DebitUser: o,
 			}
 		} else {
@@ -5928,11 +5928,11 @@ func (o *User) AddDebitTransactions(exec boil.Executor, insert bool, related ...
 	return nil
 }
 
-// AddServiceTransactions adds the given related objects to the existing relationships
+// AddServiceTransactionsOlds adds the given related objects to the existing relationships
 // of the user, optionally inserting them as new records.
-// Appends related to o.R.ServiceTransactions.
+// Appends related to o.R.ServiceTransactionsOlds.
 // Sets related.R.Service appropriately.
-func (o *User) AddServiceTransactions(exec boil.Executor, insert bool, related ...*Transaction) error {
+func (o *User) AddServiceTransactionsOlds(exec boil.Executor, insert bool, related ...*TransactionsOld) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -5942,9 +5942,9 @@ func (o *User) AddServiceTransactions(exec boil.Executor, insert bool, related .
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"transactions\" SET %s WHERE %s",
+				"UPDATE \"transactions_old\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"service_id"}),
-				strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, transactionsOldPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -5962,15 +5962,15 @@ func (o *User) AddServiceTransactions(exec boil.Executor, insert bool, related .
 
 	if o.R == nil {
 		o.R = &userR{
-			ServiceTransactions: related,
+			ServiceTransactionsOlds: related,
 		}
 	} else {
-		o.R.ServiceTransactions = append(o.R.ServiceTransactions, related...)
+		o.R.ServiceTransactionsOlds = append(o.R.ServiceTransactionsOlds, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &transactionR{
+			rel.R = &transactionsOldR{
 				Service: o,
 			}
 		} else {
@@ -5980,14 +5980,14 @@ func (o *User) AddServiceTransactions(exec boil.Executor, insert bool, related .
 	return nil
 }
 
-// SetServiceTransactions removes all previously related items of the
+// SetServiceTransactionsOlds removes all previously related items of the
 // user replacing them completely with the passed
 // in related items, optionally inserting them as new records.
-// Sets o.R.Service's ServiceTransactions accordingly.
-// Replaces o.R.ServiceTransactions with related.
-// Sets related.R.Service's ServiceTransactions accordingly.
-func (o *User) SetServiceTransactions(exec boil.Executor, insert bool, related ...*Transaction) error {
-	query := "update \"transactions\" set \"service_id\" = null where \"service_id\" = $1"
+// Sets o.R.Service's ServiceTransactionsOlds accordingly.
+// Replaces o.R.ServiceTransactionsOlds with related.
+// Sets related.R.Service's ServiceTransactionsOlds accordingly.
+func (o *User) SetServiceTransactionsOlds(exec boil.Executor, insert bool, related ...*TransactionsOld) error {
+	query := "update \"transactions_old\" set \"service_id\" = null where \"service_id\" = $1"
 	values := []interface{}{o.ID}
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, query)
@@ -5999,7 +5999,7 @@ func (o *User) SetServiceTransactions(exec boil.Executor, insert bool, related .
 	}
 
 	if o.R != nil {
-		for _, rel := range o.R.ServiceTransactions {
+		for _, rel := range o.R.ServiceTransactionsOlds {
 			queries.SetScanner(&rel.ServiceID, nil)
 			if rel.R == nil {
 				continue
@@ -6008,15 +6008,15 @@ func (o *User) SetServiceTransactions(exec boil.Executor, insert bool, related .
 			rel.R.Service = nil
 		}
 
-		o.R.ServiceTransactions = nil
+		o.R.ServiceTransactionsOlds = nil
 	}
-	return o.AddServiceTransactions(exec, insert, related...)
+	return o.AddServiceTransactionsOlds(exec, insert, related...)
 }
 
-// RemoveServiceTransactions relationships from objects passed in.
-// Removes related items from R.ServiceTransactions (uses pointer comparison, removal does not keep order)
+// RemoveServiceTransactionsOlds relationships from objects passed in.
+// Removes related items from R.ServiceTransactionsOlds (uses pointer comparison, removal does not keep order)
 // Sets related.R.Service.
-func (o *User) RemoveServiceTransactions(exec boil.Executor, related ...*Transaction) error {
+func (o *User) RemoveServiceTransactionsOlds(exec boil.Executor, related ...*TransactionsOld) error {
 	if len(related) == 0 {
 		return nil
 	}
@@ -6036,16 +6036,16 @@ func (o *User) RemoveServiceTransactions(exec boil.Executor, related ...*Transac
 	}
 
 	for _, rel := range related {
-		for i, ri := range o.R.ServiceTransactions {
+		for i, ri := range o.R.ServiceTransactionsOlds {
 			if rel != ri {
 				continue
 			}
 
-			ln := len(o.R.ServiceTransactions)
+			ln := len(o.R.ServiceTransactionsOlds)
 			if ln > 1 && i < ln-1 {
-				o.R.ServiceTransactions[i] = o.R.ServiceTransactions[ln-1]
+				o.R.ServiceTransactionsOlds[i] = o.R.ServiceTransactionsOlds[ln-1]
 			}
-			o.R.ServiceTransactions = o.R.ServiceTransactions[:ln-1]
+			o.R.ServiceTransactionsOlds = o.R.ServiceTransactionsOlds[:ln-1]
 			break
 		}
 	}
