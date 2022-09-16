@@ -273,6 +273,20 @@ func TransactionGet(transactionID string) (*boiler.Transaction, error) {
 	return transaction, nil
 }
 
+// TransactionAddRelatedTransaction adds a refund transaction ID to a transaction
+func TransactionAddRelatedTransaction(transactionID string, refundTransactionID string) error {
+	_, err := passdb.StdConn.Exec(`
+			UPDATE transactions SET related_transaction_id = $1 WHERE id = $2;
+			`,
+		refundTransactionID,
+		transactionID,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func TransactionExists(txhash string) (bool, error) {
 	tx, err := boiler.Transactions(
 		boiler.TransactionWhere.TransactionReference.EQ(null.StringFrom(txhash)),
