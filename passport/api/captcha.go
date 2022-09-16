@@ -48,7 +48,7 @@ func (c *captcha) verify(token string) error {
 	}
 
 	if len(cr.ErrorCode) > 0 {
-		passlog.L.Debug().Msg(cr.ErrorCode[0])
+		passlog.L.Error().Strs("error codes", cr.ErrorCode).Msg("error validating captcha")
 	}
 
 	if !cr.Success {
