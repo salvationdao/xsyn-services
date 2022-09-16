@@ -1371,6 +1371,7 @@ type AddWalletRequest struct {
 		Username      string       `json:"username"`
 		PublicAddress string       `json:"public_address"`
 		Signature     string       `json:"signature"`
+		Nonce         string       `json:"nonce"`
 	} `json:"payload"`
 }
 
@@ -1399,6 +1400,13 @@ func (uc *UserController) AddWalletHandler(ctx context.Context, user *types.User
 	publicAddr := common.HexToAddress(req.Payload.PublicAddress)
 
 	// verify they signed it
+	if user.Nonce.String == "" {
+		user.Nonce = null.StringFrom(req.Payload.Nonce)
+		_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Nonce))
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+	}
 	err = uc.API.VerifySignature(req.Payload.Signature, user.Nonce.String, publicAddr)
 	if err != nil {
 		return terror.Error(err, errMsg)

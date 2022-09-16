@@ -146,6 +146,7 @@ type TFAVerifyRequest struct {
 	RecoveryCode string             `json:"recovery_code"`
 	SessionID    hub.SessionID      `json:"session_id"`
 	Fingerprint  *users.Fingerprint `json:"fingerprint"`
+	IsVerified   bool               `json:"is_verified"`
 }
 
 // LoginResponse is a response for login
@@ -1412,6 +1413,7 @@ func (api *API) TFAVerifyHandler(w http.ResponseWriter, r *http.Request) (int, e
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err)
 	}
+
 	// Issue login token to user
 	// Only if jwt token was provided
 	if req.Token != "" {
@@ -1438,6 +1440,10 @@ func (api *API) TFAVerifyHandler(w http.ResponseWriter, r *http.Request) (int, e
 			passlog.L.Error().Err(err).Msg("unable to write 2fa response to user")
 			return http.StatusBadRequest, terror.Error(err, "Unable to write response to user.")
 		}
+	}
+
+	if req.IsVerified {
+		return http.StatusOK, nil
 	}
 
 	// If external forward request to external handler
@@ -1768,15 +1774,20 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		}
 
 		// Redirect to 2fa
-		if req.User.TwitterID.String != "" {
+		if req.IsTwitter {
 			// add query tfa=ok for twitter message
 			rURL := fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s?tfa=ok&tenant=%s", origin, token, req.RedirectURL, req.Tenant)
 			http.Redirect(w, r, rURL, http.StatusSeeOther)
 			return nil
 		}
 
+		tokenResp := struct {
+			TFAToken string `json:"tfa_token"`
+		}{
+			TFAToken: token,
+		}
 		// Send response to user and pass token to redirect to 2fa
-		b, err := json.Marshal(token)
+		b, err := json.Marshal(tokenResp)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
 			return terror.Error(err, "Failed to decode token to user.")
@@ -2012,6 +2023,7 @@ func (api *API) VerifySignature(signature string, nonce string, publicKey common
 
 	recoveredAddress := crypto.PubkeyToAddress(*secp256k1RecoveredPublicKey).Hex()
 	isClientAddressEqualToRecoveredAddress := strings.ToLower(publicKey.Hex()) == strings.ToLower(recoveredAddress)
+	fmt.Println(publicKey.Hex(), recoveredAddress)
 	if !isClientAddressEqualToRecoveredAddress {
 		return terror.Error(fmt.Errorf("public address does not match recovered address"))
 	}
