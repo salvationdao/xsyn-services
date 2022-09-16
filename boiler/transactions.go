@@ -30,7 +30,6 @@ type Transaction struct {
 	Amount               decimal.NullDecimal `boiler:"amount" boil:"amount" json:"amount,omitempty" toml:"amount" yaml:"amount,omitempty"`
 	Credit               null.String         `boiler:"credit" boil:"credit" json:"credit,omitempty" toml:"credit" yaml:"credit,omitempty"`
 	Debit                null.String         `boiler:"debit" boil:"debit" json:"debit,omitempty" toml:"debit" yaml:"debit,omitempty"`
-	Reason               null.String         `boiler:"reason" boil:"reason" json:"reason,omitempty" toml:"reason" yaml:"reason,omitempty"`
 	CreatedAt            null.Time           `boiler:"created_at" boil:"created_at" json:"created_at,omitempty" toml:"created_at" yaml:"created_at,omitempty"`
 	Group                null.String         `boiler:"group" boil:"group" json:"group,omitempty" toml:"group" yaml:"group,omitempty"`
 	SubGroup             null.String         `boiler:"sub_group" boil:"sub_group" json:"sub_group,omitempty" toml:"sub_group" yaml:"sub_group,omitempty"`
@@ -45,7 +44,6 @@ var TransactionColumns = struct {
 	Amount               string
 	Credit               string
 	Debit                string
-	Reason               string
 	CreatedAt            string
 	Group                string
 	SubGroup             string
@@ -58,7 +56,6 @@ var TransactionColumns = struct {
 	Amount:               "amount",
 	Credit:               "credit",
 	Debit:                "debit",
-	Reason:               "reason",
 	CreatedAt:            "created_at",
 	Group:                "group",
 	SubGroup:             "sub_group",
@@ -73,7 +70,6 @@ var TransactionTableColumns = struct {
 	Amount               string
 	Credit               string
 	Debit                string
-	Reason               string
 	CreatedAt            string
 	Group                string
 	SubGroup             string
@@ -86,7 +82,6 @@ var TransactionTableColumns = struct {
 	Amount:               "transactions.amount",
 	Credit:               "transactions.credit",
 	Debit:                "transactions.debit",
-	Reason:               "transactions.reason",
 	CreatedAt:            "transactions.created_at",
 	Group:                "transactions.group",
 	SubGroup:             "transactions.sub_group",
@@ -103,7 +98,6 @@ var TransactionWhere = struct {
 	Amount               whereHelperdecimal_NullDecimal
 	Credit               whereHelpernull_String
 	Debit                whereHelpernull_String
-	Reason               whereHelpernull_String
 	CreatedAt            whereHelpernull_Time
 	Group                whereHelpernull_String
 	SubGroup             whereHelpernull_String
@@ -116,7 +110,6 @@ var TransactionWhere = struct {
 	Amount:               whereHelperdecimal_NullDecimal{field: "\"transactions\".\"amount\""},
 	Credit:               whereHelpernull_String{field: "\"transactions\".\"credit\""},
 	Debit:                whereHelpernull_String{field: "\"transactions\".\"debit\""},
-	Reason:               whereHelpernull_String{field: "\"transactions\".\"reason\""},
 	CreatedAt:            whereHelpernull_Time{field: "\"transactions\".\"created_at\""},
 	Group:                whereHelpernull_String{field: "\"transactions\".\"group\""},
 	SubGroup:             whereHelpernull_String{field: "\"transactions\".\"sub_group\""},
@@ -125,9 +118,9 @@ var TransactionWhere = struct {
 }
 
 var (
-	transactionAllColumns            = []string{"id", "description", "transaction_reference", "amount", "credit", "debit", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
+	transactionAllColumns            = []string{"id", "description", "transaction_reference", "amount", "credit", "debit", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
 	transactionColumnsWithoutDefault = []string{}
-	transactionColumnsWithDefault    = []string{"id", "description", "transaction_reference", "amount", "credit", "debit", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
+	transactionColumnsWithDefault    = []string{"id", "description", "transaction_reference", "amount", "credit", "debit", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
 	transactionPrimaryKeyColumns     = []string{}
 	transactionGeneratedColumns      = []string{}
 )

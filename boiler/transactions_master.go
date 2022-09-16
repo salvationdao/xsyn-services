@@ -30,7 +30,6 @@ type TransactionsMaster struct {
 	Amount               decimal.Decimal `boiler:"amount" boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
 	Credit               string          `boiler:"credit" boil:"credit" json:"credit" toml:"credit" yaml:"credit"`
 	Debit                string          `boiler:"debit" boil:"debit" json:"debit" toml:"debit" yaml:"debit"`
-	Reason               null.String     `boiler:"reason" boil:"reason" json:"reason,omitempty" toml:"reason" yaml:"reason,omitempty"`
 	CreatedAt            time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	Group                string          `boiler:"group" boil:"group" json:"group" toml:"group" yaml:"group"`
 	SubGroup             null.String     `boiler:"sub_group" boil:"sub_group" json:"sub_group,omitempty" toml:"sub_group" yaml:"sub_group,omitempty"`
@@ -48,7 +47,6 @@ var TransactionsMasterColumns = struct {
 	Amount               string
 	Credit               string
 	Debit                string
-	Reason               string
 	CreatedAt            string
 	Group                string
 	SubGroup             string
@@ -61,7 +59,6 @@ var TransactionsMasterColumns = struct {
 	Amount:               "amount",
 	Credit:               "credit",
 	Debit:                "debit",
-	Reason:               "reason",
 	CreatedAt:            "created_at",
 	Group:                "group",
 	SubGroup:             "sub_group",
@@ -76,7 +73,6 @@ var TransactionsMasterTableColumns = struct {
 	Amount               string
 	Credit               string
 	Debit                string
-	Reason               string
 	CreatedAt            string
 	Group                string
 	SubGroup             string
@@ -89,7 +85,6 @@ var TransactionsMasterTableColumns = struct {
 	Amount:               "transactions_master.amount",
 	Credit:               "transactions_master.credit",
 	Debit:                "transactions_master.debit",
-	Reason:               "transactions_master.reason",
 	CreatedAt:            "transactions_master.created_at",
 	Group:                "transactions_master.group",
 	SubGroup:             "transactions_master.sub_group",
@@ -106,7 +101,6 @@ var TransactionsMasterWhere = struct {
 	Amount               whereHelperdecimal_Decimal
 	Credit               whereHelperstring
 	Debit                whereHelperstring
-	Reason               whereHelpernull_String
 	CreatedAt            whereHelpertime_Time
 	Group                whereHelperstring
 	SubGroup             whereHelpernull_String
@@ -119,7 +113,6 @@ var TransactionsMasterWhere = struct {
 	Amount:               whereHelperdecimal_Decimal{field: "\"transactions_master\".\"amount\""},
 	Credit:               whereHelperstring{field: "\"transactions_master\".\"credit\""},
 	Debit:                whereHelperstring{field: "\"transactions_master\".\"debit\""},
-	Reason:               whereHelpernull_String{field: "\"transactions_master\".\"reason\""},
 	CreatedAt:            whereHelpertime_Time{field: "\"transactions_master\".\"created_at\""},
 	Group:                whereHelperstring{field: "\"transactions_master\".\"group\""},
 	SubGroup:             whereHelpernull_String{field: "\"transactions_master\".\"sub_group\""},
@@ -144,9 +137,9 @@ func (*transactionsMasterR) NewStruct() *transactionsMasterR {
 type transactionsMasterL struct{}
 
 var (
-	transactionsMasterAllColumns            = []string{"id", "description", "transaction_reference", "amount", "credit", "debit", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
+	transactionsMasterAllColumns            = []string{"id", "description", "transaction_reference", "amount", "credit", "debit", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
 	transactionsMasterColumnsWithoutDefault = []string{"id", "amount", "credit", "debit"}
-	transactionsMasterColumnsWithDefault    = []string{"description", "transaction_reference", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
+	transactionsMasterColumnsWithDefault    = []string{"description", "transaction_reference", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
 	transactionsMasterPrimaryKeyColumns     = []string{"id", "created_at"}
 	transactionsMasterGeneratedColumns      = []string{}
 )

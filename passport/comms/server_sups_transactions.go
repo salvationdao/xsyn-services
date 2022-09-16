@@ -66,16 +66,16 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 		return terror.Error(err, "Failed to process refund.")
 	}
 
-	// mark the original transaction as refunded
-	//err = db.TransactionAddRelatedTransaction(transaction.ID, txID)
-	//if err != nil {
-	//	passlog.L.Error().
-	//		Err(err).
-	//		Str("func", "RefundTransaction").
-	//		Str("original_transaction_id", transaction.ID).
-	//		Str("new_related_trasaction_id", txID).
-	//		Msg("failed to add related transaction id.")
-	//}
+	//mark the original transaction as refunded
+	err = db.TransactionAddRelatedTransaction(transaction.ID, txID)
+	if err != nil {
+		passlog.L.Error().
+			Err(err).
+			Str("func", "RefundTransaction").
+			Str("original_transaction_id", transaction.ID).
+			Str("new_related_trasaction_id", txID).
+			Msg("failed to add related transaction id.")
+	}
 
 	resp.TransactionID = txID
 	return nil

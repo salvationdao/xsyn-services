@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/volatiletech/null/v8"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -46,8 +47,8 @@ type ChainConfirmations struct {
 type TransactionReference string
 
 type NewTransaction struct {
-	ID string `json:"id" db:"id"`
-	//RelatedTransactionID null.String          `json:"related_transaction_id" db:"related_transaction_id"`
+	ID                   string               `json:"id" db:"id"`
+	RelatedTransactionID null.String          `json:"related_transaction_id" db:"related_transaction_id"`
 	ServiceID            UserID               `json:"service_id" db:"service_id"`
 	Credit               string               `json:"credit" db:"credit"`
 	Debit                string               `json:"debit" db:"debit"`

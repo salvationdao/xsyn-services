@@ -13,8 +13,6 @@ import (
 
 	"github.com/volatiletech/null/v8"
 
-	"github.com/volatiletech/sqlboiler/v4/boil"
-
 	"github.com/ninja-syndicate/ws"
 
 	"github.com/gofrs/uuid"
@@ -115,16 +113,15 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 			CreatedAt:            null.TimeFrom(time.Now()),
 			Group:                null.StringFrom(string(nt.Group)),
 			SubGroup:             null.StringFrom(nt.SubGroup),
-			//RelatedTransactionID: nt.RelatedTransactionID,
-			ServiceID: serviceID,
+			RelatedTransactionID: nt.RelatedTransactionID,
+			ServiceID:            serviceID,
 		}
 
 		bm := benchmark.New()
 		bm.Start("Transact func CreateTransactionEntry")
-		boil.DebugMode = true
 		_, err = passdb.StdConn.Exec(`
-					INSERT INTO transactions (id, description, transaction_reference, amount, credit, debit, created_at, "group", sub_group, service_id)
-					VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+					INSERT INTO transactions (id, description, transaction_reference, amount, credit, debit, created_at, "group", sub_group, service_id, related_transaction_id)
+					VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
 			tx.ID,
 			tx.Description,
 			tx.TransactionReference,
@@ -135,22 +132,13 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 			tx.Group,
 			tx.SubGroup,
 			tx.ServiceID,
+			tx.RelatedTransactionID,
 		)
 		if err != nil {
-			boil.DebugMode = false
 			passlog.L.Error().Err(err).Str("from", tx.Debit.String).Str("to", tx.Credit.String).Str("id", nt.ID).Msg("transaction failed")
 			wg.Done()
 			return err
 		}
-
-		//err = tx.Insert(passdb.StdConn, boil.Infer()).
-		//if err != nil {
-		//	boil.DebugMode = false
-		//	passlog.L.Error().Err(err).Str("from", tx.Debit.String).Str("to", tx.Credit.String).Str("id", nt.ID).Msg("transaction failed")
-		//	wg.Done()
-		//	return err
-		//}
-		boil.DebugMode = false
 		bm.End("Transact func CreateTransactionEntry")
 		bm.Alert(75)
 
