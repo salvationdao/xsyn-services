@@ -2023,7 +2023,6 @@ func (api *API) VerifySignature(signature string, nonce string, publicKey common
 
 	recoveredAddress := crypto.PubkeyToAddress(*secp256k1RecoveredPublicKey).Hex()
 	isClientAddressEqualToRecoveredAddress := strings.ToLower(publicKey.Hex()) == strings.ToLower(recoveredAddress)
-	fmt.Println(publicKey.Hex(), recoveredAddress)
 	if !isClientAddressEqualToRecoveredAddress {
 		return terror.Error(fmt.Errorf("public address does not match recovered address"))
 	}
