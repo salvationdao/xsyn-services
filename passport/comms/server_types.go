@@ -95,3 +95,9 @@ type SyndicateLiquidateReq struct {
 	RemainUserIDs []string `json:"remain_user_ids"`
 }
 type SyndicateLiquidateResp struct{}
+
+type GetCurrentSupPriceReq struct{}
+
+type GetCurrentSupPriceResp struct {
+	PriceUSD decimal.Decimal `json:"price_usd"`
+}
