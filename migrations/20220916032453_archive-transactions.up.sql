@@ -1,97 +1,41 @@
 ALTER TABLE transactions
     RENAME TO transactions_old;
 
-CREATE TABLE transactions_master
+CREATE TABLE transactions
 (
-    id                     TEXT                      NOT NULL,
+    id                     TEXT                      NOT NULL PRIMARY KEY,
     description            TEXT        DEFAULT ''    NOT NULL,
-    transaction_reference  TEXT        DEFAULT ''    NOT NULL,
+    transaction_reference  TEXT        DEFAULT ''    NOT NULL UNIQUE,
     amount                 NUMERIC(28)               NOT NULL CHECK (amount > 0.0),
-    credit                 UUID                      NOT NULL REFERENCES users (id),
-    debit                  UUID                      NOT NULL REFERENCES users (id),
+    credit                 UUID                      NOT NULL REFERENCES users,
+    debit                  UUID                      NOT NULL REFERENCES users,
+    reason                 TEXT        DEFAULT '',
     created_at             TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     "group"                TEXT        DEFAULT ''    NOT NULL,
     sub_group              TEXT        DEFAULT '',
-    related_transaction_id TEXT,
-    service_id             UUID REFERENCES users (id)
-) PARTITION BY RANGE (created_at);
+    related_transaction_id TEXT REFERENCES transactions,
+    service_id             UUID REFERENCES users
+);
 
-CREATE INDEX transactions_master_idx ON ONLY transactions_master (id);
-CREATE INDEX transactions_master_transaction_referencex ON ONLY transactions_master (transaction_reference);
-CREATE INDEX transactions_master_groupx ON ONLY transactions_master ("group");
-CREATE INDEX transactions_master_sub_groupx ON ONLY transactions_master ("sub_group");
-ALTER TABLE ONLY transactions_master
-    ADD PRIMARY KEY (id, created_at);
+CREATE INDEX transactions_credit_idx ON transactions (credit);
+CREATE INDEX transactions_debit_idx ON transactions (debit);
+CREATE INDEX group_idx ON transactions ("group");
+CREATE INDEX sub_group_idx ON transactions (sub_group);
+CREATE INDEX idx_transactions_created_at ON transactions (created_at);
+CREATE INDEX idx_transactions_created_desc_at ON transactions (created_at DESC);
+CREATE INDEX idx_user_search ON transactions (credit, debit, created_at DESC);
 
--- reference https://stackoverflow.com/questions/53600144/how-to-migrate-an-existing-postgres-table-to-partitioned-table-as-transparently
-CREATE OR REPLACE FUNCTION createpartitionifnotexists(created_at TIMESTAMPTZ) RETURNS VOID
-AS
-$body$
-DECLARE
-    monthstart                DATE := DATE_TRUNC('month', created_at);
-    DECLARE monthendexclusive DATE := monthstart + INTERVAL '1 month';
-    -- We infer the name of the table from the date that it should contain
-    -- E.g. a date in June 2005 should be int the table transactions_200506:
-    DECLARE tablename         TEXT := 'transactions_' || TO_CHAR(created_at, 'YYYYmm');
-BEGIN
-    -- Check if the table we need for the supplied date exists.
-    -- If it does not exist...:
-    IF TO_REGCLASS(tablename) IS NULL THEN
-        -- Generate a new table that acts as a partition for transactions:
-        EXECUTE FORMAT('create table %I partition of transactions_master for values from (%L) to (%L)', tablename, monthstart,
-                       monthendexclusive);
-        -- Unfortunatelly Postgres forces us to define index for each table individually:
-        EXECUTE FORMAT('create unique index on %I (id, created_at)', tablename);
-    END IF;
-END;
-$body$ LANGUAGE plpgsql;
+CREATE TRIGGER t_transactions_insert
+    BEFORE INSERT OR UPDATE
+    ON transactions
+    FOR EACH ROW
+EXECUTE PROCEDURE uppercase_group_and_sub_group();
 
-DROP TRIGGER IF EXISTS trigger_check_balance
-    ON transactions_old;
-
--- DROP FUNCTION check_balances("from" UUID, "to" UUID, amount NUMERIC(28)) CASCADE;
-
-CREATE OR REPLACE FUNCTION check_balances("from" UUID, "to" UUID, amount NUMERIC(28)) RETURNS VOID AS
-$check_balances$
-DECLARE
-    enoughfunds BOOLEAN DEFAULT FALSE;
-BEGIN
-    -- check its not a transaction to themselves
-    IF "from" = "to" THEN
-        RAISE EXCEPTION 'unable to transfer to self';
-    END IF;
-    -- checks if the debtor is the on chain / off world account since that is the only account allow to go negative.
-    SELECT "from" = '2fa1a63e-a4fa-4618-921f-4b4d28132069' OR (SELECT sups >= amount
-                                                               FROM users
-                                                               WHERE id = "from")
-    INTO enoughfunds;
-    -- if enough funds then make the updates to the user table
-    IF enoughfunds THEN
-        UPDATE users SET sups = sups + amount WHERE id = "to";
-        UPDATE users SET sups = sups - amount WHERE id = "from";
-        RETURN;
-    ELSE
-        RAISE EXCEPTION 'not enough funds';
-    END IF;
-END
-$check_balances$
-    LANGUAGE plpgsql;
-
-CREATE OR REPLACE VIEW transactions AS
-SELECT *
-FROM transactions_master;
-
-CREATE OR REPLACE RULE autocall_createpartitionifnotexists AS ON INSERT
-    TO transactions
-    DO INSTEAD (
-
-    SELECT createpartitionifnotexists(new.created_at);
-    SELECT check_balances(new.debit, new.credit, new.amount);
-    INSERT INTO transactions_master (id, description, transaction_reference, amount, credit, debit, created_at, "group", sub_group,
-                                     service_id, related_transaction_id)
-    VALUES (new.id, new.description, new.transaction_reference, new.amount, new.credit, new.debit, new.created_at, new."group",
-            new.sub_group, new.service_id, new.related_transaction_id)
-    );
+CREATE TRIGGER trigger_check_balance
+    BEFORE INSERT
+    ON transactions
+    FOR EACH ROW
+EXECUTE PROCEDURE check_balances();
 
 -- Finally copy the data to our new partitioned table
 INSERT INTO transactions (id, description, transaction_reference, amount, credit, debit, created_at, "group", sub_group, service_id,

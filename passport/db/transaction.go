@@ -138,7 +138,7 @@ func UsersTransactionGroups(
 	return result, nil
 }
 
-// TransactionIDList
+// TransactionIDList on returns transactions from the last 30 days
 func TransactionIDList(
 	userID *string, // if user id is provided, returns transactions that only matter to this user
 	search string,
@@ -241,6 +241,7 @@ func TransactionIDList(
 	q := fmt.Sprintf(`--sql
 		%s
 		WHERE %s
+		AND transactions.created_at > NOW() - INTERVAL '1 month';
 		%s
 		%s
 		%s`,
@@ -270,12 +271,34 @@ func TransactionGet(transactionID string) (*boiler.Transaction, error) {
 		return nil, err
 	}
 
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		transaction, err := boiler.TransactionsOlds(
+			boiler.TransactionWhere.ID.EQ(null.StringFrom(transactionID)),
+		).One(passdb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+		return &boiler.Transaction{
+			ID:                   transaction.ID,
+			Description:          transaction.Description,
+			TransactionReference: transaction.TransactionReference,
+			Amount:               transaction.Amount,
+			Credit:               transaction.Credit,
+			Debit:                transaction.Debit,
+			CreatedAt:            transaction.CreatedAt,
+			Group:                transaction.Group,
+			SubGroup:             transaction.SubGroup,
+			RelatedTransactionID: transaction.RelatedTransactionID,
+			ServiceID:            transaction.ServiceID,
+		}, nil
+	}
+
 	return transaction, nil
 }
 
 // TransactionAddRelatedTransaction adds a refund transaction ID to a transaction
 func TransactionAddRelatedTransaction(transactionID string, refundTransactionID string) error {
-	_, err := passdb.StdConn.Exec(`
+	r, err := passdb.StdConn.Exec(`
 			UPDATE transactions SET related_transaction_id = $1 WHERE id = $2;
 			`,
 		refundTransactionID,
@@ -284,6 +307,22 @@ func TransactionAddRelatedTransaction(transactionID string, refundTransactionID 
 	if err != nil {
 		return err
 	}
+	affected, err := r.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		_, err := passdb.StdConn.Exec(`
+			UPDATE transactions_old SET related_transaction_id = $1 WHERE id = $2;
+			`,
+			refundTransactionID,
+			transactionID,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -293,6 +332,16 @@ func TransactionExists(txhash string) (bool, error) {
 	).One(passdb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return false, terror.Error(err)
+	}
+
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		tx, err := boiler.TransactionsOlds(
+			boiler.TransactionWhere.TransactionReference.EQ(null.StringFrom(txhash)),
+		).One(passdb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return false, terror.Error(err)
+		}
+		return tx != nil, nil
 	}
 
 	return tx != nil, nil
