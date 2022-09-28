@@ -87,7 +87,7 @@ type EmailLoginRequest struct {
 	AuthType         string             `json:"auth_type"`
 	Username         string             `json:"username"`
 	Token            string             `json:"token"`
-	AcceptsMarketing bool               `json:"accepts_marketing"`
+	AcceptsMarketing string             `json:"accepts_marketing"`
 }
 type ForgotPasswordRequest struct {
 	Tenant      string             `json:"tenant"`
@@ -687,7 +687,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		}
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
 			commonAddress := common.HexToAddress("")
-			u, err = users.UserCreator("", "", username, req.EmailRequest.Email, "", "", "", "", "", "", commonAddress, req.EmailRequest.Password, req.EmailRequest.AcceptsMarketing)
+			u, err = users.UserCreator("", "", username, req.EmailRequest.Email, "", "", "", "", "", "", commonAddress, req.EmailRequest.Password, req.EmailRequest.AcceptsMarketing == "true")
 			if err != nil {
 				if err.Error() != "password does not meet requirements" {
 					passlog.L.Error().Err(err).Msg("unable to create user with email and password")
