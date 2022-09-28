@@ -161,7 +161,7 @@ func CreateTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Requ
 func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Request) (int, error) {
 	fn := func(w http.ResponseWriter, r *http.Request) (int, error) {
 		txID := chi.URLParam(r, "transaction_id")
-		tx, err := boiler.Transactions(boiler.TransactionWhere.ID.EQ(null.StringFrom(txID))).One(passdb.StdConn)
+		tx, err := boiler.Transactions(boiler.TransactionWhere.ID.EQ(txID)).One(passdb.StdConn)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not get transaction")
 		}
@@ -169,9 +169,9 @@ func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http
 			return http.StatusBadRequest, terror.Error(fmt.Errorf("tx is nil"), "Could not get transaction")
 		}
 		refundTx := &types.NewTransaction{
-			Credit:               tx.Debit.String,
-			Debit:                tx.Credit.String,
-			Amount:               tx.Amount.Decimal,
+			Credit:               tx.Debit,
+			Debit:                tx.Credit,
+			Amount:               tx.Amount,
 			TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", tx.TransactionReference)),
 			Description:          "Reverse transaction",
 			Group:                types.TransactionGroupStore,

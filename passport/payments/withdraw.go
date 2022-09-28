@@ -172,14 +172,14 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 			continue
 		}
 
-		txRef := types.TransactionReference(fmt.Sprintf("REFUND %s", tx.TransactionReference.String))
+		txRef := types.TransactionReference(fmt.Sprintf("REFUND %s", tx.TransactionReference))
 		newTx := &types.NewTransaction{
-			Credit:               tx.Debit.String,
+			Credit:               tx.Debit,
 			Debit:                types.OnChainUserID.String(),
-			Amount:               tx.Amount.Decimal,
+			Amount:               tx.Amount,
 			TransactionReference: txRef,
-			Description:          fmt.Sprintf("REFUND %s", tx.Description.String),
-			Group:                types.TransactionGroup(tx.Group.String),
+			Description:          fmt.Sprintf("REFUND %s", tx.Description),
+			Group:                types.TransactionGroup(tx.Group),
 		}
 
 		refund.RefundCanceledAt = null.TimeFrom(time.Now())

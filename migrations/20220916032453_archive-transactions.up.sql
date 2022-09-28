@@ -17,13 +17,13 @@ CREATE TABLE transactions
     service_id             UUID REFERENCES users
 );
 
-CREATE INDEX transactions_credit_idx ON transactions (credit);
-CREATE INDEX transactions_debit_idx ON transactions (debit);
-CREATE INDEX group_idx ON transactions ("group");
-CREATE INDEX sub_group_idx ON transactions (sub_group);
-CREATE INDEX idx_transactions_created_at ON transactions (created_at);
-CREATE INDEX idx_transactions_created_desc_at ON transactions (created_at DESC);
-CREATE INDEX idx_user_search ON transactions (credit, debit, created_at DESC);
+CREATE INDEX transactions_new_credit_idx ON transactions (credit);
+CREATE INDEX transactions_new_debit_idx ON transactions (debit);
+CREATE INDEX group_new_idx ON transactions ("group");
+CREATE INDEX sub_group_new_idx ON transactions (sub_group);
+CREATE INDEX idx_transactions_new_created_at ON transactions (created_at);
+CREATE INDEX idx_transactions_new_created_desc_at ON transactions (created_at DESC);
+CREATE INDEX idx_user_search_new ON transactions (credit, debit, created_at DESC);
 
 CREATE TRIGGER t_transactions_insert
     BEFORE INSERT OR UPDATE

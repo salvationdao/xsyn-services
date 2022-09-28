@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/volatiletech/null/v8"
 	"reflect"
 	"strings"
 	"xsyn-services/boiler"
@@ -60,7 +59,7 @@ FROM %s
 INNER JOIN %s t ON %s = t.%s
 INNER JOIN %s f ON %s = f.%s
 `,
-	boiler.ViewNames.Transactions,
+	boiler.TableNames.Transactions,
 	boiler.TableNames.Users,
 	boiler.TransactionTableColumns.Credit,
 	boiler.UserColumns.ID,
@@ -82,7 +81,7 @@ func UsersTransactionGroups(
 	`,
 		boiler.TransactionTableColumns.Group,
 		boiler.TransactionTableColumns.SubGroup,
-		boiler.ViewNames.Transactions,
+		boiler.TableNames.Transactions,
 		boiler.TransactionTableColumns.Group,
 		boiler.TransactionTableColumns.Credit,
 		boiler.TransactionTableColumns.Debit,
@@ -265,7 +264,7 @@ func TransactionIDList(
 // TransactionGet get store item by id
 func TransactionGet(transactionID string) (*boiler.Transaction, error) {
 	transaction, err := boiler.Transactions(
-		boiler.TransactionWhere.ID.EQ(null.StringFrom(transactionID)),
+		boiler.TransactionWhere.ID.EQ(transactionID),
 	).One(passdb.StdConn)
 	if err != nil {
 		return nil, err
@@ -273,7 +272,7 @@ func TransactionGet(transactionID string) (*boiler.Transaction, error) {
 
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		transaction, err := boiler.TransactionsOlds(
-			boiler.TransactionWhere.ID.EQ(null.StringFrom(transactionID)),
+			boiler.TransactionWhere.ID.EQ(transactionID),
 		).One(passdb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return nil, err
@@ -328,7 +327,7 @@ func TransactionAddRelatedTransaction(transactionID string, refundTransactionID 
 
 func TransactionExists(txhash string) (bool, error) {
 	tx, err := boiler.Transactions(
-		boiler.TransactionWhere.TransactionReference.EQ(null.StringFrom(txhash)),
+		boiler.TransactionWhere.TransactionReference.EQ(txhash),
 	).One(passdb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return false, terror.Error(err)
@@ -336,7 +335,7 @@ func TransactionExists(txhash string) (bool, error) {
 
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		tx, err := boiler.TransactionsOlds(
-			boiler.TransactionWhere.TransactionReference.EQ(null.StringFrom(txhash)),
+			boiler.TransactionWhere.TransactionReference.EQ(txhash),
 		).One(passdb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return false, terror.Error(err)

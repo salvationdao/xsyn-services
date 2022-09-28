@@ -46,12 +46,12 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 	}
 
 	tx := &types.NewTransaction{
-		Debit:                transaction.Credit.String,
-		Credit:               transaction.Debit.String,
+		Debit:                transaction.Credit,
+		Credit:               transaction.Debit,
 		TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", transaction.TransactionReference)),
 		Description:          fmt.Sprintf("Reverse transaction - %s", transaction.Description),
-		Amount:               transaction.Amount.Decimal,
-		Group:                types.TransactionGroup(transaction.Group.String),
+		Amount:               transaction.Amount,
+		Group:                types.TransactionGroup(transaction.Group),
 		SubGroup:             transaction.SubGroup.String,
 		ServiceID:            types.UserID(uuid.FromStringOrNil(transaction.ServiceID.String)),
 	}
@@ -67,12 +67,12 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 	}
 
 	//mark the original transaction as refunded
-	err = db.TransactionAddRelatedTransaction(transaction.ID.String, txID)
+	err = db.TransactionAddRelatedTransaction(transaction.ID, txID)
 	if err != nil {
 		passlog.L.Error().
 			Err(err).
 			Str("func", "RefundTransaction").
-			Str("original_transaction_id", transaction.ID.String).
+			Str("original_transaction_id", transaction.ID).
 			Str("new_related_trasaction_id", txID).
 			Msg("failed to add related transaction id.")
 	}

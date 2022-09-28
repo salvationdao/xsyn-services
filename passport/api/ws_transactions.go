@@ -142,14 +142,14 @@ func (tc *TransactionController) TransactionSubscribeHandler(ctx context.Context
 		return terror.Error(err, errMsg)
 	}
 
-	if transaction.Credit.String != user.ID && transaction.Debit.String != user.ID {
+	if transaction.Credit != user.ID && transaction.Debit != user.ID {
 		return terror.Error(fmt.Errorf("unauthorized"), "You do not have permission to view this item.")
 	}
-	debitOwner, err := tc.API.userCacheMap.GetAccountOwner(transaction.Debit.String)
+	debitOwner, err := tc.API.userCacheMap.GetAccountOwner(transaction.Debit)
 	if err != nil {
 		return terror.Error(err, "Failed to get debit account owner")
 	}
-	creditOwner, err := tc.API.userCacheMap.GetAccountOwner(transaction.Credit.String)
+	creditOwner, err := tc.API.userCacheMap.GetAccountOwner(transaction.Credit)
 	if err != nil {
 		return terror.Error(err, "Failed to get credit account owner")
 	}

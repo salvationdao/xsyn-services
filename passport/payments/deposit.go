@@ -2,7 +2,6 @@ package payments
 
 import (
 	"fmt"
-	"github.com/volatiletech/null/v8"
 	"strings"
 	"time"
 	"xsyn-services/boiler"
@@ -35,7 +34,7 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, 
 			skipped++
 			continue
 		}
-		exists, err := boiler.Transactions(boiler.TransactionWhere.TransactionReference.EQ(null.StringFrom(record.TxHash))).Exists(passdb.StdConn)
+		exists, err := boiler.Transactions(boiler.TransactionWhere.TransactionReference.EQ(record.TxHash)).Exists(passdb.StdConn)
 		if err != nil {
 			skipped++
 			continue

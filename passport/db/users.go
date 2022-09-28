@@ -298,8 +298,8 @@ func UserTransactionGetList(accountID string, limit int) ([]*boiler.Transaction,
 		qm.Where(
 			fmt.Sprintf(
 				"%s = ? OR %s = ?",
-				qm.Rels(boiler.ViewNames.Transactions, boiler.TransactionColumns.Credit),
-				qm.Rels(boiler.ViewNames.Transactions, boiler.TransactionColumns.Debit),
+				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.Credit),
+				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.Debit),
 			),
 			accountID,
 			accountID,
@@ -307,10 +307,10 @@ func UserTransactionGetList(accountID string, limit int) ([]*boiler.Transaction,
 		qm.OrderBy(
 			fmt.Sprintf(
 				"%s desc",
-				qm.Rels(boiler.ViewNames.Transactions, boiler.TransactionColumns.CreatedAt),
+				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.CreatedAt),
 			),
 		),
-		boiler.TransactionWhere.CreatedAt.GT(null.TimeFrom(time.Now().AddDate(0, 0, -1))),
+		boiler.TransactionWhere.CreatedAt.GT(time.Now().AddDate(0, 0, -1)),
 		qm.Limit(limit),
 	).All(passdb.StdConn)
 	if err != nil {

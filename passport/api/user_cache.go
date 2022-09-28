@@ -104,14 +104,14 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 			serviceID.Valid = false
 		}
 		tx := &boiler.Transaction{
-			ID:                   null.StringFrom(transactionID),
-			Credit:               null.StringFrom(nt.Credit),
-			Debit:                null.StringFrom(nt.Debit),
-			Amount:               decimal.NewNullDecimal(nt.Amount),
-			TransactionReference: null.StringFrom(string(nt.TransactionReference)),
-			Description:          null.StringFrom(nt.Description),
-			CreatedAt:            null.TimeFrom(time.Now()),
-			Group:                null.StringFrom(string(nt.Group)),
+			ID:                   transactionID,
+			Credit:               nt.Credit,
+			Debit:                nt.Debit,
+			Amount:               nt.Amount,
+			TransactionReference: string(nt.TransactionReference),
+			Description:          nt.Description,
+			CreatedAt:            time.Now(),
+			Group:                string(nt.Group),
 			SubGroup:             null.StringFrom(nt.SubGroup),
 			RelatedTransactionID: nt.RelatedTransactionID,
 			ServiceID:            serviceID,
@@ -135,7 +135,7 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 			tx.RelatedTransactionID,
 		)
 		if err != nil {
-			passlog.L.Error().Err(err).Str("from", tx.Debit.String).Str("to", tx.Credit.String).Str("id", nt.ID).Msg("transaction failed")
+			passlog.L.Error().Err(err).Str("from", tx.Debit).Str("to", tx.Credit).Str("id", nt.ID).Msg("transaction failed")
 			wg.Done()
 			return err
 		}
@@ -158,25 +158,25 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 }
 
 func (ucm *Transactor) BalanceUpdate(tx *boiler.Transaction) {
-	supsFromAccount, err := ucm.Get(tx.Debit.String)
+	supsFromAccount, err := ucm.Get(tx.Debit)
 	if err != nil {
 		passlog.L.Error().Err(err).Interface("tx", tx).Msg("error updating balance")
 	}
 	if err == nil {
-		supsFromAccount = supsFromAccount.Sub(tx.Amount.Decimal)
-		ucm.Put(tx.Debit.String, supsFromAccount)
+		supsFromAccount = supsFromAccount.Sub(tx.Amount)
+		ucm.Put(tx.Debit, supsFromAccount)
 
 		ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", tx.Debit), HubKeyUserTransactionsSubscribe, []*boiler.Transaction{tx})
 		ws.PublishMessage(fmt.Sprintf("/user/%s/sups", tx.Debit), HubKeyUserSupsSubscribe, supsFromAccount.String())
 	}
 
-	supsToAccount, err := ucm.Get(tx.Credit.String)
+	supsToAccount, err := ucm.Get(tx.Credit)
 	if err != nil {
 		passlog.L.Error().Err(err).Interface("tx", tx).Msg("error updating balance")
 	}
 	if err == nil {
-		supsToAccount = supsToAccount.Add(tx.Amount.Decimal)
-		ucm.Put(tx.Credit.String, supsToAccount)
+		supsToAccount = supsToAccount.Add(tx.Amount)
+		ucm.Put(tx.Credit, supsToAccount)
 
 		ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", tx.Credit), HubKeyUserTransactionsSubscribe, []*boiler.Transaction{tx})
 		ws.PublishMessage(fmt.Sprintf("/user/%s/sups", tx.Credit), HubKeyUserSupsSubscribe, supsToAccount.String())
