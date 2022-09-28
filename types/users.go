@@ -63,7 +63,7 @@ type User struct {
 	Online      bool            `json:"online"`
 	HasPassword bool            `json:"has_password"`
 	Pass2FA     bool            `json:"pass_2_fa"`
-	VerifyToken string			`json:"token"`
+	VerifyToken string          `json:"token"`
 	Metadata    UserMetadata    `json:"metadata" db:"metadata"`
 	Sups        decimal.Decimal `json:"sups" db:"sups"`
 	//NoNonce  *struct{}       `json:"nonce,omitempty"`

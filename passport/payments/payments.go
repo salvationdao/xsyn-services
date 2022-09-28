@@ -43,7 +43,7 @@ func CreateOrGetUser(userAddr common.Address) (*types.User, error) {
 		username := helpers.TrimUsername(userAddr.Hex())
 		runes := []rune(username)
 		username = string(runes[0:10])
-		user, err = users.UserCreator("", "", username, "", "", "", "", "", "", "", userAddr, "")
+		user, err = users.UserCreator("", "", username, "", "", "", "", "", "", "", userAddr, "", false)
 		if err != nil {
 			return nil, err
 		}
