@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
 
@@ -240,7 +241,7 @@ func TransactionIDList(
 	q := fmt.Sprintf(`--sql
 		%s
 		WHERE %s
-		AND transactions.created_at > NOW() - INTERVAL '1 month';
+		AND transactions.created_at > NOW() - INTERVAL '1 month'
 		%s
 		%s
 		%s`,
@@ -261,8 +262,8 @@ func TransactionIDList(
 	return totalRows, scanned, nil
 }
 
-// TransactionGet get store item by id
-func TransactionGet(transactionID string) (*boiler.Transaction, error) {
+// TransactionGetByID get transaction by id
+func TransactionGetByID(transactionID string) (*boiler.Transaction, error) {
 	transaction, err := boiler.Transactions(
 		boiler.TransactionWhere.ID.EQ(transactionID),
 	).One(passdb.StdConn)
@@ -274,9 +275,53 @@ func TransactionGet(transactionID string) (*boiler.Transaction, error) {
 		transaction, err := boiler.TransactionsOlds(
 			boiler.TransactionWhere.ID.EQ(transactionID),
 		).One(passdb.StdConn)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		if err != nil {
 			return nil, err
 		}
+
+		if transaction == nil {
+			return nil, nil
+		}
+
+		return &boiler.Transaction{
+			ID:                   transaction.ID,
+			Description:          transaction.Description,
+			TransactionReference: transaction.TransactionReference,
+			Amount:               transaction.Amount,
+			Credit:               transaction.Credit,
+			Debit:                transaction.Debit,
+			CreatedAt:            transaction.CreatedAt,
+			Group:                transaction.Group,
+			SubGroup:             transaction.SubGroup,
+			RelatedTransactionID: transaction.RelatedTransactionID,
+			ServiceID:            transaction.ServiceID,
+		}, nil
+	}
+
+	return transaction, nil
+}
+
+// TransactionGetByReference get transaction by reference
+func TransactionGetByReference(transactionRef string) (*boiler.Transaction, error) {
+	transaction, err := boiler.Transactions(
+		boiler.TransactionWhere.TransactionReference.EQ(transactionRef),
+	).One(passdb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		transaction, err := boiler.TransactionsOlds(
+			boiler.TransactionWhere.TransactionReference.EQ(transactionRef),
+		).One(passdb.StdConn)
+		if err != nil {
+			return nil, err
+		}
+
+		if transaction == nil {
+			return nil, nil
+		}
+
 		return &boiler.Transaction{
 			ID:                   transaction.ID,
 			Description:          transaction.Description,
@@ -325,7 +370,7 @@ func TransactionAddRelatedTransaction(transactionID string, refundTransactionID 
 	return nil
 }
 
-func TransactionExists(txhash string) (bool, error) {
+func TransactionReferenceExists(txhash string) (bool, error) {
 	tx, err := boiler.Transactions(
 		boiler.TransactionWhere.TransactionReference.EQ(txhash),
 	).One(passdb.StdConn)
@@ -355,4 +400,39 @@ func UserBalance(userID string) (*boiler.User, error) {
 	}
 
 	return user, nil
+}
+
+func AdminTransactionGetAllFromUserID(user *boiler.User) ([]*boiler.Transaction, error) {
+	var results []*boiler.Transaction
+	txes, err := boiler.Transactions(qm.Where("credit = ? OR debit = ?", user.ID, user.ID)).All(passdb.StdConn)
+	if err != nil {
+		return results, err
+	}
+	results = txes
+	// if their account is older than a month, get txs that may be archived
+	if user.CreatedAt.Before(time.Now().AddDate(0, -1, 0)) {
+		txesOld, err := boiler.TransactionsOlds(qm.Where("credit = ? OR debit = ?", user.ID, user.ID)).All(passdb.StdConn)
+		if err != nil {
+			return results, err
+		}
+
+		for _, tx := range txesOld {
+			results = append(results, &boiler.Transaction{
+				ID:                   tx.ID,
+				Description:          tx.Description,
+				TransactionReference: tx.TransactionReference,
+				Amount:               tx.Amount,
+				Credit:               tx.Credit,
+				Debit:                tx.Debit,
+				Reason:               tx.Reason,
+				CreatedAt:            tx.CreatedAt,
+				Group:                tx.Group,
+				SubGroup:             tx.SubGroup,
+				RelatedTransactionID: tx.RelatedTransactionID,
+				ServiceID:            tx.ServiceID,
+			})
+		}
+	}
+
+	return results, nil
 }

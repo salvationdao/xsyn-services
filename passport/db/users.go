@@ -292,7 +292,7 @@ func IsUserDeathlisted(walletAddress string) (bool, error) {
 	return true, nil
 }
 
-// UserTransactionGetList returns list of transactions based on userid == credit/ debit
+// UserTransactionGetList returns list of transactions based on userid == credit/ debit within the last day
 func UserTransactionGetList(accountID string, limit int) ([]*boiler.Transaction, error) {
 	transactions, err := boiler.Transactions(
 		qm.Where(

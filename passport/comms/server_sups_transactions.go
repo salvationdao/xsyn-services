@@ -20,7 +20,7 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 		return err
 	}
 
-	transaction, err := db.TransactionGet(req.TransactionID)
+	transaction, err := db.TransactionGetByID(req.TransactionID)
 	if err != nil {
 		passlog.L.Error().
 			Err(err).

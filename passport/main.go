@@ -469,7 +469,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, pxr 
 	for _, r := range records {
 		ctx := context.Background()
 
-		exists, err := db.TransactionExists(r.TxHash)
+		exists, err := db.TransactionReferenceExists(r.TxHash)
 		if err != nil {
 			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("check record exists")
 			failed++

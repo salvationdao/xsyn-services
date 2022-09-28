@@ -160,7 +160,7 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 	}
 
 	for _, refund := range refundsToProcess {
-		tx, err := boiler.Transactions().One(passdb.StdConn)
+		tx, err := db.TransactionGetByReference(refund.TransactionReference)
 		if err != nil {
 			skipped++
 			l.Warn().Err(err).Msg("failed to process refund")

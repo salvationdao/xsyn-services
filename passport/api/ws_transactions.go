@@ -137,7 +137,7 @@ func (tc *TransactionController) TransactionSubscribeHandler(ctx context.Context
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	transaction, err := db.TransactionGet(req.Payload.TransactionID)
+	transaction, err := db.TransactionGetByID(req.Payload.TransactionID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}

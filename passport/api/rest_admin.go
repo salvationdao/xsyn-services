@@ -25,7 +25,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 func AdminRoutes(ucm *Transactor) chi.Router {
@@ -161,7 +160,7 @@ func CreateTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Requ
 func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Request) (int, error) {
 	fn := func(w http.ResponseWriter, r *http.Request) (int, error) {
 		txID := chi.URLParam(r, "transaction_id")
-		tx, err := boiler.Transactions(boiler.TransactionWhere.ID.EQ(txID)).One(passdb.StdConn)
+		tx, err := db.TransactionGetByID(txID)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not get transaction")
 		}
@@ -291,7 +290,7 @@ func ListUserTransactions(w http.ResponseWriter, r *http.Request) (int, error) {
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not get users")
 	}
-	txes, err := boiler.Transactions(qm.Where("credit = ? OR debit = ?", u.ID, u.ID)).All(passdb.StdConn)
+	txes, err := db.AdminTransactionGetAllFromUserID(u)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not list txes")
 	}
