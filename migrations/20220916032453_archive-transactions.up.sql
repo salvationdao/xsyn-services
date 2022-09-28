@@ -54,6 +54,9 @@ SELECT id,
 FROM transactions_old
 WHERE created_at > NOW() - INTERVAL '1 month';
 
+DELETE FROM transactions_old
+WHERE id IN (SELECT id from transactions);
+
 ALTER TABLE asset_transfer_events
     DROP CONSTRAINT asset_transfer_events_transfer_tx_id_fkey;
 
