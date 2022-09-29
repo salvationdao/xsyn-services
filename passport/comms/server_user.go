@@ -20,6 +20,14 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
+type UserResp struct {
+	ID               string
+	Username         string
+	FactionID        null.String
+	PublicAddress    null.String
+	AcceptsMarketing null.Bool
+}
+
 func (s *S) UserGetHandler(req UserGetReq, resp *UserResp) error {
 	_, err := IsServerClient(req.ApiKey)
 	if err != nil {
@@ -43,19 +51,38 @@ func (s *S) UserGetHandler(req UserGetReq, resp *UserResp) error {
 	resp.Username = user.Username
 	resp.FactionID = user.FactionID
 	resp.PublicAddress = user.PublicAddress
+	resp.AcceptsMarketing = user.AcceptsMarketing
 
 	return nil
 }
 
-type UserGetResp struct {
-	User *UserResp `json:"user"`
+type UserMarketingUpdateRequest struct {
+	ApiKey           string
+	UserID           string `json:"userID"`
+	AcceptsMarketing bool   `json:"acceptsMarketing"`
 }
 
-type UserResp struct {
-	ID            string
-	Username      string
-	FactionID     null.String
-	PublicAddress null.String
+func (s *S) UserMarketingUpdateHandler(req UserMarketingUpdateRequest, resp *struct{}) error {
+	_, err := IsServerClient(req.ApiKey)
+	if err != nil {
+		return err
+	}
+
+	// check user is enlisted
+	user, err := boiler.Users(
+		boiler.UserWhere.ID.EQ(req.UserID),
+	).One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get user from db")
+	}
+
+	user.AcceptsMarketing = null.BoolFrom(req.AcceptsMarketing)
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.AcceptsMarketing))
+	if err != nil {
+		return terror.Error(err, "Failed to update user's marketing preferences.")
+	}
+
+	return nil
 }
 
 func (s *S) UserBalanceGetHandler(req UserBalanceGetReq, resp *UserBalanceGetResp) error {
