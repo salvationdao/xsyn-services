@@ -231,6 +231,7 @@ func (s *S) TokenLogin(req TokenReq, resp *UserResp) error {
 	resp.ID = user.ID
 	resp.PublicAddress = user.PublicAddress
 	resp.Username = user.Username
+	resp.AcceptsMarketing = user.AcceptsMarketing
 
 	return nil
 }
