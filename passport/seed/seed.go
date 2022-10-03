@@ -30,6 +30,7 @@ func CreateAdminUser() error {
 		ID:       userID.String(),
 		RoleID:   null.StringFrom(adminRole.ID),
 		Username: "SupremacyAdmin",
+		Email:    null.StringFrom("admin@supremacy.game"),
 		Verified: true,
 	}
 	err = user.Insert(passdb.StdConn, boil.Infer())
