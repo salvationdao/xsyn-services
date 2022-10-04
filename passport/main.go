@@ -959,7 +959,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	passlog.L.Info().Msg("Running one off funcs")
 	start := time.Now()
 	seed.CreateAdminUser()
-	passlog.L.Info().Msgf("RegisterAllNewAssets took %s", time.Since(start))
+	passlog.L.Info().Msgf("CreateAdminUser took %s", time.Since(start))
 
 	go func() {
 		stop := make(chan os.Signal, 1)

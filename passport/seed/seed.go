@@ -5,6 +5,7 @@ import (
 	pCrypto "xsyn-services/passport/crypto"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
+	"xsyn-services/types"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -13,27 +14,21 @@ import (
 )
 
 func CreateAdminUser() error {
-	createdAdmin := db.GetBoolWithDefault("INSERTED_NEW_ADMIN", false)
+	createdAdmin := db.GetBoolWithDefault(db.KeyOneoffInsertedNewAdmin, false)
 	if createdAdmin {
 		return nil
 	}
 
 	userID := uuid.Must(uuid.FromString("8f18100e-0365-4fe6-b1af-bccdeb9d06a8"))
-	adminRole, err := boiler.Roles(
-		boiler.RoleWhere.Name.EQ("Admin"),
-	).One(passdb.StdConn)
-	if err != nil {
-		return terror.Error(err, "Unable to find admin role.")
-	}
 
 	user := &boiler.User{
 		ID:       userID.String(),
-		RoleID:   null.StringFrom(adminRole.ID),
+		RoleID:   null.StringFrom(types.UserRoleAdminID.String()),
 		Username: "SupremacyAdmin",
 		Email:    null.StringFrom("admin@supremacy.game"),
 		Verified: true,
 	}
-	err = user.Insert(passdb.StdConn, boil.Infer())
+	err := user.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
 		return terror.Error(err, "Unable to create admin role.")
 	}
