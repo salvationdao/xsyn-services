@@ -3,10 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/gofrs/uuid"
 	"net/url"
 	"os"
 	"xsyn-services/boiler"
+
+	"github.com/gofrs/uuid"
 
 	"github.com/bxcodec/faker/v3"
 	"github.com/shopspring/decimal"
