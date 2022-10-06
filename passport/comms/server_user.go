@@ -3,9 +3,11 @@ package comms
 import (
 	"fmt"
 	"html"
+	"net/mail"
 	"strings"
 	"time"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/helpers"
 	"xsyn-services/passport/passdb"
@@ -60,6 +62,7 @@ type UserMarketingUpdateRequest struct {
 	ApiKey           string
 	UserID           string `json:"userID"`
 	AcceptsMarketing bool   `json:"acceptsMarketing"`
+	NewEmail         string `json:"newEmail"`
 }
 
 func (s *S) UserMarketingUpdateHandler(req UserMarketingUpdateRequest, resp *struct{}) error {
@@ -77,7 +80,28 @@ func (s *S) UserMarketingUpdateHandler(req UserMarketingUpdateRequest, resp *str
 	}
 
 	user.AcceptsMarketing = null.BoolFrom(req.AcceptsMarketing)
-	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.AcceptsMarketing))
+
+	if !user.Email.Valid {
+		if req.NewEmail == "" {
+			return terror.Error(fmt.Errorf("user email was not provided"), "User email is null, but no new email was provided when updating marketing preferences")
+		}
+
+		lowerEmail := strings.ToLower(req.NewEmail)
+		_, err := mail.ParseAddress(lowerEmail)
+		if err != nil {
+			return terror.Error(err, "Invalid email address.")
+		}
+
+		// Check if email address is already taken
+		u, _ := users.Email(lowerEmail)
+		if u != nil {
+			err = fmt.Errorf("email address is already taken by another user")
+			return terror.Error(err, "Email address is already taken by another user.")
+		}
+		user.Email = null.StringFrom(lowerEmail)
+	}
+
+	_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.AcceptsMarketing, boiler.UserColumns.Email))
 	if err != nil {
 		return terror.Error(err, "Failed to update user's marketing preferences.")
 	}
