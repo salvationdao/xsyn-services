@@ -81,7 +81,7 @@ func (s *S) UserMarketingUpdateHandler(req UserMarketingUpdateRequest, resp *str
 
 	user.AcceptsMarketing = null.BoolFrom(req.AcceptsMarketing)
 
-	if !user.Email.Valid {
+	if !user.Email.Valid && req.AcceptsMarketing {
 		if req.NewEmail == "" {
 			return terror.Error(fmt.Errorf("user email was not provided"), "User email is null, but no new email was provided when updating marketing preferences")
 		}
