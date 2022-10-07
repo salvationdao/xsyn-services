@@ -133,7 +133,7 @@ func UserExists(email string) (bool, error) {
 	return exists, nil
 }
 
-func UserCreator(firstName, lastName, username, email, facebookID, googleID, twitchID, twitterID, discordID, phNumber string, publicAddress common.Address, password string, other ...interface{}) (*types.User, error) {
+func UserCreator(firstName, lastName, username, email, facebookID, googleID, twitchID, twitterID, discordID, phNumber string, publicAddress common.Address, password string, acceptsMarketing bool, other ...interface{}) (*types.User, error) {
 	lowerEmail := strings.ToLower(email)
 
 	if password != "" {
@@ -226,6 +226,10 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		RoleID:        types.NewString(types.UserRoleMemberID.String()),
 		Verified:      isVerified, // verify users directly if they go through Oauth
 		//AccountID:     account.ID,
+	}
+
+	if user.Email.Valid {
+		user.AcceptsMarketing = null.BoolFrom(acceptsMarketing)
 	}
 
 	if os.Getenv("PASSPORT_ENVIRONMENT") == "staging" || os.Getenv("PASSPORT_ENVIRONMENT") == "development" {

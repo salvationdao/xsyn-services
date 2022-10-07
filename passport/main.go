@@ -17,6 +17,7 @@ import (
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/payments"
+	"xsyn-services/passport/seed"
 	"xsyn-services/passport/sms"
 	"xsyn-services/passport/supremacy_rpcclient"
 	"xsyn-services/types"
@@ -953,6 +954,12 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		Addr:    api.Addr,
 		Handler: routes,
 	}
+
+	// we need to create a single admin account on xsyn
+	passlog.L.Info().Msg("Running one off funcs")
+	start := time.Now()
+	seed.CreateAdminUser()
+	passlog.L.Info().Msgf("CreateAdminUser took %s", time.Since(start))
 
 	go func() {
 		stop := make(chan os.Signal, 1)

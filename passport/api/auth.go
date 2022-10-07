@@ -78,15 +78,16 @@ type EmailSignupVerifyRequest struct {
 }
 
 type EmailLoginRequest struct {
-	RedirectURL string             `json:"redirect_url"`
-	Tenant      string             `json:"tenant"`
-	Email       string             `json:"email"`
-	Password    string             `json:"password"`
-	SessionID   hub.SessionID      `json:"session_id"`
-	Fingerprint *users.Fingerprint `json:"fingerprint"`
-	AuthType    string             `json:"auth_type"`
-	Username    string             `json:"username"`
-	Token       string             `json:"token"`
+	RedirectURL      string             `json:"redirect_url"`
+	Tenant           string             `json:"tenant"`
+	Email            string             `json:"email"`
+	Password         string             `json:"password"`
+	SessionID        hub.SessionID      `json:"session_id"`
+	Fingerprint      *users.Fingerprint `json:"fingerprint"`
+	AuthType         string             `json:"auth_type"`
+	Username         string             `json:"username"`
+	Token            string             `json:"token"`
+	AcceptsMarketing string             `json:"accepts_marketing"`
 }
 type ForgotPasswordRequest struct {
 	Tenant      string             `json:"tenant"`
@@ -657,7 +658,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 
 			// Signup user but dont log them before username is provided
 			// If user does not exist, create new user with their username set to their MetaMask public address
-			user, err = users.UserCreator("", "", username, "", "", "", "", "", "", "", commonAddr, "")
+			user, err = users.UserCreator("", "", username, "", "", "", "", "", "", "", commonAddr, "", false)
 			if err != nil {
 				return http.StatusInternalServerError, terror.Error(err, "Unable to create user with wallet.")
 			}
@@ -686,7 +687,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		}
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
 			commonAddress := common.HexToAddress("")
-			u, err = users.UserCreator("", "", username, req.EmailRequest.Email, "", "", "", "", "", "", commonAddress, req.EmailRequest.Password)
+			u, err = users.UserCreator("", "", username, req.EmailRequest.Email, "", "", "", "", "", "", commonAddress, req.EmailRequest.Password, req.EmailRequest.AcceptsMarketing == "true")
 			if err != nil {
 				if err.Error() != "password does not meet requirements" {
 					passlog.L.Error().Err(err).Msg("unable to create user with email and password")
@@ -722,7 +723,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 
 			// Create user with default username
 			commonAddress := common.HexToAddress("")
-			u, err = users.UserCreator("", "", username, "", facebookDetails.FacebookID, "", "", "", "", "", commonAddress, "")
+			u, err = users.UserCreator("", "", username, "", facebookDetails.FacebookID, "", "", "", "", "", commonAddress, "", false)
 			if err != nil {
 				return http.StatusInternalServerError, terror.Error(err, "Failed to create new user with facebook.")
 			}
@@ -754,7 +755,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			}
 			// Signup user with standard username
 			commonAddress := common.HexToAddress("")
-			u, err = users.UserCreator("", "", googleDetails.Username, googleDetails.Email, "", googleDetails.GoogleID, "", "", "", "", commonAddress, "")
+			u, err = users.UserCreator("", "", googleDetails.Username, googleDetails.Email, "", googleDetails.GoogleID, "", "", "", "", commonAddress, "", false)
 			if err != nil {
 				return http.StatusInternalServerError, terror.Error(err, "Failed to create new user with google account")
 			}
@@ -790,7 +791,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		// Create user
 		if errors.Is(err, sql.ErrNoRows) {
 			commonAddress := common.HexToAddress("")
-			u, err = users.UserCreator("", "", username, "", "", "", "", twitterID, "", "", commonAddress, "")
+			u, err = users.UserCreator("", "", username, "", "", "", "", twitterID, "", "", commonAddress, "", false)
 			if err != nil {
 				return http.StatusInternalServerError, terror.Error(err, "Failed to create user with twitter.")
 			}
