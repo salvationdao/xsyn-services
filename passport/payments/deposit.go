@@ -34,7 +34,8 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, 
 			skipped++
 			continue
 		}
-		exists, err := boiler.Transactions(boiler.TransactionWhere.TransactionReference.EQ(record.TxHash)).Exists(passdb.StdConn)
+
+		exists, err := db.TransactionReferenceExists(record.TxHash)
 		if err != nil {
 			skipped++
 			continue
@@ -44,6 +45,7 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, 
 			skipped++
 			continue
 		}
+
 		user, err := CreateOrGetUser(common.HexToAddress(record.FromAddress))
 		if err != nil {
 			skipped++

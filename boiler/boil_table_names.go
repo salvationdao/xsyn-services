@@ -33,6 +33,7 @@ var TableNames = struct {
 	StoreItems                     string
 	Syndicates                     string
 	Transactions                   string
+	TransactionsOld                string
 	UserActivities                 string
 	UserAssets                     string
 	UserAssets1155                 string
@@ -71,6 +72,7 @@ var TableNames = struct {
 	StoreItems:                     "store_items",
 	Syndicates:                     "syndicates",
 	Transactions:                   "transactions",
+	TransactionsOld:                "transactions_old",
 	UserActivities:                 "user_activities",
 	UserAssets:                     "user_assets",
 	UserAssets1155:                 "user_assets_1155",

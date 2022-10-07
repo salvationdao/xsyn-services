@@ -25,7 +25,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 func AdminRoutes(ucm *Transactor) chi.Router {
@@ -161,9 +160,12 @@ func CreateTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Requ
 func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Request) (int, error) {
 	fn := func(w http.ResponseWriter, r *http.Request) (int, error) {
 		txID := chi.URLParam(r, "transaction_id")
-		tx, err := boiler.FindTransaction(passdb.StdConn, txID)
+		tx, err := db.TransactionGetByID(txID)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not get transaction")
+		}
+		if tx == nil {
+			return http.StatusBadRequest, terror.Error(fmt.Errorf("tx is nil"), "Could not get transaction")
 		}
 		refundTx := &types.NewTransaction{
 			Credit:               tx.Debit,
@@ -173,7 +175,6 @@ func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http
 			Description:          "Reverse transaction",
 			Group:                types.TransactionGroupStore,
 			SubGroup:             "Refund",
-			RelatedTransactionID: null.StringFrom(tx.ID),
 		}
 		_, err = ucm.Transact(refundTx)
 		if err != nil {
@@ -289,7 +290,7 @@ func ListUserTransactions(w http.ResponseWriter, r *http.Request) (int, error) {
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not get users")
 	}
-	txes, err := boiler.Transactions(qm.Where("credit = ? OR debit = ?", u.ID, u.ID)).All(passdb.StdConn)
+	txes, err := db.AdminTransactionGetAllFromUserID(u)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not list txes")
 	}

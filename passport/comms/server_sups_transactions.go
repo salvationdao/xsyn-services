@@ -10,8 +10,6 @@ import (
 
 	"github.com/gofrs/uuid"
 
-	"github.com/volatiletech/null/v8"
-
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
 )
@@ -22,7 +20,7 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 		return err
 	}
 
-	transaction, err := db.TransactionGet(req.TransactionID)
+	transaction, err := db.TransactionGetByID(req.TransactionID)
 	if err != nil {
 		passlog.L.Error().
 			Err(err).
@@ -56,7 +54,6 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 		Group:                types.TransactionGroup(transaction.Group),
 		SubGroup:             transaction.SubGroup.String,
 		ServiceID:            types.UserID(uuid.FromStringOrNil(transaction.ServiceID.String)),
-		RelatedTransactionID: null.StringFrom(transaction.ID),
 	}
 
 	txID, err := s.UserCacheMap.Transact(tx)
@@ -69,7 +66,7 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 		return terror.Error(err, "Failed to process refund.")
 	}
 
-	// mark the original transaction as refunded
+	//mark the original transaction as refunded
 	err = db.TransactionAddRelatedTransaction(transaction.ID, txID)
 	if err != nil {
 		passlog.L.Error().
