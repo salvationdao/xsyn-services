@@ -131,11 +131,6 @@ func (s *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 	txID, err := s.UserCacheMap.Transact(tx)
 	bm.End("update_insert_transaction")
 	if err != nil {
-		fmt.Println()
-		fmt.Println()
-		fmt.Println("error")
-		fmt.Println(err.Error())
-		fmt.Println()
 		return terror.Error(err, "failed to process sups")
 	}
 
