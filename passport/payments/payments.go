@@ -315,8 +315,8 @@ func FetchExchangeRates(passportExchangeRatesEnabled bool) (*PriceExchangeRates,
 	}
 	bnbPrice, err := fetchPrice("bnb", passportExchangeRatesEnabled)
 	if err != nil {
+		bnbPrice, err = catchPriceFetchError("bnb", db.KeyBNBToUSD, passportExchangeRatesEnabled)
 		if err != nil {
-			bnbPrice, err = catchPriceFetchError("bnb", db.KeyBNBToUSD, passportExchangeRatesEnabled)
 			return nil, err
 		}
 	}
