@@ -161,8 +161,8 @@ type transactionsOldL struct{}
 
 var (
 	transactionsOldAllColumns            = []string{"id", "description", "transaction_reference", "amount", "credit", "debit", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
-	transactionsOldColumnsWithoutDefault = []string{"amount", "credit", "debit"}
-	transactionsOldColumnsWithDefault    = []string{"id", "description", "transaction_reference", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
+	transactionsOldColumnsWithoutDefault = []string{"id", "amount", "credit", "debit"}
+	transactionsOldColumnsWithDefault    = []string{"description", "transaction_reference", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
 	transactionsOldPrimaryKeyColumns     = []string{"id"}
 	transactionsOldGeneratedColumns      = []string{}
 )

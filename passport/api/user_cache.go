@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"fmt"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"sync"
 	"time"
 	"xsyn-services/boiler"
@@ -119,21 +120,7 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 
 		bm := benchmark.New()
 		bm.Start("Transact func CreateTransactionEntry")
-		_, err = passdb.StdConn.Exec(`
-					INSERT INTO transactions (id, description, transaction_reference, amount, credit, debit, created_at, "group", sub_group, service_id, related_transaction_id)
-					VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-			tx.ID,
-			tx.Description,
-			tx.TransactionReference,
-			tx.Amount,
-			tx.Credit,
-			tx.Debit,
-			tx.CreatedAt,
-			tx.Group,
-			tx.SubGroup,
-			tx.ServiceID,
-			tx.RelatedTransactionID,
-		)
+		err := tx.Insert(passdb.StdConn, boil.Infer())
 		if err != nil {
 			passlog.L.Error().Err(err).Str("from", tx.Debit).Str("to", tx.Credit).Str("id", nt.ID).Msg("transaction failed")
 			wg.Done()

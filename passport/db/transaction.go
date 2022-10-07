@@ -342,28 +342,31 @@ func TransactionGetByReference(transactionRef string) (*boiler.Transaction, erro
 
 // TransactionAddRelatedTransaction adds a refund transaction ID to a transaction
 func TransactionAddRelatedTransaction(transactionID string, refundTransactionID string) error {
-	r, err := passdb.StdConn.Exec(`
-			UPDATE transactions SET related_transaction_id = $1 WHERE id = $2;
-			`,
-		refundTransactionID,
-		transactionID,
+	rowsUpdated, err := boiler.Transactions(
+		boiler.TransactionWhere.ID.EQ(transactionID),
+	).UpdateAll(
+		passdb.StdConn,
+		boiler.M{
+			boiler.TransactionColumns.RelatedTransactionID: refundTransactionID,
+		},
 	)
 	if err != nil {
 		return err
 	}
-	affected, err := r.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if affected == 0 {
-		_, err := passdb.StdConn.Exec(`
-			UPDATE transactions_old SET related_transaction_id = $1 WHERE id = $2;
-			`,
-			refundTransactionID,
-			transactionID,
+	if rowsUpdated == 0 {
+		rowsUpdated, err := boiler.TransactionsOlds(
+			boiler.TransactionWhere.ID.EQ(transactionID),
+		).UpdateAll(
+			passdb.StdConn,
+			boiler.M{
+				boiler.TransactionsOldColumns.RelatedTransactionID: refundTransactionID,
+			},
 		)
 		if err != nil {
 			return err
+		}
+		if rowsUpdated == 0 {
+			return fmt.Errorf("unable to find and update transaction id %s", transactionID)
 		}
 	}
 
