@@ -223,8 +223,8 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 		return http.StatusBadRequest, terror.Error(err, "Could not find SUPS balance")
 	}
 
-	if userAccount.Sups.LessThan(decimal.NewFromBigInt(amountBigInt, 0)) {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("user has insufficient funds: %s, %s", userAccount.Sups.String(), amountBigInt), "Insufficient funds.")
+	if userAccount.R.Account.Sups.LessThan(decimal.NewFromBigInt(amountBigInt, 0)) {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("user has insufficient funds: %s, %s", userAccount.R.Account.Sups.String(), amountBigInt), "Insufficient funds.")
 	}
 
 	//  sign it

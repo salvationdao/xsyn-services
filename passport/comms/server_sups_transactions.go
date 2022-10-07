@@ -46,8 +46,8 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 	}
 
 	tx := &types.NewTransaction{
-		Debit:                transaction.Credit,
-		Credit:               transaction.Debit,
+		Debit:                transaction.CreditAccountID,
+		Credit:               transaction.DebitAccountID,
 		TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", transaction.TransactionReference)),
 		Description:          fmt.Sprintf("Reverse transaction - %s", transaction.Description),
 		Amount:               transaction.Amount,
@@ -131,6 +131,11 @@ func (s *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 	txID, err := s.UserCacheMap.Transact(tx)
 	bm.End("update_insert_transaction")
 	if err != nil {
+		fmt.Println()
+		fmt.Println()
+		fmt.Println("error")
+		fmt.Println(err.Error())
+		fmt.Println()
 		return terror.Error(err, "failed to process sups")
 	}
 

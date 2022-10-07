@@ -211,8 +211,23 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 
 	defer tx.Rollback()
 
+	// insert new account
+	account := boiler.Account{
+		Type: boiler.AccountTypeUSER,
+	}
+
+	if os.Getenv("PASSPORT_ENVIRONMENT") == "staging" || os.Getenv("PASSPORT_ENVIRONMENT") == "development" {
+		account.Sups = decimal.New(10000, 18)
+	}
+
+	err = account.Insert(tx, boil.Infer())
+	if err != nil {
+		passlog.L.Error().Err(err).Interface("account", account).Msg("Failed to insert new account")
+		return nil, terror.Error(err, "Failed to create new account.")
+	}
+
 	user := &boiler.User{
-		//ID:            account.ID,
+		ID:            account.ID,
 		FirstName:     null.StringFrom(firstName),
 		LastName:      null.StringFrom(lastName),
 		Username:      sanitizedUsername,
@@ -225,15 +240,11 @@ func UserCreator(firstName, lastName, username, email, facebookID, googleID, twi
 		PublicAddress: types.NewString(hexPublicAddress),
 		RoleID:        types.NewString(types.UserRoleMemberID.String()),
 		Verified:      isVerified, // verify users directly if they go through Oauth
-		//AccountID:     account.ID,
+		AccountID:     account.ID,
 	}
 
 	if user.Email.Valid {
 		user.AcceptsMarketing = null.BoolFrom(acceptsMarketing)
-	}
-
-	if os.Getenv("PASSPORT_ENVIRONMENT") == "staging" || os.Getenv("PASSPORT_ENVIRONMENT") == "development" {
-		user.Sups = decimal.New(10000, 18)
 	}
 
 	err = user.Insert(tx, boil.Infer())

@@ -168,8 +168,8 @@ func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http
 			return http.StatusBadRequest, terror.Error(fmt.Errorf("tx is nil"), "Could not get transaction")
 		}
 		refundTx := &types.NewTransaction{
-			Credit:               tx.Debit,
-			Debit:                tx.Credit,
+			Credit:               tx.DebitAccountID,
+			Debit:                tx.CreditAccountID,
 			Amount:               tx.Amount,
 			TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", tx.TransactionReference)),
 			Description:          "Reverse transaction",
