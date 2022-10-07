@@ -3,9 +3,8 @@ package types
 import (
 	"encoding/json"
 	"fmt"
-	"time"
-
 	"github.com/volatiletech/null/v8"
+	"time"
 
 	"github.com/shopspring/decimal"
 )

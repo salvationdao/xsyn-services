@@ -102,24 +102,21 @@ var AssetServiceTransferEventWhere = struct {
 var AssetServiceTransferEventRels = struct {
 	FromServiceUser string
 	ToServiceUser   string
-	TransferTX      string
 	UserAsset       string
 	User            string
 }{
 	FromServiceUser: "FromServiceUser",
 	ToServiceUser:   "ToServiceUser",
-	TransferTX:      "TransferTX",
 	UserAsset:       "UserAsset",
 	User:            "User",
 }
 
 // assetServiceTransferEventR is where relationships are stored.
 type assetServiceTransferEventR struct {
-	FromServiceUser *User        `boiler:"FromServiceUser" boil:"FromServiceUser" json:"FromServiceUser" toml:"FromServiceUser" yaml:"FromServiceUser"`
-	ToServiceUser   *User        `boiler:"ToServiceUser" boil:"ToServiceUser" json:"ToServiceUser" toml:"ToServiceUser" yaml:"ToServiceUser"`
-	TransferTX      *Transaction `boiler:"TransferTX" boil:"TransferTX" json:"TransferTX" toml:"TransferTX" yaml:"TransferTX"`
-	UserAsset       *UserAsset   `boiler:"UserAsset" boil:"UserAsset" json:"UserAsset" toml:"UserAsset" yaml:"UserAsset"`
-	User            *User        `boiler:"User" boil:"User" json:"User" toml:"User" yaml:"User"`
+	FromServiceUser *User      `boiler:"FromServiceUser" boil:"FromServiceUser" json:"FromServiceUser" toml:"FromServiceUser" yaml:"FromServiceUser"`
+	ToServiceUser   *User      `boiler:"ToServiceUser" boil:"ToServiceUser" json:"ToServiceUser" toml:"ToServiceUser" yaml:"ToServiceUser"`
+	UserAsset       *UserAsset `boiler:"UserAsset" boil:"UserAsset" json:"UserAsset" toml:"UserAsset" yaml:"UserAsset"`
+	User            *User      `boiler:"User" boil:"User" json:"User" toml:"User" yaml:"User"`
 }
 
 // NewStruct creates a new relationship struct
@@ -410,20 +407,6 @@ func (o *AssetServiceTransferEvent) ToServiceUser(mods ...qm.QueryMod) userQuery
 	return query
 }
 
-// TransferTX pointed to by the foreign key.
-func (o *AssetServiceTransferEvent) TransferTX(mods ...qm.QueryMod) transactionQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.TransferTXID),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Transactions(queryMods...)
-	queries.SetFrom(query.Query, "\"transactions\"")
-
-	return query
-}
-
 // UserAsset pointed to by the foreign key.
 func (o *AssetServiceTransferEvent) UserAsset(mods ...qm.QueryMod) userAssetQuery {
 	queryMods := []qm.QueryMod{
@@ -664,110 +647,6 @@ func (assetServiceTransferEventL) LoadToServiceUser(e boil.Executor, singular bo
 					foreign.R = &userR{}
 				}
 				foreign.R.ToServiceAssetServiceTransferEvents = append(foreign.R.ToServiceAssetServiceTransferEvents, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadTransferTX allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (assetServiceTransferEventL) LoadTransferTX(e boil.Executor, singular bool, maybeAssetServiceTransferEvent interface{}, mods queries.Applicator) error {
-	var slice []*AssetServiceTransferEvent
-	var object *AssetServiceTransferEvent
-
-	if singular {
-		object = maybeAssetServiceTransferEvent.(*AssetServiceTransferEvent)
-	} else {
-		slice = *maybeAssetServiceTransferEvent.(*[]*AssetServiceTransferEvent)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &assetServiceTransferEventR{}
-		}
-		args = append(args, object.TransferTXID)
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &assetServiceTransferEventR{}
-			}
-
-			for _, a := range args {
-				if a == obj.TransferTXID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.TransferTXID)
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`transactions`),
-		qm.WhereIn(`transactions.id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Transaction")
-	}
-
-	var resultSlice []*Transaction
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Transaction")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for transactions")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions")
-	}
-
-	if len(assetServiceTransferEventAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.TransferTX = foreign
-		if foreign.R == nil {
-			foreign.R = &transactionR{}
-		}
-		foreign.R.TransferTXAssetServiceTransferEvents = append(foreign.R.TransferTXAssetServiceTransferEvents, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.TransferTXID == foreign.ID {
-				local.R.TransferTX = foreign
-				if foreign.R == nil {
-					foreign.R = &transactionR{}
-				}
-				foreign.R.TransferTXAssetServiceTransferEvents = append(foreign.R.TransferTXAssetServiceTransferEvents, local)
 				break
 			}
 		}
@@ -1141,52 +1020,6 @@ func (o *AssetServiceTransferEvent) RemoveToServiceUser(exec boil.Executor, rela
 		related.R.ToServiceAssetServiceTransferEvents = related.R.ToServiceAssetServiceTransferEvents[:ln-1]
 		break
 	}
-	return nil
-}
-
-// SetTransferTX of the assetServiceTransferEvent to the related item.
-// Sets o.R.TransferTX to related.
-// Adds o to related.R.TransferTXAssetServiceTransferEvents.
-func (o *AssetServiceTransferEvent) SetTransferTX(exec boil.Executor, insert bool, related *Transaction) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"asset_service_transfer_events\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"transfer_tx_id"}),
-		strmangle.WhereClause("\"", "\"", 2, assetServiceTransferEventPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.TransferTXID = related.ID
-	if o.R == nil {
-		o.R = &assetServiceTransferEventR{
-			TransferTX: related,
-		}
-	} else {
-		o.R.TransferTX = related
-	}
-
-	if related.R == nil {
-		related.R = &transactionR{
-			TransferTXAssetServiceTransferEvents: AssetServiceTransferEventSlice{o},
-		}
-	} else {
-		related.R.TransferTXAssetServiceTransferEvents = append(related.R.TransferTXAssetServiceTransferEvents, o)
-	}
-
 	return nil
 }
 

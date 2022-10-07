@@ -234,8 +234,8 @@ func UsernameAvailable(nameToCheck string, userID string) (bool, error) {
 
 	if userID != "" {
 		q := `
-        		SELECT count(*) FROM users
-        		WHERE 	username = $1 and id != $2
+        		SELECT COUNT(*) FROM users
+        		WHERE 	username = $1 AND id != $2
         	`
 		err := passdb.StdConn.QueryRow(q, nameToCheck, userID).Scan(&count)
 		if err != nil {
@@ -245,7 +245,7 @@ func UsernameAvailable(nameToCheck string, userID string) (bool, error) {
 	}
 
 	q := `
-		SELECT count(*) FROM users
+		SELECT COUNT(*) FROM users
 		WHERE 	username = $1
 	`
 	err := passdb.StdConn.QueryRow(q, nameToCheck).Scan(&count)
@@ -292,7 +292,7 @@ func IsUserDeathlisted(walletAddress string) (bool, error) {
 	return true, nil
 }
 
-// UserTransactionGetList returns list of transactions based on userid == credit/ debit
+// UserTransactionGetList returns list of transactions based on userid == credit/ debit within the last day
 func UserTransactionGetList(accountID string, limit int) ([]*boiler.Transaction, error) {
 	transactions, err := boiler.Transactions(
 		qm.Where(
