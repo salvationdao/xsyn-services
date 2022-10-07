@@ -10,8 +10,8 @@ ALTER TABLE transactions
     ADD COLUMN debit UUID REFERENCES users(id),
     ADD COLUMN credit UUID REFERENCES users(id);
 
-CREATE INDEX idx_transactions_credit ON transactions (credit);
-CREATE INDEX idx_transactions_debit ON transactions (debit);
+CREATE INDEX transactions_credit_idx ON transactions (credit);
+CREATE INDEX transactions_debit_idx ON transactions (debit);
 
 UPDATE
     transactions t
@@ -22,20 +22,46 @@ ALTER TABLE transactions
     ALTER COLUMN debit SET NOT NULL,
     ALTER COLUMN credit SET NOT NULL;
 
-ALTER TABLE transactions
-    DROP COLUMN debit_account_id,
-    DROP COLUMN credit_account_id;
-
 ALTER TABLE users
     ADD COLUMN sups  NUMERIC(28)  NOT NULL DEFAULT 0 CHECK (sups >= 0 OR id = '2fa1a63e-a4fa-4618-921f-4b4d28132069' );
 
 UPDATE users SET sups = (SELECT sups FROM accounts WHERE accounts.id = users.id);
 
-ALTER TABLE users
-    DROP COLUMN account_id;
+-- rewrite trigger
+CREATE OR REPLACE FUNCTION check_balances() RETURNS TRIGGER AS
+$check_balances$
+DECLARE
+    enoughfunds BOOLEAN DEFAULT FALSE;
+BEGIN
+    -- check its not a transaction to themselves
+    IF new.debit = new.credit THEN
+        RAISE EXCEPTION 'unable to transfer to self';
+    END IF;
 
-DROP TABLE accounts;
-DROP TABLE syndicates;
+    -- checks if the debtor is the on chain / off world account since that is the only account allow to go negative.
+    SELECT new.debit = '2fa1a63e-a4fa-4618-921f-4b4d28132069' OR (SELECT accounts.sups >= new.amount
+                                                                  FROM accounts
+                                                                  WHERE accounts.id = new.debit)
+    INTO enoughfunds;
+    -- if enough funds then make the updates to the user table
+    IF enoughfunds THEN
+        UPDATE users SET sups = sups - new.amount WHERE users.id = new.debit;
+        UPDATE users SET sups = sups + new.amount WHERE users.id = new.credit;
+        RETURN new;
+    ELSE
+        RAISE EXCEPTION 'not enough funds';
+    END IF;
+    -- if not enough funds,
+END
+$check_balances$
+    LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trigger_check_balance
+    ON transactions;
+CREATE TRIGGER trigger_check_balance
+    BEFORE INSERT
+    ON transactions
+    FOR EACH ROW
+EXECUTE PROCEDURE check_balances();
 
 -- temparary remove account ledgers view
 DROP VIEW IF EXISTS account_ledgers;
@@ -56,5 +82,17 @@ SELECT transactions.debit,
        transactions.id,
        (0.0 - transactions.amount)
 FROM transactions;
+
+ALTER TABLE transactions
+    DROP COLUMN debit_account_id,
+    DROP COLUMN credit_account_id;
+
+
+
+ALTER TABLE users
+    DROP COLUMN account_id;
+
+DROP TABLE syndicates;
+DROP TABLE accounts;
 
 DROP TYPE IF EXISTS ACCOUNT_TYPE;
