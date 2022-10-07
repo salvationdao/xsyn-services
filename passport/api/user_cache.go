@@ -95,7 +95,7 @@ func (ucm *Transactor) Close() {
 }
 
 func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
-	var err error = nil
+	var trasnactionError error = nil
 	transactionID := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -120,11 +120,11 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 
 		bm := benchmark.New()
 		bm.Start("Transact func CreateTransactionEntry")
-		err := tx.Insert(passdb.StdConn, boil.Infer())
-		if err != nil {
-			passlog.L.Error().Err(err).Str("from", tx.Debit).Str("to", tx.Credit).Str("id", nt.ID).Msg("transaction failed")
+		trasnactionError = tx.Insert(passdb.StdConn, boil.Infer())
+		if trasnactionError != nil {
+			passlog.L.Error().Err(trasnactionError).Str("from", tx.Debit).Str("to", tx.Credit).Str("id", nt.ID).Msg("transaction failed")
 			wg.Done()
-			return err
+			return trasnactionError
 		}
 		bm.End("Transact func CreateTransactionEntry")
 		bm.Alert(75)
@@ -141,7 +141,7 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 	}
 	wg.Wait()
 
-	return transactionID, err
+	return transactionID, trasnactionError
 }
 
 func (ucm *Transactor) BalanceUpdate(tx *boiler.Transaction) {
