@@ -205,19 +205,24 @@ func main() {
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
 					ctx, cancel := context.WithCancel(c.Context)
-					environment := c.String("environment")
+					environment := types.Environment(c.String("environment"))
+					if !environment.IsValid() {
+						cancel()
+						return terror.Panic(fmt.Errorf("invalid environment: %s", environment))
+					}
+
 					level := c.String("log_level")
-					log := log_helpers.LoggerInitZero(environment, level)
+					log := log_helpers.LoggerInitZero(environment.String(), level)
 					if environment == "production" || environment == "staging" {
 						logPtr := zerolog.New(os.Stdout)
 						log = &logPtr
 					}
-					passlog.New(environment, level)
+					passlog.New(environment.String(), level)
 					log.Info().Msg("zerolog initialised")
 
-					if os.Getenv("PASSPORT_ENVIRONMENT") != "development" {
+					if environment != types.Development {
 						tracer.Start(
-							tracer.WithEnv(environment),
+							tracer.WithEnv(environment.String()),
 							tracer.WithService(envPrefix),
 							tracer.WithServiceVersion(Version),
 							tracer.WithLogger(passlog.DatadogLog{L: passlog.L}), // configure before profiler so profiler will use this logger
@@ -226,7 +231,7 @@ func main() {
 					}
 
 					// Datadog Tracing an profiling
-					if c.Bool("pprof_datadog") && os.Getenv("PASSPORT_ENVIRONMENT") != "development" {
+					if c.Bool("pprof_datadog") && environment != types.Development {
 						// Decode Profile types
 						active := c.StringSlice("pprof_datadog_profiles")
 						profilers := []profiler.ProfileType{}
@@ -256,7 +261,7 @@ func main() {
 							// Service configuration
 							profiler.WithService(envPrefix),
 							profiler.WithVersion(Version),
-							profiler.WithEnv(environment),
+							profiler.WithEnv(environment.String()),
 							// This doesn't have a WithLogger option but it can use the tracer logger if tracer is configured first.
 							// Profiler configuration
 							profiler.WithPeriod(c.Duration("pprof_datadog_interval_sec")*time.Second),

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -231,7 +230,7 @@ func UserCreator(
 		Type: boiler.AccountTypeUSER,
 	}
 
-	if os.Getenv("PASSPORT_ENVIRONMENT") == "staging" || os.Getenv("PASSPORT_ENVIRONMENT") == "development" {
+	if environment == types.Staging || environment == types.Development {
 		account.Sups = decimal.New(10000, 18)
 	}
 

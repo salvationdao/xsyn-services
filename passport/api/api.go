@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"database/sql"
-	"os"
 	"sync"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/email"
@@ -170,7 +169,7 @@ func NewAPI(
 
 	ws.Init(&ws.Config{
 		Logger:        passlog.L,
-		SkipRateLimit: os.Getenv("PASSPORT_ENVIRONMENT") == "staging" || os.Getenv("PASSPORT_ENVIRONMENT") == "development",
+		SkipRateLimit: environment.String() == "staging" || environment.String() == "development",
 	})
 
 	if runBlockchainBridge {
@@ -195,7 +194,6 @@ func NewAPI(
 	_ = NewFactionController(log, api)
 	_ = NewRoleController(log, api)
 	sc := NewSupremacyController(log, api)
-	_ = NewGamebarController(log, api)
 	_ = NewStoreController(log, api)
 	d := DevRoutes(ucm, environment)
 
@@ -221,7 +219,7 @@ func NewAPI(
 			//r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", WithError(api.GetNonce))
 			//r.Get("/auth/twitter", WithError(api.Auth.TwitterAuth))
-			if os.Getenv("PASSPORT_ENVIRONMENT") != "staging" {
+			if environment != types.Staging {
 				r.Get("/withdraw/holding/{user_address}", WithError(api.HoldingSups))
 				r.Get("/withdraw/check/{address}", WithError(api.GetMaxWithdrawAmount))
 				r.Get("/withdraw/check", WithError(api.CheckCanWithdraw))
