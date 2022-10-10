@@ -21,3 +21,24 @@ func (s *S) GetCurrentSupPrice(req GetCurrentSupPriceReq, resp *GetCurrentSupPri
 
 	return nil
 }
+
+func (s *S) GetCurrentRates(req GetExchangeRatesReq, resp *GetExchangeRatesResp) error {
+	BNBtoUSD := db.GetDecimal(db.KeyBNBToUSD)
+	ETHtoUSD := db.GetDecimal(db.KeyEthToUSD)
+	SUPtoUSD := db.GetDecimal(db.KeySupsToUSD)
+
+	if BNBtoUSD.LessThanOrEqual(decimal.Zero) || ETHtoUSD.LessThanOrEqual(decimal.Zero) || SUPtoUSD.LessThanOrEqual(decimal.Zero) {
+		exchangeRates, err := payments.FetchExchangeRates(true)
+		if err != nil {
+			return terror.Error(err, "Unable to fetch exchange rates.")
+		}
+		BNBtoUSD = exchangeRates.BNBtoUSD
+		ETHtoUSD = exchangeRates.ETHtoUSD
+		SUPtoUSD = exchangeRates.SUPtoUSD
+	}
+
+	resp.BNBtoUSD = BNBtoUSD
+	resp.ETHtoUSD = ETHtoUSD
+	resp.SUPtoUSD = SUPtoUSD
+	return nil
+}
