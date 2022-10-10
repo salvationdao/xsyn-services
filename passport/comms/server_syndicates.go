@@ -87,7 +87,7 @@ func (s *S) SyndicateRegisterHandler(req SyndicateCreateReq, resp *SyndicateCrea
 		Description:          "Start a new syndicate",
 		Amount:               syndicateRegisterFee,
 		Group:                types.TransactionGroupSupremacy,
-		SubGroup:             "syndicate create",
+		SubGroup:             types.TransactionSubGroupSyndicateCreate,
 		ServiceID:            types.UserID(uuid.FromStringOrNil(serviceID)),
 	}
 
@@ -103,7 +103,7 @@ func (s *S) SyndicateRegisterHandler(req SyndicateCreateReq, resp *SyndicateCrea
 		Description:          "Fund for starting syndicate",
 		Amount:               supsToSyndicateAcc,
 		Group:                types.TransactionGroupSupremacy,
-		SubGroup:             "syndicate create",
+		SubGroup:             types.TransactionSubGroupSyndicateCreate,
 		ServiceID:            types.UserID(uuid.FromStringOrNil(serviceID)),
 	}
 

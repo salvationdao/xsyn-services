@@ -146,7 +146,7 @@ func CreateTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Requ
 			TransactionReference: types.TransactionReference(ref),
 			Description:          ref,
 			Group:                types.TransactionGroupStore,
-			SubGroup:             "Transfer",
+			SubGroup:             types.TransactionSubGroupTransfer,
 		}
 		_, err = ucm.Transact(newTx)
 		if err != nil {
@@ -174,7 +174,7 @@ func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http
 			TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", tx.TransactionReference)),
 			Description:          "Reverse transaction",
 			Group:                types.TransactionGroupStore,
-			SubGroup:             "Refund",
+			SubGroup:             types.TransactionSubGroupRefund,
 		}
 		_, err = ucm.Transact(refundTx)
 		if err != nil {

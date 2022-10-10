@@ -113,7 +113,7 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 			Description:          nt.Description,
 			CreatedAt:            nt.CreatedAt,
 			Group:                string(nt.Group),
-			SubGroup:             null.StringFrom(nt.SubGroup),
+			SubGroup:             null.StringFrom(string(nt.SubGroup)),
 			RelatedTransactionID: nt.RelatedTransactionID,
 			ServiceID:            serviceID,
 		}
