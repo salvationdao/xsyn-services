@@ -134,7 +134,7 @@ func UpdateSuccessfulWithdrawsWithTxHash(records []*SUPTransferRecord) (int, int
 	return success, skipped
 }
 
-// Rollback stale withdraws (dangerous if buggy, check very, very carefully)
+// ReverseFailedWithdraws Rollback stale withdraws (dangerous if buggy, check very, very carefully)
 func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int, int, error) {
 	l := passlog.L.
 		With().
@@ -174,7 +174,7 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 
 		txRef := types.TransactionReference(fmt.Sprintf("REFUND %s", tx.TransactionReference))
 		newTx := &types.NewTransaction{
-			Credit:               tx.Debit,
+			Credit:               tx.DebitAccountID,
 			Debit:                types.OnChainUserID.String(),
 			Amount:               tx.Amount,
 			TransactionReference: txRef,

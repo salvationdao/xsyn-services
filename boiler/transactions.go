@@ -28,14 +28,14 @@ type Transaction struct {
 	Description          string          `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
 	TransactionReference string          `boiler:"transaction_reference" boil:"transaction_reference" json:"transaction_reference" toml:"transaction_reference" yaml:"transaction_reference"`
 	Amount               decimal.Decimal `boiler:"amount" boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
-	Credit               string          `boiler:"credit" boil:"credit" json:"credit" toml:"credit" yaml:"credit"`
-	Debit                string          `boiler:"debit" boil:"debit" json:"debit" toml:"debit" yaml:"debit"`
 	Reason               null.String     `boiler:"reason" boil:"reason" json:"reason,omitempty" toml:"reason" yaml:"reason,omitempty"`
 	CreatedAt            time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	Group                string          `boiler:"group" boil:"group" json:"group" toml:"group" yaml:"group"`
 	SubGroup             null.String     `boiler:"sub_group" boil:"sub_group" json:"sub_group,omitempty" toml:"sub_group" yaml:"sub_group,omitempty"`
 	RelatedTransactionID null.String     `boiler:"related_transaction_id" boil:"related_transaction_id" json:"related_transaction_id,omitempty" toml:"related_transaction_id" yaml:"related_transaction_id,omitempty"`
 	ServiceID            null.String     `boiler:"service_id" boil:"service_id" json:"service_id,omitempty" toml:"service_id" yaml:"service_id,omitempty"`
+	DebitAccountID       string          `boiler:"debit_account_id" boil:"debit_account_id" json:"debit_account_id" toml:"debit_account_id" yaml:"debit_account_id"`
+	CreditAccountID      string          `boiler:"credit_account_id" boil:"credit_account_id" json:"credit_account_id" toml:"credit_account_id" yaml:"credit_account_id"`
 
 	R *transactionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L transactionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -46,27 +46,27 @@ var TransactionColumns = struct {
 	Description          string
 	TransactionReference string
 	Amount               string
-	Credit               string
-	Debit                string
 	Reason               string
 	CreatedAt            string
 	Group                string
 	SubGroup             string
 	RelatedTransactionID string
 	ServiceID            string
+	DebitAccountID       string
+	CreditAccountID      string
 }{
 	ID:                   "id",
 	Description:          "description",
 	TransactionReference: "transaction_reference",
 	Amount:               "amount",
-	Credit:               "credit",
-	Debit:                "debit",
 	Reason:               "reason",
 	CreatedAt:            "created_at",
 	Group:                "group",
 	SubGroup:             "sub_group",
 	RelatedTransactionID: "related_transaction_id",
 	ServiceID:            "service_id",
+	DebitAccountID:       "debit_account_id",
+	CreditAccountID:      "credit_account_id",
 }
 
 var TransactionTableColumns = struct {
@@ -74,27 +74,27 @@ var TransactionTableColumns = struct {
 	Description          string
 	TransactionReference string
 	Amount               string
-	Credit               string
-	Debit                string
 	Reason               string
 	CreatedAt            string
 	Group                string
 	SubGroup             string
 	RelatedTransactionID string
 	ServiceID            string
+	DebitAccountID       string
+	CreditAccountID      string
 }{
 	ID:                   "transactions.id",
 	Description:          "transactions.description",
 	TransactionReference: "transactions.transaction_reference",
 	Amount:               "transactions.amount",
-	Credit:               "transactions.credit",
-	Debit:                "transactions.debit",
 	Reason:               "transactions.reason",
 	CreatedAt:            "transactions.created_at",
 	Group:                "transactions.group",
 	SubGroup:             "transactions.sub_group",
 	RelatedTransactionID: "transactions.related_transaction_id",
 	ServiceID:            "transactions.service_id",
+	DebitAccountID:       "transactions.debit_account_id",
+	CreditAccountID:      "transactions.credit_account_id",
 }
 
 // Generated where
@@ -104,39 +104,39 @@ var TransactionWhere = struct {
 	Description          whereHelperstring
 	TransactionReference whereHelperstring
 	Amount               whereHelperdecimal_Decimal
-	Credit               whereHelperstring
-	Debit                whereHelperstring
 	Reason               whereHelpernull_String
 	CreatedAt            whereHelpertime_Time
 	Group                whereHelperstring
 	SubGroup             whereHelpernull_String
 	RelatedTransactionID whereHelpernull_String
 	ServiceID            whereHelpernull_String
+	DebitAccountID       whereHelperstring
+	CreditAccountID      whereHelperstring
 }{
 	ID:                   whereHelperstring{field: "\"transactions\".\"id\""},
 	Description:          whereHelperstring{field: "\"transactions\".\"description\""},
 	TransactionReference: whereHelperstring{field: "\"transactions\".\"transaction_reference\""},
 	Amount:               whereHelperdecimal_Decimal{field: "\"transactions\".\"amount\""},
-	Credit:               whereHelperstring{field: "\"transactions\".\"credit\""},
-	Debit:                whereHelperstring{field: "\"transactions\".\"debit\""},
 	Reason:               whereHelpernull_String{field: "\"transactions\".\"reason\""},
 	CreatedAt:            whereHelpertime_Time{field: "\"transactions\".\"created_at\""},
 	Group:                whereHelperstring{field: "\"transactions\".\"group\""},
 	SubGroup:             whereHelpernull_String{field: "\"transactions\".\"sub_group\""},
 	RelatedTransactionID: whereHelpernull_String{field: "\"transactions\".\"related_transaction_id\""},
 	ServiceID:            whereHelpernull_String{field: "\"transactions\".\"service_id\""},
+	DebitAccountID:       whereHelperstring{field: "\"transactions\".\"debit_account_id\""},
+	CreditAccountID:      whereHelperstring{field: "\"transactions\".\"credit_account_id\""},
 }
 
 // TransactionRels is where relationship names are stored.
 var TransactionRels = struct {
-	CreditUser                     string
-	DebitUser                      string
+	CreditAccount                  string
+	DebitAccount                   string
 	RelatedTransaction             string
 	Service                        string
 	RelatedTransactionTransactions string
 }{
-	CreditUser:                     "CreditUser",
-	DebitUser:                      "DebitUser",
+	CreditAccount:                  "CreditAccount",
+	DebitAccount:                   "DebitAccount",
 	RelatedTransaction:             "RelatedTransaction",
 	Service:                        "Service",
 	RelatedTransactionTransactions: "RelatedTransactionTransactions",
@@ -144,8 +144,8 @@ var TransactionRels = struct {
 
 // transactionR is where relationships are stored.
 type transactionR struct {
-	CreditUser                     *User            `boiler:"CreditUser" boil:"CreditUser" json:"CreditUser" toml:"CreditUser" yaml:"CreditUser"`
-	DebitUser                      *User            `boiler:"DebitUser" boil:"DebitUser" json:"DebitUser" toml:"DebitUser" yaml:"DebitUser"`
+	CreditAccount                  *Account         `boiler:"CreditAccount" boil:"CreditAccount" json:"CreditAccount" toml:"CreditAccount" yaml:"CreditAccount"`
+	DebitAccount                   *Account         `boiler:"DebitAccount" boil:"DebitAccount" json:"DebitAccount" toml:"DebitAccount" yaml:"DebitAccount"`
 	RelatedTransaction             *Transaction     `boiler:"RelatedTransaction" boil:"RelatedTransaction" json:"RelatedTransaction" toml:"RelatedTransaction" yaml:"RelatedTransaction"`
 	Service                        *User            `boiler:"Service" boil:"Service" json:"Service" toml:"Service" yaml:"Service"`
 	RelatedTransactionTransactions TransactionSlice `boiler:"RelatedTransactionTransactions" boil:"RelatedTransactionTransactions" json:"RelatedTransactionTransactions" toml:"RelatedTransactionTransactions" yaml:"RelatedTransactionTransactions"`
@@ -160,8 +160,8 @@ func (*transactionR) NewStruct() *transactionR {
 type transactionL struct{}
 
 var (
-	transactionAllColumns            = []string{"id", "description", "transaction_reference", "amount", "credit", "debit", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
-	transactionColumnsWithoutDefault = []string{"id", "amount", "credit", "debit"}
+	transactionAllColumns            = []string{"id", "description", "transaction_reference", "amount", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id", "debit_account_id", "credit_account_id"}
+	transactionColumnsWithoutDefault = []string{"id", "amount", "debit_account_id", "credit_account_id"}
 	transactionColumnsWithDefault    = []string{"description", "transaction_reference", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
 	transactionPrimaryKeyColumns     = []string{"id"}
 	transactionGeneratedColumns      = []string{}
@@ -409,32 +409,32 @@ func (q transactionQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// CreditUser pointed to by the foreign key.
-func (o *Transaction) CreditUser(mods ...qm.QueryMod) userQuery {
+// CreditAccount pointed to by the foreign key.
+func (o *Transaction) CreditAccount(mods ...qm.QueryMod) accountQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.Credit),
+		qm.Where("\"id\" = ?", o.CreditAccountID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := Users(queryMods...)
-	queries.SetFrom(query.Query, "\"users\"")
+	query := Accounts(queryMods...)
+	queries.SetFrom(query.Query, "\"accounts\"")
 
 	return query
 }
 
-// DebitUser pointed to by the foreign key.
-func (o *Transaction) DebitUser(mods ...qm.QueryMod) userQuery {
+// DebitAccount pointed to by the foreign key.
+func (o *Transaction) DebitAccount(mods ...qm.QueryMod) accountQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.Debit),
+		qm.Where("\"id\" = ?", o.DebitAccountID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := Users(queryMods...)
-	queries.SetFrom(query.Query, "\"users\"")
+	query := Accounts(queryMods...)
+	queries.SetFrom(query.Query, "\"accounts\"")
 
 	return query
 }
@@ -489,9 +489,9 @@ func (o *Transaction) RelatedTransactionTransactions(mods ...qm.QueryMod) transa
 	return query
 }
 
-// LoadCreditUser allows an eager lookup of values, cached into the
+// LoadCreditAccount allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
+func (transactionL) LoadCreditAccount(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
 	var slice []*Transaction
 	var object *Transaction
 
@@ -506,7 +506,7 @@ func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransact
 		if object.R == nil {
 			object.R = &transactionR{}
 		}
-		args = append(args, object.Credit)
+		args = append(args, object.CreditAccountID)
 
 	} else {
 	Outer:
@@ -516,12 +516,12 @@ func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransact
 			}
 
 			for _, a := range args {
-				if a == obj.Credit {
+				if a == obj.CreditAccountID {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.Credit)
+			args = append(args, obj.CreditAccountID)
 
 		}
 	}
@@ -531,9 +531,9 @@ func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransact
 	}
 
 	query := NewQuery(
-		qm.From(`users`),
-		qm.WhereIn(`users.id in ?`, args...),
-		qmhelper.WhereIsNull(`users.deleted_at`),
+		qm.From(`accounts`),
+		qm.WhereIn(`accounts.id in ?`, args...),
+		qmhelper.WhereIsNull(`accounts.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -541,19 +541,19 @@ func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransact
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load User")
+		return errors.Wrap(err, "failed to eager load Account")
 	}
 
-	var resultSlice []*User
+	var resultSlice []*Account
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice User")
+		return errors.Wrap(err, "failed to bind eager loaded slice Account")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for users")
+		return errors.Wrap(err, "failed to close results of eager load for accounts")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for users")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for accounts")
 	}
 
 	if len(transactionAfterSelectHooks) != 0 {
@@ -570,22 +570,22 @@ func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransact
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.CreditUser = foreign
+		object.R.CreditAccount = foreign
 		if foreign.R == nil {
-			foreign.R = &userR{}
+			foreign.R = &accountR{}
 		}
-		foreign.R.CreditTransactions = append(foreign.R.CreditTransactions, object)
+		foreign.R.CreditAccountTransactions = append(foreign.R.CreditAccountTransactions, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.Credit == foreign.ID {
-				local.R.CreditUser = foreign
+			if local.CreditAccountID == foreign.ID {
+				local.R.CreditAccount = foreign
 				if foreign.R == nil {
-					foreign.R = &userR{}
+					foreign.R = &accountR{}
 				}
-				foreign.R.CreditTransactions = append(foreign.R.CreditTransactions, local)
+				foreign.R.CreditAccountTransactions = append(foreign.R.CreditAccountTransactions, local)
 				break
 			}
 		}
@@ -594,9 +594,9 @@ func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransact
 	return nil
 }
 
-// LoadDebitUser allows an eager lookup of values, cached into the
+// LoadDebitAccount allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (transactionL) LoadDebitUser(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
+func (transactionL) LoadDebitAccount(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
 	var slice []*Transaction
 	var object *Transaction
 
@@ -611,7 +611,7 @@ func (transactionL) LoadDebitUser(e boil.Executor, singular bool, maybeTransacti
 		if object.R == nil {
 			object.R = &transactionR{}
 		}
-		args = append(args, object.Debit)
+		args = append(args, object.DebitAccountID)
 
 	} else {
 	Outer:
@@ -621,12 +621,12 @@ func (transactionL) LoadDebitUser(e boil.Executor, singular bool, maybeTransacti
 			}
 
 			for _, a := range args {
-				if a == obj.Debit {
+				if a == obj.DebitAccountID {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.Debit)
+			args = append(args, obj.DebitAccountID)
 
 		}
 	}
@@ -636,9 +636,9 @@ func (transactionL) LoadDebitUser(e boil.Executor, singular bool, maybeTransacti
 	}
 
 	query := NewQuery(
-		qm.From(`users`),
-		qm.WhereIn(`users.id in ?`, args...),
-		qmhelper.WhereIsNull(`users.deleted_at`),
+		qm.From(`accounts`),
+		qm.WhereIn(`accounts.id in ?`, args...),
+		qmhelper.WhereIsNull(`accounts.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -646,19 +646,19 @@ func (transactionL) LoadDebitUser(e boil.Executor, singular bool, maybeTransacti
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load User")
+		return errors.Wrap(err, "failed to eager load Account")
 	}
 
-	var resultSlice []*User
+	var resultSlice []*Account
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice User")
+		return errors.Wrap(err, "failed to bind eager loaded slice Account")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for users")
+		return errors.Wrap(err, "failed to close results of eager load for accounts")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for users")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for accounts")
 	}
 
 	if len(transactionAfterSelectHooks) != 0 {
@@ -675,22 +675,22 @@ func (transactionL) LoadDebitUser(e boil.Executor, singular bool, maybeTransacti
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.DebitUser = foreign
+		object.R.DebitAccount = foreign
 		if foreign.R == nil {
-			foreign.R = &userR{}
+			foreign.R = &accountR{}
 		}
-		foreign.R.DebitTransactions = append(foreign.R.DebitTransactions, object)
+		foreign.R.DebitAccountTransactions = append(foreign.R.DebitAccountTransactions, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.Debit == foreign.ID {
-				local.R.DebitUser = foreign
+			if local.DebitAccountID == foreign.ID {
+				local.R.DebitAccount = foreign
 				if foreign.R == nil {
-					foreign.R = &userR{}
+					foreign.R = &accountR{}
 				}
-				foreign.R.DebitTransactions = append(foreign.R.DebitTransactions, local)
+				foreign.R.DebitAccountTransactions = append(foreign.R.DebitAccountTransactions, local)
 				break
 			}
 		}
@@ -1014,10 +1014,10 @@ func (transactionL) LoadRelatedTransactionTransactions(e boil.Executor, singular
 	return nil
 }
 
-// SetCreditUser of the transaction to the related item.
-// Sets o.R.CreditUser to related.
-// Adds o to related.R.CreditTransactions.
-func (o *Transaction) SetCreditUser(exec boil.Executor, insert bool, related *User) error {
+// SetCreditAccount of the transaction to the related item.
+// Sets o.R.CreditAccount to related.
+// Adds o to related.R.CreditAccountTransactions.
+func (o *Transaction) SetCreditAccount(exec boil.Executor, insert bool, related *Account) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -1027,7 +1027,7 @@ func (o *Transaction) SetCreditUser(exec boil.Executor, insert bool, related *Us
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"transactions\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"credit"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"credit_account_id"}),
 		strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -1040,30 +1040,30 @@ func (o *Transaction) SetCreditUser(exec boil.Executor, insert bool, related *Us
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.Credit = related.ID
+	o.CreditAccountID = related.ID
 	if o.R == nil {
 		o.R = &transactionR{
-			CreditUser: related,
+			CreditAccount: related,
 		}
 	} else {
-		o.R.CreditUser = related
+		o.R.CreditAccount = related
 	}
 
 	if related.R == nil {
-		related.R = &userR{
-			CreditTransactions: TransactionSlice{o},
+		related.R = &accountR{
+			CreditAccountTransactions: TransactionSlice{o},
 		}
 	} else {
-		related.R.CreditTransactions = append(related.R.CreditTransactions, o)
+		related.R.CreditAccountTransactions = append(related.R.CreditAccountTransactions, o)
 	}
 
 	return nil
 }
 
-// SetDebitUser of the transaction to the related item.
-// Sets o.R.DebitUser to related.
-// Adds o to related.R.DebitTransactions.
-func (o *Transaction) SetDebitUser(exec boil.Executor, insert bool, related *User) error {
+// SetDebitAccount of the transaction to the related item.
+// Sets o.R.DebitAccount to related.
+// Adds o to related.R.DebitAccountTransactions.
+func (o *Transaction) SetDebitAccount(exec boil.Executor, insert bool, related *Account) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -1073,7 +1073,7 @@ func (o *Transaction) SetDebitUser(exec boil.Executor, insert bool, related *Use
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"transactions\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"debit"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"debit_account_id"}),
 		strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -1086,21 +1086,21 @@ func (o *Transaction) SetDebitUser(exec boil.Executor, insert bool, related *Use
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.Debit = related.ID
+	o.DebitAccountID = related.ID
 	if o.R == nil {
 		o.R = &transactionR{
-			DebitUser: related,
+			DebitAccount: related,
 		}
 	} else {
-		o.R.DebitUser = related
+		o.R.DebitAccount = related
 	}
 
 	if related.R == nil {
-		related.R = &userR{
-			DebitTransactions: TransactionSlice{o},
+		related.R = &accountR{
+			DebitAccountTransactions: TransactionSlice{o},
 		}
 	} else {
-		related.R.DebitTransactions = append(related.R.DebitTransactions, o)
+		related.R.DebitAccountTransactions = append(related.R.DebitAccountTransactions, o)
 	}
 
 	return nil

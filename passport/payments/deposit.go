@@ -22,7 +22,7 @@ const (
 	DepositTransactionStatusConfirmed DepositTransactionStatus = "confirmed"
 )
 
-func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, error) {
+func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap, environment types.Environment) (int, int, error) {
 	l := passlog.L.With().Str("svc", "avant_deposit_processor").Logger()
 	success := 0
 	skipped := 0
@@ -46,7 +46,7 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, 
 			continue
 		}
 
-		user, err := CreateOrGetUser(common.HexToAddress(record.FromAddress))
+		user, err := CreateOrGetUser(common.HexToAddress(record.FromAddress), environment)
 		if err != nil {
 			skipped++
 			l.Error().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("create or get user")

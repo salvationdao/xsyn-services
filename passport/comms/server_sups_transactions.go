@@ -46,13 +46,13 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 	}
 
 	tx := &types.NewTransaction{
-		Debit:                transaction.Credit,
-		Credit:               transaction.Debit,
+		Debit:                transaction.CreditAccountID,
+		Credit:               transaction.DebitAccountID,
 		TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", transaction.TransactionReference)),
 		Description:          fmt.Sprintf("Reverse transaction - %s", transaction.Description),
 		Amount:               transaction.Amount,
 		Group:                types.TransactionGroup(transaction.Group),
-		SubGroup:             transaction.SubGroup.String,
+		SubGroup:             types.TransactionSubGroup(transaction.SubGroup.String),
 		ServiceID:            types.UserID(uuid.FromStringOrNil(transaction.ServiceID.String)),
 	}
 

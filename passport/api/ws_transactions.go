@@ -2,8 +2,10 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/friendsofgo/errors"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
@@ -126,6 +128,7 @@ type TransactionResponse struct {
 
 type AccountOwner struct {
 	ID       string `json:"id"`
+	Type     string `json:"type"`
 	Username string `json:"username"`
 }
 
@@ -142,14 +145,14 @@ func (tc *TransactionController) TransactionSubscribeHandler(ctx context.Context
 		return terror.Error(err, errMsg)
 	}
 
-	if transaction.Credit != user.ID && transaction.Debit != user.ID {
+	if transaction.CreditAccountID != user.AccountID && transaction.DebitAccountID != user.AccountID {
 		return terror.Error(fmt.Errorf("unauthorized"), "You do not have permission to view this item.")
 	}
-	debitOwner, err := tc.API.userCacheMap.GetAccountOwner(transaction.Debit)
+	debitOwner, err := tc.API.userCacheMap.GetAccountOwner(transaction.DebitAccountID)
 	if err != nil {
 		return terror.Error(err, "Failed to get debit account owner")
 	}
-	creditOwner, err := tc.API.userCacheMap.GetAccountOwner(transaction.Credit)
+	creditOwner, err := tc.API.userCacheMap.GetAccountOwner(transaction.CreditAccountID)
 	if err != nil {
 		return terror.Error(err, "Failed to get credit account owner")
 	}
@@ -163,18 +166,33 @@ func (tc *TransactionController) TransactionSubscribeHandler(ctx context.Context
 }
 
 func (ucm *Transactor) GetAccountOwner(accountID string) (*AccountOwner, error) {
-	_, err := ucm.Get(accountID)
+	_, accType, err := ucm.Get(accountID)
 	if err != nil {
 		return nil, err
 	}
 
-	user, err := boiler.FindUser(passdb.StdConn, accountID)
-	if err != nil {
-		return nil, terror.Error(err, "Failed to get user.")
+	if accType == boiler.AccountTypeUSER {
+		user, err := boiler.FindUser(passdb.StdConn, accountID)
+		if err != nil {
+			return nil, terror.Error(err, "Failed to get user.")
+		}
+
+		return &AccountOwner{
+			ID:       user.ID,
+			Type:     accType,
+			Username: user.Username,
+		}, nil
+
+	}
+
+	syndicate, err := boiler.FindSyndicate(passdb.StdConn, accountID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, terror.Error(err, "Failed to get syndicate.")
 	}
 
 	return &AccountOwner{
-		ID:       user.ID,
-		Username: user.Username,
+		ID:       syndicate.ID,
+		Type:     accType,
+		Username: syndicate.Name,
 	}, nil
 }

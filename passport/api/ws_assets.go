@@ -509,7 +509,7 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 		Description:          fmt.Sprintf("Transfer of asset: %s to Supremacy", req.Payload.AssetHash),
 		Amount:               decimal.New(5, 18), // 5 sups
 		Group:                xsynTypes.TransactionGroupAssetManagement,
-		SubGroup:             "Transfer",
+		SubGroup:             xsynTypes.TransactionSubGroupTransfer,
 	}
 
 	txID, err := ac.API.userCacheMap.Transact(tx)
@@ -659,7 +659,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 		Description:          fmt.Sprintf("Transfer of asset: %s to XSYN", req.Payload.AssetHash),
 		Amount:               decimal.New(5, 18), // 5 sups
 		Group:                xsynTypes.TransactionGroupAssetManagement,
-		SubGroup:             "Transfer",
+		SubGroup:             xsynTypes.TransactionSubGroupTransfer,
 	}
 
 	txID, err := ac.API.userCacheMap.Transact(tx)
@@ -822,7 +822,7 @@ func (ac *AssetController) Asset1155TransferToSupremacyHandler(ctx context.Conte
 		Description:          fmt.Sprintf("Transfer of asset: %s to Supremacy", asset.Label),
 		Amount:               decimal.New(5, 18), // 5 sups
 		Group:                xsynTypes.TransactionGroupAssetManagement,
-		SubGroup:             "Transfer",
+		SubGroup:             xsynTypes.TransactionSubGroupTransfer,
 	}
 
 	txID, err := ac.API.userCacheMap.Transact(tx)
@@ -992,7 +992,7 @@ func (ac *AssetController) Asset1155TransferFromSupremacyHandler(ctx context.Con
 		Description:          fmt.Sprintf("Transfer of asset with token id of %d from collection %s to Xsyn", req.Payload.TokenID, req.Payload.CollectionSlug),
 		Amount:               decimal.New(5, 18), // 5 sups
 		Group:                xsynTypes.TransactionGroupAssetManagement,
-		SubGroup:             "Transfer",
+		SubGroup:             xsynTypes.TransactionSubGroupTransfer,
 	}
 
 	txID, err := ac.API.userCacheMap.Transact(tx)
@@ -1241,7 +1241,7 @@ func reverseAssetServiceTransaction(
 		Description:          fmt.Sprintf("Reverse transaction - %s. Reason: %s", transactionToReverse.Description, reason),
 		Amount:               transactionToReverse.Amount,
 		Group:                xsynTypes.TransactionGroupAssetManagement,
-		SubGroup:             "Transfer",
+		SubGroup:             xsynTypes.TransactionSubGroupTransfer,
 		RelatedTransactionID: null.StringFrom(transactionToReverse.ID),
 	}
 
@@ -1286,7 +1286,7 @@ func reverseAsset1155ServiceTransaction(
 		Description:          fmt.Sprintf("Reverse transaction - %s. Reason: %s", transactionToReverse.Description, reason),
 		Amount:               transactionToReverse.Amount,
 		Group:                xsynTypes.TransactionGroupAssetManagement,
-		SubGroup:             "Transfer",
+		SubGroup:             xsynTypes.TransactionSubGroupTransfer,
 		RelatedTransactionID: null.StringFrom(transactionToReverse.ID),
 	}
 

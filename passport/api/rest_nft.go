@@ -7,13 +7,13 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math/big"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
+	"xsyn-services/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -24,7 +24,7 @@ import (
 
 func (api *API) NFTRoutes() chi.Router {
 	r := chi.NewRouter()
-	if os.Getenv("PASSPORT_ENVIRONMENT") != "staging" {
+	if api.Environment != types.Staging {
 		r.Get("/check", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 		r.Get("/owner_address/{owner_address}/nonce/{nonce}/collection_slug/{collection_slug}/token_id/{external_token_id}", WithError(api.MintAsset))
 		r.Post("/owner_address/{owner_address}/collection_slug/{collection_slug}/token_id/{external_token_id}", WithError(api.LockNFT))

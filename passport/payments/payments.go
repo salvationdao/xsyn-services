@@ -35,7 +35,7 @@ type UserCacheMap interface {
 
 const SUPDecimals = 18
 
-func CreateOrGetUser(userAddr common.Address) (*types.User, error) {
+func CreateOrGetUser(userAddr common.Address, environment types.Environment) (*types.User, error) {
 	var user *types.User
 	var err error
 	user, err = users.PublicAddress(userAddr)
@@ -43,7 +43,22 @@ func CreateOrGetUser(userAddr common.Address) (*types.User, error) {
 		username := helpers.TrimUsername(userAddr.Hex())
 		runes := []rune(username)
 		username = string(runes[0:10])
-		user, err = users.UserCreator("", "", username, "", "", "", "", "", "", "", userAddr, "", false)
+		user, err = users.UserCreator(
+			"",
+			"",
+			username,
+			"",
+			"",
+			"",
+			"",
+			"",
+			"",
+			"",
+			userAddr,
+			"",
+			false,
+			environment,
+		)
 		if err != nil {
 			return nil, err
 		}

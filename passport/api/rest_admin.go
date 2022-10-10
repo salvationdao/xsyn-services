@@ -27,7 +27,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-func AdminRoutes(ucm *Transactor) chi.Router {
+func (api *API) AdminRoutes(ucm *Transactor) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/check", WithError(WithAdmin(AdminCheck)))
 	r.Get("/users", WithError(WithAdmin(ListUsers)))
@@ -42,7 +42,7 @@ func AdminRoutes(ucm *Transactor) chi.Router {
 
 	r.Post("/purchased_items/register/{template_id}/{owner_id}", WithError(WithAdmin(PurchasedItemRegisterHandler)))
 	r.Post("/purchased_items/set_owner/{purchased_item_id}/{owner_id}", WithError(WithAdmin(PurchasedItemSetOwner)))
-	r.Post("/purchased_items/register/1155/{public_address}/{collection_slug}/{token_id}/{amount}", WithError(WithAdmin(Register1155Asset)))
+	r.Post("/purchased_items/register/1155/{public_address}/{collection_slug}/{token_id}/{amount}", WithError(WithAdmin(api.Register1155Asset)))
 
 	r.Post("/transactions/create", WithError(WithAdmin(CreateTransaction(ucm))))
 	r.Post("/transactions/reverse/{transaction_id}", WithError(WithAdmin(ReverseUserTransaction(ucm))))
@@ -146,7 +146,7 @@ func CreateTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Requ
 			TransactionReference: types.TransactionReference(ref),
 			Description:          ref,
 			Group:                types.TransactionGroupStore,
-			SubGroup:             "Transfer",
+			SubGroup:             types.TransactionSubGroupTransfer,
 		}
 		_, err = ucm.Transact(newTx)
 		if err != nil {
@@ -168,13 +168,13 @@ func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http
 			return http.StatusBadRequest, terror.Error(fmt.Errorf("tx is nil"), "Could not get transaction")
 		}
 		refundTx := &types.NewTransaction{
-			Credit:               tx.Debit,
-			Debit:                tx.Credit,
+			Credit:               tx.DebitAccountID,
+			Debit:                tx.CreditAccountID,
 			Amount:               tx.Amount,
 			TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", tx.TransactionReference)),
 			Description:          "Reverse transaction",
 			Group:                types.TransactionGroupStore,
-			SubGroup:             "Refund",
+			SubGroup:             types.TransactionSubGroupRefund,
 		}
 		_, err = ucm.Transact(refundTx)
 		if err != nil {
@@ -540,7 +540,7 @@ func UnlockMint(w http.ResponseWriter, r *http.Request) (int, error) {
 	return http.StatusOK, nil
 }
 
-func Register1155Asset(w http.ResponseWriter, r *http.Request) (int, error) {
+func (api *API) Register1155Asset(w http.ResponseWriter, r *http.Request) (int, error) {
 	address := chi.URLParam(r, "public_address")
 	if address == "" {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("no public address provided when registering 1155 asset"), "No public address given")
@@ -558,7 +558,7 @@ func Register1155Asset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, terror.Error(err, "Failed to read amount")
 	}
 
-	user, err := payments.CreateOrGetUser(common.HexToAddress(address))
+	user, err := payments.CreateOrGetUser(common.HexToAddress(address), api.Environment)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Failed to get user")
 	}

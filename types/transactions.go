@@ -56,7 +56,7 @@ type NewTransaction struct {
 	TransactionReference TransactionReference `json:"transaction_reference" db:"transaction_reference"`
 	Description          string               `json:"description" db:"description"`
 	Group                TransactionGroup     `json:"group" db:"group"`
-	SubGroup             string               `json:"sub_group" db:"sub_group"`
+	SubGroup             TransactionSubGroup  `json:"sub_group" db:"sub_group"`
 	Processed            bool                 `json:"processed" db:"-"`
 	CreatedAt            time.Time            `json:"created_at" db:"created_at"`
 }
@@ -71,4 +71,13 @@ const (
 	TransactionGroupSupremacy       TransactionGroup = "SUPREMACY"
 	TransactionGroupAssetManagement TransactionGroup = "ASSET MANAGEMENT"
 	TransactionGroupTesting         TransactionGroup = "TESTING"
+)
+
+type TransactionSubGroup string
+
+const (
+	TransactionSubGroupSyndicateCreate TransactionSubGroup = "SYNDICATE CREATE"
+	TransactionSubGroupTransfer        TransactionSubGroup = "TRANSFER"
+	TransactionSubGroupRefund          TransactionSubGroup = "REFUND"
+	TransactionSubGroupPurchase        TransactionSubGroup = "PURCHASE"
 )

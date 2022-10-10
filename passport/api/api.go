@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"database/sql"
-	"os"
 	"sync"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/email"
@@ -34,12 +33,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type TwitchConfig struct {
-	ExtensionSecret []byte
-	ClientID        string
-	ClientSecret    string
-}
-
 // API server
 type API struct {
 	SupremacyController *SupremacyControllerWS
@@ -55,7 +48,7 @@ type API struct {
 	TokenExpirationDays int
 	TokenEncryptionKey  []byte
 	Eip712Message       string
-	Twitch              *TwitchConfig
+	Twitch              *auth.TwitchConfig
 	Twitter             *auth.TwitterConfig
 	Google              *auth.GoogleConfig
 	ClientToken         string
@@ -85,6 +78,8 @@ type API struct {
 	captcha *captcha
 
 	JWTKey []byte
+
+	Environment types.Environment
 }
 
 // NewAPI registers routes
@@ -101,7 +96,7 @@ func NewAPI(
 	runBlockchainBridge bool,
 	enablePurchaseSubscription bool,
 	jwtKey []byte,
-	environment string,
+	environment types.Environment,
 	ignoreRateLimitIPs []string,
 	pxr *PassportExchangeRate,
 
@@ -119,13 +114,9 @@ func NewAPI(
 		Google: &auth.GoogleConfig{
 			ClientID: config.AuthParams.GoogleClientID,
 		},
-		Twitch: &TwitchConfig{
+		Twitch: &auth.TwitchConfig{
 			ClientID:     config.AuthParams.TwitchClientID,
 			ClientSecret: config.AuthParams.TwitchClientSecret,
-		},
-		Twitter: &auth.TwitterConfig{
-			APIKey:    config.AuthParams.TwitterAPIKey,
-			APISecret: config.AuthParams.TwitterAPISecret,
 		},
 		Eip712Message: config.MetaMaskSignMessage,
 		Cookie: securebytes.New(
@@ -151,6 +142,7 @@ func NewAPI(
 			siteKey:   config.CaptchaSiteKey,
 			verifyUrl: "https://hcaptcha.com/siteverify",
 		},
+		Environment: environment,
 	}
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
@@ -177,7 +169,7 @@ func NewAPI(
 
 	ws.Init(&ws.Config{
 		Logger:        passlog.L,
-		SkipRateLimit: os.Getenv("PASSPORT_ENVIRONMENT") == "staging" || os.Getenv("PASSPORT_ENVIRONMENT") == "development",
+		SkipRateLimit: environment == types.Staging || environment == types.Development,
 	})
 
 	if runBlockchainBridge {
@@ -202,16 +194,15 @@ func NewAPI(
 	_ = NewFactionController(log, api)
 	_ = NewRoleController(log, api)
 	sc := NewSupremacyController(log, api)
-	_ = NewGamebarController(log, api)
 	_ = NewStoreController(log, api)
-	d := DevRoutes(ucm)
+	d := DevRoutes(ucm, environment)
 
-	r.Mount("/api/admin", AdminRoutes(ucm))
+	r.Mount("/api/admin", api.AdminRoutes(ucm))
 	r.Mount("/api/roadmap", roadmapRoutes)
 	r.Handle("/metrics", promhttp.Handler())
 	r.Route("/api", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
-			if environment != "development" {
+			if environment != types.Development {
 				r.Use(DatadogTracer.Middleware())
 			}
 
@@ -221,14 +212,14 @@ func NewAPI(
 			r.Mount("/files", FileRouter(api))
 			r.Mount("/nfts", api.NFTRoutes())
 			r.Mount("/moderator", ModeratorRoutes())
-			if environment == "development" {
+			if environment == types.Development {
 				r.Mount("/dev", d.R)
 			}
 
 			//r.Get("/verify", WithError(api.Auth.VerifyAccountHandler))
 			r.Get("/get-nonce", WithError(api.GetNonce))
 			//r.Get("/auth/twitter", WithError(api.Auth.TwitterAuth))
-			if os.Getenv("PASSPORT_ENVIRONMENT") != "staging" {
+			if environment != types.Staging {
 				r.Get("/withdraw/holding/{user_address}", WithError(api.HoldingSups))
 				r.Get("/withdraw/check/{address}", WithError(api.GetMaxWithdrawAmount))
 				r.Get("/withdraw/check", WithError(api.CheckCanWithdraw))

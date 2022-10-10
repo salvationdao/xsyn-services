@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -24,41 +23,41 @@ import (
 
 // User is an object representing the database table.
 type User struct {
-	ID                               string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Username                         string          `boiler:"username" boil:"username" json:"username" toml:"username" yaml:"username"`
-	RoleID                           null.String     `boiler:"role_id" boil:"role_id" json:"role_id,omitempty" toml:"role_id" yaml:"role_id,omitempty"`
-	AvatarID                         null.String     `boiler:"avatar_id" boil:"avatar_id" json:"avatar_id,omitempty" toml:"avatar_id" yaml:"avatar_id,omitempty"`
-	FacebookID                       null.String     `boiler:"facebook_id" boil:"facebook_id" json:"facebook_id,omitempty" toml:"facebook_id" yaml:"facebook_id,omitempty"`
-	GoogleID                         null.String     `boiler:"google_id" boil:"google_id" json:"google_id,omitempty" toml:"google_id" yaml:"google_id,omitempty"`
-	TwitchID                         null.String     `boiler:"twitch_id" boil:"twitch_id" json:"twitch_id,omitempty" toml:"twitch_id" yaml:"twitch_id,omitempty"`
-	TwitterID                        null.String     `boiler:"twitter_id" boil:"twitter_id" json:"twitter_id,omitempty" toml:"twitter_id" yaml:"twitter_id,omitempty"`
-	DiscordID                        null.String     `boiler:"discord_id" boil:"discord_id" json:"discord_id,omitempty" toml:"discord_id" yaml:"discord_id,omitempty"`
-	FactionID                        null.String     `boiler:"faction_id" boil:"faction_id" json:"faction_id,omitempty" toml:"faction_id" yaml:"faction_id,omitempty"`
-	Email                            null.String     `boiler:"email" boil:"email" json:"email,omitempty" toml:"email" yaml:"email,omitempty"`
-	FirstName                        null.String     `boiler:"first_name" boil:"first_name" json:"first_name,omitempty" toml:"first_name" yaml:"first_name,omitempty"`
-	LastName                         null.String     `boiler:"last_name" boil:"last_name" json:"last_name,omitempty" toml:"last_name" yaml:"last_name,omitempty"`
-	Verified                         bool            `boiler:"verified" boil:"verified" json:"verified" toml:"verified" yaml:"verified"`
-	OldPasswordRequired              bool            `boiler:"old_password_required" boil:"old_password_required" json:"old_password_required" toml:"old_password_required" yaml:"old_password_required"`
-	TwoFactorAuthenticationActivated bool            `boiler:"two_factor_authentication_activated" boil:"two_factor_authentication_activated" json:"two_factor_authentication_activated" toml:"two_factor_authentication_activated" yaml:"two_factor_authentication_activated"`
-	TwoFactorAuthenticationSecret    string          `boiler:"two_factor_authentication_secret" boil:"two_factor_authentication_secret" json:"two_factor_authentication_secret" toml:"two_factor_authentication_secret" yaml:"two_factor_authentication_secret"`
-	TwoFactorAuthenticationIsSet     bool            `boiler:"two_factor_authentication_is_set" boil:"two_factor_authentication_is_set" json:"two_factor_authentication_is_set" toml:"two_factor_authentication_is_set" yaml:"two_factor_authentication_is_set"`
-	Sups                             decimal.Decimal `boiler:"sups" boil:"sups" json:"sups" toml:"sups" yaml:"sups"`
-	PublicAddress                    null.String     `boiler:"public_address" boil:"public_address" json:"public_address,omitempty" toml:"public_address" yaml:"public_address,omitempty"`
-	PrivateAddress                   null.String     `boiler:"private_address" boil:"private_address" json:"private_address,omitempty" toml:"private_address" yaml:"private_address,omitempty"`
-	Nonce                            null.String     `boiler:"nonce" boil:"nonce" json:"nonce,omitempty" toml:"nonce" yaml:"nonce,omitempty"`
-	Keywords                         null.String     `boiler:"keywords" boil:"keywords" json:"keywords,omitempty" toml:"keywords" yaml:"keywords,omitempty"`
-	DeletedAt                        null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt                        time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt                        time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	Metadata                         null.JSON       `boiler:"metadata" boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
-	MobileNumber                     null.String     `boiler:"mobile_number" boil:"mobile_number" json:"mobile_number,omitempty" toml:"mobile_number" yaml:"mobile_number,omitempty"`
-	ChatBannedUntil                  null.Time       `boiler:"chat_banned_until" boil:"chat_banned_until" json:"chat_banned_until,omitempty" toml:"chat_banned_until" yaml:"chat_banned_until,omitempty"`
-	RenameBanned                     null.Bool       `boiler:"rename_banned" boil:"rename_banned" json:"rename_banned,omitempty" toml:"rename_banned" yaml:"rename_banned,omitempty"`
-	WithdrawLock                     bool            `boiler:"withdraw_lock" boil:"withdraw_lock" json:"withdraw_lock" toml:"withdraw_lock" yaml:"withdraw_lock"`
-	MintLock                         bool            `boiler:"mint_lock" boil:"mint_lock" json:"mint_lock" toml:"mint_lock" yaml:"mint_lock"`
-	TotalLock                        bool            `boiler:"total_lock" boil:"total_lock" json:"total_lock" toml:"total_lock" yaml:"total_lock"`
-	Permissions                      null.String     `boiler:"permissions" boil:"permissions" json:"permissions,omitempty" toml:"permissions" yaml:"permissions,omitempty"`
-	AcceptsMarketing                 null.Bool       `boiler:"accepts_marketing" boil:"accepts_marketing" json:"accepts_marketing,omitempty" toml:"accepts_marketing" yaml:"accepts_marketing,omitempty"`
+	ID                               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Username                         string      `boiler:"username" boil:"username" json:"username" toml:"username" yaml:"username"`
+	RoleID                           null.String `boiler:"role_id" boil:"role_id" json:"role_id,omitempty" toml:"role_id" yaml:"role_id,omitempty"`
+	AvatarID                         null.String `boiler:"avatar_id" boil:"avatar_id" json:"avatar_id,omitempty" toml:"avatar_id" yaml:"avatar_id,omitempty"`
+	FacebookID                       null.String `boiler:"facebook_id" boil:"facebook_id" json:"facebook_id,omitempty" toml:"facebook_id" yaml:"facebook_id,omitempty"`
+	GoogleID                         null.String `boiler:"google_id" boil:"google_id" json:"google_id,omitempty" toml:"google_id" yaml:"google_id,omitempty"`
+	TwitchID                         null.String `boiler:"twitch_id" boil:"twitch_id" json:"twitch_id,omitempty" toml:"twitch_id" yaml:"twitch_id,omitempty"`
+	TwitterID                        null.String `boiler:"twitter_id" boil:"twitter_id" json:"twitter_id,omitempty" toml:"twitter_id" yaml:"twitter_id,omitempty"`
+	DiscordID                        null.String `boiler:"discord_id" boil:"discord_id" json:"discord_id,omitempty" toml:"discord_id" yaml:"discord_id,omitempty"`
+	FactionID                        null.String `boiler:"faction_id" boil:"faction_id" json:"faction_id,omitempty" toml:"faction_id" yaml:"faction_id,omitempty"`
+	Email                            null.String `boiler:"email" boil:"email" json:"email,omitempty" toml:"email" yaml:"email,omitempty"`
+	FirstName                        null.String `boiler:"first_name" boil:"first_name" json:"first_name,omitempty" toml:"first_name" yaml:"first_name,omitempty"`
+	LastName                         null.String `boiler:"last_name" boil:"last_name" json:"last_name,omitempty" toml:"last_name" yaml:"last_name,omitempty"`
+	Verified                         bool        `boiler:"verified" boil:"verified" json:"verified" toml:"verified" yaml:"verified"`
+	OldPasswordRequired              bool        `boiler:"old_password_required" boil:"old_password_required" json:"old_password_required" toml:"old_password_required" yaml:"old_password_required"`
+	TwoFactorAuthenticationActivated bool        `boiler:"two_factor_authentication_activated" boil:"two_factor_authentication_activated" json:"two_factor_authentication_activated" toml:"two_factor_authentication_activated" yaml:"two_factor_authentication_activated"`
+	TwoFactorAuthenticationSecret    string      `boiler:"two_factor_authentication_secret" boil:"two_factor_authentication_secret" json:"two_factor_authentication_secret" toml:"two_factor_authentication_secret" yaml:"two_factor_authentication_secret"`
+	TwoFactorAuthenticationIsSet     bool        `boiler:"two_factor_authentication_is_set" boil:"two_factor_authentication_is_set" json:"two_factor_authentication_is_set" toml:"two_factor_authentication_is_set" yaml:"two_factor_authentication_is_set"`
+	PublicAddress                    null.String `boiler:"public_address" boil:"public_address" json:"public_address,omitempty" toml:"public_address" yaml:"public_address,omitempty"`
+	PrivateAddress                   null.String `boiler:"private_address" boil:"private_address" json:"private_address,omitempty" toml:"private_address" yaml:"private_address,omitempty"`
+	Nonce                            null.String `boiler:"nonce" boil:"nonce" json:"nonce,omitempty" toml:"nonce" yaml:"nonce,omitempty"`
+	Keywords                         null.String `boiler:"keywords" boil:"keywords" json:"keywords,omitempty" toml:"keywords" yaml:"keywords,omitempty"`
+	DeletedAt                        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt                        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt                        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	Metadata                         null.JSON   `boiler:"metadata" boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
+	MobileNumber                     null.String `boiler:"mobile_number" boil:"mobile_number" json:"mobile_number,omitempty" toml:"mobile_number" yaml:"mobile_number,omitempty"`
+	ChatBannedUntil                  null.Time   `boiler:"chat_banned_until" boil:"chat_banned_until" json:"chat_banned_until,omitempty" toml:"chat_banned_until" yaml:"chat_banned_until,omitempty"`
+	RenameBanned                     null.Bool   `boiler:"rename_banned" boil:"rename_banned" json:"rename_banned,omitempty" toml:"rename_banned" yaml:"rename_banned,omitempty"`
+	WithdrawLock                     bool        `boiler:"withdraw_lock" boil:"withdraw_lock" json:"withdraw_lock" toml:"withdraw_lock" yaml:"withdraw_lock"`
+	MintLock                         bool        `boiler:"mint_lock" boil:"mint_lock" json:"mint_lock" toml:"mint_lock" yaml:"mint_lock"`
+	TotalLock                        bool        `boiler:"total_lock" boil:"total_lock" json:"total_lock" toml:"total_lock" yaml:"total_lock"`
+	Permissions                      null.String `boiler:"permissions" boil:"permissions" json:"permissions,omitempty" toml:"permissions" yaml:"permissions,omitempty"`
+	AcceptsMarketing                 null.Bool   `boiler:"accepts_marketing" boil:"accepts_marketing" json:"accepts_marketing,omitempty" toml:"accepts_marketing" yaml:"accepts_marketing,omitempty"`
+	AccountID                        string      `boiler:"account_id" boil:"account_id" json:"account_id" toml:"account_id" yaml:"account_id"`
 
 	R *userR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -83,7 +82,6 @@ var UserColumns = struct {
 	TwoFactorAuthenticationActivated string
 	TwoFactorAuthenticationSecret    string
 	TwoFactorAuthenticationIsSet     string
-	Sups                             string
 	PublicAddress                    string
 	PrivateAddress                   string
 	Nonce                            string
@@ -100,6 +98,7 @@ var UserColumns = struct {
 	TotalLock                        string
 	Permissions                      string
 	AcceptsMarketing                 string
+	AccountID                        string
 }{
 	ID:                               "id",
 	Username:                         "username",
@@ -119,7 +118,6 @@ var UserColumns = struct {
 	TwoFactorAuthenticationActivated: "two_factor_authentication_activated",
 	TwoFactorAuthenticationSecret:    "two_factor_authentication_secret",
 	TwoFactorAuthenticationIsSet:     "two_factor_authentication_is_set",
-	Sups:                             "sups",
 	PublicAddress:                    "public_address",
 	PrivateAddress:                   "private_address",
 	Nonce:                            "nonce",
@@ -136,6 +134,7 @@ var UserColumns = struct {
 	TotalLock:                        "total_lock",
 	Permissions:                      "permissions",
 	AcceptsMarketing:                 "accepts_marketing",
+	AccountID:                        "account_id",
 }
 
 var UserTableColumns = struct {
@@ -157,7 +156,6 @@ var UserTableColumns = struct {
 	TwoFactorAuthenticationActivated string
 	TwoFactorAuthenticationSecret    string
 	TwoFactorAuthenticationIsSet     string
-	Sups                             string
 	PublicAddress                    string
 	PrivateAddress                   string
 	Nonce                            string
@@ -174,6 +172,7 @@ var UserTableColumns = struct {
 	TotalLock                        string
 	Permissions                      string
 	AcceptsMarketing                 string
+	AccountID                        string
 }{
 	ID:                               "users.id",
 	Username:                         "users.username",
@@ -193,7 +192,6 @@ var UserTableColumns = struct {
 	TwoFactorAuthenticationActivated: "users.two_factor_authentication_activated",
 	TwoFactorAuthenticationSecret:    "users.two_factor_authentication_secret",
 	TwoFactorAuthenticationIsSet:     "users.two_factor_authentication_is_set",
-	Sups:                             "users.sups",
 	PublicAddress:                    "users.public_address",
 	PrivateAddress:                   "users.private_address",
 	Nonce:                            "users.nonce",
@@ -210,6 +208,7 @@ var UserTableColumns = struct {
 	TotalLock:                        "users.total_lock",
 	Permissions:                      "users.permissions",
 	AcceptsMarketing:                 "users.accepts_marketing",
+	AccountID:                        "users.account_id",
 }
 
 // Generated where
@@ -233,7 +232,6 @@ var UserWhere = struct {
 	TwoFactorAuthenticationActivated whereHelperbool
 	TwoFactorAuthenticationSecret    whereHelperstring
 	TwoFactorAuthenticationIsSet     whereHelperbool
-	Sups                             whereHelperdecimal_Decimal
 	PublicAddress                    whereHelpernull_String
 	PrivateAddress                   whereHelpernull_String
 	Nonce                            whereHelpernull_String
@@ -250,6 +248,7 @@ var UserWhere = struct {
 	TotalLock                        whereHelperbool
 	Permissions                      whereHelpernull_String
 	AcceptsMarketing                 whereHelpernull_Bool
+	AccountID                        whereHelperstring
 }{
 	ID:                               whereHelperstring{field: "\"users\".\"id\""},
 	Username:                         whereHelperstring{field: "\"users\".\"username\""},
@@ -269,7 +268,6 @@ var UserWhere = struct {
 	TwoFactorAuthenticationActivated: whereHelperbool{field: "\"users\".\"two_factor_authentication_activated\""},
 	TwoFactorAuthenticationSecret:    whereHelperstring{field: "\"users\".\"two_factor_authentication_secret\""},
 	TwoFactorAuthenticationIsSet:     whereHelperbool{field: "\"users\".\"two_factor_authentication_is_set\""},
-	Sups:                             whereHelperdecimal_Decimal{field: "\"users\".\"sups\""},
 	PublicAddress:                    whereHelpernull_String{field: "\"users\".\"public_address\""},
 	PrivateAddress:                   whereHelpernull_String{field: "\"users\".\"private_address\""},
 	Nonce:                            whereHelpernull_String{field: "\"users\".\"nonce\""},
@@ -286,10 +284,12 @@ var UserWhere = struct {
 	TotalLock:                        whereHelperbool{field: "\"users\".\"total_lock\""},
 	Permissions:                      whereHelpernull_String{field: "\"users\".\"permissions\""},
 	AcceptsMarketing:                 whereHelpernull_Bool{field: "\"users\".\"accepts_marketing\""},
+	AccountID:                        whereHelperstring{field: "\"users\".\"account_id\""},
 }
 
 // UserRels is where relationship names are stored.
 var UserRels = struct {
+	Account                                   string
 	Avatar                                    string
 	Faction                                   string
 	Role                                      string
@@ -311,8 +311,7 @@ var UserRels = struct {
 	Pending1155Rollbacks                      string
 	PendingRefunds                            string
 	OwnerPurchasedItemsOlds                   string
-	CreditTransactions                        string
-	DebitTransactions                         string
+	FoundedBySyndicates                       string
 	ServiceTransactions                       string
 	CreditTransactionsOlds                    string
 	DebitTransactionsOlds                     string
@@ -325,6 +324,7 @@ var UserRels = struct {
 	UserRecoveryCodes                         string
 	UsernameHistories                         string
 }{
+	Account:      "Account",
 	Avatar:       "Avatar",
 	Faction:      "Faction",
 	Role:         "Role",
@@ -346,8 +346,7 @@ var UserRels = struct {
 	Pending1155Rollbacks:                      "Pending1155Rollbacks",
 	PendingRefunds:                            "PendingRefunds",
 	OwnerPurchasedItemsOlds:                   "OwnerPurchasedItemsOlds",
-	CreditTransactions:                        "CreditTransactions",
-	DebitTransactions:                         "DebitTransactions",
+	FoundedBySyndicates:                       "FoundedBySyndicates",
 	ServiceTransactions:                       "ServiceTransactions",
 	CreditTransactionsOlds:                    "CreditTransactionsOlds",
 	DebitTransactionsOlds:                     "DebitTransactionsOlds",
@@ -363,6 +362,7 @@ var UserRels = struct {
 
 // userR is where relationships are stored.
 type userR struct {
+	Account                                   *Account                           `boiler:"Account" boil:"Account" json:"Account" toml:"Account" yaml:"Account"`
 	Avatar                                    *Blob                              `boiler:"Avatar" boil:"Avatar" json:"Avatar" toml:"Avatar" yaml:"Avatar"`
 	Faction                                   *Faction                           `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	Role                                      *Role                              `boiler:"Role" boil:"Role" json:"Role" toml:"Role" yaml:"Role"`
@@ -384,8 +384,7 @@ type userR struct {
 	Pending1155Rollbacks                      Pending1155RollbackSlice           `boiler:"Pending1155Rollbacks" boil:"Pending1155Rollbacks" json:"Pending1155Rollbacks" toml:"Pending1155Rollbacks" yaml:"Pending1155Rollbacks"`
 	PendingRefunds                            PendingRefundSlice                 `boiler:"PendingRefunds" boil:"PendingRefunds" json:"PendingRefunds" toml:"PendingRefunds" yaml:"PendingRefunds"`
 	OwnerPurchasedItemsOlds                   PurchasedItemsOldSlice             `boiler:"OwnerPurchasedItemsOlds" boil:"OwnerPurchasedItemsOlds" json:"OwnerPurchasedItemsOlds" toml:"OwnerPurchasedItemsOlds" yaml:"OwnerPurchasedItemsOlds"`
-	CreditTransactions                        TransactionSlice                   `boiler:"CreditTransactions" boil:"CreditTransactions" json:"CreditTransactions" toml:"CreditTransactions" yaml:"CreditTransactions"`
-	DebitTransactions                         TransactionSlice                   `boiler:"DebitTransactions" boil:"DebitTransactions" json:"DebitTransactions" toml:"DebitTransactions" yaml:"DebitTransactions"`
+	FoundedBySyndicates                       SyndicateSlice                     `boiler:"FoundedBySyndicates" boil:"FoundedBySyndicates" json:"FoundedBySyndicates" toml:"FoundedBySyndicates" yaml:"FoundedBySyndicates"`
 	ServiceTransactions                       TransactionSlice                   `boiler:"ServiceTransactions" boil:"ServiceTransactions" json:"ServiceTransactions" toml:"ServiceTransactions" yaml:"ServiceTransactions"`
 	CreditTransactionsOlds                    TransactionsOldSlice               `boiler:"CreditTransactionsOlds" boil:"CreditTransactionsOlds" json:"CreditTransactionsOlds" toml:"CreditTransactionsOlds" yaml:"CreditTransactionsOlds"`
 	DebitTransactionsOlds                     TransactionsOldSlice               `boiler:"DebitTransactionsOlds" boil:"DebitTransactionsOlds" json:"DebitTransactionsOlds" toml:"DebitTransactionsOlds" yaml:"DebitTransactionsOlds"`
@@ -408,9 +407,9 @@ func (*userR) NewStruct() *userR {
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"id", "username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "sups", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata", "mobile_number", "chat_banned_until", "rename_banned", "withdraw_lock", "mint_lock", "total_lock", "permissions", "accepts_marketing"}
-	userColumnsWithoutDefault = []string{"username"}
-	userColumnsWithDefault    = []string{"id", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "sups", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata", "mobile_number", "chat_banned_until", "rename_banned", "withdraw_lock", "mint_lock", "total_lock", "permissions", "accepts_marketing"}
+	userAllColumns            = []string{"id", "username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata", "mobile_number", "chat_banned_until", "rename_banned", "withdraw_lock", "mint_lock", "total_lock", "permissions", "accepts_marketing", "account_id"}
+	userColumnsWithoutDefault = []string{"username", "account_id"}
+	userColumnsWithDefault    = []string{"id", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata", "mobile_number", "chat_banned_until", "rename_banned", "withdraw_lock", "mint_lock", "total_lock", "permissions", "accepts_marketing"}
 	userPrimaryKeyColumns     = []string{"id"}
 	userGeneratedColumns      = []string{}
 )
@@ -655,6 +654,21 @@ func (q userQuery) Exists(exec boil.Executor) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+// Account pointed to by the foreign key.
+func (o *User) Account(mods ...qm.QueryMod) accountQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.AccountID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Accounts(queryMods...)
+	queries.SetFrom(query.Query, "\"accounts\"")
+
+	return query
 }
 
 // Avatar pointed to by the foreign key.
@@ -1079,43 +1093,23 @@ func (o *User) OwnerPurchasedItemsOlds(mods ...qm.QueryMod) purchasedItemsOldQue
 	return query
 }
 
-// CreditTransactions retrieves all the transaction's Transactions with an executor via credit column.
-func (o *User) CreditTransactions(mods ...qm.QueryMod) transactionQuery {
+// FoundedBySyndicates retrieves all the syndicate's Syndicates with an executor via founded_by_id column.
+func (o *User) FoundedBySyndicates(mods ...qm.QueryMod) syndicateQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"transactions\".\"credit\"=?", o.ID),
+		qm.Where("\"syndicates\".\"founded_by_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"syndicates\".\"deleted_at\""),
 	)
 
-	query := Transactions(queryMods...)
-	queries.SetFrom(query.Query, "\"transactions\"")
+	query := Syndicates(queryMods...)
+	queries.SetFrom(query.Query, "\"syndicates\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"transactions\".*"})
-	}
-
-	return query
-}
-
-// DebitTransactions retrieves all the transaction's Transactions with an executor via debit column.
-func (o *User) DebitTransactions(mods ...qm.QueryMod) transactionQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"transactions\".\"debit\"=?", o.ID),
-	)
-
-	query := Transactions(queryMods...)
-	queries.SetFrom(query.Query, "\"transactions\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"transactions\".*"})
+		queries.SetSelect(query.Query, []string{"\"syndicates\".*"})
 	}
 
 	return query
@@ -1354,6 +1348,111 @@ func (o *User) UsernameHistories(mods ...qm.QueryMod) usernameHistoryQuery {
 	}
 
 	return query
+}
+
+// LoadAccount allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (userL) LoadAccount(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.AccountID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.AccountID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.AccountID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`accounts`),
+		qm.WhereIn(`accounts.id in ?`, args...),
+		qmhelper.WhereIsNull(`accounts.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Account")
+	}
+
+	var resultSlice []*Account
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Account")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for accounts")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for accounts")
+	}
+
+	if len(userAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Account = foreign
+		if foreign.R == nil {
+			foreign.R = &accountR{}
+		}
+		foreign.R.Users = append(foreign.R.Users, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.AccountID == foreign.ID {
+				local.R.Account = foreign
+				if foreign.R == nil {
+					foreign.R = &accountR{}
+				}
+				foreign.R.Users = append(foreign.R.Users, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadAvatar allows an eager lookup of values, cached into the
@@ -3456,9 +3555,9 @@ func (userL) LoadOwnerPurchasedItemsOlds(e boil.Executor, singular bool, maybeUs
 	return nil
 }
 
-// LoadCreditTransactions allows an eager lookup of values, cached into the
+// LoadFoundedBySyndicates allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadCreditTransactions(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+func (userL) LoadFoundedBySyndicates(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
 	var slice []*User
 	var object *User
 
@@ -3496,8 +3595,9 @@ func (userL) LoadCreditTransactions(e boil.Executor, singular bool, maybeUser in
 	}
 
 	query := NewQuery(
-		qm.From(`transactions`),
-		qm.WhereIn(`transactions.credit in ?`, args...),
+		qm.From(`syndicates`),
+		qm.WhereIn(`syndicates.founded_by_id in ?`, args...),
+		qmhelper.WhereIsNull(`syndicates.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -3505,22 +3605,22 @@ func (userL) LoadCreditTransactions(e boil.Executor, singular bool, maybeUser in
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load transactions")
+		return errors.Wrap(err, "failed to eager load syndicates")
 	}
 
-	var resultSlice []*Transaction
+	var resultSlice []*Syndicate
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice transactions")
+		return errors.Wrap(err, "failed to bind eager loaded slice syndicates")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on transactions")
+		return errors.Wrap(err, "failed to close results in eager load on syndicates")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicates")
 	}
 
-	if len(transactionAfterSelectHooks) != 0 {
+	if len(syndicateAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -3528,122 +3628,24 @@ func (userL) LoadCreditTransactions(e boil.Executor, singular bool, maybeUser in
 		}
 	}
 	if singular {
-		object.R.CreditTransactions = resultSlice
+		object.R.FoundedBySyndicates = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &transactionR{}
+				foreign.R = &syndicateR{}
 			}
-			foreign.R.CreditUser = object
+			foreign.R.FoundedBy = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.Credit {
-				local.R.CreditTransactions = append(local.R.CreditTransactions, foreign)
+			if local.ID == foreign.FoundedByID {
+				local.R.FoundedBySyndicates = append(local.R.FoundedBySyndicates, foreign)
 				if foreign.R == nil {
-					foreign.R = &transactionR{}
+					foreign.R = &syndicateR{}
 				}
-				foreign.R.CreditUser = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadDebitTransactions allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadDebitTransactions(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
-	var slice []*User
-	var object *User
-
-	if singular {
-		object = maybeUser.(*User)
-	} else {
-		slice = *maybeUser.(*[]*User)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &userR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &userR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`transactions`),
-		qm.WhereIn(`transactions.debit in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load transactions")
-	}
-
-	var resultSlice []*Transaction
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice transactions")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on transactions")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for transactions")
-	}
-
-	if len(transactionAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.DebitTransactions = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &transactionR{}
-			}
-			foreign.R.DebitUser = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.Debit {
-				local.R.DebitTransactions = append(local.R.DebitTransactions, foreign)
-				if foreign.R == nil {
-					foreign.R = &transactionR{}
-				}
-				foreign.R.DebitUser = local
+				foreign.R.FoundedBy = local
 				break
 			}
 		}
@@ -4729,6 +4731,52 @@ func (userL) LoadUsernameHistories(e boil.Executor, singular bool, maybeUser int
 				break
 			}
 		}
+	}
+
+	return nil
+}
+
+// SetAccount of the user to the related item.
+// Sets o.R.Account to related.
+// Adds o to related.R.Users.
+func (o *User) SetAccount(exec boil.Executor, insert bool, related *Account) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"users\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"account_id"}),
+		strmangle.WhereClause("\"", "\"", 2, userPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.AccountID = related.ID
+	if o.R == nil {
+		o.R = &userR{
+			Account: related,
+		}
+	} else {
+		o.R.Account = related
+	}
+
+	if related.R == nil {
+		related.R = &accountR{
+			Users: UserSlice{o},
+		}
+	} else {
+		related.R.Users = append(related.R.Users, o)
 	}
 
 	return nil
@@ -6197,23 +6245,23 @@ func (o *User) AddOwnerPurchasedItemsOlds(exec boil.Executor, insert bool, relat
 	return nil
 }
 
-// AddCreditTransactions adds the given related objects to the existing relationships
+// AddFoundedBySyndicates adds the given related objects to the existing relationships
 // of the user, optionally inserting them as new records.
-// Appends related to o.R.CreditTransactions.
-// Sets related.R.CreditUser appropriately.
-func (o *User) AddCreditTransactions(exec boil.Executor, insert bool, related ...*Transaction) error {
+// Appends related to o.R.FoundedBySyndicates.
+// Sets related.R.FoundedBy appropriately.
+func (o *User) AddFoundedBySyndicates(exec boil.Executor, insert bool, related ...*Syndicate) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.Credit = o.ID
+			rel.FoundedByID = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"transactions\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"credit"}),
-				strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
+				"UPDATE \"syndicates\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"founded_by_id"}),
+				strmangle.WhereClause("\"", "\"", 2, syndicatePrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -6225,77 +6273,25 @@ func (o *User) AddCreditTransactions(exec boil.Executor, insert bool, related ..
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.Credit = o.ID
+			rel.FoundedByID = o.ID
 		}
 	}
 
 	if o.R == nil {
 		o.R = &userR{
-			CreditTransactions: related,
+			FoundedBySyndicates: related,
 		}
 	} else {
-		o.R.CreditTransactions = append(o.R.CreditTransactions, related...)
+		o.R.FoundedBySyndicates = append(o.R.FoundedBySyndicates, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &transactionR{
-				CreditUser: o,
+			rel.R = &syndicateR{
+				FoundedBy: o,
 			}
 		} else {
-			rel.R.CreditUser = o
-		}
-	}
-	return nil
-}
-
-// AddDebitTransactions adds the given related objects to the existing relationships
-// of the user, optionally inserting them as new records.
-// Appends related to o.R.DebitTransactions.
-// Sets related.R.DebitUser appropriately.
-func (o *User) AddDebitTransactions(exec boil.Executor, insert bool, related ...*Transaction) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.Debit = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"transactions\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"debit"}),
-				strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.Debit = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &userR{
-			DebitTransactions: related,
-		}
-	} else {
-		o.R.DebitTransactions = append(o.R.DebitTransactions, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &transactionR{
-				DebitUser: o,
-			}
-		} else {
-			rel.R.DebitUser = o
+			rel.R.FoundedBy = o
 		}
 	}
 	return nil

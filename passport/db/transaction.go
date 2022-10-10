@@ -62,10 +62,10 @@ INNER JOIN %s f ON %s = f.%s
 `,
 	boiler.TableNames.Transactions,
 	boiler.TableNames.Users,
-	boiler.TransactionTableColumns.Credit,
+	boiler.TransactionTableColumns.CreditAccountID,
 	boiler.UserColumns.ID,
 	boiler.TableNames.Users,
-	boiler.TransactionTableColumns.Debit,
+	boiler.TransactionTableColumns.DebitAccountID,
 	boiler.UserColumns.ID,
 )
 
@@ -84,8 +84,8 @@ func UsersTransactionGroups(
 		boiler.TransactionTableColumns.SubGroup,
 		boiler.TableNames.Transactions,
 		boiler.TransactionTableColumns.Group,
-		boiler.TransactionTableColumns.Credit,
-		boiler.TransactionTableColumns.Debit,
+		boiler.TransactionTableColumns.CreditAccountID,
+		boiler.TransactionTableColumns.DebitAccountID,
 	)
 	var args []interface{}
 	args = append(args, userID)
@@ -183,7 +183,7 @@ func TransactionIDList(
 		if len(filterConditions) > 0 {
 			filterConditionsString += " AND "
 		}
-		filterConditionsString += fmt.Sprintf("(%[2]s = $%[1]d OR %[3]s = $%[1]d) ", len(args), boiler.TransactionColumns.Credit, boiler.TransactionColumns.Debit)
+		filterConditionsString += fmt.Sprintf("(%[2]s = $%[1]d OR %[3]s = $%[1]d) ", len(args), boiler.TransactionColumns.CreditAccountID, boiler.TransactionColumns.DebitAccountID)
 	}
 
 	searchCondition := ""
@@ -288,8 +288,8 @@ func TransactionGetByID(transactionID string) (*boiler.Transaction, error) {
 			Description:          transaction.Description,
 			TransactionReference: transaction.TransactionReference,
 			Amount:               transaction.Amount,
-			Credit:               transaction.Credit,
-			Debit:                transaction.Debit,
+			CreditAccountID:      transaction.Credit,
+			DebitAccountID:       transaction.Debit,
 			CreatedAt:            transaction.CreatedAt,
 			Group:                transaction.Group,
 			SubGroup:             transaction.SubGroup,
@@ -327,8 +327,8 @@ func TransactionGetByReference(transactionRef string) (*boiler.Transaction, erro
 			Description:          transaction.Description,
 			TransactionReference: transaction.TransactionReference,
 			Amount:               transaction.Amount,
-			Credit:               transaction.Credit,
-			Debit:                transaction.Debit,
+			CreditAccountID:      transaction.Credit,
+			DebitAccountID:       transaction.Debit,
 			CreatedAt:            transaction.CreatedAt,
 			Group:                transaction.Group,
 			SubGroup:             transaction.SubGroup,
@@ -397,9 +397,13 @@ func TransactionReferenceExists(txhash string) (bool, error) {
 func UserBalance(userID string) (*boiler.User, error) {
 	user, err := boiler.Users(
 		boiler.UserWhere.ID.EQ(userID),
+		qm.Load(boiler.UserRels.Account),
 	).One(passdb.StdConn)
 	if err != nil {
 		return nil, err
+	}
+	if user.R.Account == nil {
+		return nil, fmt.Errorf("user does not have an account")
 	}
 
 	return user, nil
@@ -425,8 +429,8 @@ func AdminTransactionGetAllFromUserID(user *boiler.User) ([]*boiler.Transaction,
 				Description:          tx.Description,
 				TransactionReference: tx.TransactionReference,
 				Amount:               tx.Amount,
-				Credit:               tx.Credit,
-				Debit:                tx.Debit,
+				CreditAccountID:      tx.Credit,
+				DebitAccountID:       tx.Debit,
 				Reason:               tx.Reason,
 				CreatedAt:            tx.CreatedAt,
 				Group:                tx.Group,

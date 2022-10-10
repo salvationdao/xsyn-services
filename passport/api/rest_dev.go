@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"os"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
@@ -29,24 +28,26 @@ import (
 type Dev struct {
 	userCacheMap *Transactor
 	R            *chi.Mux
+	Environment  types.Environment
 }
 
-func DevRoutes(userCacheMap *Transactor) *Dev {
+func DevRoutes(userCacheMap *Transactor, environment types.Environment) *Dev {
 	dev := &Dev{
 		R:            chi.NewRouter(),
 		userCacheMap: userCacheMap,
+		Environment:  environment,
 	}
 
-	dev.R.Get("/give-mechs/{public_address}", WithError(WithDev(dev.devGiveMechs)))
+	dev.R.Get("/give-mechs/{public_address}", WithError(WithDev(dev.devGiveMechs, dev.Environment)))
 
 	return dev
 }
 
 // WithDev checks that dev key is in the header and environment is development.
-func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error)) func(w http.ResponseWriter, r *http.Request) (int, error) {
+func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error), environment types.Environment) func(w http.ResponseWriter, r *http.Request) (int, error) {
 	fn := func(w http.ResponseWriter, r *http.Request) (int, error) {
-		if os.Getenv("PASSPORT_ENVIRONMENT") != "development" {
-			passlog.L.Warn().Err(terror.ErrUnauthorised).Str("os.Getenv(\"PASSPORT_ENVIRONMENT\")", os.Getenv("PASSPORT_ENVIRONMENT")).Msg("dev endpoint attempted in non dev environment")
+		if environment != types.Development {
+			passlog.L.Warn().Err(terror.ErrUnauthorised).Str("api.Environment", environment.String()).Msg("dev endpoint attempted in non dev environment")
 			return http.StatusUnauthorized, terror.Error(terror.ErrUnauthorised, "Unauthorized.")
 		}
 		devPass := r.Header.Get("X-Authorization")
@@ -62,7 +63,7 @@ func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error)) fun
 
 func (d *Dev) devGiveMechs(w http.ResponseWriter, r *http.Request) (int, error) {
 	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
-	user, err := payments.CreateOrGetUser(publicAddress)
+	user, err := payments.CreateOrGetUser(publicAddress, d.Environment)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}

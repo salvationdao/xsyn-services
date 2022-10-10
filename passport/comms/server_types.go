@@ -24,7 +24,7 @@ type SpendSupsReq struct {
 	ToUserID             uuid.UUID                   `json:"to_user_id"`
 	TransactionReference types2.TransactionReference `json:"transaction_reference"`
 	Group                types2.TransactionGroup     `json:"group,omitempty"`
-	SubGroup             string                      `json:"sub_group"`   //TODO: send battle id
+	SubGroup             types2.TransactionSubGroup  `json:"sub_group"`   //TODO: send battle id
 	Description          string                      `json:"description"` //TODO: send descritpion
 }
 
