@@ -213,7 +213,7 @@ func main() {
 
 					level := c.String("log_level")
 					log := log_helpers.LoggerInitZero(environment.String(), level)
-					if environment == "production" || environment == "staging" {
+					if environment == types.Production || environment == types.Staging {
 						logPtr := zerolog.New(os.Stdout)
 						log = &logPtr
 					}
@@ -709,7 +709,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	smsFromNumber := ctxCLI.String("sms_from_number")
 	externalURL := ctxCLI.String("passport_web_host_url")
 	insecuritySkipVerify := false
-	if environment == "development" || environment == "testing" {
+	if environment == types.Development || environment == types.Testing {
 		insecuritySkipVerify = true
 	}
 

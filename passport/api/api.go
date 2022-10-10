@@ -48,8 +48,8 @@ type API struct {
 	TokenExpirationDays int
 	TokenEncryptionKey  []byte
 	Eip712Message       string
-	Twitter             *auth.TwitterConfig
 	Twitch              *auth.TwitchConfig
+	Twitter             *auth.TwitterConfig
 	Google              *auth.GoogleConfig
 	ClientToken         string
 	WebhookToken        string
@@ -169,7 +169,7 @@ func NewAPI(
 
 	ws.Init(&ws.Config{
 		Logger:        passlog.L,
-		SkipRateLimit: environment.String() == "staging" || environment.String() == "development",
+		SkipRateLimit: environment == types.Staging || environment == types.Development,
 	})
 
 	if runBlockchainBridge {
@@ -202,7 +202,7 @@ func NewAPI(
 	r.Handle("/metrics", promhttp.Handler())
 	r.Route("/api", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
-			if environment != "development" {
+			if environment != types.Development {
 				r.Use(DatadogTracer.Middleware())
 			}
 
@@ -212,7 +212,7 @@ func NewAPI(
 			r.Mount("/files", FileRouter(api))
 			r.Mount("/nfts", api.NFTRoutes())
 			r.Mount("/moderator", ModeratorRoutes())
-			if environment == "development" {
+			if environment == types.Development {
 				r.Mount("/dev", d.R)
 			}
 

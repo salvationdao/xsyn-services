@@ -818,11 +818,12 @@ const (
 	Development Environment = "development"
 	Staging     Environment = "staging"
 	Production  Environment = "production"
+	Testing     Environment = "testing"
 )
 
 func (en Environment) IsValid() bool {
 	switch en {
-	case Development, Staging, Production:
+	case Development, Staging, Production, Testing:
 		return true
 	default:
 		return false

@@ -22,7 +22,7 @@ func NewTwilio(accountSid, apiKey, apiSecret, fromNumber string, environment typ
 	}
 
 	// if prod or staging, check for envars and panic if missing and enable sending
-	if environment.String() == "production" || environment.String() == "staging" {
+	if environment == types.Production || environment == types.Staging {
 		twil.AllowSending = true
 		if accountSid == "" {
 			return nil, terror.Error(fmt.Errorf("missing var accountSid"))
