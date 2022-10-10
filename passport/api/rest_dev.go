@@ -29,12 +29,14 @@ import (
 type Dev struct {
 	userCacheMap *Transactor
 	R            *chi.Mux
+	Environment  types.Environment
 }
 
-func DevRoutes(userCacheMap *Transactor) *Dev {
+func DevRoutes(userCacheMap *Transactor, environment types.Environment) *Dev {
 	dev := &Dev{
 		R:            chi.NewRouter(),
 		userCacheMap: userCacheMap,
+		Environment:  environment,
 	}
 
 	dev.R.Get("/give-mechs/{public_address}", WithError(WithDev(dev.devGiveMechs)))
@@ -62,7 +64,7 @@ func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error)) fun
 
 func (d *Dev) devGiveMechs(w http.ResponseWriter, r *http.Request) (int, error) {
 	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
-	user, err := payments.CreateOrGetUser(publicAddress)
+	user, err := payments.CreateOrGetUser(publicAddress, d.Environment)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}

@@ -811,3 +811,24 @@ type UserBalance struct {
 	ID   UserID          `db:"id"`
 	Sups decimal.Decimal `db:"sups"`
 }
+
+type Environment string
+
+const (
+	Development Environment = "development"
+	Staging     Environment = "staging"
+	Production  Environment = "production"
+)
+
+func (en Environment) IsValid() bool {
+	switch en {
+	case Development, Staging, Production:
+		return true
+	default:
+		return false
+	}
+}
+
+func (en Environment) String() string {
+	return string(en)
+}

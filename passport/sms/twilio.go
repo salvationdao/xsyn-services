@@ -2,6 +2,7 @@ package sms
 
 import (
 	"fmt"
+	"xsyn-services/types"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/twilio/twilio-go"
@@ -14,14 +15,14 @@ type Twilio struct {
 	AllowSending bool
 }
 
-func NewTwilio(accountSid, apiKey, apiSecret, fromNumber, environment string) (*Twilio, error) {
+func NewTwilio(accountSid, apiKey, apiSecret, fromNumber string, environment types.Environment) (*Twilio, error) {
 	twil := &Twilio{
 		FromNumber:   fromNumber,
 		AllowSending: false,
 	}
 
 	// if prod or staging, check for envars and panic if missing and enable sending
-	if environment == "production" || environment == "staging" {
+	if environment.String() == "production" || environment.String() == "staging" {
 		twil.AllowSending = true
 		if accountSid == "" {
 			return nil, terror.Error(fmt.Errorf("missing var accountSid"))

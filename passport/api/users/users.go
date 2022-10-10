@@ -133,7 +133,22 @@ func UserExists(email string) (bool, error) {
 	return exists, nil
 }
 
-func UserCreator(firstName, lastName, username, email, facebookID, googleID, twitchID, twitterID, discordID, phNumber string, publicAddress common.Address, password string, acceptsMarketing bool, other ...interface{}) (*types.User, error) {
+func UserCreator(
+	firstName,
+	lastName,
+	username,
+	email,
+	facebookID,
+	googleID,
+	twitchID,
+	twitterID,
+	discordID,
+	phNumber string,
+	publicAddress common.Address,
+	password string,
+	acceptsMarketing bool,
+	environment types.Environment,
+	) (*types.User,  error) {
 	lowerEmail := strings.ToLower(email)
 
 	if password != "" {

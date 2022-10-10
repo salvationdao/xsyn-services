@@ -36,7 +36,6 @@ import (
 	_ "github.com/lib/pq" //postgres drivers for initialization
 
 	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/terror/v2"
 
@@ -297,47 +296,6 @@ func main() {
 	}
 }
 
-func pgxconnect(
-	DatabaseUser string,
-	DatabasePass string,
-	DatabaseHost string,
-	DatabasePort string,
-	DatabaseName string,
-	DatabaseApplicationName string,
-	APIVersion string,
-	maxPool int,
-) (*pgxpool.Pool, error) {
-	params := url.Values{}
-	params.Add("sslmode", "disable")
-	if DatabaseApplicationName != "" {
-		params.Add("application_name", fmt.Sprintf("%s %s", DatabaseApplicationName, APIVersion))
-	}
-
-	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
-		DatabaseUser,
-		DatabasePass,
-		DatabaseHost,
-		DatabasePort,
-		DatabaseName,
-		params.Encode(),
-	)
-
-	poolConfig, err := pgxpool.ParseConfig(connString)
-	if err != nil {
-		return nil, terror.Panic(err, "could not initialise database")
-	}
-	poolConfig.ConnConfig.LogLevel = pgx.LogLevelTrace
-	poolConfig.MaxConns = int32(maxPool)
-
-	ctx := context.Background()
-	conn, err := pgxpool.ConnectConfig(ctx, poolConfig)
-	if err != nil {
-		return nil, terror.Panic(err, "could not initialise database")
-	}
-
-	return conn, nil
-}
-
 func sqlConnect(
 	databaseTxUser string,
 	databaseTxPass string,
@@ -376,37 +334,7 @@ func sqlConnect(
 
 }
 
-func txConnect(
-	databaseTxUser string,
-	databaseTxPass string,
-	databaseHost string,
-	databasePort string,
-	databaseName string,
-	maxIdle int,
-	maxOpen int,
-) (*sql.DB, error) {
-	params := url.Values{}
-	params.Add("sslmode", "disable")
-
-	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
-		databaseTxUser,
-		databaseTxPass,
-		databaseHost,
-		databasePort,
-		databaseName,
-		params.Encode(),
-	)
-
-	conn, err := sql.Open("postgres", connString)
-	if err != nil {
-		return nil, err
-	}
-	conn.SetMaxIdleConns(maxIdle)
-	conn.SetMaxOpenConns(maxOpen)
-	return conn, nil
-}
-
-func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, pxr *api.PassportExchangeRate) error {
+func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, pxr *api.PassportExchangeRate, environment types.Environment) error {
 
 	records1, err := payments.BNB(isTestnet)
 	if err != nil {
@@ -482,7 +410,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, pxr 
 			continue
 		}
 
-		user, err := payments.CreateOrGetUser(common.HexToAddress(r.FromAddress))
+		user, err := payments.CreateOrGetUser(common.HexToAddress(r.FromAddress), types.Environment(environment))
 		if err != nil {
 			failed++
 			log.Error().Str("sym", r.Symbol).Str("txid", r.TxHash).Err(err).Msg("create new user for payment insertion")
@@ -526,12 +454,12 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, pxr 
 	return nil
 
 }
-func SyncDeposits(ucm *api.Transactor, isTestnet bool) error {
+func SyncDeposits(ucm *api.Transactor, isTestnet bool, environment types.Environment) error {
 	depositRecords, err := payments.GetDeposits(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get deposits: %w", err)
 	}
-	_, _, err = payments.ProcessDeposits(depositRecords, ucm)
+	_, _, err = payments.ProcessDeposits(depositRecords, ucm, environment)
 	if err != nil {
 		return fmt.Errorf("process deposits: %w", err)
 	}
@@ -540,7 +468,7 @@ func SyncDeposits(ucm *api.Transactor, isTestnet bool) error {
 
 }
 
-func Sync1155Deposits(collectionSlug string, isTestnet bool) error {
+func Sync1155Deposits(collectionSlug string, isTestnet bool, environment types.Environment) error {
 	collection, err := db.CollectionBySlug(collectionSlug)
 	if err != nil {
 		return err
@@ -553,7 +481,7 @@ func Sync1155Deposits(collectionSlug string, isTestnet bool) error {
 	if err != nil {
 		return fmt.Errorf("get deposits: %w", err)
 	}
-	_, _, err = payments.Process1155Deposits(depositRecords, collectionSlug)
+	_, _, err = payments.Process1155Deposits(depositRecords, collectionSlug, environment)
 	if err != nil {
 		return fmt.Errorf("process deposits: %w", err)
 	}
@@ -579,7 +507,7 @@ func SyncWithdraw(ucm *api.Transactor, isTestnet, enableWithdrawRollback bool) e
 	return nil
 
 }
-func SyncNFTs(isTestnet bool) error {
+func SyncNFTs(isTestnet bool, environment types.Environment) error {
 	allCollections, err := boiler.Collections(boiler.CollectionWhere.MintContract.IsNotNull(),
 		boiler.CollectionWhere.ContractType.EQ(null.StringFrom("ERC-721"))).All(passdb.StdConn)
 	if err != nil {
@@ -592,7 +520,7 @@ func SyncNFTs(isTestnet bool) error {
 			return fmt.Errorf("get nft owners: %w", err)
 		}
 
-		ownerUpdated, ownerSkipped, err := payments.UpdateOwners(collectionNftOwnerStatuses, collection)
+		ownerUpdated, ownerSkipped, err := payments.UpdateOwners(collectionNftOwnerStatuses, collection, environment)
 		if err != nil {
 			return fmt.Errorf("update nft owners: %w", err)
 		}
@@ -638,7 +566,7 @@ func Sync1155Withdraw(collectionSlug string, isTestnet, enable1155Rollback bool)
 	return nil
 }
 
-func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool, pxr *api.PassportExchangeRate) error {
+func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool, pxr *api.PassportExchangeRate, environment types.Environment) error {
 	go func() {
 		l := passlog.L.With().Str("svc", "avant_ping").Logger()
 		failureCount := db.GetIntWithDefault(db.KeyAvantFailureCount, 0)
@@ -665,7 +593,7 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 	}()
 	go func(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncPayments, false) {
-			err := SyncPayments(ucm, log, isTestnet, pxr)
+			err := SyncPayments(ucm, log, isTestnet, pxr, environment)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync payments")
 			}
@@ -673,14 +601,14 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 	}(ucm, log, isTestnet)
 	go func(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncDeposits, false) {
-			err := SyncDeposits(ucm, isTestnet)
+			err := SyncDeposits(ucm, isTestnet, environment)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync deposits")
 			}
 		}
 	}(ucm, log, isTestnet)
 	go func() {
-		err := SyncNFTs(isTestnet)
+		err := SyncNFTs(isTestnet, environment)
 		if err != nil {
 			passlog.L.Err(err).Msg("failed to sync nfts")
 		}
@@ -703,7 +631,7 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 	}(isTestnet)
 	go func(isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSync1155, false) {
-			err := Sync1155Deposits("supremacy-achievements", isTestnet)
+			err := Sync1155Deposits("supremacy-achievements", isTestnet, environment)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync 1155")
 			}
@@ -715,13 +643,16 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	databaseMaxIdleConns := ctxCLI.Int("database_max_idle_conns")
 	databaseMaxOpenConns := ctxCLI.Int("database_max_open_conns")
-	environment := ctxCLI.String("environment")
+	environment := types.Environment(ctxCLI.String("environment"))
+	if !environment.IsValid() {
+		return terror.Panic(fmt.Errorf("invalid environment: %s", environment))
+	}
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
 	sentryTraceRate := ctxCLI.Float64("sentry_sample_rate")
 	skipUpdateUsersMixedCase := ctxCLI.Bool("skip_update_users_mixed_case")
 	sentryRelease := fmt.Sprintf("%s@%s", SentryReleasePrefix, Version)
-	err := log_helpers.SentryInit(sentryDSNBackend, sentryServerName, sentryRelease, environment, sentryTraceRate, log)
+	err := log_helpers.SentryInit(sentryDSNBackend, sentryServerName, sentryRelease, environment.String(), sentryTraceRate, log)
 	switch errors.Unwrap(err) {
 	case log_helpers.ErrSentryInitEnvironment:
 		return terror.Error(err, fmt.Sprintf("got environment %s", environment))
@@ -938,7 +869,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		runBlockchainBridge,
 		enablePurchaseSubscription,
 		jwtKeyByteArray,
-		environment,
+		types.Environment(environment),
 		strings.Split(ctxCLI.String("ignore_rate_limit_ips"), ","),
 		passportExchangeRate,
 	)
@@ -1024,7 +955,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 
 		}
 
-		err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback, passportExchangeRate)
+		err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback, passportExchangeRate, environment)
 
 		if err != nil {
 			log.Error().Err(err).Msg("sync")
@@ -1039,7 +970,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 				} else {
 					l.Debug().Bool("enable_withdraw_rollback", enableWithdrawRollback).Msg("withdraw rollback is enabled")
 				}
-				err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback, passportExchangeRate)
+				err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback, passportExchangeRate, environment)
 				if err != nil {
 					log.Error().Err(err).Msg("sync")
 				}

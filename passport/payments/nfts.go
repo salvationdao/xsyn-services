@@ -31,7 +31,7 @@ type NFTOwnerStatus struct {
 	BlockTimestamp time.Time
 }
 
-func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collection) (int, int, error) {
+func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collection, environment types.Environment) (int, int, error) {
 	l := passlog.L.With().Str("svc", "avant_nft_ownership_update").Logger()
 
 	updated := 0
@@ -102,7 +102,7 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 		}
 
 		// on chain user may not exist in our db
-		onChainOwner, err := CreateOrGetUser(nftStatus.Owner)
+		onChainOwner, err := CreateOrGetUser(nftStatus.Owner, environment)
 		if err != nil {
 			return 0, 0, fmt.Errorf("get or create onchain user: %w", err)
 		}
@@ -345,7 +345,7 @@ func ReverseFailed1155(enabled1155Rollback bool) (int, int, error) {
 	return success, skipped, nil
 }
 
-func Process1155Deposits(records []*NFT1155TransferRecord, collectionSlug string) (int, int, error) {
+func Process1155Deposits(records []*NFT1155TransferRecord, collectionSlug string, environment types.Environment) (int, int, error) {
 	l := passlog.L.With().Str("svc", "avant_1155deposit_processor").Logger()
 	success := 0
 	skipped := 0
@@ -357,7 +357,7 @@ func Process1155Deposits(records []*NFT1155TransferRecord, collectionSlug string
 			skipped++
 			continue
 		}
-		user, err := CreateOrGetUser(common.HexToAddress(record.FromAddress))
+		user, err := CreateOrGetUser(common.HexToAddress(record.FromAddress), environment)
 		if err != nil {
 			skipped++
 			l.Error().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("create or get user")

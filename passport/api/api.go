@@ -34,12 +34,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type TwitchConfig struct {
-	ExtensionSecret []byte
-	ClientID        string
-	ClientSecret    string
-}
-
 // API server
 type API struct {
 	SupremacyController *SupremacyControllerWS
@@ -55,8 +49,8 @@ type API struct {
 	TokenExpirationDays int
 	TokenEncryptionKey  []byte
 	Eip712Message       string
-	Twitch              *TwitchConfig
 	Twitter             *auth.TwitterConfig
+	Twitch              *auth.TwitchConfig
 	Google              *auth.GoogleConfig
 	ClientToken         string
 	WebhookToken        string
@@ -85,6 +79,8 @@ type API struct {
 	captcha *captcha
 
 	JWTKey []byte
+
+	Environment types.Environment
 }
 
 // NewAPI registers routes
@@ -101,7 +97,7 @@ func NewAPI(
 	runBlockchainBridge bool,
 	enablePurchaseSubscription bool,
 	jwtKey []byte,
-	environment string,
+	environment types.Environment,
 	ignoreRateLimitIPs []string,
 	pxr *PassportExchangeRate,
 
@@ -119,13 +115,9 @@ func NewAPI(
 		Google: &auth.GoogleConfig{
 			ClientID: config.AuthParams.GoogleClientID,
 		},
-		Twitch: &TwitchConfig{
+		Twitch: &auth.TwitchConfig{
 			ClientID:     config.AuthParams.TwitchClientID,
 			ClientSecret: config.AuthParams.TwitchClientSecret,
-		},
-		Twitter: &auth.TwitterConfig{
-			APIKey:    config.AuthParams.TwitterAPIKey,
-			APISecret: config.AuthParams.TwitterAPISecret,
 		},
 		Eip712Message: config.MetaMaskSignMessage,
 		Cookie: securebytes.New(
@@ -151,6 +143,7 @@ func NewAPI(
 			siteKey:   config.CaptchaSiteKey,
 			verifyUrl: "https://hcaptcha.com/siteverify",
 		},
+		Environment: environment,
 	}
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
@@ -204,9 +197,9 @@ func NewAPI(
 	sc := NewSupremacyController(log, api)
 	_ = NewGamebarController(log, api)
 	_ = NewStoreController(log, api)
-	d := DevRoutes(ucm)
+	d := DevRoutes(ucm, environment)
 
-	r.Mount("/api/admin", AdminRoutes(ucm))
+	r.Mount("/api/admin", api.AdminRoutes(ucm))
 	r.Mount("/api/roadmap", roadmapRoutes)
 	r.Handle("/metrics", promhttp.Handler())
 	r.Route("/api", func(r chi.Router) {

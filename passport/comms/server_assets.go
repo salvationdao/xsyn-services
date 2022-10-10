@@ -185,7 +185,7 @@ func (s *S) InsertUser1155AssetHandler(req UpdateUser1155AssetReq, resp *UpdateU
 	if err != nil {
 		return err
 	}
-	user, err := payments.CreateOrGetUser(common.HexToAddress(req.PublicAddress))
+	user, err := payments.CreateOrGetUser(common.HexToAddress(req.PublicAddress), s.API.Environment)
 	if err != nil {
 		passlog.L.Error().Str("req.PublicAddress", req.PublicAddress).Err(err).Msg("Failed to get or create user while updating 1155 asset")
 		return terror.Error(err, "Failed to create or get user")
@@ -267,7 +267,7 @@ func (s *S) AssetKeycardCountUpdateSupremacy(req Asset1155CountUpdateSupremacyRe
 		passlog.L.Error().Err(err).Msg("failed to get service id - Asset1155CountUpdateSupremacy")
 		return err
 	}
-	user, err := payments.CreateOrGetUser(common.HexToAddress(req.Address))
+	user, err := payments.CreateOrGetUser(common.HexToAddress(req.Address), s.API.Environment)
 	if err != nil {
 		return terror.Error(err, "Failed to get user")
 	}
