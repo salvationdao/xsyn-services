@@ -894,8 +894,12 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	// we need to create a single admin account on xsyn
 	passlog.L.Info().Msg("Running one off funcs")
 	start := time.Now()
-	seed.CreateAdminUser()
-	passlog.L.Info().Msgf("CreateAdminUser took %s", time.Since(start))
+	err = seed.CreateAdminUser()
+	if err != nil {
+		passlog.L.Error().Err(err).Msgf("CreateAdminUser failed to complete")
+	} else {
+		passlog.L.Info().Msgf("CreateAdminUser took %s", time.Since(start))
+	}
 
 	go func() {
 		stop := make(chan os.Signal, 1)
