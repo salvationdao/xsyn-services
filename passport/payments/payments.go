@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"xsyn-services/boiler"
 	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/helpers"
+	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
@@ -120,9 +122,20 @@ func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.Us
 	}
 
 	msg := fmt.Sprintf("purchased %s SUPS for %s [%s]", supsValue.Shift(-1*types.SUPSDecimals).StringFixed(4), tokenValue.Shift(-1*int32(record.ValueDecimals)).StringFixed(4), strings.ToUpper(record.Symbol))
+
+	creditor, err := boiler.FindUser(passdb.StdConn, toUserID.String())
+	if err != nil {
+		return err
+	}
+
+	debitor, err := boiler.FindUser(passdb.StdConn, fromUserID.String())
+	if err != nil {
+		return err
+	}
+
 	trans := &types.NewTransaction{
-		Credit:               toUserID.String(),
-		Debit:                fromUserID.String(),
+		CreditAccountID:      creditor.AccountID,
+		DebitAccountID:       debitor.AccountID,
 		Amount:               supsValue,
 		TransactionReference: types.TransactionReference(record.TxHash),
 		Description:          msg,

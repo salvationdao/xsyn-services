@@ -276,9 +276,12 @@ func NewAPI(
 			r.Mount("/store", ws.NewServer(func(s *ws.Server) {
 			}))
 			r.Mount("/user/{userId}", ws.NewServer(func(s *ws.Server) {
-				s.Use(api.AuthWS(true, true))
+				s.Use(api.AuthWS(true, true, false))
 				s.WS("/*", HubKeyUserGet, api.MustSecure(uc.GetHandler))
 				s.Mount("/commander", api.Commander)
+			}))
+			r.Mount("/account/{accountId}", ws.NewServer(func(s *ws.Server) {
+				s.Use(api.AuthWS(true, false, true))
 				s.WS("/sups", HubKeyUserSupsSubscribe, api.MustSecure(api.UserSupsUpdatedSubscribeHandler))
 				s.WS("/transactions", HubKeyUserTransactionsSubscribe, api.MustSecure(api.UserTransactionsSubscribeHandler))
 			}))

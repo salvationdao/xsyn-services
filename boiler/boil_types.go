@@ -55,6 +55,7 @@ func makeCacheKey(cols boil.Columns, nzDefaults []string) string {
 const (
 	AccountTypeUSER      = "USER"
 	AccountTypeSYNDICATE = "SYNDICATE"
+	AccountTypeONCHAIN   = "ONCHAIN"
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants

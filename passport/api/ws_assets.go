@@ -502,9 +502,14 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 		return terror.Error(terror.ErrUnauthorised, "You don't own this asset.")
 	}
 
+	debitor, err := boiler.FindUser(passdb.StdConn, xsynTypes.XsynTreasuryUserID.String())
+	if err != nil {
+		return terror.Error(err, "Failed to load debitor account")
+	}
+
 	tx := &xsynTypes.NewTransaction{
-		Debit:                user.ID,
-		Credit:               xsynTypes.XsynTreasuryUserID.String(),
+		DebitAccountID:       user.AccountID,
+		CreditAccountID:      debitor.AccountID,
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "SUPREMACY", req.Payload.AssetHash, time.Now().UnixNano())),
 		Description:          fmt.Sprintf("Transfer of asset: %s to Supremacy", req.Payload.AssetHash),
 		Amount:               decimal.New(5, 18), // 5 sups
@@ -652,9 +657,14 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 		return terror.Error(terror.ErrUnauthorised, "You don't own this asset.")
 	}
 
+	debitor, err := boiler.FindUser(passdb.StdConn, xsynTypes.XsynTreasuryUserID.String())
+	if err != nil {
+		return terror.Error(err, "Failed to load debitor account")
+	}
+
 	tx := &xsynTypes.NewTransaction{
-		Debit:                user.ID,
-		Credit:               xsynTypes.XsynTreasuryUserID.String(),
+		DebitAccountID:       user.AccountID,
+		CreditAccountID:      debitor.AccountID,
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "XSYN", req.Payload.AssetHash, time.Now().UnixNano())),
 		Description:          fmt.Sprintf("Transfer of asset: %s to XSYN", req.Payload.AssetHash),
 		Amount:               decimal.New(5, 18), // 5 sups
@@ -815,9 +825,14 @@ func (ac *AssetController) Asset1155TransferToSupremacyHandler(ctx context.Conte
 		return terror.Error(fmt.Errorf("asset count below 0 after transfer"), "Cannot process transfer. Amount after transfer is below 0")
 	}
 
+	debitor, err := boiler.FindUser(passdb.StdConn, xsynTypes.XsynTreasuryUserID.String())
+	if err != nil {
+		return terror.Error(err, "Failed to load debitor account")
+	}
+
 	tx := &xsynTypes.NewTransaction{
-		Debit:                user.ID,
-		Credit:               xsynTypes.XsynTreasuryUserID.String(),
+		DebitAccountID:       user.AccountID,
+		CreditAccountID:      debitor.AccountID,
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "XSYN", req.Payload.TokenID, time.Now().UnixNano())),
 		Description:          fmt.Sprintf("Transfer of asset: %s to Supremacy", asset.Label),
 		Amount:               decimal.New(5, 18), // 5 sups
@@ -985,9 +1000,14 @@ func (ac *AssetController) Asset1155TransferFromSupremacyHandler(ctx context.Con
 		return terror.Error(err, "Total asset amount after is less than zero")
 	}
 
+	debitor, err := boiler.FindUser(passdb.StdConn, xsynTypes.XsynTreasuryUserID.String())
+	if err != nil {
+		return terror.Error(err, "Failed to load debitor account")
+	}
+
 	tx := &xsynTypes.NewTransaction{
-		Debit:                user.ID,
-		Credit:               xsynTypes.XsynTreasuryUserID.String(),
+		DebitAccountID:       user.AccountID,
+		CreditAccountID:      debitor.AccountID,
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "XSYN", req.Payload.TokenID, time.Now().UnixNano())),
 		Description:          fmt.Sprintf("Transfer of asset with token id of %d from collection %s to Xsyn", req.Payload.TokenID, req.Payload.CollectionSlug),
 		Amount:               decimal.New(5, 18), // 5 sups
@@ -1235,8 +1255,8 @@ func reverseAssetServiceTransaction(
 	reason string,
 ) (transaction *xsynTypes.NewTransaction, returnTransferLog *boiler.AssetServiceTransferEvent) {
 	transaction = &xsynTypes.NewTransaction{
-		Debit:                transactionToReverse.Credit,
-		Credit:               transactionToReverse.Debit,
+		DebitAccountID:       transactionToReverse.CreditAccountID,
+		CreditAccountID:      transactionToReverse.DebitAccountID,
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("REFUND - %s", transactionToReverse.TransactionReference)),
 		Description:          fmt.Sprintf("Reverse transaction - %s. Reason: %s", transactionToReverse.Description, reason),
 		Amount:               transactionToReverse.Amount,
@@ -1280,8 +1300,8 @@ func reverseAsset1155ServiceTransaction(
 	reason string,
 ) (transaction *xsynTypes.NewTransaction, returnTransferLog *boiler.Asset1155ServiceTransferEvent) {
 	transaction = &xsynTypes.NewTransaction{
-		Debit:                transactionToReverse.Credit,
-		Credit:               transactionToReverse.Debit,
+		DebitAccountID:       transactionToReverse.CreditAccountID,
+		CreditAccountID:      transactionToReverse.DebitAccountID,
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("REFUND - %s", transactionToReverse.TransactionReference)),
 		Description:          fmt.Sprintf("Reverse transaction - %s. Reason: %s", transactionToReverse.Description, reason),
 		Amount:               transactionToReverse.Amount,

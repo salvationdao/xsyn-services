@@ -58,6 +58,7 @@ type User struct {
 	Permissions                      null.String `boiler:"permissions" boil:"permissions" json:"permissions,omitempty" toml:"permissions" yaml:"permissions,omitempty"`
 	AcceptsMarketing                 null.Bool   `boiler:"accepts_marketing" boil:"accepts_marketing" json:"accepts_marketing,omitempty" toml:"accepts_marketing" yaml:"accepts_marketing,omitempty"`
 	AccountID                        string      `boiler:"account_id" boil:"account_id" json:"account_id" toml:"account_id" yaml:"account_id"`
+	LegacyAccountID                  null.String `boiler:"legacy_account_id" boil:"legacy_account_id" json:"legacy_account_id,omitempty" toml:"legacy_account_id" yaml:"legacy_account_id,omitempty"`
 
 	R *userR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -99,6 +100,7 @@ var UserColumns = struct {
 	Permissions                      string
 	AcceptsMarketing                 string
 	AccountID                        string
+	LegacyAccountID                  string
 }{
 	ID:                               "id",
 	Username:                         "username",
@@ -135,6 +137,7 @@ var UserColumns = struct {
 	Permissions:                      "permissions",
 	AcceptsMarketing:                 "accepts_marketing",
 	AccountID:                        "account_id",
+	LegacyAccountID:                  "legacy_account_id",
 }
 
 var UserTableColumns = struct {
@@ -173,6 +176,7 @@ var UserTableColumns = struct {
 	Permissions                      string
 	AcceptsMarketing                 string
 	AccountID                        string
+	LegacyAccountID                  string
 }{
 	ID:                               "users.id",
 	Username:                         "users.username",
@@ -209,6 +213,7 @@ var UserTableColumns = struct {
 	Permissions:                      "users.permissions",
 	AcceptsMarketing:                 "users.accepts_marketing",
 	AccountID:                        "users.account_id",
+	LegacyAccountID:                  "users.legacy_account_id",
 }
 
 // Generated where
@@ -249,6 +254,7 @@ var UserWhere = struct {
 	Permissions                      whereHelpernull_String
 	AcceptsMarketing                 whereHelpernull_Bool
 	AccountID                        whereHelperstring
+	LegacyAccountID                  whereHelpernull_String
 }{
 	ID:                               whereHelperstring{field: "\"users\".\"id\""},
 	Username:                         whereHelperstring{field: "\"users\".\"username\""},
@@ -285,6 +291,7 @@ var UserWhere = struct {
 	Permissions:                      whereHelpernull_String{field: "\"users\".\"permissions\""},
 	AcceptsMarketing:                 whereHelpernull_Bool{field: "\"users\".\"accepts_marketing\""},
 	AccountID:                        whereHelperstring{field: "\"users\".\"account_id\""},
+	LegacyAccountID:                  whereHelpernull_String{field: "\"users\".\"legacy_account_id\""},
 }
 
 // UserRels is where relationship names are stored.
@@ -292,6 +299,7 @@ var UserRels = struct {
 	Account                                   string
 	Avatar                                    string
 	Faction                                   string
+	LegacyAccount                             string
 	Role                                      string
 	PasswordHash                              string
 	APIKeys                                   string
@@ -324,12 +332,13 @@ var UserRels = struct {
 	UserRecoveryCodes                         string
 	UsernameHistories                         string
 }{
-	Account:      "Account",
-	Avatar:       "Avatar",
-	Faction:      "Faction",
-	Role:         "Role",
-	PasswordHash: "PasswordHash",
-	APIKeys:      "APIKeys",
+	Account:       "Account",
+	Avatar:        "Avatar",
+	Faction:       "Faction",
+	LegacyAccount: "LegacyAccount",
+	Role:          "Role",
+	PasswordHash:  "PasswordHash",
+	APIKeys:       "APIKeys",
 	FromServiceAsset1155ServiceTransferEvents: "FromServiceAsset1155ServiceTransferEvents",
 	ToServiceAsset1155ServiceTransferEvents:   "ToServiceAsset1155ServiceTransferEvents",
 	Asset1155ServiceTransferEvents:            "Asset1155ServiceTransferEvents",
@@ -365,6 +374,7 @@ type userR struct {
 	Account                                   *Account                           `boiler:"Account" boil:"Account" json:"Account" toml:"Account" yaml:"Account"`
 	Avatar                                    *Blob                              `boiler:"Avatar" boil:"Avatar" json:"Avatar" toml:"Avatar" yaml:"Avatar"`
 	Faction                                   *Faction                           `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	LegacyAccount                             *Account                           `boiler:"LegacyAccount" boil:"LegacyAccount" json:"LegacyAccount" toml:"LegacyAccount" yaml:"LegacyAccount"`
 	Role                                      *Role                              `boiler:"Role" boil:"Role" json:"Role" toml:"Role" yaml:"Role"`
 	PasswordHash                              *PasswordHash                      `boiler:"PasswordHash" boil:"PasswordHash" json:"PasswordHash" toml:"PasswordHash" yaml:"PasswordHash"`
 	APIKeys                                   APIKeySlice                        `boiler:"APIKeys" boil:"APIKeys" json:"APIKeys" toml:"APIKeys" yaml:"APIKeys"`
@@ -407,9 +417,9 @@ func (*userR) NewStruct() *userR {
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"id", "username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata", "mobile_number", "chat_banned_until", "rename_banned", "withdraw_lock", "mint_lock", "total_lock", "permissions", "accepts_marketing", "account_id"}
+	userAllColumns            = []string{"id", "username", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata", "mobile_number", "chat_banned_until", "rename_banned", "withdraw_lock", "mint_lock", "total_lock", "permissions", "accepts_marketing", "account_id", "legacy_account_id"}
 	userColumnsWithoutDefault = []string{"username", "account_id"}
-	userColumnsWithDefault    = []string{"id", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata", "mobile_number", "chat_banned_until", "rename_banned", "withdraw_lock", "mint_lock", "total_lock", "permissions", "accepts_marketing"}
+	userColumnsWithDefault    = []string{"id", "role_id", "avatar_id", "facebook_id", "google_id", "twitch_id", "twitter_id", "discord_id", "faction_id", "email", "first_name", "last_name", "verified", "old_password_required", "two_factor_authentication_activated", "two_factor_authentication_secret", "two_factor_authentication_is_set", "public_address", "private_address", "nonce", "keywords", "deleted_at", "updated_at", "created_at", "metadata", "mobile_number", "chat_banned_until", "rename_banned", "withdraw_lock", "mint_lock", "total_lock", "permissions", "accepts_marketing", "legacy_account_id"}
 	userPrimaryKeyColumns     = []string{"id"}
 	userGeneratedColumns      = []string{}
 )
@@ -696,6 +706,21 @@ func (o *User) Faction(mods ...qm.QueryMod) factionQuery {
 
 	query := Factions(queryMods...)
 	queries.SetFrom(query.Query, "\"factions\"")
+
+	return query
+}
+
+// LegacyAccount pointed to by the foreign key.
+func (o *User) LegacyAccount(mods ...qm.QueryMod) accountQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.LegacyAccountID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Accounts(queryMods...)
+	queries.SetFrom(query.Query, "\"accounts\"")
 
 	return query
 }
@@ -1664,6 +1689,115 @@ func (userL) LoadFaction(e boil.Executor, singular bool, maybeUser interface{}, 
 					foreign.R = &factionR{}
 				}
 				foreign.R.Users = append(foreign.R.Users, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadLegacyAccount allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (userL) LoadLegacyAccount(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		if !queries.IsNil(object.LegacyAccountID) {
+			args = append(args, object.LegacyAccountID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.LegacyAccountID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.LegacyAccountID) {
+				args = append(args, obj.LegacyAccountID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`accounts`),
+		qm.WhereIn(`accounts.id in ?`, args...),
+		qmhelper.WhereIsNull(`accounts.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Account")
+	}
+
+	var resultSlice []*Account
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Account")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for accounts")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for accounts")
+	}
+
+	if len(userAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.LegacyAccount = foreign
+		if foreign.R == nil {
+			foreign.R = &accountR{}
+		}
+		foreign.R.LegacyAccountUsers = append(foreign.R.LegacyAccountUsers, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.LegacyAccountID, foreign.ID) {
+				local.R.LegacyAccount = foreign
+				if foreign.R == nil {
+					foreign.R = &accountR{}
+				}
+				foreign.R.LegacyAccountUsers = append(foreign.R.LegacyAccountUsers, local)
 				break
 			}
 		}
@@ -4935,6 +5069,85 @@ func (o *User) RemoveFaction(exec boil.Executor, related *Faction) error {
 			related.R.Users[i] = related.R.Users[ln-1]
 		}
 		related.R.Users = related.R.Users[:ln-1]
+		break
+	}
+	return nil
+}
+
+// SetLegacyAccount of the user to the related item.
+// Sets o.R.LegacyAccount to related.
+// Adds o to related.R.LegacyAccountUsers.
+func (o *User) SetLegacyAccount(exec boil.Executor, insert bool, related *Account) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"users\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"legacy_account_id"}),
+		strmangle.WhereClause("\"", "\"", 2, userPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.LegacyAccountID, related.ID)
+	if o.R == nil {
+		o.R = &userR{
+			LegacyAccount: related,
+		}
+	} else {
+		o.R.LegacyAccount = related
+	}
+
+	if related.R == nil {
+		related.R = &accountR{
+			LegacyAccountUsers: UserSlice{o},
+		}
+	} else {
+		related.R.LegacyAccountUsers = append(related.R.LegacyAccountUsers, o)
+	}
+
+	return nil
+}
+
+// RemoveLegacyAccount relationship.
+// Sets o.R.LegacyAccount to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *User) RemoveLegacyAccount(exec boil.Executor, related *Account) error {
+	var err error
+
+	queries.SetScanner(&o.LegacyAccountID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("legacy_account_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.LegacyAccount = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.LegacyAccountUsers {
+		if queries.Equal(o.LegacyAccountID, ri.LegacyAccountID) {
+			continue
+		}
+
+		ln := len(related.R.LegacyAccountUsers)
+		if ln > 1 && i < ln-1 {
+			related.R.LegacyAccountUsers[i] = related.R.LegacyAccountUsers[ln-1]
+		}
+		related.R.LegacyAccountUsers = related.R.LegacyAccountUsers[:ln-1]
 		break
 	}
 	return nil
