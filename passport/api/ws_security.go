@@ -138,7 +138,7 @@ func (api *API) SecureCommandWithPerm(key string, fn SecureCommandFunc, perm typ
 // HubSubscribeCommandFunc is a registered handler for the hub to route to for subscriptions (returns sessionID and arguments)
 type HubSubscribeCommandFunc func(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error)
 
-func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handler) http.Handler {
+func (api *API) AuthWS(required, userIDMustMatch, mustOwnAccount bool) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			var token string
@@ -182,6 +182,14 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 				userID := chi.URLParam(r, "userId")
 				if userID == "" || userID != resp.User.ID {
 					http.Error(w, "user id not match", http.StatusUnauthorized)
+					return
+				}
+			}
+
+			if mustOwnAccount {
+				accountID := chi.URLParam(r, "accountId")
+				if accountID == "" || accountID != resp.User.AccountID {
+					http.Error(w, "user id not match account id", http.StatusUnauthorized)
 					return
 				}
 			}

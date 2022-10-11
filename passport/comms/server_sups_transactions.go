@@ -2,9 +2,11 @@ package comms
 
 import (
 	"fmt"
+	"xsyn-services/boiler"
 	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/benchmark"
 	"xsyn-services/passport/db"
+	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
@@ -46,8 +48,8 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 	}
 
 	tx := &types.NewTransaction{
-		Debit:                transaction.CreditAccountID,
-		Credit:               transaction.DebitAccountID,
+		DebitAccountID:       transaction.CreditAccountID,
+		CreditAccountID:      transaction.DebitAccountID,
 		TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", transaction.TransactionReference)),
 		Description:          fmt.Sprintf("Reverse transaction - %s", transaction.Description),
 		Amount:               transaction.Amount,
@@ -116,9 +118,19 @@ func (s *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 		return terror.Error(fmt.Errorf("service uuid is nil"))
 	}
 
+	creditor, err := boiler.FindUser(passdb.StdConn, req.ToUserID.String())
+	if err != nil {
+		return terror.Error(err, "Failed to load debitor account")
+	}
+
+	debitor, err := boiler.FindUser(passdb.StdConn, req.FromUserID.String())
+	if err != nil {
+		return terror.Error(err, "Failed to load debitor account")
+	}
+
 	tx := &types.NewTransaction{
-		Debit:                req.FromUserID.String(),
-		Credit:               req.ToUserID.String(),
+		DebitAccountID:       debitor.AccountID,
+		CreditAccountID:      creditor.AccountID,
 		TransactionReference: req.TransactionReference,
 		Description:          req.Description,
 		Amount:               amt,

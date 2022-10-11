@@ -138,10 +138,19 @@ func CreateTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Requ
 			return http.StatusBadRequest, terror.Error(err, "Could not decode json")
 		}
 
+		creditor, err := boiler.FindUser(passdb.StdConn, req.Credit.String())
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Failed to load creditor account")
+		}
+		debitor, err := boiler.FindUser(passdb.StdConn, req.Debit.String())
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Failed to load debitor account")
+		}
+
 		ref := fmt.Sprintf("TRANSFER - %d", time.Now().UnixNano())
 		newTx := &types.NewTransaction{
-			Credit:               req.Credit.String(),
-			Debit:                req.Debit.String(),
+			CreditAccountID:      creditor.AccountID,
+			DebitAccountID:       debitor.AccountID,
 			Amount:               req.Amount,
 			TransactionReference: types.TransactionReference(ref),
 			Description:          ref,
@@ -168,8 +177,8 @@ func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http
 			return http.StatusBadRequest, terror.Error(fmt.Errorf("tx is nil"), "Could not get transaction")
 		}
 		refundTx := &types.NewTransaction{
-			Credit:               tx.DebitAccountID,
-			Debit:                tx.CreditAccountID,
+			CreditAccountID:      tx.DebitAccountID,
+			DebitAccountID:       tx.CreditAccountID,
 			Amount:               tx.Amount,
 			TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", tx.TransactionReference)),
 			Description:          "Reverse transaction",

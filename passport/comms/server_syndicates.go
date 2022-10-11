@@ -80,9 +80,19 @@ func (s *S) SyndicateRegisterHandler(req SyndicateCreateReq, resp *SyndicateCrea
 		return terror.Error(err, "Failed to register syndicate in Xsyn")
 	}
 
+	supremacyGameUse, err := boiler.FindUser(passdb.StdConn, types.SupremacyGameUserID.String())
+	if err != nil {
+		return terror.Error(err, "Failed to load debitor account")
+	}
+
+	debitor, err := boiler.FindUser(passdb.StdConn, req.FoundedByID)
+	if err != nil {
+		return terror.Error(err, "Failed to load debitor account")
+	}
+
 	syndicateCreateTx := &types.NewTransaction{
-		Debit:                req.FoundedByID,
-		Credit:               types.SupremacyGameUserID.String(),
+		DebitAccountID:       debitor.AccountID,
+		CreditAccountID:      supremacyGameUse.AccountID,
 		TransactionReference: types.TransactionReference(fmt.Sprintf("syndicate_create|SUPREMACY|%s|%d", req.SyndicateID, time.Now().UnixNano())),
 		Description:          "Start a new syndicate",
 		Amount:               syndicateRegisterFee,
@@ -97,8 +107,8 @@ func (s *S) SyndicateRegisterHandler(req SyndicateCreateReq, resp *SyndicateCrea
 	}
 
 	syndicateStartFund := &types.NewTransaction{
-		Debit:                types.SupremacyGameUserID.String(),
-		Credit:               syndicate.ID,
+		DebitAccountID:       supremacyGameUse.AccountID,
+		CreditAccountID:      syndicate.AccountID,
 		TransactionReference: types.TransactionReference(fmt.Sprintf("syndicate_start_fund|SUPREMACY|%s|%d", req.SyndicateID, time.Now().UnixNano())),
 		Description:          "Fund for starting syndicate",
 		Amount:               supsToSyndicateAcc,

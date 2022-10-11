@@ -66,9 +66,16 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap, environment
 		}
 
 		msg := fmt.Sprintf("deposited %s SUPS", value.Shift(-1*types.SUPSDecimals).StringFixed(4))
+
+		debitor, err := boiler.FindUser(passdb.StdConn, types.OnChainUserID.String())
+		if err != nil {
+			skipped++
+			continue
+		}
+
 		trans := &types.NewTransaction{
-			Credit:               user.ID,
-			Debit:                types.OnChainUserID.String(),
+			CreditAccountID:      user.AccountID,
+			DebitAccountID:       debitor.AccountID,
 			Amount:               value,
 			TransactionReference: types.TransactionReference(record.TxHash),
 			Description:          msg,

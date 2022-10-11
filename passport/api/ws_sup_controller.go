@@ -195,9 +195,14 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, user *types.Use
 
 	txRef := fmt.Sprintf("sup|withdraw|%s", txID)
 
+	creditor, err := boiler.FindUser(passdb.StdConn, types.OnChainUserID.String())
+	if err != nil {
+		return terror.Error(err, "Failed to load debitor account")
+	}
+
 	trans := &types.NewTransaction{
-		Credit:               types.OnChainUserID.String(),
-		Debit:                user.ID,
+		CreditAccountID:      creditor.AccountID,
+		DebitAccountID:       user.AccountID,
 		Amount:               withdrawAmount,
 		TransactionReference: types.TransactionReference(txRef),
 		Description:          "Withdraw of SUPS.",
@@ -212,8 +217,8 @@ func (sc *SupController) WithdrawSupHandler(ctx context.Context, user *types.Use
 	// refund callback
 	refund := func(reason string) {
 		trans := &types.NewTransaction{
-			Credit:               user.ID,
-			Debit:                types.OnChainUserID.String(),
+			CreditAccountID:      user.AccountID,
+			DebitAccountID:       creditor.AccountID,
 			Amount:               withdrawAmount,
 			TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND %s - %s", reason, txRef)),
 			Description:          "Refund of Withdraw of SUPS.",

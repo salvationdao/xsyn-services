@@ -57,14 +57,14 @@ DELETE FROM transactions;
 
 -- add new account type to allow a check for sups >= 0 or account type == on chain
 BEGIN;
-ALTER TYPE account_type ADD VALUE IF NOT EXISTS 'ON-CHAIN';
+ALTER TYPE account_type ADD VALUE IF NOT EXISTS 'ONCHAIN';
 COMMIT; -- cannot alter a type and use it in the same tx
-UPDATE accounts SET "type" = 'ON-CHAIN' WHERE id = (SELECT u.account_id FROM users u WHERE u.id = '2fa1a63e-a4fa-4618-921f-4b4d28132069');
-UPDATE accounts SET "type" = 'ON-CHAIN' WHERE id = (SELECT u.legacy_account_id FROM users u WHERE u.id = '2fa1a63e-a4fa-4618-921f-4b4d28132069');
+UPDATE accounts SET "type" = 'ONCHAIN' WHERE id = (SELECT u.account_id FROM users u WHERE u.id = '2fa1a63e-a4fa-4618-921f-4b4d28132069');
+UPDATE accounts SET "type" = 'ONCHAIN' WHERE id = (SELECT u.legacy_account_id FROM users u WHERE u.id = '2fa1a63e-a4fa-4618-921f-4b4d28132069');
 ALTER TABLE accounts
     DROP CONSTRAINT IF EXISTS accounts_check;
 ALTER TABLE accounts
-    ADD CHECK (sups >= 0 OR "type" = 'ON-CHAIN');
+    ADD CHECK (sups >= 0 OR "type" = 'ONCHAIN');
 
 -- drop constrain to allow the negative account transfer their sups
 ALTER TABLE transactions

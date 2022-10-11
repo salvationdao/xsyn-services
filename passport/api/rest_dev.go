@@ -89,10 +89,15 @@ func (d *Dev) devGiveMechs(w http.ResponseWriter, r *http.Request) (int, error) 
 		}
 	}
 
+	debitor, err := boiler.FindUser(passdb.StdConn, types.XsynSaleUserID.String())
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to load debitor account")
+	}
+
 	// give account some suppies
 	tx := &types.NewTransaction{
-		Credit:               user.ID,
-		Debit:                types.XsynSaleUserID.String(),
+		CreditAccountID:      user.AccountID,
+		DebitAccountID:       debitor.AccountID,
 		Amount:               decimal.New(10000, 18),
 		TransactionReference: types.TransactionReference(fmt.Sprintf("DEV SEED SUPS - %v", time.Now().UnixNano())),
 		Description:          "Dev Seed Sups",

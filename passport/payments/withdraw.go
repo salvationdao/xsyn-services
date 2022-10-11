@@ -26,9 +26,19 @@ func InsertPendingRefund(ucm UserCacheMap, userID types.UserID, amount decimal.D
 	txRef := types.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()))
 	// remove sups
 
+	creditor, err := boiler.FindUser(passdb.StdConn, types.OnChainUserID.String())
+	if err != nil {
+		return "", err
+	}
+
+	debitor, err := boiler.FindUser(passdb.StdConn, userID.String())
+	if err != nil {
+		return "", err
+	}
+
 	newTx := &types.NewTransaction{
-		Credit:               types.OnChainUserID.String(),
-		Debit:                userID.String(),
+		CreditAccountID:      creditor.AccountID,
+		DebitAccountID:       debitor.AccountID,
 		Amount:               amount,
 		TransactionReference: txRef,
 		Description:          fmt.Sprintf("Withdraw of %s SUPS", amount.Shift(-18).StringFixed(4)),
@@ -173,9 +183,16 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 		}
 
 		txRef := types.TransactionReference(fmt.Sprintf("REFUND %s", tx.TransactionReference))
+		debitor, err := boiler.FindUser(passdb.StdConn, types.OnChainUserID.String())
+		if err != nil {
+			skipped++
+			l.Warn().Err(err).Msg("failed to get debitor account")
+			continue
+		}
+
 		newTx := &types.NewTransaction{
-			Credit:               tx.DebitAccountID,
-			Debit:                types.OnChainUserID.String(),
+			CreditAccountID:      tx.DebitAccountID,
+			DebitAccountID:       debitor.AccountID,
 			Amount:               tx.Amount,
 			TransactionReference: txRef,
 			Description:          fmt.Sprintf("REFUND %s", tx.Description),
@@ -194,8 +211,8 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 			Str("refund.tx_hash", refund.TXHash).
 			Str("refund.transaction_reference", refund.TransactionReference).
 			Bool("refund.is_refunded", refund.IsRefunded).
-			Str("reverse_tx.to", newTx.Credit).
-			Str("reverse_tx.from", newTx.Debit).
+			Str("reverse_tx.to", newTx.CreditAccountID).
+			Str("reverse_tx.from", newTx.DebitAccountID).
 			Str("reverse_tx.amount", newTx.Amount.String()).
 			Str("reverse_tx.transaction_reference", string(newTx.TransactionReference)).
 			Str("reverse_tx.description", newTx.Description).
