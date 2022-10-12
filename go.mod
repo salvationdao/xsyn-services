@@ -32,7 +32,7 @@ require (
 	github.com/ninja-software/terror/v2 v2.0.12
 	github.com/ninja-syndicate/hub v1.9.2
 	github.com/ninja-syndicate/supremacy-bridge v0.1.43
-	github.com/ninja-syndicate/ws v0.17.4
+	github.com/ninja-syndicate/ws v0.17.8
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/pquerna/otp v1.3.0
@@ -46,7 +46,7 @@ require (
 	github.com/volatiletech/null/v8 v8.1.2
 	github.com/volatiletech/sqlboiler/v4 v4.8.6
 	go.uber.org/zap v1.21.0
-	golang.org/x/crypto v0.0.0-20220210151621-f4118a5b28e2
+	golang.org/x/crypto v0.0.0-20220214200702-86341886e292
 	google.golang.org/api v0.63.0
 )
 
@@ -124,7 +124,7 @@ require (
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect; indirect github.com/jackc/pgproto3/v2 v2.2.0 // indirect github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
 	github.com/jackc/puddle v1.2.0 // indirect
-	github.com/klauspost/compress v1.14.2 // indirect
+	github.com/klauspost/compress v1.15.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/lestrrat-go/backoff/v2 v2.0.8 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.0 // indirect
@@ -200,7 +200,7 @@ require (
 	github.com/volatiletech/strmangle v0.0.1
 	go.uber.org/atomic v1.9.0
 	go.uber.org/multierr v1.7.0 // indirect
-	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
-	golang.org/x/sys v0.0.0-20220405210540-1e041c57c461 // indirect
-	gopkg.in/DataDog/dd-trace-go.v1 v1.37.1
+	golang.org/x/net v0.0.0-20220722155237-a158d28d115b // indirect
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
+	gopkg.in/DataDog/dd-trace-go.v1 v1.42.1
 )
