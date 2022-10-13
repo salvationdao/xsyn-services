@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
@@ -82,6 +83,10 @@ func (d *Dev) devGiveMechs(w http.ResponseWriter, r *http.Request) (int, error) 
 		if i < 3 {
 			_, err = db.PurchasedItemRegister(uuid.Must(uuid.FromString(si.ID)), uuid.Must(uuid.FromString(user.ID)))
 			if err != nil {
+				if strings.Contains(err.Error(), "find template: sql: no rows in result set") {
+					passlog.L.Debug().Err(err).Msg("template no longer exists, skipping")
+					continue
+				}
 				return http.StatusInternalServerError, err
 			}
 		} else {
