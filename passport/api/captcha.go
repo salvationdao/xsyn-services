@@ -17,8 +17,6 @@ type captcha struct {
 }
 
 func (c *captcha) verify(token string) error {
-	return nil
-
 	if token == "" {
 		return terror.Error(fmt.Errorf("token is empty"), "Token is empty.")
 	}
