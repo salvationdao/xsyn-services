@@ -219,29 +219,32 @@ var CollectionWhere = struct {
 
 // CollectionRels is where relationship names are stored.
 var CollectionRels = struct {
-	LogoBlob                string
-	ItemOnchainTransactions string
-	PurchasedItemsOlds      string
-	StoreItems              string
-	UserAssets              string
-	UserAssets1155S         string
+	LogoBlob                 string
+	ItemOnchainTransactions  string
+	PurchasedItemsOlds       string
+	StoreItems               string
+	UserAssetOnChainStatuses string
+	UserAssets               string
+	UserAssets1155S          string
 }{
-	LogoBlob:                "LogoBlob",
-	ItemOnchainTransactions: "ItemOnchainTransactions",
-	PurchasedItemsOlds:      "PurchasedItemsOlds",
-	StoreItems:              "StoreItems",
-	UserAssets:              "UserAssets",
-	UserAssets1155S:         "UserAssets1155S",
+	LogoBlob:                 "LogoBlob",
+	ItemOnchainTransactions:  "ItemOnchainTransactions",
+	PurchasedItemsOlds:       "PurchasedItemsOlds",
+	StoreItems:               "StoreItems",
+	UserAssetOnChainStatuses: "UserAssetOnChainStatuses",
+	UserAssets:               "UserAssets",
+	UserAssets1155S:          "UserAssets1155S",
 }
 
 // collectionR is where relationships are stored.
 type collectionR struct {
-	LogoBlob                *Blob                       `boiler:"LogoBlob" boil:"LogoBlob" json:"LogoBlob" toml:"LogoBlob" yaml:"LogoBlob"`
-	ItemOnchainTransactions ItemOnchainTransactionSlice `boiler:"ItemOnchainTransactions" boil:"ItemOnchainTransactions" json:"ItemOnchainTransactions" toml:"ItemOnchainTransactions" yaml:"ItemOnchainTransactions"`
-	PurchasedItemsOlds      PurchasedItemsOldSlice      `boiler:"PurchasedItemsOlds" boil:"PurchasedItemsOlds" json:"PurchasedItemsOlds" toml:"PurchasedItemsOlds" yaml:"PurchasedItemsOlds"`
-	StoreItems              StoreItemSlice              `boiler:"StoreItems" boil:"StoreItems" json:"StoreItems" toml:"StoreItems" yaml:"StoreItems"`
-	UserAssets              UserAssetSlice              `boiler:"UserAssets" boil:"UserAssets" json:"UserAssets" toml:"UserAssets" yaml:"UserAssets"`
-	UserAssets1155S         UserAssets1155Slice         `boiler:"UserAssets1155S" boil:"UserAssets1155S" json:"UserAssets1155S" toml:"UserAssets1155S" yaml:"UserAssets1155S"`
+	LogoBlob                 *Blob                       `boiler:"LogoBlob" boil:"LogoBlob" json:"LogoBlob" toml:"LogoBlob" yaml:"LogoBlob"`
+	ItemOnchainTransactions  ItemOnchainTransactionSlice `boiler:"ItemOnchainTransactions" boil:"ItemOnchainTransactions" json:"ItemOnchainTransactions" toml:"ItemOnchainTransactions" yaml:"ItemOnchainTransactions"`
+	PurchasedItemsOlds       PurchasedItemsOldSlice      `boiler:"PurchasedItemsOlds" boil:"PurchasedItemsOlds" json:"PurchasedItemsOlds" toml:"PurchasedItemsOlds" yaml:"PurchasedItemsOlds"`
+	StoreItems               StoreItemSlice              `boiler:"StoreItems" boil:"StoreItems" json:"StoreItems" toml:"StoreItems" yaml:"StoreItems"`
+	UserAssetOnChainStatuses UserAssetOnChainStatusSlice `boiler:"UserAssetOnChainStatuses" boil:"UserAssetOnChainStatuses" json:"UserAssetOnChainStatuses" toml:"UserAssetOnChainStatuses" yaml:"UserAssetOnChainStatuses"`
+	UserAssets               UserAssetSlice              `boiler:"UserAssets" boil:"UserAssets" json:"UserAssets" toml:"UserAssets" yaml:"UserAssets"`
+	UserAssets1155S          UserAssets1155Slice         `boiler:"UserAssets1155S" boil:"UserAssets1155S" json:"UserAssets1155S" toml:"UserAssets1155S" yaml:"UserAssets1155S"`
 }
 
 // NewStruct creates a new relationship struct
@@ -578,6 +581,27 @@ func (o *Collection) StoreItems(mods ...qm.QueryMod) storeItemQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"store_items\".*"})
+	}
+
+	return query
+}
+
+// UserAssetOnChainStatuses retrieves all the user_asset_on_chain_status's UserAssetOnChainStatuses with an executor.
+func (o *Collection) UserAssetOnChainStatuses(mods ...qm.QueryMod) userAssetOnChainStatusQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"user_asset_on_chain_status\".\"collection_id\"=?", o.ID),
+	)
+
+	query := UserAssetOnChainStatuses(queryMods...)
+	queries.SetFrom(query.Query, "\"user_asset_on_chain_status\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"user_asset_on_chain_status\".*"})
 	}
 
 	return query
@@ -1032,6 +1056,104 @@ func (collectionL) LoadStoreItems(e boil.Executor, singular bool, maybeCollectio
 	return nil
 }
 
+// LoadUserAssetOnChainStatuses allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (collectionL) LoadUserAssetOnChainStatuses(e boil.Executor, singular bool, maybeCollection interface{}, mods queries.Applicator) error {
+	var slice []*Collection
+	var object *Collection
+
+	if singular {
+		object = maybeCollection.(*Collection)
+	} else {
+		slice = *maybeCollection.(*[]*Collection)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &collectionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &collectionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`user_asset_on_chain_status`),
+		qm.WhereIn(`user_asset_on_chain_status.collection_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load user_asset_on_chain_status")
+	}
+
+	var resultSlice []*UserAssetOnChainStatus
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice user_asset_on_chain_status")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on user_asset_on_chain_status")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_asset_on_chain_status")
+	}
+
+	if len(userAssetOnChainStatusAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.UserAssetOnChainStatuses = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &userAssetOnChainStatusR{}
+			}
+			foreign.R.Collection = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.CollectionID {
+				local.R.UserAssetOnChainStatuses = append(local.R.UserAssetOnChainStatuses, foreign)
+				if foreign.R == nil {
+					foreign.R = &userAssetOnChainStatusR{}
+				}
+				foreign.R.Collection = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadUserAssets allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (collectionL) LoadUserAssets(e boil.Executor, singular bool, maybeCollection interface{}, mods queries.Applicator) error {
@@ -1455,6 +1577,58 @@ func (o *Collection) AddStoreItems(exec boil.Executor, insert bool, related ...*
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &storeItemR{
+				Collection: o,
+			}
+		} else {
+			rel.R.Collection = o
+		}
+	}
+	return nil
+}
+
+// AddUserAssetOnChainStatuses adds the given related objects to the existing relationships
+// of the collection, optionally inserting them as new records.
+// Appends related to o.R.UserAssetOnChainStatuses.
+// Sets related.R.Collection appropriately.
+func (o *Collection) AddUserAssetOnChainStatuses(exec boil.Executor, insert bool, related ...*UserAssetOnChainStatus) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.CollectionID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"user_asset_on_chain_status\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"collection_id"}),
+				strmangle.WhereClause("\"", "\"", 2, userAssetOnChainStatusPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.CollectionID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &collectionR{
+			UserAssetOnChainStatuses: related,
+		}
+	} else {
+		o.R.UserAssetOnChainStatuses = append(o.R.UserAssetOnChainStatuses, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &userAssetOnChainStatusR{
 				Collection: o,
 			}
 		} else {
