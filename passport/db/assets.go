@@ -406,6 +406,15 @@ func UpdateUserAsset(itm *supremacy_rpcclient.XsynAsset) (*boiler.UserAsset, err
 		return nil, terror.Error(err)
 	}
 
+	collection, err := boiler.Collections(
+		boiler.CollectionWhere.Slug.EQ(itm.CollectionSlug),
+	).One(passdb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	asset.CollectionID = collection.ID
+	asset.TokenID = itm.TokenID
 	asset.Tier = itm.Tier
 	asset.OwnerID = itm.OwnerID
 	asset.Data = itm.Data
