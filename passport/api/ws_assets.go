@@ -637,6 +637,17 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	// Refresh metadata first, otherwise we could transfer an asset that is no longer a genesis when really it is.
+	asset, err := supremacy_rpcclient.AssetGet(req.Payload.AssetHash)
+	if err != nil {
+		return terror.Error(err, "Failed to update asset metadata.")
+	}
+
+	_, err = db.UpdateUserAsset(asset)
+	if err != nil {
+		return terror.Error(err, "Failed to update asset metadata.")
+	}
+
 	userAsset, err := boiler.UserAssets(
 		boiler.UserAssetWhere.Hash.EQ(req.Payload.AssetHash),
 		qm.Load(boiler.UserAssetRels.Collection),
