@@ -513,7 +513,6 @@ func SyncWithdraw(ucm *api.Transactor, isTestnet, enableWithdrawRollback bool) e
 
 }
 func SyncNFTs(isTestnet bool, environment types.Environment) error {
-	fmt.Println("here 11")
 	allCollections, err := boiler.Collections(boiler.CollectionWhere.MintContract.IsNotNull(),
 		boiler.CollectionWhere.ContractType.EQ(null.StringFrom("ERC-721"))).All(passdb.StdConn)
 	if err != nil {

@@ -84,12 +84,6 @@ func getNFTOwnerRecords(path Path, collection *boiler.Collection, testnet bool) 
 	}
 	q := req.URL.Query()
 
-	fmt.Println()
-	fmt.Println()
-	fmt.Println(req.URL.String())
-	fmt.Println()
-	fmt.Println()
-
 	l.Debug().Str("url", req.URL.String()).Msg("fetch NFT owners from Avant API")
 	q.Add("contract_address", collection.MintContract.String)
 	req.URL.RawQuery = q.Encode()

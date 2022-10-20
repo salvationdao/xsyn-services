@@ -64,11 +64,21 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 			boiler.UserAssetWhere.TokenID.EQ(int64(tokenID)),
 		).One(passdb.StdConn)
 		if err != nil && errors.Is(err, sql.ErrNoRows) {
-			l.Debug().Str("collection_addr", collection.MintContract.String).Int("external_token_id", tokenID).Msg("item not found")
+			l.Debug().Err(err).Str("collection_addr", collection.MintContract.String).Int("external_token_id", tokenID).Msg("item not found")
 			skipped++
 			continue
 		} else if err != nil {
 			return 0, 0, fmt.Errorf("get purchased item: %w", err)
+		}
+
+		onChainStatusObject, err := boiler.UserAssetOnChainStatuses(
+			boiler.UserAssetOnChainStatusWhere.CollectionID.EQ(userAsset.CollectionID),
+			boiler.UserAssetOnChainStatusWhere.AssetHash.EQ(userAsset.Hash),
+		).One(passdb.StdConn)
+		if err != nil {
+			l.Debug().Err(err).Interface("userAsset", userAsset).Msg("assets on chain status not found")
+			skipped++
+			continue
 		}
 
 		// if a newer tx exists, insert the tx and continue
@@ -178,8 +188,12 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 			updatedBool = true
 		}
 
-		if string(nftStatus.OnChainStatus) != userAsset.OnChainStatus {
-			userAsset.OnChainStatus = string(nftStatus.OnChainStatus)
+		if string(nftStatus.OnChainStatus) != onChainStatusObject.OnChainStatus {
+			onChainStatusObject.OnChainStatus = string(nftStatus.OnChainStatus)
+			_, err = onChainStatusObject.Update(passdb.StdConn, boil.Infer())
+			if err != nil {
+				return 0, 0, err
+			}
 			_, err = userAsset.Update(passdb.StdConn, boil.Infer())
 			if err != nil {
 				return 0, 0, err

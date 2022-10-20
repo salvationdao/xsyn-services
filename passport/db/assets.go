@@ -38,7 +38,6 @@ func IsUserAssetColumn(col string) bool {
 		boiler.UserAssetColumns.YoutubeURL,
 		boiler.UserAssetColumns.UnlockedAt,
 		boiler.UserAssetColumns.MintedAt,
-		boiler.UserAssetColumns.OnChainStatus,
 		boiler.UserAssetColumns.DeletedAt,
 		boiler.UserAssetColumns.Keywords,
 		boiler.UserAssetColumns.DataRefreshedAt:
@@ -153,9 +152,10 @@ func AssetList721(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 			Operator: OperatorValueTypeIsNull,
 		}, 0, ""))
 	}
-	if opts.AssetsOn == "ON_CHAIN" {
-		queryMods = append(queryMods, boiler.UserAssetWhere.OnChainStatus.EQ("STAKABLE"))
-	}
+	// TODO: vinnie fix
+	//if opts.AssetsOn == "ON_CHAIN" {
+	//	queryMods = append(queryMods, boiler.UserAssetWhere.OnChainStatus.EQ("STAKABLE"))
+	//}
 
 	total, err := boiler.UserAssets(
 		queryMods...,
@@ -328,9 +328,15 @@ func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string, tx 
 		UnlockedAt:       itm.UnlockedAt,
 		AvatarURL:        itm.AvatarURL,
 		MintedAt:         itm.MintedAt,
-		OnChainStatus:    itm.OnChainStatus,
 		DataRefreshedAt:  time.Now(),
-		LockedToService:  null.StringFrom(serviceID),
+		LockedToService:  null.NewString(serviceID, serviceID != ""),
+	}
+
+	// on chain status object
+	onChainStatus := &boiler.UserAssetOnChainStatus{
+		ID:           itm.ID,
+		AssetHash:    itm.Hash,
+		CollectionID: collection.ID,
 	}
 
 	// see if old asset exists
@@ -344,12 +350,12 @@ func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string, tx 
 
 	if oldAsset != nil {
 		boilerAsset.MintedAt = oldAsset.MintedAt
-		boilerAsset.OnChainStatus = oldAsset.OnChainStatus
+		onChainStatus.OnChainStatus = oldAsset.OnChainStatus
 		boilerAsset.UnlockedAt = oldAsset.UnlockedAt
 	}
 
 	// if minted tell gameserver item is xsyn locked
-	if boilerAsset.OnChainStatus == "STAKABLE" {
+	if onChainStatus.OnChainStatus == "STAKABLE" {
 		boilerAsset.LockedToService = null.String{}
 		err := supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(boilerAsset), 0)
 		if err != nil {
@@ -358,7 +364,7 @@ func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string, tx 
 	}
 
 	// if staked tell gameserver item is market locked
-	if boilerAsset.OnChainStatus == "UNSTAKABLE" {
+	if onChainStatus.OnChainStatus == "UNSTAKABLE" {
 		err := supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(boilerAsset), 0, false)
 		if err != nil {
 			return nil, terror.Error(err)
@@ -367,7 +373,7 @@ func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string, tx 
 
 	// if staked tell gameserver item is market locked
 	// UNSTAKABLE_OLD = still staked on old contract, not market tradable
-	if boilerAsset.OnChainStatus == "UNSTAKABLE_OLD" {
+	if onChainStatus.OnChainStatus == "UNSTAKABLE_OLD" {
 		err := supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(boilerAsset), 0, true)
 		if err != nil {
 			return nil, terror.Error(err)
@@ -376,14 +382,20 @@ func RegisterUserAsset(itm *supremacy_rpcclient.XsynAsset, serviceID string, tx 
 
 	err = boilerAsset.Insert(tx, boil.Infer())
 	if err != nil {
-		passlog.L.Error().Interface("itm", itm).Err(err).Msg("failed to register new asset - can't insert asset")
+		passlog.L.Error().Interface("itm", itm).Interface("boilerAsset", boilerAsset).Err(err).Msg("failed to register new asset - can't insert asset")
+		return nil, err
+	}
+
+	err = onChainStatus.Insert(tx, boil.Infer())
+	if err != nil {
+		passlog.L.Error().Interface("itm", itm).Interface("onChainStatus", onChainStatus).Err(err).Msg("failed to register new asset - can't insert asset on chain status")
 		return nil, err
 	}
 
 	return boilerAsset, nil
 }
 
-func UpdateUserAsset(itm *supremacy_rpcclient.XsynAsset) (*boiler.UserAsset, error) {
+func UpdateUserAsset(itm *supremacy_rpcclient.XsynAsset, registerIfNotExists bool) (*boiler.UserAsset, error) {
 	asset, err := boiler.UserAssets(
 		boiler.UserAssetWhere.Hash.EQ(itm.Hash),
 		qm.Load(boiler.UserAssetRels.Collection),
@@ -397,7 +409,15 @@ func UpdateUserAsset(itm *supremacy_rpcclient.XsynAsset) (*boiler.UserAsset, err
 		qm.Load(boiler.UserAssetRels.LockedToServiceUser),
 	).One(passdb.StdConn)
 	if err != nil {
-		return nil, terror.Error(err)
+		if registerIfNotExists && errors.Is(err, sql.ErrNoRows) {
+			asset, err = RegisterUserAsset(itm, itm.Service, passdb.StdConn)
+			if err != nil {
+				passlog.L.Error().Err(err).Interface("itm", itm).Msg("failed to register new asset")
+				return nil, terror.Error(err)
+			}
+		} else {
+			return nil, terror.Error(err)
+		}
 	}
 
 	var jsonAtrribs types.JSON
@@ -411,6 +431,26 @@ func UpdateUserAsset(itm *supremacy_rpcclient.XsynAsset) (*boiler.UserAsset, err
 	).One(passdb.StdConn)
 	if err != nil {
 		return nil, terror.Error(err)
+	}
+
+	onChainStatusObject, err := boiler.UserAssetOnChainStatuses(
+		boiler.UserAssetOnChainStatusWhere.CollectionID.EQ(collection.ID),
+		boiler.UserAssetOnChainStatusWhere.AssetHash.EQ(asset.Hash),
+	).One(passdb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, terror.Error(err)
+	}
+	// insert new on chain status object
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		onChainStatusObject = &boiler.UserAssetOnChainStatus{
+			AssetHash:     asset.Hash,
+			CollectionID:  collection.ID,
+			OnChainStatus: "MINTABLE",
+		}
+		err := onChainStatusObject.Insert(passdb.StdConn, boil.Infer())
+		if err != nil {
+			return nil, terror.Error(err)
+		}
 	}
 
 	asset.CollectionID = collection.ID
@@ -430,6 +470,7 @@ func UpdateUserAsset(itm *supremacy_rpcclient.XsynAsset) (*boiler.UserAsset, err
 	asset.BackgroundColor = itm.BackgroundColor
 	asset.AnimationURL = itm.AnimationURL
 	asset.YoutubeURL = itm.YoutubeURL
+	asset.LockedToService = null.NewString(itm.Service, itm.Service != "")
 	asset.DataRefreshedAt = time.Now()
 
 	_, err = asset.Update(passdb.StdConn, boil.Infer())

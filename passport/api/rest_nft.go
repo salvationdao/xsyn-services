@@ -120,11 +120,21 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
 	}
 	if item.OwnerID != user.ID {
+		fmt.Println(item.OwnerID)
+		fmt.Println(user.ID)
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("unable to validate ownership of asset"), "Unable to validate ownership of asset.")
 	}
 
-	if item.OnChainStatus != string(db.MINTABLE) {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("unable to mint asset with status %s", item.OnChainStatus), "Failed to mint asset.")
+	onChainStatusObject, err := boiler.UserAssetOnChainStatuses(
+		boiler.UserAssetOnChainStatusWhere.CollectionID.EQ(item.CollectionID),
+		boiler.UserAssetOnChainStatusWhere.AssetHash.EQ(item.Hash),
+	).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Unable to validate status of asset.")
+	}
+
+	if onChainStatusObject.OnChainStatus != string(db.MINTABLE) {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("unable to mint asset with status %s", onChainStatusObject.OnChainStatus), "Failed to mint asset.")
 	}
 
 	if item.UnlockedAt.After(time.Now()) {
@@ -340,8 +350,16 @@ func (api *API) UnstakeNFT(w http.ResponseWriter, r *http.Request) (int, error) 
 		return http.StatusBadRequest, terror.Error(err)
 	}
 
-	if item.OnChainStatus != string(db.UNSTAKABLE) {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("unable to unstake asset with status %s", item.OnChainStatus), "Failed to mint asset.")
+	onChainStatusObject, err := boiler.UserAssetOnChainStatuses(
+		boiler.UserAssetOnChainStatusWhere.CollectionID.EQ(item.CollectionID),
+		boiler.UserAssetOnChainStatusWhere.AssetHash.EQ(item.Hash),
+	).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Unable to validate status of asset.")
+	}
+
+	if onChainStatusObject.OnChainStatus != string(db.UNSTAKABLE) {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("unable to unstake asset with status %s", onChainStatusObject.OnChainStatus), "Failed to mint asset.")
 	}
 
 	if item.UnlockedAt.After(time.Now()) {

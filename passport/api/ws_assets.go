@@ -243,13 +243,21 @@ func (ac *AssetController) AssetUpdatedGetHandler(ctx context.Context, key strin
 		return terror.Error(err, "Failed to get user asset from db")
 	}
 
+	onChainStatusObject, err := boiler.UserAssetOnChainStatuses(
+		boiler.UserAssetOnChainStatusWhere.CollectionID.EQ(userAsset.CollectionID),
+		boiler.UserAssetOnChainStatusWhere.AssetHash.EQ(userAsset.Hash),
+	).One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Unable to validate status of asset.")
+	}
+
 	// if asset refreshed over 24 hours ago, pull it
 	if userAsset.DataRefreshedAt.Before(time.Now().Add(-24 * time.Hour)) {
 		xsynAsset, err := supremacy_rpcclient.AssetGet(userAsset.Hash)
 		if err != nil {
 			passlog.L.Error().Err(err).Str("userAsset.Hash", userAsset.Hash).Msg("failed to refresh metadata")
 		} else {
-			userAssetNew, err := db.UpdateUserAsset(xsynAsset)
+			userAssetNew, err := db.UpdateUserAsset(xsynAsset, false)
 			if err != nil {
 				passlog.L.Error().Err(err).Str("userAsset.Hash", userAsset.Hash).Msg("failed to update metadata")
 			} else {
@@ -286,7 +294,7 @@ func (ac *AssetController) AssetUpdatedGetHandler(ctx context.Context, key strin
 			YoutubeURL:          userAsset.YoutubeURL,
 			UnlockedAt:          userAsset.UnlockedAt,
 			MintedAt:            userAsset.MintedAt,
-			OnChainStatus:       userAsset.OnChainStatus,
+			OnChainStatus:       onChainStatusObject.OnChainStatus,
 			DeletedAt:           userAsset.DeletedAt,
 			DataRefreshedAt:     userAsset.DataRefreshedAt,
 			UpdatedAt:           userAsset.UpdatedAt,
@@ -336,7 +344,7 @@ func (ac *AssetController) AssetRefreshMetadataHandler(ctx context.Context, key 
 		return terror.Error(err, "Failed to update asset metadata.")
 	}
 
-	_, err = db.UpdateUserAsset(asset)
+	_, err = db.UpdateUserAsset(asset, false)
 	if err != nil {
 		return terror.Error(err, "Failed to update asset metadata.")
 	}
@@ -494,7 +502,15 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 		return terror.Error(fmt.Errorf("trying to transfer locked asset to supremacy"), "Asset is currently locked.")
 	}
 
-	if userAsset.OnChainStatus == "STAKABLE" {
+	onChainStatusObject, err := boiler.UserAssetOnChainStatuses(
+		boiler.UserAssetOnChainStatusWhere.CollectionID.EQ(userAsset.CollectionID),
+		boiler.UserAssetOnChainStatusWhere.AssetHash.EQ(userAsset.Hash),
+	).One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Unable to validate status of asset.")
+	}
+
+	if onChainStatusObject.OnChainStatus == "STAKABLE" {
 		return terror.Error(fmt.Errorf("trying to transfer unstaked asset to supremacy"), "Asset needs to be On-World before being able to transfer to Supremacy.")
 	}
 
@@ -535,7 +551,7 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 	}
 
 	marketLocked := true
-	if userAsset.OnChainStatus != "UNSTAKABLE_OLD" {
+	if onChainStatusObject.OnChainStatus != "UNSTAKABLE_OLD" {
 		marketLocked = false
 	}
 
@@ -593,7 +609,7 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 			YoutubeURL:          userAsset.YoutubeURL,
 			UnlockedAt:          userAsset.UnlockedAt,
 			MintedAt:            userAsset.MintedAt,
-			OnChainStatus:       userAsset.OnChainStatus,
+			OnChainStatus:       onChainStatusObject.OnChainStatus,
 			DeletedAt:           userAsset.DeletedAt,
 			DataRefreshedAt:     userAsset.DataRefreshedAt,
 			UpdatedAt:           userAsset.UpdatedAt,
@@ -634,18 +650,18 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 	req := &AssetTransferFromSupremacyRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received.")
+		return terror.Error(err, "Invalid request received, try again or contact support.")
 	}
 
 	// Refresh metadata first, otherwise we could transfer an asset that is no longer a genesis when really it is.
 	asset, err := supremacy_rpcclient.AssetGet(req.Payload.AssetHash)
 	if err != nil {
-		return terror.Error(err, "Failed to update asset metadata.")
+		return terror.Error(err, "Failed to update asset metadata, try again or contact support.")
 	}
 
-	_, err = db.UpdateUserAsset(asset)
+	_, err = db.UpdateUserAsset(asset, false)
 	if err != nil {
-		return terror.Error(err, "Failed to update asset metadata.")
+		return terror.Error(err, "Failed to update asset metadata, try again or contact support.")
 	}
 
 	userAsset, err := boiler.UserAssets(
@@ -665,7 +681,15 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 	}
 
 	if userAsset.OwnerID != user.ID {
-		return terror.Error(terror.ErrUnauthorised, "You don't own this asset.")
+		return terror.Error(terror.ErrUnauthorised, "You don't own this asset, try again or contact support.")
+	}
+
+	onChainStatusObject, err := boiler.UserAssetOnChainStatuses(
+		boiler.UserAssetOnChainStatusWhere.CollectionID.EQ(userAsset.CollectionID),
+		boiler.UserAssetOnChainStatusWhere.AssetHash.EQ(userAsset.Hash),
+	).One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Unable to validate status of asset, try again or contact support.")
 	}
 
 	debitor, err := boiler.FindUser(passdb.StdConn, xsynTypes.XsynTreasuryUserID.String())
@@ -697,7 +721,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 	}
 	err = transferLog.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
-		return terror.Error(err, "Failed to transfer asset to XSYN")
+		return terror.Error(err, "Failed to transfer asset to XSYN, try again or contact support.")
 	}
 
 	err = supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), transferLog.ID)
@@ -726,7 +750,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 			"Failed to transfer asset from supremacy",
 		)
 		marketLocked := true
-		if userAsset.OnChainStatus != "UNSTAKABLE_OLD" {
+		if onChainStatusObject.OnChainStatus != "UNSTAKABLE_OLD" {
 			marketLocked = false
 		}
 
@@ -739,9 +763,9 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 				"Failed to transfer asset from supremacy",
 			)
 			passlog.L.Error().Err(err).Msg("failed to lock asset from supremacy after we failed to update asset lock")
-			return terror.Error(err, "Failed to transfer asset from supremacy")
+			return terror.Error(err, "Failed to transfer asset from supremacy, try again or contact support.")
 		}
-		return terror.Error(err, "Failed to transfer asset from supremacy")
+		return terror.Error(err, "Failed to transfer asset from supremacy, try again or contact support.")
 	}
 
 	reply(&AssetResponse{
@@ -767,7 +791,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 			YoutubeURL:          userAsset.YoutubeURL,
 			UnlockedAt:          userAsset.UnlockedAt,
 			MintedAt:            userAsset.MintedAt,
-			OnChainStatus:       userAsset.OnChainStatus,
+			OnChainStatus:       onChainStatusObject.OnChainStatus,
 			DeletedAt:           userAsset.DeletedAt,
 			DataRefreshedAt:     userAsset.DataRefreshedAt,
 			UpdatedAt:           userAsset.UpdatedAt,
