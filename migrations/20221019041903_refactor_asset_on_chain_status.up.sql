@@ -14,9 +14,9 @@ SELECT hash, collection_id, on_chain_status
 FROM user_assets;
 
 -- USING THIS ONE IN DEV SO IT ERRORS WHERE IT WAS USED
-ALTER TABLE user_assets
-    DROP COLUMN on_chain_status;
+-- ALTER TABLE user_assets
+--     DROP COLUMN on_chain_status;
 
 -- THIS IS THE ONE WILL USE
--- ALTER TABLE user_assets
---     RENAME COLUMN on_chain_status TO  on_chain_status_old;
+ALTER TABLE user_assets
+    RENAME COLUMN on_chain_status TO  on_chain_status_old;

@@ -152,10 +152,19 @@ func AssetList721(opts *AssetListOpts) (int64, []*xsynTypes.UserAsset, error) {
 			Operator: OperatorValueTypeIsNull,
 		}, 0, ""))
 	}
-	// TODO: vinnie fix
-	//if opts.AssetsOn == "ON_CHAIN" {
-	//	queryMods = append(queryMods, boiler.UserAssetWhere.OnChainStatus.EQ("STAKABLE"))
-	//}
+
+	if opts.AssetsOn == "ON_CHAIN" {
+		queryMods = append(queryMods,
+			qm.InnerJoin(
+				fmt.Sprintf("%s ON %s = %s AND %s = 'STAKABLE'",
+					boiler.TableNames.UserAssetOnChainStatus,
+					qm.Rels(boiler.TableNames.UserAssetOnChainStatus, boiler.UserAssetOnChainStatusColumns.AssetHash),
+					qm.Rels(boiler.TableNames.UserAssets, boiler.UserAssetColumns.Hash),
+					qm.Rels(boiler.TableNames.UserAssetOnChainStatus, boiler.UserAssetOnChainStatusColumns.OnChainStatus),
+				),
+			),
+		)
+	}
 
 	total, err := boiler.UserAssets(
 		queryMods...,

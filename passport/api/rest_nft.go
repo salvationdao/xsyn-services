@@ -120,8 +120,6 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get asset.")
 	}
 	if item.OwnerID != user.ID {
-		fmt.Println(item.OwnerID)
-		fmt.Println(user.ID)
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("unable to validate ownership of asset"), "Unable to validate ownership of asset.")
 	}
 
