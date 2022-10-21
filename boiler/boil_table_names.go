@@ -35,6 +35,7 @@ var TableNames = struct {
 	Transactions                   string
 	TransactionsOld                string
 	UserActivities                 string
+	UserAssetOnChainStatus         string
 	UserAssets                     string
 	UserAssets1155                 string
 	UserFingerprints               string
@@ -74,6 +75,7 @@ var TableNames = struct {
 	Transactions:                   "transactions",
 	TransactionsOld:                "transactions_old",
 	UserActivities:                 "user_activities",
+	UserAssetOnChainStatus:         "user_asset_on_chain_status",
 	UserAssets:                     "user_assets",
 	UserAssets1155:                 "user_assets_1155",
 	UserFingerprints:               "user_fingerprints",

@@ -352,3 +352,26 @@ func (s *S) AssignTemplateHandler(req AssignTemplateReq, resp *AssignTemplateRes
 
 	return nil
 }
+
+type AssetUpdateReq struct {
+	ApiKey string                         `json:"api_key"`
+	Asset  *supremacy_rpcclient.XsynAsset `json:"asset"`
+}
+
+type AssetUpdateResp struct {
+}
+
+func (s *S) AssetUpdateHandler(req AssetUpdateReq, resp *AssetUpdateResp) error {
+	_, err := IsServerClient(req.ApiKey)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to get service id - AssetUpdateHandler")
+		return err
+	}
+
+	_, err = db.UpdateUserAsset(req.Asset, true)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("failed to UpdateUserAsset")
+	}
+
+	return nil
+}

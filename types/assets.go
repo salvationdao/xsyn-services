@@ -5,6 +5,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"time"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 )
 
@@ -105,7 +106,7 @@ func UserAssetFromBoiler(us *boiler.UserAsset) *UserAsset {
 		passlog.L.Error().Err(err).Interface("us.Attributes", us.Attributes).Msg("failed to unmarshall attributes")
 	}
 
-	return &UserAsset{
+	userAsset := &UserAsset{
 		ID:               us.ID,
 		CollectionID:     us.CollectionID,
 		TokenID:          us.TokenID,
@@ -124,7 +125,6 @@ func UserAssetFromBoiler(us *boiler.UserAsset) *UserAsset {
 		YoutubeURL:       us.YoutubeURL,
 		UnlockedAt:       us.UnlockedAt,
 		MintedAt:         us.MintedAt,
-		OnChainStatus:    us.OnChainStatus,
 		DeletedAt:        us.DeletedAt,
 		DataRefreshedAt:  us.DataRefreshedAt,
 		UpdatedAt:        us.UpdatedAt,
@@ -133,7 +133,28 @@ func UserAssetFromBoiler(us *boiler.UserAsset) *UserAsset {
 		AvatarURL:        us.AvatarURL,
 		LargeImageURL:    us.LargeImageURL,
 		LockedToService:  us.LockedToService,
+		OnChainStatus:    "UNKNOWN",
 	}
+
+	// set the on chain status for assets current collection id
+	if us.R == nil || us.R.AssetHashUserAssetOnChainStatuses == nil {
+		err := us.L.LoadAssetHashUserAssetOnChainStatuses(passdb.StdConn, true, us, nil)
+		if err != nil {
+			passlog.L.Error().Err(err).Interface("us", us).Msg("failed to get on chain status")
+		}
+		if us.R != nil && us.R.AssetHashUserAssetOnChainStatuses != nil {
+			for _, status := range us.R.AssetHashUserAssetOnChainStatuses {
+				if status.CollectionID == us.CollectionID {
+					userAsset.OnChainStatus = status.OnChainStatus
+					break
+				}
+			}
+		} else {
+			passlog.L.Error().Err(err).Interface("us", us).Msg("failed to get on chain status")
+		}
+	}
+
+	return userAsset
 }
 
 func UserAsset1155CountFromBoiler(us *boiler.UserAssets1155) *[]User1155Asset {

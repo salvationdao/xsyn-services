@@ -91,7 +91,7 @@ func (api *API) AssetGetByCollectionAndTokenID(w http.ResponseWriter, r *http.Re
 		if err != nil {
 			passlog.L.Error().Err(err).Str("asset.Hash", asset.Hash).Msg("failed to refresh metadata")
 		} else {
-			userAssetNew, err := db.UpdateUserAsset(xsynAsset)
+			userAssetNew, err := db.UpdateUserAsset(xsynAsset, false)
 			if err != nil {
 				passlog.L.Error().Err(err).Str("asset.Hash", asset.Hash).Msg("failed to update metadata")
 			} else {
