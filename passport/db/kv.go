@@ -16,7 +16,8 @@ type KVKey string
 
 const KeyCannyApiKey KVKey = "api_key_canny"
 const KeyLatestWithdrawBlock KVKey = "latest_withdraw_block"
-const KeyLatestDepositBlock KVKey = "latest_deposit_block"
+const KeyLatestDepositBlockBSC KVKey = "latest_deposit_block"
+const KeyLatestDepositBlockETH KVKey = "latest_deposit_block_eth"
 const KeyLatest1155WithdrawBlock KVKey = "latest_1155_withdraw_block"
 const KeyLatest1155DepositBlock KVKey = "latest_1155_deposit_block"
 const KeyLatestBUSDBlock KVKey = "latest_busd_block"

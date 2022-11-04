@@ -166,12 +166,14 @@ func main() {
 					/****************************
 					 *		Bridge details		*
 					 ***************************/
+					// SUP
+					&cli.StringFlag{Name: "sup_addr", Value: "0x5e8b6999B44E011F485028bf1AF0aF601F845304", EnvVars: []string{envPrefix + "_SUP_CONTRACT_ADDR"}, Usage: "SUP contract address"},
+
 					// ETH
 					&cli.StringFlag{Name: "usdc_addr", Value: "0x8BB4eC208CDDE7761ac7f3346deBb9C931f80A33", EnvVars: []string{envPrefix + "_USDC_CONTRACT_ADDR"}, Usage: "USDC contract address"},
 
 					// BSC
 					&cli.StringFlag{Name: "busd_addr", Value: "0xeAf33Ba4AcA3fE3110EAddD7D4cf0897121583D0", EnvVars: []string{envPrefix + "_BUSD_CONTRACT_ADDR"}, Usage: "BUSD contract address"},
-					&cli.StringFlag{Name: "sup_addr", Value: "0x5e8b6999B44E011F485028bf1AF0aF601F845304", EnvVars: []string{envPrefix + "_SUP_CONTRACT_ADDR"}, Usage: "SUP contract address"},
 
 					// wallet/contract addresses
 					&cli.StringFlag{Name: "operator_addr", Value: "0xc01c2f6DD7cCd2B9F8DB9aa1Da9933edaBc5079E", EnvVars: []string{envPrefix + "_OPERATOR_WALLET_ADDR"}, Usage: "Wallet address for administration"},
@@ -525,6 +527,7 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, pxr 
 	return nil
 
 }
+
 func SyncDeposits(ucm *api.Transactor, isTestnet bool) error {
 	depositRecords, err := payments.GetDeposits(isTestnet)
 	if err != nil {
@@ -536,7 +539,6 @@ func SyncDeposits(ucm *api.Transactor, isTestnet bool) error {
 	}
 
 	return nil
-
 }
 
 func Sync1155Deposits(collectionSlug string, isTestnet bool) error {
@@ -662,6 +664,7 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 		db.PutInt(db.KeyAvantSuccessCount, successCount+1)
 		db.PutInt(db.KeyAvantFailureCount, 0)
 	}()
+	// sync deposits
 	go func(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncPayments, false) {
 			err := SyncPayments(ucm, log, isTestnet, pxr)
@@ -994,7 +997,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	if enablePurchaseSubscription {
 		l := passlog.L.With().Str("svc", "avant_scraper").Logger()
 		db.PutInt(db.KeyLatestWithdrawBlock, 0)
-		db.PutInt(db.KeyLatestDepositBlock, 0)
+		db.PutInt(db.KeyLatestDepositBlockBSC, 0)
 		db.PutInt(db.KeyLatestETHBlock, 0)
 		db.PutInt(db.KeyLatestBNBBlock, 0)
 		db.PutInt(db.KeyLatestBUSDBlock, 0)

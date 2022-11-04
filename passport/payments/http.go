@@ -21,7 +21,8 @@ const stagingURL = "http://v3-staging.supremacy-api.avantdata.com:3001"
 type Path string
 
 const SUPSWithdrawTxs Path = "sups_withdraw_txs"
-const SUPSDepositTxs Path = "sups_deposit_txs"
+const SUPSDepositTxsBSC Path = "sups_deposit_txs"
+const SUPSDepositTxsETH Path = "sups_eth_deposit_txs"
 const NFTOwnerPath Path = "nft_tokens"
 const BNBPurchasePath Path = "bnb_txs"
 const BUSDPurchasePath Path = "busd_txs"
@@ -218,12 +219,30 @@ func GetWithdraws(testnet bool) ([]*SUPTransferRecord, error) {
 }
 
 func GetDeposits(testnet bool) ([]*SUPTransferRecord, error) {
-	latestDepositBlock := db.GetInt(db.KeyLatestDepositBlock)
-	records, err := getSUPTransferRecords(SUPSDepositTxs, latestDepositBlock, testnet)
-	if err != nil {
-		return nil, err
+	records := []*SUPTransferRecord{}
+
+	if db.GetBool(db.KeyEnableBscDeposits) {
+		latestDepositBlockBSC := db.GetInt(db.KeyLatestDepositBlockBSC)
+		bscRecords, err := getSUPTransferRecords(SUPSDepositTxsBSC, latestDepositBlockBSC, testnet)
+		if err != nil {
+			return nil, err
+		}
+		passlog.L.Debug().Int("bsc deposits", len(bscRecords)).Msg("getting bsc deposits")
+		records = append(records, bscRecords...)
+		db.PutInt(db.KeyLatestDepositBlockBSC, latestSUPTransferBlockFromRecords(latestDepositBlockBSC, bscRecords))
 	}
-	db.PutInt(db.KeyLatestDepositBlock, latestSUPTransferBlockFromRecords(latestDepositBlock, records))
+
+	if db.GetBool(db.KeyEnableEthDeposits) {
+		latestDepositBlockETH := db.GetInt(db.KeyLatestDepositBlockETH)
+		ethRecords, err := getSUPTransferRecords(SUPSDepositTxsETH, latestDepositBlockETH, testnet)
+		if err != nil {
+			return nil, err
+		}
+		passlog.L.Debug().Int("eth deposits", len(ethRecords)).Msg("getting eth deposits")
+		records = append(records, ethRecords...)
+		db.PutInt(db.KeyLatestDepositBlockETH, latestSUPTransferBlockFromRecords(latestDepositBlockETH, ethRecords))
+	}
+
 	return records, nil
 }
 
