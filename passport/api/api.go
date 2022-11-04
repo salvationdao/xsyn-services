@@ -232,7 +232,7 @@ func NewAPI(
 				r.Get("/withdraw/holding/{user_address}", WithError(api.HoldingSups))
 				r.Get("/withdraw/check/{address}", WithError(api.GetMaxWithdrawAmount))
 				r.Get("/withdraw/check", WithError(api.CheckCanWithdraw))
-				r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSups))
+				r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSupsBSC))
 
 				r.Get("/1155/{address}/{token_id}/{nonce}/{amount}", WithError(api.Withdraw1155))
 			}

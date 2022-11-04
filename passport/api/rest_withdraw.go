@@ -156,7 +156,7 @@ func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error)
 	return http.StatusOK, nil
 }
 
-// WithdrawSups
+// WithdrawSupsBSC
 // Flow to withdraw sups
 // get nonce from withdraw contract
 // send nonce, amount and user wallet addr to server,
@@ -164,7 +164,13 @@ func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error)
 // server generates a sig and returns it
 // submit that sig to withdraw contract withdrawSups func
 // listen on backend for update
-func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error) {
+func (api *API) WithdrawSupsBSC(w http.ResponseWriter, r *http.Request) (int, error) {
+	withdrawsEnabled := db.GetBool(db.KeyEnableBscWithdraws)
+
+	if !withdrawsEnabled {
+		return http.StatusServiceUnavailable, terror.Error(fmt.Errorf("bsc withdraws disabled"), "Withdraws on BSC are currently disabled while we migrate to Ethereum.")
+	}
+
 	address := chi.URLParam(r, "address")
 	if address == "" {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing address"), "Missing address.")

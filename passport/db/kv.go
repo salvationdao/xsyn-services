@@ -50,6 +50,11 @@ const KeySUPSWithdrawContract KVKey = "contract_withdraw_address"
 const KeySyndicateRegisterFee KVKey = "syndicate_create_fee"
 const KeySyndicateRegisterFeeCut KVKey = "syndicate_create_fee_cut"
 
+const KeyEnableEthDeposits = "enable_eth_deposits"
+const KeyEnableEthWithdraws = "enable_eth_withdraws"
+const KeyEnableBscDeposits = "enable_bsc_deposits"
+const KeyEnableBscWithdraws = "enable_bsc_withdraws"
+
 func get(key KVKey) string {
 	exists, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).Exists(passdb.StdConn)
 	if err != nil {
