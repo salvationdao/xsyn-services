@@ -354,15 +354,17 @@ func (api *API) CheckCanWithdraw(w http.ResponseWriter, r *http.Request) (int, e
 }
 
 type CheckCanDepositResp struct {
-	DepositsEnabledETH bool `json:"deposits_enabled_eth"`
-	DepositsEnabledBSC bool `json:"deposits_enabled_bsc"`
+	DepositsEnabledETH    bool   `json:"deposits_enabled_eth"`
+	SupContractAddressETH string `json:"sup_contract_address_eth"`
+	DepositsEnabledBSC    bool   `json:"deposits_enabled_bsc"`
+	SupContractAddressBSC string `json:"sup_contract_address_bsc"`
 }
 
 func (api *API) CheckCanDeposit(w http.ResponseWriter, r *http.Request) (int, error) {
-	resp := &CheckCanDepositResp{
-		DepositsEnabledETH: db.GetBool(db.KeyEnableEthDeposits),
-		DepositsEnabledBSC: db.GetBool(db.KeyEnableBscDeposits),
-	}
-
-	return helpers.EncodeJSON(w, resp)
+	return helpers.EncodeJSON(w, &CheckCanDepositResp{
+		DepositsEnabledETH:    db.GetBool(db.KeyEnableEthDeposits),
+		SupContractAddressETH: api.Web3Params.SupAddrETH.Hex(),
+		DepositsEnabledBSC:    db.GetBool(db.KeyEnableBscDeposits),
+		SupContractAddressBSC: api.Web3Params.SupAddrBSC.Hex(),
+	})
 }

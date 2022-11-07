@@ -16,7 +16,6 @@ import (
 )
 
 const baseURL = "http://v3.supremacy-api.avantdata.com:3001"
-const stagingURL = "http://v3-staging.supremacy-api.avantdata.com:3001"
 
 type Path string
 
