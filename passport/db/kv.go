@@ -15,7 +15,8 @@ import (
 type KVKey string
 
 const KeyCannyApiKey KVKey = "api_key_canny"
-const KeyLatestWithdrawBlock KVKey = "latest_withdraw_block"
+const KeyLatestWithdrawBlockBSC KVKey = "latest_withdraw_block"
+const KeyLatestWithdrawBlockETH KVKey = "latest_withdraw_block_eth"
 const KeyLatestDepositBlockBSC KVKey = "latest_deposit_block"
 const KeyLatestDepositBlockETH KVKey = "latest_deposit_block_eth"
 const KeyLatest1155WithdrawBlock KVKey = "latest_1155_withdraw_block"
@@ -46,7 +47,8 @@ const KeyEnablePassportExchangeRateAfterETHBlock KVKey = "passport_exchange_rate
 const KeyEnablePassportExchangeRateAfterBSCBlock KVKey = "passport_exchange_rate_after_bsc_block"
 
 const KeySUPSPurchaseContract KVKey = "contract_purchase_address"
-const KeySUPSWithdrawContract KVKey = "contract_withdraw_address"
+const KeySUPSWithdrawContractBSC KVKey = "contract_withdraw_address"
+const KeySUPSWithdrawContractETH KVKey = "contract_withdraw_address_eth"
 
 const KeySyndicateRegisterFee KVKey = "syndicate_create_fee"
 const KeySyndicateRegisterFeeCut KVKey = "syndicate_create_fee_cut"

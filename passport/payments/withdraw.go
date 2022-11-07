@@ -56,15 +56,19 @@ func InsertPendingRefund(ucm UserCacheMap, userID types.UserID, amount decimal.D
 	return txHold.ID, nil
 }
 
-func UpdateSuccessfulWithdrawsWithTxHash(records []*SUPTransferRecord) (int, int) {
+func UpdateSuccessfulWithdrawsWithTxHash(bscWithdrawalsEnabled, ethWithdrawalsEnabled bool, records []*SUPTransferRecord) (int, int) {
 	l := passlog.L.With().Str("svc", "avant_pending_refund_set_tx_hash").Logger()
 
 	skipped := 0
 	success := 0
-	supWithdrawContract := db.GetStrWithDefault(db.KeySUPSWithdrawContract, "0x6476db7cffeebf7cc47ed8d4996d1d60608aaf95")
+	supWithdrawContractBSC := db.GetStrWithDefault(db.KeySUPSWithdrawContractBSC, "0x6476db7cffeebf7cc47ed8d4996d1d60608aaf95")
+	supWithdrawContractETH := db.GetStrWithDefault(db.KeySUPSWithdrawContractETH, "0x6476db7cffeebf7cc47ed8d4996d1d60608aaf95")
 
 	for _, record := range records {
-		if !strings.EqualFold(record.FromAddress, supWithdrawContract) {
+		// from address needs to match an enabled withdrawal method
+		// !((bsc enabled && bsc address) || (eth enabled && eth address))
+		if !((bscWithdrawalsEnabled && strings.EqualFold(record.FromAddress, supWithdrawContractBSC)) ||
+			(ethWithdrawalsEnabled && strings.EqualFold(record.FromAddress, supWithdrawContractETH))) {
 			skipped++
 			continue
 		}
@@ -134,7 +138,7 @@ func UpdateSuccessfulWithdrawsWithTxHash(records []*SUPTransferRecord) (int, int
 	return success, skipped
 }
 
-// Rollback stale withdraws (dangerous if buggy, check very, very carefully)
+// ReverseFailedWithdraws Rollback stale withdraws (dangerous if buggy, check very, very carefully)
 func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int, int, error) {
 	l := passlog.L.
 		With().

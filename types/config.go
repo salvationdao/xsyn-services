@@ -31,7 +31,8 @@ type BridgeParams struct {
 	MoralisKey            string
 	UsdcAddr              common.Address
 	BusdAddr              common.Address
-	SupAddr               common.Address
+	SupAddrBSC            common.Address
+	SupAddrETH            common.Address
 	DepositAddr           common.Address
 	SignerPrivateKey      string
 	BscNodeAddr           string

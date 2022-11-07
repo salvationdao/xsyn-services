@@ -20,7 +20,8 @@ const stagingURL = "http://v3-staging.supremacy-api.avantdata.com:3001"
 
 type Path string
 
-const SUPSWithdrawTxs Path = "sups_withdraw_txs"
+const SUPSWithdrawTxsBSC Path = "sups_withdraw_txs"
+const SUPSWithdrawTxsETH Path = "sups_eth_withdraw_txs"
 const SUPSDepositTxsBSC Path = "sups_deposit_txs"
 const SUPSDepositTxsETH Path = "sups_eth_deposit_txs"
 const NFTOwnerPath Path = "nft_tokens"
@@ -207,14 +208,32 @@ func getNFT1155TransferRecords(path Path, latestBlock int, testnet bool, contrac
 	return result, nil
 }
 
-func GetWithdraws(testnet bool) ([]*SUPTransferRecord, error) {
-	latestWithdrawBlock := db.GetInt(db.KeyLatestWithdrawBlock)
-	records, err := getSUPTransferRecords(SUPSWithdrawTxs, latestWithdrawBlock, testnet)
-	if err != nil {
-		return nil, fmt.Errorf("get withdraw txes: %w", err)
+func GetWithdraws(bscWithdrawalsEnabled, ethWithdrawalsEnabled, testnet bool) ([]*SUPTransferRecord, error) {
+	records := []*SUPTransferRecord{}
+
+	if bscWithdrawalsEnabled {
+		latestWithdrawBlockBSC := db.GetInt(db.KeyLatestWithdrawBlockBSC)
+
+		bscRecords, err := getSUPTransferRecords(SUPSWithdrawTxsBSC, latestWithdrawBlockBSC, testnet)
+		if err != nil {
+			return nil, fmt.Errorf("get withdraw txes: %w", err)
+		}
+		passlog.L.Debug().Int("bsc withdrawals", len(bscRecords)).Msg("getting bsc withdrawals")
+		records = append(records, bscRecords...)
+		db.PutInt(db.KeyLatestWithdrawBlockBSC, latestSUPTransferBlockFromRecords(latestWithdrawBlockBSC, bscRecords))
 	}
-	newLatestWithdrawBlock := latestSUPTransferBlockFromRecords(latestWithdrawBlock, records)
-	db.PutInt(db.KeyLatestWithdrawBlock, newLatestWithdrawBlock)
+	if ethWithdrawalsEnabled {
+		latestWithdrawBlockETH := db.GetInt(db.KeyLatestWithdrawBlockETH)
+
+		ethRecords, err := getSUPTransferRecords(SUPSWithdrawTxsETH, latestWithdrawBlockETH, testnet)
+		if err != nil {
+			return nil, fmt.Errorf("get withdraw txes: %w", err)
+		}
+		passlog.L.Debug().Int("eth withdrawals", len(ethRecords)).Msg("getting eth withdrawals")
+		records = append(records, ethRecords...)
+		db.PutInt(db.KeyLatestWithdrawBlockETH, latestSUPTransferBlockFromRecords(latestWithdrawBlockETH, ethRecords))
+	}
+
 	return records, nil
 }
 
