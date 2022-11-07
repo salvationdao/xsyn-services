@@ -47,8 +47,6 @@ const KeyEnablePassportExchangeRateAfterETHBlock KVKey = "passport_exchange_rate
 const KeyEnablePassportExchangeRateAfterBSCBlock KVKey = "passport_exchange_rate_after_bsc_block"
 
 const KeySUPSPurchaseContract KVKey = "contract_purchase_address"
-const KeySUPSWithdrawContractBSC KVKey = "contract_withdraw_address"
-const KeySUPSWithdrawContractETH KVKey = "contract_withdraw_address_eth"
 
 const KeySyndicateRegisterFee KVKey = "syndicate_create_fee"
 const KeySyndicateRegisterFeeCut KVKey = "syndicate_create_fee_cut"

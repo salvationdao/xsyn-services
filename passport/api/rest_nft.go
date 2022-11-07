@@ -145,7 +145,7 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 
 	//  sign it
 	expiry := time.Now().Add(5 * time.Minute)
-	signer := bridge.NewSigner(api.BridgeParams.SignerPrivateKey)
+	signer := bridge.NewSigner(api.Web3Params.SignerPrivateKey)
 
 	_, messageSig, err := signer.GenerateSignatureWithExpiryAndCollection(common.HexToAddress(address), common.HexToAddress(collection.MintContract.String), tokenAsBigInt, nonceBigInt, big.NewInt(expiry.Unix()))
 	if err != nil {
@@ -353,7 +353,7 @@ func (api *API) UnstakeNFT(w http.ResponseWriter, r *http.Request) (int, error) 
 
 	//  sign it
 	expiry := time.Now().Add(5 * time.Minute)
-	signer := bridge.NewSigner(api.BridgeParams.SignerPrivateKey)
+	signer := bridge.NewSigner(api.Web3Params.SignerPrivateKey)
 
 	// TODO: Create a new signer func that takes collectio and THEN user address
 	_, messageSig, err := signer.GenerateSignatureWithExpiryAndCollection(common.HexToAddress(collection.MintContract.String), common.HexToAddress(address), tokenAsBigInt, nonceBigInt, big.NewInt(expiry.Unix()))

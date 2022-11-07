@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"strconv"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/api/users"
@@ -139,6 +140,7 @@ func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error)
 		boiler.PendingRefundWhere.UserID.EQ(u.ID),
 		boiler.PendingRefundWhere.IsRefunded.EQ(false),      // Only those not refunded by avant scraper yet
 		boiler.PendingRefundWhere.RefundedAt.GT(time.Now()), // Only those with unexpired signatures
+		boiler.PendingRefundWhere.RefundCanceledAt.IsNull(),
 	).All(passdb.StdConn)
 	if err != nil {
 		passlog.L.Error().Str("pending_refunds", u.ID).Err(err).Msg("failed to find pending refunds")
@@ -156,7 +158,7 @@ func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error)
 	return http.StatusOK, nil
 }
 
-// WithdrawSupsBSC
+// WithdrawSups
 // Flow to withdraw sups
 // get nonce from withdraw contract
 // send nonce, amount and user wallet addr to server,
@@ -164,12 +166,9 @@ func (api *API) HoldingSups(w http.ResponseWriter, r *http.Request) (int, error)
 // server generates a sig and returns it
 // submit that sig to withdraw contract withdrawSups func
 // listen on backend for update
-func (api *API) WithdrawSupsBSC(w http.ResponseWriter, r *http.Request) (int, error) {
-	withdrawsEnabled := db.GetBool(db.KeyEnableBscWithdraws)
-
-	if !withdrawsEnabled {
-		return http.StatusServiceUnavailable, terror.Error(fmt.Errorf("bsc withdraws disabled"), "Withdraws on BSC are currently disabled while we migrate to Ethereum.")
-	}
+func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error) {
+	// todo: check passed in chain is valid
+	// todo: check withdrawals are enabled for passed in chain
 
 	address := chi.URLParam(r, "address")
 	if address == "" {
@@ -184,6 +183,31 @@ func (api *API) WithdrawSupsBSC(w http.ResponseWriter, r *http.Request) (int, er
 	amount := chi.URLParam(r, "amount")
 	if amount == "" {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing amount"), "Missing amount.")
+	}
+
+	chain := chi.URLParam(r, "chain")
+	if chain == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing chain"), "Missing chain id.")
+	}
+	chainInt, err := strconv.Atoi(chain)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Invalid chain id.")
+	}
+
+	if chainInt == api.Web3Params.EthChainID {
+		withdrawsEnabled := db.GetBool(db.KeyEnableBscWithdraws)
+
+		if !withdrawsEnabled {
+			return http.StatusServiceUnavailable, terror.Error(fmt.Errorf("bsc withdraws disabled"), "Withdraws on BSC are currently disabled while we migrate to Ethereum.")
+		}
+	} else if chainInt == api.Web3Params.BscChainID {
+		withdrawsEnabled := db.GetBool(db.KeyEnableBscWithdraws)
+
+		if !withdrawsEnabled {
+			return http.StatusServiceUnavailable, terror.Error(fmt.Errorf("eth withdraws disabled"), "Withdraws on ETH are currently disabled while we migrate to Ethereum.")
+		}
+	} else {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("chain %d is invalid", chainInt), "Invalid chain id.")
 	}
 
 	toAddress := common.HexToAddress(address)
@@ -235,7 +259,7 @@ func (api *API) WithdrawSupsBSC(w http.ResponseWriter, r *http.Request) (int, er
 
 	//  sign it
 	expiry := time.Now().Add(5 * time.Minute)
-	signer := bridge.NewSigner(api.BridgeParams.SignerPrivateKey)
+	signer := bridge.NewSigner(api.Web3Params.SignerPrivateKey)
 	_, messageSig, err := signer.GenerateSignatureWithExpiry(toAddress, amountBigInt, nonceBigInt, big.NewInt(expiry.Unix()))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to create withdraw signature, please try again or contact support.")
@@ -299,12 +323,46 @@ func (api *API) WithdrawSupsBSC(w http.ResponseWriter, r *http.Request) (int, er
 	return http.StatusOK, nil
 }
 
-func (api *API) CheckCanWithdraw(w http.ResponseWriter, r *http.Request) (int, error) {
-	state, err := boiler.States(qm.Select("*")).One(passdb.StdConn)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to get state")
-	}
-	canWithdraw := CheckWithdrawResponse{CanWithdraw: time.Now().After(state.WithdrawStartAt)}
+type CheckCanWithdrawResp struct {
+	WithdrawalsEnabled        bool   `json:"withdrawals_enabled"`
+	WithdrawalChain           int    `json:"withdrawal_chain"`
+	WithdrawalContractAddress string `json:"withdrawal_contract_address"`
+	TokenContractAddress      string `json:"token_contract_address"`
+}
 
-	return helpers.EncodeJSON(w, canWithdraw)
+func (api *API) CheckCanWithdraw(w http.ResponseWriter, r *http.Request) (int, error) {
+	withdrawsEnabledBSC := db.GetBool(db.KeyEnableBscWithdraws)
+	withdrawsEnabledETH := db.GetBool(db.KeyEnableEthWithdraws)
+
+	resp := &CheckCanWithdrawResp{}
+
+	if withdrawsEnabledBSC {
+		resp.WithdrawalsEnabled = true
+		resp.WithdrawalChain = api.Web3Params.BscChainID
+		resp.WithdrawalContractAddress = api.Web3Params.SupWithdrawalAddrBSC.Hex()
+		resp.TokenContractAddress = api.Web3Params.SupAddrBSC.Hex()
+	}
+	// we only want one withdrawal open at the same time, ETH takes precedent
+	if withdrawsEnabledETH {
+		resp.WithdrawalsEnabled = true
+		resp.WithdrawalChain = api.Web3Params.EthChainID
+		resp.WithdrawalContractAddress = api.Web3Params.SupWithdrawalAddrETH.Hex()
+		resp.TokenContractAddress = api.Web3Params.SupAddrETH.Hex()
+	}
+
+	return helpers.EncodeJSON(w, resp)
+}
+
+type CheckCanDepositResp struct {
+	DepositsEnabledETH bool `json:"deposits_enabled_eth"`
+	DepositsEnabledBSC bool `json:"deposits_enabled_bsc"`
+}
+
+func (api *API) CheckCanDeposit(w http.ResponseWriter, r *http.Request) (int, error) {
+	resp := &CheckCanDepositResp{
+		DepositsEnabledETH: db.GetBool(db.KeyEnableEthDeposits),
+		DepositsEnabledBSC: db.GetBool(db.KeyEnableBscDeposits),
+	}
+
+	return helpers.EncodeJSON(w, resp)
 }

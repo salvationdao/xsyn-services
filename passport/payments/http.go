@@ -246,7 +246,9 @@ func GetDeposits(testnet bool) ([]*SUPTransferRecord, error) {
 		if err != nil {
 			return nil, err
 		}
-		passlog.L.Debug().Int("bsc deposits", len(bscRecords)).Msg("getting bsc deposits")
+		if len(bscRecords) > 0 {
+			passlog.L.Debug().Int("bsc deposits", len(bscRecords)).Msg("getting bsc deposits")
+		}
 		records = append(records, bscRecords...)
 		db.PutInt(db.KeyLatestDepositBlockBSC, latestSUPTransferBlockFromRecords(latestDepositBlockBSC, bscRecords))
 	}
@@ -257,7 +259,9 @@ func GetDeposits(testnet bool) ([]*SUPTransferRecord, error) {
 		if err != nil {
 			return nil, err
 		}
-		passlog.L.Debug().Int("eth deposits", len(ethRecords)).Msg("getting eth deposits")
+		if len(ethRecords) > 0 {
+			passlog.L.Debug().Int("eth deposits", len(ethRecords)).Msg("getting eth deposits")
+		}
 		records = append(records, ethRecords...)
 		db.PutInt(db.KeyLatestDepositBlockETH, latestSUPTransferBlockFromRecords(latestDepositBlockETH, ethRecords))
 	}

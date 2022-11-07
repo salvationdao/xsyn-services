@@ -124,7 +124,7 @@ func (ctrlr *CollectionController) WalletCollectionsList(ctx context.Context, ke
 		return terror.Error(err, "user not found")
 	}
 
-	o := bridge.NewOracle(ctrlr.API.BridgeParams.MoralisKey)
+	o := bridge.NewOracle(ctrlr.API.Web3Params.MoralisKey)
 
 	network := bridge.NetworkGoerli
 	if !ctrlr.isTestnetwork {
