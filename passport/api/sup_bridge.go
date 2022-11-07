@@ -26,7 +26,7 @@ type ChainClients struct {
 	SUPS                *bridge.SUPS
 	EthClient           *ethclient.Client
 	BscClient           *ethclient.Client
-	Params              *types.BridgeParams
+	Params              *types.Web3Params
 	API                 *API
 	Log                 *zerolog.Logger
 
@@ -100,7 +100,7 @@ func FetchBNBPrice() (decimal.Decimal, error) {
 	return fetchPrice("BNB")
 }
 
-func NewChainClients(log *zerolog.Logger, api *API, p *types.BridgeParams, isTestnetBlockchain bool, runBlockchainBridge bool, enablePurchaseSubscription bool) *ChainClients {
+func NewChainClients(log *zerolog.Logger, api *API, p *types.Web3Params, isTestnetBlockchain bool, runBlockchainBridge bool, enablePurchaseSubscription bool) *ChainClients {
 	cc := &ChainClients{
 		Params:              p,
 		API:                 api,

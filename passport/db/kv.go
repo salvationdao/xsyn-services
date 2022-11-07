@@ -15,8 +15,10 @@ import (
 type KVKey string
 
 const KeyCannyApiKey KVKey = "api_key_canny"
-const KeyLatestWithdrawBlock KVKey = "latest_withdraw_block"
-const KeyLatestDepositBlock KVKey = "latest_deposit_block"
+const KeyLatestWithdrawBlockBSC KVKey = "latest_withdraw_block"
+const KeyLatestWithdrawBlockETH KVKey = "latest_withdraw_block_eth"
+const KeyLatestDepositBlockBSC KVKey = "latest_deposit_block"
+const KeyLatestDepositBlockETH KVKey = "latest_deposit_block_eth"
 const KeyLatest1155WithdrawBlock KVKey = "latest_1155_withdraw_block"
 const KeyLatest1155DepositBlock KVKey = "latest_1155_deposit_block"
 const KeyLatestBUSDBlock KVKey = "latest_busd_block"
@@ -45,10 +47,14 @@ const KeyEnablePassportExchangeRateAfterETHBlock KVKey = "passport_exchange_rate
 const KeyEnablePassportExchangeRateAfterBSCBlock KVKey = "passport_exchange_rate_after_bsc_block"
 
 const KeySUPSPurchaseContract KVKey = "contract_purchase_address"
-const KeySUPSWithdrawContract KVKey = "contract_withdraw_address"
 
 const KeySyndicateRegisterFee KVKey = "syndicate_create_fee"
 const KeySyndicateRegisterFeeCut KVKey = "syndicate_create_fee_cut"
+
+const KeyEnableEthDeposits = "enable_eth_deposits"
+const KeyEnableEthWithdraws = "enable_eth_withdraws"
+const KeyEnableBscDeposits = "enable_bsc_deposits"
+const KeyEnableBscWithdraws = "enable_bsc_withdraws"
 
 func get(key KVKey) string {
 	exists, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).Exists(passdb.StdConn)

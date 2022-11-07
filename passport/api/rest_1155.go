@@ -82,7 +82,7 @@ func (api *API) Withdraw1155(w http.ResponseWriter, r *http.Request) (int, error
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("amount total after withdraw is below 0"), "Amount total after withdraw is less than 0")
 	}
 
-	signer := bridge.NewSigner(api.BridgeParams.AchievementsSignerKey)
+	signer := bridge.NewSigner(api.Web3Params.AchievementsSignerKey)
 	_, messageSig, err := signer.GenerateSignature(toAddress, big.NewInt(int64(tokenInt)), big.NewInt(int64(nonceInt)))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to create withdraw signature, please try again or contact support.")

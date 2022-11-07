@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 	"xsyn-services/boiler"
-	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
@@ -22,18 +21,18 @@ const (
 	DepositTransactionStatusConfirmed DepositTransactionStatus = "confirmed"
 )
 
-func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, error) {
+func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap, purchaseAddress common.Address) (int, int, error) {
 	l := passlog.L.With().Str("svc", "avant_deposit_processor").Logger()
 	success := 0
 	skipped := 0
-	supContract := db.GetStrWithDefault(db.KeySUPSPurchaseContract, "0x52b38626D3167e5357FE7348624352B7062fE271")
 
 	l.Info().Int("records", len(records)).Msg("processing deposits")
 	for _, record := range records {
-		if strings.EqualFold(record.FromAddress, supContract) {
+		if strings.EqualFold(record.FromAddress, purchaseAddress.String()) {
 			skipped++
 			continue
 		}
+
 		exists, err := boiler.Transactions(boiler.TransactionWhere.TransactionReference.EQ(record.TxHash)).Exists(passdb.StdConn)
 		if err != nil {
 			skipped++
@@ -44,6 +43,7 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap) (int, int, 
 			skipped++
 			continue
 		}
+
 		user, err := CreateOrGetUser(common.HexToAddress(record.FromAddress))
 		if err != nil {
 			skipped++

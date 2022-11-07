@@ -35,7 +35,6 @@ import (
 	_ "github.com/lib/pq" //postgres drivers for initialization
 
 	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/terror/v2"
 
@@ -166,27 +165,23 @@ func main() {
 					/****************************
 					 *		Bridge details		*
 					 ***************************/
-					// ETH
-					&cli.StringFlag{Name: "usdc_addr", Value: "0x8BB4eC208CDDE7761ac7f3346deBb9C931f80A33", EnvVars: []string{envPrefix + "_USDC_CONTRACT_ADDR"}, Usage: "USDC contract address"},
+					&cli.StringFlag{Name: "purchase_addr", Value: "0x7D6439fDF9B096b29b77afa28b3083c0a329c7fE", EnvVars: []string{envPrefix + "_PURCHASE_ADDR"}, Usage: "Address where purchases go into"},
 
-					// BSC
-					&cli.StringFlag{Name: "busd_addr", Value: "0xeAf33Ba4AcA3fE3110EAddD7D4cf0897121583D0", EnvVars: []string{envPrefix + "_BUSD_CONTRACT_ADDR"}, Usage: "BUSD contract address"},
-					&cli.StringFlag{Name: "sup_addr", Value: "0x5e8b6999B44E011F485028bf1AF0aF601F845304", EnvVars: []string{envPrefix + "_SUP_CONTRACT_ADDR"}, Usage: "SUP contract address"},
+					// SUP
+					&cli.StringFlag{Name: "sup_addr_bsc", Value: "0x5e8b6999B44E011F485028bf1AF0aF601F845304", EnvVars: []string{envPrefix + "_SUP_CONTRACT_ADDR_BSC"}, Usage: "SUP contract address on BSC"},
+					&cli.StringFlag{Name: "sup_addr_eth", Value: "0xfF30d2c046AEb5FA793138265Cc586De814d0040", EnvVars: []string{envPrefix + "_SUP_CONTRACT_ADDR_ETH"}, Usage: "SUP contract address on ETH"},
+					&cli.StringFlag{Name: "sup_withdrawal_addr_bsc", Value: "0x9DAcEA338E4DDd856B152Ce553C7540DF920Bb15", EnvVars: []string{envPrefix + "_SUP_WITHDRAWAL_CONTRACT_ADDR_BSC"}, Usage: "SUP withdrawal contract address on BSC"},
+					&cli.StringFlag{Name: "sup_withdrawal_addr_eth", Value: "0xf6D4255eE10FFaF4B746950583665d7809556ae0", EnvVars: []string{envPrefix + "_SUP_WITHDRAWAL_CONTRACT_ADDR_ETH"}, Usage: "SUP withdrawal contract address on ETH"},
 
-					// wallet/contract addresses
-					&cli.StringFlag{Name: "operator_addr", Value: "0xc01c2f6DD7cCd2B9F8DB9aa1Da9933edaBc5079E", EnvVars: []string{envPrefix + "_OPERATOR_WALLET_ADDR"}, Usage: "Wallet address for administration"},
+					// private keys
 					&cli.StringFlag{Name: "signer_private_key", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing (usually operator)"},
 					&cli.StringFlag{Name: "achievement_signer_private_key", Value: "0x9878e47371dc28d434b8e5a2e36a5ac2fad84af4ebcd8ea34470b2417590e087", EnvVars: []string{envPrefix + "_ACHIEVEMENT_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing achievement contract (usually operator)"},
 
 					// chain id
-					&cli.Int64Flag{Name: "bsc_chain_id", Value: 97, EnvVars: []string{envPrefix + "_BSC_CHAIN_ID"}, Usage: "BSC Chain ID"},
-					&cli.Int64Flag{Name: "eth_chain_id", Value: 5, EnvVars: []string{envPrefix + "_ETH_CHAIN_ID"}, Usage: "ETH Chain ID"},
+					&cli.IntFlag{Name: "bsc_chain_id", Value: 97, EnvVars: []string{envPrefix + "_BSC_CHAIN_ID"}, Usage: "BSC Chain ID"},
+					&cli.IntFlag{Name: "eth_chain_id", Value: 5, EnvVars: []string{envPrefix + "_ETH_CHAIN_ID"}, Usage: "ETH Chain ID"},
 
-					// node address
-					&cli.StringFlag{Name: "bsc_node_addr", Value: "wss://speedy-nodes-nyc.moralis.io/6bc5ccfe2d00f7a5ae0ba00a/bsc/testnet/ws", EnvVars: []string{envPrefix + "_BSC_WS_NODE_URL"}, Usage: "Binance WS node URL"},
-					&cli.StringFlag{Name: "eth_node_addr", Value: "wss://speedy-nodes-nyc.moralis.io/6bc5ccfe2d00f7a5ae0ba00a/eth/goerli/ws", EnvVars: []string{envPrefix + "_ETH_WS_NODE_URL"}, Usage: "Ethereum WS node URL"},
 					//router address for exchange rates
-					&cli.StringFlag{Name: "bsc_router_addr", Value: "0x10ED43C718714eb63d5aA57B78B54704E256024E", EnvVars: []string{envPrefix + "_BSC_ROUTER_ADDR"}, Usage: "BSC Router address"},
 					&cli.BoolFlag{Name: "enable_purchase_subscription", Value: false, EnvVars: []string{envPrefix + "_ENABLE_PURCHASE_SUBSCRIPTION"}, Usage: "Poll payments and price"},
 					&cli.BoolFlag{Name: "avant_testnet", Value: false, EnvVars: []string{envPrefix + "_AVANT_TESTNET"}, Usage: "Use testnet for Avant data scraper"},
 					&cli.BoolFlag{Name: "skip_update_users_mixed_case", Value: false, EnvVars: []string{envPrefix + "_SKIP_UPDATE_USERS_MIXED_CASE"}, Usage: "Set to true after users have been all updated as mixed case"},
@@ -296,47 +291,6 @@ func main() {
 	}
 }
 
-func pgxconnect(
-	DatabaseUser string,
-	DatabasePass string,
-	DatabaseHost string,
-	DatabasePort string,
-	DatabaseName string,
-	DatabaseApplicationName string,
-	APIVersion string,
-	maxPool int,
-) (*pgxpool.Pool, error) {
-	params := url.Values{}
-	params.Add("sslmode", "disable")
-	if DatabaseApplicationName != "" {
-		params.Add("application_name", fmt.Sprintf("%s %s", DatabaseApplicationName, APIVersion))
-	}
-
-	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
-		DatabaseUser,
-		DatabasePass,
-		DatabaseHost,
-		DatabasePort,
-		DatabaseName,
-		params.Encode(),
-	)
-
-	poolConfig, err := pgxpool.ParseConfig(connString)
-	if err != nil {
-		return nil, terror.Panic(err, "could not initialise database")
-	}
-	poolConfig.ConnConfig.LogLevel = pgx.LogLevelTrace
-	poolConfig.MaxConns = int32(maxPool)
-
-	ctx := context.Background()
-	conn, err := pgxpool.ConnectConfig(ctx, poolConfig)
-	if err != nil {
-		return nil, terror.Panic(err, "could not initialise database")
-	}
-
-	return conn, nil
-}
-
 func sqlConnect(
 	databaseTxUser string,
 	databaseTxPass string,
@@ -373,36 +327,6 @@ func sqlConnect(
 	conn.SetMaxOpenConns(maxOpen)
 	return conn, nil
 
-}
-
-func txConnect(
-	databaseTxUser string,
-	databaseTxPass string,
-	databaseHost string,
-	databasePort string,
-	databaseName string,
-	maxIdle int,
-	maxOpen int,
-) (*sql.DB, error) {
-	params := url.Values{}
-	params.Add("sslmode", "disable")
-
-	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
-		databaseTxUser,
-		databaseTxPass,
-		databaseHost,
-		databasePort,
-		databaseName,
-		params.Encode(),
-	)
-
-	conn, err := sql.Open("postgres", connString)
-	if err != nil {
-		return nil, err
-	}
-	conn.SetMaxIdleConns(maxIdle)
-	conn.SetMaxOpenConns(maxOpen)
-	return conn, nil
 }
 
 func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, pxr *api.PassportExchangeRate) error {
@@ -525,21 +449,21 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, pxr 
 	return nil
 
 }
-func SyncDeposits(ucm *api.Transactor, isTestnet bool) error {
+
+func SyncDeposits(ucm *api.Transactor, purchaseAddress common.Address, isTestnet bool) error {
 	depositRecords, err := payments.GetDeposits(isTestnet)
 	if err != nil {
 		return fmt.Errorf("get deposits: %w", err)
 	}
-	_, _, err = payments.ProcessDeposits(depositRecords, ucm)
+	_, _, err = payments.ProcessDeposits(depositRecords, ucm, purchaseAddress)
 	if err != nil {
 		return fmt.Errorf("process deposits: %w", err)
 	}
 
 	return nil
-
 }
 
-func Sync1155Deposits(collectionSlug string, isTestnet bool) error {
+func Sync1155Deposits(collectionSlug string, purchaseAddress common.Address, isTestnet bool) error {
 	collection, err := db.CollectionBySlug(collectionSlug)
 	if err != nil {
 		return err
@@ -552,7 +476,7 @@ func Sync1155Deposits(collectionSlug string, isTestnet bool) error {
 	if err != nil {
 		return fmt.Errorf("get deposits: %w", err)
 	}
-	_, _, err = payments.Process1155Deposits(depositRecords, collectionSlug)
+	_, _, err = payments.Process1155Deposits(depositRecords, collectionSlug, purchaseAddress)
 	if err != nil {
 		return fmt.Errorf("process deposits: %w", err)
 	}
@@ -560,24 +484,38 @@ func Sync1155Deposits(collectionSlug string, isTestnet bool) error {
 	return nil
 
 }
-func SyncWithdraw(ucm *api.Transactor, isTestnet, enableWithdrawRollback bool) error {
+
+func SyncWithdraw(
+	ucm *api.Transactor,
+	isTestnet,
+	enableWithdrawRollback bool,
+	supWithdrawContractBSC,
+	supWithdrawContractETH common.Address,
+) error {
+	bscWithdrawalsEnabled := db.GetBool(db.KeyEnableBscWithdraws)
+	ethWithdrawalsEnabled := db.GetBool(db.KeyEnableEthWithdraws)
+
 	// Update with TX hash first
-	withdrawRecords, err := payments.GetWithdraws(isTestnet)
+	withdrawRecords, err := payments.GetWithdraws(bscWithdrawalsEnabled, ethWithdrawalsEnabled, isTestnet)
 	if err != nil {
 		return fmt.Errorf("get withdraws: %w", err)
 	}
-	success, skipped := payments.UpdateSuccessfulWithdrawsWithTxHash(withdrawRecords)
-	passlog.L.Info().Int("success", success).Int("skipped", skipped).Msg("add tx hashes to pending refunds")
+	success, skipped := payments.UpdateSuccessfulWithdrawsWithTxHash(bscWithdrawalsEnabled, ethWithdrawalsEnabled, supWithdrawContractBSC, supWithdrawContractETH, withdrawRecords)
+	if success > 0 || skipped > 0 {
+		passlog.L.Info().Int("success", success).Int("skipped", skipped).Msg("add tx hashes to pending refunds")
+	}
 
 	refundsSuccess, refundsSkipped, err := payments.ReverseFailedWithdraws(ucm, enableWithdrawRollback)
 	if err != nil {
 		return fmt.Errorf("process withdraws: %w", err)
 	}
-	passlog.L.Info().Int("success", refundsSuccess).Int("skipped", refundsSkipped).Msg("refunds processed")
+	if refundsSuccess > 0 || refundsSkipped > 0 {
+		passlog.L.Info().Int("success", refundsSuccess).Int("skipped", refundsSkipped).Msg("refunds processed")
+	}
 
 	return nil
-
 }
+
 func SyncNFTs(isTestnet bool) error {
 	allCollections, err := boiler.Collections(boiler.CollectionWhere.MintContract.IsNotNull(),
 		boiler.CollectionWhere.ContractType.EQ(null.StringFrom("ERC-721"))).All(passdb.StdConn)
@@ -637,7 +575,8 @@ func Sync1155Withdraw(collectionSlug string, isTestnet, enable1155Rollback bool)
 	return nil
 }
 
-func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool, pxr *api.PassportExchangeRate) error {
+func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdrawRollback bool, pxr *api.PassportExchangeRate, config *types.Web3Params) error {
+	// ping avant to ensure service status
 	go func() {
 		l := passlog.L.With().Str("svc", "avant_ping").Logger()
 		failureCount := db.GetIntWithDefault(db.KeyAvantFailureCount, 0)
@@ -651,7 +590,9 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 			db.PutBool(db.KeyEnableWithdrawRollback, true)
 		}
 
-		l.Debug().Int("failure_count", failureCount).Msg("avant status check")
+		if failureCount > 0 {
+			l.Debug().Int("failure_count", failureCount).Msg("avant status check")
+		}
 		err := payments.Ping()
 		if err != nil {
 			l.Err(err).Int("failure_count", failureCount).Msg("avant ping fail")
@@ -662,6 +603,7 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 		db.PutInt(db.KeyAvantSuccessCount, successCount+1)
 		db.PutInt(db.KeyAvantFailureCount, 0)
 	}()
+	// sync sup purchases
 	go func(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncPayments, false) {
 			err := SyncPayments(ucm, log, isTestnet, pxr)
@@ -670,28 +612,32 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 			}
 		}
 	}(ucm, log, isTestnet)
+	// sync sup deposits
 	go func(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncDeposits, false) {
-			err := SyncDeposits(ucm, isTestnet)
+			err := SyncDeposits(ucm, config.PurchaseAddress, isTestnet)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync deposits")
 			}
 		}
 	}(ucm, log, isTestnet)
+	// sync nft changes
 	go func() {
 		err := SyncNFTs(isTestnet)
 		if err != nil {
 			passlog.L.Err(err).Msg("failed to sync nfts")
 		}
 	}()
+	// sync sup withdrawals
 	go func(ucm *api.Transactor, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncWithdraw, false) {
-			err := SyncWithdraw(ucm, isTestnet, enableWithdrawRollback)
+			err := SyncWithdraw(ucm, isTestnet, enableWithdrawRollback, config.SupWithdrawalAddrBSC, config.SupWithdrawalAddrETH)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync withdraw")
 			}
 		}
 	}(ucm, isTestnet)
+	// sync 1155 nft withdrawals
 	go func(isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSync1155, false) {
 			err := Sync1155Withdraw("supremacy-achievements", isTestnet, enableWithdrawRollback)
@@ -700,9 +646,10 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 			}
 		}
 	}(isTestnet)
+	// sync 1155 nft deposits
 	go func(isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSync1155, false) {
-			err := Sync1155Deposits("supremacy-achievements", isTestnet)
+			err := Sync1155Deposits("supremacy-achievements", config.PurchaseAddress, isTestnet)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync 1155")
 			}
@@ -744,18 +691,16 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	databaseName := ctxCLI.String("database_name")
 	databaseAppName := ctxCLI.String("database_application_name")
 
-	MoralisKey := ctxCLI.String("moralis_key")
-	UsdcAddr := ctxCLI.String("usdc_addr")
-	BusdAddr := ctxCLI.String("busd_addr")
-	SupAddr := ctxCLI.String("sup_addr")
-	OperatorAddr := ctxCLI.String("operator_addr")
-	SignerPrivateKey := ctxCLI.String("signer_private_key")
-	AchievementSignerKey := ctxCLI.String("achievement_signer_private_key")
-	BscNodeAddr := ctxCLI.String("bsc_node_addr")
-	EthNodeAddr := ctxCLI.String("eth_node_addr")
-	BSCChainID := ctxCLI.Int64("bsc_chain_id")
-	ETHChainID := ctxCLI.Int64("eth_chain_id")
-	BSCRouterAddr := ctxCLI.String("bsc_router_addr")
+	purchaseAddr := ctxCLI.String("purchase_addr")
+	supAddrBsc := ctxCLI.String("sup_addr_bsc")
+	supAddrEth := ctxCLI.String("sup_addr_eth")
+	supWithdrawalAddrBsc := ctxCLI.String("sup_withdrawal_addr_bsc")
+	supWithdrawalAddrEth := ctxCLI.String("sup_withdrawal_addr_eth")
+	moralisKey := ctxCLI.String("moralis_key")
+	signerPrivateKey := ctxCLI.String("signer_private_key")
+	achievementSignerKey := ctxCLI.String("achievement_signer_private_key")
+	BSCChainID := ctxCLI.Int("bsc_chain_id")
+	ETHChainID := ctxCLI.Int("eth_chain_id")
 
 	enablePurchaseSubscription := ctxCLI.Bool("enable_purchase_subscription")
 
@@ -836,19 +781,17 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 		EncryptTokensKey:    ctxCLI.String("jwt_encrypt_key"),
 		TokenExpirationDays: ctxCLI.Int("jwt_expiry_days"),
 		MetaMaskSignMessage: ctxCLI.String("metamask_sign_message"),
-		BridgeParams: &types.BridgeParams{
-			MoralisKey:            MoralisKey,
-			OperatorAddr:          common.HexToAddress(OperatorAddr),
-			UsdcAddr:              common.HexToAddress(UsdcAddr),
-			BusdAddr:              common.HexToAddress(BusdAddr),
-			SupAddr:               common.HexToAddress(SupAddr),
-			SignerPrivateKey:      SignerPrivateKey,
-			BscNodeAddr:           BscNodeAddr,
-			EthNodeAddr:           EthNodeAddr,
-			BSCChainID:            BSCChainID,
-			ETHChainID:            ETHChainID,
-			BSCRouterAddr:         common.HexToAddress(BSCRouterAddr),
-			AchievementsSignerKey: AchievementSignerKey,
+		Web3Params: &types.Web3Params{
+			SignerPrivateKey:      signerPrivateKey,
+			AchievementsSignerKey: achievementSignerKey,
+			MoralisKey:            moralisKey,
+			EthChainID:            ETHChainID,
+			BscChainID:            BSCChainID,
+			SupAddrBSC:            common.HexToAddress(supAddrBsc),
+			SupAddrETH:            common.HexToAddress(supAddrEth),
+			SupWithdrawalAddrBSC:  common.HexToAddress(supWithdrawalAddrBsc),
+			SupWithdrawalAddrETH:  common.HexToAddress(supWithdrawalAddrEth),
+			PurchaseAddress:       common.HexToAddress(purchaseAddr),
 		},
 		OnlyWalletConnect:       ctxCLI.Bool("only_wallet"),
 		WhitelistEndpoint:       ctxCLI.String("whitelist_check_endpoint"),
@@ -993,8 +936,8 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 
 	if enablePurchaseSubscription {
 		l := passlog.L.With().Str("svc", "avant_scraper").Logger()
-		db.PutInt(db.KeyLatestWithdrawBlock, 0)
-		db.PutInt(db.KeyLatestDepositBlock, 0)
+		db.PutInt(db.KeyLatestWithdrawBlockBSC, 0)
+		db.PutInt(db.KeyLatestDepositBlockBSC, 0)
 		db.PutInt(db.KeyLatestETHBlock, 0)
 		db.PutInt(db.KeyLatestBNBBlock, 0)
 		db.PutInt(db.KeyLatestBUSDBlock, 0)
@@ -1017,7 +960,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 
 		}
 
-		err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback, passportExchangeRate)
+		err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback, passportExchangeRate, config.Web3Params)
 
 		if err != nil {
 			log.Error().Err(err).Msg("sync")
@@ -1032,7 +975,7 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 				} else {
 					l.Debug().Bool("enable_withdraw_rollback", enableWithdrawRollback).Msg("withdraw rollback is enabled")
 				}
-				err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback, passportExchangeRate)
+				err := SyncFunc(ucm, log, avantTestnet, enableWithdrawRollback, passportExchangeRate, config.Web3Params)
 				if err != nil {
 					log.Error().Err(err).Msg("sync")
 				}
