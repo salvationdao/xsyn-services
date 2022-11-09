@@ -359,15 +359,14 @@ func ReverseFailed1155(enabled1155Rollback bool) (int, int, error) {
 	return success, skipped, nil
 }
 
-func Process1155Deposits(records []*NFT1155TransferRecord, collectionSlug string, environment types.Environment) (int, int, error) {
+func Process1155Deposits(records []*NFT1155TransferRecord, collectionSlug string, purchaseAddress common.Address, environment types.Environment) (int, int, error) {
 	l := passlog.L.With().Str("svc", "avant_1155deposit_processor").Logger()
 	success := 0
 	skipped := 0
-	supContract := db.GetStrWithDefault(db.KeySUPSPurchaseContract, "0x52b38626D3167e5357FE7348624352B7062fE271")
 
 	l.Info().Int("records", len(records)).Msg("processing deposits")
 	for _, record := range records {
-		if !strings.EqualFold(record.ToAddress, supContract) {
+		if !strings.EqualFold(record.ToAddress, purchaseAddress.Hex()) {
 			skipped++
 			continue
 		}

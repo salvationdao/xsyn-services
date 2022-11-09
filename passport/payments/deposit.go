@@ -22,15 +22,14 @@ const (
 	DepositTransactionStatusConfirmed DepositTransactionStatus = "confirmed"
 )
 
-func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap, environment types.Environment) (int, int, error) {
+func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap, purchaseAddress common.Address, environment types.Environment) (int, int, error) {
 	l := passlog.L.With().Str("svc", "avant_deposit_processor").Logger()
 	success := 0
 	skipped := 0
-	supContract := db.GetStrWithDefault(db.KeySUPSPurchaseContract, "0x52b38626D3167e5357FE7348624352B7062fE271")
 
 	l.Info().Int("records", len(records)).Msg("processing deposits")
 	for _, record := range records {
-		if strings.EqualFold(record.FromAddress, supContract) {
+		if strings.EqualFold(record.FromAddress, purchaseAddress.String()) {
 			skipped++
 			continue
 		}

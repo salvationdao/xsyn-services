@@ -1,8 +1,6 @@
 package types
 
-import (
-	"github.com/ethereum/go-ethereum/common"
-)
+import "github.com/ethereum/go-ethereum/common"
 
 type Config struct {
 	CookieSecure            bool
@@ -13,7 +11,7 @@ type Config struct {
 	PassportWebHostURL      string
 	GameserverHostURL       string
 	MetaMaskSignMessage     string // The message to see in the metamask signup flow, needs to match frontend
-	BridgeParams            *BridgeParams
+	Web3Params              *Web3Params
 	OnlyWalletConnect       bool
 	WhitelistEndpoint       string
 	InsecureSkipVerifyCheck bool
@@ -26,20 +24,17 @@ type Config struct {
 	CaptchaSecret  string
 }
 
-type BridgeParams struct {
-	OperatorAddr          common.Address
+type Web3Params struct {
+	BscChainID            int
+	EthChainID            int
 	MoralisKey            string
-	UsdcAddr              common.Address
-	BusdAddr              common.Address
-	SupAddr               common.Address
-	DepositAddr           common.Address
 	SignerPrivateKey      string
-	BscNodeAddr           string
-	EthNodeAddr           string
-	BSCChainID            int64
-	ETHChainID            int64
-	BSCRouterAddr         common.Address
 	AchievementsSignerKey string
+	SupAddrBSC            common.Address
+	SupAddrETH            common.Address
+	SupWithdrawalAddrBSC  common.Address
+	SupWithdrawalAddrETH  common.Address
+	PurchaseAddress       common.Address
 }
 
 type AuthParams struct {

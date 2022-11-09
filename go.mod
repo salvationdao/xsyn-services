@@ -6,8 +6,6 @@ require (
 	github.com/TwiN/go-away v1.6.0
 	github.com/aymerick/raymond v2.0.3-0.20180322193309-b565731e1464+incompatible
 	github.com/bxcodec/faker/v3 v3.8.0
-	github.com/caddyserver/caddy/v2 v2.4.5
-	github.com/caddyserver/xcaddy v0.2.0
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/cosmtrek/air v1.27.3
 	github.com/dustinkirkland/golang-petname v0.0.0-20191129215211-8e5a1ed0cff0
@@ -32,7 +30,7 @@ require (
 	github.com/ninja-software/terror/v2 v2.0.12
 	github.com/ninja-syndicate/hub v1.9.2
 	github.com/ninja-syndicate/supremacy-bridge v0.1.43
-	github.com/ninja-syndicate/ws v0.18.1
+	github.com/ninja-syndicate/ws v0.18.2
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/pquerna/otp v1.3.0

@@ -45,6 +45,7 @@ type UserAsset struct {
 	YoutubeURL       null.String `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
 	UnlockedAt       time.Time   `boiler:"unlocked_at" boil:"unlocked_at" json:"unlocked_at" toml:"unlocked_at" yaml:"unlocked_at"`
 	MintedAt         null.Time   `boiler:"minted_at" boil:"minted_at" json:"minted_at,omitempty" toml:"minted_at" yaml:"minted_at,omitempty"`
+	OnChainStatusOld string      `boiler:"on_chain_status_old" boil:"on_chain_status_old" json:"on_chain_status_old" toml:"on_chain_status_old" yaml:"on_chain_status_old"`
 	DeletedAt        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	DataRefreshedAt  time.Time   `boiler:"data_refreshed_at" boil:"data_refreshed_at" json:"data_refreshed_at" toml:"data_refreshed_at" yaml:"data_refreshed_at"`
 	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
@@ -78,6 +79,7 @@ var UserAssetColumns = struct {
 	YoutubeURL       string
 	UnlockedAt       string
 	MintedAt         string
+	OnChainStatusOld string
 	DeletedAt        string
 	DataRefreshedAt  string
 	UpdatedAt        string
@@ -106,6 +108,7 @@ var UserAssetColumns = struct {
 	YoutubeURL:       "youtube_url",
 	UnlockedAt:       "unlocked_at",
 	MintedAt:         "minted_at",
+	OnChainStatusOld: "on_chain_status_old",
 	DeletedAt:        "deleted_at",
 	DataRefreshedAt:  "data_refreshed_at",
 	UpdatedAt:        "updated_at",
@@ -136,6 +139,7 @@ var UserAssetTableColumns = struct {
 	YoutubeURL       string
 	UnlockedAt       string
 	MintedAt         string
+	OnChainStatusOld string
 	DeletedAt        string
 	DataRefreshedAt  string
 	UpdatedAt        string
@@ -164,6 +168,7 @@ var UserAssetTableColumns = struct {
 	YoutubeURL:       "user_assets.youtube_url",
 	UnlockedAt:       "user_assets.unlocked_at",
 	MintedAt:         "user_assets.minted_at",
+	OnChainStatusOld: "user_assets.on_chain_status_old",
 	DeletedAt:        "user_assets.deleted_at",
 	DataRefreshedAt:  "user_assets.data_refreshed_at",
 	UpdatedAt:        "user_assets.updated_at",
@@ -196,6 +201,7 @@ var UserAssetWhere = struct {
 	YoutubeURL       whereHelpernull_String
 	UnlockedAt       whereHelpertime_Time
 	MintedAt         whereHelpernull_Time
+	OnChainStatusOld whereHelperstring
 	DeletedAt        whereHelpernull_Time
 	DataRefreshedAt  whereHelpertime_Time
 	UpdatedAt        whereHelpertime_Time
@@ -224,6 +230,7 @@ var UserAssetWhere = struct {
 	YoutubeURL:       whereHelpernull_String{field: "\"user_assets\".\"youtube_url\""},
 	UnlockedAt:       whereHelpertime_Time{field: "\"user_assets\".\"unlocked_at\""},
 	MintedAt:         whereHelpernull_Time{field: "\"user_assets\".\"minted_at\""},
+	OnChainStatusOld: whereHelperstring{field: "\"user_assets\".\"on_chain_status_old\""},
 	DeletedAt:        whereHelpernull_Time{field: "\"user_assets\".\"deleted_at\""},
 	DataRefreshedAt:  whereHelpertime_Time{field: "\"user_assets\".\"data_refreshed_at\""},
 	UpdatedAt:        whereHelpertime_Time{field: "\"user_assets\".\"updated_at\""},
@@ -271,9 +278,9 @@ func (*userAssetR) NewStruct() *userAssetR {
 type userAssetL struct{}
 
 var (
-	userAssetAllColumns            = []string{"id", "collection_id", "token_id", "tier", "hash", "owner_id", "data", "attributes", "name", "asset_type", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "deleted_at", "data_refreshed_at", "updated_at", "created_at", "locked_to_service", "keywords"}
+	userAssetAllColumns            = []string{"id", "collection_id", "token_id", "tier", "hash", "owner_id", "data", "attributes", "name", "asset_type", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "on_chain_status_old", "deleted_at", "data_refreshed_at", "updated_at", "created_at", "locked_to_service", "keywords"}
 	userAssetColumnsWithoutDefault = []string{"collection_id", "token_id", "tier", "hash", "owner_id", "name"}
-	userAssetColumnsWithDefault    = []string{"id", "data", "attributes", "asset_type", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "deleted_at", "data_refreshed_at", "updated_at", "created_at", "locked_to_service", "keywords"}
+	userAssetColumnsWithDefault    = []string{"id", "data", "attributes", "asset_type", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "on_chain_status_old", "deleted_at", "data_refreshed_at", "updated_at", "created_at", "locked_to_service", "keywords"}
 	userAssetPrimaryKeyColumns     = []string{"id"}
 	userAssetGeneratedColumns      = []string{}
 )

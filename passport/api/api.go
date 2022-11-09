@@ -55,7 +55,7 @@ type API struct {
 	WebhookToken        string
 	GameserverHostUrl   string
 	Commander           *ws.Commander
-	BridgeParams        *types.BridgeParams
+	Web3Params          *types.Web3Params
 	botSecretKey        string
 
 	// online user cache
@@ -103,8 +103,8 @@ func NewAPI(
 ) (*API, chi.Router) {
 
 	api := &API{
-		BridgeParams: config.BridgeParams,
-		ClientToken:  config.AuthParams.GameserverToken,
+		Web3Params:  config.Web3Params,
+		ClientToken: config.AuthParams.GameserverToken,
 		// webhook setup
 		WebhookToken:      config.WebhookParams.GameserverWebhookToken,
 		GameserverHostUrl: config.WebhookParams.GameserverHostUrl,
@@ -149,7 +149,7 @@ func NewAPI(
 		c.RestBridge("/rest")
 	})
 
-	cc := NewChainClients(log, api, config.BridgeParams, isTestnetBlockchain, runBlockchainBridge, enablePurchaseSubscription)
+	cc := NewChainClients(log, api, config.Web3Params, isTestnetBlockchain, runBlockchainBridge, enablePurchaseSubscription)
 	r := chi.NewRouter()
 	r.Use(cors.New(
 		cors.Options{
@@ -223,7 +223,8 @@ func NewAPI(
 				r.Get("/withdraw/holding/{user_address}", WithError(api.HoldingSups))
 				r.Get("/withdraw/check/{address}", WithError(api.GetMaxWithdrawAmount))
 				r.Get("/withdraw/check", WithError(api.CheckCanWithdraw))
-				r.Get("/withdraw/{address}/{nonce}/{amount}", WithError(api.WithdrawSups))
+				r.Get("/deposit/check", WithError(api.CheckCanDeposit))
+				r.Get("/withdraw/{address}/{nonce}/{amount}/{chain}", WithError(api.WithdrawSups))
 
 				r.Get("/1155/{address}/{token_id}/{nonce}/{amount}", WithError(api.Withdraw1155))
 			}
