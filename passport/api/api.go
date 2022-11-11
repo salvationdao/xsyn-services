@@ -114,6 +114,10 @@ func NewAPI(
 		Google: &auth.GoogleConfig{
 			ClientID: config.AuthParams.GoogleClientID,
 		},
+		Twitter: &auth.TwitterConfig{
+			APIKey:    config.AuthParams.TwitterAPIKey,
+			APISecret: config.AuthParams.TwitterAPISecret,
+		},
 		Twitch: &auth.TwitchConfig{
 			ClientID:     config.AuthParams.TwitchClientID,
 			ClientSecret: config.AuthParams.TwitchClientSecret,
@@ -245,7 +249,6 @@ func NewAPI(
 				r.Get("/check", WithError(api.AuthCheckHandler))
 				r.Get("/logout", WithError(api.AuthLogoutHandler))
 				r.Post("/token", WithError(api.TokenLoginHandler))
-				r.Post("/external", api.ExternalLoginHandler)
 				r.Post("/wallet", WithError(api.WalletLoginHandler))
 				r.Post("/email", WithError(api.EmailLoginHandler))
 				r.Post("/email_signup", WithError(api.EmailSignupVerifyHandler))

@@ -38,7 +38,6 @@ import (
 	"github.com/lestrrat-go/jwx/jwt/openid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
-	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -47,6 +46,7 @@ import (
 
 type SignupRequest struct {
 	Username        string               `json:"username"`
+	IsExternal      bool                 `json:"is_external"`
 	Fingerprint     *users.Fingerprint   `json:"fingerprint"`
 	AuthType        string               `json:"auth_type"`
 	WalletRequest   WalletLoginRequest   `json:"wallet_request"`
@@ -58,7 +58,7 @@ type SignupRequest struct {
 }
 
 type WalletLoginRequest struct {
-	RedirectURL   string             `json:"redirect_url"`
+	IsExternal    bool               `json:"is_external"`
 	Tenant        string             `json:"tenant"`
 	PublicAddress string             `json:"public_address"`
 	Signature     string             `json:"signature"`
@@ -71,15 +71,14 @@ type WalletLoginRequest struct {
 }
 
 type EmailSignupVerifyRequest struct {
-	RedirectURL  string `json:"redirect_url"`
+	IsExternal   bool   `json:"is_external"`
 	Tenant       string `json:"tenant"`
 	Email        string `json:"email"`
 	CaptchaToken string `json:"captcha_token"`
 }
 
 type EmailLoginRequest struct {
-	RedirectURL      string             `json:"redirect_url"`
-	Tenant           string             `json:"tenant"`
+	IsExternal       bool               `json:"is_external"`
 	Email            string             `json:"email"`
 	Password         string             `json:"password"`
 	SessionID        hub.SessionID      `json:"session_id"`
@@ -90,15 +89,14 @@ type EmailLoginRequest struct {
 	AcceptsMarketing string             `json:"accepts_marketing"`
 }
 type ForgotPasswordRequest struct {
-	Tenant      string             `json:"tenant"`
 	Email       string             `json:"email"`
 	SessionID   hub.SessionID      `json:"session_id"`
 	Fingerprint *users.Fingerprint `json:"fingerprint"`
+	IsExternal  bool               `json:"is_external"`
 }
 
 type PasswordUpdateRequest struct {
-	RedirectURL string             `json:"redirect_url"`
-	Tenant      string             `json:"tenant"`
+	IsExternal  bool               `json:"is_external"`
 	Password    string             `json:"password"`
 	TokenID     string             `json:"id"`
 	Token       string             `json:"token"`
@@ -108,8 +106,7 @@ type PasswordUpdateRequest struct {
 }
 
 type GoogleLoginRequest struct {
-	RedirectURL  string             `json:"redirect_url"`
-	Tenant       string             `json:"tenant"`
+	IsExternal   bool               `json:"is_external"`
 	GoogleToken  string             `json:"google_token"`
 	SessionID    hub.SessionID      `json:"session_id"`
 	Fingerprint  *users.Fingerprint `json:"fingerprint"`
@@ -119,8 +116,7 @@ type GoogleLoginRequest struct {
 }
 
 type FacebookLoginRequest struct {
-	RedirectURL   string             `json:"redirect_url"`
-	Tenant        string             `json:"tenant"`
+	IsExternal    bool               `json:"is_external"`
 	FacebookToken string             `json:"facebook_token"`
 	SessionID     hub.SessionID      `json:"session_id"`
 	Fingerprint   *users.Fingerprint `json:"fingerprint"`
@@ -130,8 +126,7 @@ type FacebookLoginRequest struct {
 }
 
 type TwitterSignupRequest struct {
-	RedirectURL  string             `json:"redirect_url"`
-	Tenant       string             `json:"tenant"`
+	IsExternal   bool               `json:"is_external"`
 	TwitterToken string             `json:"twitter_token"`
 	SessionID    hub.SessionID      `json:"session_id"`
 	Fingerprint  *users.Fingerprint `json:"fingerprint"`
@@ -140,8 +135,7 @@ type TwitterSignupRequest struct {
 }
 
 type TFAVerifyRequest struct {
-	RedirectURL  string             `json:"redirect_url"`
-	Tenant       string             `json:"tenant"`
+	IsExternal   bool               `json:"is_external"`
 	Token        string             `json:"token"`
 	Passcode     string             `json:"passcode"`
 	RecoveryCode string             `json:"recovery_code"`
@@ -231,313 +225,6 @@ func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// Handles login from non-passport sites, use HTML form.submit() to send request.
-//
-// Writes the external cookie by being on the same host.
-func (api *API) ExternalLoginHandler(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
-	if err != nil {
-		passlog.L.Warn().Err(err).Msg("suspicious behaviour on external login form")
-		errDataDog := DatadogTracer.HttpFinishSpan(r.Context(), http.StatusBadRequest, terror.Error(err, "suspicious behaviour on external login form"))
-		if errDataDog != nil {
-			passlog.L.Error().Err(errDataDog).Msg("data dog failed")
-		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	authType := r.Form.Get("auth_type")
-	redir := r.Form.Get("redirect_url")
-
-	if redir == "" {
-		passlog.L.Warn().Msg("no redirect url provided in external login")
-		errDataDog := DatadogTracer.HttpFinishSpan(r.Context(), http.StatusBadRequest, fmt.Errorf("Missing redirect url on external login"))
-		if errDataDog != nil {
-			passlog.L.Error().Err(errDataDog).Msg("data dog failed")
-		}
-		http.Error(w, "Missing redirect url on external login", http.StatusBadRequest)
-		return
-	}
-
-	switch authType {
-	case "wallet":
-		req := &WalletLoginRequest{
-			RedirectURL:   redir,
-			Tenant:        r.Form.Get("tenant"),
-			PublicAddress: r.Form.Get("public_address"),
-			Signature:     r.Form.Get("signature"),
-		}
-		commonAddr := common.HexToAddress(req.PublicAddress)
-		user, err := users.PublicAddress(commonAddr)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "User does not exist")
-			return
-		}
-
-		err = api.VerifySignature(req.Signature, user.Nonce.String, commonAddr)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid signature provided from wallet")
-			return
-		}
-
-		// Login user
-		loginReq := &FingerprintTokenRequest{
-			User:        &user.User,
-			Fingerprint: req.Fingerprint,
-			RedirectURL: redir,
-			Tenant:      req.Tenant,
-		}
-
-		err = api.FingerprintAndIssueToken(w, r, loginReq)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to issue token")
-			return
-		}
-
-	case "email":
-		req := &EmailLoginRequest{
-			RedirectURL: redir,
-			Tenant:      r.Form.Get("tenant"),
-			Email:       r.Form.Get("email"),
-			Password:    r.Form.Get("password"),
-			Token:       r.Form.Get("token"),
-		}
-		//Check if email exist with password
-		user, err := users.EmailPassword(req.Email, req.Password)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid email or password")
-			return
-		}
-
-		// Check if logging in from password reset
-		// If so, pass 2fa
-		var pass2fa bool
-		if req.Token != "" {
-			userID, err := api.ReadUserIDJWT(req.Token)
-			if err != nil || userID != user.ID {
-				passlog.L.Error().Err(err).Msg("Invalid token to login from external.")
-				externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid email or password")
-				return
-			}
-			pass2fa = true
-		}
-
-		loginReq := &FingerprintTokenRequest{
-			User:        &user.User,
-			Fingerprint: req.Fingerprint,
-			RedirectURL: redir,
-			Tenant:      req.Tenant,
-			Pass2FA:     pass2fa,
-		}
-
-		err = api.FingerprintAndIssueToken(w, r, loginReq)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to issue token")
-			return
-		}
-	case "facebook":
-		req := &FacebookLoginRequest{
-			RedirectURL:   redir,
-			Tenant:        r.Form.Get("tenant"),
-			FacebookToken: r.Form.Get("facebook_token"),
-		}
-		facebookDetails, err := api.FacebookToken(req.FacebookToken)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid facebook token")
-			return
-		}
-		user, err := users.FacebookID(facebookDetails.FacebookID)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to find facebook user")
-			return
-		}
-
-		// Login user after register
-		loginReq := &FingerprintTokenRequest{
-			User:        user,
-			Fingerprint: req.Fingerprint,
-			RedirectURL: redir,
-			Tenant:      req.Tenant,
-		}
-
-		err = api.FingerprintAndIssueToken(w, r, loginReq)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to issue token")
-			return
-		}
-
-		http.Redirect(w, r, redir, http.StatusSeeOther)
-
-	case "google":
-		req := &GoogleLoginRequest{
-			RedirectURL: redir,
-			Tenant:      r.Form.Get("tenant"),
-			GoogleToken: r.Form.Get("google_token"),
-			Username:    r.Form.Get("username"),
-		}
-
-		googleDetails, err := api.GoogleToken(req.GoogleToken)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Invalid google token provided")
-			return
-		}
-		user, err := users.GoogleID(googleDetails.GoogleID)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to find google user")
-			return
-		}
-
-		loginReq := &FingerprintTokenRequest{
-			User:        user,
-			Fingerprint: req.Fingerprint,
-			RedirectURL: redir,
-			Tenant:      req.Tenant,
-		}
-
-		err = api.FingerprintAndIssueToken(w, r, loginReq)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to issue token")
-			return
-		}
-
-		http.Redirect(w, r, redir, http.StatusSeeOther)
-	case "cookie":
-		req := &struct {
-			Tenant string
-		}{
-			Tenant: r.Form.Get("tenant"),
-		}
-
-		err := externalLoginCheck(api, w, r)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/external/login", req.Tenant, redir, "Unable to login user from cookie")
-			return
-		}
-
-	case "twitter":
-		req := &TwitterSignupRequest{
-			RedirectURL:  redir,
-			Tenant:       r.Form.Get("tenant"),
-			TwitterToken: r.Form.Get("twitter_token"),
-		}
-
-		id, err := api.ReadUserIDJWT(req.TwitterToken)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to read user from token")
-			return
-		}
-		userID := id
-
-		var isSignup bool
-		signupCheckVal, err := api.ReadKeyJWT(req.TwitterToken, "twitter-signup")
-		if err != nil && !errors.Is(err, ErrJWTKeyNotFound) {
-			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to read user from token")
-			return
-		}
-		isSignup = signupCheckVal == "true"
-		if isSignup {
-			twitterUser, err := users.TwitterID(id)
-			if err != nil {
-				externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to locate user.")
-				return
-			}
-			userID = twitterUser.ID
-		}
-		user, err := users.ID(userID)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to locate user.")
-			return
-		}
-		loginReq := &FingerprintTokenRequest{
-			User:        &user.User,
-			Fingerprint: req.Fingerprint,
-			RedirectURL: redir,
-			Tenant:      req.Tenant,
-		}
-
-		err = api.FingerprintAndIssueToken(w, r, loginReq)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/signup", req.Tenant, redir, "Unable to issue token")
-			return
-		}
-
-		http.Redirect(w, r, redir, http.StatusSeeOther)
-
-	case "tfa":
-		req := &TFAVerifyRequest{
-			RedirectURL:  redir,
-			Tenant:       r.Form.Get("tenant"),
-			Token:        r.Form.Get("token"),
-			Passcode:     r.Form.Get("passcode"),
-			RecoveryCode: r.Form.Get("recovery_code"),
-		}
-
-		user, err := api.TFAVerify(req, w, r)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/tfa/check", req.Tenant, redir, "Two factor authentication failed.")
-			return
-		}
-
-		loginReq := &FingerprintTokenRequest{
-			User:        &user.User,
-			Fingerprint: req.Fingerprint,
-			RedirectURL: redir,
-			Tenant:      req.Tenant,
-			Pass2FA:     true,
-		}
-
-		err = api.FingerprintAndIssueToken(w, r, loginReq)
-		if err != nil {
-			externalErrorHandler(w, r, err, "/tfa/check", req.Tenant, redir, "Unable to issue token")
-			return
-		}
-
-	}
-
-	http.Redirect(w, r, redir, http.StatusSeeOther)
-
-}
-
-func externalErrorHandler(w http.ResponseWriter, r *http.Request, err error, page string, tenant string, redir string, msg string) {
-	passlog.L.Error().Err(err).Str("From", "External Login").Msg(msg)
-	errDataDog := DatadogTracer.HttpFinishSpan(r.Context(), http.StatusInternalServerError, err)
-	if errDataDog != nil {
-		passlog.L.Error().Err(errDataDog).Msg("data dog failed")
-	}
-	http.Redirect(w, r, fmt.Sprintf("%s%s?tenant=%s&redirectURL=%s&err=%s", r.Header.Get("origin"), page, tenant, redir, terror.Error(err, msg)), http.StatusSeeOther)
-}
-
-func externalLoginCheck(api *API, w http.ResponseWriter, r *http.Request) error {
-	cookie, err := r.Cookie("xsyn-token")
-	if err != nil {
-		passlog.L.Error().Err(err).Str("From", "External Login").Msg("Unable to read cookie")
-		return err
-	}
-
-	var token string
-	if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-		passlog.L.Error().Err(err).Str("From", "External Login").Msg("Unable to decrypt token from cookie")
-		return err
-	}
-
-	// check user from token
-	_, err = api.TokenLogin(token, "")
-	if err != nil {
-		passlog.L.Error().Err(err).Str("From", "External Login").Msg("Unable to login from token")
-		return err
-	}
-
-	// write cookie on domain
-	err = api.WriteCookie(w, r, token)
-	if err != nil {
-		passlog.L.Error().Err(err).Str("From", "External Login").Msg("Unable to wite cookie on domain")
-		return err
-	}
-
-	return nil
-
-}
-
 // Sends a code to user email to be verified.
 func (api *API) EmailSignupVerifyHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &EmailSignupVerifyRequest{}
@@ -555,6 +242,8 @@ func (api *API) EmailSignupVerifyHandler(w http.ResponseWriter, r *http.Request)
 }
 
 // Generate one time code and send to user's email
+// The code will be sent by email
+// The token for this code is sent to front end to verified by user when sent back to server
 func (api *API) EmailSignupVerify(req *EmailSignupVerifyRequest, w http.ResponseWriter, r *http.Request) error {
 	lowerEmail := strings.ToLower(req.Email)
 
@@ -624,7 +313,6 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 	}
 
 	usernameTaken, err := users.UsernameExist(username)
-	redirectURL := ""
 	if err != nil || usernameTaken {
 		err := fmt.Errorf("Username is already taken")
 		return http.StatusInternalServerError, terror.Error(err, "Username is already taken, please try a different username.")
@@ -658,7 +346,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 
 			// Signup user but dont log them before username is provided
 			// If user does not exist, create new user with their username set to their MetaMask public address
-			user, err = users.UserCreator("",
+			u, err = users.UserCreator("",
 				"",
 				username,
 				"",
@@ -678,8 +366,8 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			}
 
 			// update nonce value
-			user.Nonce = null.StringFrom(req.WalletRequest.Nonce)
-			_, err = user.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Nonce))
+			u.Nonce = null.StringFrom(req.WalletRequest.Nonce)
+			_, err = u.Update(passdb.StdConn, boil.Whitelist(boiler.UserColumns.Nonce))
 			if err != nil {
 				return http.StatusInternalServerError, terror.Error(err, "Unable to update user nonce.")
 			}
@@ -688,10 +376,6 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusBadRequest, terror.Error(err, "User with wallet address does not exist.")
 		}
 
-		// Redeclare u variable
-		u = user
-
-		redirectURL = req.WalletRequest.RedirectURL
 	case "email":
 		// Check no user with email exist
 		user, err := users.Email(req.EmailRequest.Email)
@@ -726,7 +410,6 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		} else if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Failed to signup with email.")
 		}
-		redirectURL = req.EmailRequest.RedirectURL
 	case "facebook":
 		// Check user facebook exist
 		facebookDetails, err := api.FacebookToken(req.FacebookRequest.FacebookToken)
@@ -773,8 +456,6 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		} else if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Failed to get user with facebook account during signup.")
 		}
-
-		redirectURL = req.FacebookRequest.RedirectURL
 	case "google":
 		googleDetails, err := api.GoogleToken(req.GoogleRequest.GoogleToken)
 		if err != nil {
@@ -819,7 +500,6 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusBadRequest, terror.Error(err, "Failed to get user with google account during signup.")
 		}
 
-		redirectURL = req.GoogleRequest.RedirectURL
 	case "twitter":
 		if req.CaptchaToken == "" {
 			err := fmt.Errorf("captcha token missing")
@@ -869,7 +549,6 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusInternalServerError, terror.Error(err, "Failed to create user with twitter.")
 		}
 
-		redirectURL = req.TwitterRequest.RedirectURL
 	}
 
 	if u == nil {
@@ -882,7 +561,7 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 	loginReq := &FingerprintTokenRequest{
 		User:        &u.User,
 		Fingerprint: req.Fingerprint,
-		RedirectURL: redirectURL,
+		IsExternal:  req.IsExternal,
 	}
 
 	err = api.FingerprintAndIssueToken(w, r, loginReq)
@@ -890,52 +569,8 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		return http.StatusInternalServerError, terror.Error(err, "Unable to issue a token for login.")
 	}
 
-	if redirectURL != "" {
-		b, err := json.Marshal(u)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to encode response to json")
-			return http.StatusInternalServerError, terror.Error(err, "Unable to decode response to user.")
-		}
-		_, err = w.Write(b)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to write response to user")
-			return http.StatusInternalServerError, terror.Error(err, "Unable to write response to user.")
-		}
-	}
-
 	return http.StatusCreated, nil
 
-}
-
-// Get user from jwt token
-func (api *API) UserEmailFromToken(w http.ResponseWriter, r *http.Request, tokenBase64 string) (string, string, error) {
-	errMsg := "Unable to create token for user request."
-	tokenStr, err := base64.StdEncoding.DecodeString(tokenBase64)
-	if err != nil {
-		return "", "", terror.Error(err, errMsg)
-	}
-
-	// Decode token user with new email
-	token, err := tokens.ReadJWT(tokenStr, true, api.TokenEncryptionKey)
-	if err != nil {
-		return "", "", terror.Error(err, errMsg)
-	}
-
-	uID, ok := token.Get("user-id")
-	if !ok {
-		passlog.L.Error().Err(err).Msg("unable to get user id from token")
-		return "", "", terror.Error(fmt.Errorf("Invalid token found"), errMsg)
-	}
-	email, ok := token.Get(openid.EmailKey)
-	if !ok {
-		passlog.L.Error().Err(err).Msg("unable to get email from token")
-		return "", "", terror.Error(fmt.Errorf("Invalid token provided"), errMsg)
-	}
-
-	newEmail := email.(string)
-	userID := uID.(string)
-
-	return userID, newEmail, nil
 }
 
 // Get user from jwt token
@@ -992,27 +627,10 @@ func (api *API) EmailLogin(req *EmailLoginRequest, w http.ResponseWriter, r *htt
 
 	loginReq := &FingerprintTokenRequest{
 		User:        &user.User,
-		RedirectURL: req.RedirectURL,
-		Tenant:      req.Tenant,
+		IsExternal:  req.IsExternal,
 		Fingerprint: req.Fingerprint,
 	}
 	err = api.FingerprintAndIssueToken(w, r, loginReq)
-
-	// If external or new user signup
-	if req.RedirectURL != "" && !user.TwoFactorAuthenticationIsSet {
-		b, err := json.Marshal(req)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to encode response to json")
-			return terror.Error(err, "Unable to encode response.")
-		}
-		_, err = w.Write(b)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to write response to user")
-			return terror.Error(err, "Unable to write response back to user.")
-		}
-		return nil
-	}
-
 	if err != nil {
 		return terror.Error(err, "Unable to issue a login token to user.")
 	}
@@ -1173,7 +791,6 @@ func (api *API) NewPasswordHandler(w http.ResponseWriter, r *http.Request, user 
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Unable to decode request from user.")
 	}
-
 	// Check if user has password already
 	passwordExist, err := boiler.PasswordHashExists(passdb.StdConn, user.ID)
 	if err != nil {
@@ -1183,7 +800,6 @@ func (api *API) NewPasswordHandler(w http.ResponseWriter, r *http.Request, user 
 	if passwordExist {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("User already has a password"), "Failed create new password. User already has a password.")
 	}
-
 	return passwordReset(api, w, r, req, user)
 }
 
@@ -1249,8 +865,7 @@ func passwordReset(api *API, w http.ResponseWriter, r *http.Request, req *Passwo
 	// Generate new token and login
 	loginReq := &FingerprintTokenRequest{
 		User:        user,
-		RedirectURL: req.RedirectURL,
-		Tenant:      req.Tenant,
+		IsExternal:  req.IsExternal,
 		Fingerprint: req.Fingerprint,
 		Pass2FA:     true,
 	}
@@ -1315,8 +930,7 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 		// Write cookie and login user for passport if user already exist
 		loginReq := &FingerprintTokenRequest{
 			User:        &user.User,
-			RedirectURL: req.RedirectURL,
-			Tenant:      req.Tenant,
+			IsExternal:  req.IsExternal,
 			Fingerprint: req.Fingerprint,
 		}
 
@@ -1333,29 +947,29 @@ func (api *API) WalletLogin(req *WalletLoginRequest, w http.ResponseWriter, r *h
 		if user.TwoFactorAuthenticationIsSet {
 			return nil
 		}
-	}
+	} else {
 
-	// Send response back to client
-	resp := struct {
-		WalletLoginRequest
-		NewUser         bool `json:"new_user"`
-		CaptchaRequired bool `json:"captcha_required"`
-	}{
-		WalletLoginRequest: *req,
-		NewUser:            user == nil,
-		CaptchaRequired:    user == nil, // ALL user signup through wallet requires captcha
+		// Send response back to client
+		resp := struct {
+			WalletLoginRequest
+			NewUser         bool `json:"new_user"`
+			CaptchaRequired bool `json:"captcha_required"`
+		}{
+			WalletLoginRequest: *req,
+			NewUser:            user == nil,
+			CaptchaRequired:    user == nil, // ALL user signup through wallet requires captcha
+		}
+		b, err := json.Marshal(resp)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to encode response to json")
+			return terror.Error(err, "Unable to decode response to user.")
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to write response to user")
+			return terror.Error(err, "Unable to write response to user.")
+		}
 	}
-	b, err := json.Marshal(resp)
-	if err != nil {
-		passlog.L.Error().Err(err).Msg("unable to encode response to json")
-		return terror.Error(err, "Unable to decode response to user.")
-	}
-	_, err = w.Write(b)
-	if err != nil {
-		passlog.L.Error().Err(err).Msg("unable to write response to user")
-		return terror.Error(err, "Unable to write response to user.")
-	}
-
 	return nil
 }
 
@@ -1395,8 +1009,7 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 
 	loginReq := &FingerprintTokenRequest{
 		User:        user,
-		RedirectURL: req.RedirectURL,
-		Tenant:      req.Tenant,
+		IsExternal:  req.IsExternal,
 		Fingerprint: req.Fingerprint,
 	}
 
@@ -1443,30 +1056,29 @@ func (api *API) GoogleLogin(req *GoogleLoginRequest, w http.ResponseWriter, r *h
 		if user.TwoFactorAuthenticationIsSet {
 			return nil
 		}
-	}
+	} else {
+		// Write response back client
+		resp := struct {
+			GoogleLoginRequest
+			NewUser         bool `json:"new_user"`
+			CaptchaRequired bool `json:"captcha_required"`
+		}{
+			GoogleLoginRequest: *req,
+			NewUser:            user == nil,
+			CaptchaRequired:    user == nil, // ALL user signup through google requires captcha
+		}
 
-	// Write response back client
-	resp := struct {
-		GoogleLoginRequest
-		NewUser         bool `json:"new_user"`
-		CaptchaRequired bool `json:"captcha_required"`
-	}{
-		GoogleLoginRequest: *req,
-		NewUser:            user == nil,
-		CaptchaRequired:    user == nil, // ALL user signup through google requires captcha
+		b, err := json.Marshal(resp)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to encode response to json")
+			return terror.Error(err, "Unable to decode response to user.")
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to write response to user")
+			return terror.Error(err, "Unable to write response to user.")
+		}
 	}
-
-	b, err := json.Marshal(resp)
-	if err != nil {
-		passlog.L.Error().Err(err).Msg("unable to encode response to json")
-		return terror.Error(err, "Unable to decode response to user.")
-	}
-	_, err = w.Write(b)
-	if err != nil {
-		passlog.L.Error().Err(err).Msg("unable to write response to user")
-		return terror.Error(err, "Unable to write response to user.")
-	}
-
 	return nil
 }
 
@@ -1490,8 +1102,7 @@ func (api *API) TFAVerifyHandler(w http.ResponseWriter, r *http.Request) (int, e
 	if req.Token != "" {
 		loginReq := &FingerprintTokenRequest{
 			User:        &user.User,
-			RedirectURL: req.RedirectURL,
-			Tenant:      req.Tenant,
+			IsExternal:  req.IsExternal,
 			Fingerprint: req.Fingerprint,
 			Pass2FA:     true,
 		}
@@ -1515,20 +1126,6 @@ func (api *API) TFAVerifyHandler(w http.ResponseWriter, r *http.Request) (int, e
 
 	if req.IsVerified {
 		return http.StatusOK, nil
-	}
-
-	// If external forward request to external handler
-	if req.RedirectURL != "" {
-		b, err := json.Marshal(req)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to encode response to json")
-			return http.StatusBadRequest, terror.Error(err, "Unable to decode response to user.")
-		}
-		_, err = w.Write(b)
-		if err != nil {
-			passlog.L.Error().Err(err).Msg("unable to write response to user")
-			return http.StatusBadRequest, terror.Error(err, "Unable to write response to user.")
-		}
 	}
 
 	return http.StatusOK, nil
@@ -1614,8 +1211,7 @@ func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, 
 	if user != nil {
 		loginReq := &FingerprintTokenRequest{
 			User:        user,
-			RedirectURL: req.RedirectURL,
-			Tenant:      req.Tenant,
+			IsExternal:  req.IsExternal,
 			Fingerprint: req.Fingerprint,
 		}
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
@@ -1672,15 +1268,16 @@ type AddTwitterResponse struct {
 }
 
 // The TwitterAuth endpoint kicks off the OAuth 1.0a flow with signup/login/add connection
+// Twitter works most by redirects
+// The response to send back has to be within URLs
+// This includes jwt tokens etc.
 func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error) {
 	errMsg := "Failed to authenticate user with twitter."
 	oauthVerifier := r.URL.Query().Get("oauth_verifier")
 	oauthCallback := r.URL.Query().Get("oauth_callback")
 	oauthToken := r.URL.Query().Get("oauth_token")
 	redirect := r.URL.Query().Get("redirect")
-	redirectURL := r.URL.Query().Get("redirectURL")
 	addTwitter := r.URL.Query().Get("add")
-	tenant := r.URL.Query().Get("tenant")
 	var jwtToken string
 
 	if redirect == "" && oauthVerifier != "" {
@@ -1692,6 +1289,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 		params.Set("oauth_token", oauthToken)
 		params.Set("oauth_verifier", oauthVerifier)
 		twitterDetails, err := api.TwitterToken(params.Encode())
+
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, errMsg)
 		}
@@ -1711,25 +1309,30 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 
 		if err != nil && errors.Is(sql.ErrNoRows, err) {
 			// Redirect to signup page using jwt token with twitter id
-			http.Redirect(w, r, fmt.Sprintf("%s?token=%s&redirectURL=%s", redirect, jwtToken, redirectURL), http.StatusSeeOther)
+			http.Redirect(w, r, fmt.Sprintf("%s?signup_token=%s", redirect, jwtToken), http.StatusSeeOther)
 			return http.StatusSeeOther, nil
 		}
+
 		loginReq := &FingerprintTokenRequest{
-			User:        user,
-			RedirectURL: redirect,
-			Tenant:      tenant,
-			IsTwitter:   true,
+			User:      user,
+			IsTwitter: true,
 		}
 		err = api.FingerprintAndIssueToken(w, r, loginReq)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, errMsg)
 		}
-
-		http.Redirect(w, r, fmt.Sprintf("%s?login=ok&token=%s", redirect, jwtToken), http.StatusSeeOther)
+		// Send back issue token if logging in with twitter
+		// Get cookie and send with url
+		cookie, err := r.Cookie("xsyn-token")
+		var issueToken string
+		err = api.Cookie.DecryptBase64(cookie.Value, &issueToken)
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err, "Failed to process token")
+		}
+		http.Redirect(w, r, fmt.Sprintf("%s?login=ok&issue_token=%s", redirect, issueToken), http.StatusSeeOther)
 
 		return http.StatusOK, nil
 	}
-
 	oauthConfig := oauth1.Config{
 		ConsumerKey:    api.Twitter.APIKey,
 		ConsumerSecret: api.Twitter.APISecret,
@@ -1742,7 +1345,6 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 		passlog.L.Error().Err(err).Msg("unable to get oauth token from")
 		return http.StatusInternalServerError, terror.Error(err, errMsg)
 	}
-
 	http.Redirect(w, r, fmt.Sprintf("https://api.twitter.com/oauth/authorize?oauth_token=%s", requestToken), http.StatusSeeOther)
 	return http.StatusOK, nil
 }
@@ -1808,7 +1410,7 @@ func (api *API) AddTwitterUser(w http.ResponseWriter, r *http.Request, redirect 
 type FingerprintTokenRequest struct {
 	User        *boiler.User
 	Pass2FA     bool
-	RedirectURL string
+	IsExternal  bool
 	Tenant      string
 	Fingerprint *users.Fingerprint
 	IsTwitter   bool
@@ -1838,16 +1440,10 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		}
 
 		origin := r.Header.Get("origin")
-
-		// IF redirect is from Twitter Auth origin will be passport.xsyn.io/twitter-redirect
-		if origin == "" {
-			origin = strings.ReplaceAll(req.RedirectURL, "/twitter-redirect", "")
-		}
-
 		// Redirect to 2fa
 		if req.IsTwitter {
 			// add query tfa=ok for twitter message
-			rURL := fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=%s?tfa=ok&tenant=%s", origin, token, req.RedirectURL, req.Tenant)
+			rURL := fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=/twitter-redirect?tfa=ok", origin, token)
 			http.Redirect(w, r, rURL, http.StatusSeeOther)
 			return nil
 		}
@@ -1899,8 +1495,20 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		return terror.Error(err, "Failed to process user login.")
 	}
 
-	if req.RedirectURL == "" {
-		b, err := json.Marshal(u)
+	if !req.IsTwitter {
+		issueTokenResp := struct {
+			IssueToken *string     `json:"issue_token"`
+			User       *types.User `json:"user"`
+		}{
+			IssueToken: nil,
+			User:       u,
+		}
+
+		if req.IsExternal {
+			issueTokenResp.IssueToken = &token
+		}
+
+		b, err := json.Marshal(issueTokenResp)
 		if err != nil {
 			passlog.L.Error().Err(err).Msg("unable to encode response to json")
 			return terror.Error(err, "Failed to process user login.")
@@ -2274,8 +1882,20 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err, "Failed to write cookie")
 		}
+		user, err := types.UserFromBoil(resp.User)
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err, "Failed to get user.")
+		}
 
-		return helpers.EncodeJSON(w, resp.User)
+		issueTokenResp := struct {
+			IssueToken *string     `json:"issue_token"`
+			User       *types.User `json:"user"`
+		}{
+			IssueToken: &token,
+			User:       user,
+		}
+
+		return helpers.EncodeJSON(w, issueTokenResp)
 	}
 
 	var token string
@@ -2289,7 +1909,20 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 		return http.StatusBadRequest, terror.Error(err, "Failed to authenticate user.")
 	}
 
-	return helpers.EncodeJSON(w, resp.User)
+	user, err := types.UserFromBoil(resp.User)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to get user.")
+	}
+
+	issueTokenResp := struct {
+		IssueToken *string     `json:"issue_token"`
+		User       *types.User `json:"user"`
+	}{
+		IssueToken: &token,
+		User:       user,
+	}
+
+	return helpers.EncodeJSON(w, issueTokenResp)
 }
 
 func (api *API) AuthLogoutHandler(w http.ResponseWriter, r *http.Request) (int, error) {
