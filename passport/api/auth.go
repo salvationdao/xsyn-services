@@ -796,11 +796,10 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 			if err != nil {
 				return http.StatusBadRequest, terror.Error(err, "Failed to complete captcha verification.")
 			}
-			// Signup user with standard username
 			commonAddress := common.HexToAddress("")
 			u, err = users.UserCreator("",
 				"",
-				googleDetails.Username,
+				username,
 				googleDetails.Email,
 				"",
 				googleDetails.GoogleID,
