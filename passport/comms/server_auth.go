@@ -232,7 +232,7 @@ func (s *S) TokenLogin(req TokenReq, resp *UserResp) error {
 	resp.Username = user.Username
 	resp.AcceptsMarketing = user.AcceptsMarketing
 	resp.AccountID = user.AccountID
-
+	resp.IsAdmin = user.RoleID == null.StringFrom(types.UserRoleAdminID.String())
 	return nil
 }
 
