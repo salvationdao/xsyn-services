@@ -574,15 +574,16 @@ func (api *API) SignupHandler(w http.ResponseWriter, r *http.Request) (int, erro
 }
 
 // Get user from jwt token
-func (api *API) UserFromToken(tokenBase64 string) (*types.User, error) {
+func (api *API) UserFromToken(tokenBase64 string, encryptionKey []byte) (*types.User, error) {
 	errMsg := "Unable to process token."
 	tokenStr, err := base64.StdEncoding.DecodeString(tokenBase64)
 	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to decode token")
 		return nil, terror.Error(err, errMsg)
 	}
 
 	// Decode token user with new email
-	token, err := tokens.ReadJWT(tokenStr, true, api.TokenEncryptionKey)
+	token, err := tokens.ReadJWT(tokenStr, true, encryptionKey)
 	if err != nil {
 		return nil, terror.Error(err, errMsg)
 	}
@@ -1137,17 +1138,15 @@ func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.
 	// If user is logged in, user is from cookie or query
 	// If user is not logged in, token is passed from request
 
-	user, _, _ := GetUserFromToken(api, r)
+	user, _, err := GetUserFromToken(api, r)
 
-	if user == nil && req.Token != "" {
-		u, err := api.UserFromToken(req.Token)
+	if err != nil && req.Token != "" {
+		u, err := api.UserFromToken(req.Token, api.TokenEncryptionKey)
 		if err != nil || u == nil {
 			return nil, terror.Error(err, "Invalid token unable to get user.")
 		}
 		user = &u.User
-	}
-
-	if user == nil {
+	} else if err != nil {
 		err := fmt.Errorf("no token or cookie provided to verify tfa")
 		passlog.L.Error().Err(err).Msg("unable to write response to user")
 		return nil, terror.Error(err, "User is missing from request.")
@@ -1157,6 +1156,7 @@ func (api *API) TFAVerify(req *TFAVerifyRequest, w http.ResponseWriter, r *http.
 	if req.Passcode != "" {
 		err := users.VerifyTFA(user.TwoFactorAuthenticationSecret, req.Passcode)
 		if err != nil {
+			passlog.L.Error().Err(err).Msg(user.Username)
 			return nil, terror.Error(err, "Incorrect passcode provided. Please try again.")
 		}
 	} else if req.RecoveryCode != "" {
@@ -1227,32 +1227,33 @@ func (api *API) FacebookLogin(req *FacebookLoginRequest, w http.ResponseWriter, 
 			return nil
 		}
 
-	}
+	} else {
 
-	// Write response back client
-	resp := struct {
-		FacebookLoginRequest
-		NewUser         bool `json:"new_user"`
-		CaptchaRequired bool `json:"captcha_required"`
-	}{
-		FacebookLoginRequest: *req,
-		NewUser:              user == nil,
-		CaptchaRequired:      user == nil, // ALL user signup through facebook requires captcha
-	}
+		// Write response back client
+		resp := struct {
+			FacebookLoginRequest
+			NewUser         bool `json:"new_user"`
+			CaptchaRequired bool `json:"captcha_required"`
+		}{
+			FacebookLoginRequest: *req,
+			NewUser:              user == nil,
+			CaptchaRequired:      user == nil, // ALL user signup through facebook requires captcha
+		}
 
-	b, err := json.Marshal(resp)
-	if err != nil {
-		passlog.L.Error().Err(err).Msg("unable to encode response to json")
-		return terror.Error(err, "Unable to decode response to user.")
-	}
-	_, err = w.Write(b)
-	if err != nil {
-		passlog.L.Error().Err(err).Msg("unable to write response to user")
-		return terror.Error(err, "Unable to write response to user.")
-	}
-	if err != nil {
-		passlog.L.Error().Err(err).Msg("Failed to verify captcha.")
-		return terror.Error(err, "Failed to complete captcha verification.")
+		b, err := json.Marshal(resp)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to encode response to json")
+			return terror.Error(err, "Unable to decode response to user.")
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("unable to write response to user")
+			return terror.Error(err, "Unable to write response to user.")
+		}
+		if err != nil {
+			passlog.L.Error().Err(err).Msg("Failed to verify captcha.")
+			return terror.Error(err, "Failed to complete captcha verification.")
+		}
 	}
 
 	return nil
@@ -1321,15 +1322,7 @@ func (api *API) TwitterAuth(w http.ResponseWriter, r *http.Request) (int, error)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, errMsg)
 		}
-		// Send back issue token if logging in with twitter
-		// Get cookie and send with url
-		cookie, err := r.Cookie("xsyn-token")
-		var issueToken string
-		err = api.Cookie.DecryptBase64(cookie.Value, &issueToken)
-		if err != nil {
-			return http.StatusBadRequest, terror.Error(err, "Failed to process token")
-		}
-		http.Redirect(w, r, fmt.Sprintf("%s?login=ok&issue_token=%s", redirect, issueToken), http.StatusSeeOther)
+		http.Redirect(w, r, fmt.Sprintf("%s?login=ok", redirect), http.StatusSeeOther)
 
 		return http.StatusOK, nil
 	}
@@ -1438,12 +1431,10 @@ func (api *API) FingerprintAndIssueToken(w http.ResponseWriter, r *http.Request,
 		if err != nil {
 			return terror.Error(err, "Unable to generate a two-factor authentication token.")
 		}
-
-		origin := r.Header.Get("origin")
 		// Redirect to 2fa
 		if req.IsTwitter {
 			// add query tfa=ok for twitter message
-			rURL := fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=/twitter-redirect?tfa=ok", origin, token)
+			rURL := fmt.Sprintf("%s/tfa/check?token=%s&redirectURL=/twitter-redirect?tfa=ok", api.passportWebURL, token)
 			http.Redirect(w, r, rURL, http.StatusSeeOther)
 			return nil
 		}
@@ -1925,23 +1916,11 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 	return helpers.EncodeJSON(w, issueTokenResp)
 }
 
-func (api *API) AuthLogoutHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	cookie, err := r.Cookie("xsyn-token")
-	if err != nil {
-		// check whether token is attached
-		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no cookie are provided"), "User is not signed in.")
-	}
-
-	// Find user from cookie
-	var token string
-	if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Failed to process token")
-	}
-
+func (api *API) AuthLogout(token string, tokenEncryptionKey []byte) error {
 	// check user from token
-	resp, err := api.UserFromToken(token)
+	resp, err := api.UserFromToken(token, tokenEncryptionKey)
 	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Failed to find user.")
+		return terror.Error(err, "Failed to find user.")
 	}
 
 	// Delete all issued token
@@ -1950,13 +1929,27 @@ func (api *API) AuthLogoutHandler(w http.ResponseWriter, r *http.Request) (int, 
 	})
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to delete all issued token to logout")
-		return http.StatusInternalServerError, terror.Error(err, "Unable to delete all current sessions")
+		return terror.Error(err, "Unable to delete all current sessions")
+	}
+	return nil
+}
+
+func (api *API) AuthLogoutHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	cookie, err := r.Cookie("xsyn-token")
+	if err != nil {
+		// check whether token is attached
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no cookie are provided"), "User is not signed in.")
+	}
+	var token string
+	err = api.Cookie.DecryptBase64(cookie.Value, &token)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to decrypt token")
 	}
 
-	// clear and expire cookie and push to browser
-	err = api.DeleteCookie(w, r)
+	err = api.AuthLogout(token, api.TokenEncryptionKey)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to logout user.")
+		passlog.L.Error().Err(err).Msg("unable to delete all issued token to logout")
+		return http.StatusBadRequest, terror.Error(err, "Unable to delete all current sessions")
 	}
 
 	return helpers.EncodeJSON(w, true)
