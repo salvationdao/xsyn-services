@@ -29,6 +29,7 @@ type UserResp struct {
 	FactionID        null.String
 	PublicAddress    null.String
 	AcceptsMarketing null.Bool
+	IsAdmin          bool
 }
 
 func (s *S) UserGetHandler(req UserGetReq, resp *UserResp) error {
