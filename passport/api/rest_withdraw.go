@@ -195,15 +195,15 @@ func (api *API) WithdrawSups(w http.ResponseWriter, r *http.Request) (int, error
 	}
 
 	if chainInt == api.Web3Params.EthChainID {
-		withdrawsEnabled := db.GetBool(db.KeyEnableBscWithdraws)
+		ethWithdrawsEnabled := db.GetBool(db.KeyEnableEthWithdraws)
 
-		if !withdrawsEnabled {
+		if !ethWithdrawsEnabled {
 			return http.StatusServiceUnavailable, terror.Error(fmt.Errorf("bsc withdraws disabled"), "Withdraws on BSC are currently disabled while we migrate to Ethereum.")
 		}
 	} else if chainInt == api.Web3Params.BscChainID {
-		withdrawsEnabled := db.GetBool(db.KeyEnableBscWithdraws)
+		bscWithdrawsEnabled := db.GetBool(db.KeyEnableBscWithdraws)
 
-		if !withdrawsEnabled {
+		if !bscWithdrawsEnabled {
 			return http.StatusServiceUnavailable, terror.Error(fmt.Errorf("eth withdraws disabled"), "Withdraws on ETH are currently disabled while we migrate to Ethereum.")
 		}
 	} else {
