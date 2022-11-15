@@ -49,6 +49,8 @@ type AuthParams struct {
 }
 
 type WebhookParams struct {
-	GameserverHostUrl      string
-	GameserverWebhookToken string
+	GameserverHostUrl          string
+	GameserverWebhookToken     string
+	SupremacyWorldHostURL      string
+	SupremacyWorldWebhookToken string
 }
