@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/kevinms/leakybucket-go"
 	"github.com/shopspring/decimal"
 	"time"
 	"xsyn-services/boiler"
@@ -48,6 +49,8 @@ type TransactSupremacyWorldReq struct {
 	} `json:"payload"`
 }
 
+var TransactSupremacyWorldBucket = leakybucket.NewCollector(0.5, 1, true)
+
 // TransactSupremacyWorldHandler makes a transaction and then hits the supremacy world webhook to notify them of transaction
 func (tc *TransactionController) TransactSupremacyWorldHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	l := passlog.L.With().Str("func", "TransactSupremacyWorldHandler").Str("userID", user.ID).Logger()
@@ -57,6 +60,11 @@ func (tc *TransactionController) TransactSupremacyWorldHandler(ctx context.Conte
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	b := TransactSupremacyWorldBucket.Add(req.Payload.ClaimID, 1)
+	if b == 0 {
+		return terror.Warn(fmt.Errorf("too many requests"), "Too many requests.")
+	}
+	
 	l = l.With().Interface("req", req).Logger()
 
 	if req.Payload.ClaimID == "" {
@@ -71,7 +79,7 @@ func (tc *TransactionController) TransactSupremacyWorldHandler(ctx context.Conte
 	}
 
 	txID, err := tc.API.userCacheMap.Transact(&types.NewTransaction{
-		Credit:               types.XsynTreasuryUserID.String(),
+		Credit:               types.SupremacyWorldUserID.String(),
 		Debit:                user.ID,
 		Amount:               req.Payload.Amount,
 		TransactionReference: types.TransactionReference(fmt.Sprintf("supremacy_world_transaction|%s|%d", req.Payload.ClaimID, time.Now().UnixNano())),
@@ -93,7 +101,7 @@ func (tc *TransactionController) TransactSupremacyWorldHandler(ctx context.Conte
 		// refund the payment
 		tc.API.userCacheMap.Transact(&types.NewTransaction{
 			Credit:               user.ID,
-			Debit:                types.XsynTreasuryUserID.String(),
+			Debit:                types.SupremacyWorldUserID.String(),
 			Amount:               req.Payload.Amount,
 			TransactionReference: types.TransactionReference(fmt.Sprintf("supremacy_world_transaction|%s|%d|refund", req.Payload.ClaimID, time.Now().UnixNano())),
 			Description:          fmt.Sprintf("Supremacy World Purchase Refund - %s", req.Payload.ClaimID),
@@ -102,7 +110,7 @@ func (tc *TransactionController) TransactSupremacyWorldHandler(ctx context.Conte
 		})
 		return terror.Error(err, "Failed to handle payment on Supremacy World, please try again or contact support.")
 	}
-	
+
 	reply(true)
 	return nil
 }
