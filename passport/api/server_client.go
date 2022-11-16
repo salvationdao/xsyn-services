@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -53,9 +54,10 @@ func (api *API) GameserverRequest(method string, endpoint string, data interface
 }
 
 type SupremacyWorldTransactionWebhookPayload struct {
-	TransactionID string `json:"transaction_id"`
-	UserID        string `json:"user_id"`
-	ClaimID       string `json:"claim_id"`
+	TransactionID string          `json:"transaction_id"`
+	UserID        string          `json:"user_id"`
+	ClaimID       string          `json:"claim_id"`
+	Amount        decimal.Decimal `json:"amount"`
 }
 
 // SupremacyWorldTransactionWebhookSend pushes transaction details to a supremacy world webhook

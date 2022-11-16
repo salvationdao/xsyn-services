@@ -64,7 +64,7 @@ func (tc *TransactionController) TransactSupremacyWorldHandler(ctx context.Conte
 	if b == 0 {
 		return terror.Warn(fmt.Errorf("too many requests"), "Too many requests.")
 	}
-	
+
 	l = l.With().Interface("req", req).Logger()
 
 	if req.Payload.ClaimID == "" {
@@ -95,6 +95,7 @@ func (tc *TransactionController) TransactSupremacyWorldHandler(ctx context.Conte
 		TransactionID: txID,
 		UserID:        user.ID,
 		ClaimID:       req.Payload.ClaimID,
+		Amount:        req.Payload.Amount,
 	})
 	if err != nil {
 		l.Error().Err(err).Msg("failed to process claim on supremacy world")
