@@ -7,6 +7,7 @@ import (
 )
 
 var (
+	UserRoleAdminID          = RoleID(uuid.Must(uuid.FromString("669f96d3-aaf3-431d-8a57-2f9e0b5b21d8")))
 	UserRoleMemberID         = RoleID(uuid.Must(uuid.FromString("cca82653-c071-4171-92da-05b0808542e7")))
 	UserRoleXsynTreasury     = RoleID(uuid.Must(uuid.FromString("1fb981b2-7489-4061-a379-1430ec4f7a63")))
 	UserRoleGameAccount      = RoleID(uuid.Must(uuid.FromString("85837f44-988c-4d1d-a292-e376b87015cd")))

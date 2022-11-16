@@ -77,8 +77,8 @@ type API struct {
 	//tx stuff
 	userCacheMap *Transactor
 
-	walletOnlyConnect    bool
-	storeItemExternalUrl string
+	walletOnlyConnect bool
+	passportWebURL    string
 
 	// supremacy client map
 	ClientMap *sync.Map
@@ -135,16 +135,16 @@ func NewAPI(
 		Cookie: securebytes.New(
 			[]byte(config.CookieKey),
 			securebytes.ASN1Serializer{}),
-		IsCookieSecure:       config.CookieSecure,
-		Log:                  log_helpers.NamedLogger(log, "api"),
-		Addr:                 addr,
-		Mailer:               mailer,
-		SMS:                  twilio,
-		HTMLSanitize:         HTMLSanitize,
-		users:                make(chan func(userList Transactor)),
-		userCacheMap:         ucm,
-		walletOnlyConnect:    config.OnlyWalletConnect,
-		storeItemExternalUrl: externalUrl,
+		IsCookieSecure:    config.CookieSecure,
+		Log:               log_helpers.NamedLogger(log, "api"),
+		Addr:              addr,
+		Mailer:            mailer,
+		SMS:               twilio,
+		HTMLSanitize:      HTMLSanitize,
+		users:             make(chan func(userList Transactor)),
+		userCacheMap:      ucm,
+		walletOnlyConnect: config.OnlyWalletConnect,
+		passportWebURL:    externalUrl,
 
 		ClientMap:    &sync.Map{},
 		JWTKey:       jwtKey,
@@ -258,7 +258,6 @@ func NewAPI(
 				r.Get("/check", WithError(api.AuthCheckHandler))
 				r.Get("/logout", WithError(api.AuthLogoutHandler))
 				r.Post("/token", WithError(api.TokenLoginHandler))
-				r.Post("/external", api.ExternalLoginHandler)
 				r.Post("/wallet", WithError(api.WalletLoginHandler))
 				r.Post("/email", WithError(api.EmailLoginHandler))
 				r.Post("/email_signup", WithError(api.EmailSignupVerifyHandler))
