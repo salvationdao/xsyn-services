@@ -51,8 +51,21 @@ func (api *API) GameserverRequest(method string, endpoint string, data interface
 	return nil
 }
 
+type Payload1 struct {
+}
+
+type Payload2 struct {
+}
+
+type SupremacyWorldPayloads interface {
+	Payload1 | Payload2
+}
+type SupremacyWorldRequests interface {
+	Payload1 | Payload2
+}
+
 // SupremacyWorldWebhookSend push a supremacy world webhook
-func (api *API) SupremacyWorldWebhookSend[T any](method string, endpoint string, data []T, dist interface{}) error {
+func (api *API) SupremacyWorldWebhookSend[Req SupremacyWorldPayloads, Resp SupremacyWorldRequests](method string, endpoint string, data T, dist interface{}) error {
 	jd, err := json.Marshal(data)
 	if err != nil {
 		return terror.Error(err, "failed to marshal data into json struct")
