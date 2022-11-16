@@ -231,6 +231,7 @@ func (s *S) TokenLogin(req TokenReq, resp *UserResp) error {
 	resp.ID = user.ID
 	resp.PublicAddress = user.PublicAddress
 	resp.Username = user.Username
+	resp.IsAdmin = user.RoleID == null.StringFrom(types.UserRoleAdminID.String())
 
 	return nil
 }
@@ -295,5 +296,25 @@ func (s *S) GenOneTimeToken(req GenOneTimeTokenReq, resp *GenOneTimeTokenResp) e
 	resp.Token = token
 	resp.ExpiredAt = it.ExpiresAt.Time
 
+	return nil
+}
+
+type LogoutResp struct {
+	LogoutSuccess bool `json:"logout_success"`
+}
+
+func (s *S) TokenLogout(req TokenReq, resp *LogoutResp) error {
+	resp.LogoutSuccess = false
+	_, err := IsServerClient(req.ApiKey)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("is not a server client")
+		return err
+	}
+	err = s.API.AuthLogout(req.TokenBase64, s.TokenEncryptionKey)
+	if err != nil {
+		passlog.L.Error().Err(err).Msg("unable to delete all issued token to logout")
+		return terror.Error(err, "Unable to delete all current sessions")
+	}
+	resp.LogoutSuccess = true
 	return nil
 }
