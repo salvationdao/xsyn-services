@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/shopspring/decimal"
+	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
+	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
 	"github.com/ninja-software/log_helpers"
@@ -30,9 +33,68 @@ func NewTransactionController(log *zerolog.Logger, api *API) *TransactionControl
 
 	api.SecureCommand(HubKeyTransactionGroups, transactionHub.TransactionGroupsHandler)
 	api.SecureCommand(HubKeyTransactionList, transactionHub.TransactionListHandler)
-	api.SecureCommand(HubKeyTransactionSubscribe, transactionHub.TransactionSubscribeHandler) // Auth check inside handler
+	api.SecureCommand(HubKeyTransactionSubscribe, transactionHub.TransactionSubscribeHandler)            // Auth check inside handler
+	api.SecureCommand(HubKeyMakeSupremacyWorldTransaction, transactionHub.TransactSupremacyWorldHandler) // Auth check inside handler
 
 	return transactionHub
+}
+
+const HubKeyMakeSupremacyWorldTransaction = "TRANSACT:SUPREMACY_WORLD"
+
+type TransactSupremacyWorldReq struct {
+	Payload struct {
+		ClaimID string          `json:"claim_id"`
+		Amount  decimal.Decimal `json:"amount"`
+	} `json:"payload"`
+}
+
+// TransactSupremacyWorldHandler makes a transaction and then hits the supremacy world webhook to notify them of transaction
+func (tc *TransactionController) TransactSupremacyWorldHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := passlog.L.With().Str("func", "TransactSupremacyWorldHandler").Str("userID", user.ID).Logger()
+	req := &TransactSupremacyWorldReq{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	l = l.With().Interface("req", req).Logger()
+
+	if req.Payload.ClaimID == "" {
+		err = fmt.Errorf("missing claim id")
+		l.Error().Err(err).Msg("claim id is empty")
+		return terror.Error(err, "Invalid request, please try again or contact support.")
+	}
+	if req.Payload.Amount.IsZero() {
+		err = fmt.Errorf("missing transaction amount")
+		l.Error().Err(err).Msg("amount is zero")
+		return terror.Error(err, "Invalid request, please try again or contact support.")
+	}
+
+	txID, err := tc.API.userCacheMap.Transact(&types.NewTransaction{
+		Credit:               types.XsynTreasuryUserID.String(),
+		Debit:                user.ID,
+		Amount:               req.Payload.Amount,
+		TransactionReference: types.TransactionReference(fmt.Sprintf("supremacy_world_transaction|%s|%d", req.Payload.ClaimID, time.Now().UnixNano())),
+		Description:          fmt.Sprintf("Supremacy World Purchase - %s", req.Payload.ClaimID),
+		Group:                types.TransactionGroupSupremacyWorld,
+		SubGroup:             "Purchase",
+	})
+	if err != nil {
+		return err
+	}
+
+	err = tc.API.SupremacyWorldTransactionWebhookSend(&SupremacyWorldTransactionWebhookPayload{
+		TransactionID: txID,
+		UserID:        user.ID,
+		ClaimID:       req.Payload.ClaimID,
+	})
+	if err != nil {
+		l.Error().Err(err).Msg("failed to tell supremacy world")
+		//return err
+	}
+
+	reply(true)
+	return nil
 }
 
 const HubKeyTransactionGroups = "TRANSACTION:GROUPS"

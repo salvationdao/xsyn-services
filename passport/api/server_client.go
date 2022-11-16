@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"xsyn-services/types"
@@ -51,29 +52,22 @@ func (api *API) GameserverRequest(method string, endpoint string, data interface
 	return nil
 }
 
-type Payload1 struct {
+type SupremacyWorldTransactionWebhookPayload struct {
+	TransactionID string `json:"transaction_id"`
+	UserID        string `json:"user_id"`
+	ClaimID       string `json:"claim_id"`
 }
 
-type Payload2 struct {
-}
-
-type SupremacyWorldPayloads interface {
-	Payload1 | Payload2
-}
-type SupremacyWorldRequests interface {
-	Payload1 | Payload2
-}
-
-// SupremacyWorldWebhookSend push a supremacy world webhook
-func (api *API) SupremacyWorldWebhookSend[Req SupremacyWorldPayloads, Resp SupremacyWorldRequests](method string, endpoint string, data T, dist interface{}) error {
-	jd, err := json.Marshal(data)
+// SupremacyWorldTransactionWebhookSend pushes transaction details to a supremacy world webhook
+func (api *API) SupremacyWorldTransactionWebhookSend(payload *SupremacyWorldTransactionWebhookPayload) error {
+	jd, err := json.Marshal(payload)
 	if err != nil {
 		return terror.Error(err, "failed to marshal data into json struct")
 	}
 
-	url := fmt.Sprintf("%s/api/%s", api.SupremacyWorldHostUrl, types.SupremacyGameUserID, endpoint)
+	url := fmt.Sprintf("%s/api/webhook", api.SupremacyWorldHostUrl)
 
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(jd))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jd))
 	if err != nil {
 		return err
 	}
@@ -86,19 +80,12 @@ func (api *API) SupremacyWorldWebhookSend[Req SupremacyWorldPayloads, Resp Supre
 	}
 
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		b, err := ioutil.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return terror.Error(err, "Could not fetch contract reward")
+			return err
 		}
 		defer resp.Body.Close()
-		return terror.Error(fmt.Errorf("%s", b), "Could not fetch contract reward")
-	}
-
-	if dist != nil {
-		err = json.NewDecoder(resp.Body).Decode(&dist)
-		if err != nil {
-			return terror.Error(err, "failed to decode response")
-		}
+		return fmt.Errorf("%s", b)
 	}
 
 	return nil
