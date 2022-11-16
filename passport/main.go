@@ -161,7 +161,7 @@ func main() {
 					&cli.StringFlag{Name: "gameserver_webhook_secret", Value: "e1BD3FF270804c6a9edJDzzDks87a8a4fde15c7=", EnvVars: []string{"GAMESERVER_WEBHOOK_SECRET"}, Usage: "Authorization key to passport webhook"},
 					&cli.StringFlag{Name: "gameserver_host_url", Value: "http://localhost:8084", EnvVars: []string{"GAMESERVER_HOST_URL"}, Usage: "Authorization key to passport webhook"},
 					&cli.StringFlag{Name: "supremacy_world_webhook_secret", Value: "e1BD3FF270804c6a9edJDzzDks87a8a4fde15c7=", EnvVars: []string{envPrefix + "_SUPREMACY_WORLD_WEBHOOK_SECRET"}, Usage: "Authorization key to supremacy world webhook"},
-					&cli.StringFlag{Name: "supremacy_world_host_url", Value: "https://propertyserver.supremacygame.io", EnvVars: []string{envPrefix + "_SUPREMACY_WORLD_HOST_URL"}, Usage: "Host url for supremacy world webhook"},
+					&cli.StringFlag{Name: "supremacy_world_host_url", Value: "http://localhost:9001", EnvVars: []string{envPrefix + "_SUPREMACY_WORLD_HOST_URL"}, Usage: "Host url for supremacy world webhook"},
 					&cli.StringFlag{Name: "jwt_key", Value: "9a5b8421bbe14e5a904cfd150a9951d3", EnvVars: []string{"STREAM_SITE_JWT_KEY"}, Usage: "JWT Key for signing token on stream site"},
 
 					/****************************

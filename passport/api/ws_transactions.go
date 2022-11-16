@@ -33,8 +33,8 @@ func NewTransactionController(log *zerolog.Logger, api *API) *TransactionControl
 
 	api.SecureCommand(HubKeyTransactionGroups, transactionHub.TransactionGroupsHandler)
 	api.SecureCommand(HubKeyTransactionList, transactionHub.TransactionListHandler)
-	api.SecureCommand(HubKeyTransactionSubscribe, transactionHub.TransactionSubscribeHandler)            // Auth check inside handler
-	api.SecureCommand(HubKeyMakeSupremacyWorldTransaction, transactionHub.TransactSupremacyWorldHandler) // Auth check inside handler
+	api.SecureCommand(HubKeyTransactionSubscribe, transactionHub.TransactionSubscribeHandler) // Auth check inside handler
+	api.SecureCommand(HubKeyMakeSupremacyWorldTransaction, transactionHub.TransactSupremacyWorldHandler)
 
 	return transactionHub
 }
@@ -89,10 +89,19 @@ func (tc *TransactionController) TransactSupremacyWorldHandler(ctx context.Conte
 		ClaimID:       req.Payload.ClaimID,
 	})
 	if err != nil {
-		l.Error().Err(err).Msg("failed to tell supremacy world")
-		//return err
+		l.Error().Err(err).Msg("failed to process claim on supremacy world")
+		// refund the payment
+		tc.API.userCacheMap.Transact(&types.NewTransaction{
+			Credit:               user.ID,
+			Debit:                types.XsynTreasuryUserID.String(),
+			Amount:               req.Payload.Amount,
+			TransactionReference: types.TransactionReference(fmt.Sprintf("supremacy_world_transaction|%s|%d|refund", req.Payload.ClaimID, time.Now().UnixNano())),
+			Description:          fmt.Sprintf("Supremacy World Purchase Refund - %s", req.Payload.ClaimID),
+			Group:                types.TransactionGroupSupremacyWorld,
+			SubGroup:             "Refund",
+		})
+		return err
 	}
-
 	reply(true)
 	return nil
 }

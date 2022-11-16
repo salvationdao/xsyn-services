@@ -65,7 +65,7 @@ func (api *API) SupremacyWorldTransactionWebhookSend(payload *SupremacyWorldTran
 		return terror.Error(err, "failed to marshal data into json struct")
 	}
 
-	url := fmt.Sprintf("%s/api/webhook", api.SupremacyWorldHostUrl)
+	url := fmt.Sprintf("%s/api/xsyn/webhook", api.SupremacyWorldHostUrl)
 
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jd))
 	if err != nil {
