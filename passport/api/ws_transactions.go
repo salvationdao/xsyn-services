@@ -80,7 +80,7 @@ func (tc *TransactionController) TransactSupremacyWorldHandler(ctx context.Conte
 		SubGroup:             "Purchase",
 	})
 	if err != nil {
-		return err
+		return terror.Error(err, "Payment failed, please check your balance and try again or contact support.")
 	}
 
 	err = tc.API.SupremacyWorldTransactionWebhookSend(&SupremacyWorldTransactionWebhookPayload{
@@ -100,8 +100,9 @@ func (tc *TransactionController) TransactSupremacyWorldHandler(ctx context.Conte
 			Group:                types.TransactionGroupSupremacyWorld,
 			SubGroup:             "Refund",
 		})
-		return err
+		return terror.Error(err, "Failed to handle payment on Supremacy World, please try again or contact support.")
 	}
+	
 	reply(true)
 	return nil
 }
