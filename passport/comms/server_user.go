@@ -56,6 +56,7 @@ type UserResp struct {
 	Username      string
 	FactionID     null.String
 	PublicAddress null.String
+	IsAdmin       bool
 }
 
 func (s *S) UserBalanceGetHandler(req UserBalanceGetReq, resp *UserBalanceGetResp) error {
