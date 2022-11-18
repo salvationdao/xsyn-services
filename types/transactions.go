@@ -72,4 +72,5 @@ const (
 	TransactionGroupSupremacy       TransactionGroup = "SUPREMACY"
 	TransactionGroupAssetManagement TransactionGroup = "ASSET MANAGEMENT"
 	TransactionGroupTesting         TransactionGroup = "TESTING"
+	TransactionGroupSupremacyWorld  TransactionGroup = "SUPREMACY WORLD"
 )

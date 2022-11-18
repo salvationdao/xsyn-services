@@ -42,28 +42,30 @@ type TwitchConfig struct {
 
 // API server
 type API struct {
-	SupremacyController *SupremacyControllerWS
-	State               *types.State
-	SupUSD              decimal.Decimal
-	Log                 *zerolog.Logger
-	Addr                string
-	Mailer              *email.Mailer
-	SMS                 types.SMS
-	HTMLSanitize        *bluemonday.Policy
-	Cookie              *securebytes.SecureBytes
-	IsCookieSecure      bool
-	TokenExpirationDays int
-	TokenEncryptionKey  []byte
-	Eip712Message       string
-	Twitch              *TwitchConfig
-	Twitter             *auth.TwitterConfig
-	Google              *auth.GoogleConfig
-	ClientToken         string
-	WebhookToken        string
-	GameserverHostUrl   string
-	Commander           *ws.Commander
-	Web3Params          *types.Web3Params
-	botSecretKey        string
+	SupremacyController        *SupremacyControllerWS
+	State                      *types.State
+	SupUSD                     decimal.Decimal
+	Log                        *zerolog.Logger
+	Addr                       string
+	Mailer                     *email.Mailer
+	SMS                        types.SMS
+	HTMLSanitize               *bluemonday.Policy
+	Cookie                     *securebytes.SecureBytes
+	IsCookieSecure             bool
+	TokenExpirationDays        int
+	TokenEncryptionKey         []byte
+	Eip712Message              string
+	Twitch                     *TwitchConfig
+	Twitter                    *auth.TwitterConfig
+	Google                     *auth.GoogleConfig
+	ClientToken                string
+	GameserverWebhookToken     string
+	GameserverHostUrl          string
+	SupremacyWorldWebhookToken string
+	SupremacyWorldHostUrl      string
+	Commander                  *ws.Commander
+	Web3Params                 *types.Web3Params
+	botSecretKey               string
 
 	// online user cache
 	users chan func(userCacheList Transactor)
@@ -111,8 +113,10 @@ func NewAPI(
 		Web3Params:  config.Web3Params,
 		ClientToken: config.AuthParams.GameserverToken,
 		// webhook setup
-		WebhookToken:      config.WebhookParams.GameserverWebhookToken,
-		GameserverHostUrl: config.WebhookParams.GameserverHostUrl,
+		GameserverWebhookToken:     config.WebhookParams.GameserverWebhookToken,
+		GameserverHostUrl:          config.WebhookParams.GameserverHostUrl,
+		SupremacyWorldWebhookToken: config.WebhookParams.SupremacyWorldWebhookToken,
+		SupremacyWorldHostUrl:      config.WebhookParams.SupremacyWorldHostURL,
 
 		TokenExpirationDays: config.TokenExpirationDays,
 		TokenEncryptionKey:  []byte(config.EncryptTokensKey),
