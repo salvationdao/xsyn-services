@@ -6,9 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/friendsofgo/errors"
+	"github.com/kevinms/leakybucket-go"
+	"github.com/shopspring/decimal"
+	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
+	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
 	"github.com/ninja-software/log_helpers"
@@ -33,8 +37,90 @@ func NewTransactionController(log *zerolog.Logger, api *API) *TransactionControl
 	api.SecureCommand(HubKeyTransactionGroups, transactionHub.TransactionGroupsHandler)
 	api.SecureCommand(HubKeyTransactionList, transactionHub.TransactionListHandler)
 	api.SecureCommand(HubKeyTransactionSubscribe, transactionHub.TransactionSubscribeHandler) // Auth check inside handler
+	api.SecureCommand(HubKeyMakeSupremacyWorldTransaction, transactionHub.TransactSupremacyWorldHandler)
 
 	return transactionHub
+}
+
+const HubKeyMakeSupremacyWorldTransaction = "TRANSACT:SUPREMACY_WORLD"
+
+type TransactSupremacyWorldReq struct {
+	Payload struct {
+		ClaimID string          `json:"claim_id"`
+		Amount  decimal.Decimal `json:"amount"`
+	} `json:"payload"`
+}
+
+var TransactSupremacyWorldBucket = leakybucket.NewCollector(0.5, 1, true)
+
+// TransactSupremacyWorldHandler makes a transaction and then hits the supremacy world webhook to notify them of transaction
+func (tc *TransactionController) TransactSupremacyWorldHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := passlog.L.With().Str("func", "TransactSupremacyWorldHandler").Str("userID", user.ID).Logger()
+	req := &TransactSupremacyWorldReq{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	b := TransactSupremacyWorldBucket.Add(req.Payload.ClaimID, 1)
+	if b == 0 {
+		return terror.Warn(fmt.Errorf("too many requests"), "Too many requests.")
+	}
+
+	l = l.With().Interface("req", req).Logger()
+
+	if req.Payload.ClaimID == "" {
+		err = fmt.Errorf("missing claim id")
+		l.Error().Err(err).Msg("claim id is empty")
+		return terror.Error(err, "Invalid request, please try again or contact support.")
+	}
+	if req.Payload.Amount.IsZero() {
+		err = fmt.Errorf("missing transaction amount")
+		l.Error().Err(err).Msg("amount is zero")
+		return terror.Error(err, "Invalid request, please try again or contact support.")
+	}
+
+	creditor, err := boiler.FindUser(passdb.StdConn, types.SupremacyWorldUserID.String())
+	if err != nil {
+		return terror.Error(err, "Failed to load debitor account")
+	}
+
+	txID, err := tc.API.userCacheMap.Transact(&types.NewTransaction{
+		CreditAccountID:      creditor.AccountID,
+		DebitAccountID:       user.AccountID,
+		Amount:               req.Payload.Amount,
+		TransactionReference: types.TransactionReference(fmt.Sprintf("supremacy_world_transaction|%s|%d", req.Payload.ClaimID, time.Now().UnixNano())),
+		Description:          fmt.Sprintf("Supremacy World Purchase - %s", req.Payload.ClaimID),
+		Group:                types.TransactionGroupSupremacyWorld,
+		SubGroup:             "Purchase",
+	})
+	if err != nil {
+		return terror.Error(err, "Payment failed, please check your balance and try again or contact support.")
+	}
+
+	err = tc.API.SupremacyWorldTransactionWebhookSend(&SupremacyWorldTransactionWebhookPayload{
+		TransactionID: txID,
+		UserID:        user.ID,
+		ClaimID:       req.Payload.ClaimID,
+		Amount:        req.Payload.Amount,
+	})
+	if err != nil {
+		l.Error().Err(err).Msg("failed to process claim on supremacy world")
+		// refund the payment
+		tc.API.userCacheMap.Transact(&types.NewTransaction{
+			CreditAccountID:      user.AccountID,
+			DebitAccountID:       creditor.AccountID,
+			Amount:               req.Payload.Amount,
+			TransactionReference: types.TransactionReference(fmt.Sprintf("supremacy_world_transaction|%s|%d|refund", req.Payload.ClaimID, time.Now().UnixNano())),
+			Description:          fmt.Sprintf("Supremacy World Purchase Refund - %s", req.Payload.ClaimID),
+			Group:                types.TransactionGroupSupremacyWorld,
+			SubGroup:             "Refund",
+		})
+		return terror.Error(err, "Failed to handle payment on Supremacy World, please try again or contact support.")
+	}
+
+	reply(true)
+	return nil
 }
 
 const HubKeyTransactionGroups = "TRANSACTION:GROUPS"

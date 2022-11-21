@@ -161,6 +161,8 @@ func main() {
 					// setup for webhook
 					&cli.StringFlag{Name: "gameserver_webhook_secret", Value: "e1BD3FF270804c6a9edJDzzDks87a8a4fde15c7=", EnvVars: []string{"GAMESERVER_WEBHOOK_SECRET"}, Usage: "Authorization key to passport webhook"},
 					&cli.StringFlag{Name: "gameserver_host_url", Value: "http://localhost:8084", EnvVars: []string{"GAMESERVER_HOST_URL"}, Usage: "Authorization key to passport webhook"},
+					&cli.StringFlag{Name: "supremacy_world_webhook_secret", Value: "e1BD3FF270804c6a9edJDzzDks87a8a4fde15c7=", EnvVars: []string{envPrefix + "_SUPREMACY_WORLD_WEBHOOK_SECRET"}, Usage: "Authorization key to supremacy world webhook"},
+					&cli.StringFlag{Name: "supremacy_world_host_url", Value: "http://localhost:9001", EnvVars: []string{envPrefix + "_SUPREMACY_WORLD_HOST_URL"}, Usage: "Host url for supremacy world webhook"},
 					&cli.StringFlag{Name: "jwt_key", Value: "9a5b8421bbe14e5a904cfd150a9951d3", EnvVars: []string{"STREAM_SITE_JWT_KEY"}, Usage: "JWT Key for signing token on stream site"},
 
 					/****************************
@@ -738,6 +740,15 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 	if gameserverHostUrl == "" {
 		return terror.Panic(fmt.Errorf("missing passort webhook token"))
 	}
+	supremacyWorldWebhookToken := ctxCLI.String("supremacy_world_webhook_secret")
+	if supremacyWorldWebhookToken == "" {
+		return terror.Panic(fmt.Errorf("missing supremacy world webhook token"))
+	}
+
+	supremacyWorldHostUrl := ctxCLI.String("supremacy_world_host_url")
+	if supremacyWorldHostUrl == "" {
+		return terror.Panic(fmt.Errorf("missing supremacy world webhook host"))
+	}
 
 	gameserverToken := ctxCLI.String("gameserver_token")
 	if gameserverToken == "" {
@@ -815,8 +826,10 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 			DiscordClientSecret: discordClientSecret,
 		},
 		WebhookParams: &types.WebhookParams{
-			GameserverWebhookToken: gameserverWebhookToken,
-			GameserverHostUrl:      gameserverHostUrl,
+			GameserverWebhookToken:     gameserverWebhookToken,
+			GameserverHostUrl:          gameserverHostUrl,
+			SupremacyWorldHostURL:      supremacyWorldHostUrl,
+			SupremacyWorldWebhookToken: supremacyWorldWebhookToken,
 		},
 		BotSecret:      ctxCLI.String("bot_secret_key"),
 		CaptchaSiteKey: ctxCLI.String("captcha_site_key"),
