@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   Release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: slack-notification
         if: always()
