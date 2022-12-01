@@ -44,6 +44,9 @@ func (s *S) UserGetHandler(req UserGetReq, resp *UserResp) error {
 			boiler.UserColumns.Username,
 			boiler.UserColumns.FactionID,
 			boiler.UserColumns.PublicAddress,
+			boiler.UserColumns.AcceptsMarketing,
+			boiler.UserColumns.AccountID,
+			boiler.UserColumns.RoleID,
 		),
 		boiler.UserWhere.ID.EQ(req.UserID.String()),
 	).One(passdb.StdConn)
@@ -56,6 +59,8 @@ func (s *S) UserGetHandler(req UserGetReq, resp *UserResp) error {
 	resp.FactionID = user.FactionID
 	resp.PublicAddress = user.PublicAddress
 	resp.AcceptsMarketing = user.AcceptsMarketing
+	resp.AccountID = user.AccountID
+	resp.IsAdmin = user.RoleID == null.StringFrom(types.UserRoleAdminID.String())
 
 	return nil
 }
