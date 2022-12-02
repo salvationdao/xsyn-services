@@ -7,13 +7,13 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math/big"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
+	"xsyn-services/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -24,7 +24,7 @@ import (
 
 func (api *API) NFTRoutes() chi.Router {
 	r := chi.NewRouter()
-	if os.Getenv("PASSPORT_ENVIRONMENT") != "staging" {
+	if api.Environment != types.Staging {
 		r.Get("/check", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 		r.Get("/owner_address/{owner_address}/nonce/{nonce}/collection_slug/{collection_slug}/token_id/{external_token_id}", WithError(api.MintAsset))
 		r.Post("/owner_address/{owner_address}/collection_slug/{collection_slug}/token_id/{external_token_id}", WithError(api.LockNFT))
@@ -123,8 +123,16 @@ func (api *API) MintAsset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("unable to validate ownership of asset"), "Unable to validate ownership of asset.")
 	}
 
-	if item.OnChainStatus != string(db.MINTABLE) {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("unable to mint asset with status %s", item.OnChainStatus), "Failed to mint asset.")
+	onChainStatusObject, err := boiler.UserAssetOnChainStatuses(
+		boiler.UserAssetOnChainStatusWhere.CollectionID.EQ(item.CollectionID),
+		boiler.UserAssetOnChainStatusWhere.AssetHash.EQ(item.Hash),
+	).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Unable to validate status of asset.")
+	}
+
+	if onChainStatusObject.OnChainStatus != string(db.MINTABLE) {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("unable to mint asset with status %s", onChainStatusObject.OnChainStatus), "Failed to mint asset.")
 	}
 
 	if item.UnlockedAt.After(time.Now()) {
@@ -340,8 +348,16 @@ func (api *API) UnstakeNFT(w http.ResponseWriter, r *http.Request) (int, error) 
 		return http.StatusBadRequest, terror.Error(err)
 	}
 
-	if item.OnChainStatus != string(db.UNSTAKABLE) {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("unable to unstake asset with status %s", item.OnChainStatus), "Failed to mint asset.")
+	onChainStatusObject, err := boiler.UserAssetOnChainStatuses(
+		boiler.UserAssetOnChainStatusWhere.CollectionID.EQ(item.CollectionID),
+		boiler.UserAssetOnChainStatusWhere.AssetHash.EQ(item.Hash),
+	).One(passdb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Unable to validate status of asset.")
+	}
+
+	if onChainStatusObject.OnChainStatus != string(db.UNSTAKABLE) {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("unable to unstake asset with status %s", onChainStatusObject.OnChainStatus), "Failed to mint asset.")
 	}
 
 	if item.UnlockedAt.After(time.Now()) {

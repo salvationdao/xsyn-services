@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 	"xsyn-services/boiler"
+	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
@@ -21,7 +22,7 @@ const (
 	DepositTransactionStatusConfirmed DepositTransactionStatus = "confirmed"
 )
 
-func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap, purchaseAddress common.Address) (int, int, error) {
+func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap, purchaseAddress common.Address, environment types.Environment) (int, int, error) {
 	l := passlog.L.With().Str("svc", "avant_deposit_processor").Logger()
 	success := 0
 	skipped := 0
@@ -33,7 +34,7 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap, purchaseAdd
 			continue
 		}
 
-		exists, err := boiler.Transactions(boiler.TransactionWhere.TransactionReference.EQ(record.TxHash)).Exists(passdb.StdConn)
+		exists, err := db.TransactionReferenceExists(record.TxHash)
 		if err != nil {
 			skipped++
 			continue
@@ -44,7 +45,7 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap, purchaseAdd
 			continue
 		}
 
-		user, err := CreateOrGetUser(common.HexToAddress(record.FromAddress))
+		user, err := CreateOrGetUser(common.HexToAddress(record.FromAddress), environment)
 		if err != nil {
 			skipped++
 			l.Error().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("create or get user")
@@ -64,9 +65,16 @@ func ProcessDeposits(records []*SUPTransferRecord, ucm UserCacheMap, purchaseAdd
 		}
 
 		msg := fmt.Sprintf("deposited %s SUPS", value.Shift(-1*types.SUPSDecimals).StringFixed(4))
+
+		debitor, err := boiler.FindUser(passdb.StdConn, types.OnChainUserID.String())
+		if err != nil {
+			skipped++
+			continue
+		}
+
 		trans := &types.NewTransaction{
-			Credit:               user.ID,
-			Debit:                types.OnChainUserID.String(),
+			CreditAccountID:      user.AccountID,
+			DebitAccountID:       debitor.AccountID,
 			Amount:               value,
 			TransactionReference: types.TransactionReference(record.TxHash),
 			Description:          msg,

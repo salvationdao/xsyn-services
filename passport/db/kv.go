@@ -51,6 +51,8 @@ const KeySUPSPurchaseContract KVKey = "contract_purchase_address"
 const KeySyndicateRegisterFee KVKey = "syndicate_create_fee"
 const KeySyndicateRegisterFeeCut KVKey = "syndicate_create_fee_cut"
 
+const KeyOneoffInsertedNewAdmin KVKey = "oneoff_inserted_new_admin"
+
 const KeyEnableEthDeposits = "enable_eth_deposits"
 const KeyEnableEthWithdraws = "enable_eth_withdraws"
 const KeyEnableBscDeposits = "enable_bsc_deposits"

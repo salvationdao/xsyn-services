@@ -6,6 +6,7 @@ import (
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/api/users"
+	"xsyn-services/passport/db"
 	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
@@ -25,9 +26,19 @@ func InsertPendingRefund(ucm UserCacheMap, userID types.UserID, amount decimal.D
 	txRef := types.TransactionReference(fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond()))
 	// remove sups
 
+	creditor, err := boiler.FindUser(passdb.StdConn, types.OnChainUserID.String())
+	if err != nil {
+		return "", err
+	}
+
+	debitor, err := boiler.FindUser(passdb.StdConn, userID.String())
+	if err != nil {
+		return "", err
+	}
+
 	newTx := &types.NewTransaction{
-		Credit:               types.OnChainUserID.String(),
-		Debit:                userID.String(),
+		CreditAccountID:      creditor.AccountID,
+		DebitAccountID:       debitor.AccountID,
 		Amount:               amount,
 		TransactionReference: txRef,
 		Description:          fmt.Sprintf("Withdraw of %s SUPS", amount.Shift(-18).StringFixed(4)),
@@ -159,7 +170,6 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 		boiler.PendingRefundWhere.IsRefunded.EQ(false),
 		boiler.PendingRefundWhere.DeletedAt.IsNull(),
 		boiler.PendingRefundWhere.TXHash.EQ(""),
-		qm.Load(boiler.PendingRefundRels.TransactionReferenceTransaction),
 	}
 
 	refundsToProcess, err := boiler.PendingRefunds(filter...).All(passdb.StdConn)
@@ -168,15 +178,33 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 	}
 
 	for _, refund := range refundsToProcess {
-		txRef := types.TransactionReference(fmt.Sprintf("REFUND %s", refund.R.TransactionReferenceTransaction.TransactionReference))
+		tx, err := db.TransactionGetByReference(refund.TransactionReference)
+		if err != nil {
+			skipped++
+			l.Warn().Err(err).Msg("failed to process refund")
+			continue
+		}
+		if tx == nil {
+			skipped++
+			l.Warn().Err(fmt.Errorf("no tx found")).Msg("failed to process refund")
+			continue
+		}
+
+		txRef := types.TransactionReference(fmt.Sprintf("REFUND %s", tx.TransactionReference))
+		debitor, err := boiler.FindUser(passdb.StdConn, types.OnChainUserID.String())
+		if err != nil {
+			skipped++
+			l.Warn().Err(err).Msg("failed to get debitor account")
+			continue
+		}
+
 		newTx := &types.NewTransaction{
-			Credit:               refund.R.TransactionReferenceTransaction.Debit,
-			Debit:                types.OnChainUserID.String(),
-			Amount:               refund.R.TransactionReferenceTransaction.Amount,
+			CreditAccountID:      tx.DebitAccountID,
+			DebitAccountID:       debitor.AccountID,
+			Amount:               tx.Amount,
 			TransactionReference: txRef,
-			Description:          fmt.Sprintf("REFUND %s", refund.R.TransactionReferenceTransaction.Description),
-			Group:                types.TransactionGroup(refund.R.TransactionReferenceTransaction.Group),
-			RelatedTransactionID: refund.R.TransactionReferenceTransaction.RelatedTransactionID,
+			Description:          fmt.Sprintf("REFUND %s", tx.Description),
+			Group:                types.TransactionGroup(tx.Group),
 		}
 
 		refund.RefundCanceledAt = null.TimeFrom(time.Now())
@@ -191,8 +219,8 @@ func ReverseFailedWithdraws(ucm UserCacheMap, enableWithdrawRollback bool) (int,
 			Str("refund.tx_hash", refund.TXHash).
 			Str("refund.transaction_reference", refund.TransactionReference).
 			Bool("refund.is_refunded", refund.IsRefunded).
-			Str("reverse_tx.to", newTx.Credit).
-			Str("reverse_tx.from", newTx.Debit).
+			Str("reverse_tx.to", newTx.CreditAccountID).
+			Str("reverse_tx.from", newTx.DebitAccountID).
 			Str("reverse_tx.amount", newTx.Amount.String()).
 			Str("reverse_tx.transaction_reference", string(newTx.TransactionReference)).
 			Str("reverse_tx.description", newTx.Description).

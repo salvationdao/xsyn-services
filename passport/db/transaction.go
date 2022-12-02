@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/passdb"
 
@@ -61,10 +62,10 @@ INNER JOIN %s f ON %s = f.%s
 `,
 	boiler.TableNames.Transactions,
 	boiler.TableNames.Users,
-	boiler.TransactionTableColumns.Credit,
+	boiler.TransactionTableColumns.CreditAccountID,
 	boiler.UserColumns.ID,
 	boiler.TableNames.Users,
-	boiler.TransactionTableColumns.Debit,
+	boiler.TransactionTableColumns.DebitAccountID,
 	boiler.UserColumns.ID,
 )
 
@@ -83,8 +84,8 @@ func UsersTransactionGroups(
 		boiler.TransactionTableColumns.SubGroup,
 		boiler.TableNames.Transactions,
 		boiler.TransactionTableColumns.Group,
-		boiler.TransactionTableColumns.Credit,
-		boiler.TransactionTableColumns.Debit,
+		boiler.TransactionTableColumns.CreditAccountID,
+		boiler.TransactionTableColumns.DebitAccountID,
 	)
 	var args []interface{}
 	args = append(args, userID)
@@ -137,7 +138,7 @@ func UsersTransactionGroups(
 	return result, nil
 }
 
-// TransactionIDList
+// TransactionIDList on returns transactions from the last 30 days
 func TransactionIDList(
 	userID *string, // if user id is provided, returns transactions that only matter to this user
 	search string,
@@ -182,7 +183,7 @@ func TransactionIDList(
 		if len(filterConditions) > 0 {
 			filterConditionsString += " AND "
 		}
-		filterConditionsString += fmt.Sprintf("(%[2]s = $%[1]d OR %[3]s = $%[1]d) ", len(args), boiler.TransactionColumns.Credit, boiler.TransactionColumns.Debit)
+		filterConditionsString += fmt.Sprintf("(%[2]s = $%[1]d OR %[3]s = $%[1]d) ", len(args), boiler.TransactionColumns.CreditAccountID, boiler.TransactionColumns.DebitAccountID)
 	}
 
 	searchCondition := ""
@@ -240,6 +241,7 @@ func TransactionIDList(
 	q := fmt.Sprintf(`--sql
 		%s
 		WHERE %s
+		AND transactions.created_at > NOW() - INTERVAL '1 month'
 		%s
 		%s
 		%s`,
@@ -260,8 +262,8 @@ func TransactionIDList(
 	return totalRows, scanned, nil
 }
 
-// TransactionGet get store item by id
-func TransactionGet(transactionID string) (*boiler.Transaction, error) {
+// TransactionGetByID get transaction by id
+func TransactionGetByID(transactionID string) (*boiler.Transaction, error) {
 	transaction, err := boiler.Transactions(
 		boiler.TransactionWhere.ID.EQ(transactionID),
 	).One(passdb.StdConn)
@@ -269,27 +271,124 @@ func TransactionGet(transactionID string) (*boiler.Transaction, error) {
 		return nil, err
 	}
 
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		transaction, err := boiler.TransactionsOlds(
+			boiler.TransactionWhere.ID.EQ(transactionID),
+		).One(passdb.StdConn)
+		if err != nil {
+			return nil, err
+		}
+
+		if transaction == nil {
+			return nil, nil
+		}
+
+		return &boiler.Transaction{
+			ID:                   transaction.ID,
+			Description:          transaction.Description,
+			TransactionReference: transaction.TransactionReference,
+			Amount:               transaction.Amount,
+			CreditAccountID:      transaction.Credit,
+			DebitAccountID:       transaction.Debit,
+			CreatedAt:            transaction.CreatedAt,
+			Group:                transaction.Group,
+			SubGroup:             transaction.SubGroup,
+			RelatedTransactionID: transaction.RelatedTransactionID,
+			ServiceID:            transaction.ServiceID,
+		}, nil
+	}
+
+	return transaction, nil
+}
+
+// TransactionGetByReference get transaction by reference
+func TransactionGetByReference(transactionRef string) (*boiler.Transaction, error) {
+	transaction, err := boiler.Transactions(
+		boiler.TransactionWhere.TransactionReference.EQ(transactionRef),
+	).One(passdb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		transaction, err := boiler.TransactionsOlds(
+			boiler.TransactionWhere.TransactionReference.EQ(transactionRef),
+		).One(passdb.StdConn)
+		if err != nil {
+			return nil, err
+		}
+
+		if transaction == nil {
+			return nil, nil
+		}
+
+		return &boiler.Transaction{
+			ID:                   transaction.ID,
+			Description:          transaction.Description,
+			TransactionReference: transaction.TransactionReference,
+			Amount:               transaction.Amount,
+			CreditAccountID:      transaction.Credit,
+			DebitAccountID:       transaction.Debit,
+			CreatedAt:            transaction.CreatedAt,
+			Group:                transaction.Group,
+			SubGroup:             transaction.SubGroup,
+			RelatedTransactionID: transaction.RelatedTransactionID,
+			ServiceID:            transaction.ServiceID,
+		}, nil
+	}
+
 	return transaction, nil
 }
 
 // TransactionAddRelatedTransaction adds a refund transaction ID to a transaction
 func TransactionAddRelatedTransaction(transactionID string, refundTransactionID string) error {
-	_, err := boiler.Transactions(
+	rowsUpdated, err := boiler.Transactions(
 		boiler.TransactionWhere.ID.EQ(transactionID),
-	).UpdateAll(passdb.StdConn, boiler.M{boiler.TransactionColumns.RelatedTransactionID: refundTransactionID})
+	).UpdateAll(
+		passdb.StdConn,
+		boiler.M{
+			boiler.TransactionColumns.RelatedTransactionID: refundTransactionID,
+		},
+	)
 	if err != nil {
 		return err
+	}
+	if rowsUpdated == 0 {
+		rowsUpdated, err := boiler.TransactionsOlds(
+			boiler.TransactionWhere.ID.EQ(transactionID),
+		).UpdateAll(
+			passdb.StdConn,
+			boiler.M{
+				boiler.TransactionsOldColumns.RelatedTransactionID: refundTransactionID,
+			},
+		)
+		if err != nil {
+			return err
+		}
+		if rowsUpdated == 0 {
+			return fmt.Errorf("unable to find and update transaction id %s", transactionID)
+		}
 	}
 
 	return nil
 }
 
-func TransactionExists(txhash string) (bool, error) {
+func TransactionReferenceExists(txhash string) (bool, error) {
 	tx, err := boiler.Transactions(
 		boiler.TransactionWhere.TransactionReference.EQ(txhash),
 	).One(passdb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return false, terror.Error(err)
+	}
+
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		tx, err := boiler.TransactionsOlds(
+			boiler.TransactionWhere.TransactionReference.EQ(txhash),
+		).One(passdb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return false, terror.Error(err)
+		}
+		return tx != nil, nil
 	}
 
 	return tx != nil, nil
@@ -298,10 +397,49 @@ func TransactionExists(txhash string) (bool, error) {
 func UserBalance(userID string) (*boiler.User, error) {
 	user, err := boiler.Users(
 		boiler.UserWhere.ID.EQ(userID),
+		qm.Load(boiler.UserRels.Account),
 	).One(passdb.StdConn)
 	if err != nil {
 		return nil, err
 	}
+	if user.R.Account == nil {
+		return nil, fmt.Errorf("user does not have an account")
+	}
 
 	return user, nil
+}
+
+func AdminTransactionGetAllFromUserID(user *boiler.User) ([]*boiler.Transaction, error) {
+	var results []*boiler.Transaction
+	txes, err := boiler.Transactions(qm.Where("credit = ? OR debit = ?", user.ID, user.ID)).All(passdb.StdConn)
+	if err != nil {
+		return results, err
+	}
+	results = txes
+	// if their account is older than a month, get txs that may be archived
+	if user.CreatedAt.Before(time.Now().AddDate(0, -1, 0)) {
+		txesOld, err := boiler.TransactionsOlds(qm.Where("credit = ? OR debit = ?", user.ID, user.ID)).All(passdb.StdConn)
+		if err != nil {
+			return results, err
+		}
+
+		for _, tx := range txesOld {
+			results = append(results, &boiler.Transaction{
+				ID:                   tx.ID,
+				Description:          tx.Description,
+				TransactionReference: tx.TransactionReference,
+				Amount:               tx.Amount,
+				CreditAccountID:      tx.Credit,
+				DebitAccountID:       tx.Debit,
+				Reason:               tx.Reason,
+				CreatedAt:            tx.CreatedAt,
+				Group:                tx.Group,
+				SubGroup:             tx.SubGroup,
+				RelatedTransactionID: tx.RelatedTransactionID,
+				ServiceID:            tx.ServiceID,
+			})
+		}
+	}
+
+	return results, nil
 }

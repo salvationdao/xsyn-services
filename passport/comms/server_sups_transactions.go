@@ -2,15 +2,15 @@ package comms
 
 import (
 	"fmt"
+	"xsyn-services/boiler"
 	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/benchmark"
 	"xsyn-services/passport/db"
+	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
 	"github.com/gofrs/uuid"
-
-	"github.com/volatiletech/null/v8"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
@@ -22,7 +22,7 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 		return err
 	}
 
-	transaction, err := db.TransactionGet(req.TransactionID)
+	transaction, err := db.TransactionGetByID(req.TransactionID)
 	if err != nil {
 		passlog.L.Error().
 			Err(err).
@@ -48,15 +48,14 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 	}
 
 	tx := &types.NewTransaction{
-		Debit:                transaction.Credit,
-		Credit:               transaction.Debit,
+		DebitAccountID:       transaction.CreditAccountID,
+		CreditAccountID:      transaction.DebitAccountID,
 		TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", transaction.TransactionReference)),
 		Description:          fmt.Sprintf("Reverse transaction - %s", transaction.Description),
 		Amount:               transaction.Amount,
 		Group:                types.TransactionGroup(transaction.Group),
-		SubGroup:             transaction.SubGroup.String,
+		SubGroup:             types.TransactionSubGroup(transaction.SubGroup.String),
 		ServiceID:            types.UserID(uuid.FromStringOrNil(transaction.ServiceID.String)),
-		RelatedTransactionID: null.StringFrom(transaction.ID),
 	}
 
 	txID, err := s.UserCacheMap.Transact(tx)
@@ -69,7 +68,7 @@ func (s *S) RefundTransaction(req RefundTransactionReq, resp *RefundTransactionR
 		return terror.Error(err, "Failed to process refund.")
 	}
 
-	// mark the original transaction as refunded
+	//mark the original transaction as refunded
 	err = db.TransactionAddRelatedTransaction(transaction.ID, txID)
 	if err != nil {
 		passlog.L.Error().
@@ -119,9 +118,19 @@ func (s *S) SupremacySpendSupsHandler(req SpendSupsReq, resp *SpendSupsResp) err
 		return terror.Error(fmt.Errorf("service uuid is nil"))
 	}
 
+	creditor, err := boiler.FindUser(passdb.StdConn, req.ToUserID.String())
+	if err != nil {
+		return terror.Error(err, "Failed to load debitor account")
+	}
+
+	debitor, err := boiler.FindUser(passdb.StdConn, req.FromUserID.String())
+	if err != nil {
+		return terror.Error(err, "Failed to load debitor account")
+	}
+
 	tx := &types.NewTransaction{
-		Debit:                req.FromUserID.String(),
-		Credit:               req.ToUserID.String(),
+		DebitAccountID:       debitor.AccountID,
+		CreditAccountID:      creditor.AccountID,
 		TransactionReference: req.TransactionReference,
 		Description:          req.Description,
 		Amount:               amt,

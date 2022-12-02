@@ -100,7 +100,6 @@ func (s *S) OneTimeTokenLogin(req TokenReq, resp *TokenResp) error {
 
 	tokenStr, err := base64.StdEncoding.DecodeString(req.TokenBase64)
 	if err != nil {
-		fmt.Println("error", err, tokenStr)
 		return terror.Error(err, "token is fail")
 	}
 
@@ -231,8 +230,9 @@ func (s *S) TokenLogin(req TokenReq, resp *UserResp) error {
 	resp.ID = user.ID
 	resp.PublicAddress = user.PublicAddress
 	resp.Username = user.Username
+	resp.AcceptsMarketing = user.AcceptsMarketing
+	resp.AccountID = user.AccountID
 	resp.IsAdmin = user.RoleID == null.StringFrom(types.UserRoleAdminID.String())
-
 	return nil
 }
 

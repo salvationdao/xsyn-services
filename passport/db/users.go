@@ -62,7 +62,7 @@ func (ic UserColumn) IsValid() error {
 	return terror.Error(fmt.Errorf("invalid user column type"))
 }
 
-const UserGetQuery string = `--sql
+const UserGetQuery = `--sql
 SELECT 
 	users.id, users.role_id, users.two_factor_authentication_activated, users.two_factor_authentication_is_set, users.first_name, users.last_name, users.email, users.username, users.avatar_id, users.verified, users.old_password_required,
 	users.created_at, accounts.sups, users.updated_at, users.deleted_at, users.facebook_id, users.google_id, users.twitch_id, users.twitter_id, users.discord_id, users.public_address, users.nonce, users.faction_id, users.withdraw_lock, users.mint_lock, users.total_lock,
@@ -234,8 +234,8 @@ func UsernameAvailable(nameToCheck string, userID string) (bool, error) {
 
 	if userID != "" {
 		q := `
-        		SELECT count(*) FROM users
-        		WHERE 	username = $1 and id != $2
+        		SELECT COUNT(*) FROM users
+        		WHERE 	username = $1 AND id != $2
         	`
 		err := passdb.StdConn.QueryRow(q, nameToCheck, userID).Scan(&count)
 		if err != nil {
@@ -245,7 +245,7 @@ func UsernameAvailable(nameToCheck string, userID string) (bool, error) {
 	}
 
 	q := `
-		SELECT count(*) FROM users
+		SELECT COUNT(*) FROM users
 		WHERE 	username = $1
 	`
 	err := passdb.StdConn.QueryRow(q, nameToCheck).Scan(&count)
@@ -276,7 +276,7 @@ func IsUserWhitelisted(walletAddress string) (bool, error) {
 	return true, nil
 }
 
-// IsUserWhitelisted check if user is whitelisted
+// IsUserDeathlisted check if user is Deathlisted
 func IsUserDeathlisted(walletAddress string) (bool, error) {
 	addr := common.HexToAddress(walletAddress).Hex()
 	_, err := boiler.WhitelistedAddresses(
@@ -292,14 +292,14 @@ func IsUserDeathlisted(walletAddress string) (bool, error) {
 	return true, nil
 }
 
-// UserTransactionGetList returns list of transactions based on userid == credit/ debit
+// UserTransactionGetList returns list of transactions based on userid == credit/ debit within the last day
 func UserTransactionGetList(accountID string, limit int) ([]*boiler.Transaction, error) {
 	transactions, err := boiler.Transactions(
 		qm.Where(
 			fmt.Sprintf(
 				"%s = ? OR %s = ?",
-				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.Credit),
-				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.Debit),
+				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.CreditAccountID),
+				qm.Rels(boiler.TableNames.Transactions, boiler.TransactionColumns.DebitAccountID),
 			),
 			accountID,
 			accountID,

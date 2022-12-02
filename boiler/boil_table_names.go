@@ -4,6 +4,7 @@
 package boiler
 
 var TableNames = struct {
+	Accounts                       string
 	APIKeys                        string
 	Asset1155ServiceTransferEvents string
 	AssetServiceTransferEvents     string
@@ -30,8 +31,11 @@ var TableNames = struct {
 	SchemaMigrations               string
 	State                          string
 	StoreItems                     string
+	Syndicates                     string
 	Transactions                   string
+	TransactionsOld                string
 	UserActivities                 string
+	UserAssetOnChainStatus         string
 	UserAssets                     string
 	UserAssets1155                 string
 	UserFingerprints               string
@@ -40,6 +44,7 @@ var TableNames = struct {
 	Users                          string
 	WhitelistedAddresses           string
 }{
+	Accounts:                       "accounts",
 	APIKeys:                        "api_keys",
 	Asset1155ServiceTransferEvents: "asset1155_service_transfer_events",
 	AssetServiceTransferEvents:     "asset_service_transfer_events",
@@ -66,8 +71,11 @@ var TableNames = struct {
 	SchemaMigrations:               "schema_migrations",
 	State:                          "state",
 	StoreItems:                     "store_items",
+	Syndicates:                     "syndicates",
 	Transactions:                   "transactions",
+	TransactionsOld:                "transactions_old",
 	UserActivities:                 "user_activities",
+	UserAssetOnChainStatus:         "user_asset_on_chain_status",
 	UserAssets:                     "user_assets",
 	UserAssets1155:                 "user_assets_1155",
 	UserFingerprints:               "user_fingerprints",

@@ -82,10 +82,7 @@ func NewUserController(log *zerolog.Logger, api *API, googleConfig *auth.GoogleC
 	api.SecureCommand(HubKeyUserCreate, userHub.CreateHandler)
 	api.SecureCommand(HubKeyUserLock, userHub.LockHandler)
 
-	//api.SecureCommand(HubKeyUserTransactionsSubscribe, userHub.UserTransactionsSubscribeHandler)
-	//api.SecureCommand(HubKeyUserLatestTransactionSubscribe, userHub.UserLatestTransactionsSubscribeHandler)
 	api.SecureCommand(HubKeyUser, userHub.UpdatedSubscribeHandler)
-	api.SecureCommand(HubKeyUserSupsSubscribe, api.UserSupsUpdatedSubscribeHandler)
 	api.SecureCommand(HubKeyUserInit, userHub.InitHandler)
 	api.SecureCommand(HubKeyUserSendVerify, userHub.SendVerifyHandler)
 
@@ -1473,7 +1470,7 @@ func (uc *UserController) UpdatedSubscribeHandler(ctx context.Context, user *typ
 const HubKeyUserSupsSubscribe = "USER:SUPS:SUBSCRIBE"
 
 func (api *API) UserSupsUpdatedSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
-	sups, err := api.userCacheMap.Get(user.ID)
+	sups, _, err := api.userCacheMap.Get(user.AccountID)
 	// get current on world sups
 	if err != nil {
 		return terror.Error(err, "Issue subscribing to user SUPs updates, try again or contact support.")
@@ -1569,8 +1566,12 @@ func getUserServiceCount(user *types.User) int {
 const HubKeySUPSRemainingSubscribe = "SUPS:TREASURY"
 
 func (uc *UserController) TotalSupRemainingHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	usr, err := boiler.FindUser(passdb.StdConn, types.XsynSaleUserID.String())
+	if err != nil {
+		terror.Error(err, "Issue getting total SUPs remaining handler, try again or contact support.")
+	}
 
-	sups, err := uc.API.userCacheMap.Get(types.XsynSaleUserID.String())
+	sups, _, err := uc.API.userCacheMap.Get(usr.AccountID)
 	if err != nil {
 		return terror.Error(err, "Issue getting total SUPs remaining handler, try again or contact support.")
 	}
@@ -1582,7 +1583,7 @@ const HubKeyUserTransactionsSubscribe = "USER:SUPS:TRANSACTIONS:SUBSCRIBE"
 
 func (api *API) UserTransactionsSubscribeHandler(ctx context.Context, user *types.User, key string, payload []byte, reply ws.ReplyFunc) error {
 	// get users transactions
-	list, err := db.UserTransactionGetList(user.ID, 5)
+	list, err := db.UserTransactionGetList(user.AccountID, 5)
 	if err != nil {
 		return terror.Error(err, "Failed to get transactions, try again or contact support.")
 	}

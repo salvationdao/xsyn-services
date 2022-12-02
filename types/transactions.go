@@ -3,9 +3,8 @@ package types
 import (
 	"encoding/json"
 	"fmt"
-	"time"
-
 	"github.com/volatiletech/null/v8"
+	"time"
 
 	"github.com/shopspring/decimal"
 )
@@ -51,13 +50,13 @@ type NewTransaction struct {
 	ID                   string               `json:"id" db:"id"`
 	RelatedTransactionID null.String          `json:"related_transaction_id" db:"related_transaction_id"`
 	ServiceID            UserID               `json:"service_id" db:"service_id"`
-	Credit               string               `json:"credit" db:"credit"`
-	Debit                string               `json:"debit" db:"debit"`
+	CreditAccountID      string               `json:"credit" db:"credit"`
+	DebitAccountID       string               `json:"debit" db:"debit"`
 	Amount               decimal.Decimal      `json:"amount" db:"amount"`
 	TransactionReference TransactionReference `json:"transaction_reference" db:"transaction_reference"`
 	Description          string               `json:"description" db:"description"`
 	Group                TransactionGroup     `json:"group" db:"group"`
-	SubGroup             string               `json:"sub_group" db:"sub_group"`
+	SubGroup             TransactionSubGroup  `json:"sub_group" db:"sub_group"`
 	Processed            bool                 `json:"processed" db:"-"`
 	CreatedAt            time.Time            `json:"created_at" db:"created_at"`
 }
@@ -73,4 +72,13 @@ const (
 	TransactionGroupAssetManagement TransactionGroup = "ASSET MANAGEMENT"
 	TransactionGroupTesting         TransactionGroup = "TESTING"
 	TransactionGroupSupremacyWorld  TransactionGroup = "SUPREMACY WORLD"
+)
+
+type TransactionSubGroup string
+
+const (
+	TransactionSubGroupSyndicateCreate TransactionSubGroup = "SYNDICATE CREATE"
+	TransactionSubGroupTransfer        TransactionSubGroup = "TRANSFER"
+	TransactionSubGroupRefund          TransactionSubGroup = "REFUND"
+	TransactionSubGroupPurchase        TransactionSubGroup = "PURCHASE"
 )

@@ -25,10 +25,9 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-func AdminRoutes(ucm *Transactor) chi.Router {
+func (api *API) AdminRoutes(ucm *Transactor) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/check", WithError(WithAdmin(AdminCheck)))
 	r.Get("/users", WithError(WithAdmin(ListUsers)))
@@ -43,7 +42,7 @@ func AdminRoutes(ucm *Transactor) chi.Router {
 
 	r.Post("/purchased_items/register/{template_id}/{owner_id}", WithError(WithAdmin(PurchasedItemRegisterHandler)))
 	r.Post("/purchased_items/set_owner/{purchased_item_id}/{owner_id}", WithError(WithAdmin(PurchasedItemSetOwner)))
-	r.Post("/purchased_items/register/1155/{public_address}/{collection_slug}/{token_id}/{amount}", WithError(WithAdmin(Register1155Asset)))
+	r.Post("/purchased_items/register/1155/{public_address}/{collection_slug}/{token_id}/{amount}", WithError(WithAdmin(api.Register1155Asset)))
 
 	r.Post("/transactions/create", WithError(WithAdmin(CreateTransaction(ucm))))
 	r.Post("/transactions/reverse/{transaction_id}", WithError(WithAdmin(ReverseUserTransaction(ucm))))
@@ -139,15 +138,24 @@ func CreateTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Requ
 			return http.StatusBadRequest, terror.Error(err, "Could not decode json")
 		}
 
+		creditor, err := boiler.FindUser(passdb.StdConn, req.Credit.String())
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Failed to load creditor account")
+		}
+		debitor, err := boiler.FindUser(passdb.StdConn, req.Debit.String())
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Failed to load debitor account")
+		}
+
 		ref := fmt.Sprintf("TRANSFER - %d", time.Now().UnixNano())
 		newTx := &types.NewTransaction{
-			Credit:               req.Credit.String(),
-			Debit:                req.Debit.String(),
+			CreditAccountID:      creditor.AccountID,
+			DebitAccountID:       debitor.AccountID,
 			Amount:               req.Amount,
 			TransactionReference: types.TransactionReference(ref),
 			Description:          ref,
 			Group:                types.TransactionGroupStore,
-			SubGroup:             "Transfer",
+			SubGroup:             types.TransactionSubGroupTransfer,
 		}
 		_, err = ucm.Transact(newTx)
 		if err != nil {
@@ -161,19 +169,21 @@ func CreateTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Requ
 func ReverseUserTransaction(ucm *Transactor) func(w http.ResponseWriter, r *http.Request) (int, error) {
 	fn := func(w http.ResponseWriter, r *http.Request) (int, error) {
 		txID := chi.URLParam(r, "transaction_id")
-		tx, err := boiler.FindTransaction(passdb.StdConn, txID)
+		tx, err := db.TransactionGetByID(txID)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Could not get transaction")
 		}
+		if tx == nil {
+			return http.StatusBadRequest, terror.Error(fmt.Errorf("tx is nil"), "Could not get transaction")
+		}
 		refundTx := &types.NewTransaction{
-			Credit:               tx.Debit,
-			Debit:                tx.Credit,
+			CreditAccountID:      tx.DebitAccountID,
+			DebitAccountID:       tx.CreditAccountID,
 			Amount:               tx.Amount,
 			TransactionReference: types.TransactionReference(fmt.Sprintf("REFUND - %s", tx.TransactionReference)),
 			Description:          "Reverse transaction",
 			Group:                types.TransactionGroupStore,
-			SubGroup:             "Refund",
-			RelatedTransactionID: null.StringFrom(tx.ID),
+			SubGroup:             types.TransactionSubGroupRefund,
 		}
 		_, err = ucm.Transact(refundTx)
 		if err != nil {
@@ -289,7 +299,7 @@ func ListUserTransactions(w http.ResponseWriter, r *http.Request) (int, error) {
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not get users")
 	}
-	txes, err := boiler.Transactions(qm.Where("credit = ? OR debit = ?", u.ID, u.ID)).All(passdb.StdConn)
+	txes, err := db.AdminTransactionGetAllFromUserID(u)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Could not list txes")
 	}
@@ -539,7 +549,7 @@ func UnlockMint(w http.ResponseWriter, r *http.Request) (int, error) {
 	return http.StatusOK, nil
 }
 
-func Register1155Asset(w http.ResponseWriter, r *http.Request) (int, error) {
+func (api *API) Register1155Asset(w http.ResponseWriter, r *http.Request) (int, error) {
 	address := chi.URLParam(r, "public_address")
 	if address == "" {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("no public address provided when registering 1155 asset"), "No public address given")
@@ -557,7 +567,7 @@ func Register1155Asset(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, terror.Error(err, "Failed to read amount")
 	}
 
-	user, err := payments.CreateOrGetUser(common.HexToAddress(address))
+	user, err := payments.CreateOrGetUser(common.HexToAddress(address), api.Environment)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Failed to get user")
 	}

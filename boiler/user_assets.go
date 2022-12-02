@@ -45,7 +45,7 @@ type UserAsset struct {
 	YoutubeURL       null.String `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
 	UnlockedAt       time.Time   `boiler:"unlocked_at" boil:"unlocked_at" json:"unlocked_at" toml:"unlocked_at" yaml:"unlocked_at"`
 	MintedAt         null.Time   `boiler:"minted_at" boil:"minted_at" json:"minted_at,omitempty" toml:"minted_at" yaml:"minted_at,omitempty"`
-	OnChainStatus    string      `boiler:"on_chain_status" boil:"on_chain_status" json:"on_chain_status" toml:"on_chain_status" yaml:"on_chain_status"`
+	OnChainStatusOld string      `boiler:"on_chain_status_old" boil:"on_chain_status_old" json:"on_chain_status_old" toml:"on_chain_status_old" yaml:"on_chain_status_old"`
 	DeletedAt        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	DataRefreshedAt  time.Time   `boiler:"data_refreshed_at" boil:"data_refreshed_at" json:"data_refreshed_at" toml:"data_refreshed_at" yaml:"data_refreshed_at"`
 	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
@@ -79,7 +79,7 @@ var UserAssetColumns = struct {
 	YoutubeURL       string
 	UnlockedAt       string
 	MintedAt         string
-	OnChainStatus    string
+	OnChainStatusOld string
 	DeletedAt        string
 	DataRefreshedAt  string
 	UpdatedAt        string
@@ -108,7 +108,7 @@ var UserAssetColumns = struct {
 	YoutubeURL:       "youtube_url",
 	UnlockedAt:       "unlocked_at",
 	MintedAt:         "minted_at",
-	OnChainStatus:    "on_chain_status",
+	OnChainStatusOld: "on_chain_status_old",
 	DeletedAt:        "deleted_at",
 	DataRefreshedAt:  "data_refreshed_at",
 	UpdatedAt:        "updated_at",
@@ -139,7 +139,7 @@ var UserAssetTableColumns = struct {
 	YoutubeURL       string
 	UnlockedAt       string
 	MintedAt         string
-	OnChainStatus    string
+	OnChainStatusOld string
 	DeletedAt        string
 	DataRefreshedAt  string
 	UpdatedAt        string
@@ -168,7 +168,7 @@ var UserAssetTableColumns = struct {
 	YoutubeURL:       "user_assets.youtube_url",
 	UnlockedAt:       "user_assets.unlocked_at",
 	MintedAt:         "user_assets.minted_at",
-	OnChainStatus:    "user_assets.on_chain_status",
+	OnChainStatusOld: "user_assets.on_chain_status_old",
 	DeletedAt:        "user_assets.deleted_at",
 	DataRefreshedAt:  "user_assets.data_refreshed_at",
 	UpdatedAt:        "user_assets.updated_at",
@@ -201,7 +201,7 @@ var UserAssetWhere = struct {
 	YoutubeURL       whereHelpernull_String
 	UnlockedAt       whereHelpertime_Time
 	MintedAt         whereHelpernull_Time
-	OnChainStatus    whereHelperstring
+	OnChainStatusOld whereHelperstring
 	DeletedAt        whereHelpernull_Time
 	DataRefreshedAt  whereHelpertime_Time
 	UpdatedAt        whereHelpertime_Time
@@ -230,7 +230,7 @@ var UserAssetWhere = struct {
 	YoutubeURL:       whereHelpernull_String{field: "\"user_assets\".\"youtube_url\""},
 	UnlockedAt:       whereHelpertime_Time{field: "\"user_assets\".\"unlocked_at\""},
 	MintedAt:         whereHelpernull_Time{field: "\"user_assets\".\"minted_at\""},
-	OnChainStatus:    whereHelperstring{field: "\"user_assets\".\"on_chain_status\""},
+	OnChainStatusOld: whereHelperstring{field: "\"user_assets\".\"on_chain_status_old\""},
 	DeletedAt:        whereHelpernull_Time{field: "\"user_assets\".\"deleted_at\""},
 	DataRefreshedAt:  whereHelpertime_Time{field: "\"user_assets\".\"data_refreshed_at\""},
 	UpdatedAt:        whereHelpertime_Time{field: "\"user_assets\".\"updated_at\""},
@@ -241,29 +241,32 @@ var UserAssetWhere = struct {
 
 // UserAssetRels is where relationship names are stored.
 var UserAssetRels = struct {
-	Collection                       string
-	LockedToServiceUser              string
-	Owner                            string
-	AssetServiceTransferEvents       string
-	UserAssetHashAssetTransferEvents string
-	AssetTransferEvents              string
+	Collection                        string
+	LockedToServiceUser               string
+	Owner                             string
+	AssetServiceTransferEvents        string
+	UserAssetHashAssetTransferEvents  string
+	AssetTransferEvents               string
+	AssetHashUserAssetOnChainStatuses string
 }{
-	Collection:                       "Collection",
-	LockedToServiceUser:              "LockedToServiceUser",
-	Owner:                            "Owner",
-	AssetServiceTransferEvents:       "AssetServiceTransferEvents",
-	UserAssetHashAssetTransferEvents: "UserAssetHashAssetTransferEvents",
-	AssetTransferEvents:              "AssetTransferEvents",
+	Collection:                        "Collection",
+	LockedToServiceUser:               "LockedToServiceUser",
+	Owner:                             "Owner",
+	AssetServiceTransferEvents:        "AssetServiceTransferEvents",
+	UserAssetHashAssetTransferEvents:  "UserAssetHashAssetTransferEvents",
+	AssetTransferEvents:               "AssetTransferEvents",
+	AssetHashUserAssetOnChainStatuses: "AssetHashUserAssetOnChainStatuses",
 }
 
 // userAssetR is where relationships are stored.
 type userAssetR struct {
-	Collection                       *Collection                    `boiler:"Collection" boil:"Collection" json:"Collection" toml:"Collection" yaml:"Collection"`
-	LockedToServiceUser              *User                          `boiler:"LockedToServiceUser" boil:"LockedToServiceUser" json:"LockedToServiceUser" toml:"LockedToServiceUser" yaml:"LockedToServiceUser"`
-	Owner                            *User                          `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
-	AssetServiceTransferEvents       AssetServiceTransferEventSlice `boiler:"AssetServiceTransferEvents" boil:"AssetServiceTransferEvents" json:"AssetServiceTransferEvents" toml:"AssetServiceTransferEvents" yaml:"AssetServiceTransferEvents"`
-	UserAssetHashAssetTransferEvents AssetTransferEventSlice        `boiler:"UserAssetHashAssetTransferEvents" boil:"UserAssetHashAssetTransferEvents" json:"UserAssetHashAssetTransferEvents" toml:"UserAssetHashAssetTransferEvents" yaml:"UserAssetHashAssetTransferEvents"`
-	AssetTransferEvents              AssetTransferEventSlice        `boiler:"AssetTransferEvents" boil:"AssetTransferEvents" json:"AssetTransferEvents" toml:"AssetTransferEvents" yaml:"AssetTransferEvents"`
+	Collection                        *Collection                    `boiler:"Collection" boil:"Collection" json:"Collection" toml:"Collection" yaml:"Collection"`
+	LockedToServiceUser               *User                          `boiler:"LockedToServiceUser" boil:"LockedToServiceUser" json:"LockedToServiceUser" toml:"LockedToServiceUser" yaml:"LockedToServiceUser"`
+	Owner                             *User                          `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	AssetServiceTransferEvents        AssetServiceTransferEventSlice `boiler:"AssetServiceTransferEvents" boil:"AssetServiceTransferEvents" json:"AssetServiceTransferEvents" toml:"AssetServiceTransferEvents" yaml:"AssetServiceTransferEvents"`
+	UserAssetHashAssetTransferEvents  AssetTransferEventSlice        `boiler:"UserAssetHashAssetTransferEvents" boil:"UserAssetHashAssetTransferEvents" json:"UserAssetHashAssetTransferEvents" toml:"UserAssetHashAssetTransferEvents" yaml:"UserAssetHashAssetTransferEvents"`
+	AssetTransferEvents               AssetTransferEventSlice        `boiler:"AssetTransferEvents" boil:"AssetTransferEvents" json:"AssetTransferEvents" toml:"AssetTransferEvents" yaml:"AssetTransferEvents"`
+	AssetHashUserAssetOnChainStatuses UserAssetOnChainStatusSlice    `boiler:"AssetHashUserAssetOnChainStatuses" boil:"AssetHashUserAssetOnChainStatuses" json:"AssetHashUserAssetOnChainStatuses" toml:"AssetHashUserAssetOnChainStatuses" yaml:"AssetHashUserAssetOnChainStatuses"`
 }
 
 // NewStruct creates a new relationship struct
@@ -275,9 +278,9 @@ func (*userAssetR) NewStruct() *userAssetR {
 type userAssetL struct{}
 
 var (
-	userAssetAllColumns            = []string{"id", "collection_id", "token_id", "tier", "hash", "owner_id", "data", "attributes", "name", "asset_type", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "on_chain_status", "deleted_at", "data_refreshed_at", "updated_at", "created_at", "locked_to_service", "keywords"}
+	userAssetAllColumns            = []string{"id", "collection_id", "token_id", "tier", "hash", "owner_id", "data", "attributes", "name", "asset_type", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "on_chain_status_old", "deleted_at", "data_refreshed_at", "updated_at", "created_at", "locked_to_service", "keywords"}
 	userAssetColumnsWithoutDefault = []string{"collection_id", "token_id", "tier", "hash", "owner_id", "name"}
-	userAssetColumnsWithDefault    = []string{"id", "data", "attributes", "asset_type", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "on_chain_status", "deleted_at", "data_refreshed_at", "updated_at", "created_at", "locked_to_service", "keywords"}
+	userAssetColumnsWithDefault    = []string{"id", "data", "attributes", "asset_type", "image_url", "external_url", "card_animation_url", "avatar_url", "large_image_url", "description", "background_color", "animation_url", "youtube_url", "unlocked_at", "minted_at", "on_chain_status_old", "deleted_at", "data_refreshed_at", "updated_at", "created_at", "locked_to_service", "keywords"}
 	userAssetPrimaryKeyColumns     = []string{"id"}
 	userAssetGeneratedColumns      = []string{}
 )
@@ -627,6 +630,27 @@ func (o *UserAsset) AssetTransferEvents(mods ...qm.QueryMod) assetTransferEventQ
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"asset_transfer_events\".*"})
+	}
+
+	return query
+}
+
+// AssetHashUserAssetOnChainStatuses retrieves all the user_asset_on_chain_status's UserAssetOnChainStatuses with an executor via asset_hash column.
+func (o *UserAsset) AssetHashUserAssetOnChainStatuses(mods ...qm.QueryMod) userAssetOnChainStatusQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"user_asset_on_chain_status\".\"asset_hash\"=?", o.Hash),
+	)
+
+	query := UserAssetOnChainStatuses(queryMods...)
+	queries.SetFrom(query.Query, "\"user_asset_on_chain_status\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"user_asset_on_chain_status\".*"})
 	}
 
 	return query
@@ -1245,6 +1269,104 @@ func (userAssetL) LoadAssetTransferEvents(e boil.Executor, singular bool, maybeU
 	return nil
 }
 
+// LoadAssetHashUserAssetOnChainStatuses allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userAssetL) LoadAssetHashUserAssetOnChainStatuses(e boil.Executor, singular bool, maybeUserAsset interface{}, mods queries.Applicator) error {
+	var slice []*UserAsset
+	var object *UserAsset
+
+	if singular {
+		object = maybeUserAsset.(*UserAsset)
+	} else {
+		slice = *maybeUserAsset.(*[]*UserAsset)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userAssetR{}
+		}
+		args = append(args, object.Hash)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userAssetR{}
+			}
+
+			for _, a := range args {
+				if a == obj.Hash {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.Hash)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`user_asset_on_chain_status`),
+		qm.WhereIn(`user_asset_on_chain_status.asset_hash in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load user_asset_on_chain_status")
+	}
+
+	var resultSlice []*UserAssetOnChainStatus
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice user_asset_on_chain_status")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on user_asset_on_chain_status")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_asset_on_chain_status")
+	}
+
+	if len(userAssetOnChainStatusAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.AssetHashUserAssetOnChainStatuses = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &userAssetOnChainStatusR{}
+			}
+			foreign.R.AssetHashUserAsset = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.Hash == foreign.AssetHash {
+				local.R.AssetHashUserAssetOnChainStatuses = append(local.R.AssetHashUserAssetOnChainStatuses, foreign)
+				if foreign.R == nil {
+					foreign.R = &userAssetOnChainStatusR{}
+				}
+				foreign.R.AssetHashUserAsset = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetCollection of the userAsset to the related item.
 // Sets o.R.Collection to related.
 // Adds o to related.R.UserAssets.
@@ -1567,6 +1689,58 @@ func (o *UserAsset) AddAssetTransferEvents(exec boil.Executor, insert bool, rela
 			}
 		} else {
 			rel.R.UserAsset = o
+		}
+	}
+	return nil
+}
+
+// AddAssetHashUserAssetOnChainStatuses adds the given related objects to the existing relationships
+// of the user_asset, optionally inserting them as new records.
+// Appends related to o.R.AssetHashUserAssetOnChainStatuses.
+// Sets related.R.AssetHashUserAsset appropriately.
+func (o *UserAsset) AddAssetHashUserAssetOnChainStatuses(exec boil.Executor, insert bool, related ...*UserAssetOnChainStatus) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.AssetHash = o.Hash
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"user_asset_on_chain_status\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"asset_hash"}),
+				strmangle.WhereClause("\"", "\"", 2, userAssetOnChainStatusPrimaryKeyColumns),
+			)
+			values := []interface{}{o.Hash, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.AssetHash = o.Hash
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userAssetR{
+			AssetHashUserAssetOnChainStatuses: related,
+		}
+	} else {
+		o.R.AssetHashUserAssetOnChainStatuses = append(o.R.AssetHashUserAssetOnChainStatuses, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &userAssetOnChainStatusR{
+				AssetHashUserAsset: o,
+			}
+		} else {
+			rel.R.AssetHashUserAsset = o
 		}
 	}
 	return nil

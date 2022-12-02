@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"xsyn-services/boiler"
 	"xsyn-services/passport/api/users"
 	"xsyn-services/passport/db"
 	"xsyn-services/passport/helpers"
+	"xsyn-services/passport/passdb"
 	"xsyn-services/passport/passlog"
 	"xsyn-services/types"
 
@@ -35,7 +37,7 @@ type UserCacheMap interface {
 
 const SUPDecimals = 18
 
-func CreateOrGetUser(userAddr common.Address) (*types.User, error) {
+func CreateOrGetUser(userAddr common.Address, environment types.Environment) (*types.User, error) {
 	var user *types.User
 	var err error
 	user, err = users.PublicAddress(userAddr)
@@ -43,7 +45,22 @@ func CreateOrGetUser(userAddr common.Address) (*types.User, error) {
 		username := helpers.TrimUsername(userAddr.Hex())
 		runes := []rune(username)
 		username = string(runes[0:10])
-		user, err = users.UserCreator("", "", username, "", "", "", "", "", "", "", userAddr, "")
+		user, err = users.UserCreator(
+			"",
+			"",
+			username,
+			"",
+			"",
+			"",
+			"",
+			"",
+			"",
+			"",
+			userAddr,
+			"",
+			false,
+			environment,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -105,9 +122,20 @@ func StoreRecord(ctx context.Context, fromUserID types.UserID, toUserID types.Us
 	}
 
 	msg := fmt.Sprintf("purchased %s SUPS for %s [%s]", supsValue.Shift(-1*types.SUPSDecimals).StringFixed(4), tokenValue.Shift(-1*int32(record.ValueDecimals)).StringFixed(4), strings.ToUpper(record.Symbol))
+
+	creditor, err := boiler.FindUser(passdb.StdConn, toUserID.String())
+	if err != nil {
+		return err
+	}
+
+	debitor, err := boiler.FindUser(passdb.StdConn, fromUserID.String())
+	if err != nil {
+		return err
+	}
+
 	trans := &types.NewTransaction{
-		Credit:               toUserID.String(),
-		Debit:                fromUserID.String(),
+		CreditAccountID:      creditor.AccountID,
+		DebitAccountID:       debitor.AccountID,
 		Amount:               supsValue,
 		TransactionReference: types.TransactionReference(record.TxHash),
 		Description:          msg,
@@ -315,8 +343,8 @@ func FetchExchangeRates(passportExchangeRatesEnabled bool) (*PriceExchangeRates,
 	}
 	bnbPrice, err := fetchPrice("bnb", passportExchangeRatesEnabled)
 	if err != nil {
+		bnbPrice, err = catchPriceFetchError("bnb", db.KeyBNBToUSD, passportExchangeRatesEnabled)
 		if err != nil {
-			bnbPrice, err = catchPriceFetchError("bnb", db.KeyBNBToUSD, passportExchangeRatesEnabled)
 			return nil, err
 		}
 	}

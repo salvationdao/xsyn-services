@@ -28,14 +28,14 @@ type Transaction struct {
 	Description          string          `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
 	TransactionReference string          `boiler:"transaction_reference" boil:"transaction_reference" json:"transaction_reference" toml:"transaction_reference" yaml:"transaction_reference"`
 	Amount               decimal.Decimal `boiler:"amount" boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
-	Credit               string          `boiler:"credit" boil:"credit" json:"credit" toml:"credit" yaml:"credit"`
-	Debit                string          `boiler:"debit" boil:"debit" json:"debit" toml:"debit" yaml:"debit"`
 	Reason               null.String     `boiler:"reason" boil:"reason" json:"reason,omitempty" toml:"reason" yaml:"reason,omitempty"`
 	CreatedAt            time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	Group                string          `boiler:"group" boil:"group" json:"group" toml:"group" yaml:"group"`
 	SubGroup             null.String     `boiler:"sub_group" boil:"sub_group" json:"sub_group,omitempty" toml:"sub_group" yaml:"sub_group,omitempty"`
 	RelatedTransactionID null.String     `boiler:"related_transaction_id" boil:"related_transaction_id" json:"related_transaction_id,omitempty" toml:"related_transaction_id" yaml:"related_transaction_id,omitempty"`
 	ServiceID            null.String     `boiler:"service_id" boil:"service_id" json:"service_id,omitempty" toml:"service_id" yaml:"service_id,omitempty"`
+	DebitAccountID       string          `boiler:"debit_account_id" boil:"debit_account_id" json:"debit_account_id" toml:"debit_account_id" yaml:"debit_account_id"`
+	CreditAccountID      string          `boiler:"credit_account_id" boil:"credit_account_id" json:"credit_account_id" toml:"credit_account_id" yaml:"credit_account_id"`
 
 	R *transactionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L transactionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -46,27 +46,27 @@ var TransactionColumns = struct {
 	Description          string
 	TransactionReference string
 	Amount               string
-	Credit               string
-	Debit                string
 	Reason               string
 	CreatedAt            string
 	Group                string
 	SubGroup             string
 	RelatedTransactionID string
 	ServiceID            string
+	DebitAccountID       string
+	CreditAccountID      string
 }{
 	ID:                   "id",
 	Description:          "description",
 	TransactionReference: "transaction_reference",
 	Amount:               "amount",
-	Credit:               "credit",
-	Debit:                "debit",
 	Reason:               "reason",
 	CreatedAt:            "created_at",
 	Group:                "group",
 	SubGroup:             "sub_group",
 	RelatedTransactionID: "related_transaction_id",
 	ServiceID:            "service_id",
+	DebitAccountID:       "debit_account_id",
+	CreditAccountID:      "credit_account_id",
 }
 
 var TransactionTableColumns = struct {
@@ -74,27 +74,27 @@ var TransactionTableColumns = struct {
 	Description          string
 	TransactionReference string
 	Amount               string
-	Credit               string
-	Debit                string
 	Reason               string
 	CreatedAt            string
 	Group                string
 	SubGroup             string
 	RelatedTransactionID string
 	ServiceID            string
+	DebitAccountID       string
+	CreditAccountID      string
 }{
 	ID:                   "transactions.id",
 	Description:          "transactions.description",
 	TransactionReference: "transactions.transaction_reference",
 	Amount:               "transactions.amount",
-	Credit:               "transactions.credit",
-	Debit:                "transactions.debit",
 	Reason:               "transactions.reason",
 	CreatedAt:            "transactions.created_at",
 	Group:                "transactions.group",
 	SubGroup:             "transactions.sub_group",
 	RelatedTransactionID: "transactions.related_transaction_id",
 	ServiceID:            "transactions.service_id",
+	DebitAccountID:       "transactions.debit_account_id",
+	CreditAccountID:      "transactions.credit_account_id",
 }
 
 // Generated where
@@ -104,69 +104,51 @@ var TransactionWhere = struct {
 	Description          whereHelperstring
 	TransactionReference whereHelperstring
 	Amount               whereHelperdecimal_Decimal
-	Credit               whereHelperstring
-	Debit                whereHelperstring
 	Reason               whereHelpernull_String
 	CreatedAt            whereHelpertime_Time
 	Group                whereHelperstring
 	SubGroup             whereHelpernull_String
 	RelatedTransactionID whereHelpernull_String
 	ServiceID            whereHelpernull_String
+	DebitAccountID       whereHelperstring
+	CreditAccountID      whereHelperstring
 }{
 	ID:                   whereHelperstring{field: "\"transactions\".\"id\""},
 	Description:          whereHelperstring{field: "\"transactions\".\"description\""},
 	TransactionReference: whereHelperstring{field: "\"transactions\".\"transaction_reference\""},
 	Amount:               whereHelperdecimal_Decimal{field: "\"transactions\".\"amount\""},
-	Credit:               whereHelperstring{field: "\"transactions\".\"credit\""},
-	Debit:                whereHelperstring{field: "\"transactions\".\"debit\""},
 	Reason:               whereHelpernull_String{field: "\"transactions\".\"reason\""},
 	CreatedAt:            whereHelpertime_Time{field: "\"transactions\".\"created_at\""},
 	Group:                whereHelperstring{field: "\"transactions\".\"group\""},
 	SubGroup:             whereHelpernull_String{field: "\"transactions\".\"sub_group\""},
 	RelatedTransactionID: whereHelpernull_String{field: "\"transactions\".\"related_transaction_id\""},
 	ServiceID:            whereHelpernull_String{field: "\"transactions\".\"service_id\""},
+	DebitAccountID:       whereHelperstring{field: "\"transactions\".\"debit_account_id\""},
+	CreditAccountID:      whereHelperstring{field: "\"transactions\".\"credit_account_id\""},
 }
 
 // TransactionRels is where relationship names are stored.
 var TransactionRels = struct {
-	CreditUser                               string
-	DebitUser                                string
-	RelatedTransaction                       string
-	Service                                  string
-	TransferTXAsset1155ServiceTransferEvents string
-	TransferTXAssetServiceTransferEvents     string
-	TransferTXAssetTransferEvents            string
-	ReversalTransactionPendingRefunds        string
-	TransactionReferencePendingRefunds       string
-	WithdrawTransactionPendingRefunds        string
-	RelatedTransactionTransactions           string
+	CreditAccount                  string
+	DebitAccount                   string
+	RelatedTransaction             string
+	Service                        string
+	RelatedTransactionTransactions string
 }{
-	CreditUser:                               "CreditUser",
-	DebitUser:                                "DebitUser",
-	RelatedTransaction:                       "RelatedTransaction",
-	Service:                                  "Service",
-	TransferTXAsset1155ServiceTransferEvents: "TransferTXAsset1155ServiceTransferEvents",
-	TransferTXAssetServiceTransferEvents:     "TransferTXAssetServiceTransferEvents",
-	TransferTXAssetTransferEvents:            "TransferTXAssetTransferEvents",
-	ReversalTransactionPendingRefunds:        "ReversalTransactionPendingRefunds",
-	TransactionReferencePendingRefunds:       "TransactionReferencePendingRefunds",
-	WithdrawTransactionPendingRefunds:        "WithdrawTransactionPendingRefunds",
-	RelatedTransactionTransactions:           "RelatedTransactionTransactions",
+	CreditAccount:                  "CreditAccount",
+	DebitAccount:                   "DebitAccount",
+	RelatedTransaction:             "RelatedTransaction",
+	Service:                        "Service",
+	RelatedTransactionTransactions: "RelatedTransactionTransactions",
 }
 
 // transactionR is where relationships are stored.
 type transactionR struct {
-	CreditUser                               *User                              `boiler:"CreditUser" boil:"CreditUser" json:"CreditUser" toml:"CreditUser" yaml:"CreditUser"`
-	DebitUser                                *User                              `boiler:"DebitUser" boil:"DebitUser" json:"DebitUser" toml:"DebitUser" yaml:"DebitUser"`
-	RelatedTransaction                       *Transaction                       `boiler:"RelatedTransaction" boil:"RelatedTransaction" json:"RelatedTransaction" toml:"RelatedTransaction" yaml:"RelatedTransaction"`
-	Service                                  *User                              `boiler:"Service" boil:"Service" json:"Service" toml:"Service" yaml:"Service"`
-	TransferTXAsset1155ServiceTransferEvents Asset1155ServiceTransferEventSlice `boiler:"TransferTXAsset1155ServiceTransferEvents" boil:"TransferTXAsset1155ServiceTransferEvents" json:"TransferTXAsset1155ServiceTransferEvents" toml:"TransferTXAsset1155ServiceTransferEvents" yaml:"TransferTXAsset1155ServiceTransferEvents"`
-	TransferTXAssetServiceTransferEvents     AssetServiceTransferEventSlice     `boiler:"TransferTXAssetServiceTransferEvents" boil:"TransferTXAssetServiceTransferEvents" json:"TransferTXAssetServiceTransferEvents" toml:"TransferTXAssetServiceTransferEvents" yaml:"TransferTXAssetServiceTransferEvents"`
-	TransferTXAssetTransferEvents            AssetTransferEventSlice            `boiler:"TransferTXAssetTransferEvents" boil:"TransferTXAssetTransferEvents" json:"TransferTXAssetTransferEvents" toml:"TransferTXAssetTransferEvents" yaml:"TransferTXAssetTransferEvents"`
-	ReversalTransactionPendingRefunds        PendingRefundSlice                 `boiler:"ReversalTransactionPendingRefunds" boil:"ReversalTransactionPendingRefunds" json:"ReversalTransactionPendingRefunds" toml:"ReversalTransactionPendingRefunds" yaml:"ReversalTransactionPendingRefunds"`
-	TransactionReferencePendingRefunds       PendingRefundSlice                 `boiler:"TransactionReferencePendingRefunds" boil:"TransactionReferencePendingRefunds" json:"TransactionReferencePendingRefunds" toml:"TransactionReferencePendingRefunds" yaml:"TransactionReferencePendingRefunds"`
-	WithdrawTransactionPendingRefunds        PendingRefundSlice                 `boiler:"WithdrawTransactionPendingRefunds" boil:"WithdrawTransactionPendingRefunds" json:"WithdrawTransactionPendingRefunds" toml:"WithdrawTransactionPendingRefunds" yaml:"WithdrawTransactionPendingRefunds"`
-	RelatedTransactionTransactions           TransactionSlice                   `boiler:"RelatedTransactionTransactions" boil:"RelatedTransactionTransactions" json:"RelatedTransactionTransactions" toml:"RelatedTransactionTransactions" yaml:"RelatedTransactionTransactions"`
+	CreditAccount                  *Account         `boiler:"CreditAccount" boil:"CreditAccount" json:"CreditAccount" toml:"CreditAccount" yaml:"CreditAccount"`
+	DebitAccount                   *Account         `boiler:"DebitAccount" boil:"DebitAccount" json:"DebitAccount" toml:"DebitAccount" yaml:"DebitAccount"`
+	RelatedTransaction             *Transaction     `boiler:"RelatedTransaction" boil:"RelatedTransaction" json:"RelatedTransaction" toml:"RelatedTransaction" yaml:"RelatedTransaction"`
+	Service                        *User            `boiler:"Service" boil:"Service" json:"Service" toml:"Service" yaml:"Service"`
+	RelatedTransactionTransactions TransactionSlice `boiler:"RelatedTransactionTransactions" boil:"RelatedTransactionTransactions" json:"RelatedTransactionTransactions" toml:"RelatedTransactionTransactions" yaml:"RelatedTransactionTransactions"`
 }
 
 // NewStruct creates a new relationship struct
@@ -178,8 +160,8 @@ func (*transactionR) NewStruct() *transactionR {
 type transactionL struct{}
 
 var (
-	transactionAllColumns            = []string{"id", "description", "transaction_reference", "amount", "credit", "debit", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
-	transactionColumnsWithoutDefault = []string{"id", "amount", "credit", "debit"}
+	transactionAllColumns            = []string{"id", "description", "transaction_reference", "amount", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id", "debit_account_id", "credit_account_id"}
+	transactionColumnsWithoutDefault = []string{"id", "amount", "debit_account_id", "credit_account_id"}
 	transactionColumnsWithDefault    = []string{"description", "transaction_reference", "reason", "created_at", "group", "sub_group", "related_transaction_id", "service_id"}
 	transactionPrimaryKeyColumns     = []string{"id"}
 	transactionGeneratedColumns      = []string{}
@@ -427,32 +409,32 @@ func (q transactionQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// CreditUser pointed to by the foreign key.
-func (o *Transaction) CreditUser(mods ...qm.QueryMod) userQuery {
+// CreditAccount pointed to by the foreign key.
+func (o *Transaction) CreditAccount(mods ...qm.QueryMod) accountQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.Credit),
+		qm.Where("\"id\" = ?", o.CreditAccountID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := Users(queryMods...)
-	queries.SetFrom(query.Query, "\"users\"")
+	query := Accounts(queryMods...)
+	queries.SetFrom(query.Query, "\"accounts\"")
 
 	return query
 }
 
-// DebitUser pointed to by the foreign key.
-func (o *Transaction) DebitUser(mods ...qm.QueryMod) userQuery {
+// DebitAccount pointed to by the foreign key.
+func (o *Transaction) DebitAccount(mods ...qm.QueryMod) accountQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.Debit),
+		qm.Where("\"id\" = ?", o.DebitAccountID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := Users(queryMods...)
-	queries.SetFrom(query.Query, "\"users\"")
+	query := Accounts(queryMods...)
+	queries.SetFrom(query.Query, "\"accounts\"")
 
 	return query
 }
@@ -486,135 +468,6 @@ func (o *Transaction) Service(mods ...qm.QueryMod) userQuery {
 	return query
 }
 
-// TransferTXAsset1155ServiceTransferEvents retrieves all the asset1155_service_transfer_event's Asset1155ServiceTransferEvents with an executor via transfer_tx_id column.
-func (o *Transaction) TransferTXAsset1155ServiceTransferEvents(mods ...qm.QueryMod) asset1155ServiceTransferEventQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"asset1155_service_transfer_events\".\"transfer_tx_id\"=?", o.ID),
-	)
-
-	query := Asset1155ServiceTransferEvents(queryMods...)
-	queries.SetFrom(query.Query, "\"asset1155_service_transfer_events\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"asset1155_service_transfer_events\".*"})
-	}
-
-	return query
-}
-
-// TransferTXAssetServiceTransferEvents retrieves all the asset_service_transfer_event's AssetServiceTransferEvents with an executor via transfer_tx_id column.
-func (o *Transaction) TransferTXAssetServiceTransferEvents(mods ...qm.QueryMod) assetServiceTransferEventQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"asset_service_transfer_events\".\"transfer_tx_id\"=?", o.ID),
-	)
-
-	query := AssetServiceTransferEvents(queryMods...)
-	queries.SetFrom(query.Query, "\"asset_service_transfer_events\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"asset_service_transfer_events\".*"})
-	}
-
-	return query
-}
-
-// TransferTXAssetTransferEvents retrieves all the asset_transfer_event's AssetTransferEvents with an executor via transfer_tx_id column.
-func (o *Transaction) TransferTXAssetTransferEvents(mods ...qm.QueryMod) assetTransferEventQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"asset_transfer_events\".\"transfer_tx_id\"=?", o.ID),
-	)
-
-	query := AssetTransferEvents(queryMods...)
-	queries.SetFrom(query.Query, "\"asset_transfer_events\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"asset_transfer_events\".*"})
-	}
-
-	return query
-}
-
-// ReversalTransactionPendingRefunds retrieves all the pending_refund's PendingRefunds with an executor via reversal_transaction_id column.
-func (o *Transaction) ReversalTransactionPendingRefunds(mods ...qm.QueryMod) pendingRefundQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"pending_refund\".\"reversal_transaction_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"pending_refund\".\"deleted_at\""),
-	)
-
-	query := PendingRefunds(queryMods...)
-	queries.SetFrom(query.Query, "\"pending_refund\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"pending_refund\".*"})
-	}
-
-	return query
-}
-
-// TransactionReferencePendingRefunds retrieves all the pending_refund's PendingRefunds with an executor via transaction_reference column.
-func (o *Transaction) TransactionReferencePendingRefunds(mods ...qm.QueryMod) pendingRefundQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"pending_refund\".\"transaction_reference\"=?", o.TransactionReference),
-		qmhelper.WhereIsNull("\"pending_refund\".\"deleted_at\""),
-	)
-
-	query := PendingRefunds(queryMods...)
-	queries.SetFrom(query.Query, "\"pending_refund\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"pending_refund\".*"})
-	}
-
-	return query
-}
-
-// WithdrawTransactionPendingRefunds retrieves all the pending_refund's PendingRefunds with an executor via withdraw_transaction_id column.
-func (o *Transaction) WithdrawTransactionPendingRefunds(mods ...qm.QueryMod) pendingRefundQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"pending_refund\".\"withdraw_transaction_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"pending_refund\".\"deleted_at\""),
-	)
-
-	query := PendingRefunds(queryMods...)
-	queries.SetFrom(query.Query, "\"pending_refund\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"pending_refund\".*"})
-	}
-
-	return query
-}
-
 // RelatedTransactionTransactions retrieves all the transaction's Transactions with an executor via related_transaction_id column.
 func (o *Transaction) RelatedTransactionTransactions(mods ...qm.QueryMod) transactionQuery {
 	var queryMods []qm.QueryMod
@@ -636,9 +489,9 @@ func (o *Transaction) RelatedTransactionTransactions(mods ...qm.QueryMod) transa
 	return query
 }
 
-// LoadCreditUser allows an eager lookup of values, cached into the
+// LoadCreditAccount allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
+func (transactionL) LoadCreditAccount(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
 	var slice []*Transaction
 	var object *Transaction
 
@@ -653,7 +506,7 @@ func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransact
 		if object.R == nil {
 			object.R = &transactionR{}
 		}
-		args = append(args, object.Credit)
+		args = append(args, object.CreditAccountID)
 
 	} else {
 	Outer:
@@ -663,12 +516,12 @@ func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransact
 			}
 
 			for _, a := range args {
-				if a == obj.Credit {
+				if a == obj.CreditAccountID {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.Credit)
+			args = append(args, obj.CreditAccountID)
 
 		}
 	}
@@ -678,9 +531,9 @@ func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransact
 	}
 
 	query := NewQuery(
-		qm.From(`users`),
-		qm.WhereIn(`users.id in ?`, args...),
-		qmhelper.WhereIsNull(`users.deleted_at`),
+		qm.From(`accounts`),
+		qm.WhereIn(`accounts.id in ?`, args...),
+		qmhelper.WhereIsNull(`accounts.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -688,19 +541,19 @@ func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransact
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load User")
+		return errors.Wrap(err, "failed to eager load Account")
 	}
 
-	var resultSlice []*User
+	var resultSlice []*Account
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice User")
+		return errors.Wrap(err, "failed to bind eager loaded slice Account")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for users")
+		return errors.Wrap(err, "failed to close results of eager load for accounts")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for users")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for accounts")
 	}
 
 	if len(transactionAfterSelectHooks) != 0 {
@@ -717,22 +570,22 @@ func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransact
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.CreditUser = foreign
+		object.R.CreditAccount = foreign
 		if foreign.R == nil {
-			foreign.R = &userR{}
+			foreign.R = &accountR{}
 		}
-		foreign.R.CreditTransactions = append(foreign.R.CreditTransactions, object)
+		foreign.R.CreditAccountTransactions = append(foreign.R.CreditAccountTransactions, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.Credit == foreign.ID {
-				local.R.CreditUser = foreign
+			if local.CreditAccountID == foreign.ID {
+				local.R.CreditAccount = foreign
 				if foreign.R == nil {
-					foreign.R = &userR{}
+					foreign.R = &accountR{}
 				}
-				foreign.R.CreditTransactions = append(foreign.R.CreditTransactions, local)
+				foreign.R.CreditAccountTransactions = append(foreign.R.CreditAccountTransactions, local)
 				break
 			}
 		}
@@ -741,9 +594,9 @@ func (transactionL) LoadCreditUser(e boil.Executor, singular bool, maybeTransact
 	return nil
 }
 
-// LoadDebitUser allows an eager lookup of values, cached into the
+// LoadDebitAccount allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (transactionL) LoadDebitUser(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
+func (transactionL) LoadDebitAccount(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
 	var slice []*Transaction
 	var object *Transaction
 
@@ -758,7 +611,7 @@ func (transactionL) LoadDebitUser(e boil.Executor, singular bool, maybeTransacti
 		if object.R == nil {
 			object.R = &transactionR{}
 		}
-		args = append(args, object.Debit)
+		args = append(args, object.DebitAccountID)
 
 	} else {
 	Outer:
@@ -768,12 +621,12 @@ func (transactionL) LoadDebitUser(e boil.Executor, singular bool, maybeTransacti
 			}
 
 			for _, a := range args {
-				if a == obj.Debit {
+				if a == obj.DebitAccountID {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.Debit)
+			args = append(args, obj.DebitAccountID)
 
 		}
 	}
@@ -783,9 +636,9 @@ func (transactionL) LoadDebitUser(e boil.Executor, singular bool, maybeTransacti
 	}
 
 	query := NewQuery(
-		qm.From(`users`),
-		qm.WhereIn(`users.id in ?`, args...),
-		qmhelper.WhereIsNull(`users.deleted_at`),
+		qm.From(`accounts`),
+		qm.WhereIn(`accounts.id in ?`, args...),
+		qmhelper.WhereIsNull(`accounts.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -793,19 +646,19 @@ func (transactionL) LoadDebitUser(e boil.Executor, singular bool, maybeTransacti
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load User")
+		return errors.Wrap(err, "failed to eager load Account")
 	}
 
-	var resultSlice []*User
+	var resultSlice []*Account
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice User")
+		return errors.Wrap(err, "failed to bind eager loaded slice Account")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for users")
+		return errors.Wrap(err, "failed to close results of eager load for accounts")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for users")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for accounts")
 	}
 
 	if len(transactionAfterSelectHooks) != 0 {
@@ -822,22 +675,22 @@ func (transactionL) LoadDebitUser(e boil.Executor, singular bool, maybeTransacti
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.DebitUser = foreign
+		object.R.DebitAccount = foreign
 		if foreign.R == nil {
-			foreign.R = &userR{}
+			foreign.R = &accountR{}
 		}
-		foreign.R.DebitTransactions = append(foreign.R.DebitTransactions, object)
+		foreign.R.DebitAccountTransactions = append(foreign.R.DebitAccountTransactions, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.Debit == foreign.ID {
-				local.R.DebitUser = foreign
+			if local.DebitAccountID == foreign.ID {
+				local.R.DebitAccount = foreign
 				if foreign.R == nil {
-					foreign.R = &userR{}
+					foreign.R = &accountR{}
 				}
-				foreign.R.DebitTransactions = append(foreign.R.DebitTransactions, local)
+				foreign.R.DebitAccountTransactions = append(foreign.R.DebitAccountTransactions, local)
 				break
 			}
 		}
@@ -1063,597 +916,6 @@ func (transactionL) LoadService(e boil.Executor, singular bool, maybeTransaction
 	return nil
 }
 
-// LoadTransferTXAsset1155ServiceTransferEvents allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (transactionL) LoadTransferTXAsset1155ServiceTransferEvents(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
-	var slice []*Transaction
-	var object *Transaction
-
-	if singular {
-		object = maybeTransaction.(*Transaction)
-	} else {
-		slice = *maybeTransaction.(*[]*Transaction)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &transactionR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &transactionR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`asset1155_service_transfer_events`),
-		qm.WhereIn(`asset1155_service_transfer_events.transfer_tx_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load asset1155_service_transfer_events")
-	}
-
-	var resultSlice []*Asset1155ServiceTransferEvent
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice asset1155_service_transfer_events")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on asset1155_service_transfer_events")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for asset1155_service_transfer_events")
-	}
-
-	if len(asset1155ServiceTransferEventAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.TransferTXAsset1155ServiceTransferEvents = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &asset1155ServiceTransferEventR{}
-			}
-			foreign.R.TransferTX = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.TransferTXID {
-				local.R.TransferTXAsset1155ServiceTransferEvents = append(local.R.TransferTXAsset1155ServiceTransferEvents, foreign)
-				if foreign.R == nil {
-					foreign.R = &asset1155ServiceTransferEventR{}
-				}
-				foreign.R.TransferTX = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadTransferTXAssetServiceTransferEvents allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (transactionL) LoadTransferTXAssetServiceTransferEvents(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
-	var slice []*Transaction
-	var object *Transaction
-
-	if singular {
-		object = maybeTransaction.(*Transaction)
-	} else {
-		slice = *maybeTransaction.(*[]*Transaction)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &transactionR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &transactionR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`asset_service_transfer_events`),
-		qm.WhereIn(`asset_service_transfer_events.transfer_tx_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load asset_service_transfer_events")
-	}
-
-	var resultSlice []*AssetServiceTransferEvent
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice asset_service_transfer_events")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on asset_service_transfer_events")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for asset_service_transfer_events")
-	}
-
-	if len(assetServiceTransferEventAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.TransferTXAssetServiceTransferEvents = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &assetServiceTransferEventR{}
-			}
-			foreign.R.TransferTX = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.TransferTXID {
-				local.R.TransferTXAssetServiceTransferEvents = append(local.R.TransferTXAssetServiceTransferEvents, foreign)
-				if foreign.R == nil {
-					foreign.R = &assetServiceTransferEventR{}
-				}
-				foreign.R.TransferTX = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadTransferTXAssetTransferEvents allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (transactionL) LoadTransferTXAssetTransferEvents(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
-	var slice []*Transaction
-	var object *Transaction
-
-	if singular {
-		object = maybeTransaction.(*Transaction)
-	} else {
-		slice = *maybeTransaction.(*[]*Transaction)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &transactionR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &transactionR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`asset_transfer_events`),
-		qm.WhereIn(`asset_transfer_events.transfer_tx_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load asset_transfer_events")
-	}
-
-	var resultSlice []*AssetTransferEvent
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice asset_transfer_events")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on asset_transfer_events")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for asset_transfer_events")
-	}
-
-	if len(assetTransferEventAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.TransferTXAssetTransferEvents = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &assetTransferEventR{}
-			}
-			foreign.R.TransferTX = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.TransferTXID) {
-				local.R.TransferTXAssetTransferEvents = append(local.R.TransferTXAssetTransferEvents, foreign)
-				if foreign.R == nil {
-					foreign.R = &assetTransferEventR{}
-				}
-				foreign.R.TransferTX = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadReversalTransactionPendingRefunds allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (transactionL) LoadReversalTransactionPendingRefunds(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
-	var slice []*Transaction
-	var object *Transaction
-
-	if singular {
-		object = maybeTransaction.(*Transaction)
-	} else {
-		slice = *maybeTransaction.(*[]*Transaction)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &transactionR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &transactionR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`pending_refund`),
-		qm.WhereIn(`pending_refund.reversal_transaction_id in ?`, args...),
-		qmhelper.WhereIsNull(`pending_refund.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load pending_refund")
-	}
-
-	var resultSlice []*PendingRefund
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice pending_refund")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on pending_refund")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for pending_refund")
-	}
-
-	if len(pendingRefundAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.ReversalTransactionPendingRefunds = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &pendingRefundR{}
-			}
-			foreign.R.ReversalTransaction = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.ReversalTransactionID) {
-				local.R.ReversalTransactionPendingRefunds = append(local.R.ReversalTransactionPendingRefunds, foreign)
-				if foreign.R == nil {
-					foreign.R = &pendingRefundR{}
-				}
-				foreign.R.ReversalTransaction = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadTransactionReferencePendingRefunds allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (transactionL) LoadTransactionReferencePendingRefunds(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
-	var slice []*Transaction
-	var object *Transaction
-
-	if singular {
-		object = maybeTransaction.(*Transaction)
-	} else {
-		slice = *maybeTransaction.(*[]*Transaction)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &transactionR{}
-		}
-		args = append(args, object.TransactionReference)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &transactionR{}
-			}
-
-			for _, a := range args {
-				if a == obj.TransactionReference {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.TransactionReference)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`pending_refund`),
-		qm.WhereIn(`pending_refund.transaction_reference in ?`, args...),
-		qmhelper.WhereIsNull(`pending_refund.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load pending_refund")
-	}
-
-	var resultSlice []*PendingRefund
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice pending_refund")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on pending_refund")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for pending_refund")
-	}
-
-	if len(pendingRefundAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.TransactionReferencePendingRefunds = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &pendingRefundR{}
-			}
-			foreign.R.TransactionReferenceTransaction = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.TransactionReference == foreign.TransactionReference {
-				local.R.TransactionReferencePendingRefunds = append(local.R.TransactionReferencePendingRefunds, foreign)
-				if foreign.R == nil {
-					foreign.R = &pendingRefundR{}
-				}
-				foreign.R.TransactionReferenceTransaction = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadWithdrawTransactionPendingRefunds allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (transactionL) LoadWithdrawTransactionPendingRefunds(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
-	var slice []*Transaction
-	var object *Transaction
-
-	if singular {
-		object = maybeTransaction.(*Transaction)
-	} else {
-		slice = *maybeTransaction.(*[]*Transaction)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &transactionR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &transactionR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`pending_refund`),
-		qm.WhereIn(`pending_refund.withdraw_transaction_id in ?`, args...),
-		qmhelper.WhereIsNull(`pending_refund.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load pending_refund")
-	}
-
-	var resultSlice []*PendingRefund
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice pending_refund")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on pending_refund")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for pending_refund")
-	}
-
-	if len(pendingRefundAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.WithdrawTransactionPendingRefunds = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &pendingRefundR{}
-			}
-			foreign.R.WithdrawTransaction = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.WithdrawTransactionID) {
-				local.R.WithdrawTransactionPendingRefunds = append(local.R.WithdrawTransactionPendingRefunds, foreign)
-				if foreign.R == nil {
-					foreign.R = &pendingRefundR{}
-				}
-				foreign.R.WithdrawTransaction = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // LoadRelatedTransactionTransactions allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (transactionL) LoadRelatedTransactionTransactions(e boil.Executor, singular bool, maybeTransaction interface{}, mods queries.Applicator) error {
@@ -1752,10 +1014,10 @@ func (transactionL) LoadRelatedTransactionTransactions(e boil.Executor, singular
 	return nil
 }
 
-// SetCreditUser of the transaction to the related item.
-// Sets o.R.CreditUser to related.
-// Adds o to related.R.CreditTransactions.
-func (o *Transaction) SetCreditUser(exec boil.Executor, insert bool, related *User) error {
+// SetCreditAccount of the transaction to the related item.
+// Sets o.R.CreditAccount to related.
+// Adds o to related.R.CreditAccountTransactions.
+func (o *Transaction) SetCreditAccount(exec boil.Executor, insert bool, related *Account) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -1765,7 +1027,7 @@ func (o *Transaction) SetCreditUser(exec boil.Executor, insert bool, related *Us
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"transactions\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"credit"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"credit_account_id"}),
 		strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -1778,30 +1040,30 @@ func (o *Transaction) SetCreditUser(exec boil.Executor, insert bool, related *Us
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.Credit = related.ID
+	o.CreditAccountID = related.ID
 	if o.R == nil {
 		o.R = &transactionR{
-			CreditUser: related,
+			CreditAccount: related,
 		}
 	} else {
-		o.R.CreditUser = related
+		o.R.CreditAccount = related
 	}
 
 	if related.R == nil {
-		related.R = &userR{
-			CreditTransactions: TransactionSlice{o},
+		related.R = &accountR{
+			CreditAccountTransactions: TransactionSlice{o},
 		}
 	} else {
-		related.R.CreditTransactions = append(related.R.CreditTransactions, o)
+		related.R.CreditAccountTransactions = append(related.R.CreditAccountTransactions, o)
 	}
 
 	return nil
 }
 
-// SetDebitUser of the transaction to the related item.
-// Sets o.R.DebitUser to related.
-// Adds o to related.R.DebitTransactions.
-func (o *Transaction) SetDebitUser(exec boil.Executor, insert bool, related *User) error {
+// SetDebitAccount of the transaction to the related item.
+// Sets o.R.DebitAccount to related.
+// Adds o to related.R.DebitAccountTransactions.
+func (o *Transaction) SetDebitAccount(exec boil.Executor, insert bool, related *Account) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -1811,7 +1073,7 @@ func (o *Transaction) SetDebitUser(exec boil.Executor, insert bool, related *Use
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"transactions\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"debit"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"debit_account_id"}),
 		strmangle.WhereClause("\"", "\"", 2, transactionPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -1824,21 +1086,21 @@ func (o *Transaction) SetDebitUser(exec boil.Executor, insert bool, related *Use
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.Debit = related.ID
+	o.DebitAccountID = related.ID
 	if o.R == nil {
 		o.R = &transactionR{
-			DebitUser: related,
+			DebitAccount: related,
 		}
 	} else {
-		o.R.DebitUser = related
+		o.R.DebitAccount = related
 	}
 
 	if related.R == nil {
-		related.R = &userR{
-			DebitTransactions: TransactionSlice{o},
+		related.R = &accountR{
+			DebitAccountTransactions: TransactionSlice{o},
 		}
 	} else {
-		related.R.DebitTransactions = append(related.R.DebitTransactions, o)
+		related.R.DebitAccountTransactions = append(related.R.DebitAccountTransactions, o)
 	}
 
 	return nil
@@ -1999,537 +1261,6 @@ func (o *Transaction) RemoveService(exec boil.Executor, related *User) error {
 		related.R.ServiceTransactions = related.R.ServiceTransactions[:ln-1]
 		break
 	}
-	return nil
-}
-
-// AddTransferTXAsset1155ServiceTransferEvents adds the given related objects to the existing relationships
-// of the transaction, optionally inserting them as new records.
-// Appends related to o.R.TransferTXAsset1155ServiceTransferEvents.
-// Sets related.R.TransferTX appropriately.
-func (o *Transaction) AddTransferTXAsset1155ServiceTransferEvents(exec boil.Executor, insert bool, related ...*Asset1155ServiceTransferEvent) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.TransferTXID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"asset1155_service_transfer_events\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"transfer_tx_id"}),
-				strmangle.WhereClause("\"", "\"", 2, asset1155ServiceTransferEventPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.TransferTXID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &transactionR{
-			TransferTXAsset1155ServiceTransferEvents: related,
-		}
-	} else {
-		o.R.TransferTXAsset1155ServiceTransferEvents = append(o.R.TransferTXAsset1155ServiceTransferEvents, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &asset1155ServiceTransferEventR{
-				TransferTX: o,
-			}
-		} else {
-			rel.R.TransferTX = o
-		}
-	}
-	return nil
-}
-
-// AddTransferTXAssetServiceTransferEvents adds the given related objects to the existing relationships
-// of the transaction, optionally inserting them as new records.
-// Appends related to o.R.TransferTXAssetServiceTransferEvents.
-// Sets related.R.TransferTX appropriately.
-func (o *Transaction) AddTransferTXAssetServiceTransferEvents(exec boil.Executor, insert bool, related ...*AssetServiceTransferEvent) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.TransferTXID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"asset_service_transfer_events\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"transfer_tx_id"}),
-				strmangle.WhereClause("\"", "\"", 2, assetServiceTransferEventPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.TransferTXID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &transactionR{
-			TransferTXAssetServiceTransferEvents: related,
-		}
-	} else {
-		o.R.TransferTXAssetServiceTransferEvents = append(o.R.TransferTXAssetServiceTransferEvents, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &assetServiceTransferEventR{
-				TransferTX: o,
-			}
-		} else {
-			rel.R.TransferTX = o
-		}
-	}
-	return nil
-}
-
-// AddTransferTXAssetTransferEvents adds the given related objects to the existing relationships
-// of the transaction, optionally inserting them as new records.
-// Appends related to o.R.TransferTXAssetTransferEvents.
-// Sets related.R.TransferTX appropriately.
-func (o *Transaction) AddTransferTXAssetTransferEvents(exec boil.Executor, insert bool, related ...*AssetTransferEvent) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			queries.Assign(&rel.TransferTXID, o.ID)
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"asset_transfer_events\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"transfer_tx_id"}),
-				strmangle.WhereClause("\"", "\"", 2, assetTransferEventPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			queries.Assign(&rel.TransferTXID, o.ID)
-		}
-	}
-
-	if o.R == nil {
-		o.R = &transactionR{
-			TransferTXAssetTransferEvents: related,
-		}
-	} else {
-		o.R.TransferTXAssetTransferEvents = append(o.R.TransferTXAssetTransferEvents, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &assetTransferEventR{
-				TransferTX: o,
-			}
-		} else {
-			rel.R.TransferTX = o
-		}
-	}
-	return nil
-}
-
-// SetTransferTXAssetTransferEvents removes all previously related items of the
-// transaction replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.TransferTX's TransferTXAssetTransferEvents accordingly.
-// Replaces o.R.TransferTXAssetTransferEvents with related.
-// Sets related.R.TransferTX's TransferTXAssetTransferEvents accordingly.
-func (o *Transaction) SetTransferTXAssetTransferEvents(exec boil.Executor, insert bool, related ...*AssetTransferEvent) error {
-	query := "update \"asset_transfer_events\" set \"transfer_tx_id\" = null where \"transfer_tx_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.TransferTXAssetTransferEvents {
-			queries.SetScanner(&rel.TransferTXID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.TransferTX = nil
-		}
-
-		o.R.TransferTXAssetTransferEvents = nil
-	}
-	return o.AddTransferTXAssetTransferEvents(exec, insert, related...)
-}
-
-// RemoveTransferTXAssetTransferEvents relationships from objects passed in.
-// Removes related items from R.TransferTXAssetTransferEvents (uses pointer comparison, removal does not keep order)
-// Sets related.R.TransferTX.
-func (o *Transaction) RemoveTransferTXAssetTransferEvents(exec boil.Executor, related ...*AssetTransferEvent) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.TransferTXID, nil)
-		if rel.R != nil {
-			rel.R.TransferTX = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("transfer_tx_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.TransferTXAssetTransferEvents {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.TransferTXAssetTransferEvents)
-			if ln > 1 && i < ln-1 {
-				o.R.TransferTXAssetTransferEvents[i] = o.R.TransferTXAssetTransferEvents[ln-1]
-			}
-			o.R.TransferTXAssetTransferEvents = o.R.TransferTXAssetTransferEvents[:ln-1]
-			break
-		}
-	}
-
-	return nil
-}
-
-// AddReversalTransactionPendingRefunds adds the given related objects to the existing relationships
-// of the transaction, optionally inserting them as new records.
-// Appends related to o.R.ReversalTransactionPendingRefunds.
-// Sets related.R.ReversalTransaction appropriately.
-func (o *Transaction) AddReversalTransactionPendingRefunds(exec boil.Executor, insert bool, related ...*PendingRefund) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			queries.Assign(&rel.ReversalTransactionID, o.ID)
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"pending_refund\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"reversal_transaction_id"}),
-				strmangle.WhereClause("\"", "\"", 2, pendingRefundPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			queries.Assign(&rel.ReversalTransactionID, o.ID)
-		}
-	}
-
-	if o.R == nil {
-		o.R = &transactionR{
-			ReversalTransactionPendingRefunds: related,
-		}
-	} else {
-		o.R.ReversalTransactionPendingRefunds = append(o.R.ReversalTransactionPendingRefunds, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &pendingRefundR{
-				ReversalTransaction: o,
-			}
-		} else {
-			rel.R.ReversalTransaction = o
-		}
-	}
-	return nil
-}
-
-// SetReversalTransactionPendingRefunds removes all previously related items of the
-// transaction replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.ReversalTransaction's ReversalTransactionPendingRefunds accordingly.
-// Replaces o.R.ReversalTransactionPendingRefunds with related.
-// Sets related.R.ReversalTransaction's ReversalTransactionPendingRefunds accordingly.
-func (o *Transaction) SetReversalTransactionPendingRefunds(exec boil.Executor, insert bool, related ...*PendingRefund) error {
-	query := "update \"pending_refund\" set \"reversal_transaction_id\" = null where \"reversal_transaction_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.ReversalTransactionPendingRefunds {
-			queries.SetScanner(&rel.ReversalTransactionID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.ReversalTransaction = nil
-		}
-
-		o.R.ReversalTransactionPendingRefunds = nil
-	}
-	return o.AddReversalTransactionPendingRefunds(exec, insert, related...)
-}
-
-// RemoveReversalTransactionPendingRefunds relationships from objects passed in.
-// Removes related items from R.ReversalTransactionPendingRefunds (uses pointer comparison, removal does not keep order)
-// Sets related.R.ReversalTransaction.
-func (o *Transaction) RemoveReversalTransactionPendingRefunds(exec boil.Executor, related ...*PendingRefund) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.ReversalTransactionID, nil)
-		if rel.R != nil {
-			rel.R.ReversalTransaction = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("reversal_transaction_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.ReversalTransactionPendingRefunds {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.ReversalTransactionPendingRefunds)
-			if ln > 1 && i < ln-1 {
-				o.R.ReversalTransactionPendingRefunds[i] = o.R.ReversalTransactionPendingRefunds[ln-1]
-			}
-			o.R.ReversalTransactionPendingRefunds = o.R.ReversalTransactionPendingRefunds[:ln-1]
-			break
-		}
-	}
-
-	return nil
-}
-
-// AddTransactionReferencePendingRefunds adds the given related objects to the existing relationships
-// of the transaction, optionally inserting them as new records.
-// Appends related to o.R.TransactionReferencePendingRefunds.
-// Sets related.R.TransactionReferenceTransaction appropriately.
-func (o *Transaction) AddTransactionReferencePendingRefunds(exec boil.Executor, insert bool, related ...*PendingRefund) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.TransactionReference = o.TransactionReference
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"pending_refund\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"transaction_reference"}),
-				strmangle.WhereClause("\"", "\"", 2, pendingRefundPrimaryKeyColumns),
-			)
-			values := []interface{}{o.TransactionReference, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.TransactionReference = o.TransactionReference
-		}
-	}
-
-	if o.R == nil {
-		o.R = &transactionR{
-			TransactionReferencePendingRefunds: related,
-		}
-	} else {
-		o.R.TransactionReferencePendingRefunds = append(o.R.TransactionReferencePendingRefunds, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &pendingRefundR{
-				TransactionReferenceTransaction: o,
-			}
-		} else {
-			rel.R.TransactionReferenceTransaction = o
-		}
-	}
-	return nil
-}
-
-// AddWithdrawTransactionPendingRefunds adds the given related objects to the existing relationships
-// of the transaction, optionally inserting them as new records.
-// Appends related to o.R.WithdrawTransactionPendingRefunds.
-// Sets related.R.WithdrawTransaction appropriately.
-func (o *Transaction) AddWithdrawTransactionPendingRefunds(exec boil.Executor, insert bool, related ...*PendingRefund) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			queries.Assign(&rel.WithdrawTransactionID, o.ID)
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"pending_refund\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"withdraw_transaction_id"}),
-				strmangle.WhereClause("\"", "\"", 2, pendingRefundPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			queries.Assign(&rel.WithdrawTransactionID, o.ID)
-		}
-	}
-
-	if o.R == nil {
-		o.R = &transactionR{
-			WithdrawTransactionPendingRefunds: related,
-		}
-	} else {
-		o.R.WithdrawTransactionPendingRefunds = append(o.R.WithdrawTransactionPendingRefunds, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &pendingRefundR{
-				WithdrawTransaction: o,
-			}
-		} else {
-			rel.R.WithdrawTransaction = o
-		}
-	}
-	return nil
-}
-
-// SetWithdrawTransactionPendingRefunds removes all previously related items of the
-// transaction replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.WithdrawTransaction's WithdrawTransactionPendingRefunds accordingly.
-// Replaces o.R.WithdrawTransactionPendingRefunds with related.
-// Sets related.R.WithdrawTransaction's WithdrawTransactionPendingRefunds accordingly.
-func (o *Transaction) SetWithdrawTransactionPendingRefunds(exec boil.Executor, insert bool, related ...*PendingRefund) error {
-	query := "update \"pending_refund\" set \"withdraw_transaction_id\" = null where \"withdraw_transaction_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.WithdrawTransactionPendingRefunds {
-			queries.SetScanner(&rel.WithdrawTransactionID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.WithdrawTransaction = nil
-		}
-
-		o.R.WithdrawTransactionPendingRefunds = nil
-	}
-	return o.AddWithdrawTransactionPendingRefunds(exec, insert, related...)
-}
-
-// RemoveWithdrawTransactionPendingRefunds relationships from objects passed in.
-// Removes related items from R.WithdrawTransactionPendingRefunds (uses pointer comparison, removal does not keep order)
-// Sets related.R.WithdrawTransaction.
-func (o *Transaction) RemoveWithdrawTransactionPendingRefunds(exec boil.Executor, related ...*PendingRefund) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.WithdrawTransactionID, nil)
-		if rel.R != nil {
-			rel.R.WithdrawTransaction = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("withdraw_transaction_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.WithdrawTransactionPendingRefunds {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.WithdrawTransactionPendingRefunds)
-			if ln > 1 && i < ln-1 {
-				o.R.WithdrawTransactionPendingRefunds[i] = o.R.WithdrawTransactionPendingRefunds[ln-1]
-			}
-			o.R.WithdrawTransactionPendingRefunds = o.R.WithdrawTransactionPendingRefunds[:ln-1]
-			break
-		}
-	}
-
 	return nil
 }
 

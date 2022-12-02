@@ -3,6 +3,8 @@ package api
 import (
 	"errors"
 	"fmt"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"sync"
 	"time"
 	"xsyn-services/boiler"
@@ -12,8 +14,6 @@ import (
 	"xsyn-services/types"
 
 	"github.com/volatiletech/null/v8"
-
-	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/ninja-syndicate/ws"
 
@@ -38,7 +38,16 @@ func NewTX() (*Transactor, error) {
 		make(chan func() error, 100),
 		deadlock.RWMutex{},
 	}
-	accounts, err := boiler.Users().All(passdb.StdConn)
+	accounts, err := boiler.Accounts(
+		// we do a inner join since we only want to load non legacy accounts
+		qm.InnerJoin(
+			fmt.Sprintf("%s ON %s = %s",
+				boiler.TableNames.Users,
+				qm.Rels(boiler.TableNames.Users, boiler.UserColumns.AccountID),
+				qm.Rels(boiler.TableNames.Accounts, boiler.AccountColumns.ID),
+			),
+		),
+	).All(passdb.StdConn)
 	if err != nil {
 		passlog.L.Error().Err(err).Msg("unable to retrieve user account balances")
 		return nil, err
@@ -47,9 +56,9 @@ func NewTX() (*Transactor, error) {
 	ucm.Lock()
 	for _, acc := range accounts {
 		ucm.m[acc.ID] = acc.Sups
-		//if acc.Type == boiler.AccountTypeSYNDICATE {
-		//	ucm.syndicates[acc.ID] = 1
-		//}
+		if acc.Type == boiler.AccountTypeSYNDICATE {
+			ucm.syndicates[acc.ID] = 1
+		}
 	}
 	ucm.Unlock()
 
@@ -96,7 +105,7 @@ func (ucm *Transactor) Close() {
 }
 
 func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
-	var err error = nil
+	var trasnactionError error = nil
 	transactionID := fmt.Sprintf("%s|%d", uuid.Must(uuid.NewV4()), time.Now().Nanosecond())
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -107,24 +116,25 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 		}
 		tx := &boiler.Transaction{
 			ID:                   transactionID,
-			Credit:               nt.Credit,
-			Debit:                nt.Debit,
+			CreditAccountID:      nt.CreditAccountID,
+			DebitAccountID:       nt.DebitAccountID,
 			Amount:               nt.Amount,
 			TransactionReference: string(nt.TransactionReference),
 			Description:          nt.Description,
 			CreatedAt:            nt.CreatedAt,
 			Group:                string(nt.Group),
-			SubGroup:             null.StringFrom(nt.SubGroup),
+			SubGroup:             null.StringFrom(string(nt.SubGroup)),
 			RelatedTransactionID: nt.RelatedTransactionID,
 			ServiceID:            serviceID,
 		}
+
 		bm := benchmark.New()
 		bm.Start("Transact func CreateTransactionEntry")
-		err = tx.Insert(passdb.StdConn, boil.Infer())
-		if err != nil {
-			passlog.L.Error().Err(err).Str("from", tx.Debit).Str("to", tx.Credit).Str("id", nt.ID).Msg("transaction failed")
+		trasnactionError = tx.Insert(passdb.StdConn, boil.Infer())
+		if trasnactionError != nil {
+			passlog.L.Error().Err(trasnactionError).Str("from", tx.DebitAccountID).Str("to", tx.CreditAccountID).Str("id", tx.ID).Str("amount", tx.Amount.String()).Msg("transaction failed")
 			wg.Done()
-			return err
+			return trasnactionError
 		}
 		bm.End("Transact func CreateTransactionEntry")
 		bm.Alert(75)
@@ -141,58 +151,69 @@ func (ucm *Transactor) Transact(nt *types.NewTransaction) (string, error) {
 	}
 	wg.Wait()
 
-	return transactionID, err
+	return transactionID, trasnactionError
 }
 
 func (ucm *Transactor) BalanceUpdate(tx *boiler.Transaction) {
-	supsFromAccount, err := ucm.Get(tx.Debit)
+	supsFromAccount, accType, err := ucm.Get(tx.DebitAccountID)
 	if err != nil {
 		passlog.L.Error().Err(err).Interface("tx", tx).Msg("error updating balance")
 	}
 	if err == nil {
 		supsFromAccount = supsFromAccount.Sub(tx.Amount)
-		ucm.Put(tx.Debit, supsFromAccount)
+		ucm.Put(tx.DebitAccountID, supsFromAccount)
 
-		ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", tx.Debit), HubKeyUserTransactionsSubscribe, []*boiler.Transaction{tx})
-		ws.PublishMessage(fmt.Sprintf("/user/%s/sups", tx.Debit), HubKeyUserSupsSubscribe, supsFromAccount.String())
+		if accType == boiler.AccountTypeUSER {
+			ws.PublishMessage(fmt.Sprintf("/account/%s/transactions", tx.DebitAccountID), HubKeyUserTransactionsSubscribe, []*boiler.Transaction{tx})
+			ws.PublishMessage(fmt.Sprintf("/account/%s/sups", tx.DebitAccountID), HubKeyUserSupsSubscribe, supsFromAccount.String())
+		}
 	}
 
-	supsToAccount, err := ucm.Get(tx.Credit)
+	supsToAccount, accType, err := ucm.Get(tx.CreditAccountID)
 	if err != nil {
 		passlog.L.Error().Err(err).Interface("tx", tx).Msg("error updating balance")
 	}
 	if err == nil {
 		supsToAccount = supsToAccount.Add(tx.Amount)
-		ucm.Put(tx.Credit, supsToAccount)
+		ucm.Put(tx.CreditAccountID, supsToAccount)
 
-		ws.PublishMessage(fmt.Sprintf("/user/%s/transactions", tx.Credit), HubKeyUserTransactionsSubscribe, []*boiler.Transaction{tx})
-		ws.PublishMessage(fmt.Sprintf("/user/%s/sups", tx.Credit), HubKeyUserSupsSubscribe, supsToAccount.String())
+		if accType == boiler.AccountTypeUSER {
+			ws.PublishMessage(fmt.Sprintf("/account/%s/transactions", tx.CreditAccountID), HubKeyUserTransactionsSubscribe, []*boiler.Transaction{tx})
+			ws.PublishMessage(fmt.Sprintf("/account/%s/sups", tx.CreditAccountID), HubKeyUserSupsSubscribe, supsToAccount.String())
+		}
 	}
 }
 
-func (ucm *Transactor) GetAndSet(ownerID string) (decimal.Decimal, error) {
-	a, err := boiler.Users(
-		boiler.UserWhere.ID.EQ(ownerID),
+func (ucm *Transactor) GetAndSet(accountID string) (decimal.Decimal, string, error) {
+	a, err := boiler.Accounts(
+		boiler.AccountWhere.ID.EQ(accountID),
 	).One(passdb.StdConn)
 	if err != nil {
-		return decimal.Zero, err
+		return decimal.Zero, "", err
 	}
 
 	ucm.m[a.ID] = a.Sups
 
-	return a.Sups, nil
+	if a.Type == boiler.AccountTypeSYNDICATE {
+		ucm.syndicates[accountID] = 1
+		return a.Sups, boiler.AccountTypeSYNDICATE, nil
+	}
+	return a.Sups, boiler.AccountTypeUSER, nil
 }
 
-func (ucm *Transactor) Get(ownerID string) (decimal.Decimal, error) {
+func (ucm *Transactor) Get(accountID string) (decimal.Decimal, string, error) {
 	ucm.RLock()
 	defer ucm.RUnlock()
 
-	result, ok := ucm.m[ownerID]
+	result, ok := ucm.m[accountID]
 	if ok {
-		return result, nil
+		if _, isSyndicate := ucm.syndicates[accountID]; !isSyndicate {
+			return result, boiler.AccountTypeUSER, nil
+		}
+		return result, boiler.AccountTypeSYNDICATE, nil
 	}
 
-	return ucm.GetAndSet(ownerID)
+	return ucm.GetAndSet(accountID)
 }
 
 func (ucm *Transactor) Put(ownerID string, sups decimal.Decimal) {

@@ -2,7 +2,7 @@ name: Staging Deployment
 
 on:
   push:
-    branches: [staging]
+    branches: [develop]
 
 env:
   GO_VERSION: 1.18.2
@@ -181,11 +181,11 @@ jobs:
 
       - name: "DB: up"
         if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/passport-online && source ./init/passport-staging.env && ./migrate -database "postgres://$PASSPORT_DATABASE_USER:$PASSPORT_DATABASE_PASS@$PASSPORT_DATABASE_HOST:$PASSPORT_DATABASE_PORT/$PASSPORT_DATABASE_NAME?sslmode=disable" -path ./migrations up'
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/passport-online && source ./init/passport-staging.env && sudo -u postgres ./migrate -database "postgres:///$PASSPORT_DATABASE_NAME?host=/var/run/postgresql/" -path ./migrations up'
 
       - name: "Update latest migration number"
         if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/passport-online && source ./init/passport-staging.env && ./migrate -database "postgres://$PASSPORT_DATABASE_USER:$PASSPORT_DATABASE_PASS@$PASSPORT_DATABASE_HOST:$PASSPORT_DATABASE_PORT/$PASSPORT_DATABASE_NAME?sslmode=disable" -path ./migrations version 2> TEMP.txt && echo LatestMigration=`cat ./TEMP.txt` >> ./BuildInfo.txt && rm ./TEMP.txt'
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/passport-online && source ./init/passport-staging.env && sudo -u postgres ./migrate -database "postgres:///$PASSPORT_DATABASE_NAME?host=/var/run/postgresql/" -path ./migrations version 2> TEMP.txt && echo LatestMigration=`cat ./TEMP.txt` >> ./BuildInfo.txt && rm ./TEMP.txt'
 
       - name: restart api-server
         if: ${{ !env.ACT }} # if running in local test environment

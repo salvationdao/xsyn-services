@@ -1527,8 +1527,8 @@ github.com/ninja-syndicate/hub v1.9.2 h1:eM3BPPxipuQaAoWLkLk98s8BpseA6RiXZN++kpP
 github.com/ninja-syndicate/hub v1.9.2/go.mod h1:1nWmVtwMNyHwQqDc8q3+N3FxvGD8LKOLtNWztCErgTo=
 github.com/ninja-syndicate/supremacy-bridge v0.1.43 h1:rKANAH9ALkn2YZdA3oQAFASHDd2z71kpCm9kpUbLNbc=
 github.com/ninja-syndicate/supremacy-bridge v0.1.43/go.mod h1:Oq2bsCSyiza9gAg/D542GVkAfW4vSMn29SV/4mi1MWA=
-github.com/ninja-syndicate/ws v0.17.8 h1:C0zUWWTT1vKYoamgHvdYlOVx3hhAWdMjOyRJoE2b9EI=
-github.com/ninja-syndicate/ws v0.17.8/go.mod h1:g/avE83VgPN1lqPUE7i006pMyXLPFkMo9/RFtdRvCVo=
+github.com/ninja-syndicate/ws v0.18.2 h1:KcxBm3L78Y0EO84qOybMArI6vEBheHt+p9QhNQ2j7WM=
+github.com/ninja-syndicate/ws v0.18.2/go.mod h1:g/avE83VgPN1lqPUE7i006pMyXLPFkMo9/RFtdRvCVo=
 github.com/nishanths/predeclared v0.0.0-20200524104333-86fad755b4d3/go.mod h1:nt3d53pc1VYcphSCIaYAJtnPYnr3Zyn8fMq2wvPGPso=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8/go.mod h1:+ncqLTQzXmGhMZNUePPaPqPvBxHAIsmXswZKocGu+AU=

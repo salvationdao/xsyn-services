@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"os"
+	"strings"
 	"time"
 	"xsyn-services/boiler"
 	"xsyn-services/passport/db"
@@ -29,24 +29,26 @@ import (
 type Dev struct {
 	userCacheMap *Transactor
 	R            *chi.Mux
+	Environment  types.Environment
 }
 
-func DevRoutes(userCacheMap *Transactor) *Dev {
+func DevRoutes(userCacheMap *Transactor, environment types.Environment) *Dev {
 	dev := &Dev{
 		R:            chi.NewRouter(),
 		userCacheMap: userCacheMap,
+		Environment:  environment,
 	}
 
-	dev.R.Get("/give-mechs/{public_address}", WithError(WithDev(dev.devGiveMechs)))
+	dev.R.Get("/give-mechs/{public_address}", WithError(WithDev(dev.devGiveMechs, dev.Environment)))
 
 	return dev
 }
 
 // WithDev checks that dev key is in the header and environment is development.
-func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error)) func(w http.ResponseWriter, r *http.Request) (int, error) {
+func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error), environment types.Environment) func(w http.ResponseWriter, r *http.Request) (int, error) {
 	fn := func(w http.ResponseWriter, r *http.Request) (int, error) {
-		if os.Getenv("PASSPORT_ENVIRONMENT") != "development" {
-			passlog.L.Warn().Err(terror.ErrUnauthorised).Str("os.Getenv(\"PASSPORT_ENVIRONMENT\")", os.Getenv("PASSPORT_ENVIRONMENT")).Msg("dev endpoint attempted in non dev environment")
+		if environment != types.Development {
+			passlog.L.Warn().Err(terror.ErrUnauthorised).Str("api.Environment", environment.String()).Msg("dev endpoint attempted in non dev environment")
 			return http.StatusUnauthorized, terror.Error(terror.ErrUnauthorised, "Unauthorized.")
 		}
 		devPass := r.Header.Get("X-Authorization")
@@ -62,7 +64,7 @@ func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error)) fun
 
 func (d *Dev) devGiveMechs(w http.ResponseWriter, r *http.Request) (int, error) {
 	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
-	user, err := payments.CreateOrGetUser(publicAddress)
+	user, err := payments.CreateOrGetUser(publicAddress, d.Environment)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -81,6 +83,10 @@ func (d *Dev) devGiveMechs(w http.ResponseWriter, r *http.Request) (int, error) 
 		if i < 3 {
 			_, err = db.PurchasedItemRegister(uuid.Must(uuid.FromString(si.ID)), uuid.Must(uuid.FromString(user.ID)))
 			if err != nil {
+				if strings.Contains(err.Error(), "find template: sql: no rows in result set") {
+					passlog.L.Debug().Err(err).Msg("template no longer exists, skipping")
+					continue
+				}
 				return http.StatusInternalServerError, err
 			}
 		} else {
@@ -88,10 +94,15 @@ func (d *Dev) devGiveMechs(w http.ResponseWriter, r *http.Request) (int, error) 
 		}
 	}
 
+	debitor, err := boiler.FindUser(passdb.StdConn, types.XsynSaleUserID.String())
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to load debitor account")
+	}
+
 	// give account some suppies
 	tx := &types.NewTransaction{
-		Credit:               user.ID,
-		Debit:                types.XsynSaleUserID.String(),
+		CreditAccountID:      user.AccountID,
+		DebitAccountID:       debitor.AccountID,
 		Amount:               decimal.New(10000, 18),
 		TransactionReference: types.TransactionReference(fmt.Sprintf("DEV SEED SUPS - %v", time.Now().UnixNano())),
 		Description:          "Dev Seed Sups",

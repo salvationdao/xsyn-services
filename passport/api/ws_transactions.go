@@ -2,8 +2,10 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/friendsofgo/errors"
 	"github.com/kevinms/leakybucket-go"
 	"github.com/shopspring/decimal"
 	"time"
@@ -78,9 +80,14 @@ func (tc *TransactionController) TransactSupremacyWorldHandler(ctx context.Conte
 		return terror.Error(err, "Invalid request, please try again or contact support.")
 	}
 
+	creditor, err := boiler.FindUser(passdb.StdConn, types.SupremacyWorldUserID.String())
+	if err != nil {
+		return terror.Error(err, "Failed to load debitor account")
+	}
+
 	txID, err := tc.API.userCacheMap.Transact(&types.NewTransaction{
-		Credit:               types.SupremacyWorldUserID.String(),
-		Debit:                user.ID,
+		CreditAccountID:      creditor.AccountID,
+		DebitAccountID:       user.AccountID,
 		Amount:               req.Payload.Amount,
 		TransactionReference: types.TransactionReference(fmt.Sprintf("supremacy_world_transaction|%s|%d", req.Payload.ClaimID, time.Now().UnixNano())),
 		Description:          fmt.Sprintf("Supremacy World Purchase - %s", req.Payload.ClaimID),
@@ -101,8 +108,8 @@ func (tc *TransactionController) TransactSupremacyWorldHandler(ctx context.Conte
 		l.Error().Err(err).Msg("failed to process claim on supremacy world")
 		// refund the payment
 		tc.API.userCacheMap.Transact(&types.NewTransaction{
-			Credit:               user.ID,
-			Debit:                types.SupremacyWorldUserID.String(),
+			CreditAccountID:      user.AccountID,
+			DebitAccountID:       creditor.AccountID,
 			Amount:               req.Payload.Amount,
 			TransactionReference: types.TransactionReference(fmt.Sprintf("supremacy_world_transaction|%s|%d|refund", req.Payload.ClaimID, time.Now().UnixNano())),
 			Description:          fmt.Sprintf("Supremacy World Purchase Refund - %s", req.Payload.ClaimID),
@@ -207,6 +214,7 @@ type TransactionResponse struct {
 
 type AccountOwner struct {
 	ID       string `json:"id"`
+	Type     string `json:"type"`
 	Username string `json:"username"`
 }
 
@@ -218,19 +226,19 @@ func (tc *TransactionController) TransactionSubscribeHandler(ctx context.Context
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	transaction, err := db.TransactionGet(req.Payload.TransactionID)
+	transaction, err := db.TransactionGetByID(req.Payload.TransactionID)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
-	if transaction.Credit != user.ID && transaction.Debit != user.ID {
+	if transaction.CreditAccountID != user.AccountID && transaction.DebitAccountID != user.AccountID {
 		return terror.Error(fmt.Errorf("unauthorized"), "You do not have permission to view this item.")
 	}
-	debitOwner, err := tc.API.userCacheMap.GetAccountOwner(transaction.Debit)
+	debitOwner, err := tc.API.userCacheMap.GetAccountOwner(transaction.DebitAccountID)
 	if err != nil {
 		return terror.Error(err, "Failed to get debit account owner")
 	}
-	creditOwner, err := tc.API.userCacheMap.GetAccountOwner(transaction.Credit)
+	creditOwner, err := tc.API.userCacheMap.GetAccountOwner(transaction.CreditAccountID)
 	if err != nil {
 		return terror.Error(err, "Failed to get credit account owner")
 	}
@@ -244,18 +252,33 @@ func (tc *TransactionController) TransactionSubscribeHandler(ctx context.Context
 }
 
 func (ucm *Transactor) GetAccountOwner(accountID string) (*AccountOwner, error) {
-	_, err := ucm.Get(accountID)
+	_, accType, err := ucm.Get(accountID)
 	if err != nil {
 		return nil, err
 	}
 
-	user, err := boiler.FindUser(passdb.StdConn, accountID)
-	if err != nil {
-		return nil, terror.Error(err, "Failed to get user.")
+	if accType == boiler.AccountTypeUSER {
+		user, err := boiler.FindUser(passdb.StdConn, accountID)
+		if err != nil {
+			return nil, terror.Error(err, "Failed to get user.")
+		}
+
+		return &AccountOwner{
+			ID:       user.ID,
+			Type:     accType,
+			Username: user.Username,
+		}, nil
+
+	}
+
+	syndicate, err := boiler.FindSyndicate(passdb.StdConn, accountID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, terror.Error(err, "Failed to get syndicate.")
 	}
 
 	return &AccountOwner{
-		ID:       user.ID,
-		Username: user.Username,
+		ID:       syndicate.ID,
+		Type:     accType,
+		Username: syndicate.Name,
 	}, nil
 }

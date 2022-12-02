@@ -243,13 +243,21 @@ func (ac *AssetController) AssetUpdatedGetHandler(ctx context.Context, key strin
 		return terror.Error(err, "Failed to get user asset from db")
 	}
 
+	onChainStatusObject, err := boiler.UserAssetOnChainStatuses(
+		boiler.UserAssetOnChainStatusWhere.CollectionID.EQ(userAsset.CollectionID),
+		boiler.UserAssetOnChainStatusWhere.AssetHash.EQ(userAsset.Hash),
+	).One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Unable to validate status of asset.")
+	}
+
 	// if asset refreshed over 24 hours ago, pull it
 	if userAsset.DataRefreshedAt.Before(time.Now().Add(-24 * time.Hour)) {
 		xsynAsset, err := supremacy_rpcclient.AssetGet(userAsset.Hash)
 		if err != nil {
 			passlog.L.Error().Err(err).Str("userAsset.Hash", userAsset.Hash).Msg("failed to refresh metadata")
 		} else {
-			userAssetNew, err := db.UpdateUserAsset(xsynAsset)
+			userAssetNew, err := db.UpdateUserAsset(xsynAsset, false)
 			if err != nil {
 				passlog.L.Error().Err(err).Str("userAsset.Hash", userAsset.Hash).Msg("failed to update metadata")
 			} else {
@@ -286,7 +294,7 @@ func (ac *AssetController) AssetUpdatedGetHandler(ctx context.Context, key strin
 			YoutubeURL:          userAsset.YoutubeURL,
 			UnlockedAt:          userAsset.UnlockedAt,
 			MintedAt:            userAsset.MintedAt,
-			OnChainStatus:       userAsset.OnChainStatus,
+			OnChainStatus:       onChainStatusObject.OnChainStatus,
 			DeletedAt:           userAsset.DeletedAt,
 			DataRefreshedAt:     userAsset.DataRefreshedAt,
 			UpdatedAt:           userAsset.UpdatedAt,
@@ -336,7 +344,7 @@ func (ac *AssetController) AssetRefreshMetadataHandler(ctx context.Context, key 
 		return terror.Error(err, "Failed to update asset metadata.")
 	}
 
-	_, err = db.UpdateUserAsset(asset)
+	_, err = db.UpdateUserAsset(asset, false)
 	if err != nil {
 		return terror.Error(err, "Failed to update asset metadata.")
 	}
@@ -494,7 +502,15 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 		return terror.Error(fmt.Errorf("trying to transfer locked asset to supremacy"), "Asset is currently locked.")
 	}
 
-	if userAsset.OnChainStatus == "STAKABLE" {
+	onChainStatusObject, err := boiler.UserAssetOnChainStatuses(
+		boiler.UserAssetOnChainStatusWhere.CollectionID.EQ(userAsset.CollectionID),
+		boiler.UserAssetOnChainStatusWhere.AssetHash.EQ(userAsset.Hash),
+	).One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Unable to validate status of asset.")
+	}
+
+	if onChainStatusObject.OnChainStatus == "STAKABLE" {
 		return terror.Error(fmt.Errorf("trying to transfer unstaked asset to supremacy"), "Asset needs to be On-World before being able to transfer to Supremacy.")
 	}
 
@@ -502,14 +518,19 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 		return terror.Error(terror.ErrUnauthorised, "You don't own this asset.")
 	}
 
+	debitor, err := boiler.FindUser(passdb.StdConn, xsynTypes.XsynTreasuryUserID.String())
+	if err != nil {
+		return terror.Error(err, "Failed to load debitor account")
+	}
+
 	tx := &xsynTypes.NewTransaction{
-		Debit:                user.ID,
-		Credit:               xsynTypes.XsynTreasuryUserID.String(),
+		DebitAccountID:       user.AccountID,
+		CreditAccountID:      debitor.AccountID,
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "SUPREMACY", req.Payload.AssetHash, time.Now().UnixNano())),
 		Description:          fmt.Sprintf("Transfer of asset: %s to Supremacy", req.Payload.AssetHash),
 		Amount:               decimal.New(5, 18), // 5 sups
 		Group:                xsynTypes.TransactionGroupAssetManagement,
-		SubGroup:             "Transfer",
+		SubGroup:             xsynTypes.TransactionSubGroupTransfer,
 	}
 
 	txID, err := ac.API.userCacheMap.Transact(tx)
@@ -530,7 +551,7 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 	}
 
 	marketLocked := true
-	if userAsset.OnChainStatus != "UNSTAKABLE_OLD" {
+	if onChainStatusObject.OnChainStatus != "UNSTAKABLE_OLD" {
 		marketLocked = false
 	}
 
@@ -588,7 +609,7 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 			YoutubeURL:          userAsset.YoutubeURL,
 			UnlockedAt:          userAsset.UnlockedAt,
 			MintedAt:            userAsset.MintedAt,
-			OnChainStatus:       userAsset.OnChainStatus,
+			OnChainStatus:       onChainStatusObject.OnChainStatus,
 			DeletedAt:           userAsset.DeletedAt,
 			DataRefreshedAt:     userAsset.DataRefreshedAt,
 			UpdatedAt:           userAsset.UpdatedAt,
@@ -629,7 +650,18 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 	req := &AssetTransferFromSupremacyRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err, "Invalid request received.")
+		return terror.Error(err, "Invalid request received, try again or contact support.")
+	}
+
+	// Refresh metadata first, otherwise we could transfer an asset that is no longer a genesis when really it is.
+	asset, err := supremacy_rpcclient.AssetGet(req.Payload.AssetHash)
+	if err != nil {
+		return terror.Error(err, "Failed to update asset metadata, try again or contact support.")
+	}
+
+	_, err = db.UpdateUserAsset(asset, false)
+	if err != nil {
+		return terror.Error(err, "Failed to update asset metadata, try again or contact support.")
 	}
 
 	userAsset, err := boiler.UserAssets(
@@ -649,17 +681,30 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 	}
 
 	if userAsset.OwnerID != user.ID {
-		return terror.Error(terror.ErrUnauthorised, "You don't own this asset.")
+		return terror.Error(terror.ErrUnauthorised, "You don't own this asset, try again or contact support.")
+	}
+
+	onChainStatusObject, err := boiler.UserAssetOnChainStatuses(
+		boiler.UserAssetOnChainStatusWhere.CollectionID.EQ(userAsset.CollectionID),
+		boiler.UserAssetOnChainStatusWhere.AssetHash.EQ(userAsset.Hash),
+	).One(passdb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Unable to validate status of asset, try again or contact support.")
+	}
+
+	debitor, err := boiler.FindUser(passdb.StdConn, xsynTypes.XsynTreasuryUserID.String())
+	if err != nil {
+		return terror.Error(err, "Failed to load debitor account")
 	}
 
 	tx := &xsynTypes.NewTransaction{
-		Debit:                user.ID,
-		Credit:               xsynTypes.XsynTreasuryUserID.String(),
+		DebitAccountID:       user.AccountID,
+		CreditAccountID:      debitor.AccountID,
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "XSYN", req.Payload.AssetHash, time.Now().UnixNano())),
 		Description:          fmt.Sprintf("Transfer of asset: %s to XSYN", req.Payload.AssetHash),
 		Amount:               decimal.New(5, 18), // 5 sups
 		Group:                xsynTypes.TransactionGroupAssetManagement,
-		SubGroup:             "Transfer",
+		SubGroup:             xsynTypes.TransactionSubGroupTransfer,
 	}
 
 	txID, err := ac.API.userCacheMap.Transact(tx)
@@ -676,7 +721,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 	}
 	err = transferLog.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
-		return terror.Error(err, "Failed to transfer asset to XSYN")
+		return terror.Error(err, "Failed to transfer asset to XSYN, try again or contact support.")
 	}
 
 	err = supremacy_rpcclient.AssetUnlockFromSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), transferLog.ID)
@@ -705,7 +750,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 			"Failed to transfer asset from supremacy",
 		)
 		marketLocked := true
-		if userAsset.OnChainStatus != "UNSTAKABLE_OLD" {
+		if onChainStatusObject.OnChainStatus != "UNSTAKABLE_OLD" {
 			marketLocked = false
 		}
 
@@ -718,9 +763,9 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 				"Failed to transfer asset from supremacy",
 			)
 			passlog.L.Error().Err(err).Msg("failed to lock asset from supremacy after we failed to update asset lock")
-			return terror.Error(err, "Failed to transfer asset from supremacy")
+			return terror.Error(err, "Failed to transfer asset from supremacy, try again or contact support.")
 		}
-		return terror.Error(err, "Failed to transfer asset from supremacy")
+		return terror.Error(err, "Failed to transfer asset from supremacy, try again or contact support.")
 	}
 
 	reply(&AssetResponse{
@@ -746,7 +791,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 			YoutubeURL:          userAsset.YoutubeURL,
 			UnlockedAt:          userAsset.UnlockedAt,
 			MintedAt:            userAsset.MintedAt,
-			OnChainStatus:       userAsset.OnChainStatus,
+			OnChainStatus:       onChainStatusObject.OnChainStatus,
 			DeletedAt:           userAsset.DeletedAt,
 			DataRefreshedAt:     userAsset.DataRefreshedAt,
 			UpdatedAt:           userAsset.UpdatedAt,
@@ -815,14 +860,19 @@ func (ac *AssetController) Asset1155TransferToSupremacyHandler(ctx context.Conte
 		return terror.Error(fmt.Errorf("asset count below 0 after transfer"), "Cannot process transfer. Amount after transfer is below 0")
 	}
 
+	debitor, err := boiler.FindUser(passdb.StdConn, xsynTypes.XsynTreasuryUserID.String())
+	if err != nil {
+		return terror.Error(err, "Failed to load debitor account")
+	}
+
 	tx := &xsynTypes.NewTransaction{
-		Debit:                user.ID,
-		Credit:               xsynTypes.XsynTreasuryUserID.String(),
+		DebitAccountID:       user.AccountID,
+		CreditAccountID:      debitor.AccountID,
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "XSYN", req.Payload.TokenID, time.Now().UnixNano())),
 		Description:          fmt.Sprintf("Transfer of asset: %s to Supremacy", asset.Label),
 		Amount:               decimal.New(5, 18), // 5 sups
 		Group:                xsynTypes.TransactionGroupAssetManagement,
-		SubGroup:             "Transfer",
+		SubGroup:             xsynTypes.TransactionSubGroupTransfer,
 	}
 
 	txID, err := ac.API.userCacheMap.Transact(tx)
@@ -985,14 +1035,19 @@ func (ac *AssetController) Asset1155TransferFromSupremacyHandler(ctx context.Con
 		return terror.Error(err, "Total asset amount after is less than zero")
 	}
 
+	debitor, err := boiler.FindUser(passdb.StdConn, xsynTypes.XsynTreasuryUserID.String())
+	if err != nil {
+		return terror.Error(err, "Failed to load debitor account")
+	}
+
 	tx := &xsynTypes.NewTransaction{
-		Debit:                user.ID,
-		Credit:               xsynTypes.XsynTreasuryUserID.String(),
+		DebitAccountID:       user.AccountID,
+		CreditAccountID:      debitor.AccountID,
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("asset_transfer_fee|%s|%s|%d", "XSYN", req.Payload.TokenID, time.Now().UnixNano())),
 		Description:          fmt.Sprintf("Transfer of asset with token id of %d from collection %s to Xsyn", req.Payload.TokenID, req.Payload.CollectionSlug),
 		Amount:               decimal.New(5, 18), // 5 sups
 		Group:                xsynTypes.TransactionGroupAssetManagement,
-		SubGroup:             "Transfer",
+		SubGroup:             xsynTypes.TransactionSubGroupTransfer,
 	}
 
 	txID, err := ac.API.userCacheMap.Transact(tx)
@@ -1235,13 +1290,13 @@ func reverseAssetServiceTransaction(
 	reason string,
 ) (transaction *xsynTypes.NewTransaction, returnTransferLog *boiler.AssetServiceTransferEvent) {
 	transaction = &xsynTypes.NewTransaction{
-		Debit:                transactionToReverse.Credit,
-		Credit:               transactionToReverse.Debit,
+		DebitAccountID:       transactionToReverse.CreditAccountID,
+		CreditAccountID:      transactionToReverse.DebitAccountID,
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("REFUND - %s", transactionToReverse.TransactionReference)),
 		Description:          fmt.Sprintf("Reverse transaction - %s. Reason: %s", transactionToReverse.Description, reason),
 		Amount:               transactionToReverse.Amount,
 		Group:                xsynTypes.TransactionGroupAssetManagement,
-		SubGroup:             "Transfer",
+		SubGroup:             xsynTypes.TransactionSubGroupTransfer,
 		RelatedTransactionID: null.StringFrom(transactionToReverse.ID),
 	}
 
@@ -1280,13 +1335,13 @@ func reverseAsset1155ServiceTransaction(
 	reason string,
 ) (transaction *xsynTypes.NewTransaction, returnTransferLog *boiler.Asset1155ServiceTransferEvent) {
 	transaction = &xsynTypes.NewTransaction{
-		Debit:                transactionToReverse.Credit,
-		Credit:               transactionToReverse.Debit,
+		DebitAccountID:       transactionToReverse.CreditAccountID,
+		CreditAccountID:      transactionToReverse.DebitAccountID,
 		TransactionReference: xsynTypes.TransactionReference(fmt.Sprintf("REFUND - %s", transactionToReverse.TransactionReference)),
 		Description:          fmt.Sprintf("Reverse transaction - %s. Reason: %s", transactionToReverse.Description, reason),
 		Amount:               transactionToReverse.Amount,
 		Group:                xsynTypes.TransactionGroupAssetManagement,
-		SubGroup:             "Transfer",
+		SubGroup:             xsynTypes.TransactionSubGroupTransfer,
 		RelatedTransactionID: null.StringFrom(transactionToReverse.ID),
 	}
 

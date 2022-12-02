@@ -129,7 +129,6 @@ func StoreItemsByFactionID(factionID uuid.UUID) ([]*boiler.StoreItem, error) {
 	return result, nil
 }
 
-
 // getStoreItem fetches the item, obeying TTL
 func getStoreItem(storeItemID uuid.UUID) (*boiler.StoreItem, error) {
 	passlog.L.Trace().Str("fn", "getStoreItem").Msg("db func")

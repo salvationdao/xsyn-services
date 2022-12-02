@@ -31,7 +31,7 @@ type NFTOwnerStatus struct {
 	BlockTimestamp time.Time
 }
 
-func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collection) (int, int, error) {
+func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collection, environment types.Environment) (int, int, error) {
 	l := passlog.L.With().Str("svc", "avant_nft_ownership_update").Logger()
 
 	updated := 0
@@ -64,11 +64,21 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 			boiler.UserAssetWhere.TokenID.EQ(int64(tokenID)),
 		).One(passdb.StdConn)
 		if err != nil && errors.Is(err, sql.ErrNoRows) {
-			l.Debug().Str("collection_addr", collection.MintContract.String).Int("external_token_id", tokenID).Msg("item not found")
+			l.Debug().Err(err).Str("collection_addr", collection.MintContract.String).Int("external_token_id", tokenID).Msg("item not found")
 			skipped++
 			continue
 		} else if err != nil {
 			return 0, 0, fmt.Errorf("get purchased item: %w", err)
+		}
+
+		onChainStatusObject, err := boiler.UserAssetOnChainStatuses(
+			boiler.UserAssetOnChainStatusWhere.CollectionID.EQ(userAsset.CollectionID),
+			boiler.UserAssetOnChainStatusWhere.AssetHash.EQ(userAsset.Hash),
+		).One(passdb.StdConn)
+		if err != nil {
+			l.Debug().Err(err).Interface("userAsset", userAsset).Msg("assets on chain status not found")
+			skipped++
+			continue
 		}
 
 		// if a newer tx exists, insert the tx and continue
@@ -102,7 +112,7 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 		}
 
 		// on chain user may not exist in our db
-		onChainOwner, err := CreateOrGetUser(nftStatus.Owner)
+		onChainOwner, err := CreateOrGetUser(nftStatus.Owner, environment)
 		if err != nil {
 			return 0, 0, fmt.Errorf("get or create onchain user: %w", err)
 		}
@@ -178,8 +188,12 @@ func UpdateOwners(nftStatuses map[int]*NFTOwnerStatus, collection *boiler.Collec
 			updatedBool = true
 		}
 
-		if string(nftStatus.OnChainStatus) != userAsset.OnChainStatus {
-			userAsset.OnChainStatus = string(nftStatus.OnChainStatus)
+		if string(nftStatus.OnChainStatus) != onChainStatusObject.OnChainStatus {
+			onChainStatusObject.OnChainStatus = string(nftStatus.OnChainStatus)
+			_, err = onChainStatusObject.Update(passdb.StdConn, boil.Infer())
+			if err != nil {
+				return 0, 0, err
+			}
 			_, err = userAsset.Update(passdb.StdConn, boil.Infer())
 			if err != nil {
 				return 0, 0, err
@@ -345,7 +359,7 @@ func ReverseFailed1155(enabled1155Rollback bool) (int, int, error) {
 	return success, skipped, nil
 }
 
-func Process1155Deposits(records []*NFT1155TransferRecord, collectionSlug string, purchaseAddress common.Address) (int, int, error) {
+func Process1155Deposits(records []*NFT1155TransferRecord, collectionSlug string, purchaseAddress common.Address, environment types.Environment) (int, int, error) {
 	l := passlog.L.With().Str("svc", "avant_1155deposit_processor").Logger()
 	success := 0
 	skipped := 0
@@ -356,7 +370,7 @@ func Process1155Deposits(records []*NFT1155TransferRecord, collectionSlug string
 			skipped++
 			continue
 		}
-		user, err := CreateOrGetUser(common.HexToAddress(record.FromAddress))
+		user, err := CreateOrGetUser(common.HexToAddress(record.FromAddress), environment)
 		if err != nil {
 			skipped++
 			l.Error().Str("txid", record.TxHash).Str("user_addr", record.FromAddress).Err(err).Msg("create or get user")
