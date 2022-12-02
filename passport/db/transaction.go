@@ -383,7 +383,7 @@ func TransactionReferenceExists(txhash string) (bool, error) {
 
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		tx, err := boiler.TransactionsOlds(
-			boiler.TransactionWhere.TransactionReference.EQ(txhash),
+			boiler.TransactionsOldWhere.TransactionReference.EQ(txhash),
 		).One(passdb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return false, terror.Error(err)
