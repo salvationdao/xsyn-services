@@ -5,12 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/friendsofgo/errors"
-	"github.com/kevinms/leakybucket-go"
-	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"strings"
 	"time"
 	"xsyn-services/boiler"
@@ -19,6 +13,13 @@ import (
 	"xsyn-services/passport/passlog"
 	"xsyn-services/passport/supremacy_rpcclient"
 	xsynTypes "xsyn-services/types"
+
+	"github.com/friendsofgo/errors"
+	"github.com/kevinms/leakybucket-go"
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/types"
 
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -557,6 +558,7 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 
 	err = supremacy_rpcclient.AssetLockToSupremacy(xsynTypes.UserAssetFromBoiler(userAsset), transferLog.ID, marketLocked)
 	if err != nil {
+		passlog.L.Error().Err(err).Interface("UserAsset", userAsset).Msg("failed to lock asset to supremacy during transfer")
 		_, _ = reverseAssetServiceTransaction(
 			ac.API.userCacheMap,
 			tx,
@@ -568,6 +570,7 @@ func (ac *AssetController) AssetTransferToSupremacyHandler(ctx context.Context, 
 	userAsset.LockedToService = null.StringFrom(xsynTypes.SupremacyGameUserID.String())
 	_, err = userAsset.Update(passdb.StdConn, boil.Infer())
 	if err != nil {
+		passlog.L.Error().Err(err).Interface("UserAsset", userAsset).Msg("failed to update user asset during transfer to supremacy")
 		reverseTransaction, reverseTransfer := reverseAssetServiceTransaction(
 			ac.API.userCacheMap,
 			tx,
