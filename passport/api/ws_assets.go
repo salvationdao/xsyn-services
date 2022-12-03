@@ -724,6 +724,7 @@ func (ac *AssetController) AssetTransferFromSupremacyHandler(ctx context.Context
 	}
 	err = transferLog.Insert(passdb.StdConn, boil.Infer())
 	if err != nil {
+		passlog.L.Error().Err(err).Interface("TransferLog", transferLog).Msg("Failed to insert transfer log")
 		return terror.Error(err, "Failed to transfer asset to XSYN, try again or contact support.")
 	}
 
