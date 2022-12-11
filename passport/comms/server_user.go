@@ -122,7 +122,13 @@ func (s *S) UserBalanceGetHandler(req UserBalanceGetReq, resp *UserBalanceGetRes
 		return err
 	}
 
-	sups, _, err := s.UserCacheMap.Get(req.UserID.String())
+	user, err := boiler.FindUser(passdb.StdConn, req.UserID.String())
+	if err != nil {
+		passlog.L.Error().Str("user_id", req.UserID.String()).Err(err).Msg("Failed to find user")
+		return err
+	}
+
+	sups, _, err := s.UserCacheMap.Get(user.AccountID)
 	if err != nil {
 		passlog.L.Error().Str("user_id", req.UserID.String()).Err(err).Msg("Failed to get user balance")
 		return err
