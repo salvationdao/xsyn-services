@@ -2,6 +2,15 @@
 
 This repo holds the various xsyn services
 
+## To be open sourced
+
+- github.com/ninja-software/log_helpers -> github.com/salvationdao/log_helpers
+- github.com/ninja-software/sale -> github.com/salvationdao/sale
+- github.com/ninja-software/terror/v2 -> github.com/salvationdao/terror/v2
+- github.com/ninja-syndicate/hub -> github.com/salvationdao/hub
+- github.com/ninja-syndicate/supremacy-bridge -> github.com/salvationdao/supremacy-bridge
+- github.com/ninja-syndicate/ws -> github.com/salvationdao/ws
+
 ### Setup to use private repo
 
 ```bash

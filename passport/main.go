@@ -177,8 +177,8 @@ func main() {
 					&cli.StringFlag{Name: "sup_withdrawal_addr_eth", Value: "0xf6D4255eE10FFaF4B746950583665d7809556ae0", EnvVars: []string{envPrefix + "_SUP_WITHDRAWAL_CONTRACT_ADDR_ETH"}, Usage: "SUP withdrawal contract address on ETH"},
 
 					// private keys
-					&cli.StringFlag{Name: "signer_private_key", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing (usually operator)"},
-					&cli.StringFlag{Name: "achievement_signer_private_key", Value: "0x9878e47371dc28d434b8e5a2e36a5ac2fad84af4ebcd8ea34470b2417590e087", EnvVars: []string{envPrefix + "_ACHIEVEMENT_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing achievement contract (usually operator)"},
+					&cli.StringFlag{Name: "signer_private_key", Value: "SAMPLE", EnvVars: []string{envPrefix + "_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing (usually operator)"},
+					&cli.StringFlag{Name: "achievement_signer_private_key", Value: "SAMPLE", EnvVars: []string{envPrefix + "_ACHIEVEMENT_SIGNER_PRIVATE_KEY"}, Usage: "Private key for signing achievement contract (usually operator)"},
 
 					// chain id
 					&cli.IntFlag{Name: "bsc_chain_id", Value: 97, EnvVars: []string{envPrefix + "_BSC_CHAIN_ID"}, Usage: "BSC Chain ID"},
