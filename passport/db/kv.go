@@ -58,22 +58,27 @@ const KeyEnableEthWithdraws = "enable_eth_withdraws"
 const KeyEnableBscDeposits = "enable_bsc_deposits"
 const KeyEnableBscWithdraws = "enable_bsc_withdraws"
 
-func get(key KVKey) string {
+const KeyETHRPCURL = "eth_rpc_url"
+const KeyBSCRPCURL = "bsc_rpc_url"
+const KeyWithdrawalChunkSize = "withdrawal_chunk_size"
+const KeyDepositChunkSize = "deposit_chunk_size"
+
+func get(key KVKey) (string, error) {
 	exists, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).Exists(passdb.StdConn)
 	if err != nil {
 		passlog.L.Err(err).Str("key", string(key)).Msg("could not check kv exists")
-		return ""
+		return "", err
 	}
 	if !exists {
 		passlog.L.Err(errors.New("kv does not exist")).Str("key", string(key)).Msg("kv does not exist")
-		return ""
+		return "", nil
 	}
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(passdb.StdConn)
 	if err != nil {
 		passlog.L.Err(err).Str("key", string(key)).Msg("could not get kv")
-		return ""
+		return "", err
 	}
-	return kv.Value
+	return kv.Value, nil
 }
 
 func put(key KVKey, value string) {
@@ -89,11 +94,12 @@ func put(key KVKey, value string) {
 }
 
 func GetStr(key KVKey) string {
-	return get(key)
+	result, _ := get(key)
+	return result
 
 }
 func GetStrWithDefault(key KVKey, defaultValue string) string {
-	vStr := get(key)
+	vStr, _ := get(key)
 	if vStr == "" {
 		PutStr(key, defaultValue)
 		return defaultValue
@@ -104,8 +110,9 @@ func GetStrWithDefault(key KVKey, defaultValue string) string {
 func PutStr(key KVKey, value string) {
 	put(key, value)
 }
+
 func GetBool(key KVKey) bool {
-	v := get(key)
+	v, _ := get(key)
 	b, err := strconv.ParseBool(v)
 	if err != nil {
 		passlog.L.Err(err).Str("key", string(key)).Str("val", v).Msg("could not parse boolean")
@@ -115,7 +122,10 @@ func GetBool(key KVKey) bool {
 }
 
 func GetBoolWithDefault(key KVKey, defaultValue bool) bool {
-	vStr := get(key)
+	vStr, err := get(key)
+	if err != nil {
+		return false
+	}
 	if vStr == "" {
 		PutBool(key, defaultValue)
 		return defaultValue
@@ -128,7 +138,7 @@ func PutBool(key KVKey, value bool) {
 }
 
 func GetInt(key KVKey) int {
-	vStr := get(key)
+	vStr, _ := get(key)
 	v, err := strconv.Atoi(vStr)
 	if err != nil {
 		passlog.L.Err(err).Str("key", string(key)).Str("val", vStr).Msg("could not parse int")
@@ -138,7 +148,7 @@ func GetInt(key KVKey) int {
 }
 
 func GetIntWithDefault(key KVKey, defaultValue int) int {
-	vStr := get(key)
+	vStr, _ := get(key)
 	if vStr == "" {
 		PutInt(key, defaultValue)
 		return defaultValue
@@ -152,7 +162,7 @@ func PutInt(key KVKey, value int) {
 }
 
 func GetDecimal(key KVKey) decimal.Decimal {
-	vStr := get(key)
+	vStr, _ := get(key)
 	v, err := decimal.NewFromString(vStr)
 	if err != nil {
 		passlog.L.Err(err).Str("key", string(key)).Str("val", vStr).Msg("could not parse decimal")
@@ -161,7 +171,7 @@ func GetDecimal(key KVKey) decimal.Decimal {
 	return v
 }
 func GetDecimalWithDefault(key KVKey, defaultValue decimal.Decimal) decimal.Decimal {
-	vStr := get(key)
+	vStr, _ := get(key)
 
 	if vStr == "" {
 		PutDecimal(key, defaultValue)
@@ -174,7 +184,7 @@ func PutDecimal(key KVKey, value decimal.Decimal) {
 	put(key, value.String())
 }
 func GetTime(key KVKey) time.Time {
-	vStr := get(key)
+	vStr, _ := get(key)
 	t, err := time.Parse(time.RFC3339, vStr)
 	if err != nil {
 		passlog.L.Err(err).Str("key", string(key)).Str("val", vStr).Msg("could not parse time")
@@ -183,7 +193,7 @@ func GetTime(key KVKey) time.Time {
 	return t
 }
 func GetTimeWithDefault(key KVKey, defaultValue time.Time) time.Time {
-	vStr := get(key)
+	vStr, _ := get(key)
 	if vStr == "" {
 		PutTime(key, defaultValue)
 		return defaultValue

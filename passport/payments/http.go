@@ -207,43 +207,112 @@ func getNFT1155TransferRecords(path Path, latestBlock int, testnet bool, contrac
 	return result, nil
 }
 
-func GetWithdraws(bscWithdrawalsEnabled, ethWithdrawalsEnabled, testnet bool) ([]*SUPTransferRecord, error) {
+func GetWithdraws() ([]*SUPTransferRecord, error) {
+	bscWithdrawalsEnabled := db.GetBool(db.KeyEnableBscWithdraws)
+	ethWithdrawalsEnabled := db.GetBool(db.KeyEnableEthWithdraws)
+	ethRPCURL := db.GetStrWithDefault(db.KeyETHRPCURL, "")
+	bscRPCURL := db.GetStrWithDefault(db.KeyBSCRPCURL, "")
+
+	if ethRPCURL == "" || bscRPCURL == "" {
+		return nil, errors.New("missing RPC URLs for ETH or BSC")
+	}
+
+	withdrawalChunkSize := db.GetIntWithDefault(db.KeyWithdrawalChunkSize, 1000)
 	records := []*SUPTransferRecord{}
 
+	filter := func(record *SUPTransferRecord) bool {
+		// Withdrawals are transfers from the withdrawal contract
+		// These verify a pending refund, or a withdrawal request
+		return record.FromAddress == Mainnet.WithdrawalContract.Hex() ||
+			record.FromAddress == BSC.WithdrawalContract.Hex()
+	}
+	c := NewClient(ethRPCURL, bscRPCURL, withdrawalChunkSize)
 	if bscWithdrawalsEnabled {
 		latestWithdrawBlockBSC := db.GetInt(db.KeyLatestWithdrawBlockBSC)
 
-		bscRecords, err := getSUPTransferRecords(SUPSWithdrawTxsBSC, latestWithdrawBlockBSC, testnet)
+		bscRecords, err := c.GetSUPTransferRecords(latestWithdrawBlockBSC, BSCChainID)
 		if err != nil {
 			return nil, fmt.Errorf("get withdraw txes: %w", err)
 		}
-		passlog.L.Debug().Int("bsc withdrawals", len(bscRecords)).Msg("getting bsc withdrawals")
-		records = append(records, bscRecords...)
-		db.PutInt(db.KeyLatestWithdrawBlockBSC, latestSUPTransferBlockFromRecords(latestWithdrawBlockBSC, bscRecords))
+
+		filteredRecords := []*SUPTransferRecord{}
+		for _, record := range bscRecords {
+			if filter(record) {
+				filteredRecords = append(filteredRecords, record)
+			}
+		}
+
+		passlog.L.Debug().Int("bsc withdrawals", len(filteredRecords)).Msg("getting bsc withdrawals")
+		records = append(records, filteredRecords...)
+		db.PutInt(db.KeyLatestWithdrawBlockBSC, latestSUPTransferBlockFromRecords(latestWithdrawBlockBSC, filteredRecords))
 	}
+
 	if ethWithdrawalsEnabled {
 		latestWithdrawBlockETH := db.GetInt(db.KeyLatestWithdrawBlockETH)
 
-		ethRecords, err := getSUPTransferRecords(SUPSWithdrawTxsETH, latestWithdrawBlockETH, testnet)
+		ethRecords, err := c.GetSUPTransferRecords(latestWithdrawBlockETH, MainnetChainID)
 		if err != nil {
 			return nil, fmt.Errorf("get withdraw txes: %w", err)
 		}
-		passlog.L.Debug().Int("eth withdrawals", len(ethRecords)).Msg("getting eth withdrawals")
-		records = append(records, ethRecords...)
-		db.PutInt(db.KeyLatestWithdrawBlockETH, latestSUPTransferBlockFromRecords(latestWithdrawBlockETH, ethRecords))
+		filteredRecords := []*SUPTransferRecord{}
+		for _, record := range ethRecords {
+			if filter(record) {
+				filteredRecords = append(filteredRecords, record)
+			}
+		}
+		passlog.L.Debug().Int("eth withdrawals", len(filteredRecords)).Msg("getting eth withdrawals")
+		records = append(records, filteredRecords...)
+		db.PutInt(db.KeyLatestWithdrawBlockETH, latestSUPTransferBlockFromRecords(latestWithdrawBlockETH, filteredRecords))
 	}
+
+	// AVANT STUFF BELOW, API NO LONGER AVAILABLE
+	// =============================================================
+	// if bscWithdrawalsEnabled {
+	// 	latestWithdrawBlockBSC := db.GetInt(db.KeyLatestWithdrawBlockBSC)
+
+	// 	bscRecords, err := getSUPTransferRecords(SUPSWithdrawTxsBSC, latestWithdrawBlockBSC, testnet)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("get withdraw txes: %w", err)
+	// 	}
+	// 	passlog.L.Debug().Int("bsc withdrawals", len(bscRecords)).Msg("getting bsc withdrawals")
+	// 	records = append(records, bscRecords...)
+	// 	db.PutInt(db.KeyLatestWithdrawBlockBSC, latestSUPTransferBlockFromRecords(latestWithdrawBlockBSC, bscRecords))
+	// }
+	// if ethWithdrawalsEnabled {
+	// 	latestWithdrawBlockETH := db.GetInt(db.KeyLatestWithdrawBlockETH)
+
+	// 	ethRecords, err := getSUPTransferRecords(SUPSWithdrawTxsETH, latestWithdrawBlockETH, testnet)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("get withdraw txes: %w", err)
+	// 	}
+	// 	passlog.L.Debug().Int("eth withdrawals", len(ethRecords)).Msg("getting eth withdrawals")
+	// 	records = append(records, ethRecords...)
+	// 	db.PutInt(db.KeyLatestWithdrawBlockETH, latestSUPTransferBlockFromRecords(latestWithdrawBlockETH, ethRecords))
+	// }
 
 	return records, nil
 }
 
-func GetDeposits(testnet bool) ([]*SUPTransferRecord, error) {
+func GetDeposits() ([]*SUPTransferRecord, error) {
+
 	records := []*SUPTransferRecord{}
 
-	if db.GetBool(db.KeyEnableBscDeposits) {
+	bscDepositsEnabled := db.GetBool(db.KeyEnableBscDeposits)
+	ethDepositsEnabled := db.GetBool(db.KeyEnableEthDeposits)
+	ethRPCURL := db.GetStrWithDefault(db.KeyETHRPCURL, "")
+	bscRPCURL := db.GetStrWithDefault(db.KeyBSCRPCURL, "")
+	depositChunkSize := db.GetIntWithDefault(db.KeyDepositChunkSize, 1000)
+
+	if ethRPCURL == "" || bscRPCURL == "" {
+		return nil, errors.New("missing RPC URLs for ETH or BSC")
+	}
+
+	c := NewClient(ethRPCURL, bscRPCURL, depositChunkSize)
+	if bscDepositsEnabled {
 		latestDepositBlockBSC := db.GetInt(db.KeyLatestDepositBlockBSC)
-		bscRecords, err := getSUPTransferRecords(SUPSDepositTxsBSC, latestDepositBlockBSC, testnet)
+		bscRecords, err := c.GetSUPTransferRecords(latestDepositBlockBSC, BSCChainID)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("get bsc deposit txes: %w", err)
 		}
 		if len(bscRecords) > 0 {
 			passlog.L.Debug().Int("bsc deposits", len(bscRecords)).Msg("getting bsc deposits")
@@ -252,9 +321,9 @@ func GetDeposits(testnet bool) ([]*SUPTransferRecord, error) {
 		db.PutInt(db.KeyLatestDepositBlockBSC, latestSUPTransferBlockFromRecords(latestDepositBlockBSC, bscRecords))
 	}
 
-	if db.GetBool(db.KeyEnableEthDeposits) {
+	if ethDepositsEnabled {
 		latestDepositBlockETH := db.GetInt(db.KeyLatestDepositBlockETH)
-		ethRecords, err := getSUPTransferRecords(SUPSDepositTxsETH, latestDepositBlockETH, testnet)
+		ethRecords, err := c.GetSUPTransferRecords(latestDepositBlockETH, MainnetChainID)
 		if err != nil {
 			return nil, err
 		}
@@ -264,6 +333,34 @@ func GetDeposits(testnet bool) ([]*SUPTransferRecord, error) {
 		records = append(records, ethRecords...)
 		db.PutInt(db.KeyLatestDepositBlockETH, latestSUPTransferBlockFromRecords(latestDepositBlockETH, ethRecords))
 	}
+
+	// AVANT STUFF BELOW, API NO LONGER AVAILABLE
+	// =============================================================
+	// if db.GetBool(db.KeyEnableBscDeposits) {
+	// 	latestDepositBlockBSC := db.GetInt(db.KeyLatestDepositBlockBSC)
+	// 	bscRecords, err := getSUPTransferRecords(SUPSDepositTxsBSC, latestDepositBlockBSC, testnet)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	if len(bscRecords) > 0 {
+	// 		passlog.L.Debug().Int("bsc deposits", len(bscRecords)).Msg("getting bsc deposits")
+	// 	}
+	// 	records = append(records, bscRecords...)
+	// 	db.PutInt(db.KeyLatestDepositBlockBSC, latestSUPTransferBlockFromRecords(latestDepositBlockBSC, bscRecords))
+	// }
+
+	// if db.GetBool(db.KeyEnableEthDeposits) {
+	// 	latestDepositBlockETH := db.GetInt(db.KeyLatestDepositBlockETH)
+	// 	ethRecords, err := getSUPTransferRecords(SUPSDepositTxsETH, latestDepositBlockETH, testnet)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	if len(ethRecords) > 0 {
+	// 		passlog.L.Debug().Int("eth deposits", len(ethRecords)).Msg("getting eth deposits")
+	// 	}
+	// 	records = append(records, ethRecords...)
+	// 	db.PutInt(db.KeyLatestDepositBlockETH, latestSUPTransferBlockFromRecords(latestDepositBlockETH, ethRecords))
+	// }
 
 	return records, nil
 }

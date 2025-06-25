@@ -457,8 +457,8 @@ func SyncPayments(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool, pxr 
 	return nil
 
 }
-func SyncDeposits(ucm *api.Transactor, purchaseAddress common.Address, isTestnet bool, environment types.Environment) error {
-	depositRecords, err := payments.GetDeposits(isTestnet)
+func SyncDeposits(ucm *api.Transactor, purchaseAddress common.Address, environment types.Environment) error {
+	depositRecords, err := payments.GetDeposits()
 	if err != nil {
 		return fmt.Errorf("get deposits: %w", err)
 	}
@@ -494,20 +494,16 @@ func Sync1155Deposits(collectionSlug string, purchaseAddress common.Address, isT
 
 func SyncWithdraw(
 	ucm *api.Transactor,
-	isTestnet,
 	enableWithdrawRollback bool,
 	supWithdrawContractBSC,
 	supWithdrawContractETH common.Address,
 ) error {
-	bscWithdrawalsEnabled := db.GetBool(db.KeyEnableBscWithdraws)
-	ethWithdrawalsEnabled := db.GetBool(db.KeyEnableEthWithdraws)
-
 	// Update with TX hash first
-	withdrawRecords, err := payments.GetWithdraws(bscWithdrawalsEnabled, ethWithdrawalsEnabled, isTestnet)
+	withdrawRecords, err := payments.GetWithdraws()
 	if err != nil {
 		return fmt.Errorf("get withdraws: %w", err)
 	}
-	success, skipped := payments.UpdateSuccessfulWithdrawsWithTxHash(bscWithdrawalsEnabled, ethWithdrawalsEnabled, supWithdrawContractBSC, supWithdrawContractETH, withdrawRecords)
+	success, skipped := payments.UpdateSuccessfulWithdrawsWithTxHash(supWithdrawContractBSC, supWithdrawContractETH, withdrawRecords)
 	if success > 0 || skipped > 0 {
 		passlog.L.Info().Int("success", success).Int("skipped", skipped).Msg("add tx hashes to pending refunds")
 	}
@@ -620,14 +616,14 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 		}
 	}(ucm, log, isTestnet)
 	// sync sup deposits
-	go func(ucm *api.Transactor, log *zerolog.Logger, isTestnet bool) {
+	go func(ucm *api.Transactor, log *zerolog.Logger) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncDeposits, false) {
-			err := SyncDeposits(ucm, config.PurchaseAddress, isTestnet, environment)
+			err := SyncDeposits(ucm, config.PurchaseAddress, environment)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync deposits")
 			}
 		}
-	}(ucm, log, isTestnet)
+	}(ucm, log)
 	// sync nft changes
 	go func() {
 		err := SyncNFTs(isTestnet, environment)
@@ -638,7 +634,7 @@ func SyncFunc(ucm *api.Transactor, log *zerolog.Logger, isTestnet, enableWithdra
 	// sync sup withdrawals
 	go func(ucm *api.Transactor, isTestnet bool) {
 		if db.GetBoolWithDefault(db.KeyEnableSyncWithdraw, false) {
-			err := SyncWithdraw(ucm, isTestnet, enableWithdrawRollback, config.SupWithdrawalAddrBSC, config.SupWithdrawalAddrETH)
+			err := SyncWithdraw(ucm, enableWithdrawRollback, config.SupWithdrawalAddrBSC, config.SupWithdrawalAddrETH)
 			if err != nil {
 				passlog.L.Err(err).Msg("failed to sync withdraw")
 			}
@@ -952,12 +948,15 @@ func ServeFunc(ctxCLI *cli.Context, log *zerolog.Logger) error {
 
 		hostname := gameserverURL.Hostname()
 
-		endPort := 11035
 		startPort := 11001
-		rpcAddrs := make([]string, endPort-startPort)
-		for i := startPort; i < endPort; i++ {
-			rpcAddrs[i-startPort] = fmt.Sprintf("%s:%d", hostname, i)
+		endPort := 11035
+		numPorts := endPort - startPort
+		rpcAddrs := make([]string, numPorts)
+		for i := 0; i < numPorts; i++ {
+			rpcAddrs[i] = fmt.Sprintf("%s:%d", hostname, startPort+i)
 		}
+
+		passlog.L.Info().Strs("rpcAddrs", rpcAddrs).Msg("rpcAddrs")
 
 		rpcClient := &supremacy_rpcclient.SupremacyXrpcClient{
 			Addrs: rpcAddrs,

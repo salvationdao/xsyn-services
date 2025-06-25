@@ -47,17 +47,17 @@ type NFTOwnerRecord struct {
 // GET /sups_deposit_txs
 // GET /sups_withdraw_txs
 type SUPTransferRecord struct {
-	TxHash          string `json:"tx_hash"`
-	LogIndex        int    `json:"log_index"`
-	Time            int    `json:"time"`
-	Chain           int    `json:"chain"`
-	BlockNumber     int    `json:"block_number"`
-	Confirmations   int    `json:"confirmations"`
-	FromAddress     string `json:"from_address"`
-	ToAddress       string `json:"to_address"`
-	ContractAddress string `json:"contract_address"`
-	ValueInt        string `json:"value_int"`
-	ValueDecimals   int    `json:"value_decimals"`
+	TxHash   string `json:"tx_hash"`
+	LogIndex int    `json:"log_index"`
+	// Time            int    `json:"time"`
+	// Chain           int    `json:"chain"`
+	BlockNumber int `json:"block_number"`
+	// Confirmations   int    `json:"confirmations"`
+	FromAddress string `json:"from_address"`
+	ToAddress   string `json:"to_address"`
+	// ContractAddress string `json:"contract_address"`
+	ValueInt string `json:"value_int"`
+	// ValueDecimals   int    `json:"value_decimals"`
 }
 
 type NFT1155TransferRecord struct {

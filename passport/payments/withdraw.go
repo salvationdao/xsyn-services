@@ -67,12 +67,12 @@ func InsertPendingRefund(ucm UserCacheMap, userID types.UserID, amount decimal.D
 }
 
 func UpdateSuccessfulWithdrawsWithTxHash(
-	bscWithdrawalsEnabled,
-	ethWithdrawalsEnabled bool,
 	supWithdrawContractBSC,
 	supWithdrawContractETH common.Address,
 	records []*SUPTransferRecord,
 ) (int, int) {
+	bscWithdrawalsEnabled := db.GetBool(db.KeyEnableBscWithdraws)
+	ethWithdrawalsEnabled := db.GetBool(db.KeyEnableEthWithdraws)
 	l := passlog.L.With().Str("svc", "avant_pending_refund_set_tx_hash").Logger()
 
 	skipped := 0
